@@ -2580,3 +2580,240 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Rename parameter `auraDefinitionId` → `auraDefinitionID`; update named arguments.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 167 individual changes listed.
+
+
+### Audit batch 15: files 223–238 of 386
+
+#### `Assets/Runtime/Server/Core/ServerAutoAttackManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 12: add XML documentation to public API `public sealed class ServerAutoAttackManager : MonoBehaviour`.
+- Line 15: add XML documentation to public API `public static ServerAutoAttackManager Instance => _instance;`.
+- Line 17: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 21: rename private field `AutoAttackState` → `_AutoAttackState`.
+- Line 23: add XML documentation to public API `public Actor Actor;`.
+- Line 24: add XML documentation to public API `public NavMeshAgent Agent;`.
+
+#### `Assets/Runtime/Server/Core/ServerConnectionManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public class ServerConnectionManager : PurrMonoBehaviour`.
+- Line 25: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 27: rename private field `networkManager` → `_networkManager`.
+- Line 29: rename private field `connectedPlayers` → `_connectedPlayers`.
+- Line 29: use target-typed `new(...)` for member `connectedPlayers`.
+- Line 30: rename private field `sessionData` → `_sessionData`.
+- Line 30: use target-typed `new(...)` for member `sessionData`.
+- Line 51: add XML documentation to public API `public override void Unsubscribe(NetworkManager manager, bool asServer)`.
+- Line 112: add XML documentation to public API `public void SetSessionData(PlayerID playerId, PlayerSessionData data)`.
+- Line 118: add XML documentation to public API `public void SetAccountData(PlayerID playerId, PlayerAccountData accountData)`.
+- Line 131: add XML documentation to public API `public PlayerSessionData GetSessionData(PlayerID playerId)`.
+- Line 144: add XML documentation to public API `public PlayerAccountData GetAccountData(PlayerID playerId)`.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+
+#### `Assets/Runtime/Server/Core/ServerCooldownManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public sealed class ServerCooldownManager : MonoBehaviour`.
+- Line 14: add XML documentation to public API `public static ServerCooldownManager Instance => _instance;`.
+- Line 16: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 18: add XML documentation to public API `public const string GCD_ID = "GCD";`.
+- Line 20: rename private field `entityManager` → `_entityManager`.
+- Line 21: rename private field `actorComponentQuery` → `_actorComponentQuery`.
+- Line 50: add XML documentation to public API `public void StartCooldown(Guid actorId, string spellId, float duration)`.
+- Line 98: add XML documentation to public API `public bool IsOnCooldown(Guid actorId, string spellId)`.
+- Line 103: add XML documentation to public API `public float GetRemainingCooldown(Guid actorId, string spellId)`.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `spellId` → `spellID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `spellId` → `spellID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `spellId` → `spellID`; update named arguments.
+
+#### `Assets/Runtime/Server/Core/ServerECSManager.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public static class ServerECSManager`.
+- Line 10: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 12: add XML documentation to public API `public static World DefaultWorld { get; private set; }`.
+- Line 14: add XML documentation to public API `public static void ServerInitializeECSWorlds()`.
+
+#### `Assets/Runtime/Server/Core/ServerHooksManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public static class ServerHooksManager`.
+- Line 13: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 15: add XML documentation to public API `public static void ServerInitializeRPCHooks()`.
+
+#### `Assets/Runtime/Server/Core/ServerInterestManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 20: add XML documentation to public API `public static ServerInterestManager Instance => _instance;`.
+- Line 22: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 24: rename private field `networkManager` → `_networkManager`.
+- Line 160: rename out local `_centerSceneId` → `_centerSceneID` for acronym casing.
+- Line 175: add XML documentation to public API `public void SubscribePlayerToChunk(Actor actor, Vector2Int chunkCoord, Action onSubscribed = null)`.
+- Line 195: add XML documentation to public API `public void UnsubscribePlayerFromChunk(Actor actor, Vector2Int chunkCoord)`.
+- Line 228: rename local `sceneId` → `sceneID` for acronym casing.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+
+#### `Assets/Runtime/Server/Core/ServerPositionManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 15: add XML documentation to public API `public static ServerPositionManager Instance => _instance;`.
+- Line 17: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 19: rename private field `chunkSize` → `_chunkSize`.
+
+#### `Assets/Runtime/Server/Core/ServerSpawnManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 21: add XML documentation to public API `public sealed class ServerSpawnManager : MonoBehaviour`.
+- Line 24: add XML documentation to public API `public static ServerSpawnManager Instance => _instance;`.
+- Line 26: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 27: rename private field `networkManager` → `_networkManager`.
+- Line 30: rename private field `prefabRegistry` → `_prefabRegistry`.
+- Line 32: rename private field `sceneRegistry` → `_sceneRegistry`.
+- Line 33: rename private field `nextSceneIndex` → `_nextSceneIndex`.
+- Line 35: rename private field `spawnPointActorMap` → `_spawnPointActorMap`.
+- Line 35: use target-typed `new(...)` for member `spawnPointActorMap`.
+- Line 37: rename private field `entityManager` → `_entityManager`.
+- Line 38: rename private field `spawnCommandQuery` → `_spawnCommandQuery`.
+- Line 40: add XML documentation to public API `public void Awake()`.
+- Line 80: rename local `spawnPointGuid` → `spawnPointGUID` for acronym casing.
+- Line 112: add XML documentation to public API `public void SpawnPlayer(PlayerID playerId)`.
+- Line 120: use `var` for local `spawnScene`; the RHS makes `Vector2Int` explicit.
+- Line 137: use `var` for local `spawnPosition`; the RHS makes `Vector3` explicit.
+- Line 348: add XML documentation to public API `public void SpawnAt(string sceneName, Vector3 position, GameObject prefab, SceneID sceneID, PlayerID owner)`.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+- Rename parameter `playerId` → `playerID`; update named arguments.
+
+#### `Assets/Runtime/Server/Core/ServerSpellcastManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Rename file `ServerSpellcastManager.cs` → `ServerSpellCastManager.cs`; preserve its `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 15: add XML documentation to public API `public sealed class ServerSpellCastManager : MonoBehaviour`.
+- Line 18: add XML documentation to public API `public static ServerSpellCastManager Instance => _instance;`.
+- Line 20: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 22: rename private field `entityManager` → `_entityManager`.
+- Line 23: rename private field `actorComponentQuery` → `_actorComponentQuery`.
+- Line 393: add XML documentation to public API `public bool IsCasting(Guid actorId)`.
+- Line 398: add XML documentation to public API `public bool TryInterruptCast(Guid actorId)`.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+
+#### `Assets/Runtime/Server/Core/ServerStatManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public sealed class ServerStatManager : MonoBehaviour`.
+- Line 14: add XML documentation to public API `public static ServerStatManager Instance => _instance;`.
+- Line 16: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 18: rename constant `RegenTickInterval` → `REGEN_TICK_INTERVAL`.
+- Line 19: rename private field `regenTimer` → `_regenTimer`.
+- Line 21: rename private field `trackedActors` → `_trackedActors`.
+- Line 22: rename private field `currentEquipmentModifiers` → `_currentEquipmentModifiers`.
+- Line 61: add XML documentation to public API `public void RegisterActor(Actor actor)`.
+- Line 66: add XML documentation to public API `public void UnregisterActor(Actor actor)`.
+- Line 73: add XML documentation to public API `public void InitializeNpcStats(Actor actor)`.
+- Line 180: add XML documentation to public API `public void Recalculate(ActorStatContainer container)`.
+- Line 310: add XML documentation to public API `public void AddModifier(Actor actor, string statId, float flat, float percent)`.
+- Line 320: add XML documentation to public API `public void RemoveModifier(Actor actor, string statId, float flat, float percent)`.
+- Line 330: add XML documentation to public API `public void SetCurrent(Actor actor, string statId, float value)`.
+- Line 419: add XML documentation to public API `public void SendSnapshot(Actor actor)`.
+- Rename method `InitializeNpcStats` → `InitializeNPCStats` for acronym casing.
+- Rename parameter `statId` → `statID`; update named arguments.
+- Rename parameter `statId` → `statID`; update named arguments.
+- Rename parameter `statId` → `statID`; update named arguments.
+
+#### `Assets/Runtime/Server/Core/ServerTickerManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 12: add XML documentation to public API `public sealed class ServerTickerManager : MonoBehaviour`.
+- Line 15: add XML documentation to public API `public static ServerTickerManager Instance => _instance;`.
+- Line 17: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 19: rename private field `entityManager` → `_entityManager`.
+- Line 20: rename private field `actorComponentQuery` → `_actorComponentQuery`.
+- Line 25: rename private field `_nextTickerId` → `_nextTickerID`.
+- Line 27: rename private field `TickerRegistration` → `_TickerRegistration`.
+- Line 29: add XML documentation to public API `public Guid ActorId;`.
+- Line 29: rename member `ActorId` → `ActorID` for acronym casing.
+- Line 30: add XML documentation to public API `public string Tag;`.
+- Line 31: add XML documentation to public API `public Action<Actor> OnTick;`.
+- Line 32: add XML documentation to public API `public Action<Actor> OnExpire;`.
+- Line 75: add XML documentation to public API `public int AddTicker(Actor actor, float tickInterval, float duration = float.MaxValue,`.
+- Line 127: add XML documentation to public API `public void RemoveTicker(Actor actor, int tickerId)`.
+- Line 159: add XML documentation to public API `public void RemoveTickerByTag(Actor actor, string tag)`.
+- Line 165: add XML documentation to public API `public bool HasTicker(Guid actorId, string tag)`.
+- Rename parameter `tickerId` → `tickerID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `tickerId` → `tickerID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `tickerId` → `tickerID`; update named arguments.
+- Line 31: rename callback/event-like member `OnTick` → `onTick`.
+- Line 32: rename callback/event-like member `OnExpire` → `onExpire`.
+
+#### `Assets/Runtime/Server/Core/ServerWorldManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 19: add XML documentation to public API `public static ServerWorldManager Instance => _instance;`.
+- Line 21: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 23: rename private field `networkManager` → `_networkManager`.
+- Line 24: rename private field `worldSceneSettings` → `_worldSceneSettings`.
+- Line 27: rename private field `loadedChunks` → `_loadedChunks`.
+- Line 27: use target-typed `new(...)` for member `loadedChunks`.
+- Line 28: add XML documentation to public API `public IReadOnlyDictionary<Vector2Int, SceneID> LoadedChunks => loadedChunks;`.
+- Line 34: rename private field `_globalActorsSceneId` → `_globalActorsSceneID`.
+- Line 35: add XML documentation to public API `public SceneID GlobalActorsSceneId => _globalActorsSceneId;`.
+- Line 35: rename member `GlobalActorsSceneId` → `GlobalActorsSceneID` for acronym casing.
+- Line 36: add XML documentation to public API `public bool IsGlobalActorsSceneLoaded => _globalActorsSceneId != default;`.
+- Line 95: add XML documentation to public API `public Vector2Int ParseChunkCoordinate(string sceneName)`.
+- Line 103: add XML documentation to public API `public bool IsChunkLoaded(Vector2Int chunkCoord)`.
+- Line 108: add XML documentation to public API `public bool IsChunkLoadPending(Vector2Int chunkCoord)`.
+- Line 113: add XML documentation to public API `public bool TryGetChunkSceneId(Vector2Int chunkCoord, out SceneID sceneId)`.
+- Line 146: rename out local `chunkSceneId` → `chunkSceneID` for acronym casing.
+- Rename parameter `sceneId` → `sceneID`; update named arguments.
+- Rename method `TryGetChunkSceneId` → `TryGetChunkSceneID` for acronym casing.
+- Rename parameter `sceneId` → `sceneID`; update named arguments.
+
+#### `Assets/Runtime/Server/Networking/AccountServiceHooks.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public static class AccountServiceHooks`.
+- Line 10: add XML documentation to public API `public static void RegisterHooks()`.
+- Rename parameter `characterGuid` → `characterGUID`; update named arguments.
+
+#### `Assets/Runtime/Server/Networking/ActorDeathHooks.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 17: add XML documentation to public API `public static void RegisterHooks()`.
+
+#### `Assets/Runtime/Server/Networking/PlayerSessionData.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public class PlayerSessionData`.
+- Line 9: add XML documentation to public API `public PlayerID PlayerId;`.
+- Line 9: rename member `PlayerId` → `PlayerID` for acronym casing.
+- Line 10: add XML documentation to public API `public string Username;`.
+- Line 11: add XML documentation to public API `public string CharacterId;`.
+- Line 11: rename member `CharacterId` → `CharacterID` for acronym casing.
+- Line 12: add XML documentation to public API `public Actor PlayerActor;`.
+- Line 14: add XML documentation to public API `public PlayerSessionData(PlayerID playerId, string username, string characterId)`.
+- Line 21: add XML documentation to public API `public void SetPlayerActor(Actor actor) { PlayerActor = actor; }`.
+
+#### `Assets/Runtime/Server/Persistence/PlayerAccountData.cs`
+- Change namespace `Game.Server` → `Game.Server.Persistence`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public class PlayerAccountData`.
+- Line 9: add XML documentation to public API `public string Username;`.
+- Line 10: add XML documentation to public API `public string PasswordHash;`.
+- Line 11: add XML documentation to public API `public string PasswordSalt;`.
+- Line 12: use target-typed `new(...)` for member `Characters`.
+- Line 12: add XML documentation to public API `public List<CharacterData> Characters = new List<CharacterData>();`.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 200 individual changes listed.
