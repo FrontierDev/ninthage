@@ -447,3 +447,212 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 17: use `var` for local `lines`; the RHS makes `List<string>` explicit.
 
 **Batch result:** 15 files scanned; 15 files contain listed convention changes; 100 individual changes listed.
+
+
+### Audit batch 3: files 31–46 of 386
+
+#### `Assets/Editor/Windows/ActorStatEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 13: rename private field `selectedTab` → `_selectedTab`.
+- Line 14: rename private field `tabNames` → `_tabNames`.
+- Line 16: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 17: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 24: add XML documentation to public API `public static void OpenWindow()`.
+
+#### `Assets/Editor/Windows/AuraEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public class AuraEditorWindow : DataDefinitionEditorWindow<AuraDefinition, AuraDefinitionLibrary>`.
+- Line 11: rename private field `selectedTab` → `_selectedTab`.
+- Line 12: rename private field `tabNames` → `_tabNames`.
+- Line 14: rename private field `componentList` → `_componentList`.
+- Line 15: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 16: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 18: rename private field `pendingTooltip` → `_pendingTooltip`.
+- Line 19: rename private field `pendingTooltipText` → `_pendingTooltipText`.
+- Line 20: rename private field `pendingTooltipAccentColor` → `_pendingTooltipAccentColor`.
+- Line 27: add XML documentation to public API `public static void OpenWindow()`.
+- Line 162: use `var` for local `accentColor`; the RHS makes `Color` explicit.
+- Line 244: use `var` for local `tooltipRect`; the RHS makes `Rect` explicit.
+- Line 261: use `var` for local `accentColor`; the RHS makes `Color` explicit.
+
+#### `Assets/Editor/Windows/ClassEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 14: rename private field `selectedTab` → `_selectedTab`.
+- Line 15: rename private field `tabNames` → `_tabNames`.
+- Line 17: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 18: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 21: rename private field `pendingExplorerOpen` → `_pendingExplorerOpen`.
+- Line 28: add XML documentation to public API `public static void OpenWindow()`.
+
+#### `Assets/Editor/Windows/DamageSchoolEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public class DamageSchoolEditorWindow : DataDefinitionEditorWindow<DamageSchoolDefinition, DamageSchoolDefinitionLibrary>`.
+- Line 9: rename private field `selectedTab` → `_selectedTab`.
+- Line 10: rename private field `tabNames` → `_tabNames`.
+- Line 12: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 13: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 20: add XML documentation to public API `public static void OpenWindow()`.
+
+#### `Assets/Editor/Windows/DataDefinitionEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 18: rename private field `leftScrollPosition` → `_leftScrollPosition`.
+- Line 20: rename private field `selected` → `_selected`.
+- Line 21: rename private field `library` → `_library`.
+- Line 22: rename private field `definitions` → `_definitions`.
+- Line 23: rename private field `searchFilter` → `_searchFilter`.
+- Line 24: rename private field `useInstanceFallback` → `_useInstanceFallback`.
+- Line 28: rename private field `sortMode` → `_sortMode`.
+- Line 29: rename private field `tagSortOrder` → `_tagSortOrder`.
+- Line 30: rename private field `showSortSettings` → `_showSortSettings`.
+
+#### `Assets/Editor/Windows/DefinitionExplorerWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 16: rename private field `library` → `_library`.
+- Line 17: rename private field `onSelectionCallback` → `_onSelectionCallback`.
+- Line 18: rename private field `searchQuery` → `_searchQuery`.
+- Line 19: rename private field `scrollPosition` → `_scrollPosition`.
+- Line 20: rename private field `filteredDefinitions` → `_filteredDefinitions`.
+- Line 21: rename private field `defType` → `_defType`.
+- Line 24: rename private field `searchMode` → `_searchMode`.
+- Line 27: rename private field `pendingSelection` → `_pendingSelection`.
+- Line 28: rename private field `shouldClose` → `_shouldClose`.
+
+#### `Assets/Editor/Windows/FactionEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 13: rename private field `selectedTab` → `_selectedTab`.
+- Line 14: rename private field `tabNames` → `_tabNames`.
+- Line 16: rename private field `alliedList` → `_alliedList`.
+- Line 17: rename private field `enemyList` → `_enemyList`.
+- Line 19: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 20: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 27: add XML documentation to public API `public static void OpenWindow()`.
+- Line 311: use `var` for local `segmentColor`; the RHS makes `Color` explicit.
+- Line 326: use `var` for local `overflowColor`; the RHS makes `Color` explicit.
+
+#### `Assets/Editor/Windows/ItemEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 17: rename private field `selectedTab` → `_selectedTab`.
+- Line 18: rename private field `tabNames` → `_tabNames`.
+- Line 19: rename private field `selectedTemplateIndex` → `_selectedTemplateIndex`.
+- Line 20: rename private field `previewLevel` → `_previewLevel`.
+- Line 22: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 23: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 24: rename private field `cachedGameConfig` → `_cachedGameConfig`.
+- Line 25: rename private field `pendingTooltip` → `_pendingTooltip`.
+- Line 26: rename private field `pendingTooltipText` → `_pendingTooltipText`.
+- Line 27: rename private field `pendingTooltipAccentColor` → `_pendingTooltipAccentColor`.
+- Line 63: add XML documentation to public API `public static void OpenWindow()`.
+- Line 284: use `var` for local `tooltipRect`; the RHS makes `Rect` explicit.
+- Line 534: rename private field `derivedStatsMap` → `_derivedStatsMap`.
+- Line 536: rename private field `DerivedStatInfo` → `_DerivedStatInfo`.
+- Line 538: add XML documentation to public API `public string label;`.
+- Line 539: add XML documentation to public API `public float ratingPerPercent;`.
+- Line 540: add XML documentation to public API `public bool isRating;`.
+- Line 541: add XML documentation to public API `public float multiplier;`.
+- Line 924: use `var` for local `random`; the RHS makes `System.Random` explicit.
+- Rename method `GenerateItemId` → `GenerateItemID` for acronym casing.
+- Rename method `ConvertToItemId` → `ConvertToItemID` for acronym casing.
+
+#### `Assets/Editor/Windows/NPCEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 18: rename private field `leftScrollPosition` → `_leftScrollPosition`.
+- Line 19: rename private field `npcPrefabs` → `_npcPrefabs`.
+- Line 20: rename private field `selected` → `_selected`.
+- Line 21: rename private field `searchFilter` → `_searchFilter`.
+- Line 22: rename private field `scanFolder` → `_scanFolder`.
+- Line 25: rename private field `rightScrollPosition` → `_rightScrollPosition`.
+- Line 26: rename private field `selectedTab` → `_selectedTab`.
+- Line 27: rename private field `tabNames` → `_tabNames`.
+- Line 30: rename private field `cachedPrefab` → `_cachedPrefab`.
+- Line 31: rename private field `actorSO` → `_actorSO`.
+- Line 32: rename private field `behaviorSO` → `_behaviorSO`.
+- Line 33: rename private field `statProfileSO` → `_statProfileSO`.
+- Line 34: rename private field `spellcasterSO` → `_spellcasterSO`.
+- Line 37: rename private field `lootTableList` → `_lootTableList`.
+- Line 38: rename private field `baseStatsList` → `_baseStatsList`.
+- Line 39: rename private field `knownSpellsList` → `_knownSpellsList`.
+- Line 42: rename private field `cachedSpellDefinitions` → `_cachedSpellDefinitions`.
+- Line 45: add XML documentation to public API `public static void OpenWindow()`.
+- Rename method `AutoSetNpcID` → `AutoSetNPCID` for acronym casing.
+
+#### `Assets/Editor/Windows/QuestEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 17: rename private field `selectedTab` → `_selectedTab`.
+- Line 18: rename private field `tabNames` → `_tabNames`.
+- Line 20: rename private field `objectiveList` → `_objectiveList`.
+- Line 21: rename private field `requirementList` → `_requirementList`.
+- Line 22: rename private field `itemRewardList` → `_itemRewardList`.
+- Line 24: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 25: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 27: rename private field `pendingTooltip` → `_pendingTooltip`.
+- Line 28: rename private field `pendingTooltipText` → `_pendingTooltipText`.
+- Line 29: rename private field `pendingTooltipAccentColor` → `_pendingTooltipAccentColor`.
+- Line 31: rename private field `descriptionScrollPosition` → `_descriptionScrollPosition`.
+- Line 38: add XML documentation to public API `public static void OpenWindow()`.
+- Line 355: use `var` for local `accentColor`; the RHS makes `Color` explicit.
+- Line 437: use `var` for local `tooltipRect`; the RHS makes `Rect` explicit.
+- Line 454: use `var` for local `accentColor`; the RHS makes `Color` explicit.
+
+#### `Assets/Editor/Windows/RaceEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 12: rename private field `selectedTab` → `_selectedTab`.
+- Line 13: rename private field `tabNames` → `_tabNames`.
+- Line 15: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 16: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 19: rename private field `pendingExplorerOpen` → `_pendingExplorerOpen`.
+- Line 26: add XML documentation to public API `public static void OpenWindow()`.
+
+#### `Assets/Editor/Windows/RatingScalingPreviewWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 6: add XML documentation to public API `public class RatingScalingPreviewWindow : EditorWindow`.
+- Line 8: rename constant `ReferenceLevel` → `REFERENCE_LEVEL`.
+- Line 9: rename constant `ScalingExponent` → `SCALING_EXPONENT`.
+- Line 11: rename private field `baseRatingPerPercent` → `_baseRatingPerPercent`.
+- Line 12: rename private field `scrollPos` → `_scrollPos`.
+- Line 13: rename private field `simLevel` → `_simLevel`.
+- Line 14: rename private field `simDesiredPercent` → `_simDesiredPercent`.
+- Line 16: add XML documentation to public API `public static void Show(float baseRatingPerPercent)`.
+
+#### `Assets/Editor/Windows/SpellEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 14: rename private field `selectedTab` → `_selectedTab`.
+- Line 15: rename private field `tabNames` → `_tabNames`.
+- Line 17: rename private field `componentList` → `_componentList`.
+- Line 18: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 19: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 21: rename private field `pendingTooltip` → `_pendingTooltip`.
+- Line 22: rename private field `pendingTooltipText` → `_pendingTooltipText`.
+- Line 23: rename private field `pendingTooltipAccentColor` → `_pendingTooltipAccentColor`.
+- Line 30: add XML documentation to public API `public static void OpenWindow()`.
+- Line 324: use `var` for local `accentColor`; the RHS makes `Color` explicit.
+- Line 406: use `var` for local `tooltipRect`; the RHS makes `Rect` explicit.
+- Line 423: use `var` for local `accentColor`; the RHS makes `Color` explicit.
+
+#### `Assets/Editor/Windows/TalentEditorWindow.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 17: rename private field `selectedTab` → `_selectedTab`.
+- Line 18: rename private field `tabNames` → `_tabNames`.
+- Line 20: rename private field `componentList` → `_componentList`.
+- Line 21: rename private field `cachedSerializedObject` → `_cachedSerializedObject`.
+- Line 22: rename private field `cachedDefinition` → `_cachedDefinition`.
+- Line 24: rename private field `modifierList` → `_modifierList`.
+- Line 25: rename private field `cachedModifierTypes` → `_cachedModifierTypes`.
+- Line 26: rename private field `cachedModifierNames` → `_cachedModifierNames`.
+- Line 29: rename private field `pendingTooltip` → `_pendingTooltip`.
+- Line 30: rename private field `pendingTooltipText` → `_pendingTooltipText`.
+- Line 31: rename private field `pendingTooltipAccentColor` → `_pendingTooltipAccentColor`.
+- Line 38: add XML documentation to public API `public static void OpenWindow()`.
+- Line 206: use `var` for local `accentColor`; the RHS makes `Color` explicit.
+- Line 288: use `var` for local `tooltipRect`; the RHS makes `Rect` explicit.
+- Line 305: use `var` for local `accentColor`; the RHS makes `Color` explicit.
+
+#### `Assets/Editor/WorldEditor/Erosion/Hydraulics.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 6: add XML documentation to public API `public static class Hydraulics`.
+- Line 9: add XML documentation to public API `public static float[,] Erode(ComputeShader erosion, int numIterations, float[,] heightmap, int heightmapResolution, int erosionResolution)`.
+
+#### `Assets/Editor/WorldEditor/Erosion/Interfaces/IErosionMode.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Interfaces`; update all references atomically and protect serialized managed-reference type moves.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 172 individual changes listed.
