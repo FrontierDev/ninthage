@@ -312,3 +312,138 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 48: add XML documentation to public API `public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)`.
 
 **Batch result:** 15 files scanned; 15 files contain listed convention changes; 148 individual changes listed.
+
+
+### Audit batch 2: files 16–30 of 386
+
+#### `Assets/Editor/Drawers/StatScalingDrawer.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public class StatScalingDrawer : PropertyDrawer`.
+- Line 10: add XML documentation to public API `public override float GetPropertyHeight(SerializedProperty property, GUIContent label)`.
+- Line 15: add XML documentation to public API `public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)`.
+
+#### `Assets/Editor/EDEN_ErosionTools/Editor/EDEN_ErosionTools_Editor.cs`
+- Change namespace `GapperGames` → `Game.Editor.EDEN_ErosionTools.Editor`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public class EDEN_ErosionTools_Editor : Editor`.
+- Line 11: add XML documentation to public API `public override void OnInspectorGUI()`.
+
+#### `Assets/Editor/EDEN_ErosionTools/Scripts/GPU/EDEN_ErosionTools.cs`
+- Change namespace `GapperGames` → `Game.Editor.EDEN_ErosionTools.Scripts.GPU`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public class EDEN_ErosionTools : MonoBehaviour`.
+- Line 13: rename private field `h_Iterations` → `_h_Iterations`; **serialized** — add `[FormerlySerializedAs("h_Iterations")]` before renaming and verify existing assets.
+- Line 14: rename private field `h_Resolution` → `_h_Resolution`; **serialized** — add `[FormerlySerializedAs("h_Resolution")]` before renaming and verify existing assets.
+- Line 15: rename private field `h_ErosionSteps` → `_h_ErosionSteps`; **serialized** — add `[FormerlySerializedAs("h_ErosionSteps")]` before renaming and verify existing assets.
+- Line 18: rename private field `Windiness` → `_Windiness`; **serialized** — add `[FormerlySerializedAs("Windiness")]` before renaming and verify existing assets.
+- Line 19: rename private field `WindDirection` → `_WindDirection`; **serialized** — add `[FormerlySerializedAs("WindDirection")]` before renaming and verify existing assets.
+- Line 19: use target-typed `new(...)` for member `WindDirection`.
+- Line 20: rename private field `w_Resolution` → `_w_Resolution`; **serialized** — add `[FormerlySerializedAs("w_Resolution")]` before renaming and verify existing assets.
+- Line 23: rename private field `TerraceSpacing` → `_TerraceSpacing`; **serialized** — add `[FormerlySerializedAs("TerraceSpacing")]` before renaming and verify existing assets.
+- Line 24: rename private field `TerraceAngle` → `_TerraceAngle`; **serialized** — add `[FormerlySerializedAs("TerraceAngle")]` before renaming and verify existing assets.
+- Line 27: rename private field `SharpenStrength` → `_SharpenStrength`; **serialized** — add `[FormerlySerializedAs("SharpenStrength")]` before renaming and verify existing assets.
+- Line 28: rename private field `sharpenIterations` → `_sharpenIterations`; **serialized** — add `[FormerlySerializedAs("sharpenIterations")]` before renaming and verify existing assets.
+- Line 29: rename private field `PeakMixStrength` → `_PeakMixStrength`; **serialized** — add `[FormerlySerializedAs("PeakMixStrength")]` before renaming and verify existing assets.
+- Line 32: add XML documentation to public API `public int SmoothingWidth = 2;`.
+- Line 35: add XML documentation to public API `public ComputeShader HydraulicErosionComputeShader;`.
+- Line 36: add XML documentation to public API `public ComputeShader WindErosionComputeShader;`.
+- Line 37: add XML documentation to public API `public ComputeShader SmoothSharpenComputeShader;`.
+- Line 38: add XML documentation to public API `public ComputeShader TerraceComputeShader;`.
+- Line 40: rename private field `terrain` → `_terrain`.
+- Line 41: rename private field `heightMap` → `_heightMap`.
+- Line 43: rename private field `rt` → `_rt`.
+- Line 44: rename private field `heightmapTex` → `_heightmapTex`.
+- Line 45: rename private field `rtTex2d` → `_rtTex2d`.
+- Line 47: add XML documentation to public API `public void HydraulicErode()`.
+- Line 68: add XML documentation to public API `public void WindErode()`.
+- Line 84: add XML documentation to public API `public void Terrace()`.
+- Line 116: add XML documentation to public API `public void Smooth(int width)`.
+- Line 140: add XML documentation to public API `public void Sharpen()`.
+- Line 179: use `var` for local `rectReadPicture`; the RHS makes `Rect` explicit.
+- Line 202: use `var` for local `tex`; the RHS makes `Texture2D` explicit.
+
+#### `Assets/Editor/EDEN_ErosionTools/Scripts/GPU/EDEN_Hydraulics.cs`
+- Change namespace `GapperGames` → `Game.Editor.EDEN_ErosionTools.Scripts.GPU`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public static class EDEN_Hydraulics`.
+- Line 22: add XML documentation to public API `public static float[,] Erode(ComputeShader erosion, int numIterations, float[,] heightmap, int heightmapResolution, int erosionResolution)`.
+- Line 42: use `var` for local `mapArray`; the RHS makes `List<float>` explicit.
+- Line 61: use `var` for local `brushIndexOffsets`; the RHS makes `List<int>` explicit.
+- Line 62: use `var` for local `brushWeights`; the RHS makes `List<float>` explicit.
+- Line 85: use `var` for local `brushIndexBuffer`; the RHS makes `ComputeBuffer` explicit.
+- Line 86: use `var` for local `brushWeightBuffer`; the RHS makes `ComputeBuffer` explicit.
+- Line 102: use `var` for local `randomIndexBuffer`; the RHS makes `ComputeBuffer` explicit.
+- Line 107: use `var` for local `mapBuffer`; the RHS makes `ComputeBuffer` explicit.
+
+#### `Assets/Editor/EDEN_ErosionTools/Scripts/GPU/EDEN_Wind.cs`
+- Change namespace `GapperGames` → `Game.Editor.EDEN_ErosionTools.Scripts.GPU`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public static class EDEN_Wind`.
+- Line 14: add XML documentation to public API `public static float[,] Erode(ComputeShader erosion, int numIterations, float[,] heightmap, int heightmapResolution, int erosionResolution, V`.
+- Line 34: use `var` for local `mapArray`; the RHS makes `List<float>` explicit.
+- Line 53: use `var` for local `brushIndexOffsets`; the RHS makes `List<int>` explicit.
+- Line 54: use `var` for local `brushWeights`; the RHS makes `List<float>` explicit.
+- Line 77: use `var` for local `brushIndexBuffer`; the RHS makes `ComputeBuffer` explicit.
+- Line 78: use `var` for local `brushWeightBuffer`; the RHS makes `ComputeBuffer` explicit.
+- Line 94: use `var` for local `randomIndexBuffer`; the RHS makes `ComputeBuffer` explicit.
+- Line 99: use `var` for local `mapBuffer`; the RHS makes `ComputeBuffer` explicit.
+
+#### `Assets/Editor/Inspectors/ActorSpawnPointInspector.cs`
+- Line 8: add XML documentation to public API `public class ActorSpawnPointInspector : Editor`.
+- Line 10: add XML documentation to public API `public override void OnInspectorGUI()`.
+
+#### `Assets/Editor/Inspectors/ActorSpellcasterInspector.cs`
+- Alphabetize `using` directives (first at line 3).
+- Line 10: add XML documentation to public API `public class ActorSpellcasterInspector : Editor`.
+- Line 12: rename private field `showSpells` → `_showSpells`.
+- Line 13: rename private field `scrollPosition` → `_scrollPosition`.
+- Line 15: add XML documentation to public API `public override void OnInspectorGUI()`.
+- Line 106: add XML documentation to public API `public override bool RequiresConstantRepaint() => Application.isPlaying;`.
+
+#### `Assets/Editor/Inspectors/ActorStatContainerInspector.cs`
+- Alphabetize `using` directives (first at line 3).
+- Line 9: add XML documentation to public API `public class ActorStatContainerInspector : Editor`.
+- Line 11: add XML documentation to public API `public override void OnInspectorGUI()`.
+
+#### `Assets/Editor/Inspectors/AuraBehaviourEditor.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public class AuraBehaviourEditor : UnityEditor.Editor`.
+- Line 10: add XML documentation to public API `public override void OnInspectorGUI()`.
+
+#### `Assets/Editor/Inspectors/PlayerActorInspector.cs`
+- Line 8: add XML documentation to public API `public class PlayerActorInspector : Editor`.
+- Line 10: add XML documentation to public API `public override void OnInspectorGUI()`.
+
+#### `Assets/Editor/Inspectors/PlayerEquipmentInspector.cs`
+- Alphabetize `using` directives (first at line 3).
+- Line 10: add XML documentation to public API `public class PlayerEquipmentInspector : Editor`.
+- Line 12: rename private field `showInventory` → `_showInventory`.
+- Line 13: rename private field `scrollPosition` → `_scrollPosition`.
+- Line 15: add XML documentation to public API `public override void OnInspectorGUI()`.
+- Line 95: add XML documentation to public API `public override bool RequiresConstantRepaint() => Application.isPlaying;`.
+
+#### `Assets/Editor/Inspectors/PlayerExperienceInspector.cs`
+- Line 9: add XML documentation to public API `public class PlayerExperienceInspector : Editor`.
+- Line 11: add XML documentation to public API `public override void OnInspectorGUI()`.
+
+#### `Assets/Editor/Inspectors/PlayerInventoryInspector.cs`
+- Line 8: add XML documentation to public API `public class PlayerInventoryInspector : Editor`.
+- Line 10: rename private field `showInventory` → `_showInventory`.
+- Line 11: rename private field `scrollPosition` → `_scrollPosition`.
+- Line 13: add XML documentation to public API `public override void OnInspectorGUI()`.
+- Line 92: add XML documentation to public API `public override bool RequiresConstantRepaint() => Application.isPlaying;`.
+
+#### `Assets/Editor/Inspectors/PlayerTalentsInspector.cs.cs`
+- Rename file `PlayerTalentsInspector.cs.cs` → `PlayerTalentsInspector.cs`; preserve its `.meta` file.
+- Line 9: add XML documentation to public API `public class PlayerTalentsInspector : Editor`.
+- Line 11: rename private field `showTalents` → `_showTalents`.
+- Line 12: rename private field `scrollPosition` → `_scrollPosition`.
+- Line 14: add XML documentation to public API `public override void OnInspectorGUI()`.
+- Line 78: add XML documentation to public API `public override bool RequiresConstantRepaint() => Application.isPlaying;`.
+
+#### `Assets/Editor/ToDoGenerator.cs`
+- Change namespace `(global)` → `Game.Editor`; update all references atomically and protect serialized managed-reference type moves.
+- Line 10: add XML documentation to public API `public static class ToDoGenerator`.
+- Line 17: use `var` for local `lines`; the RHS makes `List<string>` explicit.
+
+**Batch result:** 15 files scanned; 15 files contain listed convention changes; 100 individual changes listed.
