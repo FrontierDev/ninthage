@@ -2,7 +2,7 @@
 *.slnx
 *.conf
 *.csproj
-
+*.log
 
 /Builds/
 /ProfilerCaptures/
@@ -10,7 +10,6 @@
 /Temp/
 /Logs/
 /Obj/
-/ProjectSettings/
 /UserSettings/
 
 .plastic/
