@@ -1,0 +1,96 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aa05763ba754c24ba5454ac0056e487, type: 3}
+  m_Name: Class_sorcerer
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.ClassDefinition
+  definitionId: sorcerer
+  displayName: Sorcerer
+  description: Sorcerers command raw arcane forces drawn from unstable, elemental,
+    or temporal power. Their magic bends reality, unleashing devastating spells or
+    warping the flow of combat itself. They are masters of destructive and unpredictable
+    energies.
+  icon: {fileID: 21300000, guid: 21aa258127d64f64b8a116048296da4a, type: 3}
+  statGrowthPerLevel:
+  - stat: {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+    flatPerLevel: 0.4
+  - stat: {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}
+    flatPerLevel: 1.3
+  - stat: {fileID: 11400000, guid: 9068c235736417a48a7b16d49d2171c0, type: 2}
+    flatPerLevel: 0.7
+  - stat: {fileID: 11400000, guid: b5494d9af5176d34e85916b29ff7fe8f, type: 2}
+    flatPerLevel: 8
+  - stat: {fileID: 11400000, guid: d56b3b172700e1549ba687e29d38fb8f, type: 2}
+    flatPerLevel: 14
+  baseStats:
+  - definition: {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}
+    baseValue: 3
+  - definition: {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+    baseValue: 1
+  - definition: {fileID: 11400000, guid: 9068c235736417a48a7b16d49d2171c0, type: 2}
+    baseValue: 1
+  - definition: {fileID: 11400000, guid: c21e236137268614595d710f88fc4c74, type: 2}
+    baseValue: 100
+  classSpellList:
+  - spell: {fileID: 11400000, guid: dcbf135932663c241b07ac631e967313, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: 304ee4b1dc1672a45b84ab03247c4f84, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: 04c280be427c1be4697b2dbf1ae8e28c, type: 2}
+    levelRequirement: 0
+  focusStats:
+  - {fileID: 11400000, guid: b5494d9af5176d34e85916b29ff7fe8f, type: 2}
+  - {fileID: 11400000, guid: d56b3b172700e1549ba687e29d38fb8f, type: 2}
+  - {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}
+  - {fileID: 11400000, guid: 8a758882b6dd7eb43a69d8900854804e, type: 2}
+  - {fileID: 11400000, guid: 242021dfcc58c1a458f97ca8945ac575, type: 2}
+  relevantStats:
+  - {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}
+  - {fileID: 11400000, guid: 9068c235736417a48a7b16d49d2171c0, type: 2}
+  - {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+  - {fileID: 11400000, guid: 8a758882b6dd7eb43a69d8900854804e, type: 2}
+  - {fileID: 11400000, guid: 57c0982004949b1478f26d8295a2f3f7, type: 2}
+  - {fileID: 11400000, guid: 00c532e39d83b924d8a6aab0a57e384a, type: 2}
+  - {fileID: 11400000, guid: c2be07486015d1842a2c002cd76aefed, type: 2}
+  - {fileID: 11400000, guid: 742a2a470ab5efa43ba7bc4556e86522, type: 2}
+  - {fileID: 11400000, guid: ad493abc4312e334894da03b7fcccf90, type: 2}
+  - {fileID: 11400000, guid: b7d584c6d9ecb0444b04a10118e15a2f, type: 2}
+  - {fileID: 11400000, guid: 242021dfcc58c1a458f97ca8945ac575, type: 2}
+  - {fileID: 11400000, guid: a438cf51b9b35744ba245e3796578947, type: 2}
+  - {fileID: 11400000, guid: 6cdeedc0c47c372409520b4d3481d3bf, type: 2}
+  - {fileID: 11400000, guid: 1c0a26541c11bff42bdae31763ee737f, type: 2}
+  - {fileID: 11400000, guid: 932e7f4b2b8c4094eb11fdb6f3c058af, type: 2}
+  - {fileID: 11400000, guid: 7ff664c019fca674eb1cff975ad43692, type: 2}
+  - {fileID: 11400000, guid: a6a9a066726b6844ca3ca6693862c64a, type: 2}
+  - {fileID: 11400000, guid: 3b499f809a66d294a9388277d53c5382, type: 2}
+  weaponTypes: 050000000100000004000000
+  specialisations:
+  - name: Cataclyst
+    description: 
+    icon: {fileID: 0}
+    spells:
+    - {fileID: 11400000, guid: 304ee4b1dc1672a45b84ab03247c4f84, type: 2}
+    talents: []
+    color: {r: 0.9528302, g: 0.58549994, b: 0.40899786, a: 0}
+  - name: Fluxweaver
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents: []
+    color: {r: 0.4462442, g: 0.8186124, b: 0.8679245, a: 0}
+  - name: Riftwalker
+    description: 
+    icon: {fileID: 0}
+    spells:
+    - {fileID: 11400000, guid: 04c280be427c1be4697b2dbf1ae8e28c, type: 2}
+    talents: []
+    color: {r: 0.6804873, g: 0.2775454, b: 0.9339623, a: 0}
+  classBehaviour: {fileID: 11400000, guid: dea61810712aa9645957f7e8bb9d5727, type: 2}

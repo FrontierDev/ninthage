@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd06bac2283abf5479c7301786434e20, type: 3}
+  m_Name: Faction_arhin
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.FactionDefinition
+  definitionId: arhin
+  displayName: Culosimlond
+  description: The Arhin dominions on the shores of the Culosima was once the western
+    reaches of the great Auresen Diarchy. From the mystic Suntower, the high nobles
+    of the Culosmlond obey the commands of the reclusive Queen Ilya, High Priestess
+    of Tiandre.
+  category: 0
+  icon: {fileID: 21300000, guid: 68fc09eafcfbd2740b06174e0493d945, type: 3}
+  color: {r: 0.7924528, g: 0.7822623, b: 0.497152, a: 0}
+  isPlayable: 1
+  canWar: 1
+  maxPoints: 1000
+  alliedFactionIDs:
+  - pvp_dominion
+  enemyFactionIDs: []

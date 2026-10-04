@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9fcea41e9b25f074790271f0555ef2fd, type: 3}
+  m_Name: GameConfiguration
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.GameConfiguration
+  PlayerDataFilePath: player_data.json
+  ClearPlayerDataOnStart: 0
+  ChunkSize: 100
+  Gravity: -9.81
+  GroundDetectionRadius: 0.05
+  GroundDetectionMaskName: Terrain
+  MaxFallSpeed: 50
+  SpellCastRangeTickBuffer: 2
+  SpellCastRangeEndBuffer: 5
+  SpellHitChanceStat: {fileID: 11400000, guid: 97cde739b9217fb44a43a31477efcab2, type: 2}
+  MeleeHitChanceStat: {fileID: 11400000, guid: 29590aed5716e43478243cbda820cd5d, type: 2}
+  RangedHitChanceStat: {fileID: 11400000, guid: 20d188c981667d342b95a031e24699d9, type: 2}
+  BaseMissChance: 5
+  MissChancePerLevelPenalty: 1
+  MaximumMissChance: 99
+  MeleeCritChanceStat: {fileID: 11400000, guid: f285209f4a9f22f488165d48e53c1038, type: 2}
+  RangedCritChanceStat: {fileID: 11400000, guid: c3fe4342b92119442a586372c718f45b, type: 2}
+  SpellCritChanceStat: {fileID: 11400000, guid: 98d13ab6cee57ca4492983575baefb08, type: 2}
+  CritResistanceStat: {fileID: 11400000, guid: 15eef973cc23f274089b3678eb02b118, type: 2}
+  BaseCritChance: 5
+  CritChancePerLevelPenalty: 1
+  CritDamageMultiplier: 1.5
+  GlobalCooldownDuration: 1
+  PoorColor: {r: 0.62, g: 0.62, b: 0.62, a: 1}
+  CommonColor: {r: 1, g: 1, b: 1, a: 1}
+  UncommonColor: {r: 0.12, g: 1, b: 0, a: 1}
+  RareColor: {r: 0, g: 0.44, b: 0.87, a: 1}
+  EpicColor: {r: 0.64, g: 0.21, b: 0.93, a: 1}
+  LegendaryColor: {r: 1, g: 0.5, b: 0, a: 1}
+  AutoAttackSpell: {fileID: 11400000, guid: dcbf135932663c241b07ac631e967313, type: 2}
+  ServerAddress: 127.0.0.1
+  ServerPort: 8888

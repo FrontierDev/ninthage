@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11ccf46fc2f5d244892db25774d23ae4, type: 3}
+  m_Name: Quest_test
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.QuestDefinition
+  definitionId: test
+  displayName: Test Quest
+  icon: {fileID: 21300000, guid: 85075fb240f620f4d9b8cb9a504ed873, type: 3}
+  description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean luctus
+    pellentesque elit, id sodales ex hendrerit aliquet. In sodales orci elit, vitae
+    aliquam leo ullamcorper posuere. Vivamus tristique cursus dui in commodo. Pellentesque
+    vel augue eget lectus condimentum fringilla. Cras nunc risus, cursus id vestibulum
+    in, finibus non nisi. Nam libero sapien, tincidunt at ante in, aliquam lacinia
+    arcu. Donec bibendum arcu eu mi venenatis posuere vitae euismod dolor.
+
+
+
+    Morbi
+    ut quam non lectus pharetra ultrices at vel ipsum. Morbi tristique velit eget
+    erat scelerisque, quis venenatis nibh accumsan. Mauris pellentesque ex augue,
+    ut faucibus orci condimentum quis. Donec nulla orci, dapibus id scelerisque at,
+    volutpat vel neque. Maecenas laoreet vehicula nisi et ullamcorper. Integer semper
+    tellus sodales tortor facilisis, nec dapibus lorem ullamcorper. Donec viverra
+    ultrices iaculis. Sed in nisl in sapien ultricies semper non id eros. Quisque
+    at dolor lorem. Donec finibus mauris id fringilla faucibus. Integer ultricies.'
+  level: 1
+  type: 0
+  recommendedPlayers: 1
+  timerSeconds: 0
+  goldReward: 25
+  experienceReward: 400
+  reputationReward:
+    faction: {fileID: 0}
+    reputationPoints: 0
+  itemRewards:
+  - item: {fileID: 11400000, guid: 410cf0b3dd7163448a8a191be7bfaec7, type: 2}
+    quantity: 1
+  giveAllItems: 0
+  cooldown: 1
+  isRepeatable: 0
+  objectives:
+  - rid: 1492968042994860107
+  references:
+    version: 2
+    RefIds:
+    - rid: 1492968042994860107
+      type: {class: Quest_KillObjective, ns: Game.Shared.Data, asm: Game.Shared}
+      data:
+        description: Kill 12 Afonmeri Defectors.
+        requiredAmount: 12
+        targetNpcID: 6e50fb82-1724-4040-afec-88fabc925ae0

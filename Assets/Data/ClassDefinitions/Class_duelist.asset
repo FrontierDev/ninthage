@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aa05763ba754c24ba5454ac0056e487, type: 3}
+  m_Name: Class_duelist
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.ClassDefinition
+  definitionId: duelist
+  displayName: Duelist
+  description: Swift and precise, Duelists thrive on finesse and calculated strikes.
+    Whether striking from the shadows or outmaneuvering foes in open combat, they
+    excel at exploiting weakness. Agility and timing are their greatest weapons.
+  icon: {fileID: 21300000, guid: 946bbdddb75b5314094b406ca4de4a43, type: 3}
+  statGrowthPerLevel:
+  - stat: {fileID: 11400000, guid: b5b8745a1f11543488b8eaf186ecb884, type: 2}
+    flatPerLevel: 2
+  - stat: {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+    flatPerLevel: 1
+  - stat: {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}
+    flatPerLevel: 1
+  - stat: {fileID: 11400000, guid: 7d902b3e3d20ead44a3dc293d34ee5ea, type: 2}
+    flatPerLevel: 1
+  - stat: {fileID: 11400000, guid: b5494d9af5176d34e85916b29ff7fe8f, type: 2}
+    flatPerLevel: 13
+  baseStats:
+  - definition: {fileID: 11400000, guid: b5b8745a1f11543488b8eaf186ecb884, type: 2}
+    baseValue: 3
+  - definition: {fileID: 11400000, guid: 7d902b3e3d20ead44a3dc293d34ee5ea, type: 2}
+    baseValue: 1
+  - definition: {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+    baseValue: 0
+  classSpellList:
+  - spell: {fileID: 11400000, guid: 137ad64b11c470f41bb28ddcf149511e, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: 4f3195f18bf449844bea07b01a1b60f1, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: c5ea9c32f6b9f7341851f1fa697ae392, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: c0fc8be5ad7761a42bcbac745ad0da4e, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: dcbf135932663c241b07ac631e967313, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: 8a7bad620b5c15043ac577c0efb0f838, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: 27c391ca266f0304ca47faa39995c8b6, type: 2}
+    levelRequirement: 0
+  - spell: {fileID: 11400000, guid: d627f7f6bdadf394c995cbd05a7ca084, type: 2}
+    levelRequirement: 0
+  focusStats:
+  - {fileID: 11400000, guid: b5b8745a1f11543488b8eaf186ecb884, type: 2}
+  - {fileID: 11400000, guid: 52b7c28d0182dc141b9da4fe0624a65c, type: 2}
+  - {fileID: 11400000, guid: 175853e989f895a4a91c548545324ba9, type: 2}
+  - {fileID: 11400000, guid: bf3b98b0d0749db4c9c8026287687381, type: 2}
+  - {fileID: 11400000, guid: b5494d9af5176d34e85916b29ff7fe8f, type: 2}
+  relevantStats:
+  - {fileID: 11400000, guid: b5b8745a1f11543488b8eaf186ecb884, type: 2}
+  - {fileID: 11400000, guid: 7d902b3e3d20ead44a3dc293d34ee5ea, type: 2}
+  - {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+  - {fileID: 11400000, guid: ad493abc4312e334894da03b7fcccf90, type: 2}
+  - {fileID: 11400000, guid: 742a2a470ab5efa43ba7bc4556e86522, type: 2}
+  - {fileID: 11400000, guid: bf3b98b0d0749db4c9c8026287687381, type: 2}
+  - {fileID: 11400000, guid: 52b7c28d0182dc141b9da4fe0624a65c, type: 2}
+  - {fileID: 11400000, guid: 175853e989f895a4a91c548545324ba9, type: 2}
+  - {fileID: 11400000, guid: a17e7154f2081cb478dff2ffd882f42f, type: 2}
+  - {fileID: 11400000, guid: 1f572724e896dd140a23b1e429cf039e, type: 2}
+  - {fileID: 11400000, guid: c2be07486015d1842a2c002cd76aefed, type: 2}
+  - {fileID: 11400000, guid: 932e7f4b2b8c4094eb11fdb6f3c058af, type: 2}
+  - {fileID: 11400000, guid: 7ff664c019fca674eb1cff975ad43692, type: 2}
+  - {fileID: 11400000, guid: 6cdeedc0c47c372409520b4d3481d3bf, type: 2}
+  - {fileID: 11400000, guid: 1c0a26541c11bff42bdae31763ee737f, type: 2}
+  - {fileID: 11400000, guid: 3b499f809a66d294a9388277d53c5382, type: 2}
+  - {fileID: 11400000, guid: a6a9a066726b6844ca3ca6693862c64a, type: 2}
+  - {fileID: 11400000, guid: b7d584c6d9ecb0444b04a10118e15a2f, type: 2}
+  weaponTypes: 040000000100000007000000
+  specialisations:
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000, guid: 1e404499397cbed4d825707e70f980a5, type: 2}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000, guid: 1e404499397cbed4d825707e70f980a5, type: 2}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Deception
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents: []
+    color: {r: 0.5185554, g: 0, b: 0.8584906, a: 0}
+  classBehaviour: {fileID: 11400000, guid: a75900ed839e8ff4e9bae58e4c430c45, type: 2}

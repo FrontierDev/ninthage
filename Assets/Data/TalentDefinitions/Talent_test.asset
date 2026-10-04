@@ -1,0 +1,911 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 691c6bca0c723d74f934206455f2fc29, type: 3}
+  m_Name: Talent_test
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.TalentDefinition
+  definitionId: test
+  displayName: Kindleflame
+  description: Increases the damage of all fire spells by 10%. Auto attacks apply
+    burning on hit.
+  icon: {fileID: 21300000, guid: e18ac2a50040ac949820d13a194eebca, type: 3}
+  maxRank: 5
+  minLevel: 10
+  prerequisiteTalentIDs: []
+  modifiers:
+  - Modifier:
+      rid: 1492967912068612171
+  tags: []
+  associatedSpecialisations:
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.24644002, g: 0.735849, b: 0.25810075, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.23642756, g: 0.7264151, b: 0.24810205, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.19166073, g: 0.6886792, b: 0.20350276, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.13203098, g: 0.6509434, b: 0.14439465, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.08646317, g: 0.6320754, b: 0.09946299, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.068574235, g: 0.6320754, b: 0.082000285, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.056648254, g: 0.6320754, b: 0.070358455, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.055802763, g: 0.6226415, b: 0.06930833, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.03355288, g: 0.5471698, b: 0.045790378, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.024474904, g: 0.4716981, b: 0.035130497, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.02002491, g: 0.4716981, b: 0.030786531, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.029503396, g: 0.4811321, b: 0.040263955, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.040850844, g: 0.509434, b: 0.052015364, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.0473478, g: 0.5283019, b: 0.058807068, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.04819329, g: 0.5377358, b: 0.05985719, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.053266283, g: 0.5377358, b: 0.064809315, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.059362773, g: 0.5471698, b: 0.070985325, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.07208972, g: 0.5660378, b: 0.08385859, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6132076, g: 0.3955925, b: 0.17065683, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6226415, g: 0.40167853, b: 0.17328231, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6415094, g: 0.40194684, b: 0.15432537, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6886792, g: 0.415528, b: 0.13318795, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.754717, g: 0.4378677, b: 0.11035956, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8018868, g: 0.45035478, b: 0.08699717, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8207547, g: 0.45333645, b: 0.07355818, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8301887, g: 0.45854723, b: 0.07440368, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8396226, g: 0.45596802, b: 0.059407253, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8490566, g: 0.45715258, b: 0.052064814, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8584906, g: 0.45426702, b: 0.03644534, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8679245, g: 0.4552327, b: 0.028657902, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8773585, g: 0.4601809, b: 0.028969401, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8773585, g: 0.45611086, b: 0.020692414, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.7075472, g: 0.3743959, b: 0.030037368, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6981132, g: 0.36940396, b: 0.02963687, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6509434, g: 0.34444422, b: 0.027634379, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6226415, g: 0.32369158, b: 0.014684939, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6226415, g: 0.32080317, b: 0.008810949, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6132076, g: 0.31594253, b: 0.00867745, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6037736, g: 0.31108186, b: 0.0085439505, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.5943396, g: 0.30346408, b: 0.0028034954, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.5943396, g: 0.30208555, b: 0, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.6037736, g: 0.30688056, b: 0, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8113208, g: 0.47070777, b: 0.11863652, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8113208, g: 0.46694413, b: 0.11098258, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.8867924, g: 0.47335663, b: 0.04601282, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9528302, g: 0.48429587, b: 0, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  - name: Assassination
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    - {fileID: 11400000, guid: 07cf1049b1c77d141b9e8263e6c560da, type: 2}
+    - {fileID: 11400000, guid: 98e3d9b91b3203f4fac6c1a868e8d7c2, type: 2}
+    color: {r: 0.078720205, g: 0.5754717, b: 0.09055586, a: 0}
+  - name: Chivalry
+    description: 
+    icon: {fileID: 0}
+    spells: []
+    talents:
+    - {fileID: 11400000}
+    color: {r: 0.9716981, g: 0.49388587, b: 0, a: 0}
+  talentBehaviour: {fileID: 11400000, guid: de79510178af0ac43835d81eb9a46f0b, type: 2}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1492967912068612171
+      type: {class: FireDamageBonus, ns: Game.Shared, asm: Game.Shared}
+      data:
+        bonusDamage: 10
+        source: 

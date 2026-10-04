@@ -1,0 +1,33 @@
+{
+    "settings": {
+        "worldWidth": 104200,
+        "flipCoastlineMaskY": false,
+        "seaLevel": 10,
+        "waterPlaneOffset": -2.0,
+        "mountainLevel": 0.4000000059604645,
+        "maxHeight": 2000.0,
+        "showPlateaus": true,
+        "plateauCount": 5,
+        "enablePlateauGeneration": true,
+        "plateauSharpness": 3.0,
+        "showPreview": true,
+        "zoomLevel": 2.499999523162842,
+        "panOffsetX": 0.0,
+        "panOffsetY": 0.0,
+        "selectedSidebarTab": 1,
+        "visualizationMode": 0,
+        "enableErosion": true,
+        "erosionModeEnabled": [
+            true,
+            false,
+            true,
+            true,
+            false,
+            false
+        ],
+        "visualizeGeneratedChunks": true,
+        "visualizeMarkedChunks": true,
+        "visualizeUnmarkedChunks": true,
+        "selectiveGenerationMode": true
+    }
+}

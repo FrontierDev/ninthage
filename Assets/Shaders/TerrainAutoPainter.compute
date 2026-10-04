@@ -1,0 +1,168 @@
+// TerrainAutoPainter.compute
+// Classifies each terrain alphamap texel into terrain layers based on slope
+// and world-space height, writing normalised weights into two RGBA control maps.
+//
+// Control map channel layout:
+//   _ControlMap0 : R = layer0 (base)   G = layer1 (mid-slope)  B = layer2 (talus)  A = layer3 (cliff)
+//   _ControlMap1 : R = layer4 (snow)    G = layer5 (ice)        B = layer6 (unused) A = layer7 (unused)
+//
+// Slope bands (layers 0-3) are computed first, then scaled down by however
+// much weight snow and ice claim. All eight weights always sum to exactly 1.0.
+//
+// Snow/ice suppression: both layers use an upper slope limit — steep faces
+// (cliffs) shed snow and ice. World height is derived from the normalised
+// heightmap using the terrain's base Y position and height range.
+
+#pragma kernel ClassifyTerrain
+#pragma kernel CopyArraySlice
+
+// ── Inputs ────────────────────────────────────────────────────────────────────
+Texture2D<float4> _Heightmap;   // Source heightmap; height in .r (normalised 0-1)
+
+// ── Outputs ───────────────────────────────────────────────────────────────────
+RWTexture2D<float4> _ControlMap0;   // Layers 0-3
+RWTexture2D<float4> _ControlMap1;   // Layers 4-7
+
+// ── Parameters ────────────────────────────────────────────────────────────────
+float _SlopeThreshold;  // Raw Sobel magnitude above which a texel becomes mid-slope (layer1)
+float _TalusThreshold;  // Raw Sobel magnitude above which a texel becomes talus (layer2)
+float _CliffThreshold;  // Raw Sobel magnitude above which a texel is cliff (layer3)
+float _BlendWidth;      // Half-width of the smoothstep transition band (same raw units)
+float _TalusCurvatureBlend; // Concavity blend: auto-derived from cliff threshold / heightmap step
+
+// World-height parameters — used to convert the normalised heightmap [0,1] to metres.
+float _TerrainBaseY;       // terrain.transform.position.y (world metres)
+float _TerrainHeightRange; // terrainData.size.y (world metres)
+
+// Snow (layer 5) — appears above an elevation threshold where slope is gentle.
+float _SnowElevation;    // World height at which snow begins to appear (metres)
+float _SnowHeightBlend;  // Half-width of the height fade-in (metres)
+float _SnowSlopeLimit;   // Raw Sobel above which snow is suppressed (snow sheds steep faces)
+float _SnowSlopeBlend;   // Half-width of the snow slope fade (raw units)
+
+// Ice (layer 6) — higher elevation than snow, takes full priority over it.
+float _IceElevation;
+float _IceHeightBlend;
+float _IceSlopeLimit;
+float _IceSlopeBlend;
+
+int _HeightmapSize;     // Width (and height) of _Heightmap in texels
+int _AlphamapSize;      // Width (and height) of the output control maps in texels
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Unity inline sampler state: linear filter, clamp wrap — no C# setup required.
+SamplerState sampler_linear_clamp;
+
+// Bilinear-samples the heightmap at a continuous UV in [0,1].
+// Using SampleLevel instead of [] integer indexing means adjacent alphamap
+// texels that map to the same heightmap texel still get different interpolated
+// heights, eliminating the staircase/block pattern.
+float SampleHeightBilinear(float u, float v)
+{
+    return _Heightmap.SampleLevel(sampler_linear_clamp, float2(u, v), 0).r;
+}
+
+// ── Kernel ────────────────────────────────────────────────────────────────────
+[numthreads(8, 8, 1)]
+void ClassifyTerrain(uint3 id : SV_DispatchThreadID)
+{
+    // Discard threads outside the alphamap bounds (handles non-power-of-8 sizes).
+    if ((int)id.x >= _AlphamapSize || (int)id.y >= _AlphamapSize)
+        return;
+
+    // Centre of this alphamap texel in [0,1] UV space.
+    float2 uv = (float2(id.xy) + 0.5) / (float)_AlphamapSize;
+
+    // One heightmap texel expressed in UV space.  The Sobel taps are placed at
+    // ±1 heightmap-texel offsets so the gradient scale matches the terrain
+    // geometry regardless of the alphamap resolution.
+    float s = 1.0 / (float)(_HeightmapSize - 1);
+
+    // ── Slope via Sobel filter over a 3×3 neighbourhood ──────────────────────
+    // Taps are at continuous float UV so bilinear interpolation of the heightmap
+    // is used — no snapping to integer coordinates.
+    float h00 = SampleHeightBilinear(uv.x - s, uv.y - s);
+    float h10 = SampleHeightBilinear(uv.x,     uv.y - s);
+    float h20 = SampleHeightBilinear(uv.x + s, uv.y - s);
+    float h01 = SampleHeightBilinear(uv.x - s, uv.y    );
+    float h21 = SampleHeightBilinear(uv.x + s, uv.y    );
+    float h02 = SampleHeightBilinear(uv.x - s, uv.y + s);
+    float h12 = SampleHeightBilinear(uv.x,     uv.y + s);
+    float h22 = SampleHeightBilinear(uv.x + s, uv.y + s);
+
+    float gx = -h00 - 2.0 * h01 - h02 + h20 + 2.0 * h21 + h22;
+    float gz = -h00 - 2.0 * h10 - h20 + h02 + 2.0 * h12 + h22;
+
+    float slope = sqrt(gx * gx + gz * gz);
+
+    // ── World height at this texel ───────────────────────────────────────────
+    float normHeight  = SampleHeightBilinear(uv.x, uv.y);
+    float worldHeight = _TerrainBaseY + normHeight * _TerrainHeightRange;
+
+    // ── Slope-band classification (layers 0–3) ────────────────────────────
+    // Each band fades in with smoothstep at its lower threshold and is suppressed
+    // by every higher band — so the four slope weights always sum to exactly 1.0.
+    float hw = max(_BlendWidth, 0.0001);
+    float cliffWeight = smoothstep(_CliffThreshold - hw, _CliffThreshold + hw, slope);
+
+    // Talus only appears on CONCAVE slopes (cliff bases, not convex hillsides).
+    // The Laplacian (discrete second derivative) is positive for concave surfaces
+    // — at a cliff base the centre sits 'lower' than the average of its neighbours.
+    // Cardinal neighbours h10/h12/h01/h21 and centre normHeight are all already
+    // sampled above so this costs zero additional texture fetches.
+    float laplacian    = h10 + h12 + h01 + h21 - 4.0 * normHeight;
+    float concaveMask  = smoothstep(0.0, _TalusCurvatureBlend, laplacian);
+
+    float talusWeight = smoothstep(_TalusThreshold - hw, _TalusThreshold + hw, slope) * (1.0 - cliffWeight) * concaveMask;
+    float midWeight   = smoothstep(_SlopeThreshold - hw, _SlopeThreshold + hw, slope) * (1.0 - talusWeight - cliffWeight);
+    float baseWeight  = 1.0 - midWeight - talusWeight - cliffWeight;
+
+    // ── Height + slope precipitation: snow (4) and ice (5) ──────────────────
+    // Snow and ice apply BELOW their respective slope limits (gentle faces only).
+    // Above the limit the slope bands take over — cliff faces shed all snow/ice.
+    // Where snow/ice DO apply they still fully override slope bands.
+    //
+    // Ice takes altitude priority over snow wherever both are eligible.
+    float snowHW  = max(_SnowHeightBlend, 0.01);
+    float iceHW   = max(_IceHeightBlend,  0.01);
+    float ssb     = max(_SnowSlopeBlend,  0.0001);
+    float isb     = max(_IceSlopeBlend,   0.0001);
+
+    // Height eligibility (0→1 as height rises past threshold).
+    float snowH = smoothstep(_SnowElevation - snowHW, _SnowElevation + snowHW, worldHeight);
+    float iceH  = smoothstep(_IceElevation  - iceHW,  _IceElevation  + iceHW,  worldHeight);
+
+    // Slope eligibility: 1 on gentle faces, 0 above the slope limit.
+    float snowSlopeE = 1.0 - smoothstep(_SnowSlopeLimit - ssb, _SnowSlopeLimit + ssb, slope);
+    float iceSlopeE  = 1.0 - smoothstep(_IceSlopeLimit  - isb, _IceSlopeLimit  + isb, slope);
+
+    // Combined weight for each layer (height AND gentle slope).
+    float iceWeight  = iceH  * iceSlopeE;
+    float snowWeight = snowH * snowSlopeE * (1.0 - iceWeight); // ice takes priority
+
+    // precipTotal drives the suppression of slope bands.
+    // Steep faces (slope > limit) give precipTotal = 0, so slope bands show through.
+    float slopeScale = 1.0 - (snowWeight + iceWeight);
+
+    float4 cm0 = float4(baseWeight, midWeight, talusWeight, cliffWeight) * slopeScale;
+    float4 cm1 = float4(snowWeight, iceWeight, 0.0, 0.0);
+
+    _ControlMap0[id.xy] = cm0;
+    _ControlMap1[id.xy] = cm1;
+}
+
+// ── CopyArraySlice kernel ─────────────────────────────────────────────────────
+// Copies a single slice from a Texture2DArray into a flat RWTexture2D.
+// The GPU samples and decompresses the source regardless of its compressed
+// on-disk format, which avoids any CPU readability requirement.
+
+Texture2DArray<float4> _SourceArray;  // The source Texture2DArray
+RWTexture2D<float4>   _SliceOutput;  // Destination flat texture
+int                   _SliceIndex;   // Which array slice to copy
+
+[numthreads(8, 8, 1)]
+void CopyArraySlice(uint3 id : SV_DispatchThreadID)
+{
+    _SliceOutput[id.xy] = _SourceArray[uint3(id.x, id.y, (uint)_SliceIndex)];
+}

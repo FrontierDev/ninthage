@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c65b3c87d0c702438dd0f0e6a6b6d5a, type: 3}
+  m_Name: Spell_rift
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.SpellDefinition
+  definitionId: rift
+  displayName: Rift
+  spellName: 
+  description: 
+  icon: {fileID: 21300000, guid: 21aa258127d64f64b8a116048296da4a, type: 3}
+  tags:
+  - instability
+  internalTags:
+  - costs_mana
+  baseCastTime: 1
+  baseCooldown: 0
+  baseCharges: 0
+  useCooldownCharges: 0
+  cooldownScalesWithHaste: 0
+  triggersGCD: 1
+  baseRange: 30
+  isChanneled: 0
+  canMoveWhileCasting: 0
+  baseTotalTicks: 0
+  baseResourceCosts:
+  - ResourceType: {fileID: 11400000, guid: d56b3b172700e1549ba687e29d38fb8f, type: 2}
+    CastPhase: 1
+    RefundOnInterrupt: 0
+    Amount: 5
+  baseComponents:
+  - Guid: 39030cd4-1db5-4e5a-8a3b-d169ba33d424
+    CastPhase: 1
+    EffectDefinition:
+      rid: 5229246757690409036
+    TargetDefinition:
+      rid: 5229246757690409035
+  racialVariants: []
+  associatedClasses: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 5229246757690409035
+      type: {class: SpellTarget_GroundLocation, ns: Game.Shared.Data, asm: Game.Shared}
+      data:
+        Radius: 10
+        GetActorsInRadius: 0
+    - rid: 5229246757690409036
+      type: {class: SpellEffect_PlaceRift, ns: Game.Shared.Data, asm: Game.Shared}
+      data:
+        ClassBehaviour: {fileID: 11400000, guid: dea61810712aa9645957f7e8bb9d5727, type: 2}
+        Radius: 5
+        Duration: 30
+        RiftPrefabAddressablePath: VFX_SorcererRiftZone
+        casterEvents: 
+        targetEvents: 

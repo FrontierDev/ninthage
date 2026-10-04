@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bde6d8fb32d27654a8adf2e69621e8e7, type: 3}
+  m_Name: Race_eldani
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.RaceDefinition
+  definitionId: eldani
+  displayName: Eldani
+  description: The Eldani are typically defined by their affinity for magic rather
+    than their appearance, as many other cultures have bled into their society in
+    recent centuries.
+  icon: {fileID: 21300000, guid: 4d368356153c68540b69ab6294815a53, type: 3}
+  isPlayable: 1
+  defaultPVPFaction: {fileID: 11400000, guid: 685f2c400d9dddd4dad8784eb4d17cb7, type: 2}
+  startingReputations:
+  - Faction: {fileID: 11400000, guid: 685f2c400d9dddd4dad8784eb4d17cb7, type: 2}
+    Reputation: 100
+  - Faction: {fileID: 11400000, guid: f5f3b547b27e4aa42899c03d8da44a1a, type: 2}
+    Reputation: -100
+  - Faction: {fileID: 11400000, guid: b6f498b09e85fcb49ba8bef992a0605e, type: 2}
+    Reputation: 100
+  - Faction: {fileID: 11400000, guid: ecefd59a2c64f1b498d80a3fd800f441, type: 2}
+    Reputation: -100
+  - Faction: {fileID: 11400000, guid: 0ce1539cf6aae7c4a885575f5d5b704e, type: 2}
+    Reputation: -1000
+  - Faction: {fileID: 11400000, guid: 8951328ab587efb4b89b1364b6f808d7, type: 2}
+    Reputation: 0
+  - Faction: {fileID: 11400000, guid: 8932a890af64f8447b4fcea1a5600a8d, type: 2}
+    Reputation: 0
+  baseStats:
+  - definition: {fileID: 11400000, guid: b5b8745a1f11543488b8eaf186ecb884, type: 2}
+    baseValue: 10
+  - definition: {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}
+    baseValue: 10
+  - definition: {fileID: 11400000, guid: 7d902b3e3d20ead44a3dc293d34ee5ea, type: 2}
+    baseValue: 10
+  - definition: {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+    baseValue: 10
+  - definition: {fileID: 11400000, guid: 9068c235736417a48a7b16d49d2171c0, type: 2}
+    baseValue: 10

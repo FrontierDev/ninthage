@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b16901013280e14094d1d239341432a, type: 3}
+  m_Name: Aura_NewAura
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.AuraDefinition
+  definitionId: regen
+  displayName: Regeneration
+  description: Restoring health every second.
+  icon: {fileID: 21300000, guid: 6a4ce587421534048925a1c6648760d1, type: 3}
+  isDebuff: 0
+  baseDuration: 12
+  baseTickInterval: 1
+  stackBehavior: 5
+  maxStacks: 10
+  tags: []
+  components:
+  - Guid: 60088127-0dfc-4985-b392-5dc9a73ac9ac
+    CastPhase: 2
+    EffectDefinition:
+      rid: 1492967861679292504
+    TargetDefinition:
+      rid: 1492967861679292503
+  references:
+    version: 2
+    RefIds:
+    - rid: 1492967861679292503
+      type: {class: AuraTarget_Target, ns: Game.Shared.Data, asm: Game.Shared}
+      data: 
+    - rid: 1492967861679292504
+      type: {class: AuraEffect_Heal, ns: Game.Shared.Data, asm: Game.Shared}
+      data:
+        BaseHealing: 1
+        StatScaling:
+        - Stat: {fileID: 11400000, guid: 8a758882b6dd7eb43a69d8900854804e, type: 2}
+          Coefficient: 0.01

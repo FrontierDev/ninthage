@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b16901013280e14094d1d239341432a, type: 3}
+  m_Name: Aura_poison
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.AuraDefinition
+  definitionId: poison
+  displayName: Poison
+  description: Taking earth damage every second.
+  icon: {fileID: 21300000, guid: d0c588739cca47f44acc1f94c3b911e3, type: 3}
+  isDebuff: 1
+  baseDuration: 12
+  baseTickInterval: 1
+  stackBehavior: 5
+  maxStacks: 25
+  tags: []
+  components:
+  - Guid: 734978b8-4123-49c7-8217-b665325b8b71
+    CastPhase: 2
+    EffectDefinition:
+      rid: 1492967861679292498
+    TargetDefinition:
+      rid: 1492967861679292497
+  references:
+    version: 2
+    RefIds:
+    - rid: 1492967861679292497
+      type: {class: AuraTarget_Target, ns: Game.Shared.Data, asm: Game.Shared}
+      data: 
+    - rid: 1492967861679292498
+      type: {class: AuraEffect_Damage, ns: Game.Shared.Data, asm: Game.Shared}
+      data:
+        BaseDamage: 1
+        StatScaling:
+        - Stat: {fileID: 11400000, guid: 8a758882b6dd7eb43a69d8900854804e, type: 2}
+          Coefficient: 0.02
+        DamageSchools:
+        - {fileID: 11400000, guid: e7e1b239532f200439e921398b6e5e82, type: 2}

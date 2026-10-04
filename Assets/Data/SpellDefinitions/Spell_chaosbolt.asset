@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c65b3c87d0c702438dd0f0e6a6b6d5a, type: 3}
+  m_Name: Spell_chaosbolt
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.SpellDefinition
+  definitionId: chaosbolt
+  displayName: Chaos Bolt
+  spellName: 
+  description: Assault the target with the very fabric of reality, dealing chaos
+    damage. Causes instability to accumulate on the caster.
+  icon: {fileID: 21300000, guid: e448796518f5cf943882ee7bb58668c2, type: 3}
+  tags:
+  - instability
+  internalTags:
+  - costs_mana
+  - chaos_damage
+  baseCastTime: 1.5
+  baseCooldown: 0
+  baseCharges: 0
+  useCooldownCharges: 0
+  cooldownScalesWithHaste: 0
+  triggersGCD: 1
+  baseRange: 40
+  isChanneled: 0
+  canMoveWhileCasting: 0
+  baseTotalTicks: 0
+  baseResourceCosts:
+  - ResourceType: {fileID: 11400000, guid: d56b3b172700e1549ba687e29d38fb8f, type: 2}
+    CastPhase: 1
+    RefundOnInterrupt: 0
+    Amount: 10
+  baseComponents:
+  - Guid: f83242e8-e8ab-4fc6-b496-05f1716212a4
+    CastPhase: 1
+    EffectDefinition:
+      rid: 5229246728291745872
+    TargetDefinition:
+      rid: 5229246728291745871
+  racialVariants: []
+  associatedClasses:
+  - {fileID: 11400000, guid: 3a0f616adc9ef8e4f93647ff46807b6f, type: 2}
+  references:
+    version: 2
+    RefIds:
+    - rid: 5229246728291745871
+      type: {class: SpellTarget_Single, ns: Game.Shared.Data, asm: Game.Shared}
+      data: 
+    - rid: 5229246728291745872
+      type: {class: SpellEffect_Damage, ns: Game.Shared.Data, asm: Game.Shared}
+      data:
+        BaseDamage: 12
+        WeaponDamageMode: 0
+        StatScaling:
+        - Stat: {fileID: 11400000, guid: 8a758882b6dd7eb43a69d8900854804e, type: 2}
+          Coefficient: 0.6
+        DamageSchools:
+        - {fileID: 11400000, guid: 39ef16070e88c6a46a878b948571090f, type: 2}
+        HitType: 1
+        DamageType: 2
+        AlwaysHits: 0
+        UsesProjectile: 1
+        ProjectileAddressablePath: VFX_Projectile_Fireball
+        ProjectileSpeed: 40
+        ApplyAura: 0
+        Aura: {fileID: 0}
+        AuraStacks: 1
+        casterEvents: 
+        targetEvents: 

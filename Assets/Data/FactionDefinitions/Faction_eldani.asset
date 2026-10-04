@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd06bac2283abf5479c7301786434e20, type: 3}
+  m_Name: Faction_eldani
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.FactionDefinition
+  definitionId: eldani
+  displayName: Kingdom of Astonia
+  description: Once the most influential kingdom of the Ninth Age, the Kingdom of
+    Astonia is now beset on all sides by enemies. Nevertheless, under the rule of
+    the young King Achov III, the heart of this bygone empire remains strong, even
+    in the face of an uncertain future.
+  category: 0
+  icon: {fileID: 21300000, guid: 4d368356153c68540b69ab6294815a53, type: 3}
+  color: {r: 0.35684407, g: 0.5470864, b: 0.764151, a: 0}
+  isPlayable: 1
+  canWar: 1
+  maxPoints: 1000
+  alliedFactionIDs:
+  - pvp_treaty
+  enemyFactionIDs: []
+  rewardDescriptions:
+  - threshold: 0.1
+    isPositive: 0
+    icon: {fileID: 21300000, guid: b16bbc31affe6c74bb8753cc98f79e12, type: 3}
+    title: Wanted
+    benefits: []
+    penalties:
+    - Guards have increased detection radius.
+  - threshold: 0.35
+    isPositive: 0
+    icon: {fileID: 21300000, guid: c107479c0384e3144ab3f44bb31ba7b8, type: 3}
+    title: Hated
+    benefits: []
+    penalties:
+    - Guards will attack you on sight.
+  - threshold: 0.5
+    isPositive: 0
+    icon: {fileID: 21300000, guid: 3da4172f1dfad5a4990da5f47e108208, type: 3}
+    title: Unfriendly
+    benefits: []
+    penalties:
+    - 
+  - threshold: 0.65
+    isPositive: 1
+    icon: {fileID: 21300000, guid: c0fe4821cb357b84884f04d9e5ed1551, type: 3}
+    title: Friendly
+    benefits:
+    - Access to low tier permit zones.
+    penalties: []
+  - threshold: 0.9
+    isPositive: 1
+    icon: {fileID: 21300000, guid: ec877e2688977ad47b52ecf7d6b5a459, type: 3}
+    title: Trusted
+    benefits:
+    - Access to medium tier permit zones.
+    penalties: []
+  - threshold: 1
+    isPositive: 1
+    icon: {fileID: 21300000, guid: bb14ffca7eeca754e9605af0d40a9bb8, type: 3}
+    title: Respected
+    benefits:
+    - Access to higher tier permit zones.
+    penalties: []

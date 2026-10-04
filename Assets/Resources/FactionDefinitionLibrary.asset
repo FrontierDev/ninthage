@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df4c7b9787e9d1f4d9543e754ec1a220, type: 3}
+  m_Name: FactionDefinitionLibrary
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.FactionDefinitionLibrary
+  definitions:
+  - {fileID: 11400000, guid: b6f498b09e85fcb49ba8bef992a0605e, type: 2}
+  - {fileID: 11400000, guid: ecefd59a2c64f1b498d80a3fd800f441, type: 2}
+  - {fileID: 11400000, guid: 0ce1539cf6aae7c4a885575f5d5b704e, type: 2}
+  - {fileID: 11400000, guid: 685f2c400d9dddd4dad8784eb4d17cb7, type: 2}
+  - {fileID: 11400000, guid: f5f3b547b27e4aa42899c03d8da44a1a, type: 2}
+  - {fileID: 11400000, guid: 8951328ab587efb4b89b1364b6f808d7, type: 2}
+  - {fileID: 11400000, guid: 8932a890af64f8447b4fcea1a5600a8d, type: 2}
+  - {fileID: 11400000, guid: d552c2929a53d9248b4eeaac92f96413, type: 2}
+  - {fileID: 11400000, guid: 710e145a8f565cf4e818818636bb1f32, type: 2}

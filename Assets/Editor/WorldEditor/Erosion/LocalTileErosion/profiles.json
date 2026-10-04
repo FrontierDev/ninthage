@@ -1,0 +1,307 @@
+{
+    "profiles": [
+        {
+            "name": "Mountain Peak",
+            "operations": [
+                {
+                    "mode": 2,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 50.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 1,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.10000000149011612,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 0,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 3,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 5,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 3,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 5,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 0,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 4,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 3,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                }
+            ]
+        },
+        {
+            "name": "Mountain Slope",
+            "operations": [
+                {
+                    "mode": 2,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 5.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 0,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 4,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 3,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 8,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                }
+            ]
+        },
+        {
+            "name": "Basin Slope",
+            "operations": [
+                {
+                    "mode": 2,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 2.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 0,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 4,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 2,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                },
+                {
+                    "mode": 3,
+                    "h_Iterations": 100000,
+                    "h_Resolution": 256,
+                    "h_ErosionSteps": 3,
+                    "w_Windiness": 0.5,
+                    "w_WindDirection": {
+                        "x": 1.0,
+                        "y": 2.0
+                    },
+                    "w_Resolution": 257,
+                    "t_TerraceSpacing": 15.0,
+                    "t_TerraceAngle": 20.0,
+                    "s_SmoothingWidth": 4,
+                    "sh_SharpenStrength": 5.0,
+                    "sh_SharpenIterations": 10,
+                    "sh_PeakMixStrength": 0.699999988079071
+                }
+            ]
+        }
+    ]
+}

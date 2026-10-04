@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1c96ea9952362f4b92465944d93606e, type: 3}
+  m_Name: AuraDefinitionLibrary
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.AuraDefinitionLibrary
+  definitions:
+  - {fileID: 11400000, guid: b4892e1c78746294f8a24caf38aaf19a, type: 2}
+  - {fileID: 11400000, guid: 103a7514ac4b9e14eac72cc7ac1e1042, type: 2}
+  - {fileID: 11400000, guid: 72c02103160bcc54b85688fbc00b734d, type: 2}
+  - {fileID: 11400000, guid: dfd9b7648cd9b7b4cb35b423f471e176, type: 2}
+  - {fileID: 11400000, guid: f778e592d80835643939abf59d3d0798, type: 2}
+  - {fileID: 11400000, guid: df192b97c2d46cc4c9a96eeb040b6918, type: 2}
+  - {fileID: 11400000, guid: b405824caad0fdf408b504380bd7efd2, type: 2}
+  - {fileID: 11400000, guid: 9419b955d46b30e4d81eac4e9d1b7966, type: 2}

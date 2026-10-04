@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b16901013280e14094d1d239341432a, type: 3}
+  m_Name: Aura_test
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.AuraDefinition
+  definitionId: test
+  displayName: Test Aura
+  description: Does testing things.
+  icon: {fileID: 21300000, guid: b30d205b3726a944ba26c6c6e24bec9a, type: 3}
+  isDebuff: 1
+  baseDuration: 10
+  baseTickInterval: 0
+  stackBehavior: 4
+  maxStacks: 1
+  tags: []
+  components: []
+  auraBehaviour: {fileID: 11400000, guid: 99492847b999055409f89feac71b17b3, type: 2}
+  references:
+    version: 2
+    RefIds: []

@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c65b3c87d0c702438dd0f0e6a6b6d5a, type: 3}
+  m_Name: Spell_poisonarrow
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.SpellDefinition
+  definitionId: poisonarrow
+  displayName: Poison Arrow
+  spellName: 
+  description: 
+  icon: {fileID: 21300000, guid: d0c588739cca47f44acc1f94c3b911e3, type: 3}
+  tags: []
+  internalTags:
+  - earth_damage
+  baseCastTime: 3
+  baseCooldown: 1
+  baseCharges: 0
+  useCooldownCharges: 0
+  cooldownScalesWithHaste: 0
+  triggersGCD: 1
+  baseRange: 30
+  isChanneled: 1
+  canMoveWhileCasting: 1
+  baseTotalTicks: 5
+  baseResourceCosts: []
+  baseComponents:
+  - Guid: d9e1c1bb-2f71-4ab5-83b3-24be94da023b
+    CastPhase: 2
+    EffectDefinition:
+      rid: 1492967861679292496
+    TargetDefinition:
+      rid: 1492967861679292495
+  racialVariants: []
+  associatedClasses:
+  - {fileID: 11400000, guid: e778c78263f82994096e8236f8a7293d, type: 2}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1492967861679292495
+      type: {class: SpellTarget_Single, ns: Game.Shared.Data, asm: Game.Shared}
+      data: 
+    - rid: 1492967861679292496
+      type: {class: SpellEffect_Damage, ns: Game.Shared.Data, asm: Game.Shared}
+      data:
+        BaseDamage: 6
+        WeaponDamageMode: 0
+        StatScaling:
+        - Stat: {fileID: 11400000, guid: d0d2bcde22232754eb3fa001ef4dc8a3, type: 2}
+          Coefficient: 0.2
+        DamageSchools:
+        - {fileID: 11400000, guid: e7e1b239532f200439e921398b6e5e82, type: 2}
+        HitType: 1
+        DamageType: 1
+        AlwaysHits: 0
+        UsesProjectile: 1
+        ProjectileAddressablePath: PH Projectile Test
+        ProjectileSpeed: 50
+        ApplyAura: 1
+        Aura: {fileID: 11400000, guid: dfd9b7648cd9b7b4cb35b423f471e176, type: 2}
+        AuraStacks: 1
+        casterEvents: 
+        targetEvents: 

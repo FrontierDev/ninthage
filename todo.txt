@@ -1,0 +1,39 @@
+TODO REPORT
+Generated: 2026-10-03 23:53:23
+
+[METHOD] Game.Client.ClientAudioManager.Awake()
+  - Implement a more robust caching strategy if needed, e.g. separate pools for UI vs world SFX, or reference counting for shared clips.
+
+[TYPE] Game.Client.UI.UI_CharacterStatTypeButton
+  - Remove this as it is obsolete.
+
+[METHOD] Game.Client.UI.UI_DialogueOptionEntry.UpdateEntry()
+  - Set the choice icon sprite.
+
+[METHOD] Game.Client.UI.UI_NameplateHealthBar.SetRelation()
+  - Consider adding a method to set the relation which updates the bar color and text colors accordingly.
+
+[METHOD] Game.Server.ServerActorManager.UpdateNPCAggro()
+  - NPC aggro should be checked from the player, not the NPC, to avoid iterating over all NPCs every frame. This is a temporary implementation.
+
+[METHOD] Game.Server.ServerSpawnManager.SpawnPlayerCoroutine()
+  - Implement proper spawn point selection logic rather than hardcoding to a specific scene and position.Lots of placeholder code in this method that not be in production.
+
+[TYPE] Game.Server.Services.PartyLootService
+  - This is a very basic implementation that just gives all loot to each player. This will need to be reworked once the party system is implemented.
+
+[METHOD] Game.Shared.Actor.OnDestroy()
+  - Any onActorDespawned logic.
+
+[TYPE] Game.Shared.PlayerActor
+  - Store references to the individual components for ease of access rather than relying on GetComponent calls.
+
+[METHOD] Game.Shared.Data.SorcererClassBehaviour.GenerateSurgeFromSpell()
+  - Increase the actor's haste rating according to their surge.
+
+[METHOD] Game.Shared.Data.SorcererClassBehaviour.ApplyInstabilityDamage()
+  - Base instability damage on something other than a hardcoded value, and include damage type/school.
+
+[TYPE] Game.Shared.Data.DialogueCondition
+  - Evaluate whether this can be skipped and if we can just use ConditionDefinition directly in DialogueChoice. It was added to allow for inversion of conditions, but maybe that's not necessary?
+

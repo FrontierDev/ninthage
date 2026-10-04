@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aa05763ba754c24ba5454ac0056e487, type: 3}
+  m_Name: Class_occultist
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.ClassDefinition
+  definitionId: occultist
+  displayName: Occultist
+  description: Occultists draw power from forbidden pacts and ancient forces beyond
+    mortal understanding. Their magic corrupts, consumes, and manipulates life and
+    death itself. They trade certainty for power, wielding dangerous and transformative
+    energies.
+  icon: {fileID: 21300000, guid: 83a6bd968f371fd43a15fce63e0c071d, type: 3}
+  statGrowthPerLevel:
+  - stat: {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}
+    flatPerLevel: 1
+  - stat: {fileID: 11400000, guid: 9068c235736417a48a7b16d49d2171c0, type: 2}
+    flatPerLevel: 0.9
+  - stat: {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+    flatPerLevel: 0.5
+  - stat: {fileID: 11400000, guid: b5494d9af5176d34e85916b29ff7fe8f, type: 2}
+    flatPerLevel: 10
+  - stat: {fileID: 11400000, guid: d56b3b172700e1549ba687e29d38fb8f, type: 2}
+    flatPerLevel: 13
+  baseStats:
+  - definition: {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}
+    baseValue: 2
+  - definition: {fileID: 11400000, guid: 9068c235736417a48a7b16d49d2171c0, type: 2}
+    baseValue: 2
+  - definition: {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
+    baseValue: 1
+  classSpellList: []
+  focusStats: []
+  relevantStats: []
+  weaponTypes: 
+  specialisations: []
+  classBehaviour: {fileID: 0}

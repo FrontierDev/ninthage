@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c65b3c87d0c702438dd0f0e6a6b6d5a, type: 3}
+  m_Name: Spell_rapidfire
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.SpellDefinition
+  definitionId: rapidfire
+  displayName: Rapid Fire
+  spellName: 
+  description: 
+  icon: {fileID: 21300000, guid: f73808a0aa838d24e8b7d132f93ec5c9, type: 3}
+  tags: []
+  baseCastTime: 2.5
+  baseCooldown: 0
+  baseRange: 10
+  useCooldownCharges: 0
+  baseCharges: 0
+  triggersGCD: 1
+  isChanneled: 1
+  canMoveWhileCasting: 0
+  baseTotalTicks: 5
+  baseResourceCosts: []
+  baseComponents:
+  - Guid: ccba5b35-87c2-42d1-ab1f-35054391f2ea
+    CastPhase: 2
+    EffectDefinition:
+      rid: 1492967587744579665
+    TargetDefinition:
+      rid: 1492967587744579668
+  racialVariants: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 1492967587744579665
+      type: {class: SpellEffect_Damage, ns: Game.Shared.Data, asm: Game.Shared}
+      data:
+        BaseDamage: 6
+        StatScaling: []
+        DamageSchools: []
+        HitType: 0
+        DamageType: 1
+        AlwaysHits: 0
+        UsesProjectile: 1
+        ProjectileAddressablePath: PH Projectile Test
+        ProjectileSpeed: 50
+    - rid: 1492967587744579668
+      type: {class: SpellTarget_Single, ns: Game.Shared.Data, asm: Game.Shared}
+      data: 
