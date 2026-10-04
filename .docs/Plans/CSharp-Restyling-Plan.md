@@ -397,8 +397,7 @@ The following safeguards are mandatory while implementing the changes listed bel
 
 #### `Assets/Runtime/Shared/Data/RaceDefinition.cs`
 
-- Serialized fields: `description` → `_description`, `icon` → `_icon`, `isPlayable` → `_isPlayable`, `defaultPVPFaction` → `_defaultPVPFaction`, `startingReputations` → `_startingReputations`, `baseStats` → `_baseStats`; add `FormerlySerializedAs`.
-- XML documentation: add docs to `PlayerStartingReputation`, `Faction`, `Reputation`, `DefaultPVPFaction`, `StartingReputations`, and `BaseStats`.
+- Serialized fields: `description` → `_description`, `icon` → `_icon`, `isPlayable` → `_isPlayable`, `defaultPVPFaction` → `_defaultPVPFaction`, `startingReputations` → `_startingReputations`, `baseStats` → `_baseStats`; add `FormerlySerializedAs`.- XML documentation: add docs to `PlayerStartingReputation`, `Faction`, `Reputation`, `DefaultPVPFaction`, `StartingReputations`, and `BaseStats`.
 
 #### `Assets/Runtime/Shared/Data/RaceDefintionLibrary.cs`
 
@@ -798,7 +797,6 @@ The following safeguards are mandatory while implementing the changes listed bel
 #### `Assets/Runtime/Shared/Persistence/NewCharacterData.cs`
 
 - XML documentation: add docs to `NewCharacterData`, `Name`, `ClassID`, and `RaceID`.
-
 ### 11.13 Runtime — actors
 
 #### `Assets/Runtime/Shared/Runtime/Actors/Actor.cs`
@@ -998,3 +996,2163 @@ The following safeguards are mandatory while implementing the changes listed bel
 ### 11.15 Runtime — spellcasting
 
 #### `Assets/Runtime/Shared/Runtime/Spellcasting/AuraContext.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- Parameter: `componentGuid` → `componentGUID` in `GetOrCreateOverrides`.
+- XML documentation: add docs to the public `ConditionStack` fields/constructor; `AuraContext`; public context fields; both constructors; `ComponentOverrides`; and `GetOrCreateOverrides`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/AuraInstance.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `AuraInstance`, its constructor, `Update`, `SetDuration`, and `SetStacks`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/CombatLogEntry.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `CombatHistoryEntryType`, `CombatLogResultType`, `CombatLogEntry`, all public fields, and its constructor.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/ISpellModifier.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- XML documentation: add docs to `IScalableModifier`, `Scale`, `ISpellModifier`, `Priority`, `Source`, `AppliesTo`, `Apply`, and `Combine`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellComponentOverrides.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- XML documentation: add docs to `SpellComponentOverrides`, `DamageMultiplier`, `HealingMultiplier`, `FlatDamageBonus`, and `FlatHealingBonus`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellContext.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `SpellContext`, `Phase`, `Spell`, `Caster`, `ActorTarget`, `PositionTarget`, `Targets`, the constructor, and `IsInstantCast`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellProjectile.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- Serialized fields: `impactEffectPrefab` → `_impactEffectPrefab`, `arcHeight` → `_arcHeight`, `horizontalDeviationAmount` → `_horizontalDeviationAmount`; add `FormerlySerializedAs`.
+- XML documentation: add docs to `SpellProjectile` and public SFX fields `onCreateSFX`, `onImpactSFX`, and `onLoopSFX`.
+
+### 11.16 Runtime — spell modifiers
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/BonusFireDamagePct.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- Type: `BonusFireDamagePct` → `BonusFireDamagePCT`.
+- Filename: `BonusFireDamagePct.cs` → `BonusFireDamagePCT.cs`; preserve `.meta`.
+- Serialized fields: `bonusDamagePct` → `_bonusDamagePCT`, `source` → `_source`; add `FormerlySerializedAs`.
+- Property: `BonusDamagePct` → `BonusDamagePCT`.
+- Constructor: `BonusFireDamagePct(...)` → `BonusFireDamagePCT(...)`; parameter `bonusDamagePct` → `bonusDamagePCT`.
+- XML documentation: add docs to the type, its public properties, constructors, `AppliesTo`, `Apply`, `Scale`, and `Combine`.
+- **Reflection safety:** update `ActorSpellcaster.CloneModifier` so it can assign `_source`; retain fallback support for a field named `source`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/CastTimeHasteScaling.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `CastTimeHasteScaling`, `Priority`, `Source`, `AppliesTo`, `Apply`, and `Combine`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/CooldownHasteScaling.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `CooldownHasteScaling`, `Priority`, `Source`, `AppliesTo`, `Apply`, and `Combine`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/FireDamageBonus.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- Serialized private field: `bonusDamage` → `_bonusDamage`; add `[FormerlySerializedAs("bonusDamage")]`.
+- XML documentation: add docs to `FireDamageBonus`, `BonusDamage`, `Priority`, public field `source`, `Source`, both constructors, `AppliesTo`, `Apply`, `Scale`, and `Combine`.
+- Do not rename the public `source` field solely under the private-field convention. `ActorSpellcaster.CloneModifier` must continue to support this field name.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/WeaponSwingTimerCooldown.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `WeaponSwingTimerCooldown`, `Priority`, `Source`, `AppliesTo`, `Apply`, and `Combine`.
+
+### 11.17 Runtime — tests and VFX interfaces
+
+#### `Assets/Runtime/Shared/Runtime/Test/Test_InterestController.cs`
+
+- Namespace: `Game.Shared.Test` → `Game.Shared.Runtime.Test`.
+- Alphabetize `using` directives.
+- Private field: `onMove` → `_onMove`.
+- XML documentation: add docs to `Test_InterestController`, `Instance`, and `GetCurrentTile`.
+- Existing `Test_` type naming already conforms.
+
+#### `Assets/Runtime/Shared/Runtime/Test/Test_SpawnedObject.cs`
+
+- Namespace: `Game.Shared.Test` → `Game.Shared.Runtime.Test`.
+- Alphabetize `using` directives.
+- Existing `Test_` type naming already conforms.
+- Add XML documentation to any currently undocumented public type/member in this file during implementation.
+
+#### `Assets/Runtime/Shared/Runtime/ToDoAttribute.cs`
+
+- Namespace: global → `Game.Shared.Runtime`.
+- XML documentation: add docs to `ToDoAttribute` and its constructor.
+
+#### `Assets/Runtime/Shared/Runtime/VFX/IVFXFadeIn.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.VFX`.
+- Existing XML documentation is retained; no other style change is required.
+
+#### `Assets/Runtime/Shared/Runtime/VFX/IVFXFadeOut.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.VFX`.
+- Existing XML documentation is retained; no other style change is required.
+
+#### `Assets/Runtime/Shared/Runtime/VFX/IVFXTrigger.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.VFX`.
+- Existing XML documentation is retained; no other style change is required.
+
+### 11.18 Terrain
+
+#### `Assets/Runtime/Shared/Terrain/ZoneDefinition.cs`
+
+- Namespace: `Game.Runtime.Shared` → `Game.Shared.Terrain`.
+- XML documentation: add docs to public fields `zoneName`, `albedoArray`, and `normalArray`.
+- Safety: update all world-editor/terrain references to the new namespace.
+
+### 11.19 Utility
+
+#### `Assets/Runtime/Shared/Utility/CombatRating.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Utility`.
+- Filename: `CombatRating.cs` → `CombatRatingHelper.cs`; preserve `.meta`.
+- Constants: `ReferenceLevel` → `REFERENCE_LEVEL`, `ScalingExponent` → `SCALING_EXPONENT`.
+- XML documentation: add docs to `CombatRatingHelper` where missing.
+- Update all references to the renamed constants.
+
+#### `Assets/Runtime/Shared/Utility/ExperienceCalculator.cs`
+
+- Constants: `MinLevel` → `MIN_LEVEL`, `MaxLevel` → `MAX_LEVEL`.
+- Static readonly field: `LevelXpRequirements` → `LEVEL_XP_REQUIREMENTS`.
+- Construction: `new Dictionary<int, int>(MaxLevel)` → target-typed `new(MAX_LEVEL)`.
+- XML documentation: update existing docs that name `LevelXpRequirements`; add docs to `GetExpForLevel` and `GetLevelProgress01`.
+- Update every code reference to the renamed constants/static readonly field.
+
+#### `Assets/Runtime/Shared/Utility/FormattedDebug.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Utility`.
+- XML documentation: add docs to `FormattedDebug`, `Log`, `Warning`, and `Error`.
+- Safety: many files currently alias `Game.Shared.FormattedDebug` as `Debug`; update those aliases across the repository to `Game.Shared.Utility.FormattedDebug`.
+
+#### `Assets/Runtime/Shared/Utility/GaussianTable.cs`
+
+- Namespace: global → `Game.Shared.Utility`.
+- Static readonly field: `_samples` → `SAMPLES`.
+- Constant: `Size` → `SIZE`.
+- XML documentation: add docs to `GaussianTable` and `Next`.
+- Update all references atomically.
+
+#### `Assets/Runtime/Shared/Utility/WorldPosition.cs`
+
+- XML documentation: add docs to `WorldPosition`, public fields `x`, `y`, `z`, its constructor, `ToLocal`, and both operators where currently undocumented.
+- Existing namespace `Game.Shared.Utility` already conforms.
+
+## 12. Game.Shared implementation order
+
+The Shared restyle must be applied in dependency-safe stages rather than as one unreviewed global replacement.
+
+### Stage S1 — Documentation and syntax-only changes
+
+Apply:
+
+- XML documentation;
+- alphabetical `using` order;
+- target-typed `new()` where unambiguous;
+- obvious `var` changes where the right-hand side states the type.
+
+Compile before proceeding.
+
+### Stage S2 — Non-serialized private fields, constants and static readonly fields
+
+Apply `_camelCase`, `SCREAMING_SNAKE_CASE`, and project acronym changes that do not touch Unity serialization or persistence.
+
+This includes singleton/library `instance` fields, immutable constants, `ChunkSubscriptions` static readonly collections, and nonserialized runtime caches.
+
+Update all symbol references atomically and compile.
+
+### Stage S3 — Serialized field renames
+
+For each serialized field:
+
+1. add `FormerlySerializedAs` with the old field name;
+2. rename the field;
+3. update every C# reference;
+4. update all Editor `SerializedProperty`/reflection/property-path strings;
+5. open and inspect representative assets/prefabs/scenes;
+6. verify no values reset;
+7. compile before moving to the next subsystem.
+
+Perform this subsystem-by-subsystem rather than across all Shared data simultaneously.
+### Stage S4 — Filename/type/acronym renames
+
+Perform these explicit moves while preserving `.meta` files:
+
+- `ActorStatScaling.cs` → `StatScaling.cs`;
+- `AuraBehaviour_DamageHostOnHit copy.cs` → `AuraBehaviour_DamageHostOnHit.cs`;
+- `RaceDefintionLibrary.cs` → `RaceDefinitionLibrary.cs`;
+- `TestClassBehaviour.cs` / `TestClassBehaviour` → `Test_ClassBehaviour.cs` / `Test_ClassBehaviour`;
+- `PackGuid.cs` / `PackGuid` → `PackGUID.cs` / `PackGUID`;
+- `BonusFireDamagePct.cs` / `BonusFireDamagePct` → `BonusFireDamagePCT.cs` / `BonusFireDamagePCT`;
+- `CombatRating.cs` → `CombatRatingHelper.cs`.
+
+Also perform project-defined member acronym renames (`DefinitionID`, `GUID`, `NPCID`, `PVPFaction`, etc.) as symbol-wide refactors.
+
+Compile after each coherent rename set.
+
+### Stage S5 — Persistence migration
+
+Before changing `CharacterData` JSON-facing field names:
+
+1. capture a representative pre-restyle `player_data.json`;
+2. introduce a compatibility deserialization/migration path for the old names;
+3. rename the C# fields;
+4. load the old file;
+5. verify every character, inventory/equipment item, resource, talent, reputation, and quest field;
+6. save to the new format;
+7. reload the newly saved file and verify equivalence.
+
+Only after that validation may the old compatibility path be scheduled for later removal.
+
+### Stage S6 — Namespace mirroring and managed-reference migration
+
+Apply namespace changes one subtree at a time:
+
+1. `Components`;
+2. `Data` subfolders;
+3. `Movement`;
+4. `Networking`;
+5. `Runtime` and its subfolders;
+6. `Terrain`;
+7. `Utility`.
+
+For each subtree:
+
+- update every repository reference in the same commit;
+- add type-migration metadata to managed-reference classes where applicable;
+- reopen affected ScriptableObject assets;
+- check for missing managed-reference types;
+- compile Client, Server, and Editor assemblies before advancing.
+
+### Stage S7 — RPC naming
+
+Rename only the non-conforming observer RPCs:
+
+- `Observer_PlaySFX` → `Observers_PlaySFX`;
+- `Observer_StartSpellCast` → `Observers_StartSpellCast`;
+- `Observer_TickSpellCast` → `Observers_TickSpellCast`;
+- `Observer_InterruptSpellCast` → `Observers_InterruptSpellCast`;
+- `Observer_FinishSpellCast` → `Observers_FinishSpellCast`;
+- `Observer_SpawnEffectAtPosition` → `Observers_SpawnEffectAtPosition`;
+- `Observer_SpawnProjectile` → `Observers_SpawnProjectile`;
+- `Observer_TriggerEffect` → `Observers_TriggerEffect`.
+
+Preserve attributes/signatures exactly. Rebuild both client and server and perform an RPC smoke test.
+
+## 13. Game.Shared validation
+
+The Shared assembly restyle is complete only when all of the following pass:
+
+- Unity Editor C# compilation;
+- Client C# compilation/build;
+- dedicated-server C# compilation/build;
+- no missing MonoBehaviour/ScriptableObject scripts;
+- no missing `[SerializeReference]` types in spell, aura, condition, quest, talent, or modifier assets;
+- existing definition-library assets retain their entries and values;
+- representative spell/aura/talent/quest assets retain all serialized values after field renames;
+- `CharacterData` can load a pre-restyle persistence file and round-trip it into the new format;
+- PurrNet authentication, account entry, actor services, movement interest, stat snapshots, inventory/equipment RPCs, spellcast RPCs, aura RPCs, and VFX/SFX observer RPCs still operate;
+- `ActorSpellcaster.CloneModifier` still assigns modifier sources to both `_source`-backed and `source`-backed modifier implementations;
+- all Editor custom inspectors/drawers that access renamed Shared fields by serialized-property path still function;
+- a fresh convention audit of all 130 Shared C# files reports no remaining hard convention breaches;
+- no gameplay values, network semantics, persistence semantics, or asset content are intentionally changed.
+
+## 14. Game.Shared result
+
+| Item | Result |
+|---|---:|
+| C# files audited | 130 |
+| Assembly definition files audited | 1 |
+| Namespace-mirroring changes | Required across multiple Shared subtrees |
+| Serialized-field migrations | Required across data definitions and runtime components |
+| Persistence migration | Required for `CharacterData` acronym field renames |
+| Managed-reference migration | Required for polymorphic data namespace/type moves |
+| C# file/type moves explicitly identified | 7 |
+| Observer RPC renames | 8 |
+| Functional changes intended | 0 |
+
+**Game.Shared status:** Planned; not yet restyled.
+
+# Assembly 3 — `Game.Client`
+
+## 15. Client assembly scope
+
+**Assembly definition:** `Assets/Runtime/Client/Client.asmdef`  
+**Source root:** `Assets/Runtime/Client/`  
+**Audit baseline:** `8850d401e3c8052e793cdfa69492a47094820ee3`  
+**C# files audited:** 139
+
+The C# conventions do not define formatting or naming requirements for `.asmdef` JSON. No restyling change is required to `Client.asmdef`.
+
+The Client assembly contains:
+
+| Area | C# files |
+|---|---:|
+| `Core` | 17 |
+| `Shaders` | 1 |
+| `Systems` | 1 |
+| `UI` | 111 |
+| `Utility` | 4 |
+| `VFX` | 5 |
+| **Total** | **139** |
+
+All 139 files were checked against `.docs/CSharp-Style-Conventions.md`.
+
+## 16. Client-specific safety requirements
+
+The general safety requirements in section 2 continue to apply. The following Client-specific rules are additionally mandatory.
+
+1. **Serialized MonoBehaviour/ScriptableObject fields:** any private field listed for renaming below that is serialized by Unity must receive `[FormerlySerializedAs("<oldName>")]` before the identifier is changed.
+2. **Prefab and scene safety:** after serialized field or MonoBehaviour type renames, existing UI prefabs, world-space UI prefabs, character-creation/selection scenes, loading screen objects, nameplates, VFX prefabs, and camera/controller objects must be opened and checked for missing scripts and reset inspector values.
+3. **C# file moves:** preserve the existing `.meta` file for every C# filename change so Unity asset GUIDs are retained.
+4. **MonoBehaviour type renames:** where the type itself changes, preserve the script `.meta` and validate every prefab/scene containing that component. Use Unity type-migration metadata where required.
+5. **Namespace migration:** the UI namespace move is cross-cutting. `Game.Client.UI.Common` contains base types used by nearly every other UI folder, so the entire UI namespace migration and all corresponding `using`/fully-qualified references must be updated atomically.
+6. **Shared dependency sequencing:** the Shared restyle should be applied before the final Client namespace/import pass. Client references must use the final Shared namespaces and renamed Shared APIs (`Actor.ID`, `CharacterData.GUID`, `DefinitionID`, `Game.Shared.Utility.FormattedDebug`, etc.) rather than being migrated twice.
+7. **Core bootstrap dependency:** moving `ClientInitialization` to `Game.Client.Core` requires `Game.Core.GameBootstrapper` and every other caller to be updated in the same change.
+8. **Shader utility dependency:** moving `UIShaderProperties` from `Game.Client.UI` to `Game.Client.Shaders` requires all UI/VFX callers to import the new namespace.
+9. **Events/callbacks:** callback-like members continue to use `on...`; the private-field `_camelCase` rule must not be used to convert correctly named callback fields such as `onClick`, `onShowWindow`, or `onHideWindow`.
+10. **Unity event methods:** normal Unity lifecycle and pointer-handler methods retain their existing API signatures. Styling work must not alter Unity callback names.
+11. **String-based references:** search the complete repository for renamed type/member names, serialized property names, reflection strings, `GetComponent` type names, and UnityEvent method names before closing each rename.
+12. **No behavioural changes:** camera behaviour, input mapping, networking calls, combat logic, UI behaviour, world loading, VFX timing, and addressable loading must remain unchanged.
+
+## 17. Namespace migration
+
+The namespace convention requires namespaces to mirror the Client folder tree.
+
+### 17.1 Core
+
+All 17 files under `Assets/Runtime/Client/Core/` currently use flatter Client namespaces and must move to their folder-derived namespaces:
+
+- files directly under `Core/`: `Game.Client` → `Game.Client.Core`;
+- `Core/Collections/LoadingScreenCollection.cs`: `Game.Client.Collections` → `Game.Client.Core.Collections`;
+- files under `Core/Controllers/`: `Game.Client` → `Game.Client.Core.Controllers`;
+- files under `Core/Managers/`: `Game.Client` → `Game.Client.Core.Managers`.
+
+### 17.2 Shaders
+
+`Assets/Runtime/Client/Shaders/UIShaderProperties.cs`:
+
+```text
+Game.Client.UI → Game.Client.Shaders
+```
+
+### 17.3 Systems
+
+`Assets/Runtime/Client/Systems/TestClientSystem.cs`:
+
+```text
+Game.Client → Game.Client.Systems
+```
+
+### 17.4 UI
+
+All 111 files under `Assets/Runtime/Client/UI/` currently use `Game.Client.UI` and must move to their direct feature namespaces:
+
+```text
+Game.Client.UI.ActionBars
+Game.Client.UI.CastBars
+Game.Client.UI.CharacterCreation
+Game.Client.UI.CharacterSelection
+Game.Client.UI.CharacterUnitFrame
+Game.Client.UI.CharacterWindow
+Game.Client.UI.Common
+Game.Client.UI.ContextMenu
+Game.Client.UI.Dialogue
+Game.Client.UI.ExperienceBar
+Game.Client.UI.FloatingCombatText
+Game.Client.UI.Inventory
+Game.Client.UI.LoadingScreen
+Game.Client.UI.MainMenu
+Game.Client.UI.Nameplates
+Game.Client.UI.QuestLog
+Game.Client.UI.ReputationWindow
+Game.Client.UI.TalentWindow
+Game.Client.UI.TargetWindow
+Game.Client.UI.Tooltip
+Game.Client.UI.VFX
+```
+
+This accounts for 111 namespace moves. Every cross-feature UI reference must be updated with the appropriate `using` directive or fully-qualified type.
+
+### 17.5 Utility and VFX
+
+The four files in `Assets/Runtime/Client/Utility/` already use `Game.Client.Utility`.
+
+The five files in `Assets/Runtime/Client/VFX/` already use `Game.Client.VFX`.
+
+No namespace rename is required for those nine files.
+
+### 17.6 Namespace result
+
+A total of **130 Client C# files require namespace changes**.
+
+## 18. Public API documentation and source syntax
+
+### 18.1 XML documentation
+
+The Client audit found undocumented public APIs throughout Core and UI. During implementation:
+
+- every public type must have XML documentation;
+- public properties, fields, events/callbacks, methods, constructors, and public overrides must be documented where currently undocumented;
+- interfaces must document their public contracts;
+- inherited implementations may use `<inheritdoc/>` when that accurately represents the contract;
+- private Unity lifecycle methods do not require public API documentation.
+
+This applies across all 139 audited files, including the many `UI_` types whose current public API is self-explanatory but undocumented.
+
+### 18.2 `using` ordering
+
+Alphabetize `using` directives throughout the Client assembly. The audit identified out-of-order directives in a large proportion of Core, UI, Utility, and VFX source files.
+
+After the Shared namespace migration, aliases such as:
+
+```csharp
+using Debug = Game.Shared.FormattedDebug;
+```
+
+must also be updated to the final Shared namespace and alphabetized.
+
+### 18.3 `var`
+
+Replace explicit local types with `var` where the right-hand side makes the type obvious. Representative audited cases include:
+
+- `ClientPositionManager` temporary `Vector3` values;
+- `UI_ReputationRewardEntry` temporary `Color`;
+- `UI_TooltipWindow` `RectTransform` lookup;
+- `ProceduralRiftMesh` obvious collection/array construction;
+- `ItemTooltipFactory` locally constructed `UI_TooltipLine` values;
+- obvious `GetComponent<T>()` and `new T(...)` local assignments throughout Client UI/VFX code.
+
+Do not replace explicit types where the type is not obvious or where it materially improves readability.
+
+### 18.4 Target-typed construction
+
+Use target-typed `new()`/`new(...)` where the declared target type is already explicit. Audited examples occur in:
+
+- `ClientSettingsManager`;
+- `ClientWorldManager`;
+- `LoadingScreenCollection`;
+- character stat/skill/tab panels;
+- `UI_Manager`;
+- `ItemTooltipFactory`;
+- `PlaceholderText`;
+- `UIConstants`;
+- `ProceduralRiftMesh`;
+- `RiftLightning`;
+- list/dictionary fields throughout Client UI.
+
+## 19. Filename and type changes
+
+The following filename/type changes are required.
+
+### CLIENT-001 — Client initialization filename
+
+```text
+Assets/Runtime/Client/Core/Initialisation.cs
+→ Assets/Runtime/Client/Core/ClientInitialization.cs
+```
+
+Primary type remains `ClientInitialization`.
+
+Preserve the `.meta` file.
+
+### CLIENT-002 — Client ECS test type
+
+```text
+TestClientSystem
+→ Test_ClientSystem
+```
+
+and:
+
+```text
+Assets/Runtime/Client/Systems/TestClientSystem.cs
+→ Assets/Runtime/Client/Systems/Test_ClientSystem.cs
+```
+
+Preserve the `.meta` file and update all type references.
+
+### CLIENT-003 — Client cast-bar window filename
+
+```text
+Assets/Runtime/Client/UI/CastBars/UI_ClientCastBar.cs
+→ Assets/Runtime/Client/UI/CastBars/UI_ClientCastBarWindow.cs
+```
+
+Primary type remains `UI_ClientCastBarWindow`.
+
+Preserve the `.meta` file.
+
+### CLIENT-004 — Character-creation stage button type
+
+The file already follows the established `UI_CC_` family name:
+
+```text
+Assets/Runtime/Client/UI/CharacterCreation/UI_CC_StageButton.cs
+```
+
+Rename the primary type:
+
+```text
+StageButton
+→ UI_CC_StageButton
+```
+
+Update every reference. Preserve the script `.meta` and validate prefabs/scenes using the component.
+
+### CLIENT-005 — Tooltip filename typo
+
+```text
+Assets/Runtime/Client/UI/Tooltip/UI_TooltipDoubleLIne.cs
+→ Assets/Runtime/Client/UI/Tooltip/UI_TooltipDoubleLine.cs
+```
+
+Primary type remains `UI_TooltipDoubleLine`.
+
+Preserve the `.meta` file.
+
+### CLIENT-006 — Item tooltip factory filename
+
+```text
+Assets/Runtime/Client/Utility/ItemTooltipFactor.cs
+→ Assets/Runtime/Client/Utility/ItemTooltipFactory.cs
+```
+
+Primary type remains `ItemTooltipFactory`.
+
+Preserve the `.meta` file.
+
+## 20. Immutable and acronym naming
+
+### 20.1 Constants and static readonly fields
+
+Apply the following immutable renames:
+
+| File | Current | Required |
+|---|---|---|
+| `Core/ClientAudioManager.cs` | `MaxCacheSize` | `MAX_CACHE_SIZE` |
+| `Utility/PlaceholderText.cs` | `PlaceholderRegex` | `PLACEHOLDER_REGEX` |
+| `Utility/PlaceholderText.cs` | `resolvers` | `RESOLVERS` |
+| `Utility/UIConstants.cs` | `PrimaryText` | `PRIMARY_TEXT` |
+| `Utility/UIConstants.cs` | `SecondaryText` | `SECONDARY_TEXT` |
+| `VFX/VFX_SorcererRift.cs` | `OpenAmountProperty` | `OPEN_AMOUNT_PROPERTY` |
+| `VFX/VFX_SorcererRift.cs` | `ShaderProgress` | `SHADER_PROGRESS` |
+| `VFX/VFX_SorcererRift.cs` | `ShaderTrailStrength` | `SHADER_TRAIL_STRENGTH` |
+
+`SETTINGS_PREFIX` and `FILL_SPEED` already conform and remain unchanged.
+
+### 20.2 Project-defined acronym identifiers
+
+Apply uppercase acronym casing to Client-owned identifiers. Explicit audit hits include:
+
+- `CharacterCreationManager._selectedClassId` → `_selectedClassID`;
+- `CharacterCreationManager._selectedRaceId` → `_selectedRaceID`;
+- `CharacterCreationManager.GetCurrentClassId()` → `GetCurrentClassID()`;
+- `CharacterCreationManager.GetCurrentRaceId()` → `GetCurrentRaceID()`;
+- `ClientWorldManager` parameters `sceneId` → `sceneID`;
+- `UI_SpecialResourceCounter` `slotId` identifiers → `slotID`;
+- `UI_CharacterEquipmentEntry` `slotId`/`_slotId` identifiers → `slotID`/`_slotID`.
+
+During implementation, perform a final symbol scan for Client-owned `*Id`, `*Guid`, `*Pvp`, `*Npc`, `*Ecs`, `*Vfx`, `*Sfx`, `*Pct`, and `*Dps` identifiers and correct only genuine project abbreviations. Do not alter framework names such as `Guid`, `NetworkIdentity`, or ordinary words containing those letter sequences.
+
+Shared-owned symbols referenced by Client are updated in the Shared migration rather than treated as Client declarations.
+
+### 20.3 Event naming
+
+`Assets/Runtime/Client/VFX/ProceduralRiftMesh.cs` currently declares:
+
+```csharp
+public event System.Action OnGenerated;
+```
+
+Rename it to:
+
+```csharp
+public event System.Action onGenerated;
+```
+
+Update subscribers, including `RiftLightning`.
+
+Private callback fields that already use `on...` naming remain unchanged even though ordinary private fields use an underscore.
+## 21. Private-field rename manifest
+
+Every private field below must be renamed to `_camelCase`. If the field is Unity-serialized, add `FormerlySerializedAs` with the exact old name before renaming it.
+
+### 21.1 Core
+
+#### `Core/ClientAudioManager.cs`
+
+- `sfxSource` → `_sfxSource`.
+
+#### `Core/ClientCombatManager.cs`
+
+- `inCombat` → `_inCombat`;
+- `activeCooldowns` → `_activeCooldowns`;
+- `globalCooldownRemaining` → `_globalCooldownRemaining`.
+
+#### `Core/ClientPositionManager.cs`
+
+- `chunkSize` → `_chunkSize`.
+
+#### `Core/ClientSettingsManager.cs`
+
+- `settings` → `_settings`.
+
+#### `Core/ClientWorldManager.cs`
+
+- `loadedScenes` → `_loadedScenes`.
+
+#### `Core/Collections/LoadingScreenCollection.cs`
+
+- `splashImages` → `_splashImages`.
+
+#### `Core/Controllers/CharacterCameraController.cs`
+
+- `cameraInputController` → `_cameraInputController`;
+- `orbitalFollow` → `_orbitalFollow`;
+- `characterRotationSpeed` → `_characterRotationSpeed`.
+
+#### `Core/Controllers/Test_CharacterController.cs`
+
+- `moveSpeed` → `_moveSpeed`;
+- `jumpPower` → `_jumpPower`;
+- `actorMotor` → `_actorMotor`.
+
+#### `Core/Managers/CharacterCreationManager.cs`
+
+- `characterCreationWindow` → `_characterCreationWindow`;
+- `sceneCamera` → `_sceneCamera`;
+- `_selectedClassId` → `_selectedClassID`;
+- `_selectedRaceId` → `_selectedRaceID`.
+
+#### `Core/Managers/CharacterSelectionManager.cs`
+
+- `characterSelectionWindow` → `_characterSelectionWindow`;
+- `sceneCamera` → `_sceneCamera`.
+
+### 21.2 Action bars and cast bars
+
+#### `UI/ActionBars/UI_ActionBarButton.cs`
+
+- `keybindText` → `_keybindText`;
+- `spellIconImage` → `_spellIconImage`;
+- `spellID` → `_spellID`;
+- `spellRank` → `_spellRank`;
+- `contextMenuEntryPrefab` → `_contextMenuEntryPrefab`;
+- `key` → `_key`.
+
+#### `UI/ActionBars/UI_ActionBarPanel.cs`
+
+- `actionBarIndex` → `_actionBarIndex`.
+
+#### `UI/CastBars/UI_CastBar.cs`
+
+- `parentWindowName` → `_parentWindowName`;
+- `defaultMaterial` → `_defaultMaterial`.
+
+#### `UI/CastBars/UI_ClientCastBarWindow.cs` after CLIENT-003
+
+- `castBar` → `_castBar`;
+- `castColor` → `_castColor`;
+- `interruptColor` → `_interruptColor`;
+- `completeColor` → `_completeColor`.
+
+### 21.3 Character creation
+
+#### `UI/CharacterCreation/UI_CC_ClassInfoPanel.cs`
+
+- `classNameText` → `_classNameText`;
+- `classDescriptionText` → `_classDescriptionText`;
+- `classIconImage` → `_classIconImage`.
+
+#### `UI/CharacterCreation/UI_CC_ClassListEntry.cs`
+
+- `classIconImage` → `_classIconImage`;
+- `index` → `_index`.
+
+#### `UI/CharacterCreation/UI_CC_ClassListPanel.cs`
+
+- `contentContainer` → `_contentContainer`;
+- `entryPrefab` → `_entryPrefab`;
+- `classDefinitionLibrary` → `_classDefinitionLibrary`.
+
+#### `UI/CharacterCreation/UI_CC_FinalizePanel.cs`
+
+- `createButton` → `_createButton`;
+- `nameInput` → `_nameInput`.
+
+#### `UI/CharacterCreation/UI_CC_NextStageButton.cs`
+
+- `currentPanel` → `_currentPanel`;
+- `nextPanel` → `_nextPanel`.
+
+The existing public `_instance` field is not covered by the private-field rule and must not be changed merely as part of this item.
+
+#### `UI/CharacterCreation/UI_CC_RaceInfoPanel.cs`
+
+- `raceNameText` → `_raceNameText`;
+- `raceDescriptionText` → `_raceDescriptionText`;
+- `raceIconImage` → `_raceIconImage`.
+
+#### `UI/CharacterCreation/UI_CC_RaceListEntry.cs`
+
+- `raceIconImage` → `_raceIconImage`;
+- `index` → `_index`.
+
+#### `UI/CharacterCreation/UI_CC_RaceListPanel.cs`
+
+- `contentContainer` → `_contentContainer`;
+- `entryPrefab` → `_entryPrefab`;
+- `raceDefinitionLibrary` → `_raceDefinitionLibrary`.
+
+#### `UI/CharacterCreation/UI_CC_StageButton.cs`
+
+- `openPanels` → `_openPanels`;
+- `closePanels` → `_closePanels`.
+
+### 21.4 Character selection
+
+#### `UI/CharacterSelection/UI_CharacterListEntry.cs`
+
+- `classIconImage` → `_classIconImage`;
+- `characterNameText` → `_characterNameText`;
+- `characterInfoText` → `_characterInfoText`;
+- `factionIcon` → `_factionIcon`;
+- `index` → `_index`.
+
+#### `UI/CharacterSelection/UI_CharacterListPanel.cs`
+
+- `contentContainer` → `_contentContainer`;
+- `entryPrefab` → `_entryPrefab`.
+
+#### `UI/CharacterSelection/UI_SelectedCharacterPanel.cs`
+
+- `enterWorldButton` → `_enterWorldButton`;
+- `characterNameText` → `_characterNameText`;
+- `characterInfoText` → `_characterInfoText`.
+
+### 21.5 Character unit frame
+
+#### `UI/CharacterUnitFrame/UI_CharacterResourceBar.cs`
+
+- `playerStatContainer` → `_playerStatContainer`;
+- `valueText` → `_valueText`;
+- `percentageText` → `_percentageText`;
+- `trackedResources` → `_trackedResources`.
+
+#### `UI/CharacterUnitFrame/UI_CharacterSpecialBar.cs`
+
+- `playerStatContainer` → `_playerStatContainer`;
+- `trackedStat` → `_trackedStat`;
+- `container` → `_container`;
+- `counterPrefab` → `_counterPrefab`;
+- `counters` → `_counters`;
+- `currentMax` → `_currentMax`;
+- `currentValue` → `_currentValue`.
+
+#### `UI/CharacterUnitFrame/UI_InstabilityBar.cs`
+
+- `playerStatContainer` → `_playerStatContainer`.
+
+#### `UI/CharacterUnitFrame/UI_SpecialResourceCounter.cs`
+
+- `background` → `_background`;
+- `icon` → `_icon`;
+- `index` → `_index`.
+
+### 21.6 Character window
+
+#### `UI/CharacterWindow/UI_CharacterDataPanel.cs`
+
+- `characterNameText` → `_characterNameText`;
+- `characterTitleText` → `_characterTitleText`;
+- `characterLevelText` → `_characterLevelText`;
+- `characterClassText` → `_characterClassText`;
+- `characterRaceText` → `_characterRaceText`;
+- `characterClassIcon` → `_characterClassIcon`;
+- `characterRaceIcon` → `_characterRaceIcon`;
+- `characterClassBackground` → `_characterClassBackground`.
+
+#### `UI/CharacterWindow/UI_CharacterEquipmentEntry.cs`
+
+- `graphics` → `_graphics`;
+- `_slotId` → `_slotID` where this private identifier occurs.
+
+#### `UI/CharacterWindow/UI_CharacterEquipmentList.cs`
+
+- `container` → `_container`;
+- `slotEntryPrefab` → `_slotEntryPrefab`;
+- `equipmentSlots` → `_equipmentSlots`.
+
+#### `UI/CharacterWindow/UI_CharacterEquipmentPanel.cs`
+
+- `subPanels` → `_subPanels`.
+
+#### `UI/CharacterWindow/UI_CharacterFocusStatsPanel.cs`
+
+- `container` → `_container`;
+- `statEntryPrefab` → `_statEntryPrefab`;
+- `focusStatDefinitions` → `_focusStatDefinitions`;
+- `currentStats` → `_currentStats`.
+
+#### `UI/CharacterWindow/UI_CharacterSkillsPanel.cs`
+
+- `subPanels` → `_subPanels`.
+
+#### `UI/CharacterWindow/UI_CharacterStatEntry.cs`
+
+- `statNameText` → `_statNameText`;
+- `currentValueText` → `_currentValueText`;
+- `statIcon` → `_statIcon`;
+- `index` → `_index`.
+
+#### `UI/CharacterWindow/UI_CharacterStatList.cs`
+
+- `container` → `_container`;
+- `statEntryPrefab` → `_statEntryPrefab`;
+- `statDefinitions` → `_statDefinitions`;
+- `focusStatDefinitions` → `_focusStatDefinitions`;
+- `relevantStatDefinitions` → `_relevantStatDefinitions`;
+- `currentStats` → `_currentStats`.
+
+#### `UI/CharacterWindow/UI_CharacterStatTypeButton.cs`
+
+- `statTypeTag` → `_statTypeTag`.
+
+#### `UI/CharacterWindow/UI_CharacterStatsPanel.cs`
+
+- `subPanels` → `_subPanels`.
+
+#### `UI/CharacterWindow/UI_CharacterTabButton.cs`
+
+- `associatedPanel` → `_associatedPanel`;
+- `tabText` → `_tabText`;
+- `tabGraphics` → `_tabGraphics`;
+- `characterTabPanel` → `_characterTabPanel`.
+
+#### `UI/CharacterWindow/UI_CharacterTabPanel.cs`
+
+- `tabButtons` → `_tabButtons`;
+- `tabButtonList` → `_tabButtonList`.
+
+#### `UI/CharacterWindow/UI_CharacterWeaponSkillBar.cs`
+
+- `weaponSkillEntry` → `_weaponSkillEntry`.
+
+#### `UI/CharacterWindow/UI_CharacterWeaponSkillEntry.cs`
+
+- `weaponTypeText` → `_weaponTypeText`;
+- `levelText` → `_levelText`;
+- `weaponSkillBar` → `_weaponSkillBar`;
+- `weaponType` → `_weaponType`;
+- `index` → `_index`.
+
+#### `UI/CharacterWindow/UI_CharacterWeaponSkillsList.cs`
+
+- `container` → `_container`;
+- `skillEntryPrefab` → `_skillEntryPrefab`;
+- `trackedWeaponTypes` → `_trackedWeaponTypes`;
+- `playerExperience` → `_playerExperience`.
+
+### 21.7 Common UI
+
+#### `UI/Common/UI_AuraEntry.cs`
+
+- `data` → `_data`;
+- `graphics` → `_graphics`;
+- `durationText` → `_durationText`;
+- `index` → `_index`.
+
+#### `UI/Common/UI_DragGhost.cs`
+
+- `iconImage` → `_iconImage`;
+- `rectTransform` → `_rectTransform`;
+- `rootCanvas` → `_rootCanvas`.
+
+#### `UI/Common/UI_Manager.cs`
+
+- `instance` → `_instance`.
+
+Protected fields such as `root`, `rootCanvasGroup`, `windows`, and `openedWindows` are not covered by the private-field convention and are not renamed in this pass.
+
+#### `UI/Common/UI_ProgressBar.cs`
+
+- `canvasGroup` → `_canvasGroup`.
+
+#### `UI/Common/UI_WorldSpace.cs`
+
+- `instance` → `_instance`.
+
+#### `UI/Common/UI_WorldSpaceUIManager.cs`
+
+- `cornerBuffer` → `_cornerBuffer`.
+
+`UI_Panel.onShowWindow` and `UI_Panel.onHideWindow` remain callback-style names under section 13 of the convention.
+
+### 21.8 Context menu
+
+#### `UI/ContextMenu/UI_ContextMenuEntry.cs`
+
+- `iconImage` → `_iconImage`;
+- `nameText` → `_nameText`.
+
+The private callback `onClick` remains `onClick`.
+
+#### `UI/ContextMenu/UI_ContextMenuWindow.cs`
+
+- `contentsPanel` → `_contentsPanel`;
+- `backdropBlocker` → `_backdropBlocker`;
+- `panelRect` → `_panelRect`.
+
+### 21.9 Dialogue
+
+#### `UI/Dialogue/UI_DialogueBodyPanel.cs`
+
+- `dialogueText` → `_dialogueText`;
+- `optionList` → `_optionList`.
+
+#### `UI/Dialogue/UI_DialogueNPCInfoPanel.cs`
+
+- `npcNameText` → `_npcNameText`;
+- `npcSubtext` → `_npcSubtext`;
+- `npcPortrait` → `_npcPortrait`.
+
+#### `UI/Dialogue/UI_DialogueOptionEntry.cs`
+
+- `choiceText` → `_choiceText`;
+- `choiceIcon` → `_choiceIcon`.
+
+#### `UI/Dialogue/UI_DialogueOptionList.cs`
+
+- `currentNode` → `_currentNode`;
+- `container` → `_container`;
+- `slotEntryPrefab` → `_slotEntryPrefab`.
+
+### 21.10 Floating combat text
+
+#### `UI/FloatingCombatText/UI_FCTManager.cs`
+
+- `instance` → `_instance`;
+- `fctPrefab` → `_fctPrefab`;
+- `autoHitColor` → `_autoHitColor`;
+- `abilityHitColor` → `_abilityHitColor`;
+- `petHitColor` → `_petHitColor`;
+- `healColor` → `_healColor`;
+- `buffColor` → `_buffColor`;
+- `debuffColor` → `_debuffColor`;
+- `experienceColor` → `_experienceColor`;
+- `heightOffset` → `_heightOffset`;
+- `randomSpreadX` → `_randomSpreadX`.
+
+#### `UI/FloatingCombatText/UI_FloatingCombatText.cs`
+
+- `text` → `_text`;
+- `floatSpeed` → `_floatSpeed`;
+- `fadeDuration` → `_fadeDuration`;
+- `screenSize` → `_screenSize`;
+- `floatDirection` → `_floatDirection`;
+- `elapsedTime` → `_elapsedTime`;
+- `sizeMultiplier` → `_sizeMultiplier`;
+- `durationMultiplier` → `_durationMultiplier`.
+
+### 21.11 Inventory
+
+#### `UI/Inventory/UI_InventoryFooterPanel.cs`
+
+- `capacityText` → `_capacityText`;
+- `currencyText` → `_currencyText`.
+
+#### `UI/Inventory/UI_InventoryGridPanel.cs`
+
+- `container` → `_container`;
+- `slotEntryPrefab` → `_slotEntryPrefab`.
+
+#### `UI/Inventory/UI_InventorySlotEntry.cs`
+
+- `dragSource` → `_dragSource`;
+- `index` → `_index`;
+- `itemInstance` → `_itemInstance`;
+- `graphics` → `_graphics`;- `stackSizeText` → `_stackSizeText`.
+
+### 21.12 Loading screen and main menu
+
+#### `UI/LoadingScreen/LoadingScreenController.cs`
+
+- `canvasGroup` → `_canvasGroup`;
+- `splashImage` → `_splashImage`;
+- `loadingIcon` → `_loadingIcon`;
+- `stage` → `_stage`;
+- `maxStages` → `_maxStages`;
+- `targetFillAmount` → `_targetFillAmount`;
+- `isShowing` → `_isShowing`.
+
+`FILL_SPEED` already conforms.
+
+#### `UI/MainMenu/UI_MainMenuWindow.cs`
+
+- `usernameInput` → `_usernameInput`;
+- `passwordInput` → `_passwordInput`;
+- `loginButton` → `_loginButton`.
+
+### 21.13 Nameplates
+
+#### `UI/Nameplates/UI_Nameplate.cs`
+
+- `initialized` → `_initialized`;
+- `heightOffset` → `_heightOffset`;
+- `screenSize` → `_screenSize`;
+- `nameText` → `_nameText`;
+- `barsContainer` → `_barsContainer`;
+- `healthBar` → `_healthBar`;
+- `castBar` → `_castBar`;
+- `actor` → `_actor`;
+- `rectTransform` → `_rectTransform`;
+- `canvas` → `_canvas`.
+
+#### `UI/Nameplates/UI_NameplateHealthBar.cs`
+
+- `nameText` → `_nameText`;
+- `percentText` → `_percentText`;
+- `levelText` → `_levelText`.
+
+#### `UI/Nameplates/UI_NameplateManager.cs`
+
+- `instance` → `_instance`;
+- `targetedActor` → `_targetedActor`;
+- `sortedForStacking` → `_sortedForStacking`.
+
+Public configuration/data fields in this behavioural class are not renamed under the locked private-field rule alone.
+
+### 21.14 Quest log
+
+#### `UI/QuestLog/UI_QuestDetailsPanel.cs`
+
+- `instance` → `_instance`;
+- `questName` → `_questName`;
+- `questSubtext` → `_questSubtext`;
+- `questIcon` → `_questIcon`;
+- `questDescription` → `_questDescription`;
+- `objectivesPanel` → `_objectivesPanel`;
+- `rewardsPanel` → `_rewardsPanel`;
+- `def` → `_def`.
+
+#### `UI/QuestLog/UI_QuestListEntry.cs`
+
+- `titleText` → `_titleText`;
+- `subtext` → `_subtext`;
+- `levelText` → `_levelText`;
+- `icon` → `_icon`;
+- `data` → `_data`;
+- `index` → `_index`.
+
+#### `UI/QuestLog/UI_QuestListPanel.cs`
+
+- `instance` → `_instance`;
+- `container` → `_container`;
+- `slotEntryPrefab` → `_slotEntryPrefab`;
+- `quests` → `_quests`.
+
+#### `UI/QuestLog/UI_QuestObjectivesEntry.cs`
+
+- `data` → `_data`;
+- `index` → `_index`;
+- `objectiveText` → `_objectiveText`.
+
+#### `UI/QuestLog/UI_QuestObjectivesPanel.cs`
+
+- `container` → `_container`;
+- `slotEntryPrefab` → `_slotEntryPrefab`;
+- `def` → `_def`.
+
+#### `UI/QuestLog/UI_QuestRewardsEntry.cs`
+
+- `graphics` → `_graphics`;
+- `data` → `_data`;
+- `index` → `_index`.
+
+#### `UI/QuestLog/UI_QuestRewardsPanel.cs`
+
+- `choiceText` → `_choiceText`;
+- `goldReward` → `_goldReward`;
+- `goldAmountText` → `_goldAmountText`;
+- `xpReward` → `_xpReward`;
+- `xpAmountText` → `_xpAmountText`;
+- `factionReward` → `_factionReward`;
+- `factionIcon` → `_factionIcon`;
+- `factionReputationText` → `_factionReputationText`;
+- `container` → `_container`;
+- `slotEntryPrefab` → `_slotEntryPrefab`;
+- `def` → `_def`.
+
+### 21.15 Reputation window
+
+#### `UI/ReputationWindow/UI_ReputationBodyPanel.cs`
+
+- `progressBar` → `_progressBar`;
+- `factionIcon` → `_factionIcon`;
+- `factionNameText` → `_factionNameText`;
+- `reputationValueText` → `_reputationValueText`;
+- `reputationRankText` → `_reputationRankText`;
+- `factionDescriptionText` → `_factionDescriptionText`;
+- `currentFaction` → `_currentFaction`;
+- `currentProgress` → `_currentProgress`;
+- `container` → `_container`;
+- `slotEntryPrefab` → `_slotEntryPrefab`;
+- `markerPrefab` → `_markerPrefab`.
+
+#### `UI/ReputationWindow/UI_ReputationHeaderEntry.cs`
+
+- `progressBar` → `_progressBar`;
+- `factionIcon` → `_factionIcon`;
+- `data` → `_data`;
+- `progress` → `_progress`;
+- `index` → `_index`.
+
+#### `UI/ReputationWindow/UI_ReputationHeaderPanel.cs`
+
+- `container` → `_container`;
+- `slotEntryPrefab` → `_slotEntryPrefab`;
+- `currentCategory` → `_currentCategory`;
+- `playerReputation` → `_playerReputation`.
+
+#### `UI/ReputationWindow/UI_ReputationRewardEntry.cs`
+
+- `index` → `_index`;
+- `data` → `_data`;
+- `header` → `_header`;
+- `entryText` → `_entryText`;
+- `thresholdText` → `_thresholdText`;
+- `thresholdIcon` → `_thresholdIcon`;
+- `graphics` → `_graphics`.
+
+### 21.16 Talent window
+
+#### `UI/TalentWindow/UI_TalentHeaderPanel.cs`
+
+- `classIconImage` → `_classIconImage`;
+- `classNameText` → `_classNameText`;
+- `characterLevelText` → `_characterLevelText`;
+- `unspentPointsText` → `_unspentPointsText`;
+- `spentPointsText` → `_spentPointsText`.
+
+#### `UI/TalentWindow/UI_TalentTreeNode.cs`
+
+- `graphics` → `_graphics`;
+- `talentDefinition` → `_talentDefinition`;
+- `rank` → `_rank`.
+
+#### `UI/TalentWindow/UI_TalentTreePanel.cs`
+
+- `graphics` → `_graphics`;
+- `specNameText` → `_specNameText`;
+- `spentPointsText` → `_spentPointsText`;
+- `specIndex` → `_specIndex`;
+- `talentNodePanelPrefab` → `_talentNodePanelPrefab`;
+- `talentNodePanelContainer` → `_talentNodePanelContainer`;
+- `rowSpacing` → `_rowSpacing`;
+- `talentNodes` → `_talentNodes`;
+- `specialisation` → `_specialisation`.
+
+#### `UI/TalentWindow/UI_TalentTreeViewerPanel.cs`
+
+- `instance` → `_instance`;
+- `graphics` → `_graphics`;
+- `talentNameText` → `_talentNameText`;
+- `talentDescriptionText` → `_talentDescriptionText`.
+
+### 21.17 Target window
+
+#### `UI/TargetWindow/UI_TargetAuraBar.cs`
+
+- `interactable` → `_interactable`.
+
+#### `UI/TargetWindow/UI_TargetCastBar.cs`
+
+- `spellNameText` → `_spellNameText`;
+- `spellTimeText` → `_spellTimeText`.
+
+#### `UI/TargetWindow/UI_TargetInfoPanel.cs`
+
+- `actorNameText` → `_actorNameText`;
+- `actorInfoText` → `_actorInfoText`.
+
+#### `UI/TargetWindow/UI_TargetResourceBar.cs`
+
+- `trackedResources` → `_trackedResources`;
+- `valueText` → `_valueText`;
+- `percentageText` → `_percentageText`.
+
+### 21.18 Tooltip
+
+#### `UI/Tooltip/UI_TooltipDoubleLine.cs` after CLIENT-005
+
+- `leftText` → `_leftText`;
+- `rightText` → `_rightText`.
+
+#### `UI/Tooltip/UI_TooltipPanel.cs`
+
+- `tooltipHeader` → `_tooltipHeader`;
+- `tooltipBody` → `_tooltipBody`;
+- `tooltipFooter` → `_tooltipFooter`;
+- `tooltipIcon` → `_tooltipIcon`;
+- `singleLinePrefab` → `_singleLinePrefab`;
+- `doubleLinePrefab` → `_doubleLinePrefab`.
+
+#### `UI/Tooltip/UI_TooltipSingleLine.cs`
+
+- `lineText` → `_lineText`.
+
+### 21.19 UI VFX
+
+#### `UI/VFX/UI_ScrollingFog.cs`
+
+- `mat` → `_mat`;
+- `offset` → `_offset`.
+
+### 21.20 Utility
+
+#### `Utility/ItemTooltipFactory.cs` after CLIENT-006
+
+- `cache` → `_cache`.
+
+#### `Utility/PlaceholderText.cs`
+
+No ordinary private-field rename is required after applying the immutable renames `PLACEHOLDER_REGEX` and `RESOLVERS`.
+
+### 21.21 Client VFX
+
+#### `VFX/ProceduralProjectileMesh.cs`
+
+- `shapeType` → `_shapeType`;
+- `scale` → `_scale`;
+- `segments` → `_segments`;
+- `rings` → `_rings`;
+- `capsuleLength` → `_capsuleLength`;
+- `taperStrength` → `_taperStrength`;
+- `cachedMesh` → `_cachedMesh`.
+
+#### `VFX/ProceduralRiftMesh.cs`
+
+- `radius` → `_radius`;
+- `height` → `_height`;
+- `segments` → `_segments`;
+- `minWidthFactor` → `_minWidthFactor`;
+- `maxWidthFactor` → `_maxWidthFactor`;
+- `edgeJitter` → `_edgeJitter`;
+- `centreWobble` → `_centreWobble`;
+- `thickness` → `_thickness`;
+- `spiralTurns` → `_spiralTurns`;
+- `spiralJitter` → `_spiralJitter`;
+- `randomiseOnAwake` → `_randomiseOnAwake`;
+- `seed` → `_seed`;
+- `mesh` → `_mesh`.
+
+Also rename event `OnGenerated` → `onGenerated` as specified in section 20.3.
+
+#### `VFX/RiftLightning.cs`
+
+- `intervalMin` → `_intervalMin`;
+- `intervalMax` → `_intervalMax`;
+- `range` → `_range`;
+- `minTargetDistance` → `_minTargetDistance`;
+- `hitLayers` → `_hitLayers`;
+- `maxSimultaneous` → `_maxSimultaneous`;
+- `boltColor` → `_boltColor`;
+- `boltWidth` → `_boltWidth`;
+- `boltSegments` → `_boltSegments`;
+- `jitter` → `_jitter`;
+- `flashDuration` → `_flashDuration`;
+- `boltMaterial` → `_boltMaterial`;
+- `riftMesh` → `_riftMesh`;
+- `activeStrikes` → `_activeStrikes`;
+- `runtimeMaterial` → `_runtimeMaterial`;
+- `selfColliders` → `_selfColliders`;
+- `activeBoltObjects` → `_activeBoltObjects`.
+
+Explicit `HashSet<T>` constructors should become target-typed `new()`.
+
+#### `VFX/VFX_ImpactEffect.cs`
+
+- `lifetime` → `_lifetime`.
+
+#### `VFX/VFX_SorcererRift.cs`
+
+- `openDuration` → `_openDuration`;
+- `closeDuration` → `_closeDuration`;
+- `lifetime` → `_lifetime`;
+- `distortionMaterial` → `_distortionMaterial`;
+- `distortionSize` → `_distortionSize`;
+- `distortionYOffset` → `_distortionYOffset`;
+- `pulseWaveMaterial` → `_pulseWaveMaterial`;
+- `pulseMaxRadius` → `_pulseMaxRadius`;
+- `pulseWaveHeight` → `_pulseWaveHeight`;
+- `pulseTrailStrength` → `_pulseTrailStrength`;
+- `pulseDuration` → `_pulseDuration`;
+- `meshRenderer` → `_meshRenderer`;
+- `activeCoroutine` → `_activeCoroutine`;
+- `triggerCoroutine` → `_triggerCoroutine`;
+- `closing` → `_closing`;
+- `currentOpenAmount` → `_currentOpenAmount`;
+- `distortionMat` → `_distortionMat`;
+- `distortionTransform` → `_distortionTransform`.
+
+Apply the immutable renames from section 20.1 at the same time.
+
+## 22. Files without additional hard symbol renames
+
+The following audited files require their folder namespace migration and/or documentation/`using`/preferred-syntax cleanup, but no additional hard Client-owned symbol rename was identified beyond the global rules above:
+
+- `Core/CameraManager.cs`;
+- `Core/ClientAccountManager.cs` — Client references to Shared `Actor.Id` are updated when Shared becomes `Actor.ID`;
+- `Core/ClientConnectionManager.cs`;
+- `Core/ClientECSManager.cs`;
+- `Core/ClientVFXManager.cs`;
+- `Core/Controllers/ClientInputController.cs`;
+- `Shaders/UIShaderProperties.cs`;
+- `UI/ActionBars/UI_ActionBarWindow.cs`;
+- `UI/CharacterCreation/UI_CC_CreateButton.cs`;
+- `UI/CharacterCreation/UI_CharacterCreationWindow.cs`;
+- `UI/CharacterSelection/UI_CharacterSelectWindow.cs`;
+- `UI/CharacterSelection/UI_CreateCharacterButton.cs`;
+- `UI/CharacterSelection/UI_EnterWorldButton.cs`;
+- `UI/CharacterUnitFrame/UI_CharacterUnitWindow.cs`;
+- `UI/CharacterUnitFrame/UI_SpecialResourcePanel.cs`;
+- `UI/CharacterWindow/UI_CharacterWindow.cs`;
+- `UI/Common/IDraggableSlot.cs`;
+- `UI/Common/IListPanel.cs`;
+- `UI/Common/UI_AuraBar.cs`;
+- `UI/Common/UI_Button.cs`;
+- `UI/Common/UI_GenericPanel.cs`;
+- `UI/Common/UI_ListEntry.cs`;
+- `UI/Common/UI_Panel.cs`;
+- `UI/Common/UI_Window.cs`;
+- `UI/ContextMenu/UI_ContextMenuPanel.cs`;
+- `UI/Dialogue/UI_DialogueWindow.cs`;
+- `UI/ExperienceBar/UI_ExperienceBar.cs`;
+- `UI/ExperienceBar/UI_ExperienceBarWindow.cs`;
+- `UI/Inventory/UI_InventoryWindow.cs`;
+- `UI/MainMenu/UI_LoginButton.cs`;
+- `UI/Nameplates/UI_NameplateCastBar.cs`;
+- `UI/QuestLog/UI_QuestLogWindow.cs`;
+- `UI/ReputationWindow/UI_ReputationHeaderProgressBar.cs`;
+- `UI/ReputationWindow/UI_ReputationWindow.cs`;
+- `UI/TalentWindow/UI_TalentWindow.cs`;
+- `UI/TargetWindow/UI_TargetWindow.cs`;
+- `UI/Tooltip/ITooltipLine.cs`;
+- `UI/Tooltip/UI_TooltipWindow.cs`;
+- `Utility/RarityColor.cs`.
+
+`Utility/UIConstants.cs` and `Utility/PlaceholderText.cs` have immutable changes listed separately and therefore are not included above.
+
+## 23. Cross-assembly reference updates
+
+The Client assembly currently references many symbols that are scheduled to move or be renamed in `Game.Shared`. When the Shared and Client plans are implemented in sequence, update Client references to the final Shared API in the same integration branch.
+
+Representative required updates include:
+
+- `Game.Shared.FormattedDebug` → `Game.Shared.Utility.FormattedDebug`;
+- flat `Game.Shared` actor/runtime types → their final `Game.Shared.Runtime...` namespaces;
+- `Game.Shared.Data` concrete effect/target/condition types → their folder-derived namespaces;
+- `Actor.Id` → `Actor.ID`;
+- `CharacterData.Guid` → `CharacterData.GUID`;
+- `CharacterData.PvPFactionID` → `CharacterData.PVPFactionID`;
+- `DataDefinition.DefinitionId` → `DefinitionID`;
+- `PlayerReputation.PvPFaction` → `PVPFaction`;
+- spell modifier namespace/type changes;
+- authentication namespace changes.
+
+This is a reference update only in the Client pass; do not duplicate or diverge from the Shared migration contract.
+
+## 24. Client implementation order
+
+### Stage C1 — Documentation and syntax-only cleanup
+
+Apply:
+
+- XML documentation;
+- alphabetical `using` ordering;
+- target-typed `new()` where the target type is explicit;- `var` where the type is obvious.
+
+Compile the current namespaces before proceeding.
+
+### Stage C2 — Nonserialized private fields and immutable names
+
+Apply:
+
+- private `_camelCase` renames that do not touch Unity serialization;
+- the eight constant/static-readonly renames;
+- `onGenerated`;
+- safe Client-owned acronym renames.
+
+Update all symbol references atomically and compile.
+
+### Stage C3 — Serialized field renames
+
+Process subsystem-by-subsystem:
+
+1. Core/controllers/managers;
+2. action/cast bars;
+3. character creation/selection;
+4. character unit/character window;
+5. common/context/dialogue;
+6. floating combat text/inventory/loading/menu;
+7. nameplates;
+8. quest/reputation/talent/target/tooltip;
+9. client VFX.
+
+For every serialized field:
+
+1. add `FormerlySerializedAs`;
+2. rename the field;
+3. update C# references;
+4. update any Editor serialized-property paths;
+5. open representative prefabs/scenes;
+6. verify values are retained;
+7. compile before moving to the next group.
+
+### Stage C4 — Filename/type moves
+
+Apply CLIENT-001 through CLIENT-006 while preserving `.meta` files.
+
+For `UI_CC_StageButton`, validate every prefab/scene component after the type rename.
+
+### Stage C5 — Shared integration
+
+Apply the already-planned Shared namespace/API changes first, then update all Client references to the final Shared names.
+
+Compile Shared + Client before the Client namespace migration.
+
+### Stage C6 — Client namespace migration
+
+Perform as coherent dependency groups:
+
+1. `Game.Client.Core`, `Core.Controllers`, `Core.Managers`, `Core.Collections`;
+2. `Game.Client.Shaders`;
+3. `Game.Client.Systems`;
+4. the entire `Game.Client.UI.*` tree as one coordinated migration.
+
+The UI tree should not be left half-migrated because `UI.Common` base types are consumed across almost every feature folder.
+
+Update `Game.Core.GameBootstrapper` and Editor references in the same change.
+
+### Stage C7 — Final style sweep
+
+Run a final search/audit for:
+
+- private fields without `_camelCase`;
+- `const`/`static readonly` names not in `SCREAMING_SNAKE_CASE`;
+- Client-owned `*Id`/other acronym-casing breaches;
+- `TestFoo` types lacking `Test_`;
+- filename/primary-type mismatches;
+- non-folder namespaces;
+- observer/server/client RPC prefixes if any new RPCs were introduced while implementation was underway;
+- public APIs without XML documentation;
+- nonalphabetical `using` directives.
+
+## 25. Client validation
+
+The Client restyle is complete only when all of the following pass:
+
+- Unity Editor compilation;
+- standalone client compilation/build;
+- dedicated-server compilation still succeeds against the Shared/Core integration changes;
+- `GameBootstrapper` still enters `ClientInitialization.Begin(...)` in graphical execution;
+- client networking still connects/authenticates and enters the world;
+- additive world-scene loading and floating-origin behaviour are unchanged;
+- camera and input controls are unchanged;
+- spellcasting, cooldown UI, auto-attack input, and combat callbacks remain functional;
+- character creation and character selection UI retain all inspector references;
+- action bars, cast bars, character window, inventory, quest log, reputation, talents, target frame, tooltips, nameplates, and floating combat text load without missing scripts;
+- no existing serialized UI values reset after private-field renames;
+- `UI_CC_StageButton` components remain attached after the type rename;
+- `UI_ClientCastBarWindow`, `UI_TooltipDoubleLine`, `ItemTooltipFactory`, `ClientInitialization`, and `Test_ClientSystem` resolve under their corrected filenames;
+- `ProceduralRiftMesh.onGenerated` continues to drive `RiftLightning`;
+- VFX prefabs retain all serialized values and effect timing;
+- `UIShaderProperties` callers resolve the new `Game.Client.Shaders` namespace;
+- all Client references use the final Shared namespaces/API;
+- no missing MonoBehaviour scripts appear in scenes or prefabs;
+- a fresh audit of all 139 Client C# files reports no remaining hard convention breaches;
+- no functional change is intended or accepted as part of the restyle.
+
+## 26. Game.Client result
+
+| Item | Result |
+|---|---:|
+| C# files audited | 139 |
+| Assembly definition files audited | 1 |
+| Files requiring namespace migration | 130 |
+| UI files requiring coordinated namespace migration | 111 |
+| Explicit filename/type corrections | 6 |
+| Immutable (`const`/`static readonly`) renames | 8 |
+| Event-style rename | 1 (`OnGenerated` → `onGenerated`) |
+| Serialized-field migrations | Required across Core, UI, and VFX |
+| RPC renames defined in Client | 0 |
+| Functional changes intended | 0 |
+
+**Game.Client status:** Planned; not yet restyled.
+
+# Assembly 4 — `Game.Server`
+
+## 27. Server assembly scope
+
+**Assembly definition:** `Assets/Runtime/Server/Server.asmdef`  
+**Source root:** `Assets/Runtime/Server/`  
+**Audit baseline:** `e6137b25c0e04d667f71e8a8c9715da2d794f1c2`  
+**C# files audited:** 37
+
+The C# styling conventions do not define formatting or naming requirements for `.asmdef` JSON files. No restyling change is required to `Server.asmdef`.
+
+| Area | C# files |
+|---|---:|
+| `Core` | 15 |
+| `Networking` | 3 |
+| `Persistence` | 2 |
+| `Services` | 7 |
+| `Systems` | 9 |
+| `Test` | 1 |
+| **Total** | **37** |
+
+All 37 files were checked against `.docs/CSharp-Style-Conventions.md`.
+
+## 28. Server-specific compatibility rules
+
+1. **No Server-owned serialized private-field migration is required.** No `[SerializeField]` or `[SerializeReference]` declarations were found under `Assets/Runtime/Server/`.
+2. **Preserve `.meta` files** for every C# filename change.
+3. **Core namespace migration is cross-assembly.** `Game.Core.GameBootstrapper`, Client code, Shared code, Editor code, and any tests that reference `ServerInitialization` or Server manager types must be updated in the same integration change.
+4. **ECS namespace migration must be atomic.** The current `Game.Server.ECS` types are referenced extensively from Server Core. Move the Systems namespace and all references together.
+5. **ECS field renames are data-layout-neutral but symbol-wide.** Renaming `ActorId` to `ActorID`, for example, must update every system and manager that reads/writes the field without altering field type, order, or ECS semantics.
+6. **Persistence must remain compatible.** The Server pass does not rename JSON-facing fields in `PlayerAccountData`; however, `PlayerDatabase` contains Shared `CharacterData`, so the Shared persistence migration defined earlier must be validated through the Server loader.
+7. **PurrNet/network semantics must not change.** `PlayerID`, `SceneID`, ownership, scene subscription, spawn, authentication, and account/session behaviour must remain unchanged.
+8. **Shared restyle sequencing applies.** Server imports and references should target the final Shared namespaces and Shared symbol names rather than being migrated twice.
+9. **Callback-family naming overrides normal member casing.** `TickerRegistration.OnTick` and `OnExpire` are callbacks and therefore become `onTick` and `onExpire`.
+10. **Framework names remain unchanged.** `System.Guid`, `PlayerID`, `SceneID`, and framework/library type names are not renamed.
+11. **No functional changes are part of this plan.** Combat, spawning, world streaming, persistence, authentication, movement validation, ECS update order, and server simulation behaviour must remain identical.
+
+## 29. Namespace migration
+
+### 29.1 Core
+
+All 15 files under `Assets/Runtime/Server/Core/` must use:
+
+```text
+Game.Server.Core
+```
+
+Current cases are mostly `Game.Server`, with `ServerECSManager.cs` currently using `Game.Server.ECS`.
+
+### 29.2 Networking
+
+These files already use the correct folder namespace and require no namespace change:
+
+- `Networking/AccountServiceHooks.cs`;
+- `Networking/ActorDeathHooks.cs`;
+- `Networking/PlayerSessionData.cs`.
+
+### 29.3 Persistence
+
+- `Persistence/PlayerAccountData.cs`: `Game.Server` → `Game.Server.Persistence`.
+- `Persistence/PlayerDatabase.cs` already uses `Game.Server.Persistence`.
+
+### 29.4 Services
+
+The following already use `Game.Server.Services`:
+
+- `CharacterCreationService.cs`;
+- `CharacterExperienceService.cs`;
+- `CharacterReputationService.cs`;
+- `CharacterWeaponSkillService.cs`;
+- `EnterWorldService.cs`;
+- `PartyLootService.cs`.
+
+`PlayerAuthService.cs` currently uses `Game.Server.Persistence` and must move to:
+
+```text
+Game.Server.Services
+```
+
+### 29.5 Systems
+
+All nine files under `Assets/Runtime/Server/Systems/` currently use `Game.Server.ECS` and must move to:
+
+```text
+Game.Server.Systems
+```
+
+### 29.6 Test
+
+`Test/Test_NPCPathfinder.cs`:
+
+```text
+Game.Server → Game.Server.Test
+```
+
+### 29.7 Namespace result
+
+A total of **27 Server C# files require namespace changes**.
+
+## 30. Filename and primary-type corrections
+
+### SERVER-001 — Server initialization
+
+```text
+Assets/Runtime/Server/Core/Initialisation.cs
+→ Assets/Runtime/Server/Core/ServerInitialization.cs
+```
+
+Primary type remains `ServerInitialization`.
+
+### SERVER-002 — Spell-cast manager casing
+
+```text
+Assets/Runtime/Server/Core/ServerSpellcastManager.cs
+→ Assets/Runtime/Server/Core/ServerSpellCastManager.cs
+```
+
+Primary type remains `ServerSpellCastManager`.
+
+### SERVER-003 — Actor ECS component file
+
+`ActorComponents.cs` does not match its primary type.
+
+```text
+Assets/Runtime/Server/Systems/ActorComponents.cs
+→ Assets/Runtime/Server/Systems/ActorComponent.cs
+```
+
+Keep the secondary ECS component/buffer types in the same file; no type split is required by the current convention.
+
+### SERVER-004 — Spawn ECS component file
+
+`ChunkSpawnComponents.cs` does not match its primary type.
+
+```text
+Assets/Runtime/Server/Systems/ChunkSpawnComponents.cs
+→ Assets/Runtime/Server/Systems/SpawnPointComponent.cs
+```
+
+Keep `SpawnCommand` in the same file.
+
+For all four moves, preserve the existing Unity `.meta` file.
+
+## 31. Immutable and callback naming
+
+### 31.1 Constants and static readonly fields
+
+| File | Current | Required |
+|---|---|---|
+| `Core/ServerActorManager.cs` | `MaxAllowedSpeed` | `MAX_ALLOWED_SPEED` |
+| `Core/ServerActorManager.cs` | `ViolationThreshold` | `VIOLATION_THRESHOLD` |
+| `Core/ServerActorManager.cs` | `ValidationInterval` | `VALIDATION_INTERVAL` |
+| `Core/ServerStatManager.cs` | `RegenTickInterval` | `REGEN_TICK_INTERVAL` |
+| `Persistence/PlayerDatabase.cs` | `_filePath` | `FILE_PATH` |
+| `Services/PlayerAuthService.cs` | `SaltSize` | `SALT_SIZE` |
+| `Services/PlayerAuthService.cs` | `HashSize` | `HASH_SIZE` |
+| `Services/PlayerAuthService.cs` | `Iterations` | `ITERATIONS` |
+
+`ServerCooldownManager.GCD_ID` already conforms.
+
+### 31.2 Callback names
+
+In `ServerTickerManager.TickerRegistration`:
+
+```text
+OnTick   → onTick
+OnExpire → onExpire
+```
+
+Update every registration, invocation, and assignment.
+
+## 32. File-by-file audit
+
+### 32.1 Core
+
+#### `Assets/Runtime/Server/Core/Initialisation.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Rename file to `ServerInitialization.cs`.
+- Private fields: `host` → `_host`, `forceCleanServer` → `_forceCleanServer`.
+- Parameter: `Begin(MonoBehaviour _host)` → `Begin(MonoBehaviour host)`.
+- Alphabetize `using` directives.
+- Add XML documentation to `ServerInitialization` and `Begin`.
+- Update Shared references to the final Shared namespaces after the Shared migration, including `FormattedDebug`, `LoginAuthenticator`, and configuration types.
+- Update `Game.Core.GameBootstrapper` to call the final `Game.Server.Core.ServerInitialization`.
+
+#### `Assets/Runtime/Server/Core/ServerActorManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private fields: `entityManager` → `_entityManager`, `actorComponentQuery` → `_actorComponentQuery`.
+- Constants: apply the three `SCREAMING_SNAKE_CASE` renames from section 31.1.
+- Acronym casing: rename Server-owned `actorId` → `actorID`, `playerId` → `playerID`, and `sceneId` → `sceneID` locals/parameters where present.
+- Update ECS field references from `ActorId` → `ActorID`.
+- Update Shared actor references from `actor.Id` → `actor.ID` as part of Shared integration.
+- Add XML documentation to the public API, including `Instance`, `IsInitialized`, and `TryGetActor`.
+- Retain existing `NPCAggroState` type naming; its public fields are inside a private nested data type and are not an externally exposed API.
+
+#### `Assets/Runtime/Server/Core/ServerAuraManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private fields: `entityManager` → `_entityManager`, `actorComponentQuery` → `_actorComponentQuery`, `_nextInstanceId` → `_nextInstanceID`.
+- Acronym casing: `instanceId` → `instanceID`, `targetActorId` → `targetActorID`, `auraDefId` → `auraDefID`, `actorId` → `actorID`, `auraDefinitionId` → `auraDefinitionID`.
+- Update ECS `ActorId`, `InstanceId`, and `AuraDefinitionId` references to their final `...ID` forms.
+- Add XML documentation to `ServerAuraManager`, `Instance`, `IsInitialized`, `ApplyAura`, `DispelAura`, `RemoveAllAuras`, `HasAura`, and `GetAuraStackCount`.
+- Prefer target-typed construction where a declared target type is already explicit.
+
+#### `Assets/Runtime/Server/Core/ServerAutoAttackManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Acronym casing: Server-owned `actorId` locals → `actorID`.
+- Add XML documentation to `ServerAutoAttackManager`, `Instance`, and `IsInitialized`.
+- No ordinary private-field rename is required; the persistent manager collections already use `_camelCase`.
+
+#### `Assets/Runtime/Server/Core/ServerConnectionManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private fields: `networkManager` → `_networkManager`, `connectedPlayers` → `_connectedPlayers`, `sessionData` → `_sessionData`.
+- Acronym casing: `playerId` → `playerID`, `characterId` → `characterID`.
+- Use target-typed `new()` for the two dictionary fields after renaming.
+- Add XML documentation to the public manager API, including `Initialized`, `Unsubscribe`, `SetSessionData`, `SetAccountData`, `GetSessionData`, and `GetAccountData`.
+- Update `PlayerSessionData.PlayerId`/`CharacterId` references to `PlayerID`/`CharacterID`.
+
+#### `Assets/Runtime/Server/Core/ServerCooldownManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private fields: `entityManager` → `_entityManager`, `actorComponentQuery` → `_actorComponentQuery`.
+- Acronym casing: `actorId` → `actorID`, `spellId` → `spellID`.
+- Update ECS `ActorId` references to `ActorID`.
+- Add XML documentation to `ServerCooldownManager`, `Instance`, `IsInitialized`, `GCD_ID`, `StartCooldown`, `IsOnCooldown`, and `GetRemainingCooldown`.
+
+#### `Assets/Runtime/Server/Core/ServerECSManager.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Add XML documentation to `ServerECSManager`, `Initialized`, `DefaultWorld`, and `ServerInitializeECSWorlds`.
+- Update every `ECS.ServerECSManager`/`Game.Server.ECS.ServerECSManager` reference to the final Core namespace.
+
+#### `Assets/Runtime/Server/Core/ServerHooksManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Add XML documentation to `ServerHooksManager`, `Initialized`, and `ServerInitializeRPCHooks`.
+
+#### `Assets/Runtime/Server/Core/ServerInterestManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private field: `networkManager` → `_networkManager`.
+- Acronym casing: `playerId` → `playerID`; any Server-owned `sceneId` identifier → `sceneID`.
+- Add XML documentation to `Instance`, `IsInitialized`, `SubscribePlayerToChunk`, and `UnsubscribePlayerFromChunk`.
+- Update all references to the final `ServerWorldManager`, Shared actor/session, and Systems namespaces.
+
+#### `Assets/Runtime/Server/Core/ServerPositionManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private field: `chunkSize` → `_chunkSize`.
+- Add XML documentation to `Instance` and `IsInitialized`.
+
+#### `Assets/Runtime/Server/Core/ServerSpawnManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private fields:
+  - `networkManager` → `_networkManager`;
+  - `prefabRegistry` → `_prefabRegistry`;
+  - `sceneRegistry` → `_sceneRegistry`;
+  - `nextSceneIndex` → `_nextSceneIndex`;
+  - `spawnPointActorMap` → `_spawnPointActorMap`;
+  - `entityManager` → `_entityManager`;
+  - `spawnCommandQuery` → `_spawnCommandQuery`.
+- Acronym casing across Server-owned identifiers: `playerId` → `playerID`, `characterId` → `characterID`, `spawnPointGuid` → `spawnPointGUID`, `classId` → `classID`, `raceId` → `raceID`, `factionId` → `factionID`, `questId` → `questID`, `spellId` → `spellID`, and `sceneId` → `sceneID`.
+- Update `SpawnPointGuid` ECS fields to `SpawnPointGUID`.
+- Prefer target-typed construction for collection fields whose target type is explicit.
+- Add XML documentation to `ServerSpawnManager`, `Instance`, `IsInitialized`, `Awake`, `SpawnPlayer`, and `SpawnAt`.- Preserve all current spawn sequencing, scene ownership, and session assignment behaviour.
+
+#### `Assets/Runtime/Server/Core/ServerSpellcastManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Rename file to `ServerSpellCastManager.cs`.
+- Alphabetize `using` directives.
+- Private fields: `entityManager` → `_entityManager`, `actorComponentQuery` → `_actorComponentQuery`.
+- Acronym casing: `actorId` → `actorID`; any Server-owned `spellId` → `spellID`.
+- Update ECS `ActorId` references to `ActorID`.
+- Add XML documentation to `ServerSpellCastManager`, `Instance`, `IsInitialized`, `IsCasting`, and `TryInterruptCast`.
+
+#### `Assets/Runtime/Server/Core/ServerStatManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Constant: `RegenTickInterval` → `REGEN_TICK_INTERVAL`.
+- Private fields: `regenTimer` → `_regenTimer`, `trackedActors` → `_trackedActors`, `currentEquipmentModifiers` → `_currentEquipmentModifiers`.
+- Method: `InitializeNpcStats` → `InitializeNPCStats`.
+- Acronym casing: `statId` → `statID`; Server-owned `classId`/`raceId` → `classID`/`raceID`.
+- Add XML documentation to `ServerStatManager`, `Instance`, `IsInitialized`, `RegisterActor`, `UnregisterActor`, `InitializeNPCStats`, `Recalculate`, `AddModifier`, `RemoveModifier`, `SetCurrent`, and `SendSnapshot`.
+- Preserve stat calculation and regeneration semantics.
+
+#### `Assets/Runtime/Server/Core/ServerTickerManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private fields: `entityManager` → `_entityManager`, `actorComponentQuery` → `_actorComponentQuery`, `_nextTickerId` → `_nextTickerID`, `_actorTickerIds` → `_actorTickerIDs`.
+- `TickerRegistration.ActorId` → `ActorID`.
+- Callback fields: `TickerRegistration.OnTick` → `onTick`, `OnExpire` → `onExpire`.
+- Acronym casing: `tickerId` → `tickerID`, `actorId` → `actorID`.
+- Update ECS `ActorId`/`TickerId` references to `ActorID`/`TickerID`.
+- Add XML documentation to the externally visible manager API: `ServerTickerManager`, `Instance`, `IsInitialized`, `AddTicker`, `RemoveTicker`, `RemoveTickerByTag`, and `HasTicker`.
+- No XML documentation is required solely because members of the private nested `TickerRegistration` struct are declared `public`.
+
+#### `Assets/Runtime/Server/Core/ServerWorldManager.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Core`.
+- Alphabetize `using` directives.
+- Private fields: `networkManager` → `_networkManager`, `worldSceneSettings` → `_worldSceneSettings`, `loadedChunks` → `_loadedChunks`, `_globalActorsSceneId` → `_globalActorsSceneID`.
+- Public property: `GlobalActorsSceneId` → `GlobalActorsSceneID`.
+- Method: `TryGetChunkSceneId` → `TryGetChunkSceneID`.
+- Acronym casing for Server-owned locals/parameters: `sceneId` → `sceneID`, `loadedSceneId` → `loadedSceneID`, `chunkSceneId` → `chunkSceneID`.
+- Update `LoadedChunks` to return `_loadedChunks`.
+- Use target-typed `new()` for the loaded-chunk dictionary where appropriate.
+- Add XML documentation to `Instance`, `IsInitialized`, `LoadedChunks`, `GlobalActorsSceneID`, `IsGlobalActorsSceneLoaded`, `ParseChunkCoordinate`, `IsChunkLoaded`, `IsChunkLoadPending`, and `TryGetChunkSceneID`.
+- Preserve existing additive scene loading/unloading and pending-load callback behaviour.
+
+### 32.2 Networking
+
+#### `Assets/Runtime/Server/Networking/AccountServiceHooks.cs`
+
+- Namespace already conforms.
+- Alphabetize `using` directives.
+- Acronym casing: `playerId` → `playerID`, `characterGuid` → `characterGUID`.
+- Add XML documentation to `AccountServiceHooks` and `RegisterHooks`.
+- Update references to final Server Core/Services and Shared Networking namespaces.
+
+#### `Assets/Runtime/Server/Networking/ActorDeathHooks.cs`
+
+- Namespace already conforms.
+- Alphabetize `using` directives.
+- Acronym casing: Server-owned `npcId` → `npcID`.
+- Add XML documentation to `ActorDeathHooks`/`RegisterHooks` where currently undocumented.
+- Update Shared actor/NPC references to their final Shared runtime namespaces.
+
+#### `Assets/Runtime/Server/Networking/PlayerSessionData.cs`
+
+- Namespace already conforms.
+- Alphabetize `using` directives.
+- Public fields: `PlayerId` → `PlayerID`, `CharacterId` → `CharacterID`.
+- Constructor parameters: `playerId` → `playerID`, `characterId` → `characterID`.
+- Add XML documentation to `PlayerSessionData`, `PlayerID`, `Username`, `CharacterID`, `PlayerActor`, the constructor, and `SetPlayerActor`.
+- This is session/runtime state, not the persisted account JSON schema.
+
+### 32.3 Persistence
+
+#### `Assets/Runtime/Server/Persistence/PlayerAccountData.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Persistence`.
+- Alphabetize `using` directives.
+- Construction: `Characters = new List<CharacterData>()` → `Characters = new()`.
+- Add XML documentation to `PlayerAccountData` and the public DTO fields `Username`, `PasswordHash`, `PasswordSalt`, and `Characters`.
+- Do not rename the JSON-facing public fields.
+- Validate that an existing player-data file still deserializes after the namespace move.
+
+#### `Assets/Runtime/Server/Persistence/PlayerDatabase.cs`
+
+- Namespace already conforms.
+- Alphabetize `using` directives.
+- Static readonly field: `_filePath` → `FILE_PATH`.
+- Private field: `playerAccounts` → `_playerAccounts`.
+- Use target-typed `new()` for `_playerAccounts` and other obvious declared collection constructions.
+- Update all internal references to the two renamed fields.
+- Add XML documentation to `PlayerDatabase`, `CleanDatabase`, `TryGetPlayerAccount`, `SavePlayerAccount`, and `Accounts` if exposed.
+- The nested `PlayerDatabaseWrapper.Accounts` field remains unchanged because it is part of the serialized JSON shape.
+- Validate loading and saving a pre-restyle database, including Shared `CharacterData` migration.
+
+### 32.4 Services
+
+#### `Assets/Runtime/Server/Services/CharacterCreationService.cs`
+
+- Namespace already conforms.
+- Alphabetize `using` directives.
+- Private fields: `characterData` → `_characterData`, `playerId` → `_playerID`.
+- Constructor parameters: `_playerId` → `playerID`, `_characterData` → `characterData`.
+- Update all internal references.
+- Add XML documentation to `CharacterCreationService`, its public constructor, and the public definition-library cache fields.
+- Update Shared `DefinitionId` → `DefinitionID` and final Shared namespaces during integration.
+- Preserve validation and account-save behaviour.
+
+#### `Assets/Runtime/Server/Services/CharacterExperienceService.cs`
+
+- Namespace already conforms.
+- Private fields: `playerExperience` → `_playerExperience`, `level` → `_level`, `experience` → `_experience`.
+- Add XML documentation to `CharacterExperienceService`, its constructor where public, and `AddExperience`.
+
+#### `Assets/Runtime/Server/Services/CharacterReputationService.cs`
+
+- Namespace already conforms.
+- Private fields: `player` → `_player`, `playerReputation` → `_playerReputation`, `faction` → `_faction`.
+- Add XML documentation to `CharacterReputationService`, its constructor where public, and `AddReputation`.
+- Update Shared `PVPFaction`/definition APIs to their final Shared names during integration.
+
+#### `Assets/Runtime/Server/Services/CharacterWeaponSkillService.cs`
+
+- Namespace already conforms.
+- Alphabetize `using` directives.
+- Private fields: `playerExperience` → `_playerExperience`, `weaponType` → `_weaponType`, `level` → `_level`, `experience` → `_experience`.
+- Add XML documentation to `CharacterWeaponSkillService`, its constructor where public, and `AddWeaponSkillExperience`.
+
+#### `Assets/Runtime/Server/Services/EnterWorldService.cs`
+
+- Namespace already conforms.
+- Alphabetize `using` directives.
+- Private fields: `playerId` → `_playerID`, `characterGuid` → `_characterGUID`.
+- Constructor parameters: `_playerId` → `playerID`, `_characterGuid` → `characterGUID`.
+- Update all internal references.
+- Update Shared `CharacterData.Guid` → `CharacterData.GUID`.
+- Add XML documentation to `EnterWorldService` and its public constructor.
+- Preserve character ownership validation and spawn behaviour.
+
+#### `Assets/Runtime/Server/Services/PartyLootService.cs`
+
+- Namespace already conforms.
+- Alphabetize `using` directives.
+- Private fields: `playerInventory` → `_playerInventory`, `lootPool` → `_lootPool`.
+- Construction: explicit loot-pool `new List<ItemInstance>()` → target-typed `new()`.
+- Add XML documentation to `PartyLootService`, its constructor, `AddLootFromSource`, `AddToPool`, and `DistributeLoot`.
+
+#### `Assets/Runtime/Server/Services/PlayerAuthService.cs`
+
+- Namespace: `Game.Server.Persistence` → `Game.Server.Services`.
+- Alphabetize `using` directives.
+- Constants: `SaltSize` → `SALT_SIZE`, `HashSize` → `HASH_SIZE`, `Iterations` → `ITERATIONS`.
+- Use target-typed `new()` for `_validatedUsernamesQueue`, `_newPlayerQueue`, and `_pendingConnections`.
+- Update all constant references in salt/hash generation.
+- Add XML documentation to currently undocumented public interface implementations: `TrackPendingConnection`, `TryRemovePendingConnection`, `GetNextValidatedUsername`, `GetNextPlayerIsNew`, and `EnqueueNewPlayerFlag`.
+- Update `Game.Shared.Authentication` references to the final Shared Networking namespace.
+- Preserve PBKDF2 parameters and authentication behaviour exactly.
+
+### 32.5 Systems
+
+#### `Assets/Runtime/Server/Systems/ActorComponents.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Rename file to `ActorComponent.cs`.
+- Alphabetize `using` directives.
+- Acronym fields:
+  - `ActorComponent.ActorId` → `ActorID`;
+  - `ResourceRegenElement.ResourceId` → `ResourceID`;
+  - `AuraElement.InstanceId` → `InstanceID`;
+  - `AuraElement.AuraDefinitionId` → `AuraDefinitionID`;
+  - `TickerElement.TickerId` → `TickerID`.
+- `SpellID`, `PlayerID`, and `SceneID` already conform.
+- Retain the existing lower-camel public ECS fields that do not contain an acronym; the locked convention permits public ECS data fields but does not require a broader field-style rewrite beyond the specified acronym rule.
+- Add XML documentation to the public ECS component/buffer types and externally meaningful fields.
+- Update every manager/system reference to the renamed fields atomically.
+
+#### `Assets/Runtime/Server/Systems/ActorTickerSystem.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Update `ActorId` → `ActorID` and `TickerId` → `TickerID` references.
+- Add XML documentation to `ActorTickerSystem` and its public `OnUpdate` override where currently undocumented.
+
+#### `Assets/Runtime/Server/Systems/ActorUpdateSystem.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Alphabetize `using` directives.
+- Private field: `motionQuery` → `_motionQuery`.
+- Add XML documentation to `ActorUpdateSystem`, `OnCreate`, `OnUpdate`, and `OnDestroy`.
+- Preserve ECS query composition and gravity/movement behaviour.
+
+#### `Assets/Runtime/Server/Systems/AuraTickSystem.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Update `ActorId` → `ActorID`, `InstanceId` → `InstanceID`, and `AuraDefinitionId` → `AuraDefinitionID`.
+- Add XML documentation to `AuraTickSystem` and `OnUpdate`.
+
+#### `Assets/Runtime/Server/Systems/ChunkSpawnComponents.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Rename file to `SpawnPointComponent.cs`.
+- Alphabetize `using` directives.
+- In both `SpawnPointComponent` and `SpawnCommand`: `SpawnPointGuid` → `SpawnPointGUID`.
+- Add XML documentation to both public ECS types and their externally meaningful fields.
+- Update every Core/System reference atomically.
+
+#### `Assets/Runtime/Server/Systems/CooldownTickSystem.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Add XML documentation to `CooldownTickSystem` and `OnUpdate`.
+- Preserve cooldown buffer mutation semantics.
+
+#### `Assets/Runtime/Server/Systems/ResourceRegenSystem.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Alphabetize `using` directives.
+- Update `ResourceId` → `ResourceID` references.
+- Add XML documentation to `ResourceRegenSystem`, `OnCreate`, `OnUpdate`, and `OnDestroy`.
+
+#### `Assets/Runtime/Server/Systems/SpellCastSystem.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Update `ActorId` → `ActorID` references.
+- `SpellID` already conforms.
+- Add XML documentation to `SpellCastSystem` and `OnUpdate`.
+
+#### `Assets/Runtime/Server/Systems/WorldSpawnSystem.cs`
+
+- Namespace: `Game.Server.ECS` → `Game.Server.Systems`.
+- Alphabetize `using` directives.
+- Update `SpawnPointGuid` → `SpawnPointGUID` references.
+- Add XML documentation to `WorldSpawnSystem`, `OnCreate`, `OnUpdate`, and `OnDestroy`.
+- Preserve spawn-command creation and destruction sequencing.
+
+### 32.6 Test
+
+#### `Assets/Runtime/Server/Test/Test_NPCPathfinder.cs`
+
+- Namespace: `Game.Server` → `Game.Server.Test`.
+- `Test_NPCPathfinder` already conforms to the `Test_` naming convention.
+- Add XML documentation to the public test/prototype type where currently undocumented.
+- No filename change is required.
+
+## 33. Cross-assembly integration
+
+The Server pass must consume the final Shared and Core naming from the earlier assembly plans. Representative coordinated updates include:
+
+- `Game.Shared.FormattedDebug` → `Game.Shared.Utility.FormattedDebug`;
+- `Game.Shared.Authentication` → `Game.Shared.Networking`;
+- Shared actors/runtime classes → their final `Game.Shared.Runtime...` namespaces;
+- `Actor.Id` → `Actor.ID`;
+- `CharacterData.Guid` → `CharacterData.GUID`;
+- `DataDefinition.DefinitionId` → `DefinitionID`;
+- Shared NPC/PVP/acronym changes;
+- `Game.Server.ECS` references → `Game.Server.Systems`;
+- `Game.Server.ServerInitialization` → `Game.Server.Core.ServerInitialization`.
+
+These are integration references, not duplicate ownership of the Shared/Core renames.
+
+## 34. Server implementation order
+
+### Stage V1 — Documentation and syntax-only cleanup
+
+Apply:
+
+- XML documentation;
+- alphabetical `using` ordering;
+- target-typed `new()` where unambiguous;
+- `var` where the right-hand side clearly states the type.
+
+Compile before proceeding.
+
+### Stage V2 — Private fields, immutable names, callbacks and acronyms
+
+Apply:
+
+- private `_camelCase` field renames;
+- the eight immutable-field renames;
+- `TickerRegistration.onTick` / `onExpire`;
+- Server-owned acronym casing;
+- ECS public acronym-field renames.
+
+Update all references atomically and compile.
+
+### Stage V3 — Filename corrections
+
+Apply SERVER-001 through SERVER-004 while preserving `.meta` files.
+
+Compile after each coherent move.
+
+### Stage V4 — Systems namespace migration
+
+Move all nine `Game.Server.ECS` files to `Game.Server.Systems` as one coordinated symbol migration. Update all Core references at the same time.
+
+Compile Server + Shared.
+
+### Stage V5 — Core, Persistence, Services and Test namespace migration
+
+Apply:
+
+1. all 15 Core files → `Game.Server.Core`;
+2. `PlayerAccountData` → `Game.Server.Persistence`;
+3. `PlayerAuthService` → `Game.Server.Services`;
+4. `Test_NPCPathfinder` → `Game.Server.Test`.
+
+Update `GameBootstrapper`, Networking hooks, services, and all cross-assembly callers atomically.
+
+### Stage V6 — Shared integration
+
+Update Server imports/references to the final Shared namespaces and symbol names. Validate existing player-data migration through `PlayerDatabase`.
+
+### Stage V7 — Final convention sweep
+
+Re-audit all 37 Server C# files for:
+
+- private fields without `_camelCase`;
+- constants/static readonly fields outside `SCREAMING_SNAKE_CASE`;
+- project acronym casing;
+- callbacks outside `on...`;
+- filename/primary-type mismatches;
+- non-folder namespaces;
+- public APIs without XML documentation;
+- nonalphabetical `using` directives;
+- obvious construction/local-typing preference breaches.
+
+## 35. Server validation
+
+The Server restyle is complete only when all of the following pass:
+
+- Unity Editor C# compilation;
+- dedicated-server compilation/build;
+- standalone client compilation/build against the same Shared/Core revision;
+- headless startup still reaches `ServerInitialization.Begin(...)`;
+- Addressables initialization and `GameConfiguration` loading still complete;
+- PurrNet server startup and connection-state handling are unchanged;
+- authentication accepts existing accounts and still creates new test accounts as before;
+- a pre-restyle player database loads successfully;
+- Shared `CharacterData` migration round-trips through `PlayerDatabase`;
+- character creation, character selection/enter-world, session assignment, and player spawning still work;
+- global actor scene and world chunk loading/unloading still work;
+- interest subscriptions and scene visibility still work;
+- player position validation and NPC aggro continue to work;
+- ECS actor, cooldown, aura, ticker, resource-regeneration, spell-cast, and world-spawn systems run with the renamed component fields;
+- stat initialization, equipment modifiers, resource regeneration, spellcasting, cooldowns, auras, tickers, auto-attacks, reputation, experience, weapon skills, and loot retain existing behaviour;
+- no PurrNet ownership/RPC/network semantics change;
+- a fresh audit of all 37 Server C# files reports no remaining hard convention breaches;
+- no gameplay or persistence behaviour is intentionally changed.
+
+## 36. Game.Server result
+
+| Item | Result |
+|---|---:|
+| C# files audited | 37 |
+| Assembly definition files audited | 1 |
+| Files requiring namespace migration | 27 |
+| Explicit filename/primary-type corrections | 4 |
+| Immutable (`const`/`static readonly`) renames | 8 |
+| Callback-field renames | 2 |
+| Server-owned Unity serialized-field migrations | 0 |
+| RPC renames defined in Server | 0 |
+| Functional changes intended | 0 |
+
+**Game.Server status:** Planned; not yet restyled.
