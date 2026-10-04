@@ -3172,3 +3172,177 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 8: add XML documentation to public API `public override List<Actor> Evaluate(AuraContext ctx)`.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 128 individual changes listed.
+
+
+### Audit batch 18: files 271–286 of 386
+
+#### `Assets/Runtime/Shared/Data/ClassBehaviours/ClassBehaviour.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.ClassBehaviours`; update all references atomically and protect serialized managed-reference type moves.
+- Line 5: add XML documentation to public API `public interface IClassBehaviour`.
+- Line 7: add XML documentation to public API `public GameObject ResourcePrefab { get; }`.
+- Line 13: add XML documentation to public API `public abstract class ClassBehaviour : ScriptableObject, IClassBehaviour`.
+- Line 15: add XML documentation to public API `public abstract GameObject ResourcePrefab { get; }`.
+- Line 16: add XML documentation to public API `public abstract void OnActivate(PlayerActor actor); // subscribe to events`.
+- Line 17: add XML documentation to public API `public abstract void OnDeactivate(PlayerActor actor); // unsubscribe`.
+
+#### `Assets/Runtime/Shared/Data/ClassBehaviours/SorcererClassBehaviour.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.ClassBehaviours`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public class SorcererClassBehaviour : ClassBehaviour`.
+- Line 13: rename constant `UnstableThreshold` → `UNSTABLE_THRESHOLD`.
+- Line 14: rename constant `CriticalThreshold` → `CRITICAL_THRESHOLD`.
+- Line 15: rename constant `UnstableDamagePerTick` → `UNSTABLE_DAMAGE_PER_TICK`.
+- Line 16: rename constant `CriticalDamagePerTick` → `CRITICAL_DAMAGE_PER_TICK`.
+- Line 17: rename constant `DecayDelay` → `DECAY_DELAY`.
+- Line 18: rename constant `DecayPerSecond` → `DECAY_PER_SECOND`.
+- Line 19: rename constant `UnstableSurgeRatio` → `UNSTABLE_SURGE_RATIO`.
+- Line 20: rename constant `CriticalSurgeRatio` → `CRITICAL_SURGE_RATIO`.
+- Line 21: rename constant `SurgeDecayPerSecond` → `SURGE_DECAY_PER_SECOND`.
+- Line 23: rename private field `instabilityDamageSchool` → `_instabilityDamageSchool`; **serialized** — add `[FormerlySerializedAs("instabilityDamageSchool")]` before renaming and verify existing assets.
+- Line 30: rename private field `RiftData` → `_RiftData`.
+- Line 32: add XML documentation to public API `public Vector3 Position;`.
+- Line 33: add XML documentation to public API `public float Radius;`.
+- Line 34: add XML documentation to public API `public int VFXId;`.
+- Line 34: rename member `VFXId` → `VFXID` for acronym casing.
+- Line 38: rename private field `resourcePrefab` → `_resourcePrefab`; **serialized** — add `[FormerlySerializedAs("resourcePrefab")]` before renaming and verify existing assets.
+- Line 39: add XML documentation to public API `public override GameObject ResourcePrefab => resourcePrefab;`.
+- Line 41: add XML documentation to public API `public override void OnActivate(PlayerActor actor)`.
+- Line 56: add XML documentation to public API `public override void OnDeactivate(PlayerActor actor)`.
+- Rename parameter `vfxId` → `vfxID`; update named arguments.
+
+#### `Assets/Runtime/Shared/Data/ClassBehaviours/TestClassBehaviour.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.ClassBehaviours`; update all references atomically and protect serialized managed-reference type moves.
+- Rename test type `TestClassBehaviour` → `Test_ClassBehaviour`; update references and filename.
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public class TestClassBehaviour : ClassBehaviour`.
+- Line 10: rename private field `manaPerHit` → `_manaPerHit`; **serialized** — add `[FormerlySerializedAs("manaPerHit")]` before renaming and verify existing assets.
+- Line 11: rename private field `manaOnDamageTaken` → `_manaOnDamageTaken`; **serialized** — add `[FormerlySerializedAs("manaOnDamageTaken")]` before renaming and verify existing assets.
+- Line 13: rename private field `resourcePrefab` → `_resourcePrefab`; **serialized** — add `[FormerlySerializedAs("resourcePrefab")]` before renaming and verify existing assets.
+- Line 14: add XML documentation to public API `public override GameObject ResourcePrefab => resourcePrefab;`.
+- Line 16: add XML documentation to public API `public override void OnActivate(PlayerActor actor)`.
+- Line 21: add XML documentation to public API `public override void OnDeactivate(PlayerActor actor)`.
+
+#### `Assets/Runtime/Shared/Data/ClassDefinition.cs`
+- Line 9: add XML documentation to public API `public struct ClassStatGrowth`.
+- Line 11: add XML documentation to public API `public ActorStatDefinition stat;`.
+- Line 12: add XML documentation to public API `public float flatPerLevel;`.
+- Line 16: add XML documentation to public API `public struct ClassSpell`.
+- Line 18: add XML documentation to public API `public SpellDefinition spell;`.
+- Line 19: add XML documentation to public API `public int levelRequirement;`.
+- Line 23: add XML documentation to public API `public struct ClassSpecialisation`.
+- Line 25: add XML documentation to public API `public string name;`.
+- Line 26: add XML documentation to public API `public string description;`.
+- Line 27: add XML documentation to public API `public Sprite icon;`.
+- Line 28: add XML documentation to public API `public List<SpellDefinition> spells;`.
+- Line 29: add XML documentation to public API `public List<TalentDefinition> talents;`.
+- Line 30: add XML documentation to public API `public Color color;`.
+- Line 39: rename private field `description` → `_description`; **serialized** — add `[FormerlySerializedAs("description")]` before renaming and verify existing assets.
+- Line 41: rename private field `icon` → `_icon`; **serialized** — add `[FormerlySerializedAs("icon")]` before renaming and verify existing assets.
+- Line 43: rename private field `statGrowthPerLevel` → `_statGrowthPerLevel`; **serialized** — add `[FormerlySerializedAs("statGrowthPerLevel")]` before renaming and verify existing assets.
+- Line 45: rename private field `baseStats` → `_baseStats`; **serialized** — add `[FormerlySerializedAs("baseStats")]` before renaming and verify existing assets.
+- Line 47: rename private field `classSpellList` → `_classSpellList`; **serialized** — add `[FormerlySerializedAs("classSpellList")]` before renaming and verify existing assets.
+- Line 49: rename private field `focusStats` → `_focusStats`; **serialized** — add `[FormerlySerializedAs("focusStats")]` before renaming and verify existing assets.
+- Line 50: rename private field `relevantStats` → `_relevantStats`; **serialized** — add `[FormerlySerializedAs("relevantStats")]` before renaming and verify existing assets.
+- Line 51: rename private field `weaponTypes` → `_weaponTypes`; **serialized** — add `[FormerlySerializedAs("weaponTypes")]` before renaming and verify existing assets.
+- Line 52: rename private field `specialisations` → `_specialisations`; **serialized** — add `[FormerlySerializedAs("specialisations")]` before renaming and verify existing assets.
+- Line 54: rename private field `classBehaviour` → `_classBehaviour`; **serialized** — add `[FormerlySerializedAs("classBehaviour")]` before renaming and verify existing assets.
+- Line 70: add XML documentation to public API `public List<ClassSpell> ClassSpellList => classSpellList;`.
+- Line 71: add XML documentation to public API `public IReadOnlyList<ActorStatBaseEntry> BaseStats => baseStats;`.
+- Line 72: add XML documentation to public API `public IReadOnlyList<ActorStatDefinition> FocusStats => focusStats;`.
+- Line 73: add XML documentation to public API `public IReadOnlyList<ActorStatDefinition> RelevantStats => relevantStats;`.
+- Line 74: add XML documentation to public API `public IReadOnlyList<ItemWeaponType> WeaponTypes => weaponTypes;`.
+- Line 75: add XML documentation to public API `public IReadOnlyList<ClassSpecialisation> Specialisations => specialisations;`.
+- Line 76: add XML documentation to public API `public ClassBehaviour ClassBehaviour => classBehaviour;`.
+
+#### `Assets/Runtime/Shared/Data/ClassDefinitionLibrary.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 13: rename private field `instance` → `_instance`.
+
+#### `Assets/Runtime/Shared/Data/Conditions/ConditionDefinition.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.Conditions`; update all references atomically and protect serialized managed-reference type moves.
+- Line 4: add XML documentation to public API `public abstract class ConditionDefinition`.
+- Line 6: add XML documentation to public API `public abstract bool Evaluate(object context);`.
+- Line 7: add XML documentation to public API `public abstract string GetTooltipLine();`.
+
+#### `Assets/Runtime/Shared/Data/Conditions/Condition_ActorLevel.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.Conditions`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public sealed class Condition_ActorLevel : ConditionDefinition`.
+- Line 9: rename private field `requiredLevel` → `_requiredLevel`; **serialized** — add `[FormerlySerializedAs("requiredLevel")]` before renaming and verify existing assets.
+- Line 11: rename private field `tooltipFormat` → `_tooltipFormat`; **serialized** — add `[FormerlySerializedAs("tooltipFormat")]` before renaming and verify existing assets.
+- Line 13: add XML documentation to public API `public override bool Evaluate(object context)`.
+- Line 28: add XML documentation to public API `public override string GetTooltipLine()`.
+
+#### `Assets/Runtime/Shared/Data/Conditions/Condition_PlayerClass.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.Conditions`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public sealed class Condition_PlayerClass : ConditionDefinition`.
+- Line 9: rename private field `requiredClass` → `_requiredClass`; **serialized** — add `[FormerlySerializedAs("requiredClass")]` before renaming and verify existing assets.
+- Line 11: rename private field `tooltipFormat` → `_tooltipFormat`; **serialized** — add `[FormerlySerializedAs("tooltipFormat")]` before renaming and verify existing assets.
+- Line 13: add XML documentation to public API `public override bool Evaluate(object context)`.
+- Line 24: add XML documentation to public API `public override string GetTooltipLine()`.
+
+#### `Assets/Runtime/Shared/Data/DamageSchoolDefinition.cs`
+- Line 13: rename private field `icon` → `_icon`; **serialized** — add `[FormerlySerializedAs("icon")]` before renaming and verify existing assets.
+- Line 14: rename private field `mitigationRatingStat` → `_mitigationRatingStat`; **serialized** — add `[FormerlySerializedAs("mitigationRatingStat")]` before renaming and verify existing assets.
+- Line 15: rename private field `ratingPerPercent` → `_ratingPerPercent`; **serialized** — add `[FormerlySerializedAs("ratingPerPercent")]` before renaming and verify existing assets.
+- Line 17: add XML documentation to public API `public Sprite Icon => icon;`.
+- Line 18: add XML documentation to public API `public ActorStatDefinition MitigationRatingStat => mitigationRatingStat;`.
+- Line 19: add XML documentation to public API `public float RatingPerPercent => ratingPerPercent;`.
+- Line 21: add XML documentation to public API `public float CalculateMitigation(ActorStatContainer targetStats)`.
+
+#### `Assets/Runtime/Shared/Data/DamageSchoolDefinitionLibrary.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 13: rename private field `instance` → `_instance`.
+
+#### `Assets/Runtime/Shared/Data/DataDefinition.cs`
+- Line 12: rename private field `definitionId` → `_definitionID`; **serialized** — add `[FormerlySerializedAs("definitionId")]` before renaming and verify existing assets.
+- Line 15: rename private field `displayName` → `_displayName`; **serialized** — add `[FormerlySerializedAs("displayName")]` before renaming and verify existing assets.
+- Line 20: rename member `DefinitionId` → `DefinitionID` for acronym casing.
+
+#### `Assets/Runtime/Shared/Data/DataDefinitionLibrary.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 14: rename private field `definitions` → `_definitions`; **serialized** — add `[FormerlySerializedAs("definitions")]` before renaming and verify existing assets.
+- Line 14: use target-typed `new(...)` for member `definitions`.
+- Rename parameter `definitionId` → `definitionID`; update named arguments.
+- Rename parameter `definitionId` → `definitionID`; update named arguments.
+
+#### `Assets/Runtime/Shared/Data/Dialogue/DialogueChoice.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Line 8: add XML documentation to public API `public class DialogueChoice`.
+- Line 10: rename private field `id` → `_ID`; **serialized** — add `[FormerlySerializedAs("id")]` before renaming and verify existing assets.
+- Line 11: add XML documentation to public API `public string ID => id;`.
+- Line 13: rename private field `choiceText` → `_choiceText`; **serialized** — add `[FormerlySerializedAs("choiceText")]` before renaming and verify existing assets.
+- Line 20: rename private field `icon` → `_icon`; **serialized** — add `[FormerlySerializedAs("icon")]` before renaming and verify existing assets.
+- Line 21: add XML documentation to public API `public Sprite Icon => icon;`.
+- Line 23: rename private field `conditions` → `_conditions`; **serialized** — add `[FormerlySerializedAs("conditions")]` before renaming and verify existing assets.
+- Line 24: add XML documentation to public API `public IReadOnlyList<DialogueCondition> Conditions => conditions;`.
+- Line 26: add XML documentation to public API `public void AddCondition(DialogueCondition condition)`.
+- Line 31: add XML documentation to public API `public void RemoveConditionAt(int index)`.
+- Line 37: rename private field `showAlways` → `_showAlways`; **serialized** — add `[FormerlySerializedAs("showAlways")]` before renaming and verify existing assets.
+- Line 38: add XML documentation to public API `public bool ShowAlways => showAlways;`.
+- Line 45: rename private field `nextNodeId` → `_nextNodeID`; **serialized** — add `[FormerlySerializedAs("nextNodeId")]` before renaming and verify existing assets.
+- Line 52: add XML documentation to public API `public DialogueNode ResolveNextNode(DialogueDefinition root)`.
+
+#### `Assets/Runtime/Shared/Data/Dialogue/DialogueCondition.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Line 9: add XML documentation to public API `public class DialogueCondition`.
+- Line 13: rename private field `condition` → `_condition`; **serialized** — add `[FormerlySerializedAs("condition")]` before renaming and verify existing assets.
+- Line 20: rename private field `invert` → `_invert`; **serialized** — add `[FormerlySerializedAs("invert")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Shared/Data/Dialogue/DialogueDefinition.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Line 16: rename private field `nodes` → `_nodes`; **serialized** — add `[FormerlySerializedAs("nodes")]` before renaming and verify existing assets.
+- Line 17: add XML documentation to public API `public IReadOnlyList<DialogueNode> Nodes => nodes;`.
+- Line 21: add XML documentation to public API `public DialogueNode GetNode(int nodeID)`.
+
+#### `Assets/Runtime/Shared/Data/Dialogue/DialogueNode.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Line 8: add XML documentation to public API `public class DialogueNode`.
+- Line 10: rename private field `id` → `_ID`; **serialized** — add `[FormerlySerializedAs("id")]` before renaming and verify existing assets.
+- Line 17: rename private field `title` → `_title`; **serialized** — add `[FormerlySerializedAs("title")]` before renaming and verify existing assets.
+- Line 24: rename private field `dialogueText` → `_dialogueText`; **serialized** — add `[FormerlySerializedAs("dialogueText")]` before renaming and verify existing assets.
+- Line 31: rename private field `choices` → `_choices`; **serialized** — add `[FormerlySerializedAs("choices")]` before renaming and verify existing assets.
+- Line 32: add XML documentation to public API `public IReadOnlyList<DialogueChoice> Choices => choices;`.
+- Line 34: add XML documentation to public API `public void AddChoice(DialogueChoice choice)`.
+- Line 39: add XML documentation to public API `public void RemoveChoiceAt(int index)`.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 137 individual changes listed.
