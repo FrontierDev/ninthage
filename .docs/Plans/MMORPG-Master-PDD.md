@@ -1,0 +1,1276 @@
+# Ninth Age — MMORPG Master Product Design Document
+
+**Status:** Authoritative design index and project-level design baseline  
+**Project:** Ninth Age  
+**Scope:** Product-wide MMORPG design, subsystem ownership, PDD hierarchy, cross-system principles and unresolved product decisions  
+**Last updated:** 2026-10-04
+
+---
+
+## 1. Purpose and Authority
+
+This document is the master Product Design Document for **Ninth Age**.
+
+Its purpose is not to contain the complete design of every game system. Instead, it:
+
+- defines the project-wide design foundations that apply across the MMORPG;
+- divides the game into explicit design domains;
+- identifies the PDD responsible for each domain;
+- records which subsystem PDDs already exist and which still need to be written;
+- defines how design authority is resolved when multiple documents interact;
+- prevents major systems from being implemented from assumptions that have never been explicitly designed;
+- provides a single starting point for future design and implementation work.
+
+Detailed rules belong in the relevant subsystem PDD.
+
+Where this document names a system but its dedicated PDD does not yet exist, the system must be treated as **requiring further design**. The presence of a proposed PDD in this index does not by itself approve every conventional MMORPG feature that might fall within that category.
+
+No implementation should silently invent permanent product behaviour for an unresolved design decision.
+
+---
+
+## 2. Document Hierarchy
+
+Ninth Age separates product design, technical architecture and implementation planning.
+
+### 2.1 Master Product Design Document
+
+This document is authoritative for:
+
+- project-level design pillars;
+- the boundaries between major game systems;
+- the ownership of design decisions by subsystem PDDs;
+- cross-system expectations;
+- the list of required design documents;
+- project-wide unresolved questions.
+
+It should remain relatively stable and should not become a dumping ground for subsystem detail.
+
+### 2.2 Subsystem Product Design Documents
+
+Subsystem PDDs are authoritative within their stated scope.
+
+Examples include:
+
+- class design;
+- combat;
+- crafting;
+- items and loot;
+- world design;
+- quests and narrative;
+- dungeons;
+- social systems.
+
+If a detailed rule belongs to one of these systems, it should be defined in that system's PDD rather than duplicated here.
+
+### 2.3 Technical Architecture Documents
+
+Technical documents describe or prescribe how the game is implemented.
+
+Current technical references include:
+
+- [C# Architecture](../CSharp-Architecture.md)
+- [C# Style Conventions](../CSharp-Style-Conventions.md)
+
+These documents do not replace game-design decisions.
+
+A technical limitation that materially affects product design must be surfaced back into the relevant PDD rather than silently changing player-facing behaviour.
+
+### 2.4 Implementation Plans
+
+Implementation plans describe how approved design and architecture will be turned into code or content.
+
+They are not design authority.
+
+The current example is:
+
+- [C# Restyling Plan](CSharp-Restyling-Plan.md)
+
+Implementation plans may sequence work, identify files and define validation, but should not create new game rules unless the relevant PDD is explicitly updated.
+
+---
+
+## 3. Conflict and Ownership Rules
+
+When documents overlap, the following rules apply:
+
+1. **This Master PDD owns project-wide principles and system boundaries.**
+2. **The relevant subsystem PDD owns detailed player-facing behaviour inside its scope.**
+3. **Technical architecture documents own implementation architecture, not product rules.**
+4. **Implementation plans own sequencing and execution, not product rules.**
+5. If two subsystem PDDs conflict, the conflict must be resolved explicitly rather than choosing whichever document was implemented first.
+6. If a subsystem PDD conflicts with a project-wide principle in this document, both documents must be reviewed and intentionally reconciled.
+7. Open design questions must remain visibly open until resolved.
+
+---
+
+## 4. Project-Level Product Foundations
+
+The following principles form the current high-level product baseline.
+
+### 4.1 MMORPG Structure
+
+Ninth Age is a persistent multiplayer role-playing game built around:
+
+- player characters;
+- distinct playable classes;
+- long-term character progression;
+- a shared game world;
+- cooperative and social play;
+- combat against world and dungeon content;
+- equipment and item progression;
+- gathering and crafting;
+- persistent player and world state.
+
+The project may use familiar MMORPG conventions where they are useful, but individual systems should have a deliberate Ninth Age identity rather than existing only because another MMORPG uses them.
+
+### 4.2 Large Seamless World
+
+The world is intended to feel large, continuous and explorable.
+
+The player-facing world should not feel like a disconnected collection of level-select maps.
+
+Dungeons and other contained content should, where appropriate, feel geographically and fictionally connected to the wider world even if their runtime implementation requires separate scenes, instances or streamed content.
+
+Detailed world structure belongs in the future **World and Zone Design PDD** and **Dungeon and Group Content PDD**.
+
+### 4.3 Persistent Client–Server Game
+
+The game uses a graphical client and a headless authoritative server.
+
+The exact technical model is defined by the C# architecture documentation. Product PDDs must nevertheless identify:
+
+- which gameplay state persists;
+- what players are allowed to predict locally;
+- what interactions require authoritative validation;
+- what behaviour must remain consistent in multiplayer.
+
+Product design should not assume that important world or combat outcomes can exist only on a client.
+
+### 4.4 Visual Direction
+
+The authoritative visual direction is defined by:
+
+- [Graphical Approach PDD](../Graphical-Approach-PDD.md)
+
+The central visual principle is:
+
+> **The authored world is mid-poly. The presentation of that world is high-fidelity.**
+
+The game uses a grounded, mature fantasy presentation with modern lighting, atmosphere and effects while keeping world assets economical enough for a large streamed MMORPG environment.
+
+The world also requires a day–night cycle.
+
+### 4.5 Systemic Depth Without Needless Friction
+
+Ninth Age should support long-term depth, mastery and player specialisation.
+
+Complexity is justified when it creates:
+
+- meaningful decisions;
+- different player strategies;
+- social interaction;
+- mastery;
+- world identity;
+- long-term progression.
+
+Complexity should not exist merely to create inconvenience, excessive maintenance or opaque rules.
+
+### 4.6 Social Systems Should Create Meaningful Cooperation
+
+Where systems require or reward cooperation, players should have something meaningful to contribute.
+
+The Crafting PDD already establishes this principle for cooperative crafting. The same philosophy should be considered when designing:
+
+- group combat;
+- guild activities;
+- world events;
+- gathering;
+- dungeons;
+- raids;
+- social progression.
+
+Forced proximity without meaningful participation is not sufficient social gameplay.
+
+### 4.7 Open Decisions Must Stay Open
+
+Subsystem PDDs should distinguish between:
+
+- **Locked design decisions**
+- **Provisional design direction**
+- **Open design decisions**
+
+Unresolved details must not quietly become de facto design because a temporary implementation happened to ship first.
+
+---
+
+## 5. Master PDD Map
+
+The intended product-document structure is:
+
+```text
+MMORPG Master PDD
+│
+├── Character and Combat
+│   ├── Class Design PDD                         [EXISTS]
+│   ├── Combat System PDD                       [REQUIRED]
+│   ├── Character Stats and Progression PDD     [REQUIRED]
+│   ├── Abilities and Talents PDD               [REQUIRED]
+│   └── Items, Equipment and Loot PDD            [REQUIRED]
+│
+├── World and PvE Content
+│   ├── World and Zone Design PDD               [REQUIRED]
+│   ├── Movement and Traversal PDD               [REQUIRED]
+│   ├── NPC and Creature Design PDD              [REQUIRED]
+│   ├── AI and Encounter Behaviour PDD           [REQUIRED]
+│   ├── Quest, Narrative and Dialogue PDD        [REQUIRED]
+│   ├── Dungeon and Group Content PDD            [REQUIRED]
+│   ├── Open-World Events PDD                    [REQUIRED LATER]
+│   └── Factions and Reputation PDD              [REQUIRED LATER]
+│
+├── Economy and Professions
+│   ├── Crafting System PDD                      [EXISTS]
+│   ├── Items, Equipment and Loot PDD            [SHARED DEPENDENCY]
+│   └── Economy, Trade and Markets PDD           [REQUIRED]
+│
+├── Multiplayer and Social
+│   ├── Group and Raid Systems PDD               [REQUIRED]
+│   ├── Guild and Social Systems PDD             [REQUIRED]
+│   ├── Communication Systems PDD                [REQUIRED LATER]
+│   └── PvP PDD                                  [UNRESOLVED SCOPE]
+│
+├── Player Experience
+│   ├── UI and UX PDD                            [REQUIRED]
+│   ├── Character Creation and Identity PDD      [REQUIRED]
+│   ├── Audio and Music PDD                      [REQUIRED LATER]
+│   └── Accessibility and Input PDD              [REQUIRED LATER]
+│
+├── Presentation
+│   └── Graphical Approach PDD                   [EXISTS]
+│
+└── Technical/Product Boundary
+    ├── Account, Character and Persistence PDD   [REQUIRED]
+    ├── World Runtime and Instancing PDD         [REQUIRED]
+    └── Live Content and Versioning PDD           [REQUIRED LATER]
+```
+
+The status labels above describe documentation state, not implementation state.
+
+---
+
+# 6. Character and Combat PDDs
+
+## 6.1 Class Design PDD — Existing
+
+**Document:**
+
+- [Class Design PDD](Class-Design-PDD.md)
+
+This document owns:
+
+- playable class roster;
+- class fantasies;
+- class power sources;
+- proposed specialisations;
+- broad role identities;
+- class-specific mechanic direction;
+- unresolved class-design questions.
+
+It does **not** own the complete combat system, universal stat model, itemisation or final talent architecture.
+
+Several class mechanics remain intentionally unresolved and must not be implemented as final systems solely from the current summary.
+
+---
+
+## 6.2 Combat System PDD — Required
+
+**Proposed document:**
+
+- `Combat-System-PDD.md`
+
+This should define the fundamental moment-to-moment combat model.
+
+It should cover at minimum:
+
+- targeting model;
+- attack model;
+- action and ability execution;
+- global and local cooldown philosophy;
+- cast times and channels;
+- melee and ranged attack rules;
+- movement during combat;
+- interruption;
+- crowd control;
+- damage and healing resolution;
+- avoidance and mitigation;
+- critical effects;
+- threat and aggro;
+- resource interaction at the combat-system level;
+- death, defeat, resurrection and recovery;
+- combat state entry and exit;
+- player-versus-NPC expectations;
+- group-combat readability;
+- server authority and client responsiveness requirements;
+- encounter pacing targets.
+
+### Further consideration required
+
+The project still needs explicit decisions on the exact baseline combat model before individual class kits become implementation contracts.
+
+---
+
+## 6.3 Character Stats and Progression PDD — Required
+
+**Proposed document:**
+
+- `Character-Stats-and-Progression-PDD.md`
+
+This should define:
+
+- character level structure;
+- level cap philosophy;
+- primary attributes;
+- secondary attributes;
+- derived statistics;
+- health and other universal resources;
+- stat scaling by level;
+- progression pacing;
+- experience acquisition;
+- level-up rewards;
+- stat caps or diminishing returns;
+- progression at maximum level;
+- character power sources and their relative contribution;
+- respec philosophy where relevant.
+
+This document is a dependency for class balance, itemisation, combat and encounter design.
+
+---
+
+## 6.4 Abilities and Talents PDD — Required
+
+**Proposed document:**
+
+- `Abilities-and-Talents-PDD.md`
+
+This should define:
+
+- what constitutes an ability;
+- active versus passive abilities;
+- ability acquisition;
+- talent structure;
+- talent progression;
+- specialisation selection;
+- respecialisation;
+- loadout rules;
+- action-bar expectations;
+- ability ranks, scaling or replacement where applicable;
+- class-wide versus specialisation-specific abilities;
+- ability modification through talents;
+- interaction with equipment and item effects.
+
+Class-specific talent trees or ability lists may later receive their own subordinate documents if needed.
+
+---
+
+## 6.5 Items, Equipment and Loot PDD — Required
+
+**Proposed document:**
+
+- `Items-Equipment-and-Loot-PDD.md`
+
+This should define:
+
+- item categories;
+- equipment slots;
+- weapon categories;
+- armour categories;
+- class/equipment relationships;
+- item quality tiers;
+- stat allocation;
+- item level or equivalent power model;
+- loot generation;
+- deterministic versus random properties;
+- bind rules;
+- durability, repair or their absence;
+- unique/equipped restrictions;
+- consumables;
+- containers;
+- loot ownership and group-loot rules;
+- dropped versus crafted item relationships.
+
+This PDD must be reconciled directly with the Crafting PDD.
+
+---
+
+# 7. World and PvE Content PDDs
+
+## 7.1 World and Zone Design PDD — Required
+
+**Proposed document:**
+
+- `World-and-Zone-Design-PDD.md`
+
+This should define the player-facing structure of the world rather than the technical streaming implementation.
+
+It should cover:
+
+- continents, regions and zones;
+- zone identity;
+- open-world continuity;
+- settlement structure;
+- wilderness structure;
+- biome design;
+- points of interest;
+- player navigation;
+- world density;
+- level/progression relationships between zones;
+- dangerous and safe areas;
+- verticality;
+- exploration rewards;
+- environmental storytelling;
+- relationship between open world and dungeon spaces.
+
+The visual implementation must remain compatible with the Graphical Approach PDD.
+
+---
+
+## 7.2 Movement and Traversal PDD — Required
+
+**Proposed document:**
+
+- `Movement-and-Traversal-PDD.md`
+
+This should define:
+
+- baseline movement;
+- sprinting or equivalent;
+- jumping;
+- falling;
+- swimming;
+- climbing if supported;
+- traversal abilities;
+- mounted travel if supported;
+- fast travel;
+- transport networks;
+- movement restrictions in combat;
+- movement-affecting status effects;
+- world-boundary behaviour;
+- death-related travel if applicable.
+
+It should specify desired player experience independently of the technical movement-validation implementation.
+
+---
+
+## 7.3 NPC and Creature Design PDD — Required
+
+**Proposed document:**
+
+- `NPC-and-Creature-Design-PDD.md`
+
+This should define:
+
+- creature categories;
+- friendly, neutral and hostile NPC behaviour expectations;
+- creature families;
+- ranks or difficulty classifications;
+- NPC statistics;
+- spawning philosophy;
+- leash and reset behaviour;
+- interaction rules;
+- merchants and service NPCs;
+- named and rare creatures;
+- bosses;
+- creature rewards;
+- ambient world populations.
+
+This document owns what NPCs and creatures are intended to be.
+
+The AI PDD owns how behaviour is structured.
+
+---
+
+## 7.4 AI and Encounter Behaviour PDD — Required
+
+**Proposed document:**
+
+- `AI-and-Encounter-Behaviour-PDD.md`
+
+This should define:
+
+- aggro and perception;
+- threat response;
+- combat decision-making;
+- ability selection;
+- movement and positioning;
+- group behaviours;
+- retreat/reset logic;
+- encounter phases;
+- boss-mechanic principles;
+- navigation requirements;
+- server simulation expectations;
+- scalability for large numbers of world actors.
+
+The exact AI implementation belongs in technical architecture documentation.
+
+---
+
+## 7.5 Quest, Narrative and Dialogue PDD — Required
+
+**Proposed document:**
+
+- `Quest-Narrative-and-Dialogue-PDD.md`
+
+This should define:
+
+- narrative delivery philosophy;
+- quest structure;
+- quest acquisition;
+- objectives;
+- quest tracking;
+- branching;
+- dialogue;
+- rewards;
+- repeatable content;
+- world-state consequences;
+- party participation;
+- shared credit;
+- narrative persistence;
+- use of cutscenes or in-world presentation;
+- integration with the existing dialogue-authoring tooling.
+
+---
+
+## 7.6 Dungeon and Group Content PDD — Required
+
+**Proposed document:**
+
+- `Dungeon-and-Group-Content-PDD.md`
+
+This should define:
+
+- what constitutes a dungeon;
+- group-size expectations;
+- dungeon length and pacing;
+- entrances and relationship to the open world;
+- instancing philosophy;
+- reset rules;
+- encounter structure;
+- boss expectations;
+- trash/combat density;
+- checkpoints;
+- rewards;
+- lockouts;
+- difficulty modes if any;
+- role expectations;
+- failure and recovery.
+
+A key project goal is that dungeons should feel as though they belong to the world rather than existing only as detached menu content.
+
+The technical scene/instance implementation belongs in the World Runtime and Instancing PDD.
+
+---
+
+## 7.7 Open-World Events PDD — Required Later
+
+**Proposed document:**
+
+- `Open-World-Events-PDD.md`
+
+Potential scope includes:
+
+- dynamic events;
+- public objectives;
+- world bosses;
+- participation and contribution;
+- scaling;
+- event chains;
+- failure states;
+- rewards;
+- event persistence.
+
+The exact feature set remains open.
+
+---
+
+## 7.8 Factions and Reputation PDD — Required Later
+
+**Proposed document:**
+
+- `Factions-and-Reputation-PDD.md`
+
+Potential scope includes:
+
+- world factions;
+- reputation progression;
+- hostility;
+- rewards;
+- faction services;
+- faction narrative;
+- account versus character progression.
+
+The exact role of reputation in Ninth Age remains to be designed.
+
+---
+
+# 8. Economy and Profession PDDs
+
+## 8.1 Crafting System PDD — Existing
+
+**Document:**
+
+- [Crafting System PDD](Crafting-System-PDD.md)
+
+This document already owns:
+
+- gathering skills;
+- crafting professions;
+- profession-slot rules;
+- recipe progression;
+- exact-recipe mastery;
+- Standard, Superior, Masterwork and Legendary crafting;
+- binding rules associated with crafted items and components;
+- cooperative crafting;
+- social gathering principles;
+- related crafting UX.
+
+Its locked design decisions should not be redefined by future economy or item PDDs without an explicit reconciliation.
+
+---
+
+## 8.2 Economy, Trade and Markets PDD — Required
+
+**Proposed document:**
+
+- `Economy-Trade-and-Markets-PDD.md`
+
+This should define:
+
+- currencies;
+- player-to-player trade;
+- market or auction systems if present;
+- vendor economy;
+- item sinks;
+- currency sinks;
+- repair or service costs where applicable;
+- price discovery;
+- trade restrictions;
+- crafted-item market participation;
+- bind-rule economic effects;
+- anti-abuse economic rules at a product level.
+
+It must be designed jointly with Crafting and Items/Loot.
+
+---
+
+# 9. Multiplayer and Social PDDs
+
+## 9.1 Group and Raid Systems PDD — Required
+
+**Proposed document:**
+
+- `Group-and-Raid-Systems-PDD.md`
+
+This should define:
+
+- party size;
+- raid size if raids exist;
+- party leadership;
+- invitations;
+- group roles;
+- group visibility;
+- loot interaction;
+- shared quest credit;
+- ready checks;
+- markers;
+- group persistence;
+- group formation;
+- matchmaking or group-finder systems if supported.
+
+---
+
+## 9.2 Guild and Social Systems PDD — Required
+
+**Proposed document:**
+
+- `Guild-and-Social-Systems-PDD.md`
+
+This should define:
+
+- guild creation;
+- membership;
+- ranks;
+- permissions;
+- guild identity;
+- guild progression if any;
+- guild storage if any;
+- friends;
+- ignore/block relationships;
+- social presence;
+- social incentives.
+
+The existence of this PDD category does not automatically approve guild progression, guild housing or other optional features.
+
+---
+
+## 9.3 Communication Systems PDD — Required Later
+
+**Proposed document:**
+
+- `Communication-Systems-PDD.md`
+
+Potential scope includes:
+
+- text chat;
+- channels;
+- whispers;
+- party/guild communication;
+- emotes;
+- moderation;
+- spam prevention;
+- social visibility.
+
+Voice communication should only be included if intentionally adopted.
+
+---
+
+## 9.4 PvP PDD — Scope Unresolved
+
+**Proposed document if PvP is adopted:**
+
+- `PvP-PDD.md`
+
+The project must explicitly decide the intended PvP scope before PvP assumptions leak into classes, itemisation or world design.
+
+Questions include:
+
+- whether PvP is a major game pillar;
+- open-world PvP;
+- duelling;
+- battleground or arena content;
+- PvP-specific balance;
+- PvP progression and rewards;
+- faction relationships;
+- opt-in/opt-out rules.
+
+Until resolved, PvP-specific behaviour should not be treated as a core implementation requirement.
+
+---
+
+# 10. Player Experience PDDs
+
+## 10.1 UI and UX PDD — Required
+
+**Proposed document:**
+
+- `UI-and-UX-PDD.md`
+
+This should define:
+
+- HUD;
+- action bars;
+- target and party frames;
+- inventory;
+- character sheet;
+- quest UI;
+- maps;
+- menus;
+- tooltips;
+- combat feedback;
+- accessibility of combat information;
+- window interaction conventions;
+- keyboard/mouse and controller assumptions;
+- scaling and resolution behaviour;
+- visual relationship between UI and the graphical direction.
+
+It should specify product behaviour without duplicating implementation details from client architecture.
+
+---
+
+## 10.2 Character Creation and Identity PDD — Required
+
+**Proposed document:**
+
+- `Character-Creation-and-Identity-PDD.md`
+
+This should define:
+
+- playable peoples/races if applicable;
+- appearance customisation;
+- naming;
+- class selection;
+- starting locations;
+- character slots;
+- identity information;
+- appearance changes after creation;
+- relationship between visual identity and equipment.
+
+---
+
+## 10.3 Audio and Music PDD — Required Later
+
+**Proposed document:**
+
+- `Audio-and-Music-PDD.md`
+
+This should eventually define:
+
+- world ambience;
+- combat audio;
+- ability readability;
+- UI audio;
+- music structure;
+- zone music;
+- dungeon music;
+- day/night response;
+- voice presentation where applicable;
+- performance and concurrency expectations.
+
+---
+
+## 10.4 Accessibility and Input PDD — Required Later
+
+**Proposed document:**
+
+- `Accessibility-and-Input-PDD.md`
+
+This should define product requirements for:
+
+- remapping;
+- controller support if required;
+- text readability;
+- UI scaling;
+- colour dependence;
+- combat-information alternatives;
+- subtitle behaviour;
+- motion and camera options;
+- input accessibility.
+
+Implementation details should remain in client-side technical documentation.
+
+---
+
+# 11. Presentation PDD
+
+## 11.1 Graphical Approach PDD — Existing
+
+**Document:**
+
+- [Graphical Approach PDD](../Graphical-Approach-PDD.md)
+
+This is the authoritative source for:
+
+- visual identity;
+- fidelity targets;
+- terrain presentation;
+- materials;
+- modular environment art;
+- lighting;
+- atmosphere;
+- weather;
+- day–night presentation;
+- VFX;
+- graphical performance philosophy;
+- UI visual cohesion where relevant.
+
+Other PDDs should reference it rather than invent independent visual styles.
+
+---
+
+# 12. Technical/Product Boundary PDDs
+
+These documents are needed because several systems contain both player-facing rules and significant server/runtime constraints.
+
+## 12.1 Account, Character and Persistence PDD — Required
+
+**Proposed document:**
+
+- `Account-Character-and-Persistence-PDD.md`
+
+This should define the product-level persistence contract:
+
+- account identity;
+- character records;
+- character creation/deletion;
+- saved character state;
+- inventory persistence;
+- quest persistence;
+- profession persistence;
+- social persistence;
+- world-state persistence where applicable;
+- logout/login expectations;
+- disconnect recovery;
+- server ownership of persistent state.
+
+Database implementation belongs in technical architecture.
+
+---
+
+## 12.2 World Runtime and Instancing PDD — Required
+
+**Proposed document:**
+
+- `World-Runtime-and-Instancing-PDD.md`
+
+This should define the product requirements that sit between world design and technical scene streaming:
+
+- what players perceive as one continuous world;
+- world partition expectations;
+- dungeon/instance boundaries;
+- who shares a world instance;
+- transitions;
+- persistence across transitions;
+- group behaviour across instances;
+- respawn/reset behaviour;
+- population-capacity expectations at the design level.
+
+Technical chunk loading, Addressables, additive scenes, interest management and server scene management remain architecture concerns.
+
+---
+
+## 12.3 Live Content and Versioning PDD — Required Later
+
+**Proposed document:**
+
+- `Live-Content-and-Versioning-PDD.md`
+
+This should eventually define:
+
+- compatibility expectations between client and server versions;
+- content-data versioning;
+- migration of persistent data;
+- patch behaviour;
+- scheduled content changes;
+- live-event content if supported;
+- rollback expectations at the product level.
+
+This should be written before live persistent player data makes incompatible design changes expensive.
+
+---
+
+# 13. Cross-System Dependencies
+
+The game systems are not independent.
+
+The following dependencies should be treated as particularly important.
+
+| System | Major Dependencies |
+|---|---|
+| Classes | Combat, Stats, Abilities/Talents, Items |
+| Combat | Stats, Classes, Items, NPCs, AI, UI |
+| Stats/Progression | Classes, Items, Combat, PvE progression |
+| Abilities/Talents | Classes, Combat, Stats, UI |
+| Items/Loot | Stats, Combat, Classes, Crafting, Economy |
+| Crafting | Items/Loot, Economy, Gathering/world resources |
+| World/Zones | Graphics, Traversal, Quests, NPCs, Events |
+| Dungeons | Combat, Classes, AI, Groups, Loot, World Runtime |
+| NPCs | Stats, Combat, AI, Quests, Economy |
+| Quests/Narrative | World, NPCs, Groups, Persistence |
+| Economy | Crafting, Items, Vendors, Persistence |
+| Groups/Raids | Combat, Dungeons, UI, Social |
+| UI/UX | Nearly all player-facing systems |
+| Persistence | Character progression, Items, Quests, Crafting, Social |
+| World Runtime | World design, Groups, Dungeons, Persistence |
+
+A change to a foundational PDD should therefore include a review of its dependent documents.
+
+---
+
+# 14. Required Structure for Future Subsystem PDDs
+
+Future PDDs should use a consistent structure where applicable.
+
+Each PDD should contain:
+
+## 14.1 Purpose and Authority
+
+State:
+
+- what the document owns;
+- what it does not own;
+- whether it is authoritative, provisional or exploratory.
+
+## 14.2 Design Pillars
+
+Define the principles by which future detailed decisions should be judged.
+
+## 14.3 Locked Design Decisions
+
+Separate decisions that implementation should treat as requirements.
+
+## 14.4 Open Design Decisions
+
+Explicitly list unresolved questions.
+
+Open questions should not be hidden inside general prose.
+
+## 14.5 Core Player Loop
+
+Describe what the player repeatedly does and why.
+
+## 14.6 Rules and State
+
+Define the player-facing system state and the rules that transform it.
+
+## 14.7 Progression
+
+Where applicable, describe:
+
+- acquisition;
+- advancement;
+- mastery;
+- reset/respec behaviour;
+- long-term progression.
+
+## 14.8 Multiplayer Behaviour
+
+Define:
+
+- shared state;
+- ownership;
+- group interaction;
+- competition/cooperation;
+- disconnect and rejoin expectations where relevant.
+
+## 14.9 Persistence
+
+Identify what must survive:
+
+- logout;
+- disconnect;
+- server restart;
+- content update.
+
+## 14.10 UX Requirements
+
+State what information the player must be able to understand and control.
+
+## 14.11 Content Authoring Requirements
+
+Where relevant, describe what designers need to author:
+
+- definitions;
+- assets;
+- encounters;
+- recipes;
+- quests;
+- dialogue;
+- zones;
+- loot tables.
+
+## 14.12 Technical Constraints
+
+Record only technical constraints that materially affect the product design.
+
+Detailed code architecture belongs elsewhere.
+
+## 14.13 Dependencies
+
+Link directly to other PDDs whose rules the system relies on.
+
+## 14.14 Validation Criteria
+
+State the conditions under which the design can be considered correctly implemented.
+
+---
+
+# 15. Naming and File Conventions
+
+Product design documents should use:
+
+```text
+.docs/Plans/<System-Name>-PDD.md
+```
+
+Examples:
+
+```text
+.docs/Plans/Combat-System-PDD.md
+.docs/Plans/Items-Equipment-and-Loot-PDD.md
+.docs/Plans/World-and-Zone-Design-PDD.md
+```
+
+Exceptions may remain outside `.docs/Plans` where already established, such as the existing Graphical Approach PDD.
+
+The Master PDD should link to the canonical document rather than requiring files to be moved solely for directory consistency.
+
+---
+
+# 16. Current Documentation Status
+
+## 16.1 Existing Product Design Documents
+
+The project currently has the following major product-design documents:
+
+| PDD | Status | Scope |
+|---|---|---|
+| [Graphical Approach PDD](../Graphical-Approach-PDD.md) | Authoritative | Visual identity and graphical presentation |
+| [Crafting System PDD](Crafting-System-PDD.md) | Authoritative | Gathering, professions, mastery and cooperative crafting |
+| [Class Design PDD](Class-Design-PDD.md) | Draft / design baseline | Class roster, identity and unresolved class mechanics |
+| **MMORPG Master PDD** | Authoritative index / baseline | Product-wide design hierarchy and subsystem map |
+
+## 16.2 Existing Supporting Technical Documents
+
+| Document | Role |
+|---|---|
+| [C# Architecture](../CSharp-Architecture.md) | Current code architecture reference |
+| [C# Style Conventions](../CSharp-Style-Conventions.md) | C# style authority |
+| [C# Restyling Plan](CSharp-Restyling-Plan.md) | Implementation/refactoring plan |
+
+---
+
+# 17. Highest-Priority Missing PDDs
+
+The next design work should focus on documents that unblock the largest number of other systems.
+
+Recommended order:
+
+1. **Combat System PDD**
+2. **Character Stats and Progression PDD**
+3. **Items, Equipment and Loot PDD**
+4. **Abilities and Talents PDD**
+5. **World and Zone Design PDD**
+6. **NPC and Creature Design PDD**
+7. **AI and Encounter Behaviour PDD**
+8. **Dungeon and Group Content PDD**
+9. **Account, Character and Persistence PDD**
+10. **UI and UX PDD**
+11. **Economy, Trade and Markets PDD**
+12. **Quest, Narrative and Dialogue PDD**
+13. **Movement and Traversal PDD**
+14. **Group and Raid Systems PDD**
+15. **Guild and Social Systems PDD**
+
+This order is a design dependency recommendation, not an implementation roadmap.
+
+---
+
+# 18. Project-Level Further Consideration Required
+
+The following major product decisions remain unresolved or are not yet captured by an authoritative PDD.
+
+## 18.1 Combat
+
+The project still needs a locked definition of:
+
+- the baseline combat model;
+- targeting;
+- action economy;
+- cooldown philosophy;
+- threat;
+- death and resurrection;
+- expected encounter pacing.
+
+## 18.2 Character Progression
+
+The project still needs explicit decisions on:
+
+- level structure;
+- level cap;
+- experience pacing;
+- primary and secondary statistics;
+- endgame progression;
+- respecialisation.
+
+## 18.3 Equipment and Loot
+
+The relationship between:
+
+- dropped items;
+- crafted items;
+- item quality;
+- item power;
+- bind rules;
+- class equipment restrictions
+
+must be defined.
+
+## 18.4 World Structure
+
+The project still needs a product-level definition of:
+
+- world regions;
+- zone progression;
+- settlement density;
+- exploration;
+- fast travel;
+- dungeon/world relationships.
+
+## 18.5 Group Content
+
+The project must define:
+
+- party size;
+- whether raids exist and at what scale;
+- dungeon difficulty model;
+- group formation;
+- lockouts and reward cadence.
+
+## 18.6 PvP
+
+The role of PvP is not yet sufficiently defined to treat it as a foundational game pillar.
+
+## 18.7 Social Structure
+
+Guilds, friends, communication and other persistent social systems require formal design.
+
+## 18.8 Endgame
+
+The project does not yet have a master definition of what players do after completing the main character-level progression.
+
+Endgame should eventually emerge coherently from:
+
+- group PvE;
+- class/character progression;
+- crafting mastery;
+- economy;
+- world content;
+- social systems;
+- PvP if adopted.
+
+It should not be designed as an isolated feature.
+
+---
+
+# 19. Definition of a Designed System
+
+A system should not be considered ready for full implementation merely because:
+
+- a prototype exists;
+- data structures exist;
+- another MMORPG has an equivalent feature;
+- the feature is technically straightforward;
+- an editor tool already exposes fields for it.
+
+A major player-facing system is considered **design-ready** when:
+
+1. its owning PDD exists;
+2. its design pillars are clear;
+3. its core player loop is defined;
+4. important cross-system dependencies are resolved;
+5. locked and open decisions are explicitly separated;
+6. its multiplayer and persistence requirements are understood;
+7. its required UX is identified;
+8. implementation would not require developers to invent major product behaviour.
+
+Prototypes may precede this state, but prototypes should remain explicitly provisional.
+
+---
+
+# 20. Master Design Goal
+
+Ninth Age should become a coherent MMORPG rather than a collection of individually functional MMORPG systems.
+
+Every major feature should answer three questions:
+
+1. **What does this add to the player's experience?**
+2. **How does it interact with the rest of the game?**
+3. **Why is it designed this way in Ninth Age?**
+
+The purpose of the PDD hierarchy is to keep those answers explicit as the project grows.
+
+This Master PDD should be updated whenever:
+
+- a major new product domain is approved;
+- a subsystem PDD is created, renamed or retired;
+- responsibility for a design decision moves between documents;
+- a project-wide design principle changes.
