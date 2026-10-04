@@ -247,7 +247,6 @@ The following safeguards are mandatory while implementing the changes listed bel
 8. **Reflection:** `ActorSpellcaster.CloneModifier` currently searches for a field named `"source"`. Any modifier field rename to `_source` must update this reflection path while retaining support for modifier types that still legitimately expose a public `source` field.
 9. **Acronyms:** apply uppercase acronym casing only to project-defined identifiers. Framework names such as `System.Guid`, `NetworkIdentity`, and the word `Identity` are not changed.
 10. **Preferred syntax rules:** `var` and target-typed `new()` are preference conventions. Apply them only when the inferred/target type is unambiguous and readability is not reduced.
-
 ## 11. File-by-file audit
 
 ### 11.1 Components
@@ -497,8 +496,7 @@ The following safeguards are mandatory while implementing the changes listed bel
 - Namespace: `Game.Shared.Data` → `Game.Shared.Data.ClassBehaviours`.
 - Alphabetize `using` directives.
 - Constants: `UnstableThreshold` → `UNSTABLE_THRESHOLD`, `CriticalThreshold` → `CRITICAL_THRESHOLD`, `UnstableDamagePerTick` → `UNSTABLE_DAMAGE_PER_TICK`, `CriticalDamagePerTick` → `CRITICAL_DAMAGE_PER_TICK`, `DecayDelay` → `DECAY_DELAY`, `DecayPerSecond` → `DECAY_PER_SECOND`, `UnstableSurgeRatio` → `UNSTABLE_SURGE_RATIO`, `CriticalSurgeRatio` → `CRITICAL_SURGE_RATIO`, `SurgeDecayPerSecond` → `SURGE_DECAY_PER_SECOND`.
-- Serialized fields: `instabilityDamageSchool` → `_instabilityDamageSchool`, `resourcePrefab` → `_resourcePrefab`; add `FormerlySerializedAs`.
-- Acronym casing: nested `RiftData.VFXId` → `VFXID`; parameter `vfxId` → `vfxID`.
+- Serialized fields: `instabilityDamageSchool` → `_instabilityDamageSchool`, `resourcePrefab` → `_resourcePrefab`; add `FormerlySerializedAs`.- Acronym casing: nested `RiftData.VFXId` → `VFXID`; parameter `vfxId` → `vfxID`.
 - XML documentation: add docs to `SorcererClassBehaviour`, the public `RiftData` fields `Position`, `Radius`, `VFXID`, `ResourcePrefab`, `OnActivate`, and `OnDeactivate`.
 - Construction: explicit `new List<DamageSchoolDefinition>()` in combat-log creation → target-typed `new()` where target typing is available.
 - Safety: preserve the script `.meta`; validate any serialized class-behaviour references after namespace migration.
@@ -748,7 +746,6 @@ The following safeguards are mandatory while implementing the changes listed bel
 - Safety: update all references to the old authentication namespace.
 
 #### `Assets/Runtime/Shared/Networking/MovementService.cs`
-
 - Alphabetize `using` directives.
 - XML documentation: add docs to `MovementService`, `onInterestUpdated`, `onClientInterestRequest`, `onInterestRequest`, `onServerCorrection`, `Server_RequestChunkInterest`, and `Client_UpdateInterest`.
 - Existing `Server_`/`Client_` RPC direction naming already conforms.
@@ -998,3 +995,299 @@ The following safeguards are mandatory while implementing the changes listed bel
 ### 11.15 Runtime — spellcasting
 
 #### `Assets/Runtime/Shared/Runtime/Spellcasting/AuraContext.cs`
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- Parameter: `componentGuid` → `componentGUID` in `GetOrCreateOverrides`.
+- XML documentation: add docs to the public `ConditionStack` fields/constructor; `AuraContext`; public context fields; both constructors; `ComponentOverrides`; and `GetOrCreateOverrides`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/AuraInstance.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `AuraInstance`, its constructor, `Update`, `SetDuration`, and `SetStacks`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/CombatLogEntry.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `CombatHistoryEntryType`, `CombatLogResultType`, `CombatLogEntry`, all public fields, and its constructor.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/ISpellModifier.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- XML documentation: add docs to `IScalableModifier`, `Scale`, `ISpellModifier`, `Priority`, `Source`, `AppliesTo`, `Apply`, and `Combine`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellComponentOverrides.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- XML documentation: add docs to `SpellComponentOverrides`, `DamageMultiplier`, `HealingMultiplier`, `FlatDamageBonus`, and `FlatHealingBonus`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellContext.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `SpellContext`, `Phase`, `Spell`, `Caster`, `ActorTarget`, `PositionTarget`, `Targets`, the constructor, and `IsInstantCast`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellProjectile.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting`.
+- Alphabetize `using` directives.
+- Serialized fields: `impactEffectPrefab` → `_impactEffectPrefab`, `arcHeight` → `_arcHeight`, `horizontalDeviationAmount` → `_horizontalDeviationAmount`; add `FormerlySerializedAs`.
+- XML documentation: add docs to `SpellProjectile` and public SFX fields `onCreateSFX`, `onImpactSFX`, and `onLoopSFX`.
+
+### 11.16 Runtime — spell modifiers
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/BonusFireDamagePct.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- Type: `BonusFireDamagePct` → `BonusFireDamagePCT`.
+- Filename: `BonusFireDamagePct.cs` → `BonusFireDamagePCT.cs`; preserve `.meta`.
+- Serialized fields: `bonusDamagePct` → `_bonusDamagePCT`, `source` → `_source`; add `FormerlySerializedAs`.
+- Property: `BonusDamagePct` → `BonusDamagePCT`.
+- Constructor: `BonusFireDamagePct(...)` → `BonusFireDamagePCT(...)`; parameter `bonusDamagePct` → `bonusDamagePCT`.
+- XML documentation: add docs to the type, its public properties, constructors, `AppliesTo`, `Apply`, `Scale`, and `Combine`.
+- **Reflection safety:** update `ActorSpellcaster.CloneModifier` so it can assign `_source`; retain fallback support for a field named `source`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/CastTimeHasteScaling.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `CastTimeHasteScaling`, `Priority`, `Source`, `AppliesTo`, `Apply`, and `Combine`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/CooldownHasteScaling.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `CooldownHasteScaling`, `Priority`, `Source`, `AppliesTo`, `Apply`, and `Combine`.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/FireDamageBonus.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- Serialized private field: `bonusDamage` → `_bonusDamage`; add `[FormerlySerializedAs("bonusDamage")]`.
+- XML documentation: add docs to `FireDamageBonus`, `BonusDamage`, `Priority`, public field `source`, `Source`, both constructors, `AppliesTo`, `Apply`, `Scale`, and `Combine`.
+- Do not rename the public `source` field solely under the private-field convention. `ActorSpellcaster.CloneModifier` must continue to support this field name.
+
+#### `Assets/Runtime/Shared/Runtime/Spellcasting/SpellModifiers/WeaponSwingTimerCooldown.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.Spellcasting.SpellModifiers`.
+- Alphabetize `using` directives.
+- XML documentation: add docs to `WeaponSwingTimerCooldown`, `Priority`, `Source`, `AppliesTo`, `Apply`, and `Combine`.
+
+### 11.17 Runtime — tests and VFX interfaces
+
+#### `Assets/Runtime/Shared/Runtime/Test/Test_InterestController.cs`
+
+- Namespace: `Game.Shared.Test` → `Game.Shared.Runtime.Test`.
+- Alphabetize `using` directives.
+- Private field: `onMove` → `_onMove`.
+- XML documentation: add docs to `Test_InterestController`, `Instance`, and `GetCurrentTile`.
+- Existing `Test_` type naming already conforms.
+
+#### `Assets/Runtime/Shared/Runtime/Test/Test_SpawnedObject.cs`
+
+- Namespace: `Game.Shared.Test` → `Game.Shared.Runtime.Test`.
+- Alphabetize `using` directives.
+- Existing `Test_` type naming already conforms.
+- Add XML documentation to any currently undocumented public type/member in this file during implementation.
+
+#### `Assets/Runtime/Shared/Runtime/ToDoAttribute.cs`
+
+- Namespace: global → `Game.Shared.Runtime`.
+- XML documentation: add docs to `ToDoAttribute` and its constructor.
+
+#### `Assets/Runtime/Shared/Runtime/VFX/IVFXFadeIn.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.VFX`.
+- Existing XML documentation is retained; no other style change is required.
+
+#### `Assets/Runtime/Shared/Runtime/VFX/IVFXFadeOut.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.VFX`.
+- Existing XML documentation is retained; no other style change is required.
+
+#### `Assets/Runtime/Shared/Runtime/VFX/IVFXTrigger.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Runtime.VFX`.
+- Existing XML documentation is retained; no other style change is required.
+
+### 11.18 Terrain
+
+#### `Assets/Runtime/Shared/Terrain/ZoneDefinition.cs`
+
+- Namespace: `Game.Runtime.Shared` → `Game.Shared.Terrain`.
+- XML documentation: add docs to public fields `zoneName`, `albedoArray`, and `normalArray`.
+- Safety: update all world-editor/terrain references to the new namespace.
+
+### 11.19 Utility
+
+#### `Assets/Runtime/Shared/Utility/CombatRating.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Utility`.
+- Filename: `CombatRating.cs` → `CombatRatingHelper.cs`; preserve `.meta`.
+- Constants: `ReferenceLevel` → `REFERENCE_LEVEL`, `ScalingExponent` → `SCALING_EXPONENT`.
+- XML documentation: add docs to `CombatRatingHelper` where missing.
+- Update all references to the renamed constants.
+
+#### `Assets/Runtime/Shared/Utility/ExperienceCalculator.cs`
+
+- Constants: `MinLevel` → `MIN_LEVEL`, `MaxLevel` → `MAX_LEVEL`.
+- Static readonly field: `LevelXpRequirements` → `LEVEL_XP_REQUIREMENTS`.
+- Construction: `new Dictionary<int, int>(MaxLevel)` → target-typed `new(MAX_LEVEL)`.
+- XML documentation: update existing docs that name `LevelXpRequirements`; add docs to `GetExpForLevel` and `GetLevelProgress01`.
+- Update every code reference to the renamed constants/static readonly field.
+
+#### `Assets/Runtime/Shared/Utility/FormattedDebug.cs`
+
+- Namespace: `Game.Shared` → `Game.Shared.Utility`.
+- XML documentation: add docs to `FormattedDebug`, `Log`, `Warning`, and `Error`.
+- Safety: many files currently alias `Game.Shared.FormattedDebug` as `Debug`; update those aliases across the repository to `Game.Shared.Utility.FormattedDebug`.
+
+#### `Assets/Runtime/Shared/Utility/GaussianTable.cs`
+
+- Namespace: global → `Game.Shared.Utility`.
+- Static readonly field: `_samples` → `SAMPLES`.
+- Constant: `Size` → `SIZE`.
+- XML documentation: add docs to `GaussianTable` and `Next`.
+- Update all references atomically.
+
+#### `Assets/Runtime/Shared/Utility/WorldPosition.cs`
+
+- XML documentation: add docs to `WorldPosition`, public fields `x`, `y`, `z`, its constructor, `ToLocal`, and both operators where currently undocumented.
+- Existing namespace `Game.Shared.Utility` already conforms.
+
+## 12. Game.Shared implementation order
+
+The Shared restyle must be applied in dependency-safe stages rather than as one unreviewed global replacement.
+
+### Stage S1 — Documentation and syntax-only changes
+
+Apply:
+
+- XML documentation;
+- alphabetical `using` order;
+- target-typed `new()` where unambiguous;
+- obvious `var` changes where the right-hand side states the type.
+
+Compile before proceeding.
+
+### Stage S2 — Non-serialized private fields, constants and static readonly fields
+
+Apply `_camelCase`, `SCREAMING_SNAKE_CASE`, and project acronym changes that do not touch Unity serialization or persistence.
+
+This includes singleton/library `instance` fields, immutable constants, `ChunkSubscriptions` static readonly collections, and nonserialized runtime caches.
+
+Update all symbol references atomically and compile.
+
+### Stage S3 — Serialized field renames
+
+For each serialized field:
+
+1. add `FormerlySerializedAs` with the old field name;
+2. rename the field;
+3. update every C# reference;
+4. update all Editor `SerializedProperty`/reflection/property-path strings;
+5. open and inspect representative assets/prefabs/scenes;
+6. verify no values reset;
+7. compile before moving to the next subsystem.
+
+Perform this subsystem-by-subsystem rather than across all Shared data simultaneously.
+
+### Stage S4 — Filename/type/acronym renames
+
+Perform these explicit moves while preserving `.meta` files:
+
+- `ActorStatScaling.cs` → `StatScaling.cs`;
+- `AuraBehaviour_DamageHostOnHit copy.cs` → `AuraBehaviour_DamageHostOnHit.cs`;
+- `RaceDefintionLibrary.cs` → `RaceDefinitionLibrary.cs`;
+- `TestClassBehaviour.cs` / `TestClassBehaviour` → `Test_ClassBehaviour.cs` / `Test_ClassBehaviour`;
+- `PackGuid.cs` / `PackGuid` → `PackGUID.cs` / `PackGUID`;
+- `BonusFireDamagePct.cs` / `BonusFireDamagePct` → `BonusFireDamagePCT.cs` / `BonusFireDamagePCT`;
+- `CombatRating.cs` → `CombatRatingHelper.cs`.
+
+Also perform project-defined member acronym renames (`DefinitionID`, `GUID`, `NPCID`, `PVPFaction`, etc.) as symbol-wide refactors.
+
+Compile after each coherent rename set.
+
+### Stage S5 — Persistence migration
+
+Before changing `CharacterData` JSON-facing field names:
+
+1. capture a representative pre-restyle `player_data.json`;
+2. introduce a compatibility deserialization/migration path for the old names;
+3. rename the C# fields;
+4. load the old file;
+5. verify every character, inventory/equipment item, resource, talent, reputation, and quest field;
+6. save to the new format;
+7. reload the newly saved file and verify equivalence.
+
+Only after that validation may the old compatibility path be scheduled for later removal.
+
+### Stage S6 — Namespace mirroring and managed-reference migration
+
+Apply namespace changes one subtree at a time:
+
+1. `Components`;
+2. `Data` subfolders;
+3. `Movement`;
+4. `Networking`;
+5. `Runtime` and its subfolders;
+6. `Terrain`;
+7. `Utility`.
+
+For each subtree:
+
+- update every repository reference in the same commit;
+- add type-migration metadata to managed-reference classes where applicable;
+- reopen affected ScriptableObject assets;
+- check for missing managed-reference types;
+- compile Client, Server, and Editor assemblies before advancing.
+### Stage S7 — RPC naming
+
+Rename only the non-conforming observer RPCs:
+
+- `Observer_PlaySFX` → `Observers_PlaySFX`;
+- `Observer_StartSpellCast` → `Observers_StartSpellCast`;
+- `Observer_TickSpellCast` → `Observers_TickSpellCast`;
+- `Observer_InterruptSpellCast` → `Observers_InterruptSpellCast`;
+- `Observer_FinishSpellCast` → `Observers_FinishSpellCast`;
+- `Observer_SpawnEffectAtPosition` → `Observers_SpawnEffectAtPosition`;
+- `Observer_SpawnProjectile` → `Observers_SpawnProjectile`;
+- `Observer_TriggerEffect` → `Observers_TriggerEffect`.
+
+Preserve attributes/signatures exactly. Rebuild both client and server and perform an RPC smoke test.
+
+## 13. Game.Shared validation
+
+The Shared assembly restyle is complete only when all of the following pass:
+
+- Unity Editor C# compilation;
+- Client C# compilation/build;
+- dedicated-server C# compilation/build;
+- no missing MonoBehaviour/ScriptableObject scripts;
+- no missing `[SerializeReference]` types in spell, aura, condition, quest, talent, or modifier assets;
+- existing definition-library assets retain their entries and values;
+- representative spell/aura/talent/quest assets retain all serialized values after field renames;
+- `CharacterData` can load a pre-restyle persistence file and round-trip it into the new format;
+- PurrNet authentication, account entry, actor services, movement interest, stat snapshots, inventory/equipment RPCs, spellcast RPCs, aura RPCs, and VFX/SFX observer RPCs still operate;
+- `ActorSpellcaster.CloneModifier` still assigns modifier sources to both `_source`-backed and `source`-backed modifier implementations;
+- all Editor custom inspectors/drawers that access renamed Shared fields by serialized-property path still function;
+- a fresh convention audit of all 130 Shared C# files reports no remaining hard convention breaches;
+- no gameplay values, network semantics, persistence semantics, or asset content are intentionally changed.
+
+## 14. Game.Shared result
+
+| Item | Result |
+|---|---:|
+| C# files audited | 130 |
+| Assembly definition files audited | 1 |
+| Namespace-mirroring changes | Required across multiple Shared subtrees |
+| Serialized-field migrations | Required across data definitions and runtime components |
+| Persistence migration | Required for `CharacterData` acronym field renames |
+| Managed-reference migration | Required for polymorphic data namespace/type moves |
+| C# file/type moves explicitly identified | 7 |
+| Observer RPC renames | 8 |
+| Functional changes intended | 0 |
+
+**Game.Shared status:** Planned; not yet restyled.
