@@ -1654,3 +1654,167 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 10: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 154 individual changes listed.
+
+
+### Audit batch 10: files 143–158 of 386
+
+#### `Assets/Runtime/Client/UI/Common/IDraggableSlot.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public interface IDraggableSlot`.
+
+#### `Assets/Runtime/Client/UI/Common/IListPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public interface IListPanel`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_AuraBar.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public abstract class UI_AuraBar : UI_Panel, IListPanel`.
+- Line 12: add XML documentation to public API `[SerializeField] public GameObject container;`.
+- Line 13: add XML documentation to public API `[SerializeField] public UI_AuraEntry auraEntryPrefab;`.
+- Line 16: add XML documentation to public API `public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();`.
+- Line 19: add XML documentation to public API `public virtual void PopulateList(bool forceClear = false)`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_AuraEntry.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public sealed class UI_AuraEntry : UI_ListEntry<AuraInstance>`.
+- Line 13: rename private field `data` → `_data`; **serialized** — add `[FormerlySerializedAs("data")]` before renaming and verify existing assets.
+- Line 14: add XML documentation to public API `public AuraInstance Data => data;`.
+- Line 16: rename private field `graphics` → `_graphics`; **serialized** — add `[FormerlySerializedAs("graphics")]` before renaming and verify existing assets.
+- Line 17: rename private field `durationText` → `_durationText`; **serialized** — add `[FormerlySerializedAs("durationText")]` before renaming and verify existing assets.
+- Line 19: rename private field `index` → `_index`; **serialized** — add `[FormerlySerializedAs("index")]` before renaming and verify existing assets.
+- Line 21: add XML documentation to public API `public override void Initialize(AuraInstance data, int index)`.
+- Line 46: add XML documentation to public API `public void UpdateDisplay(float currentDuration = -1f)`.
+- Line 66: add XML documentation to public API `public override void OnClick(PointerEventData eventData = null)`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_Button.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public abstract class UI_Button : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler`.
+- Line 14: add XML documentation to public API `public virtual void Start()`.
+- Line 20: add XML documentation to public API `public virtual void OnClick(PointerEventData eventData = default)`.
+- Line 29: add XML documentation to public API `public virtual void OnPointerEnter(PointerEventData eventData)`.
+- Line 34: add XML documentation to public API `public virtual void OnPointerExit(PointerEventData eventData)`.
+- Line 39: add XML documentation to public API `public virtual void EnableButton()`.
+- Line 44: add XML documentation to public API `public virtual void DisableButton()`.
+- Line 49: add XML documentation to public API `public virtual bool IsVisible()`.
+- Line 54: add XML documentation to public API `public virtual void Show()`.
+- Line 61: add XML documentation to public API `public virtual void Hide()`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_DragGhost.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public sealed class UI_DragGhost : MonoBehaviour`.
+- Line 20: rename private field `iconImage` → `_iconImage`.
+- Line 21: rename private field `rectTransform` → `_rectTransform`.
+- Line 22: rename private field `rootCanvas` → `_rootCanvas`.
+- Line 51: add XML documentation to public API `public void Show(Sprite icon)`.
+- Line 58: add XML documentation to public API `public void UpdatePosition(Vector2 screenPosition)`.
+- Line 63: add XML documentation to public API `public void Hide()`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_GenericPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+
+#### `Assets/Runtime/Client/UI/Common/UI_ListEntry.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public abstract class UI_ListEntry : UI_Button`.
+- Line 8: add XML documentation to public API `public IListPanel parentPanel;`.
+- Line 9: add XML documentation to public API `public bool isFocused;`.
+- Line 11: add XML documentation to public API `public virtual void Register(IListPanel _parentPanel)`.
+- Line 17: add XML documentation to public API `public virtual void Destroy()`.
+- Line 23: add XML documentation to public API `public virtual void Focus() { }`.
+- Line 24: add XML documentation to public API `public virtual void Unfocus() { }`.
+- Line 25: add XML documentation to public API `public virtual void Highlight() { }`.
+- Line 26: add XML documentation to public API `public virtual void ClearHighlight() { }`.
+- Line 29: add XML documentation to public API `public abstract class UI_ListEntry<T> : UI_ListEntry`.
+- Line 31: add XML documentation to public API `public abstract void Initialize(T data, int index);`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_Manager.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public class UI_Manager : MonoBehaviour`.
+- Line 12: rename private field `instance` → `_instance`.
+- Line 13: add XML documentation to public API `public static UI_Manager Instance => instance;`.
+- Line 21: use target-typed `new(...)` for member `openedWindows`.
+- Line 48: add XML documentation to public API `public void Initialize()`.
+- Line 54: add XML documentation to public API `public bool TryGetWindow(string windowName, out UI_Window window)`.
+- Line 60: add XML documentation to public API `public virtual void ShowWindow(string windowName)`.
+- Line 66: add XML documentation to public API `public virtual void HideWindow(string windowName)`.
+- Line 72: add XML documentation to public API `public virtual void ToggleWindow(string windowName)`.
+- Line 78: add XML documentation to public API `public virtual void OnShowWindow(UI_Window window) => openedWindows.Enqueue(window);`.
+- Line 79: add XML documentation to public API `public virtual void OnHideWindow(UI_Window window) => openedWindows = new Queue<UI_Window>(openedWindows.Where(w => w != window));`.
+- Line 80: add XML documentation to public API `public virtual void CloseLastWindow()`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_Panel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 18: add XML documentation to public API `public string PanelName => panelName; // Public getter for panel name.`.
+- Line 27: rename private field `onShowWindow` → `_onShowWindow`; **serialized** — add `[FormerlySerializedAs("onShowWindow")]` before renaming and verify existing assets.
+- Line 28: rename private field `onHideWindow` → `_onHideWindow`.
+- Line 41: add XML documentation to public API `public virtual void Show()`.
+- Line 47: add XML documentation to public API `public virtual void ShowImmediate()`.
+- Line 53: add XML documentation to public API `public virtual void Hide()`.
+- Line 59: add XML documentation to public API `public virtual void HideImmediate()`.
+- Line 65: add XML documentation to public API `public virtual void Toggle()`.
+- Line 88: add XML documentation to public API `public virtual void OnShow()`.
+- Line 94: add XML documentation to public API `public virtual void OnHide()`.
+- Line 100: add XML documentation to public API `public virtual void Refresh()`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_ProgressBar.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public abstract class UI_ProgressBar : MonoBehaviour`.
+- Line 9: rename private field `canvasGroup` → `_canvasGroup`; **serialized** — add `[FormerlySerializedAs("canvasGroup")]` before renaming and verify existing assets.
+- Line 12: add XML documentation to public API `public virtual void SetMaterial(Material material)`.
+- Line 18: add XML documentation to public API `public void Show()`.
+- Line 23: add XML documentation to public API `public void Hide()`.
+- Line 28: add XML documentation to public API `public void SetProgress(float progress)`.
+- Line 35: add XML documentation to public API `public void SetColor(Color color)`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_Window.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public abstract class UI_Window : MonoBehaviour`.
+- Line 12: add XML documentation to public API `public string WindowName => windowName; // Public getter for window name.`.
+- Line 45: add XML documentation to public API `public virtual void Show()`.
+- Line 51: add XML documentation to public API `public virtual void ShowImmediate()`.
+- Line 57: add XML documentation to public API `public virtual void Hide()`.
+- Line 63: add XML documentation to public API `public virtual void HideImmediate()`.
+- Line 69: add XML documentation to public API `public virtual void Toggle()`.
+- Line 110: add XML documentation to public API `public virtual bool TryGetPanel(string panelName, out UI_Panel panel)`.
+- Line 121: add XML documentation to public API `public virtual void ShowPanel(string panelName)`.
+- Line 126: add XML documentation to public API `public virtual void HidePanel(string panelName)`.
+- Line 131: add XML documentation to public API `public virtual void TogglePanel(string panelName)`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_WorldSpace.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Line 5: add XML documentation to public API `public class UI_WorldSpace : MonoBehaviour`.
+- Line 7: rename private field `instance` → `_instance`.
+- Line 8: add XML documentation to public API `public static UI_WorldSpace Instance => instance;`.
+- Line 11: add XML documentation to public API `[SerializeField] public Canvas root;`.
+- Line 13: add XML documentation to public API `[SerializeField] public Transform nameplateContainer;`.
+- Line 14: add XML documentation to public API `[SerializeField] public Transform fctContainer;`.
+
+#### `Assets/Runtime/Client/UI/Common/UI_WorldSpaceUIManager.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Common`; update all references atomically and protect serialized managed-reference type moves.
+- Line 5: add XML documentation to public API `public abstract class UI_WorldSpaceUIManager : MonoBehaviour`.
+- Line 8: rename private field `cornerBuffer` → `_cornerBuffer`.
+
+#### `Assets/Runtime/Client/UI/ContextMenu/UI_ContextMenuEntry.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.ContextMenu`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public sealed class UI_ContextMenuEntry : UI_ListEntry`.
+- Line 11: rename private field `iconImage` → `_iconImage`; **serialized** — add `[FormerlySerializedAs("iconImage")]` before renaming and verify existing assets.
+- Line 12: rename private field `nameText` → `_nameText`; **serialized** — add `[FormerlySerializedAs("nameText")]` before renaming and verify existing assets.
+- Line 14: rename private field `onClick` → `_onClick`; **serialized** — add `[FormerlySerializedAs("onClick")]` before renaming and verify existing assets.
+- Line 16: add XML documentation to public API `public void Initialize(string displayName, Sprite icon, Action onClickCallback)`.
+- Line 24: add XML documentation to public API `public override void OnClick(PointerEventData eventData)`.
+
+#### `Assets/Runtime/Client/UI/ContextMenu/UI_ContextMenuPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.ContextMenu`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public sealed class UI_ContextMenuPanel : UI_Panel, IListPanel`.
+- Line 15: add XML documentation to public API `public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();`.
+- Line 16: add XML documentation to public API `public Transform ContentRoot => _contentContainer.transform;`.
+- Line 18: add XML documentation to public API `public void PopulateList(bool forceClear = false)`.
+- Line 27: add XML documentation to public API `public void Populate(GameObject entryPrefab, Action<UI_ContextMenuPanel> populateAction)`.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 127 individual changes listed.
