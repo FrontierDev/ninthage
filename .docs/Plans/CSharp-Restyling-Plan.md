@@ -785,3 +785,190 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 37: rename member `id` → `ID` for acronym casing.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 92 individual changes listed.
+
+
+### Audit batch 5: files 63–78 of 386
+
+#### `Assets/Editor/WorldEditor/Generators/TerrainChunkGenerator.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Generators`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 201: use `var` for local `terrainData`; the RHS makes `TerrainData` explicit.
+- Line 213: use `var` for local `chunkRoot`; the RHS makes `GameObject` explicit.
+- Line 288: use `var` for local `terrainData`; the RHS makes `TerrainData` explicit.
+- Line 300: use `var` for local `chunkRoot`; the RHS makes `GameObject` explicit.
+- Line 455: use `var` for local `waterGO`; the RHS makes `GameObject` explicit.
+- Line 463: use `var` for local `waterMesh`; the RHS makes `Mesh` explicit.
+
+#### `Assets/Editor/WorldEditor/Generators/TerrainChunkPlacer.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Generators`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 16: rename static readonly field `ChunkNameRegex` → `CHUNK_NAME_REGEX`.
+- Line 16: use target-typed `new(...)` for member `ChunkNameRegex`.
+
+#### `Assets/Editor/WorldEditor/Processors/HeightmapProcessor.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Processors`; update all references atomically and protect serialized managed-reference type moves.
+
+#### `Assets/Editor/WorldEditor/Streaming/HeightmapArrayPool.cs`
+- Line 13: rename static readonly field `_pools` → `POOLS`.
+- Line 85: add XML documentation to public API `public float[] Array => _array;`.
+- Line 87: add XML documentation to public API `public PooledArray(int size)`.
+- Line 92: add XML documentation to public API `public void Dispose()`.
+
+#### `Assets/Editor/WorldEditor/Streaming/TerrainLODGenerator.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 14: add XML documentation to public API `public enum LODDetail`.
+- Line 21: rename private field `LODLevel` → `_LODLevel`.
+- Line 23: add XML documentation to public API `public readonly float screenRelativeTransitionHeight;`.
+- Line 24: add XML documentation to public API `public readonly int heightmapResolution;`.
+- Line 25: add XML documentation to public API `public readonly float meshSimplificationFactor;`.
+- Line 27: add XML documentation to public API `public LODLevel(float transition, int resolution, float meshFactor)`.
+- Line 35: rename static readonly field `_lodLevels` → `LOD_LEVELS`.
+
+#### `Assets/Editor/WorldEditor/Streaming/TiledHeightmapSystem.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 16: add XML documentation to public API `public const int TILE_SIZE = 256;`.
+- Line 31: add XML documentation to public API `public int TotalTilesX => _tilesX;`.
+- Line 32: add XML documentation to public API `public int TotalTilesZ => _tilesZ;`.
+- Line 33: add XML documentation to public API `public Vector2Int WorldSize => new(_tilesX * TILE_SIZE, _tilesZ * TILE_SIZE);`.
+- Line 35: rename private field `CachedTile` → `_CachedTile`.
+- Line 37: add XML documentation to public API `public float[] heightdata;`.
+- Line 38: add XML documentation to public API `public long lastAccessTime;`.
+- Line 39: add XML documentation to public API `public bool isDirty;`.
+- Line 42: add XML documentation to public API `public TiledHeightmapSystem(Texture2D sourceHeightmap, int worldWidth, int worldDepth)`.
+- Line 103: use `var` for local `readableTexture`; the RHS makes `Texture2D` explicit.
+- Line 302: add XML documentation to public API `public void Dispose()`.
+
+#### `Assets/Editor/WorldEditor/Terrain/TerrainAutoPainterHelper.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Terrain`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 24: rename constant `KernelThreadGroupSize` → `KERNEL_THREAD_GROUP_SIZE`.
+- Line 25: rename constant `RequiredLayerCount` → `REQUIRED_LAYER_COUNT`.
+- Line 28: rename constant `LayerAssetFolder` → `LAYER_ASSET_FOLDER`.
+- Line 29: rename constant `DebugOutputFolder` → `DEBUG_OUTPUT_FOLDER`.
+- Line 32: add XML documentation to public API `public const float DefaultSlopeThreshold = 15f;`.
+- Line 33: add XML documentation to public API `public const float DefaultTalusThreshold = 25f;`.
+- Line 34: add XML documentation to public API `public const float DefaultCliffThreshold = 40f;`.
+- Line 35: add XML documentation to public API `public const float DefaultBlendWidth = 5f; // half-width of smoothstep band in degrees`.
+- Line 36: add XML documentation to public API `public const int DefaultAlphamapResolution = 1024;`.
+- Line 37: add XML documentation to public API `public const float DefaultTextureTileSize = 15f; // world metres per texture tile`.
+- Line 39: add XML documentation to public API `public const float DefaultSnowElevation = 800f;`.
+- Line 40: add XML documentation to public API `public const float DefaultSnowHeightBlend = 30f;`.
+- Line 41: add XML documentation to public API `public const float DefaultSnowSlopeLimit = 35f;`.
+- Line 42: add XML documentation to public API `public const float DefaultSnowSlopeBlend = 5f;`.
+- Line 43: add XML documentation to public API `public const float DefaultIceElevation = 1200f;`.
+- Line 44: add XML documentation to public API `public const float DefaultIceHeightBlend = 30f;`.
+- Line 45: add XML documentation to public API `public const float DefaultIceSlopeLimit = 20f;`.
+- Line 46: add XML documentation to public API `public const float DefaultIceSlopeBlend = 5f;`.
+- Line 47: rename constant `SliceCopyShaderPath` → `SLICE_COPY_SHADER_PATH`.
+- Line 50: rename static readonly field `HeightmapId` → `HEIGHTMAP_ID`.
+- Line 51: rename static readonly field `ControlMap0Id` → `CONTROL_MAP0_ID`.
+- Line 52: rename static readonly field `ControlMap1Id` → `CONTROL_MAP1_ID`.
+- Line 53: rename static readonly field `CliffThresholdId` → `CLIFF_THRESHOLD_ID`.
+- Line 54: rename static readonly field `TalusThresholdId` → `TALUS_THRESHOLD_ID`.
+- Line 55: rename static readonly field `SlopeThresholdId` → `SLOPE_THRESHOLD_ID`.
+- Line 56: rename static readonly field `BlendWidthId` → `BLEND_WIDTH_ID`.
+- Line 57: rename static readonly field `TalusCurvatureBlendId` → `TALUS_CURVATURE_BLEND_ID`.
+- Line 58: rename static readonly field `HeightmapSizeId` → `HEIGHTMAP_SIZE_ID`.
+- Line 59: rename static readonly field `AlphamapSizeId` → `ALPHAMAP_SIZE_ID`.
+- Line 60: rename static readonly field `TerrainBaseYId` → `TERRAIN_BASE_Y_ID`.
+- Line 61: rename static readonly field `TerrainHeightRangeId` → `TERRAIN_HEIGHT_RANGE_ID`.
+- Line 62: rename static readonly field `SnowElevationId` → `SNOW_ELEVATION_ID`.
+- Line 63: rename static readonly field `SnowHeightBlendId` → `SNOW_HEIGHT_BLEND_ID`.
+- Line 64: rename static readonly field `SnowSlopeLimitId` → `SNOW_SLOPE_LIMIT_ID`.
+- Line 65: rename static readonly field `SnowSlopeBlendId` → `SNOW_SLOPE_BLEND_ID`.
+- Line 66: rename static readonly field `IceElevationId` → `ICE_ELEVATION_ID`.
+- Line 67: rename static readonly field `IceHeightBlendId` → `ICE_HEIGHT_BLEND_ID`.
+- Line 68: rename static readonly field `IceSlopeLimitId` → `ICE_SLOPE_LIMIT_ID`.
+- Line 69: rename static readonly field `IceSlopeBlendId` → `ICE_SLOPE_BLEND_ID`.
+- Line 143: use `var` for local `heightmapTex`; the RHS makes `Texture2D` explicit.
+- Line 161: use `var` for local `rt0`; the RHS makes `RenderTexture` explicit.
+- Line 165: use `var` for local `rt1`; the RHS makes `RenderTexture` explicit.
+- Line 304: use `var` for local `layer`; the RHS makes `TerrainLayer` explicit.
+- Line 402: use `var` for local `mat`; the RHS makes `Material` explicit.
+- Line 412: use `var` for local `rt`; the RHS makes `RenderTexture` explicit.
+- Line 423: use `var` for local `slice`; the RHS makes `Texture2D` explicit.
+- Line 486: use `var` for local `result`; the RHS makes `Texture2D` explicit.
+
+#### `Assets/Editor/WorldEditor/Terrain/Texture2DArrayBuilder.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Terrain`; update all references atomically and protect serialized managed-reference type moves.
+- Line 19: use target-typed `new(...)` for member `_slices`.
+- Line 29: add XML documentation to public API `public static void Open() => GetWindow<Texture2DArrayBuilder>("Texture2D Array Builder");`.
+- Line 201: use `var` for local `rt`; the RHS makes `RenderTexture` explicit.
+- Line 202: use `var` for local `readback`; the RHS makes `Texture2D` explicit.
+
+#### `Assets/Editor/WorldEditor/UI/WorldEditorSettings.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.UI`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 13: add XML documentation to public API `public int worldWidth = 256;`.
+- Line 14: add XML documentation to public API `public bool flipCoastlineMaskY = false;`.
+- Line 15: add XML documentation to public API `public int seaLevel = 10;`.
+- Line 16: add XML documentation to public API `public float waterPlaneOffset = -2f;`.
+- Line 17: add XML documentation to public API `public float mountainLevel = 0.7f;`.
+- Line 18: add XML documentation to public API `public float maxHeight = 100f;`.
+- Line 21: add XML documentation to public API `public bool showPlateaus = false;`.
+- Line 22: add XML documentation to public API `public int plateauCount = 5;`.
+- Line 23: add XML documentation to public API `public bool enablePlateauGeneration = false;`.
+- Line 24: add XML documentation to public API `public float plateauSharpness = 2.0f;`.
+- Line 27: add XML documentation to public API `public bool showPreview = true;`.
+- Line 28: add XML documentation to public API `public float zoomLevel = 1f;`.
+- Line 29: add XML documentation to public API `public float panOffsetX = 0f;`.
+- Line 30: add XML documentation to public API `public float panOffsetY = 0f;`.
+- Line 31: add XML documentation to public API `public int selectedSidebarTab = 0;`.
+- Line 32: add XML documentation to public API `public int visualizationMode = 0; // VisualizationMode.Heightmap`.
+- Line 35: add XML documentation to public API `public bool enableErosion = false;`.
+- Line 36: add XML documentation to public API `public bool[] erosionModeEnabled = new bool[0];`.
+- Line 39: add XML documentation to public API `public bool visualizeGeneratedChunks = true;`.
+- Line 40: add XML documentation to public API `public bool visualizeMarkedChunks = true;`.
+- Line 41: add XML documentation to public API `public bool visualizeUnmarkedChunks = true;`.
+- Line 42: add XML documentation to public API `public bool selectiveGenerationMode = false;`.
+- Line 51: use target-typed `new(...)` for member `settings`.
+- Line 51: add XML documentation to public API `public WorldEditorSettings settings = new WorldEditorSettings();`.
+
+#### `Assets/Editor/WorldEditor/UI/WorldEditorWindow.Base.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.UI`; update all references atomically and protect serialized managed-reference type moves.
+- Rename partial file `WorldEditorWindow.Base.cs` → `WorldEditorWindow_Base.cs`; move its existing `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public enum VisualizationMode`.
+- Line 15: add XML documentation to public API `public partial class WorldEditorWindow : EditorWindow`.
+- Line 56: use target-typed `new(...)` for member `_sidebarModules`.
+- Line 64: use target-typed `new(...)` for member `_erosionModeSettings`.
+
+#### `Assets/Editor/WorldEditor/UI/WorldEditorWindow.Erosion.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.UI`; update all references atomically and protect serialized managed-reference type moves.
+- Rename partial file `WorldEditorWindow.Erosion.cs` → `WorldEditorWindow_Erosion.cs`; move its existing `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public partial class WorldEditorWindow : EditorWindow`.
+
+#### `Assets/Editor/WorldEditor/UI/WorldEditorWindow.Input.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.UI`; update all references atomically and protect serialized managed-reference type moves.
+- Rename partial file `WorldEditorWindow.Input.cs` → `WorldEditorWindow_Input.cs`; move its existing `.meta` file.
+- Line 6: add XML documentation to public API `public partial class WorldEditorWindow : EditorWindow`.
+
+#### `Assets/Editor/WorldEditor/UI/WorldEditorWindow.Modules.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.UI`; update all references atomically and protect serialized managed-reference type moves.
+- Rename partial file `WorldEditorWindow.Modules.cs` → `WorldEditorWindow_Modules.cs`; move its existing `.meta` file.
+- Line 3: add XML documentation to public API `public interface IWorldEditorWindowModule`.
+- Line 9: add XML documentation to public API `public partial class WorldEditorWindow`.
+- Line 11: rename private field `IWorldEditorWindowModule` → `_IWorldEditorWindowModule`.
+- Line 13: add XML documentation to public API `public string TabName => "World";`.
+- Line 15: add XML documentation to public API `public void Draw(WorldEditorWindow window)`.
+- Line 23: add XML documentation to public API `public string TabName => "Global Erosion";`.
+- Line 25: add XML documentation to public API `public void Draw(WorldEditorWindow window)`.
+
+#### `Assets/Editor/WorldEditor/UI/WorldEditorWindow.Overlay.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.UI`; update all references atomically and protect serialized managed-reference type moves.
+- Rename partial file `WorldEditorWindow.Overlay.cs` → `WorldEditorWindow_Overlay.cs`; move its existing `.meta` file.
+- Line 6: add XML documentation to public API `public partial class WorldEditorWindow : EditorWindow`.
+- Line 50: use `var` for local `chunkRect`; the RHS makes `Rect` explicit.
+
+#### `Assets/Editor/WorldEditor/UI/WorldEditorWindow.Terrain.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.UI`; update all references atomically and protect serialized managed-reference type moves.
+- Rename partial file `WorldEditorWindow.Terrain.cs` → `WorldEditorWindow_Terrain.cs`; move its existing `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 12: add XML documentation to public API `public partial class WorldEditorWindow : EditorWindow`.
+- Line 331: use `var` for local `result`; the RHS makes `Texture2D` explicit.
+- Line 578: use `var` for local `maskedHeightmap`; the RHS makes `Texture2D` explicit.
+- Line 633: use `var` for local `readableTexture`; the RHS makes `Texture2D` explicit.
+- Line 715: use `var` for local `container`; the RHS makes `GameObject` explicit.
+
+**Batch result:** 16 files scanned; 15 files contain listed convention changes; 152 individual changes listed.
