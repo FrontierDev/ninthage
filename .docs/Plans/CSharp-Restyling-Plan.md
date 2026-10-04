@@ -2376,3 +2376,207 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 22: add XML documentation to public API `public void SetTooltip(string header, UI_TooltipLine[] lines, string footer, Sprite icon)`.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 102 individual changes listed.
+
+
+### Audit batch 14: files 207–222 of 386
+
+#### `Assets/Runtime/Client/UI/Tooltip/UI_TooltipSingleLine.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Tooltip`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public sealed class UI_TooltipSingleLine : MonoBehaviour, ITooltipLine`.
+- Line 8: rename private field `lineText` → `_lineText`; **serialized** — add `[FormerlySerializedAs("lineText")]` before renaming and verify existing assets.
+- Line 10: add XML documentation to public API `public void Set(string[] text)`.
+
+#### `Assets/Runtime/Client/UI/Tooltip/UI_TooltipWindow.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Tooltip`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public sealed class UI_TooltipWindow : UI_Window`.
+- Line 9: add XML documentation to public API `public static UI_TooltipWindow Instance => _instance;`.
+- Line 21: add XML documentation to public API `public void Show(string header, UI_TooltipLine[] body, string footer, Sprite icon)`.
+- Line 27: add XML documentation to public API `public void SetPosition(Transform target, float gap = 0f)`.
+- Line 31: use `var` for local `tooltipRect`; the RHS makes `RectTransform` explicit.
+
+#### `Assets/Runtime/Client/UI/VFX/UI_ScrollingFog.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.VFX`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public class UI_ScrollingFog : MonoBehaviour`.
+- Line 8: use target-typed `new(...)` for member `scrollSpeed`.
+- Line 8: add XML documentation to public API `public Vector2 scrollSpeed = new Vector2(0.01f, 0.02f);`.
+- Line 10: rename private field `mat` → `_mat`.
+- Line 11: rename private field `offset` → `_offset`.
+
+#### `Assets/Runtime/Client/Utility/ItemTooltipFactor.cs`
+- Rename file `ItemTooltipFactor.cs` → `ItemTooltipFactory.cs`; preserve its `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public static class ItemTooltipFactory`.
+- Line 10: rename private field `cache` → `_cache`.
+- Line 10: use target-typed `new(...)` for member `cache`.
+- Line 12: add XML documentation to public API `public static UI_TooltipLine[] GetOrCreateTooltip(ItemInstance item)`.
+
+#### `Assets/Runtime/Client/Utility/PlaceholderText.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 17: rename static readonly field `PlaceholderRegex` → `PLACEHOLDER_REGEX`.
+- Line 17: use target-typed `new(...)` for member `PlaceholderRegex`.
+- Line 18: rename static readonly field `resolvers` → `RESOLVERS`.
+- Line 35: add XML documentation to public API `public static string ResolvePlaceholder(string placeholder)`.
+- Line 105: add XML documentation to public API `public static string ResolveAll(string text)`.
+- Rename parameter `id` → `ID`; update named arguments.
+- Rename parameter `id` → `ID`; update named arguments.
+
+#### `Assets/Runtime/Client/Utility/RarityColor.cs`
+- Line 7: add XML documentation to public API `public static class RarityColor`.
+- Line 9: add XML documentation to public API `public static Color GetColor(ItemQuality rarity)`.
+
+#### `Assets/Runtime/Client/Utility/UIConstants.cs`
+- Line 5: add XML documentation to public API `public static class UIConstants`.
+- Line 8: use target-typed `new(...)` for member `PrimaryText`.
+- Line 8: add XML documentation to public API `public static readonly Color PrimaryText = new Color(230f / 255f, 234f / 255f, 242f / 255f, 1f);`.
+- Line 9: use target-typed `new(...)` for member `SecondaryText`.
+- Line 9: add XML documentation to public API `public static readonly Color SecondaryText = new Color(182f / 255f, 190f / 255f, 204f / 255f, 1.0f);`.
+
+#### `Assets/Runtime/Client/VFX/ProceduralProjectileMesh.cs`
+- Alphabetize `using` directives (first at line 3).
+- Line 18: add XML documentation to public API `public enum ProjectileShape`.
+- Line 27: rename private field `shapeType` → `_shapeType`; **serialized** — add `[FormerlySerializedAs("shapeType")]` before renaming and verify existing assets.
+- Line 28: rename private field `scale` → `_scale`; **serialized** — add `[FormerlySerializedAs("scale")]` before renaming and verify existing assets.
+- Line 31: rename private field `segments` → `_segments`; **serialized** — add `[FormerlySerializedAs("segments")]` before renaming and verify existing assets.
+- Line 32: rename private field `rings` → `_rings`; **serialized** — add `[FormerlySerializedAs("rings")]` before renaming and verify existing assets.
+- Line 35: rename private field `capsuleLength` → `_capsuleLength`; **serialized** — add `[FormerlySerializedAs("capsuleLength")]` before renaming and verify existing assets.
+- Line 38: rename private field `taperStrength` → `_taperStrength`; **serialized** — add `[FormerlySerializedAs("taperStrength")]` before renaming and verify existing assets.
+- Line 40: rename private field `cachedMesh` → `_cachedMesh`; **serialized** — add `[FormerlySerializedAs("cachedMesh")]` before renaming and verify existing assets.
+- Line 42: add XML documentation to public API `public Mesh GeneratedMesh => cachedMesh;`.
+
+#### `Assets/Runtime/Client/VFX/ProceduralRiftMesh.cs`
+- Line 9: add XML documentation to public API `public sealed class ProceduralRiftMesh : MonoBehaviour`.
+- Line 12: rename private field `radius` → `_radius`; **serialized** — add `[FormerlySerializedAs("radius")]` before renaming and verify existing assets.
+- Line 13: rename private field `height` → `_height`; **serialized** — add `[FormerlySerializedAs("height")]` before renaming and verify existing assets.
+- Line 16: rename private field `segments` → `_segments`; **serialized** — add `[FormerlySerializedAs("segments")]` before renaming and verify existing assets.
+- Line 17: rename private field `minWidthFactor` → `_minWidthFactor`; **serialized** — add `[FormerlySerializedAs("minWidthFactor")]` before renaming and verify existing assets.
+- Line 18: rename private field `maxWidthFactor` → `_maxWidthFactor`; **serialized** — add `[FormerlySerializedAs("maxWidthFactor")]` before renaming and verify existing assets.
+- Line 19: rename private field `edgeJitter` → `_edgeJitter`; **serialized** — add `[FormerlySerializedAs("edgeJitter")]` before renaming and verify existing assets.
+- Line 20: rename private field `centreWobble` → `_centreWobble`; **serialized** — add `[FormerlySerializedAs("centreWobble")]` before renaming and verify existing assets.
+- Line 21: rename private field `thickness` → `_thickness`; **serialized** — add `[FormerlySerializedAs("thickness")]` before renaming and verify existing assets.
+- Line 24: rename private field `spiralTurns` → `_spiralTurns`; **serialized** — add `[FormerlySerializedAs("spiralTurns")]` before renaming and verify existing assets.
+- Line 25: rename private field `spiralJitter` → `_spiralJitter`; **serialized** — add `[FormerlySerializedAs("spiralJitter")]` before renaming and verify existing assets.
+- Line 28: rename private field `randomiseOnAwake` → `_randomiseOnAwake`; **serialized** — add `[FormerlySerializedAs("randomiseOnAwake")]` before renaming and verify existing assets.
+- Line 29: rename private field `seed` → `_seed`; **serialized** — add `[FormerlySerializedAs("seed")]` before renaming and verify existing assets.
+- Line 34: add XML documentation to public API `public Mesh SharedMesh => mesh;`.
+- Line 35: add XML documentation to public API `public int Segments => segments;`.
+- Line 37: rename private field `mesh` → `_mesh`.
+- Line 47: add XML documentation to public API `public void Generate(int newSeed)`.
+- Line 119: use `var` for local `spine`; the RHS makes `Vector3` explicit.
+
+#### `Assets/Runtime/Client/VFX/RiftLightning.cs`
+- Line 19: rename private field `intervalMin` → `_intervalMin`; **serialized** — add `[FormerlySerializedAs("intervalMin")]` before renaming and verify existing assets.
+- Line 22: rename private field `intervalMax` → `_intervalMax`; **serialized** — add `[FormerlySerializedAs("intervalMax")]` before renaming and verify existing assets.
+- Line 26: rename private field `range` → `_range`; **serialized** — add `[FormerlySerializedAs("range")]` before renaming and verify existing assets.
+- Line 29: rename private field `minTargetDistance` → `_minTargetDistance`; **serialized** — add `[FormerlySerializedAs("minTargetDistance")]` before renaming and verify existing assets.
+- Line 32: rename private field `hitLayers` → `_hitLayers`; **serialized** — add `[FormerlySerializedAs("hitLayers")]` before renaming and verify existing assets.
+- Line 35: rename private field `maxSimultaneous` → `_maxSimultaneous`; **serialized** — add `[FormerlySerializedAs("maxSimultaneous")]` before renaming and verify existing assets.
+- Line 39: rename private field `boltColor` → `_boltColor`; **serialized** — add `[FormerlySerializedAs("boltColor")]` before renaming and verify existing assets.
+- Line 39: use target-typed `new(...)` for member `boltColor`.
+- Line 41: rename private field `boltWidth` → `_boltWidth`; **serialized** — add `[FormerlySerializedAs("boltWidth")]` before renaming and verify existing assets.
+- Line 44: rename private field `boltSegments` → `_boltSegments`; **serialized** — add `[FormerlySerializedAs("boltSegments")]` before renaming and verify existing assets.
+- Line 47: rename private field `jitter` → `_jitter`; **serialized** — add `[FormerlySerializedAs("jitter")]` before renaming and verify existing assets.
+- Line 50: rename private field `flashDuration` → `_flashDuration`; **serialized** — add `[FormerlySerializedAs("flashDuration")]` before renaming and verify existing assets.
+- Line 53: rename private field `boltMaterial` → `_boltMaterial`; **serialized** — add `[FormerlySerializedAs("boltMaterial")]` before renaming and verify existing assets.
+- Line 57: rename private field `riftMesh` → `_riftMesh`.
+- Line 58: rename private field `activeStrikes` → `_activeStrikes`.
+- Line 59: rename private field `runtimeMaterial` → `_runtimeMaterial`.
+- Line 62: rename private field `selfColliders` → `_selfColliders`.
+- Line 65: rename private field `activeBoltObjects` → `_activeBoltObjects`.
+
+#### `Assets/Runtime/Client/VFX/VFX_ImpactEffect.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 14: rename private field `lifetime` → `_lifetime`; **serialized** — add `[FormerlySerializedAs("lifetime")]` before renaming and verify existing assets.
+- Line 28: add XML documentation to public API `public void VFXFadeIn()`.
+- Line 33: add XML documentation to public API `public void VFXFadeOut()`.
+
+#### `Assets/Runtime/Client/VFX/VFX_SorcererRift.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 25: rename private field `openDuration` → `_openDuration`; **serialized** — add `[FormerlySerializedAs("openDuration")]` before renaming and verify existing assets.
+- Line 28: rename private field `closeDuration` → `_closeDuration`; **serialized** — add `[FormerlySerializedAs("closeDuration")]` before renaming and verify existing assets.
+- Line 32: rename private field `lifetime` → `_lifetime`; **serialized** — add `[FormerlySerializedAs("lifetime")]` before renaming and verify existing assets.
+- Line 36: rename private field `distortionMaterial` → `_distortionMaterial`; **serialized** — add `[FormerlySerializedAs("distortionMaterial")]` before renaming and verify existing assets.
+- Line 38: rename private field `distortionSize` → `_distortionSize`; **serialized** — add `[FormerlySerializedAs("distortionSize")]` before renaming and verify existing assets.
+- Line 40: rename private field `distortionYOffset` → `_distortionYOffset`; **serialized** — add `[FormerlySerializedAs("distortionYOffset")]` before renaming and verify existing assets.
+- Line 44: rename private field `pulseWaveMaterial` → `_pulseWaveMaterial`; **serialized** — add `[FormerlySerializedAs("pulseWaveMaterial")]` before renaming and verify existing assets.
+- Line 46: rename private field `pulseMaxRadius` → `_pulseMaxRadius`; **serialized** — add `[FormerlySerializedAs("pulseMaxRadius")]` before renaming and verify existing assets.
+- Line 48: rename private field `pulseWaveHeight` → `_pulseWaveHeight`; **serialized** — add `[FormerlySerializedAs("pulseWaveHeight")]` before renaming and verify existing assets.
+- Line 50: rename private field `pulseTrailStrength` → `_pulseTrailStrength`; **serialized** — add `[FormerlySerializedAs("pulseTrailStrength")]` before renaming and verify existing assets.
+- Line 52: rename private field `pulseDuration` → `_pulseDuration`; **serialized** — add `[FormerlySerializedAs("pulseDuration")]` before renaming and verify existing assets.
+- Line 56: rename constant `OpenAmountProperty` → `OPEN_AMOUNT_PROPERTY`.
+- Line 58: rename static readonly field `ShaderProgress` → `SHADER_PROGRESS`.
+- Line 59: rename static readonly field `ShaderTrailStrength` → `SHADER_TRAIL_STRENGTH`.
+- Line 61: rename private field `meshRenderer` → `_meshRenderer`.
+- Line 62: rename private field `activeCoroutine` → `_activeCoroutine`.
+- Line 63: rename private field `triggerCoroutine` → `_triggerCoroutine`.
+- Line 64: rename private field `closing` → `_closing`.
+- Line 65: rename private field `currentOpenAmount` → `_currentOpenAmount`.
+- Line 66: rename private field `distortionMat` → `_distortionMat`.
+- Line 67: rename private field `distortionTransform` → `_distortionTransform`.
+- Line 264: add XML documentation to public API `public void VFXFadeOut()`.
+- Line 269: add XML documentation to public API `public void VFXFadeIn()`.
+
+#### `Assets/Runtime/Core/GameBootstrapper.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public class GameBootstrapper : MonoBehaviour`.
+- Line 9: rename private field `instance` → `_instance`.
+
+#### `Assets/Runtime/Server/Core/Initialisation.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Rename file `Initialisation.cs` → `ServerInitialization.cs`; preserve its `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public static class ServerInitialization`.
+- Line 13: rename private field `host` → `_host`.
+- Line 14: rename private field `forceCleanServer` → `_forceCleanServer`.
+- Line 16: add XML documentation to public API `public static void Begin(MonoBehaviour _host)`.
+
+#### `Assets/Runtime/Server/Core/ServerActorManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 24: add XML documentation to public API `public static ServerActorManager Instance => _instance;`.
+- Line 26: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 29: rename private field `entityManager` → `_entityManager`.
+- Line 30: rename private field `actorComponentQuery` → `_actorComponentQuery`.
+- Line 35: add XML documentation to public API `public bool TryGetActor(Guid actorId, out Actor actor) => _actorObjects.TryGetValue(actorId, out actor);`.
+- Line 44: rename private field `NPCAggroState` → `_NPCAggroState`.
+- Line 46: add XML documentation to public API `public Actor NPC;`.
+- Line 47: add XML documentation to public API `public NPCBehavior Behavior;`.
+- Line 48: add XML documentation to public API `public NavMeshAgent Agent;`.
+- Line 49: add XML documentation to public API `public Actor PendingTarget;`.
+- Line 50: add XML documentation to public API `public float AggroTimer;`.
+- Line 55: rename constant `MaxAllowedSpeed` → `MAX_ALLOWED_SPEED`.
+- Line 57: rename constant `ViolationThreshold` → `VIOLATION_THRESHOLD`.
+- Line 58: rename constant `ValidationInterval` → `VALIDATION_INTERVAL`.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+
+#### `Assets/Runtime/Server/Core/ServerAuraManager.cs`
+- Change namespace `Game.Server` → `Game.Server.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 13: add XML documentation to public API `public sealed class ServerAuraManager : MonoBehaviour`.
+- Line 16: add XML documentation to public API `public static ServerAuraManager Instance => _instance;`.
+- Line 18: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 20: rename private field `entityManager` → `_entityManager`.
+- Line 21: rename private field `actorComponentQuery` → `_actorComponentQuery`.
+- Line 24: rename private field `_nextInstanceId` → `_nextInstanceID`.
+- Line 65: add XML documentation to public API `public bool ApplyAura(AuraDefinition definition, Actor caster, Actor target, int stacks = 1)`.
+- Line 325: add XML documentation to public API `public bool DispelAura(Actor target, int instanceId)`.
+- Line 357: add XML documentation to public API `public void RemoveAllAuras(Guid actorId)`.
+- Line 394: add XML documentation to public API `public bool HasAura(Guid actorId, string auraDefinitionId)`.
+- Line 420: add XML documentation to public API `public int GetAuraStackCount(Guid actorId, string auraDefinitionId)`.
+- Rename parameter `instanceId` → `instanceID`; update named arguments.
+- Rename parameter `targetActorId` → `targetActorID`; update named arguments.
+- Rename parameter `auraDefId` → `auraDefID`; update named arguments.
+- Rename parameter `instanceId` → `instanceID`; update named arguments.
+- Rename parameter `targetActorId` → `targetActorID`; update named arguments.
+- Rename parameter `auraDefId` → `auraDefID`; update named arguments.
+- Rename parameter `instanceId` → `instanceID`; update named arguments.
+- Rename parameter `targetActorId` → `targetActorID`; update named arguments.
+- Rename parameter `auraDefId` → `auraDefID`; update named arguments.
+- Rename parameter `instanceId` → `instanceID`; update named arguments.
+- Rename parameter `instanceId` → `instanceID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `auraDefinitionId` → `auraDefinitionID`; update named arguments.
+- Rename parameter `actorId` → `actorID`; update named arguments.
+- Rename parameter `auraDefinitionId` → `auraDefinitionID`; update named arguments.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 167 individual changes listed.
