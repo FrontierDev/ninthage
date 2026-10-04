@@ -656,3 +656,132 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Interfaces`; update all references atomically and protect serialized managed-reference type moves.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 172 individual changes listed.
+
+
+### Audit batch 4: files 47–62 of 386
+
+#### `Assets/Editor/WorldEditor/Erosion/LocalModes/LocalFineHydraulicErosion.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.LocalModes`; update all references atomically and protect serialized managed-reference type moves.
+- Line 23: add XML documentation to public API `public string ModeName => "Fine-Scale Hydraulic";`.
+- Line 24: add XML documentation to public API `public string Description => "Creates detailed water channels and gully patterns with aggressive pixel-level erosion.";`.
+- Line 26: add XML documentation to public API `public ErosionSettings GetDefaultSettings()`.
+- Line 38: add XML documentation to public API `public float[] Erode(float[] heightmap, int width, int height, ErosionSettings settings)`.
+- Line 51: use `var` for local `random`; the RHS makes `System.Random` explicit.
+
+#### `Assets/Editor/WorldEditor/Erosion/LocalModes/LocalSedimentTransport.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.LocalModes`; update all references atomically and protect serialized managed-reference type moves.
+- Line 23: add XML documentation to public API `public string ModeName => "Sediment Transport";`.
+- Line 24: add XML documentation to public API `public string Description => "Aggressive gravity-driven material transport creating terraces, scarps, and visible accumulation.";`.
+- Line 26: add XML documentation to public API `public ErosionSettings GetDefaultSettings()`.
+- Line 38: add XML documentation to public API `public float[] Erode(float[] heightmap, int width, int height, ErosionSettings settings)`.
+- Line 51: use `var` for local `random`; the RHS makes `System.Random` explicit.
+
+#### `Assets/Editor/WorldEditor/Erosion/LocalModes/LocalThermalWeathering.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.LocalModes`; update all references atomically and protect serialized managed-reference type moves.
+- Line 23: add XML documentation to public API `public string ModeName => "Thermal Weathering";`.
+- Line 24: add XML documentation to public API `public string Description => "Aggressive slope collapse and rockfall creating dramatic scarps and talus deposits.";`.
+- Line 26: add XML documentation to public API `public ErosionSettings GetDefaultSettings()`.
+- Line 38: add XML documentation to public API `public float[] Erode(float[] heightmap, int width, int height, ErosionSettings settings)`.
+- Line 53: use `var` for local `random`; the RHS makes `System.Random` explicit.
+
+#### `Assets/Editor/WorldEditor/Erosion/LocalTileErosion/LocalErosionWindow.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.LocalTileErosion`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public enum ErosionMode`.
+- Line 20: add XML documentation to public API `public class ErosionOperation`.
+- Line 22: add XML documentation to public API `public ErosionMode mode = ErosionMode.Hydraulic;`.
+- Line 25: add XML documentation to public API `public int h_Iterations = 100000;`.
+- Line 26: add XML documentation to public API `public int h_Resolution = 256;`.
+- Line 27: add XML documentation to public API `public int h_ErosionSteps = 3;`.
+- Line 30: add XML documentation to public API `public float w_Windiness = 0.5f;`.
+- Line 31: use target-typed `new(...)` for member `w_WindDirection`.
+- Line 31: add XML documentation to public API `public Vector2 w_WindDirection = new Vector2(1, 2);`.
+- Line 32: add XML documentation to public API `public int w_Resolution = 257;`.
+- Line 35: add XML documentation to public API `public float t_TerraceSpacing = 15;`.
+- Line 36: add XML documentation to public API `public float t_TerraceAngle = 20;`.
+- Line 39: add XML documentation to public API `public int s_SmoothingWidth = 2;`.
+- Line 42: add XML documentation to public API `public float sh_SharpenStrength = 5;`.
+- Line 43: add XML documentation to public API `public int sh_SharpenIterations = 10;`.
+- Line 44: add XML documentation to public API `public float sh_PeakMixStrength = 0.7f;`.
+- Line 48: add XML documentation to public API `public class ErosionProfile`.
+- Line 50: add XML documentation to public API `public string name = "New Profile";`.
+- Line 51: use target-typed `new(...)` for member `operations`.
+- Line 51: add XML documentation to public API `public List<ErosionOperation> operations = new List<ErosionOperation>();`.
+- Line 55: add XML documentation to public API `public class ErosionProfilesData`.
+- Line 57: use target-typed `new(...)` for member `profiles`.
+- Line 57: add XML documentation to public API `public List<ErosionProfile> profiles = new List<ErosionProfile>();`.
+- Line 80: use target-typed `new(...)` for member `_w_WindDirection`.
+- Line 102: use target-typed `new(...)` for member `_profiles`.
+- Line 119: add XML documentation to public API `public static void ShowWindow()`.
+- Line 506: use `var` for local `terrainLookup`; the RHS makes `Dictionary<string, Terrain>` explicit.
+- Line 779: add XML documentation to public API `public static void ErodeLocalGrid(`.
+- Line 797: use `var` for local `originalHeightmaps`; the RHS makes `Dictionary<Terrain, float[,]>` explicit.
+- Line 997: use `var` for local `nameToTerrain`; the RHS makes `Dictionary<string, Terrain>` explicit.
+- Line 1251: use `var` for local `rt`; the RHS makes `RenderTexture` explicit.
+- Line 1259: use `var` for local `tex`; the RHS makes `Texture2D` explicit.
+- Line 1280: use `var` for local `rectReadPicture`; the RHS makes `Rect` explicit.
+- Line 1283: use `var` for local `rtTex2d`; the RHS makes `Texture2D` explicit.
+
+#### `Assets/Editor/WorldEditor/Erosion/Modes/CurvatureSmoothingErosion.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Modes`; update all references atomically and protect serialized managed-reference type moves.
+- Line 22: add XML documentation to public API `public string ModeName => "Curvature Smoothing";`.
+- Line 23: add XML documentation to public API `public string Description => "Laplacian smoothing with slope limiting to preserve cliffs and macro features.";`.
+- Line 25: add XML documentation to public API `public ErosionSettings GetDefaultSettings()`.
+- Line 40: add XML documentation to public API `public float[] Erode(float[] heightmap, int width, int height, ErosionSettings settings)`.
+
+#### `Assets/Editor/WorldEditor/Erosion/Modes/ErosionUtils.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Modes`; update all references atomically and protect serialized managed-reference type moves.
+
+#### `Assets/Editor/WorldEditor/Erosion/Modes/HydraulicErosion.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Modes`; update all references atomically and protect serialized managed-reference type moves.
+- Line 28: add XML documentation to public API `public string ModeName => "Hydraulic Erosion";`.
+- Line 29: add XML documentation to public API `public string Description => "Water flow simulation that creates realistic valleys and channels.";`.
+- Line 31: add XML documentation to public API `public ErosionSettings GetDefaultSettings()`.
+- Line 43: add XML documentation to public API `public float[] Erode(float[] heightmap, int width, int height, ErosionSettings settings)`.
+
+#### `Assets/Editor/WorldEditor/Erosion/Modes/MicroSmoothingErosion.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Modes`; update all references atomically and protect serialized managed-reference type moves.
+- Line 23: add XML documentation to public API `public string ModeName => "Micro Smoothing";`.
+- Line 24: add XML documentation to public API `public string Description => "Ultra-light noise removal with macro form preservation. Apply last for final polish.";`.
+- Line 26: add XML documentation to public API `public ErosionSettings GetDefaultSettings()`.
+- Line 41: add XML documentation to public API `public float[] Erode(float[] heightmap, int width, int height, ErosionSettings settings)`.
+
+#### `Assets/Editor/WorldEditor/Erosion/MultiTile/MultiTileErosionBuffer.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.MultiTile`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 13: add XML documentation to public API `public float[] UnifiedHeightmap { get; private set; }`.
+- Line 14: add XML documentation to public API `public int UnifiedWidth { get; private set; }`.
+- Line 15: add XML documentation to public API `public int UnifiedHeight { get; private set; }`.
+- Line 201: add XML documentation to public API `public void SetUnifiedHeightmap(float[] heightmap)`.
+- Line 317: add XML documentation to public API `public void Dispose()`.
+
+#### `Assets/Editor/WorldEditor/Erosion/MultiTile/MultiTileErosionManager.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.MultiTile`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+
+#### `Assets/Editor/WorldEditor/Erosion/MultiTile/MultiTileHydraulicErosion.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.MultiTile`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+
+#### `Assets/Editor/WorldEditor/Erosion/Processing/ErosionModeRegistry.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Processing`; update all references atomically and protect serialized managed-reference type moves.
+
+#### `Assets/Editor/WorldEditor/Erosion/Processing/ErosionProcessor.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Processing`; update all references atomically and protect serialized managed-reference type moves.
+
+#### `Assets/Editor/WorldEditor/Erosion/Processing/ErosionQueue.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Processing`; update all references atomically and protect serialized managed-reference type moves.
+- Line 12: use target-typed `new(...)` for member `_workQueue`.
+- Line 14: use target-typed `new(...)` for member `_workLock`.
+- Line 15: use target-typed `new(...)` for member `_resultLock`.
+- Rename parameter `workItemId` → `workItemID`; update named arguments.
+- Rename parameter `workItemId` → `workItemID`; update named arguments.
+
+#### `Assets/Editor/WorldEditor/Erosion/Processing/ErosionSettings.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Processing`; update all references atomically and protect serialized managed-reference type moves.
+
+#### `Assets/Editor/WorldEditor/Erosion/Processing/ErosionWorkItem.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.Erosion.Processing`; update all references atomically and protect serialized managed-reference type moves.
+- Line 37: rename member `id` → `ID` for acronym casing.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 92 individual changes listed.
