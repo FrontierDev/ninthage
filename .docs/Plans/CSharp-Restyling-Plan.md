@@ -972,3 +972,160 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 715: use `var` for local `container`; the RHS makes `GameObject` explicit.
 
 **Batch result:** 16 files scanned; 15 files contain listed convention changes; 152 individual changes listed.
+
+
+### Audit batch 6: files 79–94 of 386
+
+#### `Assets/Editor/WorldEditor/UI/WorldEditorWindow.UI.cs`
+- Change namespace `Game.Editor.WorldEditor` → `Game.Editor.WorldEditor.UI`; update all references atomically and protect serialized managed-reference type moves.
+- Rename partial file `WorldEditorWindow.UI.cs` → `WorldEditorWindow_UI.cs`; move its existing `.meta` file.
+- Line 6: add XML documentation to public API `public partial class WorldEditorWindow : EditorWindow`.
+- Line 602: use `var` for local `progressBarRect`; the RHS makes `Rect` explicit.
+- Line 604: use `var` for local `fillRect`; the RHS makes `Rect` explicit.
+- Line 715: use `var` for local `gridColor`; the RHS makes `Color` explicit.
+- Line 864: use `var` for local `groupRect`; the RHS makes `Rect` explicit.
+
+#### `Assets/Runtime/Client/Core/CameraManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public sealed class CameraManager : MonoBehaviour`.
+- Line 12: add XML documentation to public API `public static CameraManager Instance => _instance;`.
+
+#### `Assets/Runtime/Client/Core/ClientAccountManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public sealed class ClientAccountManager : MonoBehaviour`.
+- Line 25: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 35: add XML documentation to public API `public static CharacterData ActiveCharacter => _activeCharacter;`.
+- Line 37: add XML documentation to public API `public static Actor PlayerActor => _playerActor;`.
+- Line 105: add XML documentation to public API `public static void UpdateCharacterList(List<CharacterData> newCharacterList)`.
+- Line 112: add XML documentation to public API `public static bool HasReceivedCharacters() => _received;`.
+- Line 114: add XML documentation to public API `public static bool TryGetCharacterList(out List<CharacterData> characterList)`.
+- Line 129: add XML documentation to public API `public static CharacterData GetCharacterData()`.
+
+#### `Assets/Runtime/Client/Core/ClientAudioManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public sealed class ClientAudioManager : MonoBehaviour`.
+- Line 14: add XML documentation to public API `public static ClientAudioManager Instance => _instance;`.
+- Line 17: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 19: rename constant `MaxCacheSize` → `MAX_CACHE_SIZE`.
+- Line 21: rename private field `sfxSource` → `_sfxSource`; **serialized** — add `[FormerlySerializedAs("sfxSource")]` before renaming and verify existing assets.
+- Line 100: add XML documentation to public API `public void PlaySFX(string addressablePath)`.
+- Line 134: add XML documentation to public API `public void PreloadSFX(string addressablePath)`.
+
+#### `Assets/Runtime/Client/Core/ClientCombatManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 15: add XML documentation to public API `public sealed class ClientCombatManager : MonoBehaviour`.
+- Line 18: add XML documentation to public API `public static ClientCombatManager Instance => _instance;`.
+- Line 20: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 23: rename private field `inCombat` → `_inCombat`.
+- Line 24: add XML documentation to public API `public bool InCombat => inCombat;`.
+- Line 30: rename private field `activeCooldowns` → `_activeCooldowns`.
+- Line 31: rename private field `globalCooldownRemaining` → `_globalCooldownRemaining`.
+- Line 138: add XML documentation to public API `public void CastSpell(string spellID, int rank = 1)`.
+- Line 186: add XML documentation to public API `public void StartAutoAttack()`.
+- Line 194: add XML documentation to public API `public void StopAutoAttack()`.
+- Line 239: add XML documentation to public API `public bool IsOnGlobalCooldown()`.
+- Line 244: add XML documentation to public API `public bool IsSpellOnCooldown(SpellDefinition spell)`.
+
+#### `Assets/Runtime/Client/Core/ClientConnectionManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 14: add XML documentation to public API `public enum ConnectionState`.
+- Line 21: add XML documentation to public API `public class ClientConnectionManager : MonoBehaviour`.
+- Line 36: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 39: add XML documentation to public API `public static ConnectionState CurrentConnectionState => _connectionState;`.
+- Line 88: add XML documentation to public API `public void ConnectToServer(string usernameInput = "Player", string passwordInput = "password")`.
+
+#### `Assets/Runtime/Client/Core/ClientECSManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public static class ClientECSManager`.
+- Line 10: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 12: add XML documentation to public API `public static void ClientInitializeECSWorlds()`.
+
+#### `Assets/Runtime/Client/Core/ClientPositionManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 16: add XML documentation to public API `public static ClientPositionManager Instance => _instance;`.
+- Line 18: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 23: rename private field `chunkSize` → `_chunkSize`.
+- Line 39: use `var` for local `originOffset`; the RHS makes `Vector3` explicit.
+- Line 56: use `var` for local `shift`; the RHS makes `Vector3` explicit.
+
+#### `Assets/Runtime/Client/Core/ClientSettingsManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Line 16: rename private field `settings` → `_settings`.
+- Line 16: use target-typed `new(...)` for member `settings`.
+- Line 19: add XML documentation to public API `public static Action<string, object> onSettingChanged;`.
+- Line 20: add XML documentation to public API `public static Action onSettingsLoaded;`.
+
+#### `Assets/Runtime/Client/Core/ClientVFXManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 12: add XML documentation to public API `public sealed class ClientVFXManager : MonoBehaviour`.
+- Line 15: add XML documentation to public API `public static ClientVFXManager Instance => _instance;`.
+- Line 17: add XML documentation to public API `public static bool Initialized => _initialized;`.
+
+#### `Assets/Runtime/Client/Core/ClientWorldManager.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public sealed class ClientWorldManager : MonoBehaviour`.
+- Line 25: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 27: rename private field `loadedScenes` → `_loadedScenes`.
+- Line 27: use target-typed `new(...)` for member `loadedScenes`.
+- Line 38: add XML documentation to public API `public void OnSceneLoaded(SceneID sceneId, bool asServer)`.
+- Line 80: add XML documentation to public API `public void GetWorldScenes(List<Scene> buffer)`.
+- Rename parameter `sceneId` → `sceneID`; update named arguments.
+- Rename parameter `sceneId` → `sceneID`; update named arguments.
+
+#### `Assets/Runtime/Client/Core/Collections/LoadingScreenCollection.cs`
+- Change namespace `Game.Client.Collections` → `Game.Client.Core.Collections`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 14: rename private field `splashImages` → `_splashImages`; **serialized** — add `[FormerlySerializedAs("splashImages")]` before renaming and verify existing assets.
+- Line 14: use target-typed `new(...)` for member `splashImages`.
+
+#### `Assets/Runtime/Client/Core/Controllers/CharacterCameraController.cs`
+- Change namespace `Game.Client` → `Game.Client.Core.Controllers`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public sealed class CharacterCameraController : MonoBehaviour`.
+- Line 12: add XML documentation to public API `public static CharacterCameraController Instance => _instance;`.
+- Line 14: rename private field `cameraInputController` → `_cameraInputController`; **serialized** — add `[FormerlySerializedAs("cameraInputController")]` before renaming and verify existing assets.
+- Line 15: rename private field `orbitalFollow` → `_orbitalFollow`; **serialized** — add `[FormerlySerializedAs("orbitalFollow")]` before renaming and verify existing assets.
+- Line 18: rename private field `characterRotationSpeed` → `_characterRotationSpeed`; **serialized** — add `[FormerlySerializedAs("characterRotationSpeed")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Client/Core/Controllers/ClientInputController.cs`
+- Change namespace `Game.Client` → `Game.Client.Core.Controllers`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 12: add XML documentation to public API `public enum InputMode`.
+- Line 20: add XML documentation to public API `public class ClientInputController : MonoBehaviour`.
+- Line 23: add XML documentation to public API `public static ClientInputController Instance => _instance;`.
+- Line 26: add XML documentation to public API `public InputMode CurrentMode => _currentMode;`.
+- Line 28: add XML documentation to public API `public event System.Action<InputMode> onInputModeChanged;`.
+- Line 29: add XML documentation to public API `public event System.Action<Vector2> onMovementInput;`.
+- Line 30: add XML documentation to public API `public event System.Action onJumpInput;`.
+- Line 31: add XML documentation to public API `public event System.Action onInteractInput;`.
+- Line 32: add XML documentation to public API `public event System.Action onCancelInput;`.
+- Line 33: add XML documentation to public API `public event System.Action<Game.Shared.IInteractable> onHoverInteractable;`.
+- Line 34: add XML documentation to public API `public event System.Action<int, int> onActionBarInput;`.
+- Line 35: add XML documentation to public API `public event System.Action<string> onInterfaceHotkeyInput;`.
+- Line 90: add XML documentation to public API `public void SetInputMode(InputMode mode)`.
+
+#### `Assets/Runtime/Client/Core/Controllers/Test_CharacterController.cs`
+- Change namespace `Game.Client` → `Game.Client.Core.Controllers`; update all references atomically and protect serialized managed-reference type moves.
+- Line 9: add XML documentation to public API `public class Test_CharacterController : MonoBehaviour`.
+- Line 12: add XML documentation to public API `public static Test_CharacterController Instance => _instance;`.
+- Line 14: rename private field `moveSpeed` → `_moveSpeed`; **serialized** — add `[FormerlySerializedAs("moveSpeed")]` before renaming and verify existing assets.
+- Line 15: rename private field `jumpPower` → `_jumpPower`; **serialized** — add `[FormerlySerializedAs("jumpPower")]` before renaming and verify existing assets.
+- Line 17: rename private field `actorMotor` → `_actorMotor`; **serialized** — add `[FormerlySerializedAs("actorMotor")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Client/Core/Initialisation.cs`
+- Change namespace `Game.Client` → `Game.Client.Core`; update all references atomically and protect serialized managed-reference type moves.
+- Rename file `Initialisation.cs` → `ClientInitialization.cs`; preserve its `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 15: add XML documentation to public API `public static class ClientInitialization`.
+- Line 17: add XML documentation to public API `public static void Begin(MonoBehaviour host)`.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 120 individual changes listed.
