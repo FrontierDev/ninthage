@@ -1818,3 +1818,190 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 27: add XML documentation to public API `public void Populate(GameObject entryPrefab, Action<UI_ContextMenuPanel> populateAction)`.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 127 individual changes listed.
+
+
+### Audit batch 11: files 159–174 of 386
+
+#### `Assets/Runtime/Client/UI/ContextMenu/UI_ContextMenuWindow.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.ContextMenu`; update all references atomically and protect serialized managed-reference type moves.
+- Line 8: add XML documentation to public API `public enum ContextMenuPivot`.
+- Line 16: add XML documentation to public API `public sealed class UI_ContextMenuWindow : UI_Window, IPointerClickHandler`.
+- Line 19: add XML documentation to public API `public static UI_ContextMenuWindow Instance => _instance;`.
+- Line 21: add XML documentation to public API `public static bool Initialized => _initialized;`.
+- Line 23: rename private field `contentsPanel` → `_contentsPanel`; **serialized** — add `[FormerlySerializedAs("contentsPanel")]` before renaming and verify existing assets.
+- Line 24: rename private field `backdropBlocker` → `_backdropBlocker`; **serialized** — add `[FormerlySerializedAs("backdropBlocker")]` before renaming and verify existing assets.
+- Line 26: rename private field `panelRect` → `_panelRect`; **serialized** — add `[FormerlySerializedAs("panelRect")]` before renaming and verify existing assets.
+- Line 40: add XML documentation to public API `public void OnPointerClick(PointerEventData eventData)`.
+- Line 46: add XML documentation to public API `public void Show(Vector2 position, ContextMenuPivot pivot, GameObject entryPrefab, Action<UI_ContextMenuPanel> populate)`.
+- Line 61: add XML documentation to public API `public override void Hide()`.
+
+#### `Assets/Runtime/Client/UI/Dialogue/UI_DialogueBodyPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public sealed class UI_DialogueBodyPanel : UI_Panel`.
+- Line 11: add XML documentation to public API `public static UI_DialogueBodyPanel Instance => _instance;`.
+- Line 13: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 15: rename private field `dialogueText` → `_dialogueText`; **serialized** — add `[FormerlySerializedAs("dialogueText")]` before renaming and verify existing assets.
+- Line 16: rename private field `optionList` → `_optionList`; **serialized** — add `[FormerlySerializedAs("optionList")]` before renaming and verify existing assets.
+- Line 18: add XML documentation to public API `public int CurrentNodeID { get; private set; }`.
+- Line 27: add XML documentation to public API `public void ShowDialogue(DialogueDefinition dialogue, int nodeID = 0)`.
+- Line 48: add XML documentation to public API `public void GoToNode(int nodeID)`.
+
+#### `Assets/Runtime/Client/UI/Dialogue/UI_DialogueNPCInfoPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public sealed class UI_DialogueNPCInfoPanel : UI_Panel`.
+- Line 11: add XML documentation to public API `public static UI_DialogueNPCInfoPanel Instance => _instance;`.
+- Line 13: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 15: rename private field `npcNameText` → `_npcNameText`; **serialized** — add `[FormerlySerializedAs("npcNameText")]` before renaming and verify existing assets.
+- Line 16: rename private field `npcSubtext` → `_npcSubtext`; **serialized** — add `[FormerlySerializedAs("npcSubtext")]` before renaming and verify existing assets.
+- Line 17: rename private field `npcPortrait` → `_npcPortrait`; **serialized** — add `[FormerlySerializedAs("npcPortrait")]` before renaming and verify existing assets.
+- Line 26: add XML documentation to public API `public void UpdateNPC(Actor npc)`.
+
+#### `Assets/Runtime/Client/UI/Dialogue/UI_DialogueOptionEntry.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Line 9: add XML documentation to public API `public sealed class UI_DialogueOptionEntry : UI_ListEntry<DialogueChoice>`.
+- Line 11: add XML documentation to public API `public DialogueChoice data;`.
+- Line 12: add XML documentation to public API `public int index;`.
+- Line 14: rename private field `choiceText` → `_choiceText`; **serialized** — add `[FormerlySerializedAs("choiceText")]` before renaming and verify existing assets.
+- Line 15: rename private field `choiceIcon` → `_choiceIcon`; **serialized** — add `[FormerlySerializedAs("choiceIcon")]` before renaming and verify existing assets.
+- Line 17: add XML documentation to public API `public override void Initialize(DialogueChoice data, int index)`.
+- Line 30: add XML documentation to public API `public override void OnClick(PointerEventData eventData = null)`.
+
+#### `Assets/Runtime/Client/UI/Dialogue/UI_DialogueOptionList.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public sealed class UI_DialogueOptionList : UI_Panel, IListPanel`.
+- Line 10: add XML documentation to public API `public static UI_DialogueOptionList Instance => _instance;`.
+- Line 12: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 14: rename private field `currentNode` → `_currentNode`.
+- Line 16: rename private field `container` → `_container`; **serialized** — add `[FormerlySerializedAs("container")]` before renaming and verify existing assets.
+- Line 17: rename private field `slotEntryPrefab` → `_slotEntryPrefab`; **serialized** — add `[FormerlySerializedAs("slotEntryPrefab")]` before renaming and verify existing assets.
+- Line 20: add XML documentation to public API `public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();`.
+- Line 29: add XML documentation to public API `public void SetNode(int nodeID)`.
+- Line 34: add XML documentation to public API `public override void Refresh()`.
+- Line 49: add XML documentation to public API `public void PopulateList(bool forceClear = false)`.
+
+#### `Assets/Runtime/Client/UI/Dialogue/UI_DialogueWindow.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Dialogue`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public class UI_DialogueWindow : UI_Window`.
+- Line 9: add XML documentation to public API `public static UI_DialogueWindow Instance => _instance;`.
+- Line 11: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+- Line 13: add XML documentation to public API `public DialogueDefinition CurrentDialogue { get; private set; }`.
+- Line 21: add XML documentation to public API `public void StartDialogue(Actor npc)`.
+
+#### `Assets/Runtime/Client/UI/ExperienceBar/UI_ExperienceBar.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.ExperienceBar`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public sealed class UI_ExperienceBar : UI_ProgressBar`.
+
+#### `Assets/Runtime/Client/UI/ExperienceBar/UI_ExperienceBarWindow.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.ExperienceBar`; update all references atomically and protect serialized managed-reference type moves.
+- Line 3: add XML documentation to public API `public sealed class UI_ExperienceBarWindow : UI_Window`.
+- Line 6: add XML documentation to public API `public static UI_ExperienceBarWindow Instance => _instance;`.
+
+#### `Assets/Runtime/Client/UI/FloatingCombatText/UI_FCTManager.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.FloatingCombatText`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public class UI_FCTManager : MonoBehaviour`.
+- Line 11: rename private field `instance` → `_instance`.
+- Line 12: add XML documentation to public API `public static UI_FCTManager Instance => instance;`.
+- Line 15: rename private field `fctPrefab` → `_fctPrefab`; **serialized** — add `[FormerlySerializedAs("fctPrefab")]` before renaming and verify existing assets.
+- Line 18: rename private field `autoHitColor` → `_autoHitColor`; **serialized** — add `[FormerlySerializedAs("autoHitColor")]` before renaming and verify existing assets.
+- Line 19: rename private field `abilityHitColor` → `_abilityHitColor`; **serialized** — add `[FormerlySerializedAs("abilityHitColor")]` before renaming and verify existing assets.
+- Line 20: rename private field `petHitColor` → `_petHitColor`; **serialized** — add `[FormerlySerializedAs("petHitColor")]` before renaming and verify existing assets.
+- Line 21: rename private field `healColor` → `_healColor`; **serialized** — add `[FormerlySerializedAs("healColor")]` before renaming and verify existing assets.
+- Line 22: rename private field `buffColor` → `_buffColor`; **serialized** — add `[FormerlySerializedAs("buffColor")]` before renaming and verify existing assets.
+- Line 23: rename private field `debuffColor` → `_debuffColor`; **serialized** — add `[FormerlySerializedAs("debuffColor")]` before renaming and verify existing assets.
+- Line 24: rename private field `experienceColor` → `_experienceColor`; **serialized** — add `[FormerlySerializedAs("experienceColor")]` before renaming and verify existing assets.
+- Line 27: rename private field `heightOffset` → `_heightOffset`; **serialized** — add `[FormerlySerializedAs("heightOffset")]` before renaming and verify existing assets.
+- Line 28: rename private field `randomSpreadX` → `_randomSpreadX`; **serialized** — add `[FormerlySerializedAs("randomSpreadX")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Client/UI/FloatingCombatText/UI_FloatingCombatText.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.FloatingCombatText`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 6: add XML documentation to public API `public sealed class UI_FloatingCombatText : MonoBehaviour`.
+- Line 8: rename private field `text` → `_text`; **serialized** — add `[FormerlySerializedAs("text")]` before renaming and verify existing assets.
+- Line 9: rename private field `floatSpeed` → `_floatSpeed`; **serialized** — add `[FormerlySerializedAs("floatSpeed")]` before renaming and verify existing assets.
+- Line 10: rename private field `fadeDuration` → `_fadeDuration`; **serialized** — add `[FormerlySerializedAs("fadeDuration")]` before renaming and verify existing assets.
+- Line 11: rename private field `screenSize` → `_screenSize`; **serialized** — add `[FormerlySerializedAs("screenSize")]` before renaming and verify existing assets.
+- Line 13: rename private field `floatDirection` → `_floatDirection`; **serialized** — add `[FormerlySerializedAs("floatDirection")]` before renaming and verify existing assets.
+- Line 14: rename private field `elapsedTime` → `_elapsedTime`; **serialized** — add `[FormerlySerializedAs("elapsedTime")]` before renaming and verify existing assets.
+- Line 15: rename private field `sizeMultiplier` → `_sizeMultiplier`.
+- Line 16: rename private field `durationMultiplier` → `_durationMultiplier`.
+- Line 18: add XML documentation to public API `public void Initialize(string content, Color color, Vector3 direction, float sizeMultiplier = 1f, float durationMultiplier = 1f)`.
+
+#### `Assets/Runtime/Client/UI/Inventory/UI_InventoryFooterPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Inventory`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public sealed class UI_InventoryFooterPanel : UI_Panel`.
+- Line 8: rename private field `capacityText` → `_capacityText`; **serialized** — add `[FormerlySerializedAs("capacityText")]` before renaming and verify existing assets.
+- Line 9: rename private field `currencyText` → `_currencyText`; **serialized** — add `[FormerlySerializedAs("currencyText")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Client/UI/Inventory/UI_InventoryGridPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Inventory`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public sealed class UI_InventoryGridPanel : UI_Panel, IListPanel`.
+- Line 10: add XML documentation to public API `public static UI_InventoryGridPanel Instance => _instance;`.
+- Line 12: rename private field `container` → `_container`; **serialized** — add `[FormerlySerializedAs("container")]` before renaming and verify existing assets.
+- Line 13: rename private field `slotEntryPrefab` → `_slotEntryPrefab`; **serialized** — add `[FormerlySerializedAs("slotEntryPrefab")]` before renaming and verify existing assets.
+- Line 16: add XML documentation to public API `public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();`.
+- Line 33: add XML documentation to public API `public override void Refresh()`.
+- Line 48: add XML documentation to public API `public void PopulateList(bool forceClear = false)`.
+
+#### `Assets/Runtime/Client/UI/Inventory/UI_InventorySlotEntry.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Inventory`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 14: add XML documentation to public API `public class UI_InventorySlotEntry : UI_ListEntry<ItemInstance>, IPointerClickHandler,`.
+- Line 17: rename private field `dragSource` → `_dragSource`.
+- Line 19: rename private field `index` → `_index`.
+- Line 20: rename private field `itemInstance` → `_itemInstance`.
+- Line 22: rename private field `graphics` → `_graphics`; **serialized** — add `[FormerlySerializedAs("graphics")]` before renaming and verify existing assets.
+- Line 23: rename private field `stackSizeText` → `_stackSizeText`; **serialized** — add `[FormerlySerializedAs("stackSizeText")]` before renaming and verify existing assets.
+- Line 25: add XML documentation to public API `public int SlotIndex => index;`.
+- Line 26: add XML documentation to public API `public ItemInstance SlotItem => itemInstance;`.
+- Line 35: add XML documentation to public API `public override void Initialize(ItemInstance data, int index)`.
+- Line 59: add XML documentation to public API `public void UpdateEntry(ItemInstance newData)`.
+- Line 85: add XML documentation to public API `public override void OnClick(UnityEngine.EventSystems.PointerEventData eventData)`.
+- Line 109: add XML documentation to public API `public override void OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData)`.
+- Line 128: add XML documentation to public API `public override void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData)`.
+- Line 135: add XML documentation to public API `public void OnPointerClick(PointerEventData eventData)`.
+- Line 142: add XML documentation to public API `public void OnBeginDrag(PointerEventData eventData)`.
+- Line 150: add XML documentation to public API `public void OnDrag(PointerEventData eventData)`.
+- Line 157: add XML documentation to public API `public void OnEndDrag(PointerEventData eventData)`.
+- Line 165: add XML documentation to public API `public void OnDrop(PointerEventData eventData)`.
+- Line 172: add XML documentation to public API `public void OnSlotBeginDrag(Vector2 position)`.
+- Line 181: add XML documentation to public API `public void OnSlotDrag(Vector2 position)`.
+- Line 186: add XML documentation to public API `public void OnSlotEndDrag()`.
+- Line 191: add XML documentation to public API `public void OnSlotDrop(IDraggableSlot source)`.
+
+#### `Assets/Runtime/Client/UI/Inventory/UI_InventoryWindow.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Inventory`; update all references atomically and protect serialized managed-reference type moves.
+- Line 3: add XML documentation to public API `public sealed class UI_InventoryWindow : UI_Window`.
+- Line 6: add XML documentation to public API `public static UI_InventoryWindow Instance => _instance;`.
+- Line 8: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+
+#### `Assets/Runtime/Client/UI/LoadingScreen/LoadingScreenController.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.LoadingScreen`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public class LoadingScreenController : MonoBehaviour`.
+- Line 12: add XML documentation to public API `public static LoadingScreenController Instance => _instance;`.
+- Line 16: add XML documentation to public API `public LoadingScreenCollection Collection => _collection;`.
+- Line 19: rename private field `canvasGroup` → `_canvasGroup`; **serialized** — add `[FormerlySerializedAs("canvasGroup")]` before renaming and verify existing assets.
+- Line 20: rename private field `splashImage` → `_splashImage`; **serialized** — add `[FormerlySerializedAs("splashImage")]` before renaming and verify existing assets.
+- Line 21: rename private field `loadingIcon` → `_loadingIcon`; **serialized** — add `[FormerlySerializedAs("loadingIcon")]` before renaming and verify existing assets.
+- Line 23: rename private field `stage` → `_stage`; **serialized** — add `[FormerlySerializedAs("stage")]` before renaming and verify existing assets.
+- Line 24: rename private field `maxStages` → `_maxStages`; **serialized** — add `[FormerlySerializedAs("maxStages")]` before renaming and verify existing assets.
+- Line 25: rename private field `targetFillAmount` → `_targetFillAmount`.
+- Line 27: rename private field `isShowing` → `_isShowing`.
+- Line 64: add XML documentation to public API `public void Show(int stages = 1)`.
+- Line 87: add XML documentation to public API `public void Tick()`.
+- Line 102: add XML documentation to public API `public void Finish()`.
+- Line 109: add XML documentation to public API `public void Cancel()`.
+
+#### `Assets/Runtime/Client/UI/MainMenu/UI_LoginButton.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.MainMenu`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public sealed class UI_LoginButton : UI_Button`.
+- Line 9: add XML documentation to public API `public override void OnClick(PointerEventData eventData)`.
+- Line 24: add XML documentation to public API `public override void OnPointerEnter(PointerEventData eventData) => base.OnPointerEnter(eventData);`.
+- Line 26: add XML documentation to public API `public override void OnPointerExit(PointerEventData eventData) => base.OnPointerExit(eventData);`.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 150 individual changes listed.
