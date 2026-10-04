@@ -3007,3 +3007,168 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 9: add XML documentation to public API `public void OnUpdate(ref SystemState state)`.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 153 individual changes listed.
+
+
+### Audit batch 17: files 255–270 of 386
+
+#### `Assets/Runtime/Server/Systems/WorldSpawnSystem.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public partial struct WorldSpawnSystem : ISystem`.
+- Line 9: add XML documentation to public API `public void OnCreate(ref SystemState state)`.
+- Line 14: add XML documentation to public API `public void OnUpdate(ref SystemState state)`.
+- Line 41: add XML documentation to public API `public void OnDestroy(ref SystemState state)`.
+
+#### `Assets/Runtime/Server/Test/Test_NPCPathfinder.cs`
+- Change namespace `Game.Server` → `Game.Server.Test`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public class Test_NPCPathfinder : MonoBehaviour`.
+
+#### `Assets/Runtime/Shared/Components/TerrainTileComponent.cs`
+- Change namespace `Game.Runtime.Shared` → `Game.Shared.Components`; update all references atomically and protect serialized managed-reference type moves.
+- Line 15: rename private field `tileX` → `_tileX`; **serialized** — add `[FormerlySerializedAs("tileX")]` before renaming and verify existing assets.
+- Line 18: rename private field `tileZ` → `_tileZ`; **serialized** — add `[FormerlySerializedAs("tileZ")]` before renaming and verify existing assets.
+- Line 21: rename private field `hasBeenEroded` → `_hasBeenEroded`; **serialized** — add `[FormerlySerializedAs("hasBeenEroded")]` before renaming and verify existing assets.
+- Line 24: rename private field `lastErosionProfileUsed` → `_lastErosionProfileUsed`; **serialized** — add `[FormerlySerializedAs("lastErosionProfileUsed")]` before renaming and verify existing assets.
+- Line 28: rename private field `zoneID` → `_zoneID`; **serialized** — add `[FormerlySerializedAs("zoneID")]` before renaming and verify existing assets.
+- Line 73: use target-typed `new(...)` for member `_poiColor`.
+- Line 75: add XML documentation to public API `public bool ShowPoiMarker { get => _showPoiMarker; set => _showPoiMarker = value; }`.
+- Line 76: add XML documentation to public API `public string PoiLabel { get => _poiLabel; set => _poiLabel = value; }`.
+- Line 77: add XML documentation to public API `public int PoiTextSize { get => _poiTextSize; set => _poiTextSize = value; }`.
+- Line 78: add XML documentation to public API `public Color PoiColor { get => _poiColor; set => _poiColor = value; }`.
+
+#### `Assets/Runtime/Shared/Data/ActorStatDefinition.cs`
+- Line 7: add XML documentation to public API `public enum ActorStatCategory { Attribute, Resource }`.
+- Line 8: add XML documentation to public API `public enum ActorStatBaseValueMode { Fixed, Derived, Rating }`.
+- Line 9: add XML documentation to public API `public enum ActorStatReplicationMode { Server, Owner, Observers }`.
+- Line 19: rename private field `description` → `_description`; **serialized** — add `[FormerlySerializedAs("description")]` before renaming and verify existing assets.
+- Line 22: rename private field `icon` → `_icon`; **serialized** — add `[FormerlySerializedAs("icon")]` before renaming and verify existing assets.
+- Line 23: add XML documentation to public API `public Sprite Icon => icon;`.
+- Line 26: rename private field `category` → `_category`; **serialized** — add `[FormerlySerializedAs("category")]` before renaming and verify existing assets.
+- Line 29: rename private field `baseValueMode` → `_baseValueMode`; **serialized** — add `[FormerlySerializedAs("baseValueMode")]` before renaming and verify existing assets.
+- Line 32: rename private field `baseValue` → `_baseValue`; **serialized** — add `[FormerlySerializedAs("baseValue")]` before renaming and verify existing assets.
+- Line 35: rename private field `sourceStat` → `_sourceStat`; **serialized** — add `[FormerlySerializedAs("sourceStat")]` before renaming and verify existing assets.
+- Line 38: rename private field `multiplier` → `_multiplier`; **serialized** — add `[FormerlySerializedAs("multiplier")]` before renaming and verify existing assets.
+- Line 41: rename private field `startsAtZero` → `_startsAtZero`; **serialized** — add `[FormerlySerializedAs("startsAtZero")]` before renaming and verify existing assets.
+- Line 44: rename private field `regenMode` → `_regenMode`; **serialized** — add `[FormerlySerializedAs("regenMode")]` before renaming and verify existing assets.
+- Line 47: rename private field `regenPerSecond` → `_regenPerSecond`; **serialized** — add `[FormerlySerializedAs("regenPerSecond")]` before renaming and verify existing assets.
+- Line 50: rename private field `regenSourceStat` → `_regenSourceStat`; **serialized** — add `[FormerlySerializedAs("regenSourceStat")]` before renaming and verify existing assets.
+- Line 53: rename private field `regenMultiplier` → `_regenMultiplier`; **serialized** — add `[FormerlySerializedAs("regenMultiplier")]` before renaming and verify existing assets.
+- Line 56: rename private field `replicationMode` → `_replicationMode`; **serialized** — add `[FormerlySerializedAs("replicationMode")]` before renaming and verify existing assets.
+- Line 57: add XML documentation to public API `public ActorStatReplicationMode ReplicationMode => replicationMode;`.
+- Line 60: rename private field `tags` → `_tags`; **serialized** — add `[FormerlySerializedAs("tags")]` before renaming and verify existing assets.
+- Line 61: add XML documentation to public API `public List<string> Tags => tags;`.
+- Line 103: add XML documentation to public API `public ActorStatBaseValueMode RegenMode => regenMode;`.
+- Line 104: add XML documentation to public API `public float RegenPerSecond => regenPerSecond;`.
+- Line 105: add XML documentation to public API `public ActorStatDefinition RegenSourceStat => regenSourceStat;`.
+- Line 106: add XML documentation to public API `public float RegenMultiplier => regenMultiplier;`.
+
+#### `Assets/Runtime/Shared/Data/ActorStatDefinitionLibrary.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 13: rename private field `instance` → `_instance`.
+
+#### `Assets/Runtime/Shared/Data/ActorStatScaling.cs`
+- Rename file `ActorStatScaling.cs` → `StatScaling.cs`; preserve its `.meta` file.
+- Line 4: add XML documentation to public API `public sealed class StatScaling`.
+- Line 6: add XML documentation to public API `public ActorStatDefinition Stat;`.
+- Line 7: add XML documentation to public API `public float Coefficient;`.
+
+#### `Assets/Runtime/Shared/Data/AuraBehaviours/AuraBehaviour_DamageHostOnHit copy.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.AuraBehaviours`; update all references atomically and protect serialized managed-reference type moves.
+- Rename file `AuraBehaviour_DamageHostOnHit copy.cs` → `AuraBehaviour_DamageHostOnHit.cs`; preserve its `.meta` file.
+- Line 6: add XML documentation to public API `public class AuraBehaviour_DamageHostOnHit : AuraBehaviour`.
+- Line 8: rename constant `note` → `NOTE`.
+- Line 9: add XML documentation to public API `public override string Description => note;`.
+- Line 11: rename private field `damageEffect` → `_damageEffect`; **serialized** — add `[FormerlySerializedAs("damageEffect")]` before renaming and verify existing assets.
+- Line 13: add XML documentation to public API `public override void OnApplied(Actor caster, Actor target, int stacks)`.
+- Line 20: add XML documentation to public API `public override void OnRemoved(Actor caster, Actor target)`.
+
+#### `Assets/Runtime/Shared/Data/AuraBehaviours/AuraBehaviour_HealAttackerOnHit.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.AuraBehaviours`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public class AuraBehaviour_HealAttackerOnHit : AuraBehaviour`.
+- Line 8: rename constant `note` → `NOTE`.
+- Line 9: add XML documentation to public API `public override string Description => note;`.
+- Line 11: rename private field `healEffect` → `_healEffect`; **serialized** — add `[FormerlySerializedAs("healEffect")]` before renaming and verify existing assets.
+- Line 13: add XML documentation to public API `public override void OnApplied(Actor caster, Actor target, int stacks)`.
+- Line 20: add XML documentation to public API `public override void OnRemoved(Actor caster, Actor target)`.
+
+#### `Assets/Runtime/Shared/Data/AuraDefinition.cs`
+- Line 7: add XML documentation to public API `public abstract class AuraBehaviour : ScriptableObject`.
+- Line 9: add XML documentation to public API `public abstract string Description { get; }`.
+- Line 10: add XML documentation to public API `public abstract void OnApplied(Actor caster, Actor target, int stacks);`.
+- Line 11: add XML documentation to public API `public abstract void OnRemoved(Actor caster, Actor target);`.
+- Line 15: add XML documentation to public API `public enum AuraPhase`.
+- Line 24: add XML documentation to public API `public enum AuraStackBehavior`.
+- Line 35: add XML documentation to public API `public sealed class AuraComponent : ISerializationCallbackReceiver`.
+- Line 37: add XML documentation to public API `public string Guid;`.
+- Line 37: rename member `Guid` → `GUID` for acronym casing.
+- Line 39: add XML documentation to public API `[SerializeField] public AuraPhase CastPhase;`.
+- Line 40: add XML documentation to public API `[SerializeReference] public AuraEffectDefinition EffectDefinition;`.
+- Line 41: add XML documentation to public API `[SerializeReference] public AuraTargetDefinition TargetDefinition;`.
+- Line 57: rename private field `description` → `_description`; **serialized** — add `[FormerlySerializedAs("description")]` before renaming and verify existing assets.
+- Line 58: rename private field `icon` → `_icon`; **serialized** — add `[FormerlySerializedAs("icon")]` before renaming and verify existing assets.
+- Line 59: rename private field `isDebuff` → `_isDebuff`; **serialized** — add `[FormerlySerializedAs("isDebuff")]` before renaming and verify existing assets.
+- Line 60: rename private field `baseDuration` → `_baseDuration`; **serialized** — add `[FormerlySerializedAs("baseDuration")]` before renaming and verify existing assets.
+- Line 61: rename private field `baseTickInterval` → `_baseTickInterval`; **serialized** — add `[FormerlySerializedAs("baseTickInterval")]` before renaming and verify existing assets.
+- Line 62: rename private field `stackBehavior` → `_stackBehavior`; **serialized** — add `[FormerlySerializedAs("stackBehavior")]` before renaming and verify existing assets.
+- Line 63: rename private field `maxStacks` → `_maxStacks`; **serialized** — add `[FormerlySerializedAs("maxStacks")]` before renaming and verify existing assets.
+- Line 64: rename private field `tags` → `_tags`; **serialized** — add `[FormerlySerializedAs("tags")]` before renaming and verify existing assets.
+- Line 65: rename private field `components` → `_components`; **serialized** — add `[FormerlySerializedAs("components")]` before renaming and verify existing assets.
+- Line 67: rename private field `auraBehaviour` → `_auraBehaviour`; **serialized** — add `[FormerlySerializedAs("auraBehaviour")]` before renaming and verify existing assets.
+- Line 68: add XML documentation to public API `public AuraBehaviour AuraBehaviour => auraBehaviour;`.
+- Line 70: add XML documentation to public API `public string Description => description;`.
+- Line 71: add XML documentation to public API `public Sprite Icon => icon;`.
+- Line 72: add XML documentation to public API `public bool IsDebuff => isDebuff;`.
+- Line 73: add XML documentation to public API `public float BaseDuration => baseDuration;`.
+- Line 74: add XML documentation to public API `public float BaseTickInterval => baseTickInterval;`.
+- Line 75: add XML documentation to public API `public AuraStackBehavior StackBehavior => stackBehavior;`.
+- Line 76: add XML documentation to public API `public int MaxStacks => maxStacks;`.
+- Line 77: add XML documentation to public API `public IReadOnlyList<string> Tags => tags;`.
+- Line 78: add XML documentation to public API `public IReadOnlyList<AuraComponent> Components => components;`.
+
+#### `Assets/Runtime/Shared/Data/AuraDefinitionLibrary.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 13: rename private field `instance` → `_instance`.
+
+#### `Assets/Runtime/Shared/Data/AuraEffectDefinition.cs`
+- Line 5: add XML documentation to public API `public interface IAutoDescription`.
+- Line 10: add XML documentation to public API `public enum AuraActorEvent`.
+- Line 15: add XML documentation to public API `public abstract class AuraEffectDefinition : IAutoDescription`.
+- Line 17: add XML documentation to public API `public abstract void Execute(AuraContext ctx, Actor target);`.
+- Line 18: add XML documentation to public API `public abstract string Description { get; }`.
+
+#### `Assets/Runtime/Shared/Data/AuraEffectDefinitions/AuraEffect_Damage.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.AuraEffectDefinitions`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public class AuraEffect_Damage : AuraEffectDefinition`.
+- Line 11: add XML documentation to public API `public override string Description => $"Taking {BaseDamage} {string.Join("/", DamageSchools.Select(ds => ds.DisplayName))} damage.";`.
+- Line 13: add XML documentation to public API `public float BaseDamage;`.
+- Line 14: add XML documentation to public API `public List<StatScaling> StatScaling = new();`.
+- Line 15: add XML documentation to public API `public List<DamageSchoolDefinition> DamageSchools = new();`.
+- Line 17: rename constant `StatHealth` → `STAT_HEALTH`.
+- Line 19: add XML documentation to public API `public override void Execute(AuraContext ctx, Actor target)`.
+
+#### `Assets/Runtime/Shared/Data/AuraEffectDefinitions/AuraEffect_Heal.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.AuraEffectDefinitions`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 10: add XML documentation to public API `public class AuraEffect_Heal : AuraEffectDefinition`.
+- Line 12: add XML documentation to public API `public override string Description => $"Healing {BaseHealing} health per tick.";`.
+- Line 14: add XML documentation to public API `public float BaseHealing;`.
+- Line 15: add XML documentation to public API `public List<StatScaling> StatScaling = new();`.
+- Line 17: rename constant `StatHealth` → `STAT_HEALTH`.
+- Line 19: add XML documentation to public API `public override void Execute(AuraContext ctx, Actor target)`.
+
+#### `Assets/Runtime/Shared/Data/AuraTargetDefinition.cs`
+- Line 5: add XML documentation to public API `public abstract class AuraTargetDefinition`.
+- Line 7: add XML documentation to public API `public abstract List<Actor> Evaluate(AuraContext ctx);`.
+
+#### `Assets/Runtime/Shared/Data/AuraTargetDefinitions/AuraTarget_Caster.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.AuraTargetDefinitions`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public class AuraTarget_Caster : AuraTargetDefinition`.
+- Line 8: add XML documentation to public API `public override List<Actor> Evaluate(AuraContext ctx)`.
+
+#### `Assets/Runtime/Shared/Data/AuraTargetDefinitions/AuraTarget_Target.cs`
+- Change namespace `Game.Shared.Data` → `Game.Shared.Data.AuraTargetDefinitions`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public class AuraTarget_Target : AuraTargetDefinition`.
+- Line 8: add XML documentation to public API `public override List<Actor> Evaluate(AuraContext ctx)`.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 128 individual changes listed.
