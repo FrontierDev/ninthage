@@ -2237,3 +2237,142 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 66: add XML documentation to public API `public void PopulateList(bool forceClear = false)`.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 195 individual changes listed.
+
+
+### Audit batch 13: files 191–206 of 386
+
+#### `Assets/Runtime/Client/UI/ReputationWindow/UI_ReputationHeaderProgressBar.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.ReputationWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 3: add XML documentation to public API `public sealed class UI_ReputationHeaderProgressBar : UI_ProgressBar`.
+
+#### `Assets/Runtime/Client/UI/ReputationWindow/UI_ReputationRewardEntry.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.ReputationWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 9: add XML documentation to public API `public sealed class UI_ReputationRewardEntry : UI_ListEntry<FactionRewardDescriptionEntry>`.
+- Line 11: rename private field `index` → `_index`.
+- Line 12: rename private field `data` → `_data`.
+- Line 14: rename private field `header` → `_header`; **serialized** — add `[FormerlySerializedAs("header")]` before renaming and verify existing assets.
+- Line 15: rename private field `entryText` → `_entryText`; **serialized** — add `[FormerlySerializedAs("entryText")]` before renaming and verify existing assets.
+- Line 16: rename private field `thresholdText` → `_thresholdText`; **serialized** — add `[FormerlySerializedAs("thresholdText")]` before renaming and verify existing assets.
+- Line 17: rename private field `thresholdIcon` → `_thresholdIcon`; **serialized** — add `[FormerlySerializedAs("thresholdIcon")]` before renaming and verify existing assets.
+- Line 18: rename private field `graphics` → `_graphics`; **serialized** — add `[FormerlySerializedAs("graphics")]` before renaming and verify existing assets.
+- Line 25: add XML documentation to public API `public override void Initialize(FactionRewardDescriptionEntry data, int index)`.
+- Line 47: add XML documentation to public API `public void SetThresholdLevels(int minRep, int maxRep)`.
+- Line 52: add XML documentation to public API `public void SetBorderColor(bool isPositive)`.
+- Line 65: add XML documentation to public API `public void ClearBorderColor()`.
+- Line 70: use `var` for local `defaultColor`; the RHS makes `Color` explicit.
+- Line 75: add XML documentation to public API `public override void OnClick(PointerEventData eventData = null)`.
+
+#### `Assets/Runtime/Client/UI/ReputationWindow/UI_ReputationWindow.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.ReputationWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 3: add XML documentation to public API `public sealed class UI_ReputationWindow : UI_Window`.
+- Line 6: add XML documentation to public API `public static UI_ReputationWindow Instance => _instance;`.
+
+#### `Assets/Runtime/Client/UI/TalentWindow/UI_TalentHeaderPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TalentWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 10: add XML documentation to public API `public sealed class UI_TalentHeaderPanel : UI_Panel`.
+- Line 12: rename private field `classIconImage` → `_classIconImage`; **serialized** — add `[FormerlySerializedAs("classIconImage")]` before renaming and verify existing assets.
+- Line 13: rename private field `classNameText` → `_classNameText`; **serialized** — add `[FormerlySerializedAs("classNameText")]` before renaming and verify existing assets.
+- Line 14: rename private field `characterLevelText` → `_characterLevelText`; **serialized** — add `[FormerlySerializedAs("characterLevelText")]` before renaming and verify existing assets.
+- Line 16: rename private field `unspentPointsText` → `_unspentPointsText`; **serialized** — add `[FormerlySerializedAs("unspentPointsText")]` before renaming and verify existing assets.
+- Line 17: rename private field `spentPointsText` → `_spentPointsText`; **serialized** — add `[FormerlySerializedAs("spentPointsText")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Client/UI/TalentWindow/UI_TalentTreeNode.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TalentWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 8: add XML documentation to public API `public sealed class UI_TalentTreeNode : UI_Button`.
+- Line 10: rename private field `graphics` → `_graphics`; **serialized** — add `[FormerlySerializedAs("graphics")]` before renaming and verify existing assets.
+- Line 11: rename private field `talentDefinition` → `_talentDefinition`; **serialized** — add `[FormerlySerializedAs("talentDefinition")]` before renaming and verify existing assets.
+- Line 12: rename private field `rank` → `_rank`; **serialized** — add `[FormerlySerializedAs("rank")]` before renaming and verify existing assets.
+- Line 19: add XML documentation to public API `public void Initialize(TalentDefinition definition, int rank = 0)`.
+- Line 28: add XML documentation to public API `public override void OnClick(PointerEventData eventData = null)`.
+
+#### `Assets/Runtime/Client/UI/TalentWindow/UI_TalentTreePanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TalentWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public sealed class UI_TalentTreePanel : UI_Panel`.
+- Line 13: rename private field `graphics` → `_graphics`; **serialized** — add `[FormerlySerializedAs("graphics")]` before renaming and verify existing assets.
+- Line 14: rename private field `specNameText` → `_specNameText`; **serialized** — add `[FormerlySerializedAs("specNameText")]` before renaming and verify existing assets.
+- Line 15: rename private field `spentPointsText` → `_spentPointsText`; **serialized** — add `[FormerlySerializedAs("spentPointsText")]` before renaming and verify existing assets.
+- Line 16: rename private field `specIndex` → `_specIndex`; **serialized** — add `[FormerlySerializedAs("specIndex")]` before renaming and verify existing assets.
+- Line 18: rename private field `talentNodePanelPrefab` → `_talentNodePanelPrefab`; **serialized** — add `[FormerlySerializedAs("talentNodePanelPrefab")]` before renaming and verify existing assets.
+- Line 19: rename private field `talentNodePanelContainer` → `_talentNodePanelContainer`; **serialized** — add `[FormerlySerializedAs("talentNodePanelContainer")]` before renaming and verify existing assets.
+- Line 20: rename private field `rowSpacing` → `_rowSpacing`; **serialized** — add `[FormerlySerializedAs("rowSpacing")]` before renaming and verify existing assets.
+- Line 25: rename private field `talentNodes` → `_talentNodes`.
+- Line 28: rename private field `specialisation` → `_specialisation`.
+
+#### `Assets/Runtime/Client/UI/TalentWindow/UI_TalentTreeViewerPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TalentWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 8: add XML documentation to public API `public sealed class UI_TalentTreeViewerPanel : UI_Panel`.
+- Line 10: rename private field `instance` → `_instance`.
+- Line 11: add XML documentation to public API `public static UI_TalentTreeViewerPanel Instance => instance;`.
+- Line 13: rename private field `graphics` → `_graphics`; **serialized** — add `[FormerlySerializedAs("graphics")]` before renaming and verify existing assets.
+- Line 14: rename private field `talentNameText` → `_talentNameText`; **serialized** — add `[FormerlySerializedAs("talentNameText")]` before renaming and verify existing assets.
+- Line 15: rename private field `talentDescriptionText` → `_talentDescriptionText`; **serialized** — add `[FormerlySerializedAs("talentDescriptionText")]` before renaming and verify existing assets.
+- Line 27: add XML documentation to public API `public void ShowTalentInfo(TalentDefinition talent)`.
+
+#### `Assets/Runtime/Client/UI/TalentWindow/UI_TalentWindow.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TalentWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 3: add XML documentation to public API `public sealed class UI_TalentWindow : UI_Window`.
+- Line 6: add XML documentation to public API `public static UI_TalentWindow Instance => _instance;`.
+- Line 8: add XML documentation to public API `public static bool IsInitialized => _initialized;`.
+
+#### `Assets/Runtime/Client/UI/TargetWindow/UI_TargetAuraBar.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TargetWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 12: add XML documentation to public API `public sealed class UI_TargetAuraBar : UI_AuraBar`.
+- Line 14: rename private field `interactable` → `_interactable`; **serialized** — add `[FormerlySerializedAs("interactable")]` before renaming and verify existing assets.
+- Line 109: add XML documentation to public API `public override void PopulateList(bool forceClear = false)`.
+
+#### `Assets/Runtime/Client/UI/TargetWindow/UI_TargetCastBar.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TargetWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public sealed class UI_TargetCastBar : UI_ProgressBar`.
+- Line 11: rename private field `spellNameText` → `_spellNameText`; **serialized** — add `[FormerlySerializedAs("spellNameText")]` before renaming and verify existing assets.
+- Line 12: rename private field `spellTimeText` → `_spellTimeText`; **serialized** — add `[FormerlySerializedAs("spellTimeText")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Client/UI/TargetWindow/UI_TargetInfoPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TargetWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public sealed class UI_TargetInfoPanel : UI_Panel`.
+- Line 9: rename private field `actorNameText` → `_actorNameText`; **serialized** — add `[FormerlySerializedAs("actorNameText")]` before renaming and verify existing assets.
+- Line 10: rename private field `actorInfoText` → `_actorInfoText`; **serialized** — add `[FormerlySerializedAs("actorInfoText")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Client/UI/TargetWindow/UI_TargetResourceBar.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TargetWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public sealed class UI_TargetResourceBar : UI_ProgressBar`.
+- Line 13: rename private field `trackedResources` → `_trackedResources`; **serialized** — add `[FormerlySerializedAs("trackedResources")]` before renaming and verify existing assets.
+- Line 14: rename private field `valueText` → `_valueText`; **serialized** — add `[FormerlySerializedAs("valueText")]` before renaming and verify existing assets.
+- Line 15: rename private field `percentageText` → `_percentageText`; **serialized** — add `[FormerlySerializedAs("percentageText")]` before renaming and verify existing assets.
+
+#### `Assets/Runtime/Client/UI/TargetWindow/UI_TargetWindow.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.TargetWindow`; update all references atomically and protect serialized managed-reference type moves.
+- Line 5: add XML documentation to public API `public sealed class UI_TargetWindow : UI_Window`.
+- Line 8: add XML documentation to public API `public static UI_TargetWindow Instance => _instance;`.
+
+#### `Assets/Runtime/Client/UI/Tooltip/ITooltipLine.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Tooltip`; update all references atomically and protect serialized managed-reference type moves.
+- Line 3: add XML documentation to public API `public interface ITooltipLine`.
+- Line 5: add XML documentation to public API `public void Set(string[] text);`.
+
+#### `Assets/Runtime/Client/UI/Tooltip/UI_TooltipDoubleLIne.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Tooltip`; update all references atomically and protect serialized managed-reference type moves.
+- Rename file `UI_TooltipDoubleLIne.cs` → `UI_TooltipDoubleLine.cs`; preserve its `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 6: add XML documentation to public API `public sealed class UI_TooltipDoubleLine : MonoBehaviour, ITooltipLine`.
+- Line 8: rename private field `leftText` → `_leftText`; **serialized** — add `[FormerlySerializedAs("leftText")]` before renaming and verify existing assets.
+- Line 9: rename private field `rightText` → `_rightText`; **serialized** — add `[FormerlySerializedAs("rightText")]` before renaming and verify existing assets.
+- Line 11: add XML documentation to public API `public void Set(string[] text)`.
+
+#### `Assets/Runtime/Client/UI/Tooltip/UI_TooltipPanel.cs`
+- Change namespace `Game.Client.UI` → `Game.Client.UI.Tooltip`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public struct UI_TooltipLine`.
+- Line 9: add XML documentation to public API `public string[] text;`.
+- Line 12: add XML documentation to public API `public class UI_TooltipPanel : UI_Panel`.
+- Line 14: rename private field `tooltipHeader` → `_tooltipHeader`; **serialized** — add `[FormerlySerializedAs("tooltipHeader")]` before renaming and verify existing assets.
+- Line 15: rename private field `tooltipBody` → `_tooltipBody`; **serialized** — add `[FormerlySerializedAs("tooltipBody")]` before renaming and verify existing assets.
+- Line 16: rename private field `tooltipFooter` → `_tooltipFooter`; **serialized** — add `[FormerlySerializedAs("tooltipFooter")]` before renaming and verify existing assets.
+- Line 17: rename private field `tooltipIcon` → `_tooltipIcon`; **serialized** — add `[FormerlySerializedAs("tooltipIcon")]` before renaming and verify existing assets.
+- Line 19: rename private field `singleLinePrefab` → `_singleLinePrefab`; **serialized** — add `[FormerlySerializedAs("singleLinePrefab")]` before renaming and verify existing assets.
+- Line 20: rename private field `doubleLinePrefab` → `_doubleLinePrefab`; **serialized** — add `[FormerlySerializedAs("doubleLinePrefab")]` before renaming and verify existing assets.
+- Line 22: add XML documentation to public API `public void SetTooltip(string header, UI_TooltipLine[] lines, string footer, Sprite icon)`.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 102 individual changes listed.
