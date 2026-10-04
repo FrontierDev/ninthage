@@ -2817,3 +2817,193 @@ The `var` and target-typed construction rules are preference rules rather than a
 - Line 12: add XML documentation to public API `public List<CharacterData> Characters = new List<CharacterData>();`.
 
 **Batch result:** 16 files scanned; 16 files contain listed convention changes; 200 individual changes listed.
+
+
+### Audit batch 16: files 239–254 of 386
+
+#### `Assets/Runtime/Server/Persistence/PlayerDatabase.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public static class PlayerDatabase`.
+- Line 10: rename static readonly field `_filePath` → `FILE_PATH`.
+- Line 11: rename private field `playerAccounts` → `_playerAccounts`.
+- Line 11: use target-typed `new(...)` for member `playerAccounts`.
+- Line 19: add XML documentation to public API `public static void CleanDatabase()`.
+- Line 26: add XML documentation to public API `public static bool TryGetPlayerAccount(string username, out PlayerAccountData accountData)`.
+- Line 31: add XML documentation to public API `public static void SavePlayerAccount(PlayerAccountData accountData)`.
+- Line 66: rename private field `PlayerDatabaseWrapper` → `_PlayerDatabaseWrapper`.
+- Line 68: use target-typed `new(...)` for member `Accounts`.
+- Line 68: add XML documentation to public API `public List<PlayerAccountData> Accounts = new List<PlayerAccountData>();`.
+
+#### `Assets/Runtime/Server/Services/CharacterCreationService.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public sealed class CharacterCreationService`.
+- Line 12: add XML documentation to public API `public static ClassDefinitionLibrary classDefinitions;`.
+- Line 13: add XML documentation to public API `public static RaceDefinitionLibrary raceDefinitions;`.
+- Line 16: rename private field `characterData` → `_characterData`.
+- Line 17: rename private field `playerId` → `_playerID`.
+- Line 19: add XML documentation to public API `public CharacterCreationService(PlayerID _playerId, NewCharacterData _characterData)`.
+
+#### `Assets/Runtime/Server/Services/CharacterExperienceService.cs`
+- Line 7: add XML documentation to public API `public sealed class CharacterExperienceService`.
+- Line 9: rename private field `playerExperience` → `_playerExperience`.
+- Line 10: rename private field `level` → `_level`.
+- Line 11: rename private field `experience` → `_experience`.
+- Line 13: add XML documentation to public API `public CharacterExperienceService(PlayerActor playerActor, int experienceGained)`.
+- Line 28: add XML documentation to public API `public void AddExperience(int amount)`.
+
+#### `Assets/Runtime/Server/Services/CharacterReputationService.cs`
+- Line 8: add XML documentation to public API `public sealed class CharacterReputationService`.
+- Line 10: rename private field `player` → `_player`.
+- Line 11: rename private field `playerReputation` → `_playerReputation`.
+- Line 12: rename private field `faction` → `_faction`.
+- Line 14: add XML documentation to public API `public CharacterReputationService(PlayerActor playerActor, FactionDefinition faction, int reputationGained)`.
+- Line 29: add XML documentation to public API `public void AddReputation(int amount)`.
+
+#### `Assets/Runtime/Server/Services/CharacterWeaponSkillService.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 9: add XML documentation to public API `public sealed class CharacterWeaponSkillService`.
+- Line 11: rename private field `playerExperience` → `_playerExperience`.
+- Line 12: rename private field `weaponType` → `_weaponType`.
+- Line 13: rename private field `level` → `_level`.
+- Line 14: rename private field `experience` → `_experience`.
+- Line 16: add XML documentation to public API `public CharacterWeaponSkillService(PlayerActor playerActor, ItemWeaponType weaponType, int experienceGained)`.
+- Line 35: add XML documentation to public API `public void AddWeaponSkillExperience(int amount)`.
+
+#### `Assets/Runtime/Server/Services/EnterWorldService.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public sealed class EnterWorldService`.
+- Line 13: rename private field `playerId` → `_playerID`.
+- Line 14: rename private field `characterGuid` → `_characterGUID`.
+- Line 16: add XML documentation to public API `public EnterWorldService(PlayerID _playerId, string _characterGuid)`.
+
+#### `Assets/Runtime/Server/Services/PartyLootService.cs`
+- Alphabetize `using` directives (first at line 1).
+- Line 19: rename private field `playerInventory` → `_playerInventory`.
+- Line 20: rename private field `lootPool` → `_lootPool`.
+- Line 20: use target-typed `new(...)` for member `lootPool`.
+- Line 22: add XML documentation to public API `public PartyLootService(PlayerActor playerActor)`.
+- Line 27: add XML documentation to public API `public void AddLootFromSource(IReadOnlyList<NPCLootTableEntry> source)`.
+- Line 54: add XML documentation to public API `public void AddToPool(ItemDefinition item)`.
+- Line 94: add XML documentation to public API `public void DistributeLoot()`.
+
+#### `Assets/Runtime/Server/Services/PlayerAuthService.cs`
+- Change namespace `Game.Server.Persistence` → `Game.Server.Services`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 18: use target-typed `new(...)` for member `_validatedUsernamesQueue`.
+- Line 19: use target-typed `new(...)` for member `_newPlayerQueue`.
+- Line 20: use target-typed `new(...)` for member `_pendingConnections`.
+- Line 61: add XML documentation to public API `public void TrackPendingConnection(object connection, string username)`.
+- Line 67: add XML documentation to public API `public bool TryRemovePendingConnection(object connection, out string username)`.
+- Line 77: add XML documentation to public API `public string GetNextValidatedUsername()`.
+- Line 82: add XML documentation to public API `public bool GetNextPlayerIsNew()`.
+- Line 87: add XML documentation to public API `public void EnqueueNewPlayerFlag(bool isNewPlayer)`.
+- Line 92: rename constant `SaltSize` → `SALT_SIZE`.
+- Line 93: rename constant `HashSize` → `HASH_SIZE`.
+- Line 94: rename constant `Iterations` → `ITERATIONS`.
+
+#### `Assets/Runtime/Server/Systems/ActorComponents.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Rename file `ActorComponents.cs` → `ActorComponent.cs`; preserve its `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 11: add XML documentation to public API `public struct ActorComponent : IComponentData`.
+- Line 13: add XML documentation to public API `public Guid ActorId;`.
+- Line 13: rename member `ActorId` → `ActorID` for acronym casing.
+- Line 14: add XML documentation to public API `public FixedString128Bytes ActorName;`.
+- Line 15: add XML documentation to public API `public PlayerID Owner;`.
+- Line 16: add XML documentation to public API `public SceneID CurrentScene;`.
+- Line 17: add XML documentation to public API `public double3 WorldPositionD; // Double-precision authoritative position`.
+- Line 20: add XML documentation to public API `public struct ResourceRegenElement : IBufferElementData`.
+- Line 22: add XML documentation to public API `public FixedString64Bytes ResourceId;`.
+- Line 22: rename member `ResourceId` → `ResourceID` for acronym casing.
+- Line 23: add XML documentation to public API `public float RegenAmount;`.
+- Line 26: add XML documentation to public API `public struct MotionStateComponent : IComponentData`.
+- Line 28: add XML documentation to public API `public float VerticalVelocity;`.
+- Line 29: add XML documentation to public API `public bool IsGrounded;`.
+- Line 30: add XML documentation to public API `public float TimeSinceLastGround;`.
+- Line 31: add XML documentation to public API `public bool UsesNavMeshAgent;`.
+- Line 34: add XML documentation to public API `public struct GroundDetectionComponent : IComponentData`.
+- Line 36: add XML documentation to public API `public float groundDetectionRadius;`.
+- Line 37: add XML documentation to public API `public float3 lastGroundCheck;`.
+- Line 40: add XML documentation to public API `public struct SpellCastComponent : IComponentData, IEnableableComponent`.
+- Line 42: add XML documentation to public API `public FixedString64Bytes SpellID;`.
+- Line 43: add XML documentation to public API `public float RemainingCastTime;`.
+- Line 44: add XML documentation to public API `public float TotalCastTime;`.
+- Line 45: add XML documentation to public API `public float TotalTicks;`.
+- Line 46: add XML documentation to public API `public float TimeSinceLastTick;`.
+- Line 49: add XML documentation to public API `public struct CooldownElement : IBufferElementData`.
+- Line 51: add XML documentation to public API `public FixedString64Bytes SpellID;`.
+- Line 52: add XML documentation to public API `public float RemainingCooldown;`.
+- Line 55: add XML documentation to public API `public struct AuraElement : IBufferElementData`.
+- Line 57: add XML documentation to public API `public int InstanceId;`.
+- Line 57: rename member `InstanceId` → `InstanceID` for acronym casing.
+- Line 58: add XML documentation to public API `public FixedString64Bytes AuraDefinitionId;`.
+- Line 58: rename member `AuraDefinitionId` → `AuraDefinitionID` for acronym casing.
+- Line 59: add XML documentation to public API `public float RemainingDuration;`.
+- Line 60: add XML documentation to public API `public float TickInterval;`.
+- Line 61: add XML documentation to public API `public float TimeSinceLastTick;`.
+- Line 64: add XML documentation to public API `public struct TickerElement : IBufferElementData`.
+- Line 66: add XML documentation to public API `public int TickerId;`.
+- Line 66: rename member `TickerId` → `TickerID` for acronym casing.
+- Line 67: add XML documentation to public API `public float RemainingDuration; // float.MaxValue = indefinite`.
+- Line 68: add XML documentation to public API `public float TickInterval;`.
+- Line 69: add XML documentation to public API `public float TimeSinceLastTick;`.
+
+#### `Assets/Runtime/Server/Systems/ActorTickerSystem.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public partial struct ActorTickerSystem : ISystem`.
+- Line 9: add XML documentation to public API `public void OnUpdate(ref SystemState state)`.
+
+#### `Assets/Runtime/Server/Systems/ActorUpdateSystem.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 8: add XML documentation to public API `public partial struct ActorUpdateSystem : ISystem`.
+- Line 10: rename private field `motionQuery` → `_motionQuery`.
+- Line 12: add XML documentation to public API `public void OnCreate(ref SystemState state)`.
+- Line 27: add XML documentation to public API `public void OnUpdate(ref SystemState state)`.
+- Line 85: add XML documentation to public API `public void OnDestroy(ref SystemState state)`.
+
+#### `Assets/Runtime/Server/Systems/AuraTickSystem.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public partial struct AuraTickSystem : ISystem`.
+- Line 9: add XML documentation to public API `public void OnUpdate(ref SystemState state)`.
+
+#### `Assets/Runtime/Server/Systems/ChunkSpawnComponents.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Rename file `ChunkSpawnComponents.cs` → `SpawnPointComponent.cs`; preserve its `.meta` file.
+- Alphabetize `using` directives (first at line 1).
+- Line 12: add XML documentation to public API `public struct SpawnPointComponent : IComponentData`.
+- Line 14: add XML documentation to public API `public Guid SpawnPointGuid;`.
+- Line 14: rename member `SpawnPointGuid` → `SpawnPointGUID` for acronym casing.
+- Line 15: add XML documentation to public API `public FixedString128Bytes SceneName;`.
+- Line 16: add XML documentation to public API `public float3 Position;`.
+- Line 17: add XML documentation to public API `public int PrefabIndex; // index into a managed prefab list`.
+- Line 18: add XML documentation to public API `public int SceneIndex; // maps back to tile coord for MoveToScene`.
+- Line 19: add XML documentation to public API `public bool Pending; // true = needs to spawn this tick`.
+- Line 22: add XML documentation to public API `public struct SpawnCommand : IComponentData`.
+- Line 24: add XML documentation to public API `public Guid SpawnPointGuid;`.
+- Line 25: add XML documentation to public API `public FixedString128Bytes SceneName;`.
+- Line 26: add XML documentation to public API `public float3 Position;`.
+- Line 27: add XML documentation to public API `public int PrefabIndex;`.
+- Line 28: add XML documentation to public API `public int SceneIndex;`.
+- Line 29: add XML documentation to public API `public PlayerID Owner;`.
+- Line 30: add XML documentation to public API `public int2 ChunkCoord; // Chunk coordinate derived from SceneName`.
+
+#### `Assets/Runtime/Server/Systems/CooldownTickSystem.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Line 6: add XML documentation to public API `public partial struct CooldownTickSystem : ISystem`.
+- Line 8: add XML documentation to public API `public void OnUpdate(ref SystemState state)`.
+
+#### `Assets/Runtime/Server/Systems/ResourceRegenSystem.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Alphabetize `using` directives (first at line 1).
+- Line 7: add XML documentation to public API `public partial struct ResourceRegenSystem : ISystem`.
+- Line 9: add XML documentation to public API `public readonly void OnCreate(ref SystemState state)`.
+- Line 14: add XML documentation to public API `public readonly void OnUpdate(ref SystemState state)`.
+- Line 19: add XML documentation to public API `public readonly void OnDestroy(ref SystemState state)`.
+
+#### `Assets/Runtime/Server/Systems/SpellCastSystem.cs`
+- Change namespace `Game.Server.ECS` → `Game.Server.Systems`; update all references atomically and protect serialized managed-reference type moves.
+- Line 7: add XML documentation to public API `public partial struct SpellCastSystem : ISystem`.
+- Line 9: add XML documentation to public API `public void OnUpdate(ref SystemState state)`.
+
+**Batch result:** 16 files scanned; 16 files contain listed convention changes; 153 individual changes listed.
