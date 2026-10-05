@@ -444,7 +444,9 @@ Themes:
 - Reactive attacks
 - Pressure
 
-### Shadowcraft
+### Third Specialisation — TBD
+
+The third Duellist specialisation remains unnamed.
 
 Themes:
 
@@ -453,6 +455,8 @@ Themes:
 - Theft
 - Stealth
 - Utility
+
+**Shadowcraft is reserved for the profession and must not be used as a Duellist specialisation name.**
 
 ## 7.5 Further Consideration Required
 
@@ -471,8 +475,8 @@ Questions include:
 - How important are poisons?
 - Should counter-attacking/parrying become the class's central mechanic?
 - What should replace the Duelist specialisation name?
-- Is Shadowcraft too explicitly magical for the intended class identity?
-- Should the third specialisation instead emphasise trickery, mobility, thrown weapons, dirty fighting or another mundane concept?
+- What should the unnamed third specialisation be called?
+- Should the third specialisation emphasise trickery, mobility, thrown weapons, dirty fighting or another mundane concept?
 
 This is one of the classes requiring the most design work before implementation.
 
