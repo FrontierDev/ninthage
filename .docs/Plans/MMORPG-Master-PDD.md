@@ -3,7 +3,7 @@
 **Status:** Authoritative design index and project-level design baseline  
 **Project:** Ninth Age  
 **Scope:** Product-wide MMORPG design, subsystem ownership, PDD hierarchy, cross-system principles and unresolved product decisions  
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-05
 
 ---
 
@@ -132,7 +132,7 @@ The player-facing world should not feel like a disconnected collection of level-
 
 Dungeons and other contained content should, where appropriate, feel geographically and fictionally connected to the wider world even if their runtime implementation requires separate scenes, instances or streamed content.
 
-Detailed world structure belongs in the future **World and Zone Design PDD** and **Dungeon and Group Content PDD**.
+Detailed world structure belongs in the **World and Zone Design PDD** and **Dungeon and Group Content PDD**.
 
 ### 4.3 Persistent Client–Server Game
 
@@ -213,16 +213,16 @@ MMORPG Master PDD
 │
 ├── Character and Combat
 │   ├── Class Design PDD                         [EXISTS]
-│   ├── Combat System PDD                       [PLACEHOLDER]
+│   ├── Combat System PDD                       [EXISTS]
 │   ├── Character Stats and Progression PDD     [PLACEHOLDER]
 │   ├── Abilities and Talents PDD               [PLACEHOLDER]
 │   └── Items, Equipment and Loot PDD            [PLACEHOLDER]
 │
 ├── World and PvE Content
-│   ├── World and Zone Design PDD               [PLACEHOLDER]
-│   ├── Movement and Traversal PDD               [PLACEHOLDER]
-│   ├── NPC and Creature Design PDD              [PLACEHOLDER]
-│   ├── AI and Encounter Behaviour PDD           [PLACEHOLDER]
+│   ├── World and Zone Design PDD               [EXISTS]
+│   ├── Movement and Traversal PDD               [EXISTS]
+│   ├── NPC and Creature Design PDD              [EXISTS]
+│   ├── AI and Encounter Behaviour PDD           [EXISTS]
 │   ├── Quest, Narrative and Dialogue PDD        [PLACEHOLDER]
 │   ├── Dungeon and Group Content PDD            [PLACEHOLDER]
 │   ├── Open-World Events PDD                    [PLACEHOLDER]
@@ -250,7 +250,7 @@ MMORPG Master PDD
 │
 └── Technical/Product Boundary
     ├── Account, Character and Persistence PDD   [PLACEHOLDER]
-    ├── World Runtime and Instancing PDD         [PLACEHOLDER]
+    ├── World Runtime and Instancing PDD         [EXISTS]
     └── Live Content and Versioning PDD           [PLACEHOLDER]
 ```
 
@@ -282,7 +282,7 @@ Several class mechanics remain intentionally unresolved and must not be implemen
 
 ---
 
-## 6.2 Combat System PDD — Placeholder
+## 6.2 Combat System PDD — Existing
 
 **Document:**
 
@@ -404,7 +404,7 @@ This PDD must be reconciled directly with the Crafting PDD.
 
 # 7. World and PvE Content PDDs
 
-## 7.1 World and Zone Design PDD — Placeholder
+## 7.1 World and Zone Design PDD — Existing
 
 **Document:**
 
@@ -434,7 +434,7 @@ The visual implementation must remain compatible with the Graphical Approach PDD
 
 ---
 
-## 7.2 Movement and Traversal PDD — Placeholder
+## 7.2 Movement and Traversal PDD — Existing
 
 **Document:**
 
@@ -461,7 +461,7 @@ It should specify desired player experience independently of the technical movem
 
 ---
 
-## 7.3 NPC and Creature Design PDD — Placeholder
+## 7.3 NPC and Creature Design PDD — Existing
 
 **Document:**
 
@@ -489,7 +489,7 @@ The AI PDD owns how behaviour is structured.
 
 ---
 
-## 7.4 AI and Encounter Behaviour PDD — Placeholder
+## 7.4 AI and Encounter Behaviour PDD — Existing
 
 **Document:**
 
@@ -905,7 +905,7 @@ Database implementation belongs in technical architecture.
 
 ---
 
-## 12.2 World Runtime and Instancing PDD — Placeholder
+## 12.2 World Runtime and Instancing PDD — Existing
 
 **Document:**
 
@@ -1107,6 +1107,12 @@ The project currently has the following major product-design documents:
 | [Crafting System PDD](Crafting-System-PDD.md) | Authoritative | Gathering, professions, mastery and cooperative crafting |
 | [Class Design PDD](Class-Design-PDD.md) | Draft / design baseline | Class roster, identity and unresolved class mechanics |
 | **MMORPG Master PDD** | Authoritative index / baseline | Product-wide design hierarchy and subsystem map |
+| [Combat System PDD](Combat-System-PDD.md) | Authoritative | Core combat model, combat state, targeting, threat and combat resolution |
+| [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md) | Authoritative | Persistent worlds, streaming, floating origin, actor visibility and runtime instances |
+| [Movement and Traversal PDD](Movement-and-Traversal-PDD.md) | Authoritative | Ground movement, traversal, mounts, transport and lodestone travel |
+| [World and Zone Design PDD](World-and-Zone-Design-PDD.md) | Authoritative | World structure, zones, routes, wilderness, exploration and geography |
+| [NPC and Creature Design PDD](NPC-and-Creature-Design-PDD.md) | Authoritative | NPC taxonomy, factions, populations, spawning and reusable creature authoring |
+| [AI and Encounter Behaviour PDD](AI-and-Encounter-Behaviour-PDD.md) | Authoritative | NPC perception, threat, behaviour, encounter state and open-world readiness |
 
 ## 16.2 Placeholder Subsystem PDDs
 
@@ -1114,14 +1120,9 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 | PDD | Status | Intended scope |
 |---|---|---|
-| [Combat System PDD](Combat-System-PDD.md) | Placeholder / design required | The fundamental moment-to-moment combat model, including targeting, action execution, damage/healing resolution, threat, crowd control, death and combat pacing. |
 | [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md) | Placeholder / design required | Character levels, experience, attributes, derived statistics, scaling, progression pacing and endgame character progression. |
 | [Items, Equipment and Loot PDD](Items-Equipment-and-Loot-PDD.md) | Placeholder / design required | Item categories, equipment, weapons, armour, item power and quality, loot generation, binding and loot ownership. |
 | [Abilities and Talents PDD](Abilities-and-Talents-PDD.md) | Placeholder / design required | Ability acquisition and structure, specialisations, talents, loadouts, scaling, respecialisation and action-bar expectations. |
-| [World and Zone Design PDD](World-and-Zone-Design-PDD.md) | Placeholder / design required | Player-facing world structure, regions, zones, settlements, biomes, exploration, points of interest and world progression. |
-| [Movement and Traversal PDD](Movement-and-Traversal-PDD.md) | Placeholder / design required | Player movement, jumping, falling, swimming, traversal abilities, mounts, transport and fast-travel rules. |
-| [NPC and Creature Design PDD](NPC-and-Creature-Design-PDD.md) | Placeholder / design required | NPC and creature categories, ranks, statistics, spawning, interaction, service NPCs, rares, bosses and ambient populations. |
-| [AI and Encounter Behaviour PDD](AI-and-Encounter-Behaviour-PDD.md) | Placeholder / design required | Aggro, perception, combat decision-making, positioning, group behaviour, encounter phases, reset logic and encounter AI expectations. |
 | [Quest, Narrative and Dialogue PDD](Quest-Narrative-and-Dialogue-PDD.md) | Placeholder / design required | Narrative delivery, quests, objectives, dialogue, branching, rewards, shared credit, world-state consequences and narrative persistence. |
 | [Dungeon and Group Content PDD](Dungeon-and-Group-Content-PDD.md) | Placeholder / design required | Dungeon structure, group expectations, world integration, encounters, bosses, checkpoints, difficulty, rewards and lockouts. |
 | [Open-World Events PDD](Open-World-Events-PDD.md) | Placeholder / design required | Dynamic public events, world bosses, contribution, scaling, event chains, failure states, rewards and persistence. |
@@ -1136,7 +1137,6 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Audio and Music PDD](Audio-and-Music-PDD.md) | Placeholder / design required | World ambience, combat and UI audio, music structure, zone and dungeon music, day/night response and voice presentation. |
 | [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Placeholder / design required | Input remapping, controller requirements, readability, UI scaling, colour dependence, subtitles, camera options and input accessibility. |
 | [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md) | Placeholder / design required | Product-level account and character persistence, saved state, login/logout behaviour, disconnect recovery and server-owned persistent data. |
-| [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md) | Placeholder / design required | Player-facing world continuity, instance boundaries, transitions, shared instances, group behaviour, resets and persistence across runtime partitions. |
 | [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md) | Placeholder / design required | Client/server compatibility, content-data versioning, persistent-data migration, patch behaviour, live content and rollback expectations. |
 
 ## 16.3 Existing Supporting Technical Documents
