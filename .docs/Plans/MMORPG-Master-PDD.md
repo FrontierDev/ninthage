@@ -223,10 +223,10 @@ MMORPG Master PDD
 │   ├── Movement and Traversal PDD               [EXISTS]
 │   ├── NPC and Creature Design PDD              [EXISTS]
 │   ├── AI and Encounter Behaviour PDD           [EXISTS]
-│   ├── Quest, Narrative and Dialogue PDD        [PLACEHOLDER]
-│   ├── Dungeon and Group Content PDD            [PLACEHOLDER]
-│   ├── Open-World Events PDD                    [PLACEHOLDER]
-│   └── Factions and Reputation PDD              [PLACEHOLDER]
+│   ├── Quest, Narrative and Dialogue PDD        [EXISTS]
+│   ├── Dungeon and Group Content PDD            [EXISTS]
+│   ├── Open-World Events PDD                    [EXISTS]
+│   └── Factions and Reputation PDD              [EXISTS]
 │
 ├── Economy and Professions
 │   ├── Crafting System PDD                      [EXISTS]
@@ -514,7 +514,7 @@ The exact AI implementation belongs in technical architecture documentation.
 
 ---
 
-## 7.5 Quest, Narrative and Dialogue PDD — Placeholder
+## 7.5 Quest, Narrative and Dialogue PDD — Existing
 
 **Document:**
 
@@ -540,7 +540,7 @@ This should define:
 
 ---
 
-## 7.6 Dungeon and Group Content PDD — Placeholder
+## 7.6 Dungeon and Group Content PDD — Existing
 
 **Document:**
 
@@ -570,7 +570,7 @@ The technical scene/instance implementation belongs in the World Runtime and Ins
 
 ---
 
-## 7.7 Open-World Events PDD — Placeholder
+## 7.7 Open-World Events PDD — Existing
 
 **Document:**
 
@@ -592,7 +592,7 @@ The exact feature set remains open.
 
 ---
 
-## 7.8 Factions and Reputation PDD — Placeholder
+## 7.8 Factions and Reputation PDD — Existing
 
 **Document:**
 
@@ -1123,10 +1123,10 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md) | Placeholder / design required | Character levels, experience, attributes, derived statistics, scaling, progression pacing and endgame character progression. |
 | [Items, Equipment and Loot PDD](Items-Equipment-and-Loot-PDD.md) | Placeholder / design required | Item categories, equipment, weapons, armour, item power and quality, loot generation, binding and loot ownership. |
 | [Abilities and Talents PDD](Abilities-and-Talents-PDD.md) | Placeholder / design required | Ability acquisition and structure, specialisations, talents, loadouts, scaling, respecialisation and action-bar expectations. |
-| [Quest, Narrative and Dialogue PDD](Quest-Narrative-and-Dialogue-PDD.md) | Placeholder / design required | Narrative delivery, quests, objectives, dialogue, branching, rewards, shared credit, world-state consequences and narrative persistence. |
-| [Dungeon and Group Content PDD](Dungeon-and-Group-Content-PDD.md) | Placeholder / design required | Dungeon structure, group expectations, world integration, encounters, bosses, checkpoints, difficulty, rewards and lockouts. |
-| [Open-World Events PDD](Open-World-Events-PDD.md) | Placeholder / design required | Dynamic public events, world bosses, contribution, scaling, event chains, failure states, rewards and persistence. |
-| [Factions and Reputation PDD](Factions-and-Reputation-PDD.md) | Placeholder / design required | World factions, reputation, hostility, faction rewards and services, narrative relationships and account/character progression. |
+| [Quest, Narrative and Dialogue PDD](Quest-Narrative-and-Dialogue-PDD.md) | Authoritative | Narrative delivery, quests, objectives, dialogue, branching, rewards, shared credit, world-state consequences and narrative persistence. |
+| [Dungeon and Group Content PDD](Dungeon-and-Group-Content-PDD.md) | Authoritative | Dungeon structure, group expectations, world integration, encounters, bosses, checkpoints, difficulty, rewards and lockouts. |
+| [Open-World Events PDD](Open-World-Events-PDD.md) | Authoritative | Dynamic public events, world bosses, contribution, scaling, event chains, failure states, rewards and persistence. |
+| [Factions and Reputation PDD](Factions-and-Reputation-PDD.md) | Authoritative | World factions, reputation, hostility, faction rewards and services, narrative relationships and account/character progression. |
 | [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md) | Placeholder / design required | Currencies, vendors, player trade, markets, economic sinks, restrictions and the relationship between crafting and the player economy. |
 | [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md) | Placeholder / design required | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
 | [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Placeholder / design required | Guild creation, membership, ranks, permissions, identity, friends, ignore/block relationships and persistent social systems. |
