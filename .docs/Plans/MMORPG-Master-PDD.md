@@ -215,7 +215,7 @@ MMORPG Master PDD
 │   ├── Class Design PDD                         [EXISTS]
 │   ├── Combat System PDD                       [EXISTS]
 │   ├── Character Stats and Progression PDD     [EXISTS]
-│   ├── Abilities and Talents PDD               [PLACEHOLDER]
+│   ├── Abilities and Talents PDD               [EXISTS]
 │   └── Items, Equipment and Loot PDD            [PLACEHOLDER]
 │
 ├── World and PvE Content
@@ -345,29 +345,27 @@ Exact numerical class endpoints, XP pacing, rating coefficients and Legacy perk 
 
 ---
 
-## 6.4 Abilities and Talents PDD — Placeholder
+## 6.4 Abilities and Talents PDD — Existing
 
 **Document:**
 
 - [Abilities and Talents PDD](Abilities-and-Talents-PDD.md)
 
-This should define:
+This document defines:
 
-- what constitutes an ability;
-- active versus passive abilities;
-- ability acquisition;
-- talent structure;
-- talent progression;
-- specialisation selection;
-- respecialisation;
-- loadout rules;
-- action-bar expectations;
-- ability ranks, scaling or replacement where applicable;
-- class-wide versus specialisation-specific abilities;
-- ability modification through talents;
-- interaction with equipment and item effects.
+- class-trainer acquisition of class-wide abilities;
+- active specialisation selection at level 10;
+- free talent investment across all three specialisation trees;
+- points-spent-in-tree depth gating;
+- 1/2/3/5-rank talents;
+- passive and active talent abilities;
+- specialisation-specific known-ability ownership;
+- respecialisation availability and post-level-20 fee requirement;
+- spell/ability ranks that improve base effects before stat scaling;
+- unrestricted traditional action-bar binding;
+- server-authoritative talent, specialisation and learned-ability validation.
 
-Class-specific talent trees or ability lists may later receive their own subordinate documents if needed.
+Class-specific talent trees and ability lists may receive subordinate content documents.
 
 ---
 
