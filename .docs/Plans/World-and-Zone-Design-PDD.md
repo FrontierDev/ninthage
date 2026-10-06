@@ -977,7 +977,7 @@ This PDD depends on or constrains:
 - **Open-World Events PDD** — public content placement;
 - **Factions and Reputation PDD** — political geography and hostile/friendly regions;
 - **Crafting and profession design** — resource distribution and profession-specific world opportunities;
-- **Character Stats and Progression PDD** — eventual level progression through the world.
+- **Character Stats and Progression PDD** — level progression through the world under the permanent level-60 model.
 
 ---
 

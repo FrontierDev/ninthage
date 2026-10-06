@@ -3,7 +3,7 @@
 **Status:** Authoritative design index and project-level design baseline  
 **Project:** Ninth Age  
 **Scope:** Product-wide MMORPG design, subsystem ownership, PDD hierarchy, cross-system principles and unresolved product decisions  
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-06
 
 ---
 
@@ -214,7 +214,7 @@ MMORPG Master PDD
 ├── Character and Combat
 │   ├── Class Design PDD                         [EXISTS]
 │   ├── Combat System PDD                       [EXISTS]
-│   ├── Character Stats and Progression PDD     [PLACEHOLDER]
+│   ├── Character Stats and Progression PDD     [EXISTS]
 │   ├── Abilities and Talents PDD               [PLACEHOLDER]
 │   └── Items, Equipment and Loot PDD            [PLACEHOLDER]
 │
@@ -319,30 +319,29 @@ The project still needs explicit decisions on the exact baseline combat model be
 
 ---
 
-## 6.3 Character Stats and Progression PDD — Placeholder
+## 6.3 Character Stats and Progression PDD — Existing
 
 **Document:**
 
 - [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md)
 
-This should define:
+This document defines:
 
-- character level structure;
-- level cap philosophy;
-- primary attributes;
-- secondary attributes;
-- derived statistics;
-- health and other universal resources;
-- stat scaling by level;
-- progression pacing;
-- experience acquisition;
-- level-up rewards;
-- stat caps or diminishing returns;
-- progression at maximum level;
-- character power sources and their relative contribution;
-- respec philosophy where relevant.
+- level 1–60 character progression;
+- the permanent level-60 cap;
+- the RPE2-derived initial + (level - 1) × per-level progression architecture;
+- race and class stat/resource progression;
+- Strength, Dexterity, Stamina, Intelligence and Willpower;
+- multi-source derived statistics;
+- intrinsic versus effective resource maxima;
+- Health/Mana hybrid progression;
+- level-relative combat ratings with permanent level-60 reference;
+- weapon-skill progression;
+- talent-point entitlement from level 10 through 60;
+- maximum-level progression without further character levels;
+- account-wide Legacy progression constraints.
 
-This document is a dependency for class balance, itemisation, combat and encounter design.
+Exact numerical class endpoints, XP pacing, rating coefficients and Legacy perk values remain balance data.
 
 ---
 

@@ -31,7 +31,7 @@ It owns the player-facing rules for:
 
 The [Crafting System PDD](Crafting-System-PDD.md) remains authoritative for profession progression, exact-recipe mastery, cooperative crafting and the Standard → Superior → Masterwork → Legendary craftsmanship progression.
 
-The [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md) will eventually own the detailed numerical character-stat and scaling curves. This document defines which statistics are intended to participate in equipment itemisation, but deliberately leaves unresolved numerical curves to that system where appropriate.
+The [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md) owns the character-stat progression architecture and level-relative scaling model. This document defines which statistics participate in equipment itemisation, while exact item stat budgets and character-stat balance curves remain data-driven where appropriate.
 
 Where future implementation work conflicts with this document, this document takes precedence until the design is intentionally revised.
 
