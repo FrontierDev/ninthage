@@ -235,7 +235,7 @@ MMORPG Master PDD
 │
 ├── Multiplayer and Social
 │   ├── Group and Raid Systems PDD               [EXISTS]
-│   ├── Guild and Social Systems PDD             [PLACEHOLDER]
+│   ├── Guild and Social Systems PDD             [EXISTS]
 │   ├── Communication Systems PDD                [PLACEHOLDER]
 │   └── PvP PDD                                  [PLACEHOLDER / UNRESOLVED SCOPE]
 │
@@ -685,27 +685,30 @@ This should define:
 
 ---
 
-## 9.2 Guild and Social Systems PDD — Placeholder
+## 9.2 Guild and Social Systems PDD — Existing
 
 **Document:**
 
 - [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md)
 
-This should define:
+This document defines:
 
-- guild creation;
-- membership;
-- ranks;
-- permissions;
-- guild identity;
-- guild progression if any;
-- guild storage if any;
-- friends;
-- ignore/block relationships;
-- social presence;
-- social incentives.
+- global cross-world guild identity and stable GuildIDs;
+- character-owned guild membership;
+- custom ranks and granular permissions;
+- guild storage, treasury and auditability;
+- no mandatory guild-level XP treadmill or passive combat-stat bonuses;
+- world-specific rented guild halls;
+- authored settlement properties ranging from camps/houses to manors/fortified compounds;
+- weekly rent, recoverable investment, arrears and two-missed-payment eviction;
+- dedicated hall-rent funding;
+- optional transparent guild tariffs on eligible economic activity;
+- guild halls as gathering/trophy spaces rather than replacements for public crafting, banking and market services;
+- guild trophy persistence;
+- friend/social-presence direction;
+- server-enforced ignore/block relationships.
 
-The existence of this PDD category does not automatically approve guild progression, guild housing or other optional features.
+Exact membership caps, founding costs, rank counts, bank sizes, tariff limits and rent/refund percentages remain provisional balancing values.
 
 ---
 
@@ -966,6 +969,7 @@ The following dependencies should be treated as particularly important.
 | Quests/Narrative | World, NPCs, Groups, Persistence |
 | Economy | Crafting, Items, Vendors, Persistence |
 | Groups/Raids | Combat, Dungeons, UI, Social |
+| Guilds/Social | Economy, World Runtime, World/Zones, UI, Communication, Persistence |
 | UI/UX | Nearly all player-facing systems |
 | Persistence | Character progression, Items, Quests, Crafting, Social |
 | World Runtime | World design, Groups, Dungeons, Persistence |
@@ -1128,7 +1132,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Factions and Reputation PDD](Factions-and-Reputation-PDD.md) | Authoritative | World factions, reputation, hostility, faction rewards and services, narrative relationships and account/character progression. |
 | [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md) | Authoritative | Currencies, vendors, player trade, markets, economic sinks, restrictions and the relationship between crafting and the player economy. |
 | [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md) | Authoritative | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
-| [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Placeholder / design required | Guild creation, membership, ranks, permissions, identity, friends, ignore/block relationships and persistent social systems. |
+| [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Authoritative | Global guild identity, membership, ranks/permissions, guild storage, world-specific rentable halls, rent/tariffs/trophies and persistent social relationships. |
 | [Communication Systems PDD](Communication-Systems-PDD.md) | Placeholder / design required | Text communication, channels, whispers, group/guild communication, emotes, moderation and spam prevention. |
 | [PvP PDD](PvP-PDD.md) | Placeholder / design required | The role and scope of player-versus-player gameplay, if adopted, including open-world PvP, duels, structured PvP, balance and rewards. |
 | [UI and UX PDD](UI-and-UX-PDD.md) | Authoritative | Radiant Slate design tokens, shader-driven UI, HUD/action bars/frames, RPG windows, maps, tooltips, combat feedback, contextual tips and interaction conventions. |
@@ -1152,12 +1156,11 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 All listed subsystem PDD files exist. The remaining placeholder PDDs should be filled in approximately this order:
 
-1. **Guild and Social Systems PDD**
-2. **Communication Systems PDD**
-3. **PvP PDD**
-4. **Accessibility and Input PDD**
-5. **Audio and Music PDD**
-6. **Live Content and Versioning PDD**
+1. **Communication Systems PDD**
+2. **PvP PDD**
+3. **Accessibility and Input PDD**
+4. **Audio and Music PDD**
+5. **Live Content and Versioning PDD**
 
 This order is a design-dependency recommendation, not an implementation roadmap.
 ---
@@ -1229,7 +1232,9 @@ The role of PvP is not yet sufficiently defined to treat it as a foundational ga
 
 ## 18.7 Social Structure
 
-Guilds, friends, communication and other persistent social systems require formal design.
+Guild identity, membership, ranks/permissions, world-specific guild halls, guild storage and core persistent social relationships are now defined by the Guild and Social Systems PDD.
+
+Communication channels, whispers, moderation, spam prevention and final social-presence/privacy behaviour still require the Communication Systems PDD.
 
 ## 18.8 Endgame
 
