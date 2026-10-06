@@ -241,7 +241,7 @@ MMORPG Master PDD
 │
 ├── Player Experience
 │   ├── UI and UX PDD                            [PLACEHOLDER]
-│   ├── Character Creation and Identity PDD      [PLACEHOLDER]
+│   ├── Character Creation and Identity PDD      [EXISTS]
 │   ├── Audio and Music PDD                      [PLACEHOLDER]
 │   └── Accessibility and Input PDD              [PLACEHOLDER]
 │
@@ -783,7 +783,7 @@ It should specify product behaviour without duplicating implementation details f
 
 ---
 
-## 10.2 Character Creation and Identity PDD — Placeholder
+## 10.2 Character Creation and Identity PDD — Existing
 
 **Document:**
 
@@ -1129,7 +1129,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Communication Systems PDD](Communication-Systems-PDD.md) | Placeholder / design required | Text communication, channels, whispers, group/guild communication, emotes, moderation and spam prevention. |
 | [PvP PDD](PvP-PDD.md) | Placeholder / design required | The role and scope of player-versus-player gameplay, if adopted, including open-world PvP, duels, structured PvP, balance and rewards. |
 | [UI and UX PDD](UI-and-UX-PDD.md) | Placeholder / design required | HUD, action bars, frames, inventory, character sheet, maps, menus, tooltips, combat feedback and general interaction conventions. |
-| [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Placeholder / design required | Playable identities, appearance customisation, naming, class selection, starting locations, character slots and appearance changes. |
+| [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Authoritative | Race/class selection, appearance, two-part naming, starting state/location, contextual onboarding tips and identity-change services. |
 | [Audio and Music PDD](Audio-and-Music-PDD.md) | Placeholder / design required | World ambience, combat and UI audio, music structure, zone and dungeon music, day/night response and voice presentation. |
 | [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Placeholder / design required | Input remapping, controller requirements, readability, UI scaling, colour dependence, subtitles, camera options and input accessibility. |
 | [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md) | Authoritative | Account/character ownership, session continuity, login/logout, disconnect recovery, state persistence and relational database requirements. |
