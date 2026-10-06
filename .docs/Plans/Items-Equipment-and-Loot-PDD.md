@@ -1249,7 +1249,7 @@ Rules:
 - payment/commission may be part of the work order;
 - normal binding and craftsmanship rules still apply.
 
-Public/private visibility, order browsing and acceptance flow remain to be defined with the economy/crafting systems.
+Public and private work orders are both supported under the Economy, Trade and Markets PDD. Public orders are browsable by eligible crafters; private orders target a specified crafter. Customer-supplied materials remain server-controlled in escrow while the order is active.
 
 ---
 

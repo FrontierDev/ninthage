@@ -231,7 +231,7 @@ MMORPG Master PDD
 ├── Economy and Professions
 │   ├── Crafting System PDD                      [EXISTS]
 │   ├── Items, Equipment and Loot PDD            [PLACEHOLDER / SHARED DEPENDENCY]
-│   └── Economy, Trade and Markets PDD           [PLACEHOLDER]
+│   └── Economy, Trade and Markets PDD           [EXISTS]
 │
 ├── Multiplayer and Social
 │   ├── Group and Raid Systems PDD               [EXISTS]
@@ -637,7 +637,7 @@ Its locked design decisions should not be redefined by future economy or item PD
 
 ---
 
-## 8.2 Economy, Trade and Markets PDD — Placeholder
+## 8.2 Economy, Trade and Markets PDD — Existing
 
 **Document:**
 
@@ -1127,7 +1127,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Dungeon and Group Content PDD](Dungeon-and-Group-Content-PDD.md) | Authoritative | Dungeon structure, group expectations, world integration, encounters, bosses, checkpoints, difficulty, rewards and lockouts. |
 | [Open-World Events PDD](Open-World-Events-PDD.md) | Authoritative | Dynamic public events, world bosses, contribution, scaling, event chains, failure states, rewards and persistence. |
 | [Factions and Reputation PDD](Factions-and-Reputation-PDD.md) | Authoritative | World factions, reputation, hostility, faction rewards and services, narrative relationships and account/character progression. |
-| [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md) | Placeholder / design required | Currencies, vendors, player trade, markets, economic sinks, restrictions and the relationship between crafting and the player economy. |
+| [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md) | Authoritative | Currencies, vendors, player trade, markets, economic sinks, restrictions and the relationship between crafting and the player economy. |
 | [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md) | Authoritative | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
 | [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Placeholder / design required | Guild creation, membership, ranks, permissions, identity, friends, ignore/block relationships and persistent social systems. |
 | [Communication Systems PDD](Communication-Systems-PDD.md) | Placeholder / design required | Text communication, channels, whispers, group/guild communication, emotes, moderation and spam prevention. |
