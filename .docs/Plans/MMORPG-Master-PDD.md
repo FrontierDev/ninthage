@@ -1119,7 +1119,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 |---|---|---|
 | [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md) | Authoritative | Character levels, experience, attributes, derived statistics, scaling, progression pacing and endgame character progression. |
 | [Items, Equipment and Loot PDD](Items-Equipment-and-Loot-PDD.md) | Placeholder / design required | Item categories, equipment, weapons, armour, item power and quality, loot generation, binding and loot ownership. |
-| [Abilities and Talents PDD](Abilities-and-Talents-PDD.md) | Placeholder / design required | Ability acquisition and structure, specialisations, talents, loadouts, scaling, respecialisation and action-bar expectations. |
+| [Abilities and Talents PDD](Abilities-and-Talents-PDD.md) | Authoritative | Ability acquisition and structure, specialisations, talents, loadouts, scaling, respecialisation and action-bar expectations. |
 | [Quest, Narrative and Dialogue PDD](Quest-Narrative-and-Dialogue-PDD.md) | Authoritative | Narrative delivery, quests, objectives, dialogue, branching, rewards, shared credit, world-state consequences and narrative persistence. |
 | [Dungeon and Group Content PDD](Dungeon-and-Group-Content-PDD.md) | Authoritative | Dungeon structure, group expectations, world integration, encounters, bosses, checkpoints, difficulty, rewards and lockouts. |
 | [Open-World Events PDD](Open-World-Events-PDD.md) | Authoritative | Dynamic public events, world bosses, contribution, scaling, event chains, failure states, rewards and persistence. |
