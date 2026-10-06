@@ -1370,7 +1370,7 @@ This PDD depends on or constrains:
 - [PvP PDD](PvP-PDD.md);
 - [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md);
 - [Graphical Approach PDD](../Graphical-Approach-PDD.md);
-- future [Audio and Music PDD](Audio-and-Music-PDD.md).
+- [Audio and Music PDD](Audio-and-Music-PDD.md).
 
 ---
 
