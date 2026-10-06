@@ -216,7 +216,7 @@ MMORPG Master PDD
 │   ├── Combat System PDD                       [EXISTS]
 │   ├── Character Stats and Progression PDD     [EXISTS]
 │   ├── Abilities and Talents PDD               [EXISTS]
-│   └── Items, Equipment and Loot PDD            [PLACEHOLDER]
+│   └── Items, Equipment and Loot PDD            [EXISTS]
 │
 ├── World and PvE Content
 │   ├── World and Zone Design PDD               [EXISTS]
@@ -230,7 +230,7 @@ MMORPG Master PDD
 │
 ├── Economy and Professions
 │   ├── Crafting System PDD                      [EXISTS]
-│   ├── Items, Equipment and Loot PDD            [PLACEHOLDER / SHARED DEPENDENCY]
+│   ├── Items, Equipment and Loot PDD            [EXISTS / SHARED DEPENDENCY]
 │   └── Economy, Trade and Markets PDD           [EXISTS]
 │
 ├── Multiplayer and Social
@@ -249,7 +249,7 @@ MMORPG Master PDD
 │   └── Graphical Approach PDD                   [EXISTS]
 │
 └── Technical/Product Boundary
-    ├── Account, Character and Persistence PDD   [PLACEHOLDER]
+    ├── Account, Character and Persistence PDD   [EXISTS]
     ├── World Runtime and Instancing PDD         [EXISTS]
     └── Live Content and Versioning PDD           [PLACEHOLDER]
 ```
@@ -369,7 +369,7 @@ Class-specific talent trees and ability lists may receive subordinate content do
 
 ---
 
-## 6.5 Items, Equipment and Loot PDD — Placeholder
+## 6.5 Items, Equipment and Loot PDD — Existing
 
 **Document:**
 
@@ -877,28 +877,27 @@ Other PDDs should reference it rather than invent independent visual styles.
 
 These documents are needed because several systems contain both player-facing rules and significant server/runtime constraints.
 
-## 12.1 Account, Character and Persistence PDD — Placeholder
+## 12.1 Account, Character and Persistence PDD — Existing
 
 **Document:**
 
 - [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md)
 
-This should define the product-level persistence contract:
+This document defines:
 
-- account identity;
-- character records;
-- character creation/deletion;
-- saved character state;
-- inventory persistence;
-- quest persistence;
-- profession persistence;
-- social persistence;
-- world-state persistence where applicable;
-- logout/login expectations;
-- disconnect recovery;
-- server ownership of persistent state.
-
-Database implementation belongs in technical architecture.
+- immutable AccountID and CharacterID identity;
+- 12 character slots per account;
+- account-owned HomeWorldID and Legacy state;
+- globally unique two-part character names;
+- one-account/one-session authority;
+- login/logout and 30-second disconnect-grace behaviour;
+- combat/damage restrictions on logout and world transfer;
+- persistence-neutral Health/resource/cooldown/aura semantics;
+- 30-day soft character deletion and restoration;
+- transactional ownership/progression persistence;
+- migration away from whole-file JSON storage;
+- relational SQL persistence with PostgreSQL / EF-Core-style architecture based on the `FrontierDev/webrpgapp` reference;
+- schema migration, integrity and auditability requirements.
 
 ---
 
@@ -1133,7 +1132,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Placeholder / design required | Playable identities, appearance customisation, naming, class selection, starting locations, character slots and appearance changes. |
 | [Audio and Music PDD](Audio-and-Music-PDD.md) | Placeholder / design required | World ambience, combat and UI audio, music structure, zone and dungeon music, day/night response and voice presentation. |
 | [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Placeholder / design required | Input remapping, controller requirements, readability, UI scaling, colour dependence, subtitles, camera options and input accessibility. |
-| [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md) | Placeholder / design required | Product-level account and character persistence, saved state, login/logout behaviour, disconnect recovery and server-owned persistent data. |
+| [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md) | Authoritative | Account/character ownership, session continuity, login/logout, disconnect recovery, state persistence and relational database requirements. |
 | [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md) | Placeholder / design required | Client/server compatibility, content-data versioning, persistent-data migration, patch behaviour, live content and rollback expectations. |
 
 ## 16.3 Existing Supporting Technical Documents
@@ -1160,13 +1159,8 @@ Recommended order:
 6. **NPC and Creature Design PDD**
 7. **AI and Encounter Behaviour PDD**
 8. **Dungeon and Group Content PDD**
-9. **Account, Character and Persistence PDD**
-10. **UI and UX PDD**
-11. **Economy, Trade and Markets PDD**
-12. **Quest, Narrative and Dialogue PDD**
-13. **Movement and Traversal PDD**
-14. **Group and Raid Systems PDD**
-15. **Guild and Social Systems PDD**
+9. **UI and UX PDD**
+10. **Guild and Social Systems PDD**
 
 This order is a design dependency recommendation, not an implementation roadmap.
 
