@@ -242,7 +242,7 @@ MMORPG Master PDD
 ├── Player Experience
 │   ├── UI and UX PDD                            [EXISTS]
 │   ├── Character Creation and Identity PDD      [EXISTS]
-│   ├── Audio and Music PDD                      [PLACEHOLDER]
+│   ├── Audio and Music PDD                      [EXISTS]
 │   └── Accessibility and Input PDD              [EXISTS]
 │
 ├── Presentation
@@ -820,24 +820,29 @@ This document defines:
 
 ---
 
-## 10.3 Audio and Music PDD — Placeholder
+## 10.3 Audio and Music PDD — Existing
 
 **Document:**
 
 - [Audio and Music PDD](Audio-and-Music-PDD.md)
 
-This should eventually define:
+This document defines:
 
-- world ambience;
-- combat audio;
-- ability readability;
-- UI audio;
-- music structure;
-- zone music;
-- dungeon music;
-- day/night response;
-- voice presentation where applicable;
-- performance and concurrency expectations.
+- required Master/Music/Effects/Dialogue/UI/Ambience volume categories;
+- 2D UI/music versus spatial world audio;
+- layered ambience, environmental emitters, weather and day/night sound;
+- surface-based footsteps and repeated-sound variation;
+- combat-audio priority, concurrency and distance culling;
+- simple occlusion and authored acoustic/reverb spaces;
+- restrained Radiant Slate UI audio;
+- selective rather than universal voice acting;
+- classic-WoW-like sparse, location-led music using complete compositions;
+- substantial ambience-only periods between music;
+- no general adaptive music or retail-like runtime stem layering;
+- complete-track pools for zones, settlements and dungeons;
+- explicit complete boss/scripted tracks where authored;
+- procedural sound generation as an Editor-only authoring workflow;
+- the required evolution of the current Addressable/native-Unity audio foundation.
 
 ---
 
@@ -990,6 +995,7 @@ The following dependencies should be treated as particularly important.
 | PvP | Combat, Groups/Raids, Factions, World/Zones, World Runtime, Items, UI, Persistence |
 | UI/UX | Nearly all player-facing systems |
 | Accessibility/Input | UI/UX, Combat, Abilities, Communication, Audio, Graphics, Client Settings |
+| Audio/Music | World/Zones, Combat, Abilities, NPCs, Dungeons, PvP, UI/UX, Accessibility |
 | Persistence | Character progression, Items, Quests, Crafting, Social |
 | World Runtime | World design, Groups, Dungeons, Persistence |
 
@@ -1156,7 +1162,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [PvP PDD](PvP-PDD.md) | Authoritative | Two-faction open-world PvP, Normal/PvP world rulesets, FFA, duels, contest objectives, structured-PvP support and seasonal ranks/Honor. |
 | [UI and UX PDD](UI-and-UX-PDD.md) | Authoritative | Radiant Slate design tokens, shader-driven UI, HUD/action bars/frames, RPG windows, maps, tooltips, combat feedback, contextual tips and interaction conventions. |
 | [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Authoritative | Race/class selection, appearance, two-part naming, starting state/location, contextual onboarding tips and identity-change services. |
-| [Audio and Music PDD](Audio-and-Music-PDD.md) | Placeholder / design required | World ambience, combat and UI audio, music structure, zone and dungeon music, day/night response and voice presentation. |
+| [Audio and Music PDD](Audio-and-Music-PDD.md) | Authoritative | Spatial/world/combat/UI audio, ambience/weather/acoustics, selective voice and sparse location-led complete-track music without adaptive stem layering. |
 | [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Authoritative | Semantic/remappable input, keyboard/controller navigation, global/text scaling, subtitles/captions, colour/motion accessibility and camera/input options. |
 | [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md) | Authoritative | Account/character ownership, session continuity, login/logout, disconnect recovery, state persistence and relational database requirements. |
 | [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md) | Placeholder / design required | Client/server compatibility, content-data versioning, persistent-data migration, patch behaviour, live content and rollback expectations. |
@@ -1175,8 +1181,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 All listed subsystem PDD files exist. The remaining placeholder PDDs should be filled in approximately this order:
 
-1. **Audio and Music PDD**
-2. **Live Content and Versioning PDD**
+1. **Live Content and Versioning PDD**
 
 This order is a design-dependency recommendation, not an implementation roadmap.
 ---
