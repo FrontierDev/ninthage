@@ -1801,7 +1801,7 @@ Visual state must remain sufficient without relying on sound alone.
 
 This PDD establishes readable sizing, hierarchy and semantic consistency.
 
-The future Accessibility/Input PDD owns deeper requirements such as:
+The Accessibility and Input PDD owns deeper requirements such as:
 
 - colour-vision alternatives;
 - subtitle controls;
@@ -2076,11 +2076,15 @@ The UI system is design-ready.
 
 The following remain dependent-system or tuning details.
 
-### 96.1 Exact global UI-scale range
+### 96.1 Global UI-scale range — Resolved
 
-The HUD module scales are locked.
+The Accessibility and Input PDD defines global UI scale as:
 
-Exact global UI-scale minimum/maximum and increments may be finalised with Accessibility/Input.
+- **75%–200%**
+- **100% default**
+- **5% increments**
+
+This remains separate from the HUD module scales defined by this PDD.
 
 ### 96.2 Controller navigation
 

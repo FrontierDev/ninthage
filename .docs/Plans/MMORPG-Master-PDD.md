@@ -243,7 +243,7 @@ MMORPG Master PDD
 │   ├── UI and UX PDD                            [EXISTS]
 │   ├── Character Creation and Identity PDD      [EXISTS]
 │   ├── Audio and Music PDD                      [PLACEHOLDER]
-│   └── Accessibility and Input PDD              [PLACEHOLDER]
+│   └── Accessibility and Input PDD              [EXISTS]
 │
 ├── Presentation
 │   └── Graphical Approach PDD                   [EXISTS]
@@ -841,25 +841,30 @@ This should eventually define:
 
 ---
 
-## 10.4 Accessibility and Input PDD — Placeholder
+## 10.4 Accessibility and Input PDD — Existing
 
 **Document:**
 
 - [Accessibility and Input PDD](Accessibility-and-Input-PDD.md)
 
-This should define product requirements for:
+This document defines:
 
-- remapping;
-- controller support if required;
-- text readability;
-- UI scaling;
-- colour dependence;
-- combat-information alternatives;
-- subtitle behaviour;
-- motion and camera options;
-- input accessibility.
-
-Implementation details should remain in client-side technical documentation.
+- keyboard/mouse as the reference scheme with semantic Input Actions;
+- runtime remapping, multiple bindings, modifier bindings and mouse-button bindings;
+- keyboard-only UI navigation and visible focus;
+- architecture for complete controller operation;
+- input-device switching and controller sensitivity/dead-zone requirements;
+- camera sensitivity, inversion, recentering, shake, bob/sway and motion-blur controls;
+- 75–200% global UI scaling;
+- independent text scaling to 200%;
+- chat/tooltip readability options;
+- subtitles and non-dialogue closed captions;
+- non-colour cues and semantic-colour accessibility;
+- flashing/VFX/screen-effect reduction;
+- Floating Combat Text accessibility;
+- independent accessibility-relevant audio categories;
+- account/client-level accessibility/input persistence;
+- refactoring current direct keyboard/mouse polling into remappable semantic actions.
 
 ---
 
@@ -984,6 +989,7 @@ The following dependencies should be treated as particularly important.
 | Communication | Guilds/Social, Groups/Raids, World Runtime, UI, Persistence |
 | PvP | Combat, Groups/Raids, Factions, World/Zones, World Runtime, Items, UI, Persistence |
 | UI/UX | Nearly all player-facing systems |
+| Accessibility/Input | UI/UX, Combat, Abilities, Communication, Audio, Graphics, Client Settings |
 | Persistence | Character progression, Items, Quests, Crafting, Social |
 | World Runtime | World design, Groups, Dungeons, Persistence |
 
@@ -1151,7 +1157,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [UI and UX PDD](UI-and-UX-PDD.md) | Authoritative | Radiant Slate design tokens, shader-driven UI, HUD/action bars/frames, RPG windows, maps, tooltips, combat feedback, contextual tips and interaction conventions. |
 | [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Authoritative | Race/class selection, appearance, two-part naming, starting state/location, contextual onboarding tips and identity-change services. |
 | [Audio and Music PDD](Audio-and-Music-PDD.md) | Placeholder / design required | World ambience, combat and UI audio, music structure, zone and dungeon music, day/night response and voice presentation. |
-| [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Placeholder / design required | Input remapping, controller requirements, readability, UI scaling, colour dependence, subtitles, camera options and input accessibility. |
+| [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Authoritative | Semantic/remappable input, keyboard/controller navigation, global/text scaling, subtitles/captions, colour/motion accessibility and camera/input options. |
 | [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md) | Authoritative | Account/character ownership, session continuity, login/logout, disconnect recovery, state persistence and relational database requirements. |
 | [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md) | Placeholder / design required | Client/server compatibility, content-data versioning, persistent-data migration, patch behaviour, live content and rollback expectations. |
 
@@ -1169,9 +1175,8 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 All listed subsystem PDD files exist. The remaining placeholder PDDs should be filled in approximately this order:
 
-1. **Accessibility and Input PDD**
-2. **Audio and Music PDD**
-3. **Live Content and Versioning PDD**
+1. **Audio and Music PDD**
+2. **Live Content and Versioning PDD**
 
 This order is a design-dependency recommendation, not an implementation roadmap.
 ---
