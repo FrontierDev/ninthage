@@ -1064,11 +1064,13 @@ Audit history should identify:
 
 ## 59. Friends
 
-The social system should support persistent friend relationships.
+Persistent friend relationships are supported.
 
-Friend state should be tied to stable account/character identities rather than transient network connections.
+The Communication Systems PDD defines friendships as **mutual account-level relationships**.
 
-The exact model — account-level friend, character-level friend, or both — remains open and should be resolved with Communication/Privacy design before implementation is final.
+Guild membership remains character-specific.
+
+Friend state must use stable account identity rather than transient network connections.
 
 ---
 
@@ -1076,20 +1078,11 @@ The exact model — account-level friend, character-level friend, or both — re
 
 Players require reliable ignore/block controls.
 
-At minimum, the system must support preventing unwanted ordinary communication from blocked identities.
+The Communication Systems PDD defines blocking as **account-level and server-enforced**, including alternate characters belonging to the blocked account.
 
-The exact scope across:
+Its detailed effects across whispers, mail, chat and direct social requests are owned by the Communication Systems PDD.
 
-- whispers;
-- chat;
-- invitations;
-- friend requests;
-- guild applications;
-- matchmaking/group requests;
-
-belongs jointly to this PDD and Communication Systems.
-
-Block semantics must be enforceable server-side.
+Guild administration remains governed by this PDD.
 
 ---
 
@@ -1274,7 +1267,6 @@ The following remain open:
 - guild-bank tab purchase costs;
 - daily withdrawal-limit options;
 - inactive-leader succession rules;
-- exact friend relationship scope (account/character/both);
 - detailed privacy/presence controls;
 - exact hall acquisition requirements;
 - whether a guild may ever hold more than one hall;

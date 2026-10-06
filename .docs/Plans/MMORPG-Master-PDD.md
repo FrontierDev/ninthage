@@ -236,7 +236,7 @@ MMORPG Master PDD
 ├── Multiplayer and Social
 │   ├── Group and Raid Systems PDD               [EXISTS]
 │   ├── Guild and Social Systems PDD             [EXISTS]
-│   ├── Communication Systems PDD                [PLACEHOLDER]
+│   ├── Communication Systems PDD                [EXISTS]
 │   └── PvP PDD                                  [PLACEHOLDER / UNRESOLVED SCOPE]
 │
 ├── Player Experience
@@ -712,24 +712,30 @@ Exact membership caps, founding costs, rank counts, bank sizes, tariff limits an
 
 ---
 
-## 9.3 Communication Systems PDD — Placeholder
+## 9.3 Communication Systems PDD — Existing
 
 **Document:**
 
 - [Communication Systems PDD](Communication-Systems-PDD.md)
 
-Potential scope includes:
+This document defines:
 
-- text chat;
-- channels;
-- whispers;
-- party/guild communication;
-- emotes;
-- moderation;
-- spam prevention;
-- social visibility.
-
-Voice communication should only be included if intentionally adopted.
+- proximity Say, Yell and free-text emotes;
+- `/e` and `/me` as aliases;
+- cross-world online whispers;
+- party/raid/guild communication routing;
+- permission-controlled private guild chat;
+- world-specific General, Trade and Looking for Group channels;
+- cross-world custom player channels;
+- normal cross-faction communication;
+- account-level mutual friends;
+- account-level server-enforced blocks;
+- rich item/ability/quest/player/guild/location links;
+- local finite chat history;
+- optional client profanity filtering;
+- server-side spam/flood protection;
+- reporting with authoritative message context;
+- no built-in voice-chat requirement for the initial system.
 
 ---
 
@@ -970,6 +976,7 @@ The following dependencies should be treated as particularly important.
 | Economy | Crafting, Items, Vendors, Persistence |
 | Groups/Raids | Combat, Dungeons, UI, Social |
 | Guilds/Social | Economy, World Runtime, World/Zones, UI, Communication, Persistence |
+| Communication | Guilds/Social, Groups/Raids, World Runtime, UI, Persistence |
 | UI/UX | Nearly all player-facing systems |
 | Persistence | Character progression, Items, Quests, Crafting, Social |
 | World Runtime | World design, Groups, Dungeons, Persistence |
@@ -1133,7 +1140,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md) | Authoritative | Currencies, vendors, player trade, markets, economic sinks, restrictions and the relationship between crafting and the player economy. |
 | [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md) | Authoritative | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
 | [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Authoritative | Global guild identity, membership, ranks/permissions, guild storage, world-specific rentable halls, rent/tariffs/trophies and persistent social relationships. |
-| [Communication Systems PDD](Communication-Systems-PDD.md) | Placeholder / design required | Text communication, channels, whispers, group/guild communication, emotes, moderation and spam prevention. |
+| [Communication Systems PDD](Communication-Systems-PDD.md) | Authoritative | Spatial/public/social chat, whispers, group/guild/custom channels, account friends/blocks, rich links, spam protection, reporting and moderation context. |
 | [PvP PDD](PvP-PDD.md) | Placeholder / design required | The role and scope of player-versus-player gameplay, if adopted, including open-world PvP, duels, structured PvP, balance and rewards. |
 | [UI and UX PDD](UI-and-UX-PDD.md) | Authoritative | Radiant Slate design tokens, shader-driven UI, HUD/action bars/frames, RPG windows, maps, tooltips, combat feedback, contextual tips and interaction conventions. |
 | [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Authoritative | Race/class selection, appearance, two-part naming, starting state/location, contextual onboarding tips and identity-change services. |
@@ -1156,11 +1163,10 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 All listed subsystem PDD files exist. The remaining placeholder PDDs should be filled in approximately this order:
 
-1. **Communication Systems PDD**
-2. **PvP PDD**
-3. **Accessibility and Input PDD**
-4. **Audio and Music PDD**
-5. **Live Content and Versioning PDD**
+1. **PvP PDD**
+2. **Accessibility and Input PDD**
+3. **Audio and Music PDD**
+4. **Live Content and Versioning PDD**
 
 This order is a design-dependency recommendation, not an implementation roadmap.
 ---
@@ -1232,9 +1238,11 @@ The role of PvP is not yet sufficiently defined to treat it as a foundational ga
 
 ## 18.7 Social Structure
 
-Guild identity, membership, ranks/permissions, world-specific guild halls, guild storage and core persistent social relationships are now defined by the Guild and Social Systems PDD.
+Guild identity, membership, ranks/permissions, world-specific guild halls and guild storage are defined by the Guild and Social Systems PDD.
 
-Communication channels, whispers, moderation, spam prevention and final social-presence/privacy behaviour still require the Communication Systems PDD.
+Spatial/public/social chat, cross-world communication, account-level friends/blocks, spam protection and reporting are defined by the Communication Systems PDD.
+
+Detailed presence/privacy option tuning may continue during Accessibility/UI implementation without requiring a redesign of the social architecture.
 
 ## 18.8 Endgame
 
