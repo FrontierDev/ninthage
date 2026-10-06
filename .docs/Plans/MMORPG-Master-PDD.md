@@ -234,7 +234,7 @@ MMORPG Master PDD
 │   └── Economy, Trade and Markets PDD           [PLACEHOLDER]
 │
 ├── Multiplayer and Social
-│   ├── Group and Raid Systems PDD               [PLACEHOLDER]
+│   ├── Group and Raid Systems PDD               [EXISTS]
 │   ├── Guild and Social Systems PDD             [PLACEHOLDER]
 │   ├── Communication Systems PDD                [PLACEHOLDER]
 │   └── PvP PDD                                  [PLACEHOLDER / UNRESOLVED SCOPE]
@@ -664,7 +664,7 @@ It must be designed jointly with Crafting and Items/Loot.
 
 # 9. Multiplayer and Social PDDs
 
-## 9.1 Group and Raid Systems PDD — Placeholder
+## 9.1 Group and Raid Systems PDD — Existing
 
 **Document:**
 
@@ -1128,7 +1128,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Open-World Events PDD](Open-World-Events-PDD.md) | Authoritative | Dynamic public events, world bosses, contribution, scaling, event chains, failure states, rewards and persistence. |
 | [Factions and Reputation PDD](Factions-and-Reputation-PDD.md) | Authoritative | World factions, reputation, hostility, faction rewards and services, narrative relationships and account/character progression. |
 | [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md) | Placeholder / design required | Currencies, vendors, player trade, markets, economic sinks, restrictions and the relationship between crafting and the player economy. |
-| [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md) | Placeholder / design required | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
+| [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md) | Authoritative | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
 | [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Placeholder / design required | Guild creation, membership, ranks, permissions, identity, friends, ignore/block relationships and persistent social systems. |
 | [Communication Systems PDD](Communication-Systems-PDD.md) | Placeholder / design required | Text communication, channels, whispers, group/guild communication, emotes, moderation and spam prevention. |
 | [PvP PDD](PvP-PDD.md) | Placeholder / design required | The role and scope of player-versus-player gameplay, if adopted, including open-world PvP, duels, structured PvP, balance and rewards. |
