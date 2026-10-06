@@ -789,17 +789,21 @@ It should specify product behaviour without duplicating implementation details f
 
 - [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md)
 
-This should define:
+This document defines:
 
-- playable peoples/races if applicable;
-- appearance customisation;
-- naming;
-- class selection;
-- starting locations;
-- character slots;
-- identity information;
-- appearance changes after creation;
-- relationship between visual identity and equipment.
+- Race → Class → Appearance → Name → Review/Create flow;
+- Level-1 starts with no active specialisation or talent allocation;
+- all playable races able to select all playable classes by default, with explicit exceptions only;
+- race-derived faction, starting reputation and starting region;
+- minimal Level-1 Standard starter equipment and 0 starting gold;
+- free initial Level-1 class abilities learned through class trainers;
+- no tutorial island, tutorial mode or mandatory handholding sequence;
+- contextual non-blocking UI tips for onboarding;
+- cosmetic-only sex/body/height/build/face/hair and race-specific appearance;
+- required FirstName and LastName, each 2–12 characters, with globally unique normalized full-name pairs;
+- post-creation appearance changes and renaming;
+- no ordinary race-change or class-change service;
+- 12-slot character-selection and deleted-character restoration presentation.
 
 ---
 
@@ -1147,23 +1151,17 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 # 17. Highest-Priority Placeholder PDDs
 
-All listed subsystem PDD files now exist. The next design work should focus on filling the placeholders that unblock the largest number of other systems.
+All listed subsystem PDD files exist. The remaining placeholder PDDs should be filled in approximately this order:
 
-Recommended order:
+1. **UI and UX PDD**
+2. **Guild and Social Systems PDD**
+3. **Communication Systems PDD**
+4. **PvP PDD**
+5. **Accessibility and Input PDD**
+6. **Audio and Music PDD**
+7. **Live Content and Versioning PDD**
 
-1. **Combat System PDD**
-2. **Character Stats and Progression PDD**
-3. **Items, Equipment and Loot PDD**
-4. **Abilities and Talents PDD**
-5. **World and Zone Design PDD**
-6. **NPC and Creature Design PDD**
-7. **AI and Encounter Behaviour PDD**
-8. **Dungeon and Group Content PDD**
-9. **UI and UX PDD**
-10. **Guild and Social Systems PDD**
-
-This order is a design dependency recommendation, not an implementation roadmap.
-
+This order is a design-dependency recommendation, not an implementation roadmap.
 ---
 
 # 18. Project-Level Further Consideration Required
