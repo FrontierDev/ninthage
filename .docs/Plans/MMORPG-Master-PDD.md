@@ -237,7 +237,7 @@ MMORPG Master PDD
 │   ├── Group and Raid Systems PDD               [EXISTS]
 │   ├── Guild and Social Systems PDD             [EXISTS]
 │   ├── Communication Systems PDD                [EXISTS]
-│   └── PvP PDD                                  [PLACEHOLDER / UNRESOLVED SCOPE]
+│   └── PvP PDD                                  [EXISTS]
 │
 ├── Player Experience
 │   ├── UI and UX PDD                            [EXISTS]
@@ -739,26 +739,31 @@ This document defines:
 
 ---
 
-## 9.4 PvP PDD — Placeholder / Scope Unresolved
+## 9.4 PvP PDD — Existing
 
 **Document:**
 
 - [PvP PDD](PvP-PDD.md)
 
-The project must explicitly decide the intended PvP scope before PvP assumptions leak into classes, itemisation or world design.
+This document defines:
 
-Questions include:
+- two-faction open-world PvP;
+- Normal worlds with opt-in PvP;
+- PvP worlds with permanent open-world PvP flagging;
+- no low-level or city PvP immunity on PvP worlds;
+- cross-faction PvE grouping and temporary group friendliness;
+- Free-For-All PvP outside party/raid and guild relationships;
+- consensual duels;
+- contest-zone world PvP objectives;
+- runtime support for future battlegrounds and arenas;
+- cross-world structured-PvP support;
+- seasonal 14-rank PvP progression;
+- non-decaying seasonal Rank Points and separate spendable Honor;
+- honorable-kill and repeat-kill reward validation;
+- PvP death/durability expectations;
+- explicit PvP-specific balance modifiers where needed.
 
-- whether PvP is a major game pillar;
-- open-world PvP;
-- duelling;
-- battleground or arena content;
-- PvP-specific balance;
-- PvP progression and rewards;
-- faction relationships;
-- opt-in/opt-out rules.
-
-Until resolved, PvP-specific behaviour should not be treated as a core implementation requirement.
+Exact rank titles, season length, Honor/Rank Point curves and individual PvP objectives remain balance/content data.
 
 ---
 
@@ -977,6 +982,7 @@ The following dependencies should be treated as particularly important.
 | Groups/Raids | Combat, Dungeons, UI, Social |
 | Guilds/Social | Economy, World Runtime, World/Zones, UI, Communication, Persistence |
 | Communication | Guilds/Social, Groups/Raids, World Runtime, UI, Persistence |
+| PvP | Combat, Groups/Raids, Factions, World/Zones, World Runtime, Items, UI, Persistence |
 | UI/UX | Nearly all player-facing systems |
 | Persistence | Character progression, Items, Quests, Crafting, Social |
 | World Runtime | World design, Groups, Dungeons, Persistence |
@@ -1141,7 +1147,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md) | Authoritative | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
 | [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Authoritative | Global guild identity, membership, ranks/permissions, guild storage, world-specific rentable halls, rent/tariffs/trophies and persistent social relationships. |
 | [Communication Systems PDD](Communication-Systems-PDD.md) | Authoritative | Spatial/public/social chat, whispers, group/guild/custom channels, account friends/blocks, rich links, spam protection, reporting and moderation context. |
-| [PvP PDD](PvP-PDD.md) | Placeholder / design required | The role and scope of player-versus-player gameplay, if adopted, including open-world PvP, duels, structured PvP, balance and rewards. |
+| [PvP PDD](PvP-PDD.md) | Authoritative | Two-faction open-world PvP, Normal/PvP world rulesets, FFA, duels, contest objectives, structured-PvP support and seasonal ranks/Honor. |
 | [UI and UX PDD](UI-and-UX-PDD.md) | Authoritative | Radiant Slate design tokens, shader-driven UI, HUD/action bars/frames, RPG windows, maps, tooltips, combat feedback, contextual tips and interaction conventions. |
 | [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Authoritative | Race/class selection, appearance, two-part naming, starting state/location, contextual onboarding tips and identity-change services. |
 | [Audio and Music PDD](Audio-and-Music-PDD.md) | Placeholder / design required | World ambience, combat and UI audio, music structure, zone and dungeon music, day/night response and voice presentation. |
@@ -1163,10 +1169,9 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 All listed subsystem PDD files exist. The remaining placeholder PDDs should be filled in approximately this order:
 
-1. **PvP PDD**
-2. **Accessibility and Input PDD**
-3. **Audio and Music PDD**
-4. **Live Content and Versioning PDD**
+1. **Accessibility and Input PDD**
+2. **Audio and Music PDD**
+3. **Live Content and Versioning PDD**
 
 This order is a design-dependency recommendation, not an implementation roadmap.
 ---
@@ -1234,7 +1239,18 @@ The project must define:
 
 ## 18.6 PvP
 
-The role of PvP is not yet sufficiently defined to treat it as a foundational game pillar.
+PvP is now formally defined as a two-faction world system with:
+
+- Normal-world opt-in PvP;
+- always-flagged PvP worlds without level/city immunity;
+- FFA PvP;
+- duels;
+- contest-zone objectives;
+- future battleground/arena support;
+- seasonal rank/Honor progression;
+- continued cross-faction PvE cooperation.
+
+Exact PvP rank titles, progression curves, season length, structured-PvP content and balance tuning remain content/tuning decisions rather than unresolved architecture.
 
 ## 18.7 Social Structure
 
