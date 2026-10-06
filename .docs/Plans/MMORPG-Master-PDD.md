@@ -240,7 +240,7 @@ MMORPG Master PDD
 │   └── PvP PDD                                  [PLACEHOLDER / UNRESOLVED SCOPE]
 │
 ├── Player Experience
-│   ├── UI and UX PDD                            [PLACEHOLDER]
+│   ├── UI and UX PDD                            [EXISTS]
 │   ├── Character Creation and Identity PDD      [EXISTS]
 │   ├── Audio and Music PDD                      [PLACEHOLDER]
 │   └── Accessibility and Input PDD              [PLACEHOLDER]
@@ -755,31 +755,30 @@ Until resolved, PvP-specific behaviour should not be treated as a core implement
 
 # 10. Player Experience PDDs
 
-## 10.1 UI and UX PDD — Placeholder
+## 10.1 UI and UX PDD — Existing
 
 **Document:**
 
 - [UI and UX PDD](UI-and-UX-PDD.md)
 
-This should define:
+This document defines:
 
-- HUD;
-- action bars;
-- target and party frames;
-- inventory;
-- character sheet;
-- quest UI;
-- maps;
-- menus;
-- tooltips;
-- combat feedback;
-- accessibility of combat information;
-- window interaction conventions;
-- keyboard/mouse and controller assumptions;
-- scaling and resolution behaviour;
-- visual relationship between UI and the graphical direction.
-
-It should specify product behaviour without duplicating implementation details from client architecture.
+- Radiant Slate as the authoritative UI design system;
+- shared typography, colour, spacing, icon and component-size tokens;
+- shader-first UI presentation using the existing ArcaneSlate family;
+- Manrope as the functional UI typeface;
+- shared interaction states and Radiant Gold focus/selection;
+- HUD Edit Mode and discrete module scaling;
+- traditional multi-bar 12-slot action bars;
+- low-profile player/target frames, nameplates, auras and cast bars;
+- floating combat text and combat-log presentation;
+- inventory/equipment slot sizing and drag/drop conventions;
+- tooltip and item-comparison presentation;
+- character, talent, quest and reputation window conventions;
+- minimap/world-map presentation;
+- contextual non-blocking tips;
+- LIFO window/Escape behaviour;
+- local UI settings and persistence expectations.
 
 ---
 
@@ -1132,7 +1131,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Placeholder / design required | Guild creation, membership, ranks, permissions, identity, friends, ignore/block relationships and persistent social systems. |
 | [Communication Systems PDD](Communication-Systems-PDD.md) | Placeholder / design required | Text communication, channels, whispers, group/guild communication, emotes, moderation and spam prevention. |
 | [PvP PDD](PvP-PDD.md) | Placeholder / design required | The role and scope of player-versus-player gameplay, if adopted, including open-world PvP, duels, structured PvP, balance and rewards. |
-| [UI and UX PDD](UI-and-UX-PDD.md) | Placeholder / design required | HUD, action bars, frames, inventory, character sheet, maps, menus, tooltips, combat feedback and general interaction conventions. |
+| [UI and UX PDD](UI-and-UX-PDD.md) | Authoritative | Radiant Slate design tokens, shader-driven UI, HUD/action bars/frames, RPG windows, maps, tooltips, combat feedback, contextual tips and interaction conventions. |
 | [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Authoritative | Race/class selection, appearance, two-part naming, starting state/location, contextual onboarding tips and identity-change services. |
 | [Audio and Music PDD](Audio-and-Music-PDD.md) | Placeholder / design required | World ambience, combat and UI audio, music structure, zone and dungeon music, day/night response and voice presentation. |
 | [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Placeholder / design required | Input remapping, controller requirements, readability, UI scaling, colour dependence, subtitles, camera options and input accessibility. |
@@ -1153,13 +1152,12 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 All listed subsystem PDD files exist. The remaining placeholder PDDs should be filled in approximately this order:
 
-1. **UI and UX PDD**
-2. **Guild and Social Systems PDD**
-3. **Communication Systems PDD**
-4. **PvP PDD**
-5. **Accessibility and Input PDD**
-6. **Audio and Music PDD**
-7. **Live Content and Versioning PDD**
+1. **Guild and Social Systems PDD**
+2. **Communication Systems PDD**
+3. **PvP PDD**
+4. **Accessibility and Input PDD**
+5. **Audio and Music PDD**
+6. **Live Content and Versioning PDD**
 
 This order is a design-dependency recommendation, not an implementation roadmap.
 ---
