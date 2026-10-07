@@ -84,7 +84,8 @@ They are not design authority.
 
 Current implementation plans include:
 
-- [Project Roadmap](Project-Roadmap.md) — dependency-ordered project delivery and milestone sequencing;
+- [Project Roadmap](Project-Roadmap.md) — dependency-ordered game/project delivery and milestone sequencing;
+- [Business, Publicity and Funding Roadmap](Business-Publicity-and-Funding-Roadmap.md) — website, public presence, community, commercial preparation and funding sequencing;
 - [C# Restyling Plan](CSharp-Restyling-Plan.md) — focused codebase consistency and style migration.
 
 Implementation plans may sequence work, identify files and define validation, but should not create new game rules unless the relevant PDD is explicitly updated.
