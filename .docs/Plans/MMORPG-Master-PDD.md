@@ -3,7 +3,7 @@
 **Status:** Authoritative design index and project-level design baseline  
 **Project:** Ninth Age  
 **Scope:** Product-wide MMORPG design, subsystem ownership, PDD hierarchy, cross-system principles and unresolved product decisions  
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-07
 
 ---
 
@@ -251,7 +251,7 @@ MMORPG Master PDD
 └── Technical/Product Boundary
     ├── Account, Character and Persistence PDD   [EXISTS]
     ├── World Runtime and Instancing PDD         [EXISTS]
-    └── Live Content and Versioning PDD           [PLACEHOLDER]
+    └── Live Content and Versioning PDD           [EXISTS]
 ```
 
 The status labels above describe documentation state, not implementation state.
@@ -950,23 +950,32 @@ Technical chunk loading, Addressables, additive scenes, interest management and 
 
 ---
 
-## 12.3 Live Content and Versioning PDD — Placeholder
+## 12.3 Live Content and Versioning PDD — Existing
 
 **Document:**
 
 - [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md)
 
-This should eventually define:
+This document defines:
 
-- compatibility expectations between client and server versions;
-- content-data versioning;
-- migration of persistent data;
-- patch behaviour;
-- scheduled content changes;
-- live-event content if supported;
-- rollback expectations at the product level.
-
-This should be written before live persistent player data makes incompatible design changes expensive.
+- immutable Production Release States and release manifests;
+- separate client-build, network-protocol, gameplay-content, Addressables-catalog and database-schema version identities;
+- strict compatibility validation before world entry;
+- Addressables Content Update as the canonical live-content/hotfix mechanism;
+- local bootstrap versus remote-content ownership;
+- hotfixable ScriptableObject gameplay definitions when runtime schema remains compatible;
+- migration away from Resources/direct-reference registries as the authority for remotely hotfixable definitions;
+- AssetBundle grouping by update frequency, dependency structure and patch cost;
+- coherent gameplay hotfix domains instead of monolithic or per-asset bundle extremes;
+- independently patchable world-chunk content and intentional shared-dependency ownership;
+- preserved production `addressables_content_state.bin` artifacts;
+- immutable bundle publication, bundle-first/catalog-last activation and CDN-independent content hosting;
+- cache reuse, changed-bundle downloads and unreferenced-cache cleanup;
+- server/client pinning to an explicitly activated gameplay/content revision rather than arbitrary latest CDN state;
+- content-only versus executable-release classification;
+- ordered database migrations, maintenance and rollback safety;
+- scheduled live content using authoritative server time;
+- release gates for content integrity, dependencies and unexpected patch size.
 
 ---
 
@@ -998,6 +1007,7 @@ The following dependencies should be treated as particularly important.
 | Audio/Music | World/Zones, Combat, Abilities, NPCs, Dungeons, PvP, UI/UX, Accessibility |
 | Persistence | Character progression, Items, Quests, Crafting, Social |
 | World Runtime | World design, Groups, Dungeons, Persistence |
+| Live Content/Versioning | Client/Server builds, Networking, Addressables, Gameplay definitions, Persistence, World Runtime, UI update UX |
 
 A change to a foundational PDD should therefore include a review of its dependent documents.
 
@@ -1142,9 +1152,9 @@ The project currently has the following major product-design documents:
 | [NPC and Creature Design PDD](NPC-and-Creature-Design-PDD.md) | Authoritative | NPC taxonomy, factions, populations, spawning and reusable creature authoring |
 | [AI and Encounter Behaviour PDD](AI-and-Encounter-Behaviour-PDD.md) | Authoritative | NPC perception, threat, behaviour, encounter state and open-world readiness |
 
-## 16.2 Placeholder Subsystem PDDs
+## 16.2 Subsystem Product Design Documents
 
-The following subsystem documents now exist as placeholders. Their presence reserves design ownership and file location; it does **not** mean their systems are designed or approved.
+The following subsystem documents define the current authoritative design state. Their status refers to documentation authority, not implementation completeness.
 
 | PDD | Status | Intended scope |
 |---|---|---|
@@ -1165,7 +1175,7 @@ The following subsystem documents now exist as placeholders. Their presence rese
 | [Audio and Music PDD](Audio-and-Music-PDD.md) | Authoritative | Spatial/world/combat/UI audio, ambience/weather/acoustics, selective voice and sparse location-led complete-track music without adaptive stem layering. |
 | [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Authoritative | Semantic/remappable input, keyboard/controller navigation, global/text scaling, subtitles/captions, colour/motion accessibility and camera/input options. |
 | [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md) | Authoritative | Account/character ownership, session continuity, login/logout, disconnect recovery, state persistence and relational database requirements. |
-| [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md) | Placeholder / design required | Client/server compatibility, content-data versioning, persistent-data migration, patch behaviour, live content and rollback expectations. |
+| [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md) | Authoritative | Release manifests, client/server/content/schema compatibility, Addressables/CDN hotfixing and bundle architecture, migrations, maintenance and rollback. |
 
 ## 16.3 Existing Supporting Technical Documents
 
@@ -1177,13 +1187,13 @@ The following subsystem documents now exist as placeholders. Their presence rese
 
 ---
 
-# 17. Highest-Priority Placeholder PDDs
+# 17. Subsystem PDD Completion Status
 
-All listed subsystem PDD files exist. The remaining placeholder PDDs should be filled in approximately this order:
+All subsystem PDDs currently listed in the Master PDD map now have substantive design documents. **No placeholder subsystem PDDs remain.**
 
-1. **Live Content and Versioning PDD**
+This does not mean implementation is complete, nor that balance/content tuning and explicitly deferred decisions are closed. It means every currently identified major product domain has an owning design document rather than a reserved placeholder.
 
-This order is a design-dependency recommendation, not an implementation roadmap.
+New major product domains should receive an explicit owning PDD before implementation turns provisional behaviour into permanent product rules.
 ---
 
 # 18. Project-Level Further Consideration Required
