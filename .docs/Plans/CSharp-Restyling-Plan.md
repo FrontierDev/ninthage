@@ -688,33 +688,35 @@ The following safeguards are mandatory while implementing the changes listed bel
 
 ### 11.11 Networking
 
-#### Naming rule — shared networking channels
+#### Naming rule — shared networking endpoints
 
-The static Shared Networking types that expose PurrNet RPC entry points and cross-assembly callback surfaces are **channels**, not domain services. Standardize the terminology as follows:
+The static Shared Networking types that expose PurrNet RPC entry points and cross-assembly callback surfaces are **endpoints**, not domain services. Standardize the terminology as follows:
 
 | Current type/file | Required type/file |
 |---|---|
-| `AccountService` / `AccountService.cs` | `AccountChannel` / `AccountChannel.cs` |
-| `ActorService` / `ActorService.cs` | `ActorChannel` / `ActorChannel.cs` |
-| `CharacterService` / `CharacterService.cs` | `CharacterChannel` / `CharacterChannel.cs` |
-| `MovementService` / `MovementService.cs` | `MovementChannel` / `MovementChannel.cs` |
-| `StatService` / `StatService.cs` | `StatChannel` / `StatChannel.cs` |
+| `AccountService` / `AccountService.cs` | `AccountEndpoint` / `AccountEndpoint.cs` |
+| `ActorService` / `ActorService.cs` | `ActorEndpoint` / `ActorEndpoint.cs` |
+| `CharacterService` / `CharacterService.cs` | `CharacterEndpoint` / `CharacterEndpoint.cs` |
+| `MovementService` / `MovementService.cs` | `MovementEndpoint` / `MovementEndpoint.cs` |
+| `StatService` / `StatService.cs` | `StatEndpoint` / `StatEndpoint.cs` |
 
 Rename each type and file together, preserve its existing `.meta` file/GUID, and update all references atomically. `IPlayerAuthService` is **not** part of this rename: it is a genuine service contract implemented by the server-side `PlayerAuthService`.
 
+Use `Endpoint` rather than `Channel` because PurrNet already uses **Channel** as networking terminology for RPC/transport delivery behaviour. The project naming should not overload that term.
 
-#### `Assets/Runtime/Shared/Networking/AccountChannel.cs`
 
-- Rename `AccountService` → `AccountChannel` and `AccountService.cs` → `AccountChannel.cs`; preserve the existing `.meta` GUID.
+#### `Assets/Runtime/Shared/Networking/AccountEndpoint.cs`
+
+- Rename `AccountService` → `AccountEndpoint` and `AccountService.cs` → `AccountEndpoint.cs`; preserve the existing `.meta` GUID.
 
 - Alphabetize `using` directives.
 - Parameter acronym: `characterGuid` → `characterGUID` in `Server_RequestEnterWorld`.
 - XML documentation: add docs to callbacks `onCharacterListReceived`, `onEnteringWorld`, `onPlayerActorAssigned`, `onEnteredWorld`, `onCharacterCreationRequest`, `onCharacterCreated`, `onEnterWorldRequest`; and RPC methods `Client_UpdateCharacterList`, `Client_SetPlayerActor`, `Server_TryCreateCharacter`, `Client_NotifyCharacterCreationResult`, `Server_RequestEnterWorld`, `Client_EnterWorld`.
 - Do **not** rename `actorIdentity`; `Identity` is a word/type concept, not an `ID` suffix.
 
-#### `Assets/Runtime/Shared/Networking/ActorChannel.cs`
+#### `Assets/Runtime/Shared/Networking/ActorEndpoint.cs`
 
-- Rename `ActorService` → `ActorChannel` and `ActorService.cs` → `ActorChannel.cs`; preserve the existing `.meta` GUID.
+- Rename `ActorService` → `ActorEndpoint` and `ActorService.cs` → `ActorEndpoint.cs`; preserve the existing `.meta` GUID.
 
 - Alphabetize `using` directives.
 - XML documentation: add docs to every currently undocumented public callback field: `onActorDeath`, `onActorSpawned`, `onActorOwnerChanged`, `onActorOwnershipTaken`, `onPlayerActorAssigned`, `onClientHoveredActorChanged`, `onClientTargetedActorChanged`, `onClientLateTargetedActorChanged`, `onClientEnteredCombat`, `onClientExitedCombat`, `onSpellCastStarted`, `onSpellCastInterrupted`, `onSpellCastCompleted`, `onCombatLogEntryReceived`, `onStartGlobalCooldown`, `onStartCooldown`, `onClientApplyAura`, `onClientTickAura`, `onClientUpdateAura`, `onClientExpireAura`, `onClientDispelAura`, `onClientSpawnVFXAtPosition`, `onClientSpawnProjectile`, `onClientTriggerEffect`, `onClientPlaySFX`, `onClientPlaySFXOnAudioSource`, `onServerActorSpawned`, `onServerActorDespawned`, `onServerActorOwnerChanged`, `onServerActorInterestChanged`, `onServerSpellCastStarted`, `onServerSpellCastTick`, `onServerSpellCastInterrupted`, `onServerSpellCastCompleted`, `onServerSpellCastDelayedAction`, `onServerRequestSpellCastCancel`, `onServerStartCooldown`, `onServerApplyAura`, `onServerAuraApplied`, `onServerAuraTick`, `onServerAuraExpired`, `onServerAuraDispelled`, `onServerActorTick`, `onServerActorTickerExpired`, `onServerAddTicker`, `onServerRemoveTickerByTag`, `onServerStartAutoAttack`, `onServerStopAutoAttack`.
@@ -726,9 +728,9 @@ Rename each type and file together, preserve its existing `.meta` file/GUID, and
 - XML documentation: add docs to both constructors.
 - Safety: update all references, especially `LoginAuthenticator` aliases/usings in Client and Server.
 
-#### `Assets/Runtime/Shared/Networking/CharacterChannel.cs`
+#### `Assets/Runtime/Shared/Networking/CharacterEndpoint.cs`
 
-- Rename `CharacterService` → `CharacterChannel` and `CharacterService.cs` → `CharacterChannel.cs`; preserve the existing `.meta` GUID.
+- Rename `CharacterService` → `CharacterEndpoint` and `CharacterService.cs` → `CharacterEndpoint.cs`; preserve the existing `.meta` GUID.
 
 - Alphabetize `using` directives.
 - XML documentation: add docs to callbacks `onClientLearnedSpell`, `onClientKnownSpellsUpdated`, `onClientInventoryUpdated`, `onClientCurrencyUpdated`, `onClientEquipmentUpdated`, `onClientTalentsUpdated`, `onClientExperienceUpdated`, `onClientWeaponSkillUpdated`, `onClientReputationUpdated`, `onClientLevelUpdated`, `onClientQuestUpdated`, `onLearnSpellRequest`, `onUpdateStatsRequest`; and RPCs `Server_RequestLearnSpell`, `Client_LearnSpell`, `Client_ExperienceUpdated`, `Client_WeaponSkillUpdated`, `Client_ReputationUpdated`, `Client_QuestUpdated`.
@@ -767,12 +769,12 @@ Rename each type and file together, preserve its existing `.meta` file/GUID, and
 - XML documentation: add docs to `GetNextValidatedUsername` and `GetNextPlayerIsNew`.
 - Safety: update all references to the old authentication namespace.
 
-#### `Assets/Runtime/Shared/Networking/MovementChannel.cs`
+#### `Assets/Runtime/Shared/Networking/MovementEndpoint.cs`
 
-- Rename `MovementService` → `MovementChannel` and `MovementService.cs` → `MovementChannel.cs`; preserve the existing `.meta` GUID.
+- Rename `MovementService` → `MovementEndpoint` and `MovementService.cs` → `MovementEndpoint.cs`; preserve the existing `.meta` GUID.
 
 - Alphabetize `using` directives.
-- XML documentation: add docs to `MovementChannel`, `onInterestUpdated`, `onClientInterestRequest`, `onInterestRequest`, `onServerCorrection`, `Server_RequestChunkInterest`, and `Client_UpdateInterest`.
+- XML documentation: add docs to `MovementEndpoint`, `onInterestUpdated`, `onClientInterestRequest`, `onInterestRequest`, `onServerCorrection`, `Server_RequestChunkInterest`, and `Client_UpdateInterest`.
 - Existing `Server_`/`Client_` RPC direction naming already conforms.
 
 #### `Assets/Runtime/Shared/Networking/PackCombatLogEntry.cs`
@@ -798,9 +800,9 @@ Rename each type and file together, preserve its existing `.meta` file/GUID, and
 - Alphabetize `using` directives.
 - XML documentation: add docs to `PackWorldPosition` and `Write`/`Read`.
 
-#### `Assets/Runtime/Shared/Networking/StatChannel.cs`
+#### `Assets/Runtime/Shared/Networking/StatEndpoint.cs`
 
-- Rename `StatService` → `StatChannel` and `StatService.cs` → `StatChannel.cs`; preserve the existing `.meta` GUID.
+- Rename `StatService` → `StatEndpoint` and `StatService.cs` → `StatEndpoint.cs`; preserve the existing `.meta` GUID.
 
 - XML documentation: add docs to `onStatsUpdated` where currently undocumented.
 
@@ -2566,10 +2568,10 @@ All 37 files were checked against `.docs/CSharp-Style-Conventions.md`.
 
 Use the following role names consistently in the Server assembly:
 
-- **Binding** — a small adapter that registers callbacks from Shared `*Channel` surfaces into server-owned implementations. Bindings own wiring, not gameplay/domain behaviour.
+- **Binding** — a small adapter that registers callbacks from Shared `*Endpoint` surfaces into server-owned implementations. Bindings own wiring, not gameplay/domain behaviour.
 - **Service** — a server-owned domain capability or implementation. `IPlayerAuthService` / `PlayerAuthService` remain service names.
 - **Manager** — a long-lived authoritative runtime subsystem owner.
-- A manager may subscribe directly to a channel when the event is part of that manager's owned subsystem. Do **not** create a binding solely to wrap every event subscription.
+- A manager may subscribe directly to an endpoint when the event is part of that manager's owned subsystem. Do **not** create a binding solely to wrap every event subscription.
 
 Required binding renames are `AccountServiceHooks` → `AccountBindings`, `ActorDeathHooks` → `ActorDeathBindings`, and `ServerHooksManager` → `ServerBindings`. Their registration methods are simply `Register()`; `ServerBindings.Initialize()` performs the startup registration. Avoid redundant names such as `RegisterBindings`, `RegisterHooks`, or `ServerInitializeRPCBindings`.
 
