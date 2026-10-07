@@ -12,6 +12,8 @@
 
 This document defines the implementation roadmap for Ninth Age.
 
+Commercial, publicity, funding and community sequencing is tracked separately in the [Business, Publicity and Funding Roadmap](Business-Publicity-and-Funding-Roadmap.md).
+
 It does not replace the MMORPG Master PDD or subsystem PDDs. Product behaviour remains owned by those documents. This roadmap determines **when** approved systems should be implemented, integrated, hardened and expanded.
 
 The project is not a blank slate. The current codebase already includes working foundations for:
