@@ -82,9 +82,10 @@ Implementation plans describe how approved design and architecture will be turne
 
 They are not design authority.
 
-The current example is:
+Current implementation plans include:
 
-- [C# Restyling Plan](CSharp-Restyling-Plan.md)
+- [Project Roadmap](Project-Roadmap.md) — dependency-ordered project delivery and milestone sequencing;
+- [C# Restyling Plan](CSharp-Restyling-Plan.md) — focused codebase consistency and style migration.
 
 Implementation plans may sequence work, identify files and define validation, but should not create new game rules unless the relevant PDD is explicitly updated.
 
