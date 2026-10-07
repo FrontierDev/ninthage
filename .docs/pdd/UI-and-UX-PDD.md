@@ -53,7 +53,7 @@ This document does not own:
 - character-creation rules — [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md);
 - accessibility-specific requirements that require their own dedicated options — [Accessibility and Input PDD](Accessibility-and-Input-PDD.md);
 - chat/channel/social semantics — [Communication Systems PDD](Communication-Systems-PDD.md);
-- world visual direction — [Graphical Approach PDD](../Graphical-Approach-PDD.md).
+- world visual direction — [Graphical Approach PDD](Graphical-Approach-PDD.md).
 
 Where current UI implementation conflicts with this PDD, this document defines intended behaviour.
 

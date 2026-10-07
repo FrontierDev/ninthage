@@ -1295,7 +1295,7 @@ These remain balance/content decisions.
 
 This PDD directly depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [Class Design PDD](Class-Design-PDD.md);
 - [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md);
 - [Combat System PDD](Combat-System-PDD.md);

@@ -1335,7 +1335,7 @@ The following are locked by this PDD:
 
 This PDD depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md);
 - [Communication Systems PDD](Communication-Systems-PDD.md);
 - [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md);

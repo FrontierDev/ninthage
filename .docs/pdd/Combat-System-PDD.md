@@ -1754,7 +1754,7 @@ The engine must distinguish that presentation model from genuinely physical/proj
 
 This system directly depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md)
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md)
 - [Class Design PDD](Class-Design-PDD.md)
 - [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md)
 - [Items, Equipment and Loot PDD](Items-Equipment-and-Loot-PDD.md)

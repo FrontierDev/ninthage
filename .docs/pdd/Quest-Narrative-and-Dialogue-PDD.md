@@ -1180,7 +1180,7 @@ The following decisions are locked by this PDD:
 
 This PDD depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [World and Zone Design PDD](World-and-Zone-Design-PDD.md);
 - [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md);
 - [NPC and Creature Design PDD](NPC-and-Creature-Design-PDD.md);

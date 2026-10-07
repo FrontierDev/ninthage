@@ -1478,7 +1478,7 @@ These do not change the product architecture.
 
 This PDD depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md);
 - [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md);
 - [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md);

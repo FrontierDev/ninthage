@@ -1362,14 +1362,14 @@ The following decisions are locked by this PDD:
 
 This PDD depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [UI and UX PDD](UI-and-UX-PDD.md);
 - [Abilities and Talents PDD](Abilities-and-Talents-PDD.md);
 - [Combat System PDD](Combat-System-PDD.md);
 - [Communication Systems PDD](Communication-Systems-PDD.md);
 - [PvP PDD](PvP-PDD.md);
 - [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md);
-- [Graphical Approach PDD](../Graphical-Approach-PDD.md);
+- [Graphical Approach PDD](Graphical-Approach-PDD.md);
 - [Audio and Music PDD](Audio-and-Music-PDD.md).
 
 ---

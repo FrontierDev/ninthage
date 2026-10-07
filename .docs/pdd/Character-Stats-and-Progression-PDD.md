@@ -1537,7 +1537,7 @@ The following are locked by this PDD:
 
 This PDD directly depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [Class Design PDD](Class-Design-PDD.md);
 - [Combat System PDD](Combat-System-PDD.md);
 - [Abilities and Talents PDD](Abilities-and-Talents-PDD.md);

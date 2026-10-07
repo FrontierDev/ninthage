@@ -797,7 +797,7 @@ These do not change the architecture defined here.
 
 This PDD depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [Accessibility and Input PDD](Accessibility-and-Input-PDD.md);
 - [UI and UX PDD](UI-and-UX-PDD.md);
 - [Combat System PDD](Combat-System-PDD.md);
@@ -808,7 +808,7 @@ This PDD depends on or constrains:
 - [AI and Encounter Behaviour PDD](AI-and-Encounter-Behaviour-PDD.md);
 - [Dungeon and Group Content PDD](Dungeon-and-Group-Content-PDD.md);
 - [PvP PDD](PvP-PDD.md);
-- [Graphical Approach PDD](../Graphical-Approach-PDD.md).
+- [Graphical Approach PDD](Graphical-Approach-PDD.md).
 
 ---
 

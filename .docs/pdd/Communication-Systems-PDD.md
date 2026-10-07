@@ -1194,7 +1194,7 @@ The following decisions are locked by this PDD:
 
 This PDD depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md);
 - [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md);
 - [UI and UX PDD](UI-and-UX-PDD.md);

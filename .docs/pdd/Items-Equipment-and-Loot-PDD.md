@@ -1702,7 +1702,7 @@ Implementation must migrate them toward the PDD rather than treating the current
 
 This system directly depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md)
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md)
 - [Crafting System PDD](Crafting-System-PDD.md)
 - [Class Design PDD](Class-Design-PDD.md)
 - [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md)

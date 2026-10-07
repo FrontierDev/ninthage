@@ -1244,7 +1244,7 @@ The following decisions are locked by this PDD:
 
 This PDD depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [Combat System PDD](Combat-System-PDD.md);
 - [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md);
 - [Factions and Reputation PDD](Factions-and-Reputation-PDD.md);

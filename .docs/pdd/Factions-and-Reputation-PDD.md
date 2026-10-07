@@ -983,7 +983,7 @@ The following decisions are locked by this PDD:
 
 This PDD depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md);
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md);
 - [Quest, Narrative and Dialogue PDD](Quest-Narrative-and-Dialogue-PDD.md);
 - [NPC and Creature Design PDD](NPC-and-Creature-Design-PDD.md);
 - [AI and Encounter Behaviour PDD](AI-and-Encounter-Behaviour-PDD.md);
