@@ -688,14 +688,33 @@ The following safeguards are mandatory while implementing the changes listed bel
 
 ### 11.11 Networking
 
-#### `Assets/Runtime/Shared/Networking/AccountService.cs`
+#### Naming rule — shared networking channels
+
+The static Shared Networking types that expose PurrNet RPC entry points and cross-assembly callback surfaces are **channels**, not domain services. Standardize the terminology as follows:
+
+| Current type/file | Required type/file |
+|---|---|
+| `AccountService` / `AccountService.cs` | `AccountChannel` / `AccountChannel.cs` |
+| `ActorService` / `ActorService.cs` | `ActorChannel` / `ActorChannel.cs` |
+| `CharacterService` / `CharacterService.cs` | `CharacterChannel` / `CharacterChannel.cs` |
+| `MovementService` / `MovementService.cs` | `MovementChannel` / `MovementChannel.cs` |
+| `StatService` / `StatService.cs` | `StatChannel` / `StatChannel.cs` |
+
+Rename each type and file together, preserve its existing `.meta` file/GUID, and update all references atomically. `IPlayerAuthService` is **not** part of this rename: it is a genuine service contract implemented by the server-side `PlayerAuthService`.
+
+
+#### `Assets/Runtime/Shared/Networking/AccountChannel.cs`
+
+- Rename `AccountService` → `AccountChannel` and `AccountService.cs` → `AccountChannel.cs`; preserve the existing `.meta` GUID.
 
 - Alphabetize `using` directives.
 - Parameter acronym: `characterGuid` → `characterGUID` in `Server_RequestEnterWorld`.
 - XML documentation: add docs to callbacks `onCharacterListReceived`, `onEnteringWorld`, `onPlayerActorAssigned`, `onEnteredWorld`, `onCharacterCreationRequest`, `onCharacterCreated`, `onEnterWorldRequest`; and RPC methods `Client_UpdateCharacterList`, `Client_SetPlayerActor`, `Server_TryCreateCharacter`, `Client_NotifyCharacterCreationResult`, `Server_RequestEnterWorld`, `Client_EnterWorld`.
 - Do **not** rename `actorIdentity`; `Identity` is a word/type concept, not an `ID` suffix.
 
-#### `Assets/Runtime/Shared/Networking/ActorService.cs`
+#### `Assets/Runtime/Shared/Networking/ActorChannel.cs`
+
+- Rename `ActorService` → `ActorChannel` and `ActorService.cs` → `ActorChannel.cs`; preserve the existing `.meta` GUID.
 
 - Alphabetize `using` directives.
 - XML documentation: add docs to every currently undocumented public callback field: `onActorDeath`, `onActorSpawned`, `onActorOwnerChanged`, `onActorOwnershipTaken`, `onPlayerActorAssigned`, `onClientHoveredActorChanged`, `onClientTargetedActorChanged`, `onClientLateTargetedActorChanged`, `onClientEnteredCombat`, `onClientExitedCombat`, `onSpellCastStarted`, `onSpellCastInterrupted`, `onSpellCastCompleted`, `onCombatLogEntryReceived`, `onStartGlobalCooldown`, `onStartCooldown`, `onClientApplyAura`, `onClientTickAura`, `onClientUpdateAura`, `onClientExpireAura`, `onClientDispelAura`, `onClientSpawnVFXAtPosition`, `onClientSpawnProjectile`, `onClientTriggerEffect`, `onClientPlaySFX`, `onClientPlaySFXOnAudioSource`, `onServerActorSpawned`, `onServerActorDespawned`, `onServerActorOwnerChanged`, `onServerActorInterestChanged`, `onServerSpellCastStarted`, `onServerSpellCastTick`, `onServerSpellCastInterrupted`, `onServerSpellCastCompleted`, `onServerSpellCastDelayedAction`, `onServerRequestSpellCastCancel`, `onServerStartCooldown`, `onServerApplyAura`, `onServerAuraApplied`, `onServerAuraTick`, `onServerAuraExpired`, `onServerAuraDispelled`, `onServerActorTick`, `onServerActorTickerExpired`, `onServerAddTicker`, `onServerRemoveTickerByTag`, `onServerStartAutoAttack`, `onServerStopAutoAttack`.
@@ -707,7 +726,9 @@ The following safeguards are mandatory while implementing the changes listed bel
 - XML documentation: add docs to both constructors.
 - Safety: update all references, especially `LoginAuthenticator` aliases/usings in Client and Server.
 
-#### `Assets/Runtime/Shared/Networking/CharacterService.cs`
+#### `Assets/Runtime/Shared/Networking/CharacterChannel.cs`
+
+- Rename `CharacterService` → `CharacterChannel` and `CharacterService.cs` → `CharacterChannel.cs`; preserve the existing `.meta` GUID.
 
 - Alphabetize `using` directives.
 - XML documentation: add docs to callbacks `onClientLearnedSpell`, `onClientKnownSpellsUpdated`, `onClientInventoryUpdated`, `onClientCurrencyUpdated`, `onClientEquipmentUpdated`, `onClientTalentsUpdated`, `onClientExperienceUpdated`, `onClientWeaponSkillUpdated`, `onClientReputationUpdated`, `onClientLevelUpdated`, `onClientQuestUpdated`, `onLearnSpellRequest`, `onUpdateStatsRequest`; and RPCs `Server_RequestLearnSpell`, `Client_LearnSpell`, `Client_ExperienceUpdated`, `Client_WeaponSkillUpdated`, `Client_ReputationUpdated`, `Client_QuestUpdated`.
@@ -746,10 +767,12 @@ The following safeguards are mandatory while implementing the changes listed bel
 - XML documentation: add docs to `GetNextValidatedUsername` and `GetNextPlayerIsNew`.
 - Safety: update all references to the old authentication namespace.
 
-#### `Assets/Runtime/Shared/Networking/MovementService.cs`
+#### `Assets/Runtime/Shared/Networking/MovementChannel.cs`
+
+- Rename `MovementService` → `MovementChannel` and `MovementService.cs` → `MovementChannel.cs`; preserve the existing `.meta` GUID.
 
 - Alphabetize `using` directives.
-- XML documentation: add docs to `MovementService`, `onInterestUpdated`, `onClientInterestRequest`, `onInterestRequest`, `onServerCorrection`, `Server_RequestChunkInterest`, and `Client_UpdateInterest`.
+- XML documentation: add docs to `MovementChannel`, `onInterestUpdated`, `onClientInterestRequest`, `onInterestRequest`, `onServerCorrection`, `Server_RequestChunkInterest`, and `Client_UpdateInterest`.
 - Existing `Server_`/`Client_` RPC direction naming already conforms.
 
 #### `Assets/Runtime/Shared/Networking/PackCombatLogEntry.cs`
@@ -775,7 +798,9 @@ The following safeguards are mandatory while implementing the changes listed bel
 - Alphabetize `using` directives.
 - XML documentation: add docs to `PackWorldPosition` and `Write`/`Read`.
 
-#### `Assets/Runtime/Shared/Networking/StatService.cs`
+#### `Assets/Runtime/Shared/Networking/StatChannel.cs`
+
+- Rename `StatService` → `StatChannel` and `StatService.cs` → `StatChannel.cs`; preserve the existing `.meta` GUID.
 
 - XML documentation: add docs to `onStatsUpdated` where currently undocumented.
 
@@ -2537,6 +2562,19 @@ All 37 files were checked against `.docs/CSharp-Style-Conventions.md`.
 
 ## 28. Server-specific compatibility rules
 
+### 28.1 Server role terminology
+
+Use the following role names consistently in the Server assembly:
+
+- **Binding** — a small adapter that registers callbacks from Shared `*Channel` surfaces into server-owned implementations. Bindings own wiring, not gameplay/domain behaviour.
+- **Service** — a server-owned domain capability or implementation. `IPlayerAuthService` / `PlayerAuthService` remain service names.
+- **Manager** — a long-lived authoritative runtime subsystem owner.
+- A manager may subscribe directly to a channel when the event is part of that manager's owned subsystem. Do **not** create a binding solely to wrap every event subscription.
+
+Required binding renames are `AccountServiceHooks` → `AccountBindings`, `ActorDeathHooks` → `ActorDeathBindings`, and `ServerHooksManager` → `ServerBindings`. Their registration methods are simply `Register()`; `ServerBindings.Initialize()` performs the startup registration. Avoid redundant names such as `RegisterBindings`, `RegisterHooks`, or `ServerInitializeRPCBindings`.
+
+
+
 1. **No Server-owned serialized private-field migration is required.** No `[SerializeField]` or `[SerializeReference]` declarations were found under `Assets/Runtime/Server/`.
 2. **Preserve `.meta` files** for every C# filename change.
 3. **Core namespace migration is cross-assembly.** `Game.Core.GameBootstrapper`, Client code, Shared code, Editor code, and any tests that reference `ServerInitialization` or Server manager types must be updated in the same integration change.
@@ -2565,8 +2603,8 @@ Current cases are mostly `Game.Server`, with `ServerECSManager.cs` currently usi
 
 These files already use the correct folder namespace and require no namespace change:
 
-- `Networking/AccountServiceHooks.cs`;
-- `Networking/ActorDeathHooks.cs`;
+- `Networking/AccountBindings.cs`;
+- `Networking/ActorDeathBindings.cs`;
 - `Networking/PlayerSessionData.cs`.
 
 ### 29.3 Persistence
@@ -2754,11 +2792,14 @@ Update every registration, invocation, and assignment.
 - Add XML documentation to `ServerECSManager`, `Initialized`, `DefaultWorld`, and `ServerInitializeECSWorlds`.
 - Update every `ECS.ServerECSManager`/`Game.Server.ECS.ServerECSManager` reference to the final Core namespace.
 
-#### `Assets/Runtime/Server/Core/ServerHooksManager.cs`
+#### `Assets/Runtime/Server/Core/ServerBindings.cs`
+
+- Rename `ServerHooksManager` → `ServerBindings` and `ServerHooksManager.cs` → `ServerBindings.cs`; preserve the existing `.meta` GUID.
+- Rename `ServerInitializeRPCHooks()` → `Initialize()`.
 
 - Namespace: `Game.Server` → `Game.Server.Core`.
 - Alphabetize `using` directives.
-- Add XML documentation to `ServerHooksManager`, `Initialized`, and `ServerInitializeRPCHooks`.
+- Add XML documentation to `ServerBindings`, `Initialized`, and `Initialize`.
 
 #### `Assets/Runtime/Server/Core/ServerInterestManager.cs`
 
@@ -2841,20 +2882,26 @@ Update every registration, invocation, and assignment.
 
 ### 32.2 Networking
 
-#### `Assets/Runtime/Server/Networking/AccountServiceHooks.cs`
+#### `Assets/Runtime/Server/Networking/AccountBindings.cs`
+
+- Rename `AccountServiceHooks` → `AccountBindings` and `AccountServiceHooks.cs` → `AccountBindings.cs`; preserve the existing `.meta` GUID.
+- Rename `RegisterHooks()` → `Register()`.
 
 - Namespace already conforms.
 - Alphabetize `using` directives.
 - Acronym casing: `playerId` → `playerID`, `characterGuid` → `characterGUID`.
-- Add XML documentation to `AccountServiceHooks` and `RegisterHooks`.
+- Add XML documentation to `AccountBindings` and `Register`.
 - Update references to final Server Core/Services and Shared Networking namespaces.
 
-#### `Assets/Runtime/Server/Networking/ActorDeathHooks.cs`
+#### `Assets/Runtime/Server/Networking/ActorDeathBindings.cs`
+
+- Rename `ActorDeathHooks` → `ActorDeathBindings` and `ActorDeathHooks.cs` → `ActorDeathBindings.cs`; preserve the existing `.meta` GUID.
+- Rename `RegisterHooks()` → `Register()`.
 
 - Namespace already conforms.
 - Alphabetize `using` directives.
 - Acronym casing: Server-owned `npcId` → `npcID`.
-- Add XML documentation to `ActorDeathHooks`/`RegisterHooks` where currently undocumented.
+- Add XML documentation to `ActorDeathBindings`/`Register` where currently undocumented.
 - Update Shared actor/NPC references to their final Shared runtime namespaces.
 
 #### `Assets/Runtime/Server/Networking/PlayerSessionData.cs`
@@ -3098,7 +3145,7 @@ Apply:
 3. `PlayerAuthService` → `Game.Server.Services`;
 4. `Test_NPCPathfinder` → `Game.Server.Test`.
 
-Update `GameBootstrapper`, Networking hooks, services, and all cross-assembly callers atomically.
+Update `GameBootstrapper`, Networking bindings, services, and all cross-assembly callers atomically.
 
 ### Stage V6 — Shared integration
 
