@@ -1,50 +1,44 @@
 # Procedural Texture Studio — Product Design Document
 
 **Status:** Proposed design specification  
-**Project:** Ninth Age (initial development and validation host)  
-**Product:** Procedural Texture Studio (reusable Unity Editor package)  
-**Target engine:** Unity 6.3 (`6000.3`); other Unity versions are not presumed supported until tested  
-**Primary render pipeline:** Universal Render Pipeline (URP), Forward+  
-**Repository:** `FrontierDev/ninthage`  
-**Proposed repository location:** `.docs/Plans/Procedural-Texture-Studio-PDD.md`  
+**Project:** Ninth Age (first consumer and visual validation host)  
+**Product:** Procedural Texture Studio (standalone desktop application)  
+**Target platforms:** Windows, Linux and macOS, subject to validation  
+**Primary output:** Engine-independent PBR texture maps, editable recipes and manifests  
+**First downstream target:** Unity 6.3 URP, Forward+  
+**Specification repository:** `FrontierDev/ninthage`  
+**Implementation repository:** Separate desktop application repository (TBD)  
+**PDD location:** `.docs/Plans/Procedural-Texture-Studio-PDD.md`  
 **Last updated:** 2026-10-12
 
 ---
 
 ## 1. Purpose and Authority
 
-Procedural Texture Studio is a **parameter-driven, non-node-based Unity Editor tool** for producing attractive, reusable, seamless surface textures and physically based rendering (PBR) material assets without leaving Unity.
+Procedural Texture Studio is a **parameter-driven, non-node-based standalone desktop application** for producing attractive, reusable, seamless textures and physically based rendering (PBR) material maps. Its generation, preview and export workflows must work without Unity or another game engine.
 
-The primary objective is **good-looking, production-usable environment materials with a short authoring loop**. Reproducing the full feature set of Adobe Substance products is explicitly not the objective.
+The objective is **good-looking, production-usable environment materials with a short authoring loop**, not full Adobe Substance feature parity. Ninth Age is the first consumer and artistic validation host, **not a runtime, compile-time, installation or filesystem dependency**. Other engines and renderers must be able to consume the canonical outputs.
 
-The plugin will be developed and used inside the existing Ninth Age Unity project, but its **code, package assets, settings, generators, and tests must remain transferable to unrelated Unity projects**. Ninth Age is the development and artistic validation environment, not a runtime or compile-time dependency.
-
-This PDD defines the desired product and acceptance criteria. It is not a claim that any of the functionality is already implemented. Detailed implementation tasks should be placed in separate plans/issues.
+This PDD defines intended behaviour and acceptance criteria, not completed work. Detailed implementation issues belong in a separate plan, preferably the new application repository.
 
 ### 1.1 Relationship to Ninth Age's design standards
 
-When materials are intended for Ninth Age, their output must comply with:
+When authoring Ninth Age materials, the Graphical Approach PDD in this repository remains authoritative for visual direction: **grounded mid-poly fantasy, physically believable restraint, recognisable medium-scale forms and controlled normals**. Avoid raw scan aesthetics and uniformly noisy spatial detail. The standalone app is general-purpose; Ninth Age-specific presets must not hard-code the game's requirements into shared generation algorithms.
 
-- `.docs/Graphical-Approach-PDD.md` — authoritative visual direction;
-- `.docs/CSharp-Style-Conventions.md` — normative C# conventions for work in the Ninth Age repository;
-- `.docs/CSharp-Architecture.md` — descriptive baseline for the existing project, not a source of dependencies for this package.
-
-Ninth Age's visual target is **grounded, mid-poly fantasy with physically believable but restrained materials**. Materials should have recognisable forms, broad colour/roughness structure, readable medium-scale detail and controlled normal detail. They should not resemble unprocessed photo-scans or equally noisy detail at every spatial frequency.
-
-The plugin itself is a general-purpose authoring tool; its presets can be tuned to Ninth Age's art direction without hard-coding the game's artistic decisions into core generation algorithms.
+Ninth Age C# style and assembly conventions apply only to optional integration code residing in the game project. The independent application establishes its own coding conventions.
 
 ## 2. Locked Design Decisions
 
-1. The product is a **Unity Editor plugin**, not a separate Windows application.
-2. Development takes place **inside Ninth Age**, as an **embedded Unity Package Manager (UPM) package** under `Packages/`.
-3. The package must also be installable in another Unity project without copying Ninth Age assets or assemblies.
-4. The authoring interface is **preset- and parameter-driven**. No node graph, visual shader graph, or general-purpose node editor is required.
-5. Generation is **procedural and deterministic**. The same recipe, seed, generator version, and supported execution environment must produce equivalent maps within documented numerical tolerances.
-6. **Seamless 2D tiling is a core guarantee**, not an optional post-processing trick.
-7. The authoring tool executes in the Editor; generated textures and standard Unity materials must be usable in client builds **without any plugin runtime component**.
-8. GPU compute shaders are the primary generation backend, subject to supported-device checks and explicit error reporting. There is no requirement for a silently degraded CPU implementation.
-9. **URP Lit** is the primary material export and preview target. The generated source maps should remain useful for custom shaders and future pipeline adapters.
-10. Visual quality, controllability, stable exports and a simple workflow take precedence over a large preset catalogue or exotic effects.
+1. The product is a **standalone desktop application**, not a Unity Editor plugin or UPM package.
+2. No Unity installation, project or editor session is required for generation, editing, preview, recipe saving or canonical export.
+3. Authoring remains **preset- and parameter-driven**; no node editor.
+4. Generation is deterministic given recipe, seed, generator version and a supported environment, within documented tolerances.
+5. **Seamless 2D tiling** is a foundational requirement.
+6. Canonical outputs are **portable PBR maps, a versioned JSON recipe and a machine-readable manifest**.
+7. GPU compute is primary. Unsupported hardware/backends cause explicit errors, not silent CPU fallback.
+8. The integrated 3D PBR preview shares appearance-generating algorithms with export.
+9. Unity 6.3 URP Lit is the **first validation/integration target**, but not a core dependency.
+10. Prioritise material quality, controllability, portability and safe regeneration over feature count.
 
 ## 3. Goals and Non-Goals
 
@@ -55,9 +49,9 @@ The plugin itself is a general-purpose authoring tool; its presets can be tuned 
 - Provide a fast iteration loop: **choose material → adjust parameters → preview → save**.
 - Generate internally consistent PBR outputs from a shared procedural material description.
 - Support both stylised restraint and more natural variants through deliberate parameter ranges.
-- Export conventional Unity assets with correct import settings and predictable naming.
-- Keep package code, shader resources and dependencies completely independent from Ninth Age.
-- Support safe regeneration without discarding unrelated or hand-edited project assets.
+- Export conventionally encoded PBR texture files with documented naming, colour spaces and channels.
+- Keep standalone application code, shader resources and dependencies independent from Ninth Age, Unity and other engines.
+- Support manifest-owned regeneration without discarding unrelated or externally edited files.
 
 ### 3.2 Non-goals for the initial product
 
@@ -67,31 +61,31 @@ The plugin itself is a general-purpose authoring tool; its presets can be tuned 
 - Procedural 3D modelling, terrain heightfield generation or biome placement.
 - Substance Designer file compatibility or material format conversion.
 - Mandatory cloud services, accounts, downloads or third-party generators.
-- Runtime generation and server/headless build functionality.
+- Game-runtime generation, server execution and mandatory headless operation.
 - Automatically generating convincing arbitrary materials from a single generic noise preset.
 
 ## 4. Intended Users and Primary Workflow
 
-The primary user is a Unity environment artist or developer who wants to produce material variations quickly without an external texturing application.
+The user is an environment artist or developer creating and varying PBR materials without launching a game engine or operating a full node-based suite.
 
 ### 4.1 Core authoring workflow
 
-1. Open **Tools → Procedural Texture Studio** in the Unity Editor.
-2. Choose a material family and a named starter preset.
-3. Adjust a short set of meaningful parameters (for example, stone fracture density or soil pebble coverage).
-4. Inspect a live preview under neutral, grazing, and representative game lighting, including at normal gameplay distance.
-5. Optionally change the seed to explore a different arrangement without changing the material character.
-6. Choose output resolution, world-scale tiling guidance, and output maps.
-7. Save the editable recipe to a chosen project folder.
-8. **Generate Material** to create the texture assets and a URP Lit material in the selected output folder.
-9. Apply the material to terrain or meshes using ordinary Unity material workflows. No connection to the plugin is required for rendering.
+1. Launch **Procedural Texture Studio** as a desktop application.
+2. Choose a material family and starter preset.
+3. Adjust meaningful material parameters.
+4. Preview the resulting material on lit 3D objects, including approximate gameplay-distance and grazing-light views.
+5. Change the seed to create variations.
+6. Choose resolution, tiling scale, map selection, normal orientation and export preset.
+7. Save an editable **JSON recipe** in a chosen directory.
+8. **Export Material** to generate texture files and a manifest in a chosen folder.
+9. Import the resulting maps into Unity, Unreal, Godot or a custom renderer. Optional engine adapters may streamline imports without becoming prerequisites.
 
 ### 4.2 Editing existing work
 
-- Reopen a recipe, adjust parameters and regenerate its outputs.
-- The recipe records generator identity and version so later changes do not silently reinterpret old results.
-- Regeneration updates previously generated, recipe-owned assets in place where safe, preserving Unity asset GUIDs and references.
-- If files have been removed, moved, edited outside the tool or otherwise no longer match recorded ownership, the tool must report the conflict and request an explicit choice; it must not silently replace arbitrary assets.
+- Reopen and edit a recipe; record generator and schema versions to avoid silent reinterpretation.
+- Manifest entries record outputs and content hashes to establish ownership.
+- Regeneration may replace only verified owned files; moved, missing or externally changed files require a clear choice.
+- The standalone application **never writes Unity .meta files, GUIDs or project settings**. Stable export filenames can help preserve Unity references on reimport, but GUID verification is Unity-side functionality.
 
 ## 5. Material Families and Visual Requirements
 
@@ -128,19 +122,17 @@ Gravel/scree, snow/ice, mud, cobblestone/paving, weathered timber and other envi
 
 ### 6.1 Recipe and parameters
 
-Each editable recipe is a versioned Unity `ScriptableObject` containing:
+A versioned, portable **JSON recipe** contains:
 
-- stable recipe identity and display name;
-- material family / generator identifier;
-- generator version and recipe schema version;
-- deterministic integer seed;
-- generator-specific parameters with safe ranges and meaningful units;
-- chosen palettes and physically meaningful PBR control values;
-- preview configuration (non-authoritative for exported textures);
-- desired map selections and resolution;
-- references/identifiers for the generated output set where relevant.
+- stable recipe identity, display name and family/generator ID;
+- schema and generator versions;
+- deterministic seed;
+- material-specific parameters with safe ranges and units;
+- palettes, PBR controls and selected map outputs;
+- resolution, normal convention and export preset;
+- optional preview settings and output-set identifier.
 
-Factory presets bundled with the package are treated as read-only examples/templates. User-authored recipes and output assets are stored under `Assets/`, not edited directly in package content. **Duplicate Preset** creates an independent recipe. Recipes remain editable and are the authoritative source for regeneration.
+Factory presets are read-only templates; **Duplicate Preset** creates an independent user recipe. Save recipes in user-selected directories, not as Unity ScriptableObjects under Assets. Define documented schemas, migrations and portable relative paths; never require machine-specific absolute paths.
 
 ### 6.2 Shared material description
 
@@ -158,7 +150,8 @@ Material family + preset + parameters + seed
     Albedo | Normal | Roughness | AO
          | Height | Metallic (where valid)
                     ↓
-          Export + URP material
+         Export PBR maps + manifest
+             + optional adapter
 ```
 
 The flow is a **code-level processing pipeline**, not a user-visible node graph.
@@ -179,226 +172,177 @@ Seam blending may be a specialised helper but must not serve as the default subs
 - A seed changes spatial arrangement without unpredictably changing unrelated material parameters.
 - UI preview and final export share the same generation logic. Reduced preview resolution is allowed but must not use a different look-producing algorithm.
 - Algorithm changes that alter the appearance of an existing recipe require explicit generator-version handling or migration.
-- Invalid parameter ranges, unsupported GPU features, failed shader dispatches and export failures must surface actionable errors. No silently incorrect or placeholder texture exports.
+- Invalid inputs, unsupported GPU features, shader dispatch and export failures must produce actionable errors, never placeholder textures.
+- Different GPU drivers/backends may yield small numerical differences; document tolerances for supported platforms instead of promising universal byte-identical results.
 
 ## 7. Texture Outputs and PBR Semantics
 
 | Map | Meaning | Default handling |
 |---|---|---|
-| **Base Colour / Albedo** | Surface colour, without baked directional lighting | Export colour image; import with sRGB sampling enabled |
-| **Normal** | Tangent-space surface normal derived from the same relief geometry | Unity-compatible tangent-space normal; import as Normal Map |
-| **Height** | Normalised relative relief for the procedural tile | Linear scalar map; height range/strength stored in recipe |
-| **Roughness** | Microsurface roughness (0 = smooth, 1 = rough) | Linear scalar map; retain canonical roughness in recipe/output |
-| **Metallic** | Physically meaningful metallic fraction | Linear scalar map; default 0 for dielectric materials |
-| **Ambient Occlusion** | Local relief-based occlusion, not a baked world-light shadow | Linear scalar map; adjustable local radius/strength |
+| **Base Colour / Albedo** | Surface colour without baked lighting | Export sRGB colour map |
+| **Normal** | Tangent-space normals from shared relief | Export with selectable OpenGL/DirectX green-channel orientation |
+| **Height** | Normalised relative relief | Linear scalar; store strength/range in recipe |
+| **Roughness** | Microsurface roughness (0 smooth, 1 rough) | Linear scalar; canonical roughness retained |
+| **Metallic** | Physically meaningful metallic fraction | Linear scalar; zero for dielectric materials |
+| **Ambient Occlusion** | Local relief occlusion, not directional shadows | Linear scalar; adjustable radius/strength |
 
-### 7.1 URP Lit export adapter
+Document channel order, colour spaces, UV orientation, normal convention, height range and bit depth explicitly.
 
-The generator's canonical map set must be kept separate from Unity-specific channel packing. The URP export adapter creates/configures the material using the selected maps and the shader's actual supported inputs.
+### 7.1 Engine-neutral export and adapters
 
-- The standard URP Lit metallic workflow uses metallic information in its metallic texture and **smoothness** in the configured alpha source; where appropriate generate `smoothness = 1 - roughness`, packed into metallic alpha.
-- Configure the material's keywords, workflow mode, smoothness source, strength values and texture references correctly; assigning files alone is insufficient.
-- Treat colour textures as sRGB and scalar/packed property maps as linear data; configure normal-map imports explicitly.
-- Do not assume every surface shader consumes standalone height or AO maps in the same way. Unsupported inputs remain available as exported assets rather than being silently miswired.
-- Document the specific URP Lit channel contract used by the package and test it with the supported Unity/URP version.
-- Source maps should also be exportable individually for custom terrain shaders, triplanar shaders and other uses.
+The **default export** consists of standalone image maps and a versioned JSON manifest containing filenames, map roles, dimensions, formats, channel conventions, hashes, generator and version. The canonical map data must be separate from engine-specific channel packing.
+
+An **optional Unity URP preset** may produce packed derivative maps with smoothness = 1 - roughness in the relevant channel. However, **Unity .mat creation, shader keywords, TextureImporter settings and GUID preservation must happen inside Unity** via a documented manual workflow or a small optional importer. The standalone application must not write .mat or .meta assets. No Unity integration can be required for its core functionality.
+
+Other engine or shader export presets can be added independently. Source maps remain available individually for terrain, triplanar and custom rendering.
 
 ### 7.2 Resolution and format
 
-Support **512, 1024 and 2048** square tile resolutions initially. **4096** is an optional quality/export tier once memory use and readback behaviour have been measured.
+Support **512, 1024 and 2048** square tiles initially; **4096** is optional after profiling. Use lossless source images. 8-bit PNG is acceptable for colour and many scalar maps; higher-precision height support requires a tested encoder and an explicit documented contract.
 
-Use lossless file formats for first-generation source outputs, with 8-bit PNG acceptable for ordinary colour and many scalar maps. Higher precision height export is an explicit later capability unless a supported 16-bit encoding path is actually implemented and tested. Never claim a file contains 16-bit height data when an 8-bit conversion occurred.
+Use predictable suffixes such as _Albedo, _Normal, _Height, _Roughness, _Metallic and _AO plus an export manifest. Optional adapters may emit _URP_Mask or other packed derivatives. **No .mat file is required or emitted by normal standalone export.**
 
-Outputs require consistent filename suffixes such as `_Albedo`, `_Normal`, `_Height`, `_Roughness`, `_Metallic`, `_AO` and `_URP_Mask`, plus a `.mat` file. Individual maps can be disabled only when their absence does not invalidate the chosen export.
+## 8. Desktop User Experience
 
-## 8. Editor User Experience
-
-The interface must be a **single dockable UI Toolkit `EditorWindow`** with clear functional regions rather than multiple mandatory windows:
-
-1. **Material library:** family and starter-preset selection, search/filter when needed.
-2. **Parameters:** grouped controls with labels, sensible defaults, tooltips and Reset Group / Reset Preset actions.
-3. **Preview:** mesh and texture preview, pan/orbit/zoom and different display modes.
-4. **Output:** resolution, map selection, file destination, naming, asset generation/regeneration.
+Use a **single-window desktop application** with material library, grouped parameters, integrated 3D preview and file export regions. Provide artist-facing controls and avoid exposing raw noise coefficients as primary inputs.
 
 ### 8.1 Controls
 
-- Use meaningful artist-facing names such as *Crack Width*, *Grass Coverage* and *Pebble Density*; do not expose low-level noise coefficients as the main UX.
-- Common controls include seed, colour palette, surface variation and overall relief strength; only show controls that make sense for the selected material.
-- Allow numeric entry as well as slider control and show units/valid ranges when relevant.
-- Show modified/unsaved state and provide undo support for recipe editing.
-- Distinguish **preview refresh** from **export**. Editing a slider must never rewrite project assets automatically.
-- Expose a **New Seed** action and a way to restore the previous seed.
+- Meaningful labels, sensible ranges, sliders plus numeric inputs, tooltips and grouped reset.
+- Seed change/restoration, unsaved-change indication and undo.
+- Only show parameters relevant to the selected material.
+- Use system file pickers and platform-appropriate keyboard/display scaling.
+- Slider interaction refreshes preview, **never rewrites output files**.
 
 ### 8.2 Preview
 
-- Provide sphere, plane and cube previews; the plane is essential for tiled surfaces.
-- Allow a tiled plane view (for example, 3 × 3 repeats) to reveal seams and repetitive patterns.
-- Provide material-lit and individual-map inspection modes.
-- Allow orbit, zoom and adjustable light direction/intensity; a neutral lighting preset must remain available.
-- Include an approximate gameplay-distance view; a strong close-up must not mask poor medium-distance readability.
-- Apply preview quality scaling and debounce/throttle repeated edits to prevent UI stalls. A pending preview request supersedes obsolete pending requests.
-- Show generation status and clear failure messages; do not block UI indefinitely.
+- Plane, sphere and cube previews; a tiled **3 × 3 plane** reveals seams/repetition.
+- Lit and individual map inspection; orbit, zoom and adjustable light direction/intensity.
+- Neutral lighting and approximate gameplay-distance mode.
+- An **engine-independent physically plausible PBR preview shader** with documented semantics. Differences from Unity URP must be validated, not hidden.
+- Preview and export use identical appearance-defining algorithms; lower preview resolution is permitted.
+- Debounce changes, discard superseded jobs, show failures and keep the interface responsive.
 
-## 9. Package Architecture and Portability
+## 9. Standalone Architecture and Portability
 
-### 9.1 Embedded development package
+### 9.1 Recommended technology
 
-Develop directly in the Ninth Age repository at:
+**Rust + egui + wgpu/WGSL** is the recommended initial desktop stack, subject to a small technical prototype. egui supplies the UI, wgpu provides GPU compute and the 3D preview. This avoids Unity and browser-surface integration dependencies. Saved material formats must remain implementation-agnostic.
 
-```text
-Packages/
-└── com.frontierdev.procedural-texture-studio/
-    ├── package.json
-    ├── README.md
-    ├── CHANGELOG.md
-    ├── LICENSE.md
-    ├── Editor/
-    │   ├── FrontierDev.ProceduralTextureStudio.Editor.asmdef
-    │   ├── UI/
-    │   ├── Recipes/
-    │   ├── Generators/
-    │   ├── Processing/
-    │   ├── Preview/
-    │   ├── Export/
-    │   └── Resources/
-    │       └── ComputeShaders/
-    ├── Tests/
-    │   └── Editor/
-    ├── Documentation~/
-    └── Samples~/
-```
+Create a **dedicated application repository** with clear boundaries for: recipe/schema/core generators; GPU operators/shaders; 3D preview; canonical export/manifest/optional adapters; UI and asynchronous job orchestration; presets, tests and platform packaging. Generator logic must not depend on the UI or any particular engine. A Unity importer, if desired later, remains a separate thin package.
 
-The folders describe responsibility boundaries, not a mandatory class-by-class implementation plan. Unity `.meta` files and asset GUIDs must be included for tracked package assets. An Editor-only assembly is sufficient for the initial release. If another assembly becomes necessary later, it must be justified by an actual dependency or runtime-use case.
+### 9.2 Dependencies
 
-### 9.2 Dependency isolation
+The application must not reference Unity Editor/runtime APIs, Unity compute shaders, Ninth Age assemblies, Addressables, PurrNet, Unity scenes or project settings. Use supported wgpu backends (typically Direct3D 12, Vulkan and Metal) and validate their required device limits/features. Unsupported configurations fail visibly, never with a silently inferior material.
 
-The package must **not** reference:
+### 9.3 Distribution
 
-- `Game.Client`, `Game.Server`, `Game.Shared`, `Game.Core` or `Game.Editor`;
-- Ninth Age-specific definitions, terrain controllers, streaming or Addressables code;
-- PurrNet, Entities or game networking services;
-- any scene, object or asset path outside its own package except user-selected input/output assets.
+- Ship portable/installable Windows, Linux and macOS releases **after testing each advertised combination** of OS, architecture and GPU backend.
+- Unity, an engine SDK and a cloud service are not installation prerequisites.
+- Recipes, presets and manifests travel between platforms using portable paths and explicit schema versions.
+- Document minimum requirements, supported GPU/OS matrix, installation, updating, migrations, output contracts and removal.
+- Unity compatibility is verified through map import into a clean Unity 6.3 URP project, separate from the core application tests.
 
-Allowed direct dependencies are Unity Editor/core APIs and the explicitly declared Unity package dependencies needed for the preview/export targets (primarily URP). Do not create hidden transitive dependencies on Ninth Age's project settings, layers, tags, input actions or scenes.
+### 9.4 GPU resource ownership
 
-Shader resources and factory presets must resolve from the installed package, not by assuming the package lives under `Assets/Editor`. Save user assets only to locations the user explicitly chooses under `Assets/`.
+Release temporary GPU buffers/textures, staging readbacks and preview objects on completion, failure, cancellation or exit. Prefer asynchronous readback where appropriate. Separate CPU-only recipe/manifest tests from GPU device tests.
 
-### 9.3 Transferability
+## 10. Export and File Safety
 
-- The embedded directory must be valid as a standalone UPM package with a unique reverse-domain package identifier and semantic version.
-- Users must be able to copy the directory to another project's `Packages/` folder or install it from a compatible local/Git package source.
-- The package should compile and operate in a clean Unity 6.3 URP test project.
-- Generated `.mat` and texture assets must remain valid if the plugin is subsequently removed (assuming the destination project retains the required URP shader or provides a compatible material conversion).
-- The package documentation must include installation, Unity/URP version support, minimum graphics requirements, output conventions and removal/migration instructions.
-
-### 9.4 Resource ownership
-
-Generation uses GPU resources with explicit, exception-safe lifecycle management. Temporary `RenderTexture`s, buffers, textures, preview objects and readback resources must be cleaned up on success, cancellation, failure, assembly reload and window closure.
-
-Use asynchronous GPU readback where supported and beneficial. Fail clearly if generation cannot run on the current environment; do not assume that a headless server or Unity batch process has a usable compute GPU. Tests that do not require hardware should be separated from GPU integration tests.
-
-## 10. Asset Generation and Safety
-
-- Export must validate output paths and asset names before writing.
-- A failed generation or import must not leave a partially successful material masquerading as valid.
-- A new export never silently overwrites an existing unrelated asset.
-- Regeneration targets only explicitly associated outputs and should preserve their GUIDs to avoid breaking references.
-- A manifest/recipe record must identify which assets belong to a generation set and their generator version.
-- The tool must not modify an existing project's renderer assets, terrain settings, Quality settings, Graphics settings, Addressables configuration or other global options.
-- Export/import settings must be explicit, repeatable and checked after import; Unity defaults are not a substitute.
-- When Unity import or GPU export fails, report the failure and prevent the operation from being presented as complete.
+- Validate destination paths, filenames, permissions and available disk space.
+- Produce outputs in temporary locations when practical; only publish a complete, validated set and manifest.
+- Never silently overwrite unknown or externally modified files. Use manifest ownership and recorded hashes for safe regeneration.
+- Record version, map roles, formats and output ownership in the manifest.
+- Never edit an engine project's renderer settings, Unity .meta files, GUIDs, Addressables or other engine-owned configuration.
+- Keep names/paths stable for reimport, but treat Unity GUID preservation as Unity importer behaviour, **not** something a desktop exporter can guarantee.
+- Report failed generation, encoding and writing accurately.
 
 ## 11. Performance and Resource Requirements
 
-The user experience should be responsive on a supported development GPU, but fixed generation-time promises must not be made before benchmarking. Profiling should distinguish feature generation, map conversion, GPU readback, encoding and AssetDatabase import.
+Keep the UI responsive on a supported development GPU; do not promise fixed timings before measurement. Profile generation, conversion, GPU readback, encoding, disk I/O and 3D preview separately. Unity import is a downstream process, not part of application generation time.
 
-Requirements:
+- Use reduced-resolution interactive previews and full-resolution export.
+- Cache stages safely, with correct invalidation.
+- Avoid synchronous disk writes/GPU readbacks in interactive slider updates.
+- Bound GPU memory at 2048 and optional 4096 resolutions.
+- Cancel superseded previews and prevent stale results from replacing current ones.
+- Surface hardware/memory errors instead of stalling.
 
-- Preview at a lower resolution while actively editing, with full-resolution generation on demand.
-- Avoid recomputing unchanged stages where safe; invalidation must not produce stale or inconsistent maps.
-- Avoid per-slider-change synchronous file writes or `AssetDatabase.Refresh` calls.
-- Control temporary GPU memory allocation, especially at 2048 and optional 4096 resolutions.
-- Cancel/ignore obsolete preview jobs and prevent stale readbacks from replacing the latest preview.
-- Surface memory or hardware-limit failures meaningfully.
-
-The acceptance benchmark machine, maximum time and GPU memory budget should be set after an initial implementation is profiled in Ninth Age and in a clean test project.
+Define acceptable timings and hardware budgets after representative platform benchmarks.
 
 ## 12. Validation and Acceptance Criteria
 
 ### 12.1 Functional acceptance
 
-- [ ] A user can open the tool in the Unity 6.3 Editor without entering Play mode.
-- [ ] The four initial material families each have at least one deliberately authored, convincing factory preset.
-- [ ] The user can modify meaningful parameters, change seed, preview and save a reusable recipe.
-- [ ] Loading a saved recipe restores its authored settings.
-- [ ] The tool exports a complete, internally consistent map set and correctly configured URP Lit material.
-- [ ] A generated material renders correctly on a Unity mesh independently of the plugin.
-- [ ] Preview and export use the same appearance-defining algorithms.
-- [ ] The user can regenerate a recipe-owned output set without breaking existing Unity references.
-- [ ] External/unowned assets are not silently overwritten.
-- [ ] Unsupported GPU or failed export paths report actionable errors.
+- [ ] Application opens, edits, previews, saves and exports with **no Unity installation**.
+- [ ] Each of the four initial families has a convincing authored preset.
+- [ ] Editable portable recipes restore all parameters and versions across supported operating systems.
+- [ ] Canonical PBR maps and complete versioned manifest export correctly.
+- [ ] Preview and output share the same look-producing algorithms.
+- [ ] Safe regeneration preserves unrelated/external files and identifies conflicts.
+- [ ] Unsupported GPUs, invalid inputs and export failures show useful errors.
+- [ ] Maps import and render correctly in Unity 6.3 URP, independently of a running studio.
+- [ ] Packaged workflows work on each advertised desktop OS.
 
 ### 12.2 Visual acceptance
 
-- [ ] Each material reads as its stated category at a normal Ninth Age gameplay camera distance.
-- [ ] No obvious seam appears across a 3 × 3 repeat in base colour, height, normal, roughness or AO.
-- [ ] Periodic boundary tests sample opposite edges and neighbourhood derivatives within an agreed numerical tolerance.
-- [ ] Normal detail and roughness reflect the same relief features rather than contradictory independent noise.
-- [ ] Materials remain visually legible under neutral, grazing, daytime and nighttime lighting.
-- [ ] Dielectric materials do not display physically implausible metallic response.
-- [ ] There are no dominant grid artefacts, oversized feature stamps or conspicuous repeated motifs except where intentionally authored.
+- [ ] Materials read correctly at normal Ninth Age gameplay distance.
+- [ ] No visible seams in 3 × 3 repeats of colour, height, normal, roughness or AO.
+- [ ] Tile-edge samples and neighbourhood derivatives satisfy numerical tolerances.
+- [ ] Colour, height, normal, roughness and AO derive from coherent feature geometry.
+- [ ] Materials stay legible under neutral, grazing, day and night lighting.
+- [ ] Dielectrics avoid implausible metallic response.
+- [ ] No unintended grid artefacts, oversized stamps or conspicuous repetition.
+- [ ] Unity URP appearance broadly matches the standalone preview within documented shader/lighting differences.
 
 ### 12.3 Automated acceptance
 
-- [ ] Recipe serialization and deserialization round-trip correctly.
-- [ ] Parameter validation rejects invalid values with useful diagnostics.
-- [ ] Identical recipe/seed/version inputs reproduce stable results within the supported tolerance.
-- [ ] All outputs have expected dimensions, channel use and import settings.
-- [ ] Normal vectors are valid and appropriately normalized, including across tile boundaries.
-- [ ] Scalar property maps have finite, in-range values and defined colour-space handling.
-- [ ] Export naming, conflict detection and GUID-preserving regeneration are covered by EditMode tests.
-- [ ] GPU tests and non-GPU tests are separated so batch/headless limitations are explicit.
-- [ ] The package compiles and generates assets when copied into a new clean Unity 6.3 URP project.
-- [ ] Ninth Age client/server assemblies and player builds introduce no dependency on the authoring package.
+- [ ] JSON recipe/manifest round trips and schema migrations pass tests.
+- [ ] Invalid values fail validation.
+- [ ] Same inputs give repeatable results within supported GPU/backend tolerances.
+- [ ] Map dimensions, colour spaces, normal orientation, channels and scalar values validate.
+- [ ] Normal vectors and periodic derivatives remain valid across boundaries.
+- [ ] Atomic export, manifest ownership, external modifications and failure cleanup are covered.
+- [ ] CPU-only schema/export tests and GPU integration tests are separated.
+- [ ] Windows/Linux/macOS builds and tests exist; advertised GPU configurations are hardware-tested.
+- [ ] Clean Unity 6.3 URP imports succeed without Ninth Age client/server or player-build dependency.
 
 ## 13. Delivery Phases
 
 | Phase | Scope | Exit criterion |
 |---|---|---|
-| **1. Package foundation** | Embedded UPM structure, Editor-only assembly, UI window, recipe schema, test harness, preview/export skeleton | Package loads independently and can round-trip a trivial recipe |
-| **2. Generation foundation** | Periodic procedural operators, masks/height pipeline, normal/roughness/AO derivation, deterministic seeds | Verified seamless, consistent synthetic PBR maps |
-| **3. First production materials** | Stone and soil generators, meaningful controls, authored factory presets | Materials pass visual and 3 × 3 tiling review |
-| **4. Terrain-oriented materials** | Grass and sand generators, refinements to repeat suppression, gameplay-distance review | Four required families meet the initial quality bar |
-| **5. Authoring/export polish** | Reliable URP Lit export, stable regeneration, saved recipes, undo/error handling, profiling | Production workflow passes functional and safety acceptance |
-| **6. Portability validation** | Clean project installation, package documentation, versioning, regression tests | Portable first release can be transferred without Ninth Age |
+| **1. Standalone foundation** | Dedicated repository, Rust/egui app, wgpu setup, JSON recipe schema and tests | Launches without Unity and round-trips a recipe |
+| **2. GPU generation foundation** | Periodic operators, shared feature maps, normal/roughness/AO, deterministic seeds | Verified seamless synthetic PBR |
+| **3. First materials** | Stone and soil, meaningful controls, factory presets | Visual and tiling checks pass |
+| **4. Terrain materials** | Grass and sand, repeat suppression, gameplay-distance review | All four families meet quality bar |
+| **5. UX/export polish** | Preview, manifest export, safe regeneration, optional URP packing, profiling | Reliable standalone workflow and Unity map import |
+| **6. Portability validation** | Tested builds for Windows/Linux/macOS, documentation, versions and regressions | First self-contained release on all advertised platforms |
 
-The phases are a recommended implementation sequence, not evidence of completed work. Detailed GitHub issues should be scoped from them after design approval.
+Phases are proposals, not claims of work completed. App-specific issues should live in the new application repository.
 
 ## 14. Deferred or Open Decisions
 
-These decisions should be made through deliberate design/profiling rather than silently fixed by the first implementation:
-
-1. **Package display name / final identifier:** `Procedural Texture Studio` and `com.frontierdev.procedural-texture-studio` are proposed names.
-2. **Exact output format options:** whether lossless high-bit-depth scalar/height exports are needed in the first release.
-3. **4096 support:** enable only after GPU memory use and import cost are evaluated.
-4. **Alternative render pipelines:** HDRP/Built-in adapters are not first-release targets.
-5. **Advanced blending:** two-material blends and layered moss, mud or wetness are useful, but must not compromise the simplicity and visual quality of individual generators.
-6. **Variation sets:** one-click material families with several coordinated variants, anti-repetition masks or macro-tint textures are possible later enhancements.
-7. **Custom shader interoperability:** explicit terrain shader adapters can be introduced later, but a generic, documented map export exists from the start.
-8. **Non-GPU execution:** a CPU reference backend may be valuable for unit tests or portability but is not a hidden fallback requirement.
+1. **Name/repository:** Procedural Texture Studio is a working title; create a dedicated repository.
+2. **Implementation stack:** validate Rust/egui/wgpu preview integration and platform support with a prototype.
+3. **Support matrix:** establish minimum OS/GPU/backend combinations from actual tests.
+4. **Precision:** decide whether 16-bit height and EXR are required for the first release.
+5. **4096:** benchmark memory, readback and file encoding.
+6. **Unity importer:** optional lightweight integration after validating manual URP imports.
+7. **Other engine adapters:** Godot, Unreal and custom packing can follow without changing canonical maps.
+8. **Advanced blends/variation sets:** later additions after baseline visual quality succeeds.
+9. **CPU generation and CLI:** possible future options, not silent fallback requirements.
 
 ## 15. Definition of Done
 
-The initial product is ready for practical use when a developer can install the package into Ninth Age, select one of four materially distinct generators, create a convincing seamless texture, adjust the parameters, inspect it at gameplay distance, export a correctly wired URP Lit material, save/regenerate the recipe without losing references, and then transfer the package to a clean Unity 6.3 URP project where the same workflow succeeds.
+The product is ready for practical use when a developer can **launch it without Unity**, select one of four materially distinct generators, author convincing seamless PBR maps, inspect them at gameplay distance, save and reopen portable recipes, safely export and regenerate maps with a manifest, and import the result into a clean Unity 6.3 URP project. The canonical maps must also be useful in other engines without requiring Ninth Age or Unity.
 
-**The success criterion is the quality and reusability of the generated materials—not feature count.**
+**Success is measured by material quality, portability and trustworthy exports — not feature count.**
 
 ---
 
 ## References
 
-- Ninth Age: `.docs/Graphical-Approach-PDD.md`
-- Ninth Age: `.docs/CSharp-Style-Conventions.md`
-- Ninth Age: `.docs/CSharp-Architecture.md`
-- Unity manual — Custom packages: https://docs.unity.com/en-us/engine/6000.0/manual/packages-list/cus-pkg-development/custom-packages
-- Unity manual — URP Lit shader material: https://docs.unity.com/en-us/engine/6000.0/manual/materials-and-shaders/built-in/shaders-in-universalrp/reference/lit-shader
+- Ninth Age Graphical Approach PDD (development branch)
+- Unity Manual — URP Lit shader and material conventions: https://docs.unity3d.com/6000.3/Documentation/Manual/urp/lit-shader.html
+- wgpu: https://wgpu.rs/
+- egui: https://github.com/emilk/egui
