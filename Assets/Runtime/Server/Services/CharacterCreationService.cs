@@ -56,7 +56,7 @@ namespace Game.Server.Services
             if (!validRace || !validClass || !validName)
             {
                 Debug.Log($"Character creation validation failed for player {playerId}. ValidRace: {validRace}, ValidClass: {validClass}, ValidName: {validName}");
-                // In a real implementation, you would send an error response back to the client here.
+                Game.Shared.Networking.AccountService.Client_NotifyCharacterCreationResult(playerId, false, "Character creation failed. Please check your selected options.");
                 return;
             }
             else
