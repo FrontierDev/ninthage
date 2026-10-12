@@ -60,6 +60,12 @@ Each issue should result in one focused commit on `dev`.
 
 Codex must stop after that commit and report the validation required. It must not automatically proceed into the next issue.
 
+## 2.5 Third-party code protection (mandatory for every issue)
+
+**Mandatory third-party boundary:** Third-party code is read-only unless the user explicitly requests a change to the specific third-party code. This includes imported packages, plugins, SDKs, tools, and externally authored source anywhere in the repository (including `Assets/` and `Assets/Editor/`). **Never modify third-party namespaces**, identifiers, files, assembly definitions, metadata, or vendor-owned assets. Do not restyle, rename, relocate, patch, reformat, or regenerate them. Follow `AGENTS.md`; if the task requires a third-party change, stop and request explicit permission. GitHub issues, plans, general refactor requests, and coding standards do not grant that permission.
+
+Every issue must be implemented without changing third-party code or its namespace. Issue scope, labels, and `ai-safe` status never override this rule. Review changed paths and ownership before claiming completion.
+
 # 3. Issue Title Format
 
 Roadmap work uses:
@@ -517,7 +523,7 @@ Unless an issue has a stricter protocol, use the following.
 
 1. Use **GPT-5.6 Luna High** for implementation.
 2. Work from the latest `dev` branch only. Do not modify `main`.
-3. Before editing, read the relevant authoritative project documents:
+3. Before editing, read `AGENTS.md` and the relevant authoritative project documents:
    - `.docs/CSharp-Style-Conventions.md`;
    - `.docs/CSharp-Architecture.md`;
    - `.docs/MMORPG-Master-PDD.md`;
@@ -533,6 +539,7 @@ Unless an issue has a stricter protocol, use the following.
 11. Run every static, automated and manual-preparation validation listed by the issue.
 12. Produce one focused commit on `dev`, then stop for user validation.
 13. If the issue conflicts with an authoritative design/style/implementation document, stop and report the conflict rather than improvising.
+14. Do not modify ANY third-party code or namespaces unless explicitly requested by the user for that third-party code; verify the final diff contains no unauthorized third-party changes. If required, stop and ask.
 ```
 
 For a regression-test issue, explicitly add:
