@@ -1,25 +1,28 @@
-using UnityEngine;
 using System.Collections;
 using Unity.Entities;
+using UnityEngine;
 
 namespace Game.Core
 {
+    /// <summary>
+    /// Selects the client or headless-server startup path and bootstraps the corresponding runtime initialization sequence.
+    /// </summary>
     public class GameBootstrapper : MonoBehaviour
     {
-        private static GameBootstrapper instance;
+        private static GameBootstrapper _instance;
 
         [SerializeField] protected bool forceServerMode = false; // Editor testing toggle for server mode
 
         #region Lifecycle
         private void Awake()
         {
-            if (instance != null && instance != this)
+            if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
 
-            instance = this;
+            _instance = this;
             DontDestroyOnLoad(gameObject);
 
             // Detect execution context and route accordingly
@@ -46,8 +49,8 @@ namespace Game.Core
         /// <returns>True if headless server mode, false for client mode</returns>
         private static bool IsHeadlessServer()
         {
-            bool isBatchMode = Application.isBatchMode;
-            bool hasNoGraphics = SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null;
+            var isBatchMode = Application.isBatchMode;
+            var hasNoGraphics = SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null;
 
             return isBatchMode || hasNoGraphics;
         }
