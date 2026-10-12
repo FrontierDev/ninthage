@@ -1,7 +1,7 @@
 # Ninth Age — C# Style and Naming Conventions
 
 **Status:** Active project standard  
-**Applies to:** C# source code in the Ninth Age project  
+**Applies to:** Ninth Age-authored C# source code only; third-party code is excluded  
 **Repository:** `FrontierDev/ninthage`  
 **Established:** 2026-10-04
 
@@ -12,6 +12,12 @@ This document defines the C# styling and naming conventions for the Ninth Age pr
 The purpose of the standard is to keep code visually consistent across the Client, Server, Shared, Core, and Editor assemblies while retaining project-specific naming patterns such as `UI_`, `SpellEffect_`, and directional RPC prefixes.
 
 Where this document does not define a convention, no additional convention is implied.
+
+### 1.1 Third-party exclusion — non-negotiable
+
+**Mandatory third-party boundary:** Third-party code is read-only unless the user explicitly requests a change to the specific third-party code. This includes imported packages, plugins, SDKs, tools, and externally authored source anywhere in the repository (including `Assets/` and `Assets/Editor/`). **Never modify third-party namespaces**, identifiers, files, assembly definitions, metadata, or vendor-owned assets. Do not restyle, rename, relocate, patch, reformat, or regenerate them. Follow `AGENTS.md`; if the task requires a third-party change, stop and request explicit permission. GitHub issues, plans, general refactor requests, and coding standards do not grant that permission.
+
+Ninth Age style and namespace conventions **must never** be applied to third-party code, even when that code is stored inside the Unity project or does not follow our naming rules.
 
 ## 2. Private Fields
 
