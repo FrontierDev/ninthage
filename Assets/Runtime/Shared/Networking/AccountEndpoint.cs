@@ -64,10 +64,10 @@ namespace Game.Shared.Networking
 
         [ServerRpc]
         /// <summary>Requests entry into the world for a character.</summary>
-        public static void Server_RequestEnterWorld(string characterGuid, RPCInfo rpcInfo = default)
+        public static void Server_RequestEnterWorld(string characterGUID, RPCInfo rpcInfo = default)
         {
-            Debug.Log($"Received request to enter world with character ID {characterGuid} from player {rpcInfo.sender}.");
-            onEnterWorldRequest?.Invoke(rpcInfo.sender, characterGuid);
+            Debug.Log($"Received request to enter world with character ID {characterGUID} from player {rpcInfo.sender}.");
+            onEnterWorldRequest?.Invoke(rpcInfo.sender, characterGUID);
         }
 
         [TargetRpc]

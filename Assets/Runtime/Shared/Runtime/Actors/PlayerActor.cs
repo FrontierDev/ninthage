@@ -95,7 +95,7 @@ namespace Game.Shared
         /// <summary>Gets the player's combat faction.</summary>
         public override FactionDefinition GetCombatFaction()
         {
-            return GetComponent<PlayerReputation>().PvPFaction;
+            return GetComponent<PlayerReputation>().PVPFaction;
         }
     }
 }

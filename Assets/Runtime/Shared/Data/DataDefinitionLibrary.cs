@@ -23,14 +23,14 @@ namespace Game.Shared.Data
         /// <summary>
         /// Get a definition by ID.
         /// </summary>
-        public T GetDefinition(string definitionId)
+        public T GetDefinition(string definitionID)
         {
             foreach (var def in _definitions)
             {
-                if (def != null && def.DefinitionId == definitionId)
+                if (def != null && def.DefinitionID == definitionID)
                     return def;
             }
-            Debug.LogWarning($"[{GetType().Name}] Definition '{definitionId}' not found");
+            Debug.LogWarning($"[{GetType().Name}] Definition '{definitionID}' not found");
             return null;
         }
 
@@ -45,9 +45,9 @@ namespace Game.Shared.Data
         /// <summary>
         /// Check if a definition ID exists in this library.
         /// </summary>
-        public bool HasDefinition(string definitionId)
+        public bool HasDefinition(string definitionID)
         {
-            return _definitions.Any(d => d != null && d.DefinitionId == definitionId);
+            return _definitions.Any(d => d != null && d.DefinitionID == definitionID);
         }
 
         /// <summary>
@@ -75,14 +75,14 @@ namespace Game.Shared.Data
                     continue;
                 }
 
-                if (seenIds.Contains(def.DefinitionId))
+                if (seenIds.Contains(def.DefinitionID))
                 {
-                    Debug.LogError($"[{GetType().Name}] Duplicate definition ID: {def.DefinitionId}");
+                    Debug.LogError($"[{GetType().Name}] Duplicate definition ID: {def.DefinitionID}");
                     isValid = false;
                 }
                 else
                 {
-                    seenIds.Add(def.DefinitionId);
+                    seenIds.Add(def.DefinitionID);
                 }
             }
 

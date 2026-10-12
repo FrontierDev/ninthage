@@ -184,7 +184,7 @@ namespace Game.Shared.Data
             foreach (var cost in ctx.Spell.BaseDefinition.BaseResourceCosts)
             {
                 if (cost.CastPhase != SpellCastPhase.OnCastEnd) continue;
-                if (cost.ResourceType.DefinitionId != "mana") continue;
+                if (cost.ResourceType.DefinitionID != "mana") continue;
                 totalManaCost += cost.Amount;
             }
 
@@ -360,8 +360,8 @@ namespace Game.Shared.Data
                 EntryType = CombatHistoryEntryType.Damage,
                 ResultType = CombatLogResultType.Hit,
                 HitType = SpellHitType.Ability,
-                DamageTypes = instabilityDamageSchool != null
-                    ? new() { instabilityDamageSchool }
+                DamageTypes = _instabilityDamageSchool != null
+                    ? new() { _instabilityDamageSchool }
                     : new()
             });
 

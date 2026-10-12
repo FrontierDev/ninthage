@@ -81,7 +81,7 @@ namespace Game.Client.UI
             if (playerStatContainer == null || trackedStat == null) return;
             base.Refresh();
 
-            if (!playerStatContainer.TryGetStat(trackedStat.DefinitionId, out var stat)) return;
+            if (!playerStatContainer.TryGetStat(trackedStat.DefinitionID, out var stat)) return;
 
             if (Mathf.FloorToInt(stat.EffectiveMaximum) != currentMax)
             {

@@ -137,7 +137,7 @@ namespace Game.Client.UI
                     var entry = entryObj.GetComponent<UI_ContextMenuEntry>();
                     entry.Initialize(spellDef.DisplayName, spellDef.Icon, () =>
                     {
-                        SetSpell(spellDef.DefinitionId, 1, spellDef.Icon);
+                        SetSpell(spellDef.DefinitionID, 1, spellDef.Icon);
                         UI_ContextMenuWindow.Instance.Hide();
                     });
                     entry.Register(panel);

@@ -27,7 +27,7 @@ namespace Game.Shared.Data
         {
             if (_mitigationRatingStat == null) return 0f;
 
-            float rating = targetStats.GetStat(_mitigationRatingStat.DefinitionId)?.CurrentValue ?? 0f;
+            float rating = targetStats.GetStat(_mitigationRatingStat.DefinitionID)?.CurrentValue ?? 0f;
             if (rating <= 0f) return 0f;
 
             var actor = targetStats.GetComponent<Actor>();

@@ -154,8 +154,8 @@ namespace Game.Editor.Windows
                     {
                         EditorGUI.indentLevel++;
                         var npcActor = prefab.GetComponent<NPCActor>();
-                        string npcId = npcActor != null && !string.IsNullOrEmpty(npcActor.NpcID)
-                            ? npcActor.NpcID
+                        string npcId = npcActor != null && !string.IsNullOrEmpty(npcActor.NPCID)
+                            ? npcActor.NPCID
                             : "(no ID)";
                         EditorGUILayout.LabelField($"ID: {npcId}", EditorStyles.miniLabel);
                         EditorGUI.indentLevel--;
@@ -185,7 +185,7 @@ namespace Game.Editor.Windows
                 if (p.name.ToLower().Contains(lower)) return true;
                 var actor = p.GetComponent<NPCActor>();
 
-                if (actor != null && actor.NpcID != null && actor.NpcID.ToLower().Contains(lower)) return true;
+                if (actor != null && actor.NPCID != null && actor.NPCID.ToLower().Contains(lower)) return true;
                 var profile = p.GetComponent<NPCActor>();
 
                 if (profile != null && profile.Name != null && profile.Name.ToLower().Contains(lower)) return true;
@@ -293,18 +293,18 @@ namespace Game.Editor.Windows
             baseStatsList = null;
             knownSpellsList = null;
 
-            AutoSetNpcID(selected);
+            AutoSetNPCID(selected);
             LoadCachedSpellDefinitions();
         }
 
         /// <summary>
-        /// Assigns a stable GUID to NpcID if one has not been set yet.
+        /// Assigns a stable GUID to NPCID if one has not been set yet.
         /// </summary>
-        private void AutoSetNpcID(GameObject prefab)
+        private void AutoSetNPCID(GameObject prefab)
         {
             if (actorSO == null) return;
 
-            var idProp = actorSO.FindProperty("NpcID");
+            var idProp = actorSO.FindProperty("NPCID");
             if (!string.IsNullOrEmpty(idProp.stringValue)) return;
 
             idProp.stringValue = System.Guid.NewGuid().ToString();
@@ -326,7 +326,7 @@ namespace Game.Editor.Windows
             var allSpells = AssetDatabase.FindAssets("t:SpellDefinition")
                 .Select(g => AssetDatabase.LoadAssetAtPath<SpellDefinition>(AssetDatabase.GUIDToAssetPath(g)))
                 .Where(s => s != null)
-                .ToDictionary(s => s.DefinitionId, s => s);
+                .ToDictionary(s => s.DefinitionID, s => s);
 
             foreach (var id in spellcaster.KnownSpellIDs)
             {
@@ -350,7 +350,7 @@ namespace Game.Editor.Windows
             {
                 if (def == null) continue;
                 prop.InsertArrayElementAtIndex(prop.arraySize);
-                prop.GetArrayElementAtIndex(prop.arraySize - 1).stringValue = def.DefinitionId;
+                prop.GetArrayElementAtIndex(prop.arraySize - 1).stringValue = def.DefinitionID;
             }
 
             spellcasterSO.ApplyModifiedProperties();
@@ -388,7 +388,7 @@ namespace Game.Editor.Windows
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField("NPC ID:", GUILayout.Width(130));
                 EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.TextField(actorSO.FindProperty("NpcID").stringValue);
+                EditorGUILayout.TextField(actorSO.FindProperty("NPCID").stringValue);
                 EditorGUI.EndDisabledGroup();
                 if (GUILayout.Button("Regenerate", GUILayout.Width(90)))
                 {
@@ -396,7 +396,7 @@ namespace Game.Editor.Windows
                         "Generating a new GUID will break any existing references to this NPC ID. Continue?",
                         "Regenerate", "Cancel"))
                     {
-                        var idProp = actorSO.FindProperty("NpcID");
+                        var idProp = actorSO.FindProperty("NPCID");
                         idProp.stringValue = System.Guid.NewGuid().ToString();
                         actorSO.ApplyModifiedProperties();
                         var actor = selected.GetComponent<NPCActor>();

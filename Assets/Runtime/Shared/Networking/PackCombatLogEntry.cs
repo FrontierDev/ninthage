@@ -25,7 +25,7 @@ namespace Game.Shared.Networking
                 foreach (var dt in value.DamageTypes)
                 {
                     if (dt == null) continue;
-                    packer.Write(dt.DefinitionId);
+                    packer.Write(dt.DefinitionID);
                 }
             packer.Write((int)value.ResultType);
             packer.Write((int)value.HitType);

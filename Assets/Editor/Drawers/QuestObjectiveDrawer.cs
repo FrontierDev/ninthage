@@ -115,10 +115,10 @@ namespace Game.Editor.Drawers
                 enter = false;
                 float h = EditorGUI.GetPropertyHeight(iterator, true);
 
-                // For Quest_KillObjective.targetNpcID, show an NPC prefab picker instead of a raw string
-                if (iterator.name == "targetNpcID")
+                // For Quest_KillObjective.targetNPCID, show an NPC prefab picker instead of a raw string
+                if (iterator.name == "_targetNPCID")
                 {
-                    DrawNpcIDField(new Rect(position.x, y, position.width, h), iterator);
+                    DrawNPCIDField(new Rect(position.x, y, position.width, h), iterator);
                 }
                 // For Quest_ItemObjective.targetItemID, show an ItemDefinition picker
                 else if (iterator.name == "targetItemID")
@@ -138,8 +138,8 @@ namespace Game.Editor.Drawers
             EditorGUI.EndProperty();
         }
 
-        // Draws an NPCActor prefab picker and writes its NpcID string back to the property.
-        private static void DrawNpcIDField(Rect rect, SerializedProperty prop)
+        // Draws an NPCActor prefab picker and writes its NPCID string back to the property.
+        private static void DrawNPCIDField(Rect rect, SerializedProperty prop)
         {
             float labelWidth = EditorGUIUtility.labelWidth;
             var labelRect = new Rect(rect.x, rect.y, labelWidth, rect.height);
@@ -160,13 +160,13 @@ namespace Game.Editor.Drawers
             if (EditorGUI.EndChangeCheck())
             {
                 if (picked != null && picked.TryGetComponent<Game.Shared.NPCActor>(out var npc))
-                    prop.stringValue = npc.NpcID ?? string.Empty;
+                    prop.stringValue = npc.NPCID ?? string.Empty;
                 else
                     prop.stringValue = string.Empty;
             }
         }
 
-        // Draws an ItemDefinition asset picker and writes its DefinitionId back to the property.
+        // Draws an ItemDefinition asset picker and writes its DefinitionID back to the property.
         private static void DrawItemIDField(Rect rect, SerializedProperty prop)
         {
             float labelWidth = EditorGUIUtility.labelWidth;
@@ -181,13 +181,13 @@ namespace Game.Editor.Drawers
             {
                 currentItem = AssetDatabase.FindAssets("t:ItemDefinition")
                     .Select(g => AssetDatabase.LoadAssetAtPath<ItemDefinition>(AssetDatabase.GUIDToAssetPath(g)))
-                    .FirstOrDefault(i => i != null && i.DefinitionId == currentId);
+                    .FirstOrDefault(i => i != null && i.DefinitionID == currentId);
             }
 
             EditorGUI.BeginChangeCheck();
             var picked = (ItemDefinition)EditorGUI.ObjectField(fieldRect, currentItem, typeof(ItemDefinition), false);
             if (EditorGUI.EndChangeCheck())
-                prop.stringValue = picked != null ? picked.DefinitionId : string.Empty;
+                prop.stringValue = picked != null ? picked.DefinitionID : string.Empty;
         }
 
         private static GameObject FindNpcPrefabById(string npcId)
@@ -198,7 +198,7 @@ namespace Game.Editor.Drawers
                 {
                     if (go == null) return false;
                     if (!go.TryGetComponent<Game.Shared.NPCActor>(out var npc)) return false;
-                    return npc.NpcID == npcId;
+                    return npc.NPCID == npcId;
                 });
         }
     }

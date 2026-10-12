@@ -8,7 +8,7 @@ using Game.Shared;
 namespace Game.Client.Utility
 {
     /// <summary>
-    /// Resolves $Category.Id$ placeholders in text strings.
+    /// Resolves $Category.ID$ placeholders in text strings.
     /// Register custom handlers per category using RegisterResolver.
     /// The "stat" category is built-in; set LocalContainer to resolve live values.
     /// </summary>
@@ -71,7 +71,7 @@ namespace Game.Client.Utility
                 def.BaseValueMode == ActorStatBaseValueMode.Rating &&
                 def.SourceStat != null)
             {
-                if (!LocalContainer.TryGetStat(def.SourceStat.DefinitionId, out var sourceStat))
+                if (!LocalContainer.TryGetStat(def.SourceStat.DefinitionID, out var sourceStat))
                     return def.DisplayName;
 
                 int level = ClientAccountManager.PlayerActor.GetLevel();
@@ -95,7 +95,7 @@ namespace Game.Client.Utility
 
             int level = ClientAccountManager.PlayerActor.GetLevel();
             if (school.MitigationRatingStat == null) return "0.0%";
-            if (!LocalContainer.TryGetStat(school.MitigationRatingStat.DefinitionId, out var ratingStat))
+            if (!LocalContainer.TryGetStat(school.MitigationRatingStat.DefinitionID, out var ratingStat))
                 return "0.0%";
 
             float mitigation = CombatRatingHelper.RatingToPercent(ratingStat.EffectiveMaximum, level, school.RatingPerPercent);

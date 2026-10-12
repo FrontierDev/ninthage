@@ -43,8 +43,8 @@ namespace Game.Client
 
         public void SelectClass(ClassDefinition def)
         {
-            Debug.Log($"Selected class: {def.DefinitionId}");
-            _selectedClassId = def.DefinitionId;
+            Debug.Log($"Selected class: {def.DefinitionID}");
+            _selectedClassId = def.DefinitionID;
             characterCreationWindow.onClassSelected?.Invoke(def);
         }
 
@@ -52,8 +52,8 @@ namespace Game.Client
 
         public void SelectRace(RaceDefinition def)
         {
-            Debug.Log($"Selecteed race: {def.DefinitionId}");
-            _selectedRaceId = def.DefinitionId;
+            Debug.Log($"Selecteed race: {def.DefinitionID}");
+            _selectedRaceId = def.DefinitionID;
             characterCreationWindow.onRaceSelected?.Invoke(def);
         }
 

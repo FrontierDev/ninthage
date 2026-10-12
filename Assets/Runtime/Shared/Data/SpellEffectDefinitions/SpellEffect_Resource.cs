@@ -39,7 +39,7 @@ namespace Game.Shared.Data
             var statContainer = target.GetComponent<ActorStatContainer>();
             if (statContainer != null)
             {
-                statContainer.AddCurrentValue(Resource.DefinitionId, Amount);
+                statContainer.AddCurrentValue(Resource.DefinitionID, Amount);
             }
         }
     }

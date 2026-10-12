@@ -7,7 +7,7 @@ namespace Game.Shared.Networking
     public struct StatSnapshotEntry
     {
         /// <summary>Gets or sets the stat identifier.</summary>
-        public string StatId;
+        public string StatID;
         /// <summary>Gets or sets the effective maximum value.</summary>
         public float EffectiveMax;
         /// <summary>Gets or sets the flat modifier.</summary>

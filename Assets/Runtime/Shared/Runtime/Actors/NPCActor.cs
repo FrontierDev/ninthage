@@ -10,7 +10,8 @@ namespace Game.Shared
         /// <summary>Gets whether this actor is a player.</summary>
         public override bool IsPlayer => false;
         /// <summary>Gets or sets the NPC definition identifier.</summary>
-        public string NpcID = null;
+        [FormerlySerializedAs("NpcID")]
+        public string NPCID = null;
         [SerializeField, FormerlySerializedAs("DisplayName")] private string _displayName = "";
         [SerializeField, Range(1, 100)] public (int, int) levelRange = (1, 1);
 

@@ -52,7 +52,7 @@ namespace Game.Server.Networking
                             {
                                 if (objective is Quest_KillObjective killObjective)
                                 {
-                                    if (killObjective.TargetNpcID == (actor as NPCActor).NpcID)
+                                    if (killObjective.TargetNPCID == (actor as NPCActor).NPCID)
                                     {
                                         quest.Progress[quest.Quest.Objectives.ToList().IndexOf(objective)] += 1;
                                         updateQuest = true;
@@ -62,7 +62,7 @@ namespace Game.Server.Networking
 
                             if (updateQuest)
                             {
-                                CharacterEndpoint.Client_QuestUpdated(playerActor.Owner.Value, quest.Quest.DefinitionId, quest.Progress, quest.IsCompleted);
+                                CharacterEndpoint.Client_QuestUpdated(playerActor.Owner.Value, quest.Quest.DefinitionID, quest.Progress, quest.IsCompleted);
                             }
                         }
                     }

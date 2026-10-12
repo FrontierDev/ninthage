@@ -4,10 +4,10 @@ using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
-    // TestClassBehaviour.cs — one asset handles all test passives
+    // Test_ClassBehaviour.cs — one asset handles all test passives
     /// <summary>Provides the test class passive behaviours.</summary>
     [CreateAssetMenu(menuName = "NinthAge/Class Behaviours/Test")]
-    public class TestClassBehaviour : ClassBehaviour
+    public class Test_ClassBehaviour : ClassBehaviour
     {
         [SerializeField, FormerlySerializedAs("manaPerHit")] private float _manaPerHit = 10f;
         [SerializeField, FormerlySerializedAs("manaOnDamageTaken")] private float _manaOnDamageTaken = 5f;

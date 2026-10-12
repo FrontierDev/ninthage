@@ -86,7 +86,7 @@ namespace Game.Server
 
         private void OnSpellCastCancelRequested(Actor actor)
         {
-            TryInterruptCast(actor.Id);
+            TryInterruptCast(actor.ID);
         }
 
         #region Spell Cast Lifecycle
@@ -99,13 +99,13 @@ namespace Game.Server
         private bool IsValidated(Actor caster, SpellOverride spell)
         {
             // Cooldown gate: block if this spell is on individual cooldown.
-            if (ServerCooldownManager.Instance.IsOnCooldown(caster.Id, spell.BaseDefinition.DefinitionId))
+            if (ServerCooldownManager.Instance.IsOnCooldown(caster.ID, spell.BaseDefinition.DefinitionID))
             {
                 return false;
             }
 
             // GCD gate: block if a GCD-triggering spell is attempted while GCD is active.
-            if (spell.BaseDefinition.TriggersGCD && ServerCooldownManager.Instance.IsOnCooldown(caster.Id, ServerCooldownManager.GCD_ID))
+            if (spell.BaseDefinition.TriggersGCD && ServerCooldownManager.Instance.IsOnCooldown(caster.ID, ServerCooldownManager.GCD_ID))
             {
                 return false;
             }
@@ -129,12 +129,12 @@ namespace Game.Server
                 foreach (var entity in entities)
                 {
                     var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != caster.Id) continue;
+                    if (component.ActorId != caster.ID) continue;
 
                     // Create the spell context here.
                     SpellContext ctx = new(spell, caster, caster.Target);
                     ctx.PositionTarget = spell.PositionTarget;
-                    _activeSpellCasts[caster.Id] = ctx;
+                    _activeSpellCasts[caster.ID] = ctx;
 
                     // Skip ECS and event invocation if the cast time is 0 or less 
                     // - just complete the cast immediately.
@@ -142,17 +142,17 @@ namespace Game.Server
                     {
                         // Trigger GCD for instant casts.
                         if (spell.BaseDefinition.TriggersGCD)
-                            ActorEndpoint.onServerStartCooldown?.Invoke(caster.Id, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
+                            ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
 
                         // Instant cast - skip straight to completion.
-                        OnSpellCastCompleted(caster.Id, spell.BaseDefinition.DefinitionId);
+                        OnSpellCastCompleted(caster.ID, spell.BaseDefinition.DefinitionID);
                         return;
                     }
                     else
                     {
                         entityManager.SetComponentData(entity, new ECS.SpellCastComponent
                         {
-                            SpellID = spell.BaseDefinition.DefinitionId,
+                            SpellID = spell.BaseDefinition.DefinitionID,
                             RemainingCastTime = spell.CastTime,
                             TotalCastTime = spell.CastTime,
                             TotalTicks = spell.TotalTicks,
@@ -162,7 +162,7 @@ namespace Game.Server
                         entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, true);
 
                         caster.GetComponent<ActorSpellcaster>()
-                              ?.Observer_StartSpellCast(spell.BaseDefinition.DefinitionId, spell.CastTime);
+                              ?.Observer_StartSpellCast(spell.BaseDefinition.DefinitionID, spell.CastTime);
 
                         Debug.Log($"Spell cast started: {caster.Name} casting '{spell.BaseDefinition.DisplayName}' ({spell.CastTime}s)");
                     }
@@ -170,7 +170,7 @@ namespace Game.Server
                     // Trigger GCD for casted spells (at cast start).
                     if (spell.BaseDefinition.TriggersGCD)
                     {
-                        ActorEndpoint.onServerStartCooldown?.Invoke(caster.Id, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
+                        ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
 
                         if (caster.Owner != null)
                             caster.GetComponent<ActorSpellcaster>()?.Client_StartGlobalCooldown(caster.Owner.Value, GameConfigurationManager.Config.GlobalCooldownDuration);
@@ -179,10 +179,10 @@ namespace Game.Server
                     // Channelled spells start their individual cooldown immediately.
                     if (spell.BaseDefinition.IsChanneled && spell.Cooldown > 0f)
                     {
-                        ActorEndpoint.onServerStartCooldown?.Invoke(caster.Id, spell.BaseDefinition.DefinitionId, spell.Cooldown);
+                        ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, spell.BaseDefinition.DefinitionID, spell.Cooldown);
 
                         if (caster.Owner != null)
-                            caster.GetComponent<ActorSpellcaster>()?.Client_StartSpellCooldown(caster.Owner.Value, spell.BaseDefinition.DefinitionId, spell.Cooldown);
+                            caster.GetComponent<ActorSpellcaster>()?.Client_StartSpellCooldown(caster.Owner.Value, spell.BaseDefinition.DefinitionID, spell.Cooldown);
                     }
 
                     // Apply resource costs here.
@@ -191,9 +191,9 @@ namespace Game.Server
                     {
                         if (cost.CastPhase != SpellCastPhase.OnCastStart) continue;
 
-                        var stat = statContainer.GetStat(cost.ResourceType.DefinitionId);
+                        var stat = statContainer.GetStat(cost.ResourceType.DefinitionID);
                         float newCurrent = Mathf.Max(0f, stat.CurrentValue - cost.Amount);
-                        statContainer.SetStat(cost.ResourceType.DefinitionId, new StatInstance(
+                        statContainer.SetStat(cost.ResourceType.DefinitionID, new StatInstance(
                             stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                             stat.EffectiveMaximum, newCurrent));
 
@@ -211,7 +211,7 @@ namespace Game.Server
                 entities.Dispose();
             }
 
-            Debug.Warning($"Could not find ECS entity for actor {caster.Name} (ID: {caster.Id})");
+            Debug.Warning($"Could not find ECS entity for actor {caster.Name} (ID: {caster.ID})");
         }
 
         /// <summary>
@@ -242,9 +242,9 @@ namespace Game.Server
             {
                 if (cost.CastPhase != SpellCastPhase.OnChannelTick) continue;
 
-                var stat = statContainer.GetStat(cost.ResourceType.DefinitionId);
+                var stat = statContainer.GetStat(cost.ResourceType.DefinitionID);
                 float newCurrent = Mathf.Max(0f, stat.CurrentValue - cost.Amount);
-                statContainer.SetStat(cost.ResourceType.DefinitionId, new StatInstance(
+                statContainer.SetStat(cost.ResourceType.DefinitionID, new StatInstance(
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, newCurrent));
 
@@ -351,9 +351,9 @@ namespace Game.Server
             {
                 if (cost.CastPhase != SpellCastPhase.OnCastEnd) continue;
 
-                var stat = statContainer.GetStat(cost.ResourceType.DefinitionId);
+                var stat = statContainer.GetStat(cost.ResourceType.DefinitionID);
                 float newCurrent = Mathf.Max(0f, stat.CurrentValue - cost.Amount);
-                statContainer.SetStat(cost.ResourceType.DefinitionId, new StatInstance(
+                statContainer.SetStat(cost.ResourceType.DefinitionID, new StatInstance(
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, newCurrent));
 
@@ -405,7 +405,7 @@ namespace Game.Server
             if (!_activeSpellCasts.TryGetValue(actorId, out var ctx))
                 return false;
 
-            ActorEndpoint.onServerSpellCastInterrupted?.Invoke(actorId, ctx.Spell.BaseDefinition.DefinitionId);
+            ActorEndpoint.onServerSpellCastInterrupted?.Invoke(actorId, ctx.Spell.BaseDefinition.DefinitionID);
             return true;
         }
     }

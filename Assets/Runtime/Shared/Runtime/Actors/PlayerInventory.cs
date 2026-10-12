@@ -127,7 +127,7 @@ namespace Game.Shared
                 if (_inventory.ContainsKey(i)) continue;
 
                 int stackAmount = canStack ? (remaining < maxStack ? remaining : maxStack) : 1;
-                var newInstance = new ItemInstance(System.Guid.NewGuid().ToString("N"), definition.DefinitionId, new List<string>(item.Modifications), item.Durability, stackAmount);
+                var newInstance = new ItemInstance(System.Guid.NewGuid().ToString("N"), definition.DefinitionID, new List<string>(item.Modifications), item.Durability, stackAmount);
                 _inventory[i] = newInstance;
                 remaining -= stackAmount;
                 changes.Add(new InventorySlotChange(i, InventorySlotChangeType.Set, newInstance));
@@ -144,7 +144,7 @@ namespace Game.Shared
         /// Removes the given amount of items matching the specified definition from the inventory.
         /// Returns the number of items that could not be removed (0 = all removed).
         /// </summary>
-        public int RemoveItem(string itemId, int amount = 1)
+        public int RemoveItem(string itemID, int amount = 1)
         {
             if (!Game.Shared.Runtime.IsServer() || amount <= 0)
                 return amount;
@@ -157,7 +157,7 @@ namespace Game.Shared
             {
                 if (remaining <= 0) break;
                 var existing = kvp.Value;
-                if (existing.BaseItem == null || existing.BaseItem.DefinitionId != itemId) continue;
+                if (existing.BaseItem == null || existing.BaseItem.DefinitionID != itemID) continue;
 
                 if (existing.CurrentStackSize <= remaining)
                 {
@@ -291,7 +291,7 @@ namespace Game.Shared
 
             var newInstance = new ItemInstance(
                 System.Guid.NewGuid().ToString("N"),
-                definition.DefinitionId,
+                definition.DefinitionID,
                 new List<string>(fromItem.Modifications),
                 fromItem.Durability,
                 amount);

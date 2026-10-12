@@ -70,7 +70,7 @@ namespace Game.Client
 
         private void OnActorOwnershipTaken(Actor actor)
         {
-            Debug.Log($"Taking control of {actor.Name} (ID: {actor.Id})");
+            Debug.Log($"Taking control of {actor.Name} (ID: {actor.ID})");
             _playerActor = actor;
             Game.Client.Utility.PlaceholderText.LocalContainer = actor.GetComponent<ActorStatContainer>();
             Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned?.Invoke(actor);
@@ -92,7 +92,7 @@ namespace Game.Client
             // Intialize the special resource UI if applicable.
             UI_SpecialResourcePanel.Instance.OnPlayerActorAssigned(actor);
 
-            Debug.Log($"Player actor assigned: {actor.Name} (ID: {actor.Id})");
+            Debug.Log($"Player actor assigned: {actor.Name} (ID: {actor.ID})");
         }
 
         private void OnClientLearnedSpell(string spellID)

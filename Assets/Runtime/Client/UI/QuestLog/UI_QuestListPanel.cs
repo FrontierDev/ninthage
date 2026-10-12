@@ -47,13 +47,13 @@ namespace Game.Client.UI
             base.Refresh();
 
             var activeQuestIds = new System.Collections.Generic.HashSet<string>(
-                quests.ActiveQuests.Select(q => q.Quest.DefinitionId));
+                quests.ActiveQuests.Select(q => q.Quest.DefinitionID));
 
             // Remove entries for quests no longer active
             for (int i = currentEntries.Count - 1; i >= 0; i--)
             {
                 var entry = currentEntries[i] as UI_QuestListEntry;
-                if (entry == null || !activeQuestIds.Contains(entry.Data.DefinitionId))
+                if (entry == null || !activeQuestIds.Contains(entry.Data.DefinitionID))
                 {
                     Destroy(currentEntries[i].gameObject);
                     currentEntries.RemoveAt(i);
@@ -65,7 +65,7 @@ namespace Game.Client.UI
             foreach (var questProgress in quests.ActiveQuests)
             {
                 var existing = currentEntries
-                    .FirstOrDefault(e => (e as UI_QuestListEntry)?.Data.DefinitionId == questProgress.Quest.DefinitionId)
+                    .FirstOrDefault(e => (e as UI_QuestListEntry)?.Data.DefinitionID == questProgress.Quest.DefinitionID)
                     as UI_QuestListEntry;
 
                 if (existing != null)

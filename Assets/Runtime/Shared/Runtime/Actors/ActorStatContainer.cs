@@ -54,18 +54,18 @@ namespace Game.Shared
         public ActorStatModifierSource Source;
         public string SourceID;
 
-        public string StatId;
+        public string StatID;
         public float FlatModifier;
         public float PercentModifier;
 
-        public StatModifier(string statId, float flatModifier, float percentModifier, ActorStatModifierSource source = ActorStatModifierSource.Talent, string sourceId = "")
+        public StatModifier(string statID, float flatModifier, float percentModifier, ActorStatModifierSource source = ActorStatModifierSource.Talent, string sourceID = "")
         {
-            StatId = statId;
+            StatID = statID;
             FlatModifier = flatModifier;
             PercentModifier = percentModifier;
 
             Source = source;
-            SourceID = sourceId;
+            SourceID = sourceID;
         }
     }
 
@@ -97,26 +97,26 @@ namespace Game.Shared
         }
 
         #region Stat Management
-        public StatInstance GetStat(string statId)
+        public StatInstance GetStat(string statID)
         {
-            if (_stats.TryGetValue(statId, out var stat))
+            if (_stats.TryGetValue(statID, out var stat))
                 return stat;
-            Debug.Error($"Stat with ID {statId} not found in ActorStatContainer.");
+            Debug.Error($"Stat with ID {statID} not found in ActorStatContainer.");
             return null;
         }
 
         public IEnumerable<KeyValuePair<string, StatInstance>> All => _stats;
 
-        public bool TryGetStat(string statId, out StatInstance stat)
+        public bool TryGetStat(string statID, out StatInstance stat)
         {
-            return _stats.TryGetValue(statId, out stat);
+            return _stats.TryGetValue(statID, out stat);
         }
 
-        public void SetStat(string statId, StatInstance instance)
+        public void SetStat(string statID, StatInstance instance)
         {
-            _stats[statId] = instance;
+            _stats[statID] = instance;
 
-            if (statId == "health" && instance.CurrentValue <= 0 && !GetComponent<Actor>().isDead)
+            if (statID == "health" && instance.CurrentValue <= 0 && !GetComponent<Actor>().isDead)
             {
                 Debug.Log($"{GetComponent<Actor>().Name} has died.");
                 ActorEndpoint.onActorDeath?.Invoke(GetComponent<Actor>());
@@ -125,13 +125,13 @@ namespace Game.Shared
             }
         }
 
-        public void AddCurrentValue(string statId, float amount)
+        public void AddCurrentValue(string statID, float amount)
         {
-            if (TryGetStat(statId, out var stat))
+            if (TryGetStat(statID, out var stat))
             {
                 float newCurrent = Mathf.Max(0f, stat.CurrentValue + amount);
-                SetStat(statId, new StatInstance(stat.BaseValue, stat.FlatModifier, stat.PercentModifier, stat.EffectiveMaximum, newCurrent));
-                var def = ActorStatDefinitionLibrary.Instance.GetDefinition(statId);
+                SetStat(statID, new StatInstance(stat.BaseValue, stat.FlatModifier, stat.PercentModifier, stat.EffectiveMaximum, newCurrent));
+                var def = ActorStatDefinitionLibrary.Instance.GetDefinition(statID);
                 if (def.ReplicationMode == ActorStatReplicationMode.Observers)
                     Observers_ReceiveSnapshot(BuildSnapshot(ActorStatReplicationMode.Observers));
                 else if (def.ReplicationMode == ActorStatReplicationMode.Owner)
@@ -139,7 +139,7 @@ namespace Game.Shared
             }
             else
             {
-                Debug.Error($"Attempted to add to non-existent stat {statId} in ActorStatContainer.");
+                Debug.Error($"Attempted to add to non-existent stat {statID} in ActorStatContainer.");
             }
         }
         #endregion
@@ -148,14 +148,14 @@ namespace Game.Shared
         public void AddModifier(StatModifier modifier) => _modifiers.Add(modifier);
         public void RemoveModifier(StatModifier modifier) => _modifiers.Remove(modifier);
 
-        public bool TryGetModifiersForStat(string statId, out List<StatModifier> flatModifiers, out List<StatModifier> percentModifiers)
+        public bool TryGetModifiersForStat(string statID, out List<StatModifier> flatModifiers, out List<StatModifier> percentModifiers)
         {
             flatModifiers = new List<StatModifier>();
             percentModifiers = new List<StatModifier>();
 
             foreach (var mod in _modifiers)
             {
-                if (mod.StatId != statId) continue;
+                if (mod.StatID != statID) continue;
                 if (mod.FlatModifier != 0) flatModifiers.Add(mod);
                 if (mod.PercentModifier != 0) percentModifiers.Add(mod);
             }
@@ -166,7 +166,7 @@ namespace Game.Shared
         #endregion
         #region  Snapshot RPCs
         [TargetRpc]
-        public void Client_ReceiveSnapshot(PlayerID playerId, StatSnapshot snapshot, RPCInfo info = default)
+        public void Client_ReceiveSnapshot(PlayerID playerID, StatSnapshot snapshot, RPCInfo info = default)
         {
             ApplySnapshot(snapshot);
         }
@@ -181,7 +181,7 @@ namespace Game.Shared
         {
             foreach (var entry in snapshot.Stats)
             {
-                _stats[entry.StatId] = new StatInstance(0, entry.FlatModifier, entry.PercentModifier, entry.EffectiveMax, entry.Current);
+                _stats[entry.StatID] = new StatInstance(0, entry.FlatModifier, entry.PercentModifier, entry.EffectiveMax, entry.Current);
             }
 
             Game.Shared.Networking.StatEndpoint.onStatsUpdated?.Invoke(GetComponent<Actor>(), this);
@@ -197,7 +197,7 @@ namespace Game.Shared
                 if (def == null || def.ReplicationMode != mode) continue;
                 list.Add(new StatSnapshotEntry
                 {
-                    StatId = kvp.Key,
+                    StatID = kvp.Key,
                     EffectiveMax = kvp.Value.EffectiveMaximum,
                     FlatModifier = kvp.Value.FlatModifier,
                     PercentModifier = kvp.Value.PercentModifier,

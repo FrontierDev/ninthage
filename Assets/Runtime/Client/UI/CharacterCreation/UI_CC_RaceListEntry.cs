@@ -27,7 +27,7 @@ namespace Game.Client.UI
         public void OnRaceSelected(RaceDefinition def)
         {
             // Focus the selected entry and unfocus others.
-            if (def.DefinitionId == raceDefinition.DefinitionId) Focus();
+            if (def.DefinitionID == raceDefinition.DefinitionID) Focus();
             else Unfocus();
         }
 

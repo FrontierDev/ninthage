@@ -32,7 +32,8 @@ namespace Game.Shared.Data
     public sealed class SpellComponent : ISerializationCallbackReceiver
     {
         /// <summary>Gets or sets the stable component identifier.</summary>
-        public string Guid;
+        [FormerlySerializedAs("Guid")]
+        public string GUID;
 
         /// <summary>Gets or sets the phase when the component executes.</summary>
         [SerializeField] public SpellCastPhase CastPhase;
@@ -43,8 +44,8 @@ namespace Game.Shared.Data
 
         void ISerializationCallbackReceiver.OnBeforeSerialize()
         {
-            if (string.IsNullOrEmpty(Guid))
-                Guid = System.Guid.NewGuid().ToString();
+            if (string.IsNullOrEmpty(GUID))
+                GUID = System.Guid.NewGuid().ToString();
         }
         void ISerializationCallbackReceiver.OnAfterDeserialize() { }
     }
@@ -173,7 +174,7 @@ namespace Game.Shared.Data
             foreach (SpellResourceCost cost in _baseResourceCosts)
             {
                 if (cost.ResourceType != null)
-                    _internalTags.Add($"costs_{cost.ResourceType.DefinitionId.ToLower()}");
+                    _internalTags.Add($"costs_{cost.ResourceType.DefinitionID.ToLower()}");
             }
 
             foreach (SpellComponent component in _baseComponents)
@@ -182,7 +183,7 @@ namespace Game.Shared.Data
                 {
                     foreach (DamageSchoolDefinition damageSchool in damageEffect.DamageSchools)
                     {
-                        _internalTags.Add($"{damageSchool.DefinitionId.ToLower()}_damage");
+                        _internalTags.Add($"{damageSchool.DefinitionID.ToLower()}_damage");
                     }
                 }
             }

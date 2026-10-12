@@ -20,7 +20,7 @@ namespace Game.Shared.Data
         /// <summary>
         /// Unique identifier for this definition.
         /// </summary>
-        public string DefinitionId => _definitionID;
+        public string DefinitionID => _definitionID;
 
         /// <summary>
         /// Human-readable name displayed in UI.

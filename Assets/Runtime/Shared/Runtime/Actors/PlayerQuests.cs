@@ -52,7 +52,7 @@ namespace Game.Shared
                 return;
             }
 
-            var existingProgress = _activeQuests.Find(q => q.Quest.DefinitionId == questID);
+            var existingProgress = _activeQuests.Find(q => q.Quest.DefinitionID == questID);
             if (existingProgress != null)
             {
                 existingProgress.Progress = progress;
@@ -113,7 +113,7 @@ namespace Game.Shared
         /// </summary>
         public void CompleteQuest(string questID)
         {
-            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionId == questID);
+            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionID == questID);
             if (questProgress == null)
             {
                 Debug.LogWarning($"Attempted to complete quest {questID} but it is not in active quests");
@@ -129,7 +129,7 @@ namespace Game.Shared
         /// </summary>
         public void UpdateObjectiveProgress(string questID, int objectiveIndex, int value)
         {
-            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionId == questID);
+            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionID == questID);
             if (questProgress == null)
             {
                 Debug.LogWarning($"Attempted to update progress for quest {questID} but it is not in active quests");
@@ -149,7 +149,7 @@ namespace Game.Shared
         /// <summary>Gets progress for an active quest.</summary>
         public int[] GetQuestProgress(string questID)
         {
-            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionId == questID);
+            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionID == questID);
             if (questProgress == null)
             {
                 Debug.LogWarning($"Attempted to get progress for quest {questID} but it is not in active quests");

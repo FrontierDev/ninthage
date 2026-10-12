@@ -72,7 +72,7 @@ namespace Game.Shared.Persistence
             if (string.IsNullOrEmpty(PvPFactionID))
             {
                 var def = Game.Shared.Data.RaceDefinitionLibrary.Instance.GetDefinition(RaceID).DefaultPVPFaction;
-                PvPFactionID = def != null ? def.DefinitionId : null;
+                PvPFactionID = def != null ? def.DefinitionID : null;
             }
 
             // Generate GUID

@@ -73,19 +73,19 @@ namespace Game.Runtime.Shared
         }
 
         [Header("Map Marker")]
-        [SerializeField] private bool _showPoiMarker = false;
+        [SerializeField, FormerlySerializedAs("_showPoiMarker")] private bool _showPOIMarker = false;
         [SerializeField] private string _poiLabel = "";
         [SerializeField] private int _poiTextSize = 14;
         [SerializeField] private Color _poiColor = new(1f, 0.75f, 0f, 1f);
 
         /// <summary>Gets or sets whether the point-of-interest marker is shown.</summary>
-        public bool ShowPoiMarker { get => _showPoiMarker; set => _showPoiMarker = value; }
+        public bool ShowPOIMarker { get => _showPOIMarker; set => _showPOIMarker = value; }
         /// <summary>Gets or sets the point-of-interest marker label.</summary>
-        public string PoiLabel { get => _poiLabel; set => _poiLabel = value; }
+        public string POILabel { get => _poiLabel; set => _poiLabel = value; }
         /// <summary>Gets or sets the point-of-interest marker text size.</summary>
-        public int PoiTextSize { get => _poiTextSize; set => _poiTextSize = value; }
+        public int POITextSize { get => _poiTextSize; set => _poiTextSize = value; }
         /// <summary>Gets or sets the point-of-interest marker color.</summary>
-        public Color PoiColor { get => _poiColor; set => _poiColor = value; }
+        public Color POIColor { get => _poiColor; set => _poiColor = value; }
 
         private void OnEnable()
         {

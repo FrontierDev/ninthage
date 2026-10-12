@@ -158,7 +158,7 @@ namespace Game.Editor.Windows
 
                 EditorGUILayout.BeginHorizontal();
 
-                string displayText = currentDef != null ? currentDef.DefinitionId : "None";
+                string displayText = currentDef != null ? currentDef.DefinitionID : "None";
                 EditorGUILayout.LabelField(displayText, EditorStyles.textField, GUILayout.ExpandWidth(true));
                 EditorGUILayout.PropertyField(valueProp, GUIContent.none, GUILayout.Width(80));
 
@@ -198,7 +198,7 @@ namespace Game.Editor.Windows
                     var defProp = elem.FindPropertyRelative("definition");
                     if (defProp.objectReferenceValue == selected)
                     {
-                        EditorUtility.DisplayDialog("Already Added", $"Stat '{selected.DefinitionId}' is already in this list.", "OK");
+                        EditorUtility.DisplayDialog("Already Added", $"Stat '{selected.DefinitionID}' is already in this list.", "OK");
                         return;
                     }
                 }
@@ -237,7 +237,7 @@ namespace Game.Editor.Windows
 
                 EditorGUILayout.BeginHorizontal();
 
-                string displayText = currentStat != null ? currentStat.DefinitionId : "None";
+                string displayText = currentStat != null ? currentStat.DefinitionID : "None";
                 EditorGUILayout.LabelField(displayText, EditorStyles.textField, GUILayout.ExpandWidth(true));
                 EditorGUILayout.PropertyField(growthProp, GUIContent.none, GUILayout.Width(80));
 
@@ -277,7 +277,7 @@ namespace Game.Editor.Windows
                     var statProp = elem.FindPropertyRelative("stat");
                     if (statProp.objectReferenceValue == selected)
                     {
-                        EditorUtility.DisplayDialog("Already Added", $"Stat '{selected.DefinitionId}' is already in this list.", "OK");
+                        EditorUtility.DisplayDialog("Already Added", $"Stat '{selected.DefinitionID}' is already in this list.", "OK");
                         return;
                     }
                 }
@@ -425,7 +425,7 @@ namespace Game.Editor.Windows
                 var stat = element.objectReferenceValue as ActorStatDefinition;
 
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField(stat != null ? stat.DefinitionId : "None", EditorStyles.textField, GUILayout.ExpandWidth(true));
+                EditorGUILayout.LabelField(stat != null ? stat.DefinitionID : "None", EditorStyles.textField, GUILayout.ExpandWidth(true));
 
                 bool shouldDelete = DrawInlineRemoveButton();
 
@@ -461,7 +461,7 @@ namespace Game.Editor.Windows
                 {
                     if (arrayProp.GetArrayElementAtIndex(i).objectReferenceValue == selected)
                     {
-                        EditorUtility.DisplayDialog("Already Added", $"Stat '{selected.DefinitionId}' is already in this list.", "OK");
+                        EditorUtility.DisplayDialog("Already Added", $"Stat '{selected.DefinitionID}' is already in this list.", "OK");
                         return;
                     }
                 }

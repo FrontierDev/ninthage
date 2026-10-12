@@ -55,7 +55,7 @@ namespace Game.Client.UI
         {
             // Only update for the player's own actor.
             if (ClientAccountManager.PlayerActor == null) return;
-            if (actor.Id != ClientAccountManager.PlayerActor.Id) return;
+            if (actor.ID != ClientAccountManager.PlayerActor.ID) return;
             currentStats = statContainer;
             Refresh();
         }

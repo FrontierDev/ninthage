@@ -68,7 +68,7 @@ namespace Game.Server.Services
                     1,
                     characterData.ClassID,
                     characterData.RaceID,
-                    defaultPVPFaction.DefinitionId
+                    defaultPVPFaction.DefinitionID
                 );
 
                 AddCharacter(validatedCharacter);

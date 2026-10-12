@@ -110,7 +110,7 @@ namespace Game.Shared.Data
 
 #if UNITY_EDITOR
             // Ensure reciprocal relations are kept in sync across all faction definitions.
-            if (string.IsNullOrEmpty(DefinitionId))
+            if (string.IsNullOrEmpty(DefinitionID))
                 return;
 
             var library = FactionDefinitionLibrary.Instance;
@@ -124,28 +124,28 @@ namespace Game.Shared.Data
                 if (other == null || other == this)
                     continue;
 
-                var otherId = other.DefinitionId;
+                var otherId = other.DefinitionID;
                 if (string.IsNullOrEmpty(otherId))
                     continue;
 
                 bool thisAllied = _alliedFactionIDs.Contains(otherId);
                 bool thisEnemy = _enemyFactionIDs.Contains(otherId);
 
-                bool otherAlliedWithThis = other._alliedFactionIDs.Contains(DefinitionId);
-                bool otherEnemyWithThis = other._enemyFactionIDs.Contains(DefinitionId);
+                bool otherAlliedWithThis = other._alliedFactionIDs.Contains(DefinitionID);
+                bool otherEnemyWithThis = other._enemyFactionIDs.Contains(DefinitionID);
 
                 // If this lists other as allied, ensure other lists this as allied and not enemy
                 if (thisAllied)
                 {
                     if (!otherAlliedWithThis)
                     {
-                        other._alliedFactionIDs.Add(DefinitionId);
+                        other._alliedFactionIDs.Add(DefinitionID);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
 
                     if (otherEnemyWithThis)
                     {
-                        other._enemyFactionIDs.Remove(DefinitionId);
+                        other._enemyFactionIDs.Remove(DefinitionID);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
                 }
@@ -154,13 +154,13 @@ namespace Game.Shared.Data
                 {
                     if (!otherEnemyWithThis)
                     {
-                        other._enemyFactionIDs.Add(DefinitionId);
+                        other._enemyFactionIDs.Add(DefinitionID);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
 
                     if (otherAlliedWithThis)
                     {
-                        other._alliedFactionIDs.Remove(DefinitionId);
+                        other._alliedFactionIDs.Remove(DefinitionID);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
                 }
@@ -169,13 +169,13 @@ namespace Game.Shared.Data
                 {
                     if (otherAlliedWithThis)
                     {
-                        other._alliedFactionIDs.Remove(DefinitionId);
+                        other._alliedFactionIDs.Remove(DefinitionID);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
 
                     if (otherEnemyWithThis)
                     {
-                        other._enemyFactionIDs.Remove(DefinitionId);
+                        other._enemyFactionIDs.Remove(DefinitionID);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
                 }

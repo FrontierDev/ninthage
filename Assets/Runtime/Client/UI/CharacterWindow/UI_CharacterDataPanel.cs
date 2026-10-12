@@ -40,7 +40,7 @@ namespace Game.Client.UI
 
         private void OnPlayerActorAssigned(Actor actor)
         {
-            Debug.Log($"Received player actor assignment for {actor.Name} (ID: {actor.Id}). Updating character data panel.");
+            Debug.Log($"Received player actor assignment for {actor.Name} (ID: {actor.ID}). Updating character data panel.");
             // UI_Manager.Instance.ShowWindow("CharacterWindow");
 
             var characterData = ClientAccountManager.ActiveCharacter;

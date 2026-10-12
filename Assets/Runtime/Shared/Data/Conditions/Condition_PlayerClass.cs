@@ -19,7 +19,7 @@ namespace Game.Shared.Data
             if (typeof(PlayerActor).IsAssignableFrom(context.GetType()))
             {
                 CharacterData characterData = ((PlayerActor)context).CharacterData;
-                return characterData.ClassID == _requiredClass.DefinitionId;
+                return characterData.ClassID == _requiredClass.DefinitionID;
             }
 
             return false;

@@ -5,7 +5,7 @@ using System;
 namespace Game.Shared.Networking
 {
     /// <summary>Provides PurrNet serialization for GUID values.</summary>
-    public static class PackGuid
+    public static class PackGUID
     {
         [UsedByIL]
         /// <summary>Writes a GUID to a bit packer.</summary>

@@ -9,12 +9,12 @@ namespace Game.Shared
 {
     /// <summary>Increases fire spell damage by a percentage.</summary>
     [Serializable]
-    public class BonusFireDamagePct : IScalableModifier
+    public class BonusFireDamagePCT : IScalableModifier
     {
         [SerializeField, FormerlySerializedAs("bonusDamagePct")] private float _bonusDamagePCT;
 
         /// <summary>Gets the percentage fire damage bonus.</summary>
-        public float BonusDamagePct => _bonusDamagePCT;
+        public float BonusDamagePCT => _bonusDamagePCT;
 
         /// <summary>Gets the application priority.</summary>
         public int Priority => 50;
@@ -25,12 +25,12 @@ namespace Game.Shared
         public string Source => _source;
 
         /// <summary>Initializes an empty modifier.</summary>
-        public BonusFireDamagePct() { }
+        public BonusFireDamagePCT() { }
         /// <summary>Initializes a percentage fire damage modifier.</summary>
-        public BonusFireDamagePct(string source, float bonusDamagePct)
+        public BonusFireDamagePCT(string source, float bonusDamagePCT)
         {
             _source = source;
-            _bonusDamagePCT = bonusDamagePct;
+            _bonusDamagePCT = bonusDamagePCT;
         }
 
         /// <summary>Returns whether the modifier applies to a spell.</summary>
@@ -56,7 +56,7 @@ namespace Game.Shared
         /// <summary>Combines another percentage bonus.</summary>
         public void Combine(ISpellModifier other)
         {
-            if (other is BonusFireDamagePct otherBonus)
+            if (other is BonusFireDamagePCT otherBonus)
             {
                 _bonusDamagePCT += otherBonus._bonusDamagePCT;
             }

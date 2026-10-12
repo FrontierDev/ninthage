@@ -17,9 +17,9 @@ namespace Game.Shared
     public class Actor : NetworkBehaviour, ILevelledActor
     {
         /// <summary>Gets the actor's unique identifier.</summary>
-        public Guid Id { get; private set; } = System.Guid.NewGuid();
+        public Guid ID { get; private set; } = System.Guid.NewGuid();
         /// <summary>Gets the associated spawn point identifier.</summary>
-        public Guid SpawnPointGuid { get; private set; }
+        public Guid SpawnPointGUID { get; private set; }
         /// <summary>Gets the actor's display name.</summary>
         public string Name { get; private set; } = "Unknown";
         /// <summary>Gets the owning player, when one exists.</summary>
@@ -96,7 +96,7 @@ namespace Game.Shared
         /// <summary>Initializes the actor identity.</summary>
         public void Initialize(Guid id, string name)
         {
-            Id = id;
+            ID = id;
             Name = name;
         }
 
@@ -175,16 +175,16 @@ namespace Game.Shared
         public virtual FactionRelationState GetFactionRelation(PlayerReputation playerReputation)
         {
             var npcFaction = GetCombatFaction();
-            var playerPvPFaction = playerReputation.PvPFaction;
+            var playerPVPFaction = playerReputation.PVPFaction;
 
-            if (npcFaction == null || playerPvPFaction == null)
+            if (npcFaction == null || playerPVPFaction == null)
                 Debug.Warning($"Cannot determine faction relation for actor '{Name}' because either the NPC faction or player PvP faction is null.");
 
-            if (npcFaction.EnemyFactionIDs.Any(x => x == playerPvPFaction.DefinitionId))
+            if (npcFaction.EnemyFactionIDs.Any(x => x == playerPVPFaction.DefinitionID))
                 return FactionRelationState.Hostile;
-            else if (npcFaction.AlliedFactionIDs.Any(x => x == playerPvPFaction.DefinitionId))
+            else if (npcFaction.AlliedFactionIDs.Any(x => x == playerPVPFaction.DefinitionID))
                 return FactionRelationState.Allied;
-            else if (npcFaction.DefinitionId == playerPvPFaction.DefinitionId)
+            else if (npcFaction.DefinitionID == playerPVPFaction.DefinitionID)
                 return FactionRelationState.Allied;
             else
                 return FactionRelationState.Neutral;
@@ -289,9 +289,9 @@ namespace Game.Shared
         }
 
         /// <summary>Sets the actor's spawn point identifier.</summary>
-        public void SetSpawnPointGuid(Guid spawnPointGuid)
+        public void SetSpawnPointGUID(Guid spawnPointGUID)
         {
-            SpawnPointGuid = spawnPointGuid;
+            SpawnPointGUID = spawnPointGUID;
         }
 
         [ObserversRpc]

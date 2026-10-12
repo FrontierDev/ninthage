@@ -26,7 +26,7 @@ namespace Game.Client.UI
 
         public void OnClassSelected(ClassDefinition def)
         {
-            if (def.DefinitionId == classDefinition.DefinitionId) Focus();
+            if (def.DefinitionID == classDefinition.DefinitionID) Focus();
             else Unfocus();
         }
 

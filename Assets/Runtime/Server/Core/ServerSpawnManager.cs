@@ -88,10 +88,10 @@ namespace Game.Server
 
             foreach (ActorSpawnPoint spawnPoint in actorSpawnPoints)
             {
-                Guid spawnPointGuid = spawnPoint.Guid;
-                if (spawnPointActorMap.ContainsKey(spawnPointGuid))
+                Guid spawnPointGUID = spawnPoint.GUID;
+                if (spawnPointActorMap.ContainsKey(spawnPointGUID))
                 {
-                    Debug.Warning($"Spawn point '{spawnPoint.name}' with GUID {spawnPointGuid} already has an actor spawned. Skipping duplicate.");
+                    Debug.Warning($"Spawn point '{spawnPoint.name}' with GUID {spawnPointGUID} already has an actor spawned. Skipping duplicate.");
                     continue;
                 }
 
@@ -100,7 +100,7 @@ namespace Game.Server
                 var entity = entityManager.CreateEntity();
                 entityManager.AddComponentData(entity, new ECS.SpawnPointComponent
                 {
-                    SpawnPointGuid = spawnPointGuid,
+                    SpawnPointGuid = spawnPointGUID,
                     SceneName = state.scene.name,
                     Position = spawnPoint.transform.position,
                     PrefabIndex = prefabIndex,
@@ -109,15 +109,15 @@ namespace Game.Server
                 });
 
                 // Tell the spawn system that this spawn point has an actor associated with it.
-                spawnPointActorMap[spawnPointGuid] = spawnPoint.Actor;
+                spawnPointActorMap[spawnPointGUID] = spawnPoint.Actor;
             }
         }
 
         private void OnServerActorDespawned(Actor actor)
         {
             // If this actor was spawned from a spawn point, mark that spawn point as pending again so it can respawn.
-            if (actor.SpawnPointGuid != default && spawnPointActorMap.ContainsKey(actor.SpawnPointGuid))
-                spawnPointActorMap.Remove(actor.SpawnPointGuid);
+            if (actor.SpawnPointGUID != default && spawnPointActorMap.ContainsKey(actor.SpawnPointGUID))
+                spawnPointActorMap.Remove(actor.SpawnPointGUID);
         }
 
         public void SpawnPlayer(PlayerID playerId)
@@ -185,15 +185,15 @@ namespace Game.Server
             {
                 foreach (var classSpell in classDef.ClassSpellList)
                 {
-                    if (!characterData.KnownSpellIDs.Contains(classSpell.spell.DefinitionId))
+                    if (!characterData.KnownSpellIDs.Contains(classSpell.spell.DefinitionID))
                     {
                         Debug.Log($"Adding missing spell '{classSpell.spell.DisplayName}' to player {playerId} character data.");
-                        characterData.KnownSpellIDs.Add(classSpell.spell.DefinitionId);
+                        characterData.KnownSpellIDs.Add(classSpell.spell.DefinitionID);
                     }
                 }
             }
 
-            characterData.PvPFactionID = RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID)?.DefaultPVPFaction?.DefinitionId;
+            characterData.PvPFactionID = RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID)?.DefaultPVPFaction?.DefinitionID;
 
             for (int i = characterData.SavedInventory.Count - 1; i >= 0; i--)
             {
@@ -255,12 +255,12 @@ namespace Game.Server
 
             foreach (var startingRep in RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID).StartingReputations)
             {
-                if (characterData.SavedReputations.Any(rep => rep.FactionID == startingRep.Faction.DefinitionId))
+                if (characterData.SavedReputations.Any(rep => rep.FactionID == startingRep.Faction.DefinitionID))
                     continue;
 
                 characterData.SavedReputations.Add(new Shared.Persistence.SavedReputationEntry
                 {
-                    FactionID = startingRep.Faction.DefinitionId,
+                    FactionID = startingRep.Faction.DefinitionID,
                     Reputation = startingRep.Reputation
                 });
                 Debug.Log($"Set initial reputation with faction '{startingRep.Faction.DisplayName}' to {startingRep.Reputation} for player {playerId}.");
@@ -354,8 +354,8 @@ namespace Game.Server
                     actor.WorldPos = Game.Shared.Utility.WorldPosition.FromChunkLocal(
                         new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y),
                         new Vector3(cmd.Position.x, cmd.Position.y, cmd.Position.z));
-                    actor.Initialize(actor.Id, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefab.name);
-                    actor.SetSpawnPointGuid(spawnPointGuid);
+                    actor.Initialize(actor.ID, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefab.name);
+                    actor.SetSpawnPointGUID(spawnPointGuid);
 
                     // Register the root identity for targeted visibility re-evaluation.
                     NetworkIdentity identity = go.GetComponent<NetworkIdentity>();
@@ -389,7 +389,7 @@ namespace Game.Server
                         // Teach NPCs the auto-attack spell so they can swing.
                         var autoAttack = GameConfigurationManager.Config.AutoAttackSpell;
                         if (autoAttack != null)
-                            go.GetComponent<ActorSpellcaster>()?.LearnSpell(autoAttack.DefinitionId);
+                            go.GetComponent<ActorSpellcaster>()?.LearnSpell(autoAttack.DefinitionID);
                     }
 
                     // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.

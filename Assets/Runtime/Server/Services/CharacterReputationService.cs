@@ -22,20 +22,20 @@ namespace Game.Server.Services
 
         public void AddReputation(int amount)
         {
-            if (playerReputation.TryGetReputation(faction.DefinitionId, out int currentReputation))
+            if (playerReputation.TryGetReputation(faction.DefinitionID, out int currentReputation))
             {
                 currentReputation += amount;
                 playerReputation.SetReputation(faction, currentReputation);
 
                 // Notify clients about the reputation update
-                CharacterEndpoint.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionId, currentReputation, amount);
+                CharacterEndpoint.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionID, currentReputation, amount);
             }
             else
             {
                 playerReputation.SetReputation(faction, amount);
 
                 // Notify clients about the reputation update
-                CharacterEndpoint.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionId, amount, amount);
+                CharacterEndpoint.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionID, amount, amount);
             }
         }
     }

@@ -63,17 +63,17 @@ namespace Game.Shared
             Stacks = 1;
         }
 
-        // Per-component overrides (keyed by AuraComponent.Guid)
+        // Per-component overrides (keyed by AuraComponent.GUID)
         /// <summary>Gets component-specific runtime overrides.</summary>
         public Dictionary<string, SpellComponentOverrides> ComponentOverrides = new();
 
         /// <summary>Gets or creates overrides for a component.</summary>
-        public SpellComponentOverrides GetOrCreateOverrides(string componentGuid)
+        public SpellComponentOverrides GetOrCreateOverrides(string componentGUID)
         {
-            if (!ComponentOverrides.TryGetValue(componentGuid, out var overrides))
+            if (!ComponentOverrides.TryGetValue(componentGUID, out var overrides))
             {
                 overrides = new SpellComponentOverrides();
-                ComponentOverrides[componentGuid] = overrides;
+                ComponentOverrides[componentGUID] = overrides;
             }
             return overrides;
         }

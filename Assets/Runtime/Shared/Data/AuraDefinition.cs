@@ -43,7 +43,8 @@ namespace Game.Shared.Data
     public sealed class AuraComponent : ISerializationCallbackReceiver
     {
         /// <summary>Gets or sets the stable component identifier.</summary>
-        public string Guid;
+        [FormerlySerializedAs("Guid")]
+        public string GUID;
 
         /// <summary>Gets or sets when the component executes.</summary>
         [SerializeField] public AuraPhase CastPhase;
@@ -54,8 +55,8 @@ namespace Game.Shared.Data
 
         void ISerializationCallbackReceiver.OnBeforeSerialize()
         {
-            if (string.IsNullOrEmpty(Guid))
-                Guid = System.Guid.NewGuid().ToString();
+            if (string.IsNullOrEmpty(GUID))
+                GUID = System.Guid.NewGuid().ToString();
         }
         void ISerializationCallbackReceiver.OnAfterDeserialize() { }
     }

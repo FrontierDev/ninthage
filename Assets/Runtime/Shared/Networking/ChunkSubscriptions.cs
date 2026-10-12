@@ -36,15 +36,15 @@ namespace Game.Shared.Networking
         }
 
         /// <summary>Associates a player with its actor.</summary>
-        public static void RegisterPlayerActor(PlayerID playerId, Actor actor)
+        public static void RegisterPlayerActor(PlayerID playerID, Actor actor)
         {
-            PLAYER_ACTORS[playerId] = actor;
+            PLAYER_ACTORS[playerID] = actor;
         }
 
         /// <summary>Removes a player's actor association.</summary>
-        public static void UnregisterPlayerActor(PlayerID playerId)
+        public static void UnregisterPlayerActor(PlayerID playerID)
         {
-            PLAYER_ACTORS.Remove(playerId);
+            PLAYER_ACTORS.Remove(playerID);
         }
 
         /// <summary>Registers a network identity in a scene chunk.</summary>

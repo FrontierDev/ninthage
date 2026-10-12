@@ -10,15 +10,15 @@ namespace Game.Shared.Data
         [SerializeField, FormerlySerializedAs("targetNpcID")] private string _targetNPCID;
 
         /// <summary>Gets the target NPC identifier.</summary>
-        public string TargetNpcID => _targetNPCID;
+        public string TargetNPCID => _targetNPCID;
 
         /// <summary>Initializes an empty kill objective.</summary>
         public Quest_KillObjective() { }
 
         /// <summary>Initializes a kill objective.</summary>
-        public Quest_KillObjective(string description, int requiredAmount, string targetNpcID) : base(description, requiredAmount)
+        public Quest_KillObjective(string description, int requiredAmount, string targetNPCID) : base(description, requiredAmount)
         {
-            _targetNPCID = targetNpcID;
+            _targetNPCID = targetNPCID;
         }
     }
 }

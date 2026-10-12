@@ -28,7 +28,7 @@ namespace Game.Editor.Drawers
             var currentDef = defProp.objectReferenceValue as ActorStatDefinition;
 
             // Display current selection or "None"
-            string displayText = currentDef != null ? currentDef.DefinitionId : "None";
+            string displayText = currentDef != null ? currentDef.DefinitionID : "None";
             EditorGUI.LabelField(statRect, displayText, EditorStyles.textField);
 
             // Value field

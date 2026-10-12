@@ -22,7 +22,7 @@ namespace Game.Shared
     {
         [SerializeField, FormerlySerializedAs("pvpFaction")] private FactionDefinition _pvpFaction;
         /// <summary>Gets the player's PvP faction.</summary>
-        public FactionDefinition PvPFaction => _pvpFaction;
+        public FactionDefinition PVPFaction => _pvpFaction;
 
         [SerializeField, FormerlySerializedAs("reputations")] private Dictionary<string, int> _reputations = new();
         /// <summary>Gets reputation values by faction identifier.</summary>
@@ -53,13 +53,13 @@ namespace Game.Shared
             }
 
             _pvpFaction = data.PvPFactionID != null ? Game.Shared.Data.FactionDefinitionLibrary.Instance.GetDefinition(data.PvPFactionID) : null;
-            CharacterEndpoint.onClientReputationUpdated?.Invoke(_pvpFaction?.DefinitionId, _reputations.TryGetValue(_pvpFaction?.DefinitionId ?? "", out int rep) ? rep : 0, 0);
+            CharacterEndpoint.onClientReputationUpdated?.Invoke(_pvpFaction?.DefinitionID, _reputations.TryGetValue(_pvpFaction?.DefinitionID ?? "", out int rep) ? rep : 0, 0);
         }
 
         /// <summary>Sets reputation for a faction.</summary>
         public void SetReputation(FactionDefinition def, int reputation)
         {
-            _reputations[def.DefinitionId] = reputation;
+            _reputations[def.DefinitionID] = reputation;
 
             // NYI: Trigger any necessary updates based on reputation changes (e.g. unlocking content, updating NPC interactions, etc.)
         }

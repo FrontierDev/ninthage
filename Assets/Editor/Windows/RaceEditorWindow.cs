@@ -158,7 +158,7 @@ namespace Game.Editor.Windows
 
                 EditorGUILayout.BeginHorizontal();
 
-                string displayText = currentDef != null ? currentDef.DefinitionId : "None";
+                string displayText = currentDef != null ? currentDef.DefinitionID : "None";
                 EditorGUILayout.LabelField(displayText, EditorStyles.textField, GUILayout.ExpandWidth(true));
                 EditorGUILayout.PropertyField(valueProp, GUIContent.none, GUILayout.Width(80));
 
@@ -198,7 +198,7 @@ namespace Game.Editor.Windows
                     var defProp = elem.FindPropertyRelative("definition");
                     if (defProp.objectReferenceValue == selected)
                     {
-                        EditorUtility.DisplayDialog("Already Added", $"Stat '{selected.DefinitionId}' is already in this list.", "OK");
+                        EditorUtility.DisplayDialog("Already Added", $"Stat '{selected.DefinitionID}' is already in this list.", "OK");
                         return;
                     }
                 }

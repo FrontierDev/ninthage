@@ -54,7 +54,7 @@ namespace Game.Shared
                     _talents.Add(def, entry.Rank);
 
                     foreach (var mod in def.Modifiers)
-                        GetComponent<ActorSpellcaster>().AddModifier($"talent_{def.DefinitionId}", mod, entry.Rank);
+                        GetComponent<ActorSpellcaster>().AddModifier($"talent_{def.DefinitionID}", mod, entry.Rank);
 
                     if (def.TalentBehaviour != null)
                         def.TalentBehaviour.OnActivate(GetComponent<PlayerActor>());
@@ -90,7 +90,7 @@ namespace Game.Shared
 
             foreach (var mod in def.Modifiers)
             {
-                GetComponent<ActorSpellcaster>().AddModifier($"talent_{def.DefinitionId}", mod, rank);
+                GetComponent<ActorSpellcaster>().AddModifier($"talent_{def.DefinitionID}", mod, rank);
             }
 
             if (def.TalentBehaviour != null)
@@ -112,7 +112,7 @@ namespace Game.Shared
                         _spentTalentPointsBySpecialisation[spec] -= _talents[def];
                 }
                 foreach (var mod in def.Modifiers)
-                    GetComponent<ActorSpellcaster>().RemoveModifier($"talent_{def.DefinitionId}", mod);
+                    GetComponent<ActorSpellcaster>().RemoveModifier($"talent_{def.DefinitionID}", mod);
 
                 if (def.TalentBehaviour != null)
                     def.TalentBehaviour.OnDeactivate(GetComponent<PlayerActor>());
@@ -155,7 +155,7 @@ namespace Game.Shared
                     _talents.Add(def, entry.Rank);
 
                     foreach (var mod in def.Modifiers)
-                        GetComponent<ActorSpellcaster>().AddModifier($"talent_{def.DefinitionId}", mod, entry.Rank);
+                        GetComponent<ActorSpellcaster>().AddModifier($"talent_{def.DefinitionID}", mod, entry.Rank);
                 }
             }
 

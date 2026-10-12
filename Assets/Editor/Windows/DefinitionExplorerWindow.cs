@@ -114,7 +114,7 @@ namespace Game.Editor.Windows
 
                     // Draw text content
                     EditorGUI.LabelField(new Rect(entryRect.x + 5, entryRect.y + 5, entryRect.width - 10, 20), def.DisplayName, EditorStyles.boldLabel);
-                    EditorGUI.LabelField(new Rect(entryRect.x + 5, entryRect.y + 20, entryRect.width - 10, 15), def.DefinitionId, EditorStyles.miniLabel);
+                    EditorGUI.LabelField(new Rect(entryRect.x + 5, entryRect.y + 20, entryRect.width - 10, 15), def.DefinitionID, EditorStyles.miniLabel);
 
                     // Make it clickable
                     if (GUI.Button(entryRect, "", GUIStyle.none))
@@ -177,7 +177,7 @@ namespace Game.Editor.Windows
                 switch (searchMode)
                 {
                     case SearchMode.ID:
-                        matches = dataDef.DefinitionId.ToLower().Contains(searchLower);
+                        matches = dataDef.DefinitionID.ToLower().Contains(searchLower);
                         break;
 
                     case SearchMode.Name:
@@ -193,7 +193,7 @@ namespace Game.Editor.Windows
 
                     case SearchMode.All:
                     default:
-                        matches = dataDef.DefinitionId.ToLower().Contains(searchLower) ||
+                        matches = dataDef.DefinitionID.ToLower().Contains(searchLower) ||
                                  dataDef.name.ToLower().Contains(searchLower);
 
                         if (!matches && dataDef is ITaggedDefinition taggedDef && taggedDef.Tags != null)

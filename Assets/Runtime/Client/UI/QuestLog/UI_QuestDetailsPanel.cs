@@ -42,7 +42,7 @@ namespace Game.Client.UI
 
         public void UpdateObjectivesProgress()
         {
-            objectivesPanel.UpdateEntries(UI_QuestListPanel.Instance.Quests.GetQuestProgress(def.DefinitionId));
+            objectivesPanel.UpdateEntries(UI_QuestListPanel.Instance.Quests.GetQuestProgress(def.DefinitionID));
         }
     }
 }

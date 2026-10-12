@@ -88,7 +88,7 @@ namespace Game.Server
 
             foreach (var entry in npcProfile.BaseStats)
             {
-                container.SetStat(entry.definition.DefinitionId,
+                container.SetStat(entry.definition.DefinitionID,
                     new StatInstance(entry.baseValue, 0, 0, entry.baseValue, entry.baseValue));
             }
 
@@ -133,7 +133,7 @@ namespace Game.Server
             {
                 var def = allDefs[i];
                 float baseValue = def.BaseValueMode == ActorStatBaseValueMode.Fixed ? def.BaseValue : 0f;
-                container.SetStat(def.DefinitionId,
+                container.SetStat(def.DefinitionID,
                     new StatInstance(baseValue, 0, 0, 0, 0));
             }
 
@@ -141,9 +141,9 @@ namespace Game.Server
             foreach (var entry in race.BaseStats)
             {
                 if (entry?.definition == null) continue;
-                if (container.TryGetStat(entry.definition.DefinitionId, out var existing))
+                if (container.TryGetStat(entry.definition.DefinitionID, out var existing))
                 {
-                    container.SetStat(entry.definition.DefinitionId,
+                    container.SetStat(entry.definition.DefinitionID,
                         new StatInstance(existing.BaseValue + entry.baseValue, 0, 0, 0, 0));
                 }
             }
@@ -152,9 +152,9 @@ namespace Game.Server
             foreach (var entry in playerClass.BaseStats)
             {
                 if (entry?.definition == null) continue;
-                if (container.TryGetStat(entry.definition.DefinitionId, out var existing))
+                if (container.TryGetStat(entry.definition.DefinitionID, out var existing))
                 {
-                    container.SetStat(entry.definition.DefinitionId,
+                    container.SetStat(entry.definition.DefinitionID,
                         new StatInstance(existing.BaseValue + entry.baseValue, 0, 0, 0, 0));
                 }
             }
@@ -163,10 +163,10 @@ namespace Game.Server
             foreach (var growth in playerClass.StatGrowthPerLevel)
             {
                 if (growth.stat == null) continue;
-                if (container.TryGetStat(growth.stat.DefinitionId, out var existing))
+                if (container.TryGetStat(growth.stat.DefinitionID, out var existing))
                 {
                     float levelBonus = growth.flatPerLevel * data.Level;
-                    container.SetStat(growth.stat.DefinitionId,
+                    container.SetStat(growth.stat.DefinitionID,
                         new StatInstance(existing.BaseValue, levelBonus, 0, 0, 0));
                 }
             }
@@ -193,7 +193,7 @@ namespace Game.Server
             {
                 var def = allDefs[i];
                 if (def.BaseValueMode != ActorStatBaseValueMode.Fixed) continue;
-                if (!container.TryGetStat(def.DefinitionId, out var stat)) continue;
+                if (!container.TryGetStat(def.DefinitionID, out var stat)) continue;
                 stat.RecalculateEffectiveMax();
             }
 
@@ -203,8 +203,8 @@ namespace Game.Server
                 var def = allDefs[i];
                 if (def.BaseValueMode != ActorStatBaseValueMode.Derived) continue;
                 if (def.SourceStat == null) continue;
-                if (!container.TryGetStat(def.DefinitionId, out var stat)) continue;
-                if (!container.TryGetStat(def.SourceStat.DefinitionId, out var source)) continue;
+                if (!container.TryGetStat(def.DefinitionID, out var stat)) continue;
+                if (!container.TryGetStat(def.SourceStat.DefinitionID, out var source)) continue;
 
                 stat.SetBaseValue(source.EffectiveMaximum * def.Multiplier);
                 stat.RecalculateEffectiveMax();
@@ -216,8 +216,8 @@ namespace Game.Server
                 var def = allDefs[i];
                 if (def.BaseValueMode != ActorStatBaseValueMode.Rating) continue;
                 if (def.SourceStat == null) continue;
-                if (!container.TryGetStat(def.DefinitionId, out var stat)) continue;
-                if (!container.TryGetStat(def.SourceStat.DefinitionId, out var source)) continue;
+                if (!container.TryGetStat(def.DefinitionID, out var stat)) continue;
+                if (!container.TryGetStat(def.SourceStat.DefinitionID, out var source)) continue;
 
                 int level = GetActorLevel(container); // resolve from PlayerActor or NPCStatProfile
                 float percent = CombatRatingHelper.RatingToPercent(source.EffectiveMaximum, level, def.Multiplier);
@@ -254,9 +254,9 @@ namespace Game.Server
                     {
                         if (itemStat?.Stat != null)
                         {
-                            if (!newModifiers.ContainsKey(itemStat.Stat.DefinitionId))
-                                newModifiers[itemStat.Stat.DefinitionId] = 0f;
-                            newModifiers[itemStat.Stat.DefinitionId] += itemStat.Value;
+                            if (!newModifiers.ContainsKey(itemStat.Stat.DefinitionID))
+                                newModifiers[itemStat.Stat.DefinitionID] = 0f;
+                            newModifiers[itemStat.Stat.DefinitionID] += itemStat.Value;
                         }
                     }
                 }
@@ -303,7 +303,7 @@ namespace Game.Server
                     if (itemStat?.Stat == null) continue;
 
                     // Apply the stat bonus as a flat modifier
-                    if (container.TryGetStat(itemStat.Stat.DefinitionId, out var stat))
+                    if (container.TryGetStat(itemStat.Stat.DefinitionID, out var stat))
                     {
                         stat.SetFlatModifier(stat.FlatModifier + itemStat.Value);
                     }
@@ -363,7 +363,7 @@ namespace Game.Server
                 {
                     var def = allDefs[i];
                     if (def.Category != ActorStatCategory.Resource) continue;
-                    if (!container.TryGetStat(def.DefinitionId, out var stat)) continue;
+                    if (!container.TryGetStat(def.DefinitionID, out var stat)) continue;
                     if (stat.CurrentValue >= stat.EffectiveMaximum) continue;
 
                     float regenRate = ResolveRegenRate(def, container);
@@ -375,7 +375,7 @@ namespace Game.Server
 
                     if (newCurrent != stat.CurrentValue)
                     {
-                        container.SetStat(def.DefinitionId, new StatInstance(
+                        container.SetStat(def.DefinitionID, new StatInstance(
                             stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                             stat.EffectiveMaximum, newCurrent));
                         dirty = true;
@@ -393,7 +393,7 @@ namespace Game.Server
                 return def.RegenPerSecond;
 
             if (def.RegenSourceStat != null
-                && container.TryGetStat(def.RegenSourceStat.DefinitionId, out var source))
+                && container.TryGetStat(def.RegenSourceStat.DefinitionID, out var source))
                 return source.EffectiveMaximum * def.RegenMultiplier;
 
             return 0f;
@@ -448,8 +448,8 @@ namespace Game.Server
             {
                 var def = allDefs[i];
                 if (def.Category != ActorStatCategory.Attribute) continue;
-                if (!container.TryGetStat(def.DefinitionId, out var stat)) continue;
-                container.SetStat(def.DefinitionId, new StatInstance(
+                if (!container.TryGetStat(def.DefinitionID, out var stat)) continue;
+                container.SetStat(def.DefinitionID, new StatInstance(
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, stat.EffectiveMaximum));
             }
@@ -464,18 +464,18 @@ namespace Game.Server
                 bool startsAtZero = def.StartsAtZero;
 
                 if (def.Category != ActorStatCategory.Resource) continue;
-                if (!container.TryGetStat(def.DefinitionId, out var stat)) continue;
+                if (!container.TryGetStat(def.DefinitionID, out var stat)) continue;
 
                 if (startsAtZero)
                 {
-                    container.SetStat(def.DefinitionId, new StatInstance(
+                    container.SetStat(def.DefinitionID, new StatInstance(
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, 0));
                     continue;
                 }
                 else
                 {
-                    container.SetStat(def.DefinitionId, new StatInstance(
+                    container.SetStat(def.DefinitionID, new StatInstance(
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, stat.EffectiveMaximum));
                 }

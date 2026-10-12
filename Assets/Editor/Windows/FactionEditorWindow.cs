@@ -215,7 +215,7 @@ namespace Game.Editor.Windows
                         if (EditorGUI.EndChangeCheck())
                         {
                             if (newDef != null)
-                                element.stringValue = newDef.DefinitionId;
+                                element.stringValue = newDef.DefinitionID;
                             else
                                 element.stringValue = string.Empty;
                         }
@@ -252,7 +252,7 @@ namespace Game.Editor.Windows
                         if (EditorGUI.EndChangeCheck())
                         {
                             if (newDef != null)
-                                element.stringValue = newDef.DefinitionId;
+                                element.stringValue = newDef.DefinitionID;
                             else
                                 element.stringValue = string.Empty;
                         }

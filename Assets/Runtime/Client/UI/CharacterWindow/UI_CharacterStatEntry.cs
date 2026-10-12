@@ -19,13 +19,13 @@ namespace Game.Client.UI
 
         public void SetStat(StatSnapshotEntry statEntry)
         {
-            statNameText.text = statEntry.StatId; // In a real implementation, you'd want to localize this.
+            statNameText.text = statEntry.StatID; // In a real implementation, you'd want to localize this.
             currentValueText.text = statEntry.EffectiveMax.ToString("0");
         }
 
         public void Refresh(ActorStatContainer statContainer)
         {
-            var statEntry = statContainer.GetStat(statDefinition.DefinitionId);
+            var statEntry = statContainer.GetStat(statDefinition.DefinitionID);
             if (statEntry != null)
             {
                 if (statDefinition.Category == ActorStatCategory.Resource)

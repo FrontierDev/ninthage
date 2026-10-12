@@ -63,7 +63,7 @@ namespace Game.Server
             if (_autoAttackSpell == null) return;
             if (actor.Target == null) return;
 
-            _activeAutoAttackers[actor.Id] = new AutoAttackState
+            _activeAutoAttackers[actor.ID] = new AutoAttackState
             {
                 Actor = actor,
                 Agent = actor.GetComponent<NavMeshAgent>()
@@ -72,7 +72,7 @@ namespace Game.Server
 
         private void OnStopAutoAttack(Actor actor)
         {
-            _activeAutoAttackers.Remove(actor.Id);
+            _activeAutoAttackers.Remove(actor.ID);
         }
 
         private void Update()
@@ -116,11 +116,11 @@ namespace Game.Server
                     continue;
 
                 // Wait for the auto-attack cooldown to expire before swinging again.
-                if (ServerCooldownManager.Instance.IsOnCooldown(actorId, _autoAttackSpell.DefinitionId))
+                if (ServerCooldownManager.Instance.IsOnCooldown(actorId, _autoAttackSpell.DefinitionID))
                     continue;
 
                 state.Actor.GetComponent<ActorSpellcaster>()
-                    ?.ServerOnly_RequestSpellCast(_autoAttackSpell.DefinitionId);
+                    ?.ServerOnly_RequestSpellCast(_autoAttackSpell.DefinitionID);
             }
 
             for (int i = 0; i < _toRemove.Count; i++)

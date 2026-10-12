@@ -59,7 +59,7 @@ namespace Game.Server.Services
             if (item.CanStack)
             {
                 var existing = lootPool.Find(x => x.BaseItem != null &&
-                                                  x.BaseItem.DefinitionId == item.DefinitionId &&
+                                                  x.BaseItem.DefinitionID == item.DefinitionID &&
                                                   x.CurrentStackSize < item.MaxStackSize);
                 if (existing != null)
                 {
@@ -70,7 +70,7 @@ namespace Game.Server.Services
                 else
                 {
                     var newInstance = new ItemInstance(System.Guid.NewGuid().ToString("N"),
-                                item.DefinitionId,
+                                item.DefinitionID,
                                 new List<string>(),
                                 100,
                                 1);
@@ -82,7 +82,7 @@ namespace Game.Server.Services
             else
             {
                 var newInstance = new ItemInstance(System.Guid.NewGuid().ToString("N"),
-                                item.DefinitionId,
+                                item.DefinitionID,
                                 new List<string>(),
                                 100,
                                 1);
@@ -107,7 +107,7 @@ namespace Game.Server.Services
                 if (remainder > 0)
                 {
                     var leftover = new ItemInstance(System.Guid.NewGuid().ToString("N"),
-                                                     template.BaseItem.DefinitionId,
+                                                     template.BaseItem.DefinitionID,
                                                      new List<string>(template.Modifications),
                                                      template.Durability,
                                                      remainder);

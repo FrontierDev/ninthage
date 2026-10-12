@@ -119,7 +119,7 @@ namespace Game.Shared.Data
                 var spec = _specialisations[i];
 
                 if (string.IsNullOrEmpty(spec.name))
-                    Debug.LogWarning($"Class {DefinitionId} has a specialisation with an empty name.");
+                    Debug.LogWarning($"Class {DefinitionID} has a specialisation with an empty name.");
 
                 if (spec.talents == null)
                     continue;

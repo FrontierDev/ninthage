@@ -46,7 +46,7 @@ namespace Game.Client.UI
                 if (entry is UI_ReputationHeaderEntry repEntry)
                 {
                     var def = repEntry.Data;
-                    if (def != null && playerReputation.Reputations.TryGetValue(def.DefinitionId, out int rep))
+                    if (def != null && playerReputation.Reputations.TryGetValue(def.DefinitionID, out int rep))
                     {
                         repEntry.UpdateEntry(rep);
                     }

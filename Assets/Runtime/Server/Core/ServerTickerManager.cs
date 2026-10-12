@@ -81,10 +81,10 @@ namespace Game.Server
                 foreach (var entity in entities)
                 {
                     var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actor.Id) continue;
+                    if (component.ActorId != actor.ID) continue;
 
                     // If a tag is supplied and a ticker with that tag already exists, skip (idempotent).
-                    if (tag != null && _tagIndex.ContainsKey((actor.Id, tag)))
+                    if (tag != null && _tagIndex.ContainsKey((actor.ID, tag)))
                         return -1;
 
                     int tickerId = _nextTickerId++;
@@ -99,17 +99,17 @@ namespace Game.Server
 
                     _tickers[tickerId] = new TickerRegistration
                     {
-                        ActorId = actor.Id,
+                        ActorId = actor.ID,
                         Tag = tag,
                         OnTick = onTick,
                         OnExpire = onExpire
                     };
 
                     if (tag != null)
-                        _tagIndex[(actor.Id, tag)] = tickerId;
+                        _tagIndex[(actor.ID, tag)] = tickerId;
 
-                    if (!_actorTickerIds.TryGetValue(actor.Id, out var list))
-                        _actorTickerIds[actor.Id] = list = new List<int>();
+                    if (!_actorTickerIds.TryGetValue(actor.ID, out var list))
+                        _actorTickerIds[actor.ID] = list = new List<int>();
                     list.Add(tickerId);
 
                     return tickerId;
@@ -120,7 +120,7 @@ namespace Game.Server
                 entities.Dispose();
             }
 
-            Debug.Warning($"Could not find ECS entity for actor {actor.Name} (ID: {actor.Id})");
+            Debug.Warning($"Could not find ECS entity for actor {actor.Name} (ID: {actor.ID})");
             return -1;
         }
 
@@ -132,7 +132,7 @@ namespace Game.Server
                 foreach (var entity in entities)
                 {
                     var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actor.Id) continue;
+                    if (component.ActorId != actor.ID) continue;
 
                     var buffer = entityManager.GetBuffer<ECS.TickerElement>(entity);
                     for (int i = buffer.Length - 1; i >= 0; i--)
@@ -144,7 +144,7 @@ namespace Game.Server
                     if (_tickers.TryGetValue(tickerId, out var reg))
                     {
                         if (reg.Tag != null)
-                            _tagIndex.Remove((actor.Id, reg.Tag));
+                            _tagIndex.Remove((actor.ID, reg.Tag));
                         _tickers.Remove(tickerId);
                     }
                     return;
@@ -158,7 +158,7 @@ namespace Game.Server
 
         public void RemoveTickerByTag(Actor actor, string tag)
         {
-            if (_tagIndex.TryGetValue((actor.Id, tag), out int tickerId))
+            if (_tagIndex.TryGetValue((actor.ID, tag), out int tickerId))
                 RemoveTicker(actor, tickerId);
         }
 
@@ -194,7 +194,7 @@ namespace Game.Server
 
         private void OnActorDespawned(Actor actor)
         {
-            if (!_actorTickerIds.TryGetValue(actor.Id, out var list)) return;
+            if (!_actorTickerIds.TryGetValue(actor.ID, out var list)) return;
 
             // Copy to avoid modifying the list while iterating.
             var ids = new List<int>(list);
@@ -203,11 +203,11 @@ namespace Game.Server
                 if (_tickers.TryGetValue(tickerId, out var reg))
                 {
                     if (reg.Tag != null)
-                        _tagIndex.Remove((actor.Id, reg.Tag));
+                        _tagIndex.Remove((actor.ID, reg.Tag));
                     _tickers.Remove(tickerId);
                 }
             }
-            _actorTickerIds.Remove(actor.Id);
+            _actorTickerIds.Remove(actor.ID);
         }
 
         // ── Cross-assembly bridge (Game.Shared callers via ActorEndpoint events) ──────

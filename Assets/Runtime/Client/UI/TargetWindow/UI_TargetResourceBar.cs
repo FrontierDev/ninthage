@@ -28,7 +28,7 @@ namespace Game.Client.UI
             {
                 foreach (var resourceDef in trackedResources)
                 {
-                    if (statContainer.TryGetStat(resourceDef.DefinitionId, out StatInstance stat))
+                    if (statContainer.TryGetStat(resourceDef.DefinitionID, out StatInstance stat))
                     {
                         float progress = stat.EffectiveMaximum > 0 ? stat.CurrentValue / stat.EffectiveMaximum : 0f;
                         SetProgress(progress);
@@ -57,7 +57,7 @@ namespace Game.Client.UI
 
                 foreach (var resourceDef in trackedResources)
                 {
-                    if (actorStatContainer.TryGetStat(resourceDef.DefinitionId, out StatInstance stat))
+                    if (actorStatContainer.TryGetStat(resourceDef.DefinitionID, out StatInstance stat))
                     {
                         float progress = stat.EffectiveMaximum > 0 ? stat.CurrentValue / stat.EffectiveMaximum : 0f;
                         SetProgress(progress);

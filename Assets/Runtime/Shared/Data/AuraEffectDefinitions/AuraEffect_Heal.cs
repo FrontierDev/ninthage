@@ -105,7 +105,7 @@ namespace Game.Shared.Data
             {
                 foreach (var scaling in StatScaling)
                 {
-                    if (casterStats.TryGetStat(scaling.Stat.DefinitionId, out var stat))
+                    if (casterStats.TryGetStat(scaling.Stat.DefinitionID, out var stat))
                         healing += stat.CurrentValue * scaling.Coefficient;
                 }
             }

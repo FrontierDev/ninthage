@@ -62,7 +62,7 @@ namespace Game.Client.UI
 
             if (itemInstance != null)
             {
-                var definition = ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionId);
+                var definition = ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionID);
                 stackSizeText.text = itemInstance.CurrentStackSize > 1 ? itemInstance.CurrentStackSize.ToString() : "";
 
                 var texture = definition.Icon != null ? definition.Icon.texture : null;
@@ -116,10 +116,10 @@ namespace Game.Client.UI
             UIShaderProperties.SetFloat(graphics, "_HoverAmount", 1f);
 
             UI_TooltipWindow.Instance.Show(
-                itemInstance != null ? ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionId).DisplayName : "",
+                itemInstance != null ? ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionID).DisplayName : "",
                 ItemTooltipFactory.GetOrCreateTooltip(itemInstance),
-                itemInstance != null ? ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionId).Description : "",
-                itemInstance != null ? ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionId).Icon : null
+                itemInstance != null ? ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionID).Description : "",
+                itemInstance != null ? ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionID).Icon : null
             );
 
             UI_TooltipWindow.Instance.SetPosition(graphics != null ? graphics.rectTransform : transform, 0f);
@@ -173,7 +173,7 @@ namespace Game.Client.UI
         {
             UI_TooltipWindow.Instance.HideImmediate();
 
-            var definition = ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionId);
+            var definition = ItemDefinitionLibrary.Instance.GetDefinition(itemInstance.BaseItem.DefinitionID);
             UI_DragGhost.Instance.Show(definition.Icon);
             UI_DragGhost.Instance.UpdatePosition(position);
         }

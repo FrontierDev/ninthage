@@ -48,7 +48,7 @@ namespace Game.Client.UI
             // For now we just display the first resource stat we find, if any.
             foreach (var def in trackedResources)
             {
-                if (playerStatContainer.TryGetStat(def.DefinitionId, out var stat))
+                if (playerStatContainer.TryGetStat(def.DefinitionID, out var stat))
                 {
                     var currentValue = stat.CurrentValue;
                     var maxValue = stat.EffectiveMaximum;

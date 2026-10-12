@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Debug = Game.Shared.FormattedDebug;
@@ -141,7 +141,7 @@ namespace Game.Server
             var entity = entityManager.CreateEntity();
             entityManager.AddComponentData(entity, new ECS.ActorComponent
             {
-                ActorId = actor.Id,
+                ActorId = actor.ID,
                 ActorName = actor.Name,
                 Owner = actor.Owner ?? default,
                 CurrentScene = default,
@@ -165,7 +165,7 @@ namespace Game.Server
                 });
             }
 
-            _actorObjects[actor.Id] = actor;
+            _actorObjects[actor.ID] = actor;
 
             if (actor.Owner != null)
             {
@@ -196,7 +196,7 @@ namespace Game.Server
                 {
                     if (behavior.AggroRange > 0)
                     {
-                        _npcAggroStates[actor.Id] = new NPCAggroState
+                        _npcAggroStates[actor.ID] = new NPCAggroState
                         {
                             NPC = actor,
                             Behavior = behavior,
@@ -208,7 +208,7 @@ namespace Game.Server
                 }
             }
 
-            Debug.Log("Actor spawned on server: " + actor.Name + " (ID: " + actor.Id + ")");
+            Debug.Log("Actor spawned on server: " + actor.Name + " (ID: " + actor.ID + ")");
         }
 
         private void OnActorOwnerChanged(Actor actor)
@@ -217,7 +217,7 @@ namespace Game.Server
             foreach (var entity in entities)
             {
                 var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                if (component.ActorId == actor.Id)
+                if (component.ActorId == actor.ID)
                 {
                     var previousOwner = component.Owner;
                     component.Owner = actor.Owner ?? default;
@@ -231,7 +231,7 @@ namespace Game.Server
                         _violationCounters.Remove(previousOwner);
                     }
 
-                    Debug.Log("Actor owner changed on server: " + actor.Name + " (ID: " + actor.Id + ")");
+                    Debug.Log("Actor owner changed on server: " + actor.Name + " (ID: " + actor.ID + ")");
                     break;
                 }
             }
@@ -244,7 +244,7 @@ namespace Game.Server
             foreach (var entity in entities)
             {
                 var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                if (component.ActorId == actor.Id)
+                if (component.ActorId == actor.ID)
                 {
                     component.CurrentScene = sceneID;
                     entityManager.SetComponentData(entity, component);
@@ -253,7 +253,7 @@ namespace Game.Server
                     if (NetworkManager.main.sceneModule.TryGetSceneState(sceneID, out var state))
                         sceneName = state.scene.name;
 
-                    Debug.Log("Actor interest changed on server: " + actor.Name + " (ID: " + actor.Id + ") to logical scene " + sceneName);
+                    Debug.Log("Actor interest changed on server: " + actor.Name + " (ID: " + actor.ID + ") to logical scene " + sceneName);
                     break;
                 }
             }

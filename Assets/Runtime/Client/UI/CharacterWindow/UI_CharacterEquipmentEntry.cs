@@ -74,10 +74,10 @@ namespace Game.Client.UI
             UIShaderProperties.SetFloat(graphics, "_HoverAmount", 1f);
 
             UI_TooltipWindow.Instance.Show(
-                item != null ? ItemDefinitionLibrary.Instance.GetDefinition(item.BaseItem.DefinitionId).DisplayName : "",
+                item != null ? ItemDefinitionLibrary.Instance.GetDefinition(item.BaseItem.DefinitionID).DisplayName : "",
                 ItemTooltipFactory.GetOrCreateTooltip(item),
-                item != null ? ItemDefinitionLibrary.Instance.GetDefinition(item.BaseItem.DefinitionId).Description : "",
-                item != null ? ItemDefinitionLibrary.Instance.GetDefinition(item.BaseItem.DefinitionId).Icon : null
+                item != null ? ItemDefinitionLibrary.Instance.GetDefinition(item.BaseItem.DefinitionID).Description : "",
+                item != null ? ItemDefinitionLibrary.Instance.GetDefinition(item.BaseItem.DefinitionID).Icon : null
             );
 
             UI_TooltipWindow.Instance.SetPosition(graphics != null ? graphics.rectTransform : transform, 0f);

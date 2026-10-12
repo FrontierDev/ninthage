@@ -20,7 +20,7 @@ namespace Game.Shared
         /// <summary>Gets whether spawning begins automatically.</summary>
         public bool SpawnOnStart => _spawnOnStart;
         /// <summary>Gets the spawn point GUID.</summary>
-        public Guid Guid => string.IsNullOrEmpty(_guid) ? Guid.Empty : System.Guid.Parse(_guid);
+        public Guid GUID => string.IsNullOrEmpty(_guid) ? Guid.Empty : System.Guid.Parse(_guid);
 
 
 #if UNITY_EDITOR

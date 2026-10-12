@@ -51,7 +51,7 @@ namespace Game.Editor.Inspectors
                 if (def != null)
                 {
                     EditorGUI.indentLevel++;
-                    EditorGUILayout.LabelField("ID", def.DefinitionId, EditorStyles.miniLabel);
+                    EditorGUILayout.LabelField("ID", def.DefinitionID, EditorStyles.miniLabel);
                     if (def.Icon != null)
                     {
                         var iconRect = GUILayoutUtility.GetRect(32, 32, GUILayout.Width(32));

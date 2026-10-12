@@ -12,12 +12,12 @@ namespace Game.Editor.Components
         [DrawGizmo(GizmoType.NonSelected | GizmoType.Selected | GizmoType.InSelectionHierarchy)]
         static void DrawGizmo(TerrainTileComponent tile, GizmoType gizmoType)
         {
-            if (!tile.ShowPoiMarker)
+            if (!tile.ShowPOIMarker)
                 return;
 
             bool selected = (gizmoType & (GizmoType.Selected | GizmoType.InSelectionHierarchy)) != 0;
 
-            if (string.IsNullOrWhiteSpace(tile.PoiLabel))
+            if (string.IsNullOrWhiteSpace(tile.POILabel))
                 return;
 
             if (_labelStyle == null)
@@ -29,9 +29,9 @@ namespace Game.Editor.Components
             }
 
             _labelStyle.normal.textColor = selected
-                ? tile.PoiColor
-                : new Color(tile.PoiColor.r, tile.PoiColor.g, tile.PoiColor.b, 0.7f);
-            _labelStyle.fontSize = Mathf.Max(1, tile.PoiTextSize);
+                ? tile.POIColor
+                : new Color(tile.POIColor.r, tile.POIColor.g, tile.POIColor.b, 0.7f);
+            _labelStyle.fontSize = Mathf.Max(1, tile.POITextSize);
 
             // Use terrain bounds center so the label is above the actual terrain surface,
             // regardless of where the GameObject pivot sits.
@@ -52,12 +52,12 @@ namespace Game.Editor.Components
             Vector3 markerPos = origin + Vector3.up * 100f;
 
             // Line from terrain surface to label
-            Color lineColor = tile.PoiColor;
+            Color lineColor = tile.POIColor;
             lineColor.a = selected ? 0.8f : 0.3f;
             using (new Handles.DrawingScope(lineColor))
                 Handles.DrawLine(origin, markerPos, selected ? 2f : 1f);
 
-            Handles.Label(markerPos, tile.PoiLabel, _labelStyle);
+            Handles.Label(markerPos, tile.POILabel, _labelStyle);
         }
     }
 
@@ -329,7 +329,7 @@ namespace Game.Editor.Components
             SerializedObject so = serializedObject;
             so.Update();
             EditorGUILayout.PropertyField(so.FindProperty("_showPoiMarker"), new GUIContent("Show Marker"));
-            using (new EditorGUI.DisabledGroupScope(!terrainTile.ShowPoiMarker))
+            using (new EditorGUI.DisabledGroupScope(!terrainTile.ShowPOIMarker))
             {
                 EditorGUILayout.PropertyField(so.FindProperty("_poiLabel"), new GUIContent("Label"));
                 EditorGUILayout.PropertyField(so.FindProperty("_poiTextSize"), new GUIContent("Text Size"));
@@ -337,10 +337,10 @@ namespace Game.Editor.Components
 
                 if (GUILayout.Button("Rename GameObject to Label"))
                 {
-                    if (!string.IsNullOrWhiteSpace(terrainTile.PoiLabel))
+                    if (!string.IsNullOrWhiteSpace(terrainTile.POILabel))
                     {
                         Undo.RecordObject(terrainTile.gameObject, "Rename to POI Label");
-                        terrainTile.gameObject.name = terrainTile.PoiLabel;
+                        terrainTile.gameObject.name = terrainTile.POILabel;
                     }
                 }
             }

@@ -71,7 +71,7 @@ namespace Game.Server
                 foreach (var entity in entities)
                 {
                     var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != target.Id) continue;
+                    if (component.ActorId != target.ID) continue;
 
                     int instanceId;
                     if (!TryResolveStacking(definition, caster, target, entity, stacks, out instanceId))
@@ -87,12 +87,12 @@ namespace Game.Server
                             ExecuteAuraComponent(ctx, auraComponent);
                     }
 
-                    ActorEndpoint.onServerAuraApplied?.Invoke(target.Id, definition.DefinitionId, instanceId);
+                    ActorEndpoint.onServerAuraApplied?.Invoke(target.ID, definition.DefinitionID, instanceId);
                     definition.AuraBehaviour.OnApplied(caster, target, stacks);
 
                     Debug.Log($"Aura '{definition.DisplayName}' applied to {target.Name} by {caster.Name} (instance {instanceId})");
 
-                    target.Observers_ApplyAura(definition.DefinitionId, instanceId, ctx.Duration, ctx.Stacks);
+                    target.Observers_ApplyAura(definition.DefinitionID, instanceId, ctx.Duration, ctx.Stacks);
 
                     return true;
                 }
@@ -102,7 +102,7 @@ namespace Game.Server
                 entities.Dispose();
             }
 
-            Debug.Warning($"Could not find ECS entity for actor {target.Name} (ID: {target.Id})");
+            Debug.Warning($"Could not find ECS entity for actor {target.Name} (ID: {target.ID})");
             return false;
         }
 
@@ -120,7 +120,7 @@ namespace Game.Server
                         for (int i = 0; i < buffer.Length; i++)
                         {
                             var entry = buffer[i];
-                            if (entry.AuraDefinitionId.ToString() != definition.DefinitionId) continue;
+                            if (entry.AuraDefinitionId.ToString() != definition.DefinitionID) continue;
                             if (!_activeAuras.TryGetValue(entry.InstanceId, out var existing)) continue;
 
                             // Extend duration for entire aura.
@@ -155,7 +155,7 @@ namespace Game.Server
                         for (int i = 0; i < buffer.Length; i++)
                         {
                             var entry = buffer[i];
-                            if (entry.AuraDefinitionId.ToString() != definition.DefinitionId) continue;
+                            if (entry.AuraDefinitionId.ToString() != definition.DefinitionID) continue;
                             if (!_activeAuras.TryGetValue(entry.InstanceId, out var existing)) continue;
 
                             // Add multiple stacks
@@ -199,7 +199,7 @@ namespace Game.Server
             buffer.Add(new ECS.AuraElement
             {
                 InstanceId = instanceId,
-                AuraDefinitionId = definition.DefinitionId,
+                AuraDefinitionId = definition.DefinitionID,
                 RemainingDuration = definition.BaseDuration,
                 TickInterval = definition.BaseTickInterval,
                 TimeSinceLastTick = 0f
@@ -230,7 +230,7 @@ namespace Game.Server
             buffer.Add(new ECS.AuraElement
             {
                 InstanceId = instanceId,
-                AuraDefinitionId = definition.DefinitionId,
+                AuraDefinitionId = definition.DefinitionID,
                 RemainingDuration = definition.BaseDuration,
                 TickInterval = definition.BaseTickInterval,
                 TimeSinceLastTick = 0f
@@ -331,7 +331,7 @@ namespace Game.Server
                 foreach (var entity in entities)
                 {
                     var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != target.Id) continue;
+                    if (component.ActorId != target.ID) continue;
 
                     var buffer = entityManager.GetBuffer<ECS.AuraElement>(entity);
                     for (int i = 0; i < buffer.Length; i++)
@@ -341,7 +341,7 @@ namespace Game.Server
                         string auraDefId = buffer[i].AuraDefinitionId.ToString();
                         buffer.RemoveAt(i);
 
-                        ActorEndpoint.onServerAuraDispelled?.Invoke(target.Id, auraDefId, instanceId);
+                        ActorEndpoint.onServerAuraDispelled?.Invoke(target.ID, auraDefId, instanceId);
 
                         return true;
                     }

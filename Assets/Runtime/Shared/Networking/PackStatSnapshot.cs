@@ -10,7 +10,7 @@ namespace Game.Shared.Networking
         /// <summary>Writes a stat entry to a bit packer.</summary>
         public static void Write(this BitPacker packer, StatSnapshotEntry value)
         {
-            packer.Write(value.StatId);
+            packer.Write(value.StatID);
             packer.Write(value.EffectiveMax);
             packer.Write(value.Current);
         }
@@ -19,15 +19,15 @@ namespace Game.Shared.Networking
         /// <summary>Reads a stat entry from a bit packer.</summary>
         public static void Read(this BitPacker packer, ref StatSnapshotEntry value)
         {
-            string statId = default;
+            string statID = default;
             float effectiveMax = default;
             float current = default;
-            packer.Read(ref statId);
+            packer.Read(ref statID);
             packer.Read(ref effectiveMax);
             packer.Read(ref current);
             value = new StatSnapshotEntry
             {
-                StatId = statId,
+                StatID = statID,
                 EffectiveMax = effectiveMax,
                 Current = current
             };

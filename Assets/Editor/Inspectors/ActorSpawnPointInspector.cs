@@ -13,7 +13,7 @@ namespace Game.Editor.Inspectors
 
             ActorSpawnPoint spawnPoint = (ActorSpawnPoint)target;
 
-            EditorGUILayout.LabelField("GUID", spawnPoint.Guid.ToString());
+            EditorGUILayout.LabelField("GUID", spawnPoint.GUID.ToString());
         }
     }
 }

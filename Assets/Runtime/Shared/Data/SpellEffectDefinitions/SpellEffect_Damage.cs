@@ -144,7 +144,7 @@ namespace Game.Shared.Data
 
             foreach (var scaling in StatScaling)
             {
-                if (casterStats.TryGetStat(scaling.Stat.DefinitionId, out var stat))
+                if (casterStats.TryGetStat(scaling.Stat.DefinitionID, out var stat))
                     damage += stat.CurrentValue * scaling.Coefficient;
             }
             damage *= GaussianTable.Next();
@@ -272,7 +272,7 @@ namespace Game.Shared.Data
             };
 
             float hitPercent = hitChanceStat != null
-                ? casterStats.GetStat(hitChanceStat.DefinitionId)?.CurrentValue ?? 0f
+                ? casterStats.GetStat(hitChanceStat.DefinitionID)?.CurrentValue ?? 0f
                 : 0f;
 
             var config = GameConfigurationManager.Config;
@@ -378,11 +378,11 @@ namespace Game.Shared.Data
 
             var config = GameConfigurationManager.Config;
             float critPercent = critChanceStat != null
-                ? casterStats.GetStat(critChanceStat.DefinitionId)?.CurrentValue ?? 0f
+                ? casterStats.GetStat(critChanceStat.DefinitionID)?.CurrentValue ?? 0f
                 : 0f;
 
             float critResistance = config.CritResistanceStat != null
-                ? targetStats.GetStat(config.CritResistanceStat.DefinitionId)?.CurrentValue ?? 0f
+                ? targetStats.GetStat(config.CritResistanceStat.DefinitionID)?.CurrentValue ?? 0f
                 : 0f;
             critPercent = Mathf.Max(0f, critPercent - critResistance);
 

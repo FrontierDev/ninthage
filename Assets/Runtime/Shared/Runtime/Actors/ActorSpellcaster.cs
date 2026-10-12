@@ -335,7 +335,7 @@ namespace Game.Shared
                 float distance = GetComponent<Actor>().DistanceTo(target);
                 if (distance > maxRange)
                 {
-                    Debug.Warning($"Actor {name} attempted to cast '{spellDef.DefinitionId}' on target {target.name} which is out of range. Distance: {distance}, Max Range: {maxRange}");
+                    Debug.Warning($"Actor {name} attempted to cast '{spellDef.DefinitionID}' on target {target.name} which is out of range. Distance: {distance}, Max Range: {maxRange}");
                     return false;
                 }
 
@@ -347,15 +347,15 @@ namespace Game.Shared
                 var statContainer = GetComponent<ActorStatContainer>();
                 foreach (var cost in spellDef.BaseResourceCosts)
                 {
-                    if (!statContainer.TryGetStat(cost.ResourceType.DefinitionId, out var stat))
+                    if (!statContainer.TryGetStat(cost.ResourceType.DefinitionID, out var stat))
                     {
-                        Debug.Warning($"Actor {name} attempted to cast '{spellID}' which costs {cost.ResourceType.DefinitionId}, but they do not have that stat.");
+                        Debug.Warning($"Actor {name} attempted to cast '{spellID}' which costs {cost.ResourceType.DefinitionID}, but they do not have that stat.");
                         return false;
                     }
 
                     if (stat.CurrentValue < cost.Amount)
                     {
-                        Debug.Warning($"Actor {name} attempted to cast '{spellID}' which costs {cost.Amount} {cost.ResourceType.DefinitionId}, but they only have {stat.CurrentValue}.");
+                        Debug.Warning($"Actor {name} attempted to cast '{spellID}' which costs {cost.Amount} {cost.ResourceType.DefinitionID}, but they only have {stat.CurrentValue}.");
                         return false;
                     }
                 }
@@ -410,13 +410,13 @@ namespace Game.Shared
         }
 
         [TargetRpc]
-        public void Client_StartGlobalCooldown(PlayerID playerId, float duration, RPCInfo info = default)
+        public void Client_StartGlobalCooldown(PlayerID playerID, float duration, RPCInfo info = default)
         {
             ActorEndpoint.onStartGlobalCooldown?.Invoke();
         }
 
         [TargetRpc]
-        public void Client_StartSpellCooldown(PlayerID playerId, string spellID, float duration, RPCInfo info = default)
+        public void Client_StartSpellCooldown(PlayerID playerID, string spellID, float duration, RPCInfo info = default)
         {
             ActorEndpoint.onStartCooldown?.Invoke(spellID, duration);
         }

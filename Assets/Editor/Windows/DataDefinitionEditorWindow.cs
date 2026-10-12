@@ -247,7 +247,7 @@ namespace Game.Editor.Windows
                     if (isSelected)
                     {
                         EditorGUI.indentLevel++;
-                        EditorGUILayout.LabelField($"ID: {def.DefinitionId}", EditorStyles.miniLabel);
+                        EditorGUILayout.LabelField($"ID: {def.DefinitionID}", EditorStyles.miniLabel);
 
                         if (SupportsTags)
                         {
@@ -301,7 +301,7 @@ namespace Game.Editor.Windows
                     if (def == null) continue;
 
                     bool matches = def.DisplayName.ToLower().Contains(lowerFilter) ||
-                                  def.DefinitionId.ToLower().Contains(lowerFilter) ||
+                                  def.DefinitionID.ToLower().Contains(lowerFilter) ||
                                   MatchesSearchFilter(def, lowerFilter);
 
                     // Also match against tags
@@ -336,10 +336,10 @@ namespace Game.Editor.Windows
                     result.Sort((a, b) => string.Compare(b.DisplayName, a.DisplayName, StringComparison.OrdinalIgnoreCase));
                     break;
                 case SortMode.IdAsc:
-                    result.Sort((a, b) => string.Compare(a.DefinitionId, b.DefinitionId, StringComparison.OrdinalIgnoreCase));
+                    result.Sort((a, b) => string.Compare(a.DefinitionID, b.DefinitionID, StringComparison.OrdinalIgnoreCase));
                     break;
                 case SortMode.IdDesc:
-                    result.Sort((a, b) => string.Compare(b.DefinitionId, a.DefinitionId, StringComparison.OrdinalIgnoreCase));
+                    result.Sort((a, b) => string.Compare(b.DefinitionID, a.DefinitionID, StringComparison.OrdinalIgnoreCase));
                     break;
                 case SortMode.TagPriority:
                     SortByTagPriority(result);
