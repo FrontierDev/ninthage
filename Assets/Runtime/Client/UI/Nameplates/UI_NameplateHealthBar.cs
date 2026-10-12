@@ -6,6 +6,9 @@ using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_NameplateHealthBar</c> implementation.
+    /// </summary>
     public sealed class UI_NameplateHealthBar : UI_ProgressBar
     {
         [SerializeField] private TMP_Text nameText;
@@ -24,6 +27,9 @@ namespace Game.Client.UI
             graphics.material = new Material(graphics.material);
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetRelation</c>.
+        /// </summary>
         [ToDo("Consider adding a method to set the relation which updates the bar color and text colors accordingly.")]
         public void SetRelation(FactionRelationState state)
         {
@@ -47,18 +53,27 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetName</c>.
+        /// </summary>
         public void SetName(string name)
         {
             if (nameText != null)
                 nameText.text = name;
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetLevel</c>.
+        /// </summary>
         public void SetLevel(int level)
         {
             if (levelText != null)
                 levelText.text = level.ToString();
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetHealthPercent</c>.
+        /// </summary>
         public void SetHealthPercent(float percent)
         {
             UIShaderProperties.SetFloat(graphics, "_FillAmount", percent);

@@ -1,25 +1,34 @@
-using System.Collections.Generic;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterStatList</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterStatList : UI_Panel, IListPanel
     {
         private static UI_CharacterStatList _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_CharacterStatList Instance => _instance;
 
         [SerializeField] private GameObject container;
         [SerializeField] private GameObject statEntryPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => statEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        [SerializeField] private List<ActorStatDefinition> statDefinitions = new List<ActorStatDefinition>();
-        [SerializeField] private List<ActorStatDefinition> focusStatDefinitions = new List<ActorStatDefinition>();
-        [SerializeField] private List<ActorStatDefinition> relevantStatDefinitions = new List<ActorStatDefinition>();
+        [SerializeField] private List<ActorStatDefinition> statDefinitions = new();
+        [SerializeField] private List<ActorStatDefinition> focusStatDefinitions = new();
+        [SerializeField] private List<ActorStatDefinition> relevantStatDefinitions = new();
         private ActorStatContainer currentStats;
 
         protected override void Awake()
@@ -55,6 +64,7 @@ namespace Game.Client.UI
         }
 
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             base.Refresh();
@@ -88,6 +98,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (ClientAccountManager.PlayerActor == null) return;

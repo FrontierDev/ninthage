@@ -5,6 +5,9 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Defines the client-side <c>ContextMenuPivot</c> options.
+    /// </summary>
     public enum ContextMenuPivot
     {
         TopLeft,
@@ -13,11 +16,20 @@ namespace Game.Client.UI
         BottomRight
     }
 
+    /// <summary>
+    /// Provides the client-side <c>UI_ContextMenuWindow</c> implementation.
+    /// </summary>
     public sealed class UI_ContextMenuWindow : UI_Window, IPointerClickHandler
     {
         private static UI_ContextMenuWindow _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_ContextMenuWindow Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
         [SerializeField] private UI_ContextMenuPanel contentsPanel;
@@ -37,12 +49,18 @@ namespace Game.Client.UI
             panelRect = contentsPanel.GetComponent<RectTransform>();
         }
 
+        /// <summary>
+        /// Handles the <c>OnPointerClick</c> callback.
+        /// </summary>
         public void OnPointerClick(PointerEventData eventData)
         {
             if (!RectTransformUtility.RectangleContainsScreenPoint(panelRect, eventData.position))
                 Hide();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Show</c> operation.
+        /// </summary>
         public void Show(Vector2 position, ContextMenuPivot pivot, GameObject entryPrefab, Action<UI_ContextMenuPanel> populate)
         {
             panelRect.pivot = pivot switch
@@ -58,6 +76,7 @@ namespace Game.Client.UI
             Show();
         }
 
+        /// <inheritdoc/>
         public override void Hide()
         {
             contentsPanel.PopulateList(true);

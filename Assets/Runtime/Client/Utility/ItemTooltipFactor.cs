@@ -1,15 +1,21 @@
-using System.Collections.Generic;
 using Game.Client.UI;
 using Game.Shared;
 using Game.Shared.Data;
-
 using Game.Shared.Runtime.Items;
+using System.Collections.Generic;
+
 namespace Game.Client.Utility
 {
+    /// <summary>
+    /// Provides the client-side <c>ItemTooltipFactory</c> implementation.
+    /// </summary>
     public static class ItemTooltipFactory
     {
-        private static Dictionary<ItemInstance, UI_TooltipLine[]> cache = new Dictionary<ItemInstance, UI_TooltipLine[]>();
+        private static Dictionary<ItemInstance, UI_TooltipLine[]> cache = new();
 
+        /// <summary>
+        /// Gets the value provided by <c>GetOrCreateTooltip</c>.
+        /// </summary>
         public static UI_TooltipLine[] GetOrCreateTooltip(ItemInstance item)
         {
             if (cache.TryGetValue(item, out var tooltip))
@@ -44,7 +50,7 @@ namespace Game.Client.Utility
             var lines = new List<UI_TooltipLine>();
 
             // Add damage line
-            UI_TooltipLine damageLine = new UI_TooltipLine()
+            var damageLine = new UI_TooltipLine()
             {
                 text = new string[]
                 {
@@ -62,7 +68,7 @@ namespace Game.Client.Utility
             var lines = new List<UI_TooltipLine>();
 
             // Add armor line
-            UI_TooltipLine armorLine = new UI_TooltipLine()
+            var armorLine = new UI_TooltipLine()
             {
                 text = new string[]
                 {
@@ -86,7 +92,7 @@ namespace Game.Client.Utility
                 else
                     plusString = "+";
 
-                UI_TooltipLine statLine = new UI_TooltipLine()
+                var statLine = new UI_TooltipLine()
                 { text = new string[] { $"{plusString}{stat.Value} {stat.Stat.DisplayName}" } };
                 lines.Add(statLine);
             }

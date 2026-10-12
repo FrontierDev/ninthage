@@ -1,14 +1,17 @@
-using System.Collections.Generic;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_TalentTreePanel</c> implementation.
+    /// </summary>
     public sealed class UI_TalentTreePanel : UI_Panel
     {
         [SerializeField] private Image graphics;
@@ -93,7 +96,7 @@ namespace Game.Client.UI
 
                 if (!talentNodes.TryGetValue(row, out var nodesInRow))
                 {
-                    nodesInRow = new List<UI_TalentTreeNode>();
+                    nodesInRow = new();
                     talentNodes[row] = nodesInRow;
                 }
 

@@ -1,10 +1,19 @@
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_ActionBarWindow</c> implementation.
+    /// </summary>
     public sealed class UI_ActionBarWindow : UI_Window
     {
         private static UI_ActionBarWindow _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_ActionBarWindow Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
         private void Awake()

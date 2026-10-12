@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using Game.Shared.Data;
+using System.Collections.Generic;
 using TMPro;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
@@ -7,9 +7,15 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_ReputationBodyPanel</c> implementation.
+    /// </summary>
     public sealed class UI_ReputationBodyPanel : UI_Panel, IListPanel
     {
         private static UI_ReputationBodyPanel _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_ReputationBodyPanel Instance => _instance;
 
         [SerializeField] private UI_ProgressBar progressBar;
@@ -27,7 +33,10 @@ namespace Game.Client.UI
         [SerializeField] private GameObject markerPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         protected override void Awake()
         {
@@ -35,6 +44,9 @@ namespace Game.Client.UI
             base.Awake();
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetFaction</c>.
+        /// </summary>
         public void SetFaction(FactionDefinition faction, float progress)
         {
             currentFaction = faction;
@@ -111,6 +123,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear)

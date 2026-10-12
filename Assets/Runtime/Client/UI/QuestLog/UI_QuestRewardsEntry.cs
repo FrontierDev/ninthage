@@ -5,6 +5,9 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_QuestRewardsEntry</c> implementation.
+    /// </summary>
     public sealed class UI_QuestRewardsEntry : UI_ListEntry<QuestItemReward>
     {
         [SerializeField] private Image graphics;
@@ -17,6 +20,7 @@ namespace Game.Client.UI
             graphics.material = new Material(graphics.material);
         }
 
+        /// <inheritdoc/>
         public override void Initialize(QuestItemReward data, int index)
         {
             this.data = data;
@@ -28,6 +32,7 @@ namespace Game.Client.UI
             UIShaderProperties.SetFloat(graphics, "_RarityAmount", 1.0f);
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
             // No click behavior for quest rewards in this implementation.

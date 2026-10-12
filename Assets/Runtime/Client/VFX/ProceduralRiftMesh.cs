@@ -3,6 +3,9 @@ namespace Game.Client.VFX
     using System;
     using UnityEngine;
 
+    /// <summary>
+    /// Provides the client-side <c>ProceduralRiftMesh</c> implementation.
+    /// </summary>
     [ExecuteAlways]
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
@@ -31,7 +34,13 @@ namespace Game.Client.VFX
         /// <summary>Fired at the end of every Generate() call.</summary>
         public event System.Action OnGenerated;
 
+        /// <summary>
+        /// Gets the <c>SharedMesh</c> value.
+        /// </summary>
         public Mesh SharedMesh => mesh;
+        /// <summary>
+        /// Gets the <c>Segments</c> value.
+        /// </summary>
         public int Segments => segments;
 
         private Mesh mesh;
@@ -44,13 +53,16 @@ namespace Game.Client.VFX
                 Generate(seed);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Generate</c> operation.
+        /// </summary>
         public void Generate(int newSeed)
         {
             seed = newSeed;
 
             if (mesh == null)
             {
-                mesh = new Mesh
+                mesh = new()
                 {
                     name = "Procedural Rift Mesh"
                 };
@@ -68,12 +80,12 @@ namespace Game.Client.VFX
 
             // Diamond cross-section per row: left (0), right (1), front peak (2), back peak (3).
             // Two tip vertices close off the top and bottom ends.
-            Vector3[] vertices = new Vector3[rowCount * 4 + 2];
-            Vector2[] uvs = new Vector2[rowCount * 4 + 2];
+            var vertices = new Vector3[rowCount * 4 + 2];
+            var uvs = new Vector2[rowCount * 4 + 2];
 
             // Side: segments × 4 faces × 2 tris × 3 verts = segments × 24 indices.
             // Caps: 2 ends × 4 tris × 3 verts = 24 indices.
-            int[] triangles = new int[segments * 24 + 24];
+            var triangles = new int[segments * 24 + 24];
 
             float halfHeight = height * 0.5f;
             float maxHalfWidth = radius * maxWidthFactor;
@@ -116,7 +128,7 @@ namespace Game.Client.VFX
                 float cos = Mathf.Cos(rollAngle);
                 float sin = Mathf.Sin(rollAngle);
 
-                Vector3 spine = new Vector3(centreX, y, spineZ);
+                var spine = new Vector3(centreX, y, spineZ);
 
                 Vector3 Rotate(float ox, float oz)
                 {

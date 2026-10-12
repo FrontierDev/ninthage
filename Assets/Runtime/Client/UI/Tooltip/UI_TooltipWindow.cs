@@ -3,9 +3,15 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_TooltipWindow</c> implementation.
+    /// </summary>
     public sealed class UI_TooltipWindow : UI_Window
     {
         private static UI_TooltipWindow _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_TooltipWindow Instance => _instance;
 
         private void Awake()
@@ -18,18 +24,24 @@ namespace Game.Client.UI
             _instance = this;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Show</c> operation.
+        /// </summary>
         public void Show(string header, UI_TooltipLine[] body, string footer, Sprite icon)
         {
             (panels[0] as UI_TooltipPanel).SetTooltip(header, body, footer, icon);
             base.Show();
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetPosition</c>.
+        /// </summary>
         public void SetPosition(Transform target, float gap = 0f)
         {
             if (target == null) return;
 
-            RectTransform tooltipRect = GetComponent<RectTransform>();
-            RectTransform targetRect = target.GetComponent<RectTransform>();
+            var tooltipRect = GetComponent<RectTransform>();
+            var targetRect = target.GetComponent<RectTransform>();
             if (targetRect == null) return;
 
             // Set pivot to top-left so position = where the top-left corner lands.
@@ -39,10 +51,10 @@ namespace Game.Client.UI
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate(tooltipRect);
 
-            Vector3[] targetCorners = new Vector3[4];
+            var targetCorners = new Vector3[4];
             targetRect.GetWorldCorners(targetCorners);
 
-            Vector3[] tooltipCorners = new Vector3[4];
+            var tooltipCorners = new Vector3[4];
             tooltipRect.GetWorldCorners(tooltipCorners);
 
             float tooltipWidth = tooltipCorners[2].x - tooltipCorners[0].x;

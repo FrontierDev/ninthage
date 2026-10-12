@@ -1,12 +1,12 @@
+using Game.Client;
+using Game.Shared;
+using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Game.Shared.Data;
-using Game.Client;
-using Game.Shared;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Utility;
 namespace Game.Client.Utility
 {
     /// <summary>
@@ -16,7 +16,7 @@ namespace Game.Client.Utility
     /// </summary>
     public static class PlaceholderText
     {
-        private static readonly Regex PlaceholderRegex = new Regex(@"\$[^$]+\$");
+        private static readonly Regex PlaceholderRegex = new(@"\$[^$]+\$");
         private static readonly Dictionary<string, Func<string, string>> resolvers = new();
 
         /// <summary>
@@ -34,6 +34,9 @@ namespace Game.Client.Utility
             resolvers[category.ToLower()] = resolver;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ResolvePlaceholder</c> operation.
+        /// </summary>
         public static string ResolvePlaceholder(string placeholder)
         {
             if (placeholder.Length < 3 || placeholder[0] != '$' || placeholder[^1] != '$')
@@ -104,6 +107,9 @@ namespace Game.Client.Utility
             return $"{mitigation.ToString("F1")}%";
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ResolveAll</c> operation.
+        /// </summary>
         public static string ResolveAll(string text)
         {
             if (string.IsNullOrEmpty(text))

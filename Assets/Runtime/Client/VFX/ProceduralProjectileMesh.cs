@@ -1,10 +1,9 @@
 namespace Game.Client.VFX
 {
-    using UnityEngine;
-
 #if UNITY_EDITOR
     using UnityEditor;
 #endif
+    using UnityEngine;
 
     /// <summary>
     /// Editor-time mesh generator for spell projectile shapes.
@@ -15,6 +14,9 @@ namespace Game.Client.VFX
     [RequireComponent(typeof(MeshRenderer))]
     public sealed class ProceduralProjectileMesh : MonoBehaviour
     {
+        /// <summary>
+        /// Defines the client-side <c>ProjectileShape</c> options.
+        /// </summary>
         public enum ProjectileShape
         {
             Sphere,
@@ -39,6 +41,9 @@ namespace Game.Client.VFX
 
         private Mesh cachedMesh;
 
+        /// <summary>
+        /// Gets the <c>GeneratedMesh</c> value.
+        /// </summary>
         public Mesh GeneratedMesh => cachedMesh;
 
         private void OnValidate()
@@ -56,7 +61,7 @@ namespace Game.Client.VFX
         {
             if (cachedMesh == null)
             {
-                cachedMesh = new Mesh { name = $"Projectile_{shapeType}" };
+                cachedMesh = new() { name = $"Projectile_{shapeType}" };
                 GetComponent<MeshFilter>().sharedMesh = cachedMesh;
             }
 
@@ -90,8 +95,8 @@ namespace Game.Client.VFX
         {
             // UV sphere: rings (vertical), segments (horizontal)
             int vertexCount = (rings + 1) * (segments + 1);
-            Vector3[] vertices = new Vector3[vertexCount];
-            Vector2[] uvs = new Vector2[vertexCount];
+            var vertices = new Vector3[vertexCount];
+            var uvs = new Vector2[vertexCount];
 
             int vertexIndex = 0;
             for (int ring = 0; ring <= rings; ring++)
@@ -117,7 +122,7 @@ namespace Game.Client.VFX
 
             // Triangles
             int triangleCount = rings * segments * 6;
-            int[] triangles = new int[triangleCount];
+            var triangles = new int[triangleCount];
             int triIndex = 0;
 
             for (int ring = 0; ring < rings; ring++)
@@ -157,8 +162,8 @@ namespace Game.Client.VFX
             int cylVertCount = 2 * (segments + 1);                // two rings for cylinder
             int totalVerts = hemVertCount * 2 + cylVertCount;
 
-            Vector3[] vertices = new Vector3[totalVerts];
-            Vector2[] uvs = new Vector2[totalVerts];
+            var vertices = new Vector3[totalVerts];
+            var uvs = new Vector2[totalVerts];
             int vertIndex = 0;
 
             // Bottom hemisphere (y from -hemisphereDiameter/2 to 0)
@@ -226,7 +231,7 @@ namespace Game.Client.VFX
             }
 
             // Connect triangles across all three sections
-            int[] triangles = new int[rings * segments * 6 + hemRings * segments * 12];
+            var triangles = new int[rings * segments * 6 + hemRings * segments * 12];
             int triIndex = 0;
 
             // Bottom hemisphere triangles
@@ -306,8 +311,8 @@ namespace Game.Client.VFX
         {
             // Sphere that tapers toward one end (like a flame or tear drop)
             int vertexCount = (rings + 1) * (segments + 1);
-            Vector3[] vertices = new Vector3[vertexCount];
-            Vector2[] uvs = new Vector2[vertexCount];
+            var vertices = new Vector3[vertexCount];
+            var uvs = new Vector2[vertexCount];
 
             int vertexIndex = 0;
             for (int ring = 0; ring <= rings; ring++)
@@ -334,7 +339,7 @@ namespace Game.Client.VFX
                 }
             }
 
-            int[] triangles = new int[rings * segments * 6];
+            var triangles = new int[rings * segments * 6];
             int triIndex = 0;
 
             for (int ring = 0; ring < rings; ring++)
@@ -371,8 +376,8 @@ namespace Game.Client.VFX
             int cylVertCount = 2 * (segments + 1);
             int totalVerts = hemVertCount * 2 + cylVertCount;
 
-            Vector3[] vertices = new Vector3[totalVerts];
-            Vector2[] uvs = new Vector2[totalVerts];
+            var vertices = new Vector3[totalVerts];
+            var uvs = new Vector2[totalVerts];
             int vertIndex = 0;
 
             // Bottom hemisphere
@@ -437,7 +442,7 @@ namespace Game.Client.VFX
                 }
             }
 
-            int[] triangles = new int[hemRings * segments * 12 + segments * 6];
+            var triangles = new int[hemRings * segments * 12 + segments * 6];
             int triIndex = 0;
 
             int botHemStart = 0;

@@ -1,12 +1,18 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterListPanel</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterListPanel : UI_Panel, IListPanel
     {
         private static UI_CharacterListPanel _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_CharacterListPanel Instance => _instance;
 
         [Header("Character List Settings")]
@@ -15,13 +21,20 @@ namespace Game.Client.UI
         GameObject IListPanel.contentContainer => contentContainer;
         GameObject IListPanel.entryPrefab => entryPrefab;
 
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             PopulateList(true);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear) ((IListPanel)this).ClearList();

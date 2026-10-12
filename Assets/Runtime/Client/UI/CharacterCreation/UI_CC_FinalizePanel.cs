@@ -1,11 +1,17 @@
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CC_FinalizePanel</c> implementation.
+    /// </summary>
     public sealed class UI_CC_FinalizePanel : UI_Panel
     {
         private static UI_CC_FinalizePanel _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_CC_FinalizePanel Instance => _instance;
 
         protected override void Awake()
@@ -24,6 +30,7 @@ namespace Game.Client.UI
         [SerializeField] private UI_Button createButton;
         [SerializeField] private TMP_InputField nameInput;
 
+        /// <inheritdoc/>
         public override void Show()
         {
             base.Show();
@@ -32,6 +39,9 @@ namespace Game.Client.UI
 
         }
 
+        /// <summary>
+        /// Gets the value provided by <c>GetCharacterName</c>.
+        /// </summary>
         public string GetCharacterName()
         {
             return nameInput.text;

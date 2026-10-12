@@ -1,14 +1,20 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using System;
 using System.Collections;
 using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_Window</c> implementation.
+    /// </summary>
     public abstract class UI_Window : MonoBehaviour
     {
         [Header("Settings")]
         [SerializeField] internal string windowName; // Optional: Name of the window for identification purposes.
+        /// <summary>
+        /// Gets the <c>WindowName</c> value.
+        /// </summary>
         public string WindowName => windowName; // Public getter for window name.
 
         [SerializeField] protected bool startVisible = false; // Optional: Whether the window should be visible at the start.
@@ -42,30 +48,45 @@ namespace Game.Client.UI
         }
 
         #region Window Visibility
+        /// <summary>
+        /// Executes the client-side <c>Show</c> operation.
+        /// </summary>
         public virtual void Show()
         {
             StartCoroutine(Fade(1f, fadeInDuration));
             onShowWindow?.Invoke();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ShowImmediate</c> operation.
+        /// </summary>
         public virtual void ShowImmediate()
         {
             canvasGroup.alpha = 1f;
             onShowWindow?.Invoke();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Hide</c> operation.
+        /// </summary>
         public virtual void Hide()
         {
             StartCoroutine(Fade(0f, fadeOutDuration));
             onHideWindow?.Invoke();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>HideImmediate</c> operation.
+        /// </summary>
         public virtual void HideImmediate()
         {
             canvasGroup.alpha = 0f;
             onHideWindow?.Invoke();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Toggle</c> operation.
+        /// </summary>
         public virtual void Toggle()
         {
             if (canvasGroup.interactable)
@@ -107,6 +128,9 @@ namespace Game.Client.UI
         #endregion
 
         #region Panel Management
+        /// <summary>
+        /// Executes the client-side <c>TryGetPanel</c> operation.
+        /// </summary>
         public virtual bool TryGetPanel(string panelName, out UI_Panel panel)
         {
             panel = Array.Find(panels, p => p.PanelName == panelName);
@@ -118,16 +142,25 @@ namespace Game.Client.UI
             return true;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ShowPanel</c> operation.
+        /// </summary>
         public virtual void ShowPanel(string panelName)
         {
             if (TryGetPanel(panelName, out var panel)) panel.Show();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>HidePanel</c> operation.
+        /// </summary>
         public virtual void HidePanel(string panelName)
         {
             if (TryGetPanel(panelName, out var panel)) panel.Hide();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>TogglePanel</c> operation.
+        /// </summary>
         public virtual void TogglePanel(string panelName)
         {
             if (TryGetPanel(panelName, out var panel)) panel.Toggle();

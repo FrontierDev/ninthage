@@ -1,13 +1,19 @@
+using Game.Shared.Persistence;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
-using Game.Shared.Persistence;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_SelectedCharacterPanel</c> implementation.
+    /// </summary>
     public sealed class UI_SelectedCharacterPanel : UI_Panel
     {
         private static UI_SelectedCharacterPanel _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_SelectedCharacterPanel Instance => _instance;
 
         [Header("UI References - Character Info")]

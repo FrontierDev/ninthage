@@ -1,8 +1,11 @@
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_FloatingCombatText</c> implementation.
+    /// </summary>
     public sealed class UI_FloatingCombatText : MonoBehaviour
     {
         [SerializeField] private TextMeshProUGUI text;
@@ -15,6 +18,9 @@ namespace Game.Client.UI
         private float sizeMultiplier = 1f;
         private float durationMultiplier = 1f;
 
+        /// <summary>
+        /// Executes the client-side <c>Initialize</c> operation.
+        /// </summary>
         public void Initialize(string content, Color color, Vector3 direction, float sizeMultiplier = 1f, float durationMultiplier = 1f)
         {
             text.text = content;

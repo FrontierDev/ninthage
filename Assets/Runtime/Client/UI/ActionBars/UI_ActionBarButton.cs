@@ -1,18 +1,20 @@
-using System.Collections;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-using Debug = Game.Shared.Utility.FormattedDebug;
-
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_ActionBarButton</c> implementation.
+    /// </summary>
     public sealed class UI_ActionBarButton : UI_Button, IPointerClickHandler
     {
         [Header("UI References - Action Bar Button")]
@@ -36,6 +38,9 @@ namespace Game.Client.UI
             ActorEndpoint.onStartGlobalCooldown += OnStartGlobalCooldown;
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetKeybindText</c>.
+        /// </summary>
         public void SetKeybindText(string text)
         {
             if (keybindText != null)
@@ -81,6 +86,7 @@ namespace Game.Client.UI
             StartCoroutine(GlobalCooldownRoutine(GameConfigurationManager.Config.GlobalCooldownDuration));
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = default)
         {
             if (eventData == null) return;
@@ -101,11 +107,17 @@ namespace Game.Client.UI
             base.OnClick(eventData);
         }
 
+        /// <summary>
+        /// Handles the <c>OnPointerClick</c> callback.
+        /// </summary>
         public void OnPointerClick(PointerEventData eventData)
         {
             OnClick(eventData);
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetSpell</c>.
+        /// </summary>
         public void SetSpell(string newSpellID, int newSpellRank, Sprite newSpellIcon)
         {
             spellID = newSpellID;

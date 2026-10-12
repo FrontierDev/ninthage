@@ -6,6 +6,9 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_ReputationRewardEntry</c> implementation.
+    /// </summary>
     public sealed class UI_ReputationRewardEntry : UI_ListEntry<FactionRewardDescriptionEntry>
     {
         private int index;
@@ -22,6 +25,7 @@ namespace Game.Client.UI
             graphics.material = new Material(graphics.material);
         }
 
+        /// <inheritdoc/>
         public override void Initialize(FactionRewardDescriptionEntry data, int index)
         {
             this.data = data;
@@ -44,11 +48,17 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetThresholdLevels</c>.
+        /// </summary>
         public void SetThresholdLevels(int minRep, int maxRep)
         {
             thresholdText.text = $"{minRep} to {maxRep}";
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetBorderColor</c>.
+        /// </summary>
         public void SetBorderColor(bool isPositive)
         {
             if (graphics != null)
@@ -62,16 +72,20 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ClearBorderColor</c> operation.
+        /// </summary>
         public void ClearBorderColor()
         {
             if (graphics != null)
             {
                 // Reset to default border color
-                Color defaultColor = new Color(0x4B / 255f, 0x55 / 255f, 0x66 / 255f); // #4B5566
+                var defaultColor = new Color(0x4B / 255f, 0x55 / 255f, 0x66 / 255f); // #4B5566
                 UIShaderProperties.SetColor(graphics, "_BorderColor", defaultColor);
             }
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
             base.OnClick(eventData); // Play SFX if assigned in the inspector.

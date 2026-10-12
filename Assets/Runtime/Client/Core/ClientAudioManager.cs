@@ -1,20 +1,29 @@
-using System.Collections.Generic;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Runtime;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>ClientAudioManager</c> implementation.
+    /// </summary>
     public sealed class ClientAudioManager : MonoBehaviour
     {
         private static ClientAudioManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static ClientAudioManager Instance => _instance;
 
         private static bool _initialized;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
         private const int MaxCacheSize = 50; // Prevent unbounded memory growth
@@ -98,6 +107,9 @@ namespace Game.Client
             _cacheAccessOrder.Add(key);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PlaySFX</c> operation.
+        /// </summary>
         public void PlaySFX(string addressablePath)
         {
             // Check cache first
@@ -132,6 +144,9 @@ namespace Game.Client
             };
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PreloadSFX</c> operation.
+        /// </summary>
         public void PreloadSFX(string addressablePath)
         {
             // Already cached or pending

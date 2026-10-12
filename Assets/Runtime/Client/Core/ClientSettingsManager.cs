@@ -13,10 +13,16 @@ namespace Game.Client
     /// </summary>
     public static class ClientSettingsManager
     {
-        private static Dictionary<string, object> settings = new Dictionary<string, object>();
+        private static Dictionary<string, object> settings = new();
         private const string SETTINGS_PREFIX = "setting_";
 
+        /// <summary>
+        /// Stores the <c>onSettingChanged</c> value.
+        /// </summary>
         public static Action<string, object> onSettingChanged;
+        /// <summary>
+        /// Stores the <c>onSettingsLoaded</c> value.
+        /// </summary>
         public static Action onSettingsLoaded;
 
         /// <summary>

@@ -1,14 +1,20 @@
-using Game.Shared.Data;
-using UnityEngine;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Data;
 using Unity.Cinemachine;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>CharacterCreationManager</c> implementation.
+    /// </summary>
     public sealed class CharacterCreationManager : MonoBehaviour
     {
         private static CharacterCreationManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static CharacterCreationManager Instance => _instance;
 
         // Internal UI references.
@@ -41,6 +47,9 @@ namespace Game.Client
             sceneCamera.Prioritize();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>SelectClass</c> operation.
+        /// </summary>
         public void SelectClass(ClassDefinition def)
         {
             Debug.Log($"Selected class: {def.DefinitionID}");
@@ -48,8 +57,14 @@ namespace Game.Client
             characterCreationWindow.onClassSelected?.Invoke(def);
         }
 
+        /// <summary>
+        /// Gets the value provided by <c>GetCurrentClassId</c>.
+        /// </summary>
         public string GetCurrentClassId() { return _selectedClassId; }
 
+        /// <summary>
+        /// Executes the client-side <c>SelectRace</c> operation.
+        /// </summary>
         public void SelectRace(RaceDefinition def)
         {
             Debug.Log($"Selecteed race: {def.DefinitionID}");
@@ -57,8 +72,14 @@ namespace Game.Client
             characterCreationWindow.onRaceSelected?.Invoke(def);
         }
 
+        /// <summary>
+        /// Gets the value provided by <c>GetCurrentRaceId</c>.
+        /// </summary>
         public string GetCurrentRaceId() { return _selectedRaceId; }
 
+        /// <summary>
+        /// Executes the client-side <c>CreateCharacter</c> operation.
+        /// </summary>
         public void CreateCharacter(string characterName)
         {
             if (string.IsNullOrEmpty(_selectedClassId) || string.IsNullOrEmpty(_selectedRaceId))

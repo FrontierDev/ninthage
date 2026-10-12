@@ -4,8 +4,12 @@ using UnityEngine.EventSystems;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_LoginButton</c> implementation.
+    /// </summary>
     public sealed class UI_LoginButton : UI_Button
     {
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData)
         {
             var username = UI_MainMenuWindow.Instance.GetUsername();
@@ -21,8 +25,10 @@ namespace Game.Client.UI
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
 
+        /// <inheritdoc/>
         public override void OnPointerEnter(PointerEventData eventData) => base.OnPointerEnter(eventData);
 
+        /// <inheritdoc/>
         public override void OnPointerExit(PointerEventData eventData) => base.OnPointerExit(eventData);
     }
 }

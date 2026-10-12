@@ -36,7 +36,7 @@ namespace Game.Client.VFX
 
         [Header("Bolt Visuals")]
         [ColorUsage(true, true)]
-        [SerializeField] private Color boltColor = new Color(2f, 1.2f, 4f, 1f);
+        [SerializeField] private Color boltColor = new(2f, 1.2f, 4f, 1f);
 
         [SerializeField, Min(0.001f)] private float boltWidth = 0.04f;
 
@@ -264,7 +264,7 @@ namespace Game.Client.VFX
             var shader = Shader.Find("NinthAge/VFX/RiftBolt")
                       ?? Shader.Find("Universal Render Pipeline/Unlit");
 
-            runtimeMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+            runtimeMaterial = new(shader) { hideFlags = HideFlags.HideAndDontSave };
             return runtimeMaterial;
         }
     }

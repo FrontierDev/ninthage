@@ -1,13 +1,16 @@
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_TalentHeaderPanel</c> implementation.
+    /// </summary>
     public sealed class UI_TalentHeaderPanel : UI_Panel
     {
         [SerializeField] private Image classIconImage;

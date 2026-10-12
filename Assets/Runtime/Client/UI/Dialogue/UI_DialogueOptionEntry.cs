@@ -1,21 +1,31 @@
 using Game.Shared.Data;
+using Game.Shared.Data.Dialogue;
+using Game.Shared.Runtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-using Game.Shared.Data.Dialogue;
-using Game.Shared.Runtime;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_DialogueOptionEntry</c> implementation.
+    /// </summary>
     public sealed class UI_DialogueOptionEntry : UI_ListEntry<DialogueChoice>
     {
+        /// <summary>
+        /// Stores the <c>data</c> value.
+        /// </summary>
         public DialogueChoice data;
+        /// <summary>
+        /// Stores the <c>index</c> value.
+        /// </summary>
         public int index;
 
         [SerializeField] private TMP_Text choiceText;
         [SerializeField] private Image choiceIcon;
 
+        /// <inheritdoc/>
         public override void Initialize(DialogueChoice data, int index)
         {
             this.data = data;
@@ -29,6 +39,7 @@ namespace Game.Client.UI
             // choiceIcon.sprite = data.Icon;
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
             UI_DialogueBodyPanel.Instance.GoToNode(data.NextNodeID);

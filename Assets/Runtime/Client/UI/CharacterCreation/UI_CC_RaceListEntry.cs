@@ -1,20 +1,27 @@
-using UnityEngine;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using TMPro;
-using UnityEngine.UI;
-using UnityEngine.EventSystems;
-using Debug = Game.Shared.Utility.FormattedDebug;
 using Unity.Entities.UniversalDelegates;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CC_RaceListEntry</c> implementation.
+    /// </summary>
     public sealed class UI_CC_RaceListEntry : UI_ListEntry<RaceDefinition>
     {
         [SerializeField] private Image raceIconImage;
 
+        /// <summary>
+        /// Stores the <c>raceDefinition</c> value.
+        /// </summary>
         public RaceDefinition raceDefinition;
         private int index;
 
+        /// <inheritdoc/>
         public override void Initialize(RaceDefinition _raceDefinition, int _index)
         {
             index = _index;
@@ -24,6 +31,9 @@ namespace Game.Client.UI
             UI_CharacterCreationWindow.Instance.onRaceSelected += OnRaceSelected;
         }
 
+        /// <summary>
+        /// Handles the <c>OnRaceSelected</c> callback.
+        /// </summary>
         public void OnRaceSelected(RaceDefinition def)
         {
             // Focus the selected entry and unfocus others.
@@ -31,6 +41,7 @@ namespace Game.Client.UI
             else Unfocus();
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData)
         {
             CharacterCreationManager.Instance.SelectRace(raceDefinition);
@@ -38,22 +49,26 @@ namespace Game.Client.UI
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
 
+        /// <inheritdoc/>
         public override void OnPointerEnter(PointerEventData eventData)
         {
             base.OnPointerEnter(eventData);
         }
 
+        /// <inheritdoc/>
         public override void OnPointerExit(PointerEventData eventData)
         {
             base.OnPointerExit(eventData);
         }
 
+        /// <inheritdoc/>
         public override void Focus()
         {
             raceIconImage.color = Color.yellow; // Example visual feedback for focus
             isFocused = true;
         }
 
+        /// <inheritdoc/>
         public override void Unfocus()
         {
             raceIconImage.color = Color.white; // Reset to default color

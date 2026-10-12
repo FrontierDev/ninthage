@@ -1,6 +1,6 @@
-using UnityEngine;
-using System.Collections.Generic;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace Game.Client.Collections
 {
@@ -11,7 +11,7 @@ namespace Game.Client.Collections
     [CreateAssetMenu(fileName = "LoadingScreenCollection", menuName = "NinthAge/Collections/Loading Screen Collection", order = 1)]
     public class LoadingScreenCollection : ScriptableObject
     {
-        [SerializeField] private List<Sprite> splashImages = new List<Sprite>();
+        [SerializeField] private List<Sprite> splashImages = new();
 
         /// <summary>
         /// Get a random splash art image from the collection.

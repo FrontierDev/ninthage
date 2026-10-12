@@ -1,11 +1,14 @@
-using UnityEngine;
-using TMPro;
 using Game.Shared;
 using Game.Shared.Networking;
-
 using Game.Shared.Runtime.Actors;
+using TMPro;
+using UnityEngine;
+
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_Nameplate</c> implementation.
+    /// </summary>
     public class UI_Nameplate : MonoBehaviour
     {
         private bool initialized = false;
@@ -24,10 +27,25 @@ namespace Game.Client.UI
         private Canvas canvas;
         private bool _isCasting;
 
+        /// <summary>
+        /// Gets the <c>SortingDistance</c> value.
+        /// </summary>
         public float SortingDistance { get; set; }
+        /// <summary>
+        /// Gets the <c>Actor</c> value.
+        /// </summary>
         public Actor Actor => actor;
+        /// <summary>
+        /// Gets the <c>RectTransform</c> value.
+        /// </summary>
         public RectTransform RectTransform => rectTransform;
+        /// <summary>
+        /// Gets the <c>HeightOffset</c> value.
+        /// </summary>
         public float HeightOffset => heightOffset;
+        /// <summary>
+        /// Gets the <c>StackOffset</c> value.
+        /// </summary>
         public float StackOffset { get; set; }
 
         private void Awake()
@@ -51,6 +69,9 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Initialize</c> operation.
+        /// </summary>
         public void Initialize(Actor target, Canvas worldCanvas)
         {
             actor = target;
@@ -104,6 +125,9 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Handles the <c>OnStatsUpdated</c> callback.
+        /// </summary>
         public void OnStatsUpdated(Actor actor, ActorStatContainer statContainer)
         {
             if (this.actor != actor)
@@ -116,16 +140,25 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Executes the client-side <c>EvaluateNameVisibility</c> operation.
+        /// </summary>
         public void EvaluateNameVisibility()
         {
             EvaluateVisibility();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>EvaluateHealthBarVisibility</c> operation.
+        /// </summary>
         public void EvaluateHealthBarVisibility()
         {
             EvaluateVisibility();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>EvaluateCastBarVisibility</c> operation.
+        /// </summary>
         public void EvaluateCastBarVisibility()
         {
             EvaluateVisibility();
@@ -215,12 +248,18 @@ namespace Game.Client.UI
                 castBar.Hide();
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetTargetedIndicatorVisibility</c>.
+        /// </summary>
         public void SetTargetedIndicatorVisibility(bool isVisible)
         {
             float amount = isVisible ? 1f : 0f;
             UIShaderProperties.SetFloat(healthBar.graphics, "_SelectedAmount", amount);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>StartCast</c> operation.
+        /// </summary>
         public void StartCast(float duration, bool reverse)
         {
             _isCasting = true;
@@ -228,6 +267,9 @@ namespace Game.Client.UI
             EvaluateCastBarVisibility();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>InterruptCast</c> operation.
+        /// </summary>
         public void InterruptCast()
         {
             _isCasting = false;
@@ -235,6 +277,9 @@ namespace Game.Client.UI
             EvaluateCastBarVisibility();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>FinishCast</c> operation.
+        /// </summary>
         public void FinishCast()
         {
             _isCasting = false;

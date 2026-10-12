@@ -1,26 +1,38 @@
 
-using System.Collections.Generic;
 using Game.Shared.Data;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_QuestObjectivesPanel</c> implementation.
+    /// </summary>
     public sealed class UI_QuestObjectivesPanel : UI_Panel, IListPanel
     {
         [SerializeField] private GameObject container;
         [SerializeField] private UI_QuestObjectivesEntry slotEntryPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         private QuestDefinition def;
 
+        /// <summary>
+        /// Sets the value managed by <c>SetQuestDefinition</c>.
+        /// </summary>
         public void SetQuestDefinition(QuestDefinition def)
         {
             this.def = def;
             PopulateList(true);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>UpdateEntries</c> operation.
+        /// </summary>
         public void UpdateEntries(int[] progress)
         {
             for (int i = 0; i < progress.Length; i++)
@@ -38,6 +50,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear) ClearEntries();

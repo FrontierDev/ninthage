@@ -1,18 +1,24 @@
 
-using System.Collections.Generic;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_InstabilityBar</c> implementation.
+    /// </summary>
     public class UI_InstabilityBar : UI_ProgressBar, ISpecialResourceBar
     {
         [SerializeField] private ActorStatContainer playerStatContainer;
 
+        /// <summary>
+        /// Executes the client-side <c>Initialize</c> operation.
+        /// </summary>
         public void Initialize(Actor playerActor)
         {
             if (playerActor != null)

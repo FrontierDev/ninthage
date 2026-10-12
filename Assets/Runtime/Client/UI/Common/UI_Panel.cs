@@ -1,6 +1,6 @@
-using UnityEngine;
 using System;
 using System.Collections;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -15,6 +15,9 @@ namespace Game.Client.UI
     {
         [Header("Settings")]
         [SerializeField] protected string panelName; // Optional: Name of the panel for identification purposes.
+        /// <summary>
+        /// Gets the <c>PanelName</c> value.
+        /// </summary>
         public string PanelName => panelName; // Public getter for panel name.
         [SerializeField] protected bool startVisible = false; // Optional: Whether the panel should be visible at the start.
         [SerializeField] protected float fadeInDuration = 0f;
@@ -38,30 +41,45 @@ namespace Game.Client.UI
             else HideImmediate();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Show</c> operation.
+        /// </summary>
         public virtual void Show()
         {
             StartCoroutine(Fade(1f, fadeInDuration));
             onShowWindow?.Invoke();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ShowImmediate</c> operation.
+        /// </summary>
         public virtual void ShowImmediate()
         {
             canvasGroup.alpha = 1f;
             onShowWindow?.Invoke();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Hide</c> operation.
+        /// </summary>
         public virtual void Hide()
         {
             StartCoroutine(Fade(0f, fadeOutDuration));
             onHideWindow?.Invoke();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>HideImmediate</c> operation.
+        /// </summary>
         public virtual void HideImmediate()
         {
             canvasGroup.alpha = 0f;
             onHideWindow?.Invoke();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Toggle</c> operation.
+        /// </summary>
         public virtual void Toggle()
         {
             if (canvasGroup.interactable)
@@ -85,18 +103,27 @@ namespace Game.Client.UI
             canvasGroup.alpha = targetAlpha;
         }
 
+        /// <summary>
+        /// Handles the <c>OnShow</c> callback.
+        /// </summary>
         public virtual void OnShow()
         {
             canvasGroup.interactable = true;
             canvasGroup.blocksRaycasts = true;
         }
 
+        /// <summary>
+        /// Handles the <c>OnHide</c> callback.
+        /// </summary>
         public virtual void OnHide()
         {
             canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Refresh</c> operation.
+        /// </summary>
         public virtual void Refresh()
         {
             // Optional: Override in derived classes to refresh panel content when shown.

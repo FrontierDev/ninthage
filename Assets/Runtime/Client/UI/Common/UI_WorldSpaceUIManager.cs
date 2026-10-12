@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_WorldSpaceUIManager</c> implementation.
+    /// </summary>
     public abstract class UI_WorldSpaceUIManager : MonoBehaviour
     {
 

@@ -1,20 +1,29 @@
+using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_InventoryGridPanel</c> implementation.
+    /// </summary>
     public sealed class UI_InventoryGridPanel : UI_Panel, IListPanel
     {
         private static UI_InventoryGridPanel _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_InventoryGridPanel Instance => _instance;
 
         [SerializeField] private GameObject container;
         [SerializeField] private UI_InventorySlotEntry slotEntryPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         protected override void Awake()
         {
@@ -45,6 +54,7 @@ namespace Game.Client.UI
             Refresh();
         }
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             base.Refresh();
@@ -60,6 +70,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (ClientAccountManager.PlayerActor == null) return;

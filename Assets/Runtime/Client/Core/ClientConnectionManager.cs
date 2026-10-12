@@ -1,16 +1,19 @@
-using UnityEngine;
-using System.Collections;
-using LoadingScreen = Game.Client.UI.LoadingScreenController;
-using Debug = Game.Shared.Utility.FormattedDebug;
 using Authentication = Game.Shared.Networking.LoginAuthenticator;
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared;
+using LoadingScreen = Game.Client.UI.LoadingScreenController;
 using MainMenu = Game.Client.UI.UI_MainMenuWindow;
 using PurrNet;
-using Game.Shared;
 using System;
+using System.Collections;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Game.Client
 {
+    /// <summary>
+    /// Defines the client-side <c>ConnectionState</c> options.
+    /// </summary>
     public enum ConnectionState
     {
         Disconnected,
@@ -18,6 +21,9 @@ namespace Game.Client
         Connected
     }
 
+    /// <summary>
+    /// Provides the client-side <c>ClientConnectionManager</c> implementation.
+    /// </summary>
     public class ClientConnectionManager : MonoBehaviour
     {
         private static ClientConnectionManager _instance;
@@ -33,9 +39,15 @@ namespace Game.Client
             }
         }
         private static bool _initialized = false;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
         private static ConnectionState _connectionState = ConnectionState.Disconnected;
+        /// <summary>
+        /// Gets the <c>CurrentConnectionState</c> value.
+        /// </summary>
         public static ConnectionState CurrentConnectionState => _connectionState;
 
         #region Lifecycle
@@ -85,6 +97,9 @@ namespace Game.Client
             }
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ConnectToServer</c> operation.
+        /// </summary>
         public void ConnectToServer(string usernameInput = "Player", string passwordInput = "password")
         {
             if (_connectionState != ConnectionState.Disconnected)

@@ -1,13 +1,16 @@
-using System.Collections.Generic;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterResourceBar</c> implementation.
+    /// </summary>
     public class UI_CharacterResourceBar : UI_ProgressBar
     {
         [SerializeField] private ActorStatContainer playerStatContainer;

@@ -1,14 +1,17 @@
-using System.Collections.Generic;
-using System.Linq;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using UnityEngine;
-
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Items;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterEquipmentList</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterEquipmentList : UI_Panel, IListPanel
     {
         [SerializeField] private GameObject container;
@@ -16,7 +19,10 @@ namespace Game.Client.UI
         [SerializeField] private List<ItemSlot> equipmentSlots;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         protected override void Awake()
         {
@@ -42,12 +48,16 @@ namespace Game.Client.UI
             Refresh();
         }
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             base.Refresh();
             PopulateList(false);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear)

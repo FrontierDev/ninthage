@@ -1,15 +1,21 @@
-using UnityEngine;
 using Debug = Game.Shared.Utility.FormattedDebug;
-using System.Collections.Generic;
-using Game.Shared.Persistence;
-using Unity.Cinemachine;
 using Game.Client.UI;
+using Game.Shared.Persistence;
+using System.Collections.Generic;
+using Unity.Cinemachine;
+using UnityEngine;
 
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>CharacterSelectionManager</c> implementation.
+    /// </summary>
     public sealed class CharacterSelectionManager : MonoBehaviour
     {
         private static CharacterSelectionManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static CharacterSelectionManager Instance => _instance;
 
         // Internal UI references.
@@ -44,6 +50,9 @@ namespace Game.Client
             sceneCamera.Prioritize();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>SelectCharacter</c> operation.
+        /// </summary>
         public void SelectCharacter(CharacterData character)
         {
             _selectedCharacter = character;
@@ -55,6 +64,9 @@ namespace Game.Client
             characterSelectionWindow.PopulateCharacterList(characters);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>EnterWorld</c> operation.
+        /// </summary>
         public void EnterWorld()
         {
             if (_selectedCharacter == null)

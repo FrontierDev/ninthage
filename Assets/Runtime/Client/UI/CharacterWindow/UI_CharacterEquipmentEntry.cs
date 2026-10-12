@@ -1,18 +1,27 @@
 using Game.Client.Utility;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Items;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Runtime.Items;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterEquipmentEntry</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterEquipmentEntry : UI_ListEntry<ItemInstance>, IPointerClickHandler
     {
+        /// <summary>
+        /// Stores the <c>item</c> value.
+        /// </summary>
         public ItemInstance item;
+        /// <summary>
+        /// Stores the <c>slotId</c> value.
+        /// </summary>
         public ItemSlot slotId;
         [SerializeField] private Image graphics;
 
@@ -25,12 +34,16 @@ namespace Game.Client.UI
         }
 
 
+        /// <inheritdoc/>
         public override void Initialize(ItemInstance _item, int _slotId)
         {
             slotId = (ItemSlot)_slotId;
             SetItem(_item);
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetItem</c>.
+        /// </summary>
         public void SetItem(ItemInstance _item)
         {
             item = _item;
@@ -53,6 +66,7 @@ namespace Game.Client.UI
             }
         }
 
+        /// <inheritdoc/>
         public override void OnClick(UnityEngine.EventSystems.PointerEventData eventData)
         {
             if (item == null) return;
@@ -67,6 +81,7 @@ namespace Game.Client.UI
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
 
+        /// <inheritdoc/>
         public override void OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData)
         {
             if (item == null) return;
@@ -85,6 +100,7 @@ namespace Game.Client.UI
             UI_TooltipWindow.Instance.SetPosition(graphics != null ? graphics.rectTransform : transform, 0f);
         }
 
+        /// <inheritdoc/>
         public override void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData)
         {
             base.OnPointerExit(eventData);
@@ -92,6 +108,9 @@ namespace Game.Client.UI
             UIShaderProperties.SetFloat(graphics, "_HoverAmount", 0f);
         }
 
+        /// <summary>
+        /// Handles the <c>OnPointerClick</c> callback.
+        /// </summary>
         public void OnPointerClick(UnityEngine.EventSystems.PointerEventData eventData)
         {
             OnClick(eventData);

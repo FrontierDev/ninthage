@@ -3,6 +3,9 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_DragGhost</c> implementation.
+    /// </summary>
     public sealed class UI_DragGhost : MonoBehaviour
     {
         private static UI_DragGhost _instance;
@@ -48,6 +51,9 @@ namespace Game.Client.UI
             _instance = ghost;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Show</c> operation.
+        /// </summary>
         public void Show(Sprite icon)
         {
             iconImage.sprite = icon;
@@ -55,11 +61,17 @@ namespace Game.Client.UI
             gameObject.SetActive(true);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>UpdatePosition</c> operation.
+        /// </summary>
         public void UpdatePosition(Vector2 screenPosition)
         {
             rectTransform.position = screenPosition;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Hide</c> operation.
+        /// </summary>
         public void Hide()
         {
             gameObject.SetActive(false);

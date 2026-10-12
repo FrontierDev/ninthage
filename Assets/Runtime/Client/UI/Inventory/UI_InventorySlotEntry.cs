@@ -1,18 +1,21 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Client.Utility;
 using Game.Shared;
+using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Items;
+using System.Collections;
+using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using TMPro;
-using Game.Shared.Data;
-using Debug = Game.Shared.Utility.FormattedDebug;
-using System.Linq;
-using Game.Client.Utility;
-using System.Collections;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Runtime.Items;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_InventorySlotEntry</c> implementation.
+    /// </summary>
     public class UI_InventorySlotEntry : UI_ListEntry<ItemInstance>, IPointerClickHandler,
         IDraggableSlot, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
     {
@@ -24,7 +27,13 @@ namespace Game.Client.UI
         [SerializeField] private Image graphics;
         [SerializeField] private TMP_Text stackSizeText;
 
+        /// <summary>
+        /// Gets the <c>SlotIndex</c> value.
+        /// </summary>
         public int SlotIndex => index;
+        /// <summary>
+        /// Gets the <c>SlotItem</c> value.
+        /// </summary>
         public ItemInstance SlotItem => itemInstance;
 
         private void Awake()
@@ -34,6 +43,7 @@ namespace Game.Client.UI
                 graphics.material = new Material(graphics.material);
         }
 
+        /// <inheritdoc/>
         public override void Initialize(ItemInstance data, int index)
         {
             this.index = index;
@@ -58,6 +68,9 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Executes the client-side <c>UpdateEntry</c> operation.
+        /// </summary>
         public void UpdateEntry(ItemInstance newData)
         {
             itemInstance = newData;
@@ -84,6 +97,7 @@ namespace Game.Client.UI
             }
         }
 
+        /// <inheritdoc/>
         public override void OnClick(UnityEngine.EventSystems.PointerEventData eventData)
         {
             if (itemInstance == null) return;
@@ -108,6 +122,7 @@ namespace Game.Client.UI
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
 
+        /// <inheritdoc/>
         public override void OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData)
         {
             if (dragSource != null) return;
@@ -127,6 +142,7 @@ namespace Game.Client.UI
             UI_TooltipWindow.Instance.SetPosition(graphics != null ? graphics.rectTransform : transform, 0f);
         }
 
+        /// <inheritdoc/>
         public override void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData)
         {
             base.OnPointerExit(eventData);
@@ -134,6 +150,9 @@ namespace Game.Client.UI
             UIShaderProperties.SetFloat(graphics, "_HoverAmount", 0f);
         }
 
+        /// <summary>
+        /// Handles the <c>OnPointerClick</c> callback.
+        /// </summary>
         public void OnPointerClick(PointerEventData eventData)
         {
             OnClick(eventData);
@@ -141,6 +160,9 @@ namespace Game.Client.UI
 
         // --- IDraggableSlot / Drag Handlers ---
 
+        /// <summary>
+        /// Handles the <c>OnBeginDrag</c> callback.
+        /// </summary>
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (itemInstance == null) return;
@@ -149,6 +171,9 @@ namespace Game.Client.UI
             OnSlotBeginDrag(eventData.position);
         }
 
+        /// <summary>
+        /// Handles the <c>OnDrag</c> callback.
+        /// </summary>
         public void OnDrag(PointerEventData eventData)
         {
             if (dragSource != this) return;
@@ -156,6 +181,9 @@ namespace Game.Client.UI
             OnSlotDrag(eventData.position);
         }
 
+        /// <summary>
+        /// Handles the <c>OnEndDrag</c> callback.
+        /// </summary>
         public void OnEndDrag(PointerEventData eventData)
         {
             if (dragSource != this) return;
@@ -164,6 +192,9 @@ namespace Game.Client.UI
             dragSource = null;
         }
 
+        /// <summary>
+        /// Handles the <c>OnDrop</c> callback.
+        /// </summary>
         public void OnDrop(PointerEventData eventData)
         {
             if (dragSource == null || dragSource == this) return;
@@ -171,6 +202,9 @@ namespace Game.Client.UI
             OnSlotDrop(dragSource);
         }
 
+        /// <summary>
+        /// Handles the <c>OnSlotBeginDrag</c> callback.
+        /// </summary>
         public void OnSlotBeginDrag(Vector2 position)
         {
             UI_TooltipWindow.Instance.HideImmediate();
@@ -180,16 +214,25 @@ namespace Game.Client.UI
             UI_DragGhost.Instance.UpdatePosition(position);
         }
 
+        /// <summary>
+        /// Handles the <c>OnSlotDrag</c> callback.
+        /// </summary>
         public void OnSlotDrag(Vector2 position)
         {
             UI_DragGhost.Instance.UpdatePosition(position);
         }
 
+        /// <summary>
+        /// Handles the <c>OnSlotEndDrag</c> callback.
+        /// </summary>
         public void OnSlotEndDrag()
         {
             UI_DragGhost.Instance.Hide();
         }
 
+        /// <summary>
+        /// Handles the <c>OnSlotDrop</c> callback.
+        /// </summary>
         public void OnSlotDrop(IDraggableSlot source)
         {
             var playerActor = ClientAccountManager.PlayerActor;

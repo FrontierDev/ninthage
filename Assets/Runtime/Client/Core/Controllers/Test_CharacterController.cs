@@ -1,16 +1,22 @@
 ﻿using Game.Shared;
+using Game.Shared.Movement;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
 using PurrNet;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Movement;
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>Test_CharacterController</c> implementation.
+    /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public class Test_CharacterController : MonoBehaviour
     {
         private static Test_CharacterController _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static Test_CharacterController Instance => _instance;
 
         [SerializeField] private float moveSpeed = 5f;

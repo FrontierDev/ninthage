@@ -1,15 +1,24 @@
-using System.Collections.Generic;
 using Game.Shared.Data;
+using Game.Shared.Data.Dialogue;
+using System.Collections.Generic;
 using UnityEngine;
 
-using Game.Shared.Data.Dialogue;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_DialogueOptionList</c> implementation.
+    /// </summary>
     public sealed class UI_DialogueOptionList : UI_Panel, IListPanel
     {
         private static UI_DialogueOptionList _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_DialogueOptionList Instance => _instance;
         private static bool _initialized;
+        /// <summary>
+        /// Gets whether the client-side <c>IsInitialized</c> condition is true.
+        /// </summary>
         public static bool IsInitialized => _initialized;
 
         private DialogueNode currentNode;
@@ -18,7 +27,10 @@ namespace Game.Client.UI
         [SerializeField] private UI_DialogueOptionEntry slotEntryPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         protected override void Awake()
         {
@@ -27,11 +39,15 @@ namespace Game.Client.UI
             _initialized = true;
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetNode</c>.
+        /// </summary>
         public void SetNode(int nodeID)
         {
             currentNode = UI_DialogueWindow.Instance.CurrentDialogue.GetNode(nodeID);
         }
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             PopulateList(true);
@@ -47,6 +63,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear) ClearEntries();

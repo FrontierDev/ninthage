@@ -5,9 +5,15 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_TalentTreeViewerPanel</c> implementation.
+    /// </summary>
     public sealed class UI_TalentTreeViewerPanel : UI_Panel
     {
         private static UI_TalentTreeViewerPanel instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_TalentTreeViewerPanel Instance => instance;
 
         [SerializeField] private Image graphics;
@@ -24,6 +30,9 @@ namespace Game.Client.UI
                 graphics.material = new Material(graphics.material);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ShowTalentInfo</c> operation.
+        /// </summary>
         public void ShowTalentInfo(TalentDefinition talent)
         {
             if (talent == null)

@@ -1,16 +1,22 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
-
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
+using UnityEngine;
+
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_FCTManager</c> implementation.
+    /// </summary>
     public class UI_FCTManager : MonoBehaviour
     {
         private static UI_FCTManager instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_FCTManager Instance => instance;
 
         [Header("Prefab")]

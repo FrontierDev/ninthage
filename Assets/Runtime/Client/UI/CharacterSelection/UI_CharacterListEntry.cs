@@ -1,14 +1,17 @@
-using UnityEngine;
-using Game.Shared.Data;
-using TMPro;
-using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using Debug = Game.Shared.Utility.FormattedDebug;
-using Unity.Entities.UniversalDelegates;
+using Game.Shared.Data;
 using Game.Shared.Persistence;
+using TMPro;
+using Unity.Entities.UniversalDelegates;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterListEntry</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterListEntry : UI_ListEntry<CharacterData>
     {
         [SerializeField] private Image classIconImage;
@@ -16,9 +19,13 @@ namespace Game.Client.UI
         [SerializeField] private TMP_Text characterInfoText;
         [SerializeField] private Image factionIcon;
 
+        /// <summary>
+        /// Stores the <c>characterData</c> value.
+        /// </summary>
         public CharacterData characterData;
         private int index;
 
+        /// <inheritdoc/>
         public override void Initialize(CharacterData _characterData, int _index)
         {
             // Metadata setup.
@@ -42,12 +49,16 @@ namespace Game.Client.UI
                 UI_CharacterSelectWindow.Instance.onCharacterSelected -= OnCharacterSelected;
         }
 
+        /// <summary>
+        /// Handles the <c>OnCharacterSelected</c> callback.
+        /// </summary>
         public void OnCharacterSelected(CharacterData character)
         {
             if (character == characterData) Focus();
             else Unfocus();
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData)
         {
             CharacterSelectionManager.Instance.SelectCharacter(characterData);
@@ -56,22 +67,26 @@ namespace Game.Client.UI
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
 
+        /// <inheritdoc/>
         public override void OnPointerEnter(PointerEventData eventData)
         {
             base.OnPointerEnter(eventData);
         }
 
+        /// <inheritdoc/>
         public override void OnPointerExit(PointerEventData eventData)
         {
             base.OnPointerExit(eventData);
         }
 
+        /// <inheritdoc/>
         public override void Focus()
         {
             canvasGroup.alpha = 1f;
             isFocused = true;
         }
 
+        /// <inheritdoc/>
         public override void Unfocus()
         {
             canvasGroup.alpha = 0.8f;

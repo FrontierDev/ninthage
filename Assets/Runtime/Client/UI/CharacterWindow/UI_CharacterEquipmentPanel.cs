@@ -1,12 +1,18 @@
-using System.Collections.Generic;
 using Game.Shared.Networking;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterEquipmentPanel</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterEquipmentPanel : UI_Panel
     {
         private static UI_CharacterEquipmentPanel _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_CharacterEquipmentPanel Instance => _instance;
 
         [Header("Sub-panels")]
@@ -25,6 +31,7 @@ namespace Game.Client.UI
             base.Awake();
         }
 
+        /// <inheritdoc/>
         public override void OnShow()
         {
             base.OnShow();
@@ -35,6 +42,7 @@ namespace Game.Client.UI
             base.OnShow();
         }
 
+        /// <inheritdoc/>
         public override void OnHide()
         {
 

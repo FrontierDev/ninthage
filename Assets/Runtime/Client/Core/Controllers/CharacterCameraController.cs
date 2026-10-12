@@ -1,14 +1,20 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>CharacterCameraController</c> implementation.
+    /// </summary>
     public sealed class CharacterCameraController : MonoBehaviour
     {
         private static CharacterCameraController _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static CharacterCameraController Instance => _instance;
 
         [SerializeField] private CinemachineInputAxisController cameraInputController;

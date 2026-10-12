@@ -1,20 +1,27 @@
-using UnityEngine;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using TMPro;
-using UnityEngine.UI;
-using UnityEngine.EventSystems;
-using Debug = Game.Shared.Utility.FormattedDebug;
 using Unity.Entities.UniversalDelegates;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CC_ClassListEntry</c> implementation.
+    /// </summary>
     public sealed class UI_CC_ClassListEntry : UI_ListEntry<ClassDefinition>
     {
         [SerializeField] private Image classIconImage;
 
+        /// <summary>
+        /// Stores the <c>classDefinition</c> value.
+        /// </summary>
         public ClassDefinition classDefinition;
         private int index;
 
+        /// <inheritdoc/>
         public override void Initialize(ClassDefinition _classDefinition, int _index)
         {
             index = _index;
@@ -24,12 +31,16 @@ namespace Game.Client.UI
             UI_CharacterCreationWindow.Instance.onClassSelected += OnClassSelected;
         }
 
+        /// <summary>
+        /// Handles the <c>OnClassSelected</c> callback.
+        /// </summary>
         public void OnClassSelected(ClassDefinition def)
         {
             if (def.DefinitionID == classDefinition.DefinitionID) Focus();
             else Unfocus();
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData)
         {
             CharacterCreationManager.Instance.SelectClass(classDefinition);
@@ -38,22 +49,26 @@ namespace Game.Client.UI
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
 
+        /// <inheritdoc/>
         public override void OnPointerEnter(PointerEventData eventData)
         {
             base.OnPointerEnter(eventData);
         }
 
+        /// <inheritdoc/>
         public override void OnPointerExit(PointerEventData eventData)
         {
             base.OnPointerExit(eventData);
         }
 
+        /// <inheritdoc/>
         public override void Focus()
         {
             classIconImage.color = Color.yellow; // Example visual feedback for focus
             isFocused = true;
         }
 
+        /// <inheritdoc/>
         public override void Unfocus()
         {
             classIconImage.color = Color.white; // Reset to default color

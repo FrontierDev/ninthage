@@ -6,6 +6,9 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_QuestListEntry</c> implementation.
+    /// </summary>
     public sealed class UI_QuestListEntry : UI_ListEntry<QuestDefinition>
     {
         [SerializeField] private TMP_Text titleText;
@@ -14,9 +17,13 @@ namespace Game.Client.UI
         [SerializeField] private Image icon;
 
         [SerializeField] private QuestDefinition data;
+        /// <summary>
+        /// Gets the <c>Data</c> value.
+        /// </summary>
         public QuestDefinition Data => data;
         private int index;
 
+        /// <inheritdoc/>
         public override void Initialize(QuestDefinition data, int index)
         {
             this.data = data;
@@ -28,6 +35,7 @@ namespace Game.Client.UI
             icon.sprite = data.Icon;
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
             UI_QuestDetailsPanel.Instance.SetQuestDefinition(data);

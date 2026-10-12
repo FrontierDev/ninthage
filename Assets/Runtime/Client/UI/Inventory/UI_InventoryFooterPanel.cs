@@ -1,9 +1,13 @@
+using Game.Shared.Runtime.Actors;
 using TMPro;
+
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_InventoryFooterPanel</c> implementation.
+    /// </summary>
     public sealed class UI_InventoryFooterPanel : UI_Panel
     {
         [SerializeField] private TMP_Text capacityText;

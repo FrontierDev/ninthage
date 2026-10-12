@@ -1,15 +1,21 @@
-﻿using UnityEngine;
-using Unity.Cinemachine;
+﻿using Actor = Game.Shared.Runtime.Actors.Actor;
 using Debug = Game.Shared.Utility.FormattedDebug;
-using Actor = Game.Shared.Runtime.Actors.Actor;
+using Game.Shared.Runtime.Actors;
+using Unity.Cinemachine;
+using UnityEngine;
 using UnityEngine.AddressableAssets;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>CameraManager</c> implementation.
+    /// </summary>
     public sealed class CameraManager : MonoBehaviour
     {
         private static CameraManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static CameraManager Instance => _instance;
 
         /// <summary>

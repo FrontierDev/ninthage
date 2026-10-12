@@ -5,6 +5,9 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_TalentTreeNode</c> implementation.
+    /// </summary>
     public sealed class UI_TalentTreeNode : UI_Button
     {
         [SerializeField] private Image graphics;
@@ -16,6 +19,9 @@ namespace Game.Client.UI
             graphics.material = new Material(graphics.material);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Initialize</c> operation.
+        /// </summary>
         public void Initialize(TalentDefinition definition, int rank = 0)
         {
             talentDefinition = definition;
@@ -25,6 +31,7 @@ namespace Game.Client.UI
             UIShaderProperties.SetFloat(graphics, "_IconAmount", 1f);
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
             UI_TalentTreeViewerPanel.Instance.ShowTalentInfo(talentDefinition);

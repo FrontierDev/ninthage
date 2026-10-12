@@ -1,8 +1,8 @@
-using System.Collections;
 using Game.Shared;
+using Game.Shared.Runtime.VFX;
+using System.Collections;
 using UnityEngine;
 
-using Game.Shared.Runtime.VFX;
 namespace Game.Client.VFX
 {
     /// <summary>
@@ -26,11 +26,17 @@ namespace Game.Client.VFX
             Destroy(gameObject);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>VFXFadeIn</c> operation.
+        /// </summary>
         public void VFXFadeIn()
         {
             // nyi
         }
 
+        /// <summary>
+        /// Executes the client-side <c>VFXFadeOut</c> operation.
+        /// </summary>
         public void VFXFadeOut()
         {
             // NYI

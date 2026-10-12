@@ -1,17 +1,23 @@
-using System.Collections.Generic;
-using System.Linq;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
+using System.Linq;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterSpecialBar</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterSpecialBar : UI_Panel, IListPanel
     {
         private static UI_CharacterSpecialBar _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_CharacterSpecialBar Instance => _instance;
 
         private ActorStatContainer playerStatContainer;
@@ -22,7 +28,10 @@ namespace Game.Client.UI
         [SerializeField] private List<Sprite> counters;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => counterPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         private int currentMax = 0;
         private int currentValue = 0;
@@ -77,6 +86,7 @@ namespace Game.Client.UI
             }
         }
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             if (playerStatContainer == null || trackedStat == null) return;
@@ -101,6 +111,9 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear)

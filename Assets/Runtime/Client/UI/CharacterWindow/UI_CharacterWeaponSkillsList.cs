@@ -1,22 +1,31 @@
-using System.Collections.Generic;
-using System.Linq;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterWeaponSkillsList</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterWeaponSkillsList : UI_Panel, IListPanel
     {
         private static UI_CharacterWeaponSkillsList _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_CharacterWeaponSkillsList Instance => _instance;
 
         [SerializeField] private GameObject container;
         [SerializeField] private GameObject skillEntryPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => skillEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         [SerializeField] private List<ItemWeaponType> trackedWeaponTypes = new();
         private PlayerExperience playerExperience;
@@ -58,6 +67,7 @@ namespace Game.Client.UI
             }
         }
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             // Update the corresponding entry in the UI list if it's currently displayed.
@@ -83,6 +93,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (ClientAccountManager.PlayerActor == null || playerExperience == null) return;

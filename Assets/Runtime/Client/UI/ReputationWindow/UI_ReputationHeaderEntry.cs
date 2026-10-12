@@ -4,16 +4,23 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_ReputationHeaderEntry</c> implementation.
+    /// </summary>
     public sealed class UI_ReputationHeaderEntry : UI_ListEntry<FactionDefinition>
     {
         [SerializeField] private UI_ProgressBar progressBar;
         [SerializeField] private Image factionIcon;
 
         private FactionDefinition data;
+        /// <summary>
+        /// Gets the <c>Data</c> value.
+        /// </summary>
         public FactionDefinition Data => data;
         private float progress;
         private int index;
 
+        /// <inheritdoc/>
         public override void Initialize(FactionDefinition data, int index)
         {
             this.data = data;
@@ -23,6 +30,9 @@ namespace Game.Client.UI
             progressBar.SetMaterial(progressBar.graphics.material); // Ensure we have a unique material instance for this progress bar
         }
 
+        /// <summary>
+        /// Executes the client-side <c>UpdateEntry</c> operation.
+        /// </summary>
         public void UpdateEntry(int rep)
         {
             // Get reputation progress. For factions we can go to war with, we need to offset the progress
@@ -58,6 +68,7 @@ namespace Game.Client.UI
             }
         }
 
+        /// <inheritdoc/>
         public override void OnClick(UnityEngine.EventSystems.PointerEventData eventData)
         {
             UI_ReputationBodyPanel.Instance.SetFaction(data, progress);

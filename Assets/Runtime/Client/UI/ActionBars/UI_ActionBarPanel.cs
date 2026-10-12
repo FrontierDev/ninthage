@@ -4,6 +4,9 @@ using UnityEngine.InputSystem;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_ActionBarPanel</c> implementation.
+    /// </summary>
     public sealed class UI_ActionBarPanel : UI_Panel
     {
         [SerializeField] private int actionBarIndex;
@@ -14,6 +17,9 @@ namespace Game.Client.UI
             base.Awake();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Initialize</c> operation.
+        /// </summary>
         public void Initialize(int index)
         {
             actionBarIndex = index;
@@ -34,6 +40,9 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Executes the client-side <c>ActivateSlot</c> operation.
+        /// </summary>
         public void ActivateSlot(int slotIndex)
         {
             if (slotIndex >= 0 && slotIndex < _buttons.Length)

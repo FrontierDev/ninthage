@@ -1,11 +1,14 @@
-using System.Collections.Generic;
 using Game.Shared.Data;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_QuestRewardsPanel</c> implementation.
+    /// </summary>
     public sealed class UI_QuestRewardsPanel : UI_Panel, IListPanel
     {
         [SerializeField] private TMP_Text choiceText;
@@ -24,10 +27,16 @@ namespace Game.Client.UI
         [SerializeField] private UI_QuestRewardsEntry slotEntryPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         private QuestDefinition def;
 
+        /// <summary>
+        /// Sets the value managed by <c>SetQuestDefinition</c>.
+        /// </summary>
         public void SetQuestDefinition(Shared.Data.QuestDefinition def)
         {
             this.def = def;
@@ -58,6 +67,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear) ClearEntries();

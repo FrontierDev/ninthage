@@ -1,11 +1,17 @@
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_MainMenuWindow</c> implementation.
+    /// </summary>
     public class UI_MainMenuWindow : UI_Window
     {
         private static UI_MainMenuWindow _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_MainMenuWindow Instance => _instance;
 
         [Header("UI References - Login")]
@@ -31,7 +37,13 @@ namespace Game.Client.UI
         #endregion
 
         #region Getters
+        /// <summary>
+        /// Gets the value provided by <c>GetUsername</c>.
+        /// </summary>
         public string GetUsername() => usernameInput.text;
+        /// <summary>
+        /// Gets the value provided by <c>GetPassword</c>.
+        /// </summary>
         public string GetPassword() => passwordInput.text;
         #endregion
     }

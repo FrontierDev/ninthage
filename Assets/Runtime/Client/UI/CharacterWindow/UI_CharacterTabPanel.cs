@@ -1,15 +1,21 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using System.Collections.Generic;
 using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CharacterTabPanel</c> implementation.
+    /// </summary>
     public sealed class UI_CharacterTabPanel : UI_Panel
     {
         private static UI_CharacterTabPanel _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_CharacterTabPanel Instance => _instance;
 
-        [SerializeField] private Dictionary<UI_CharacterTabButton, UI_Panel> tabButtons = new Dictionary<UI_CharacterTabButton, UI_Panel>();
+        [SerializeField] private Dictionary<UI_CharacterTabButton, UI_Panel> tabButtons = new();
         [SerializeField] private List<UI_CharacterTabButton> tabButtonList; // For inspector assignment
 
         protected override void Awake()
@@ -32,6 +38,9 @@ namespace Game.Client.UI
             base.Awake();
         }
 
+        /// <summary>
+        /// Handles the <c>OnTabSelected</c> callback.
+        /// </summary>
         public void OnTabSelected(UI_CharacterTabButton selectedButton)
         {
             foreach (var kvp in tabButtons)

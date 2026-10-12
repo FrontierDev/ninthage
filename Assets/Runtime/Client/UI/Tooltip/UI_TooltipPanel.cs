@@ -4,11 +4,20 @@ using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Represents the client-side <c>UI_TooltipLine</c> value.
+    /// </summary>
     public struct UI_TooltipLine
     {
+        /// <summary>
+        /// Stores the <c>text</c> value.
+        /// </summary>
         public string[] text;
     }
 
+    /// <summary>
+    /// Provides the client-side <c>UI_TooltipPanel</c> implementation.
+    /// </summary>
     public class UI_TooltipPanel : UI_Panel
     {
         [SerializeField] private TMP_Text tooltipHeader;
@@ -19,6 +28,9 @@ namespace Game.Client.UI
         [SerializeField] private GameObject singleLinePrefab;
         [SerializeField] private GameObject doubleLinePrefab;
 
+        /// <summary>
+        /// Sets the value managed by <c>SetTooltip</c>.
+        /// </summary>
         public void SetTooltip(string header, UI_TooltipLine[] lines, string footer, Sprite icon)
         {
             tooltipHeader.text = header;

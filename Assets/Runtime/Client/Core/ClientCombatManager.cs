@@ -1,28 +1,40 @@
-using System.Collections.Generic;
-using System.Linq;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.UI;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Data.SpellTargetDefinitions;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
 using PurrNet;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TextCore.Text;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Data.SpellTargetDefinitions;
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>ClientCombatManager</c> implementation.
+    /// </summary>
     public sealed class ClientCombatManager : MonoBehaviour
     {
         private static ClientCombatManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static ClientCombatManager Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
         // Combat
         private bool inCombat = false;
+        /// <summary>
+        /// Gets the <c>InCombat</c> value.
+        /// </summary>
         public bool InCombat => inCombat;
 
         // Spellcasting
@@ -137,6 +149,9 @@ namespace Game.Client
         }
         #endregion
 
+        /// <summary>
+        /// Executes the client-side <c>CastSpell</c> operation.
+        /// </summary>
         public void CastSpell(string spellID, int rank = 1)
         {
             var spellDef = SpellDefinitionLibrary.Instance.GetDefinition(spellID);
@@ -185,6 +200,9 @@ namespace Game.Client
             return false;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>StartAutoAttack</c> operation.
+        /// </summary>
         public void StartAutoAttack()
         {
             ClientAccountManager.PlayerActor.Server_StartAutoAttack();
@@ -193,6 +211,9 @@ namespace Game.Client
             ClientAccountManager.PlayerActor.GetComponent<NetworkAnimator>().SetBool("InCombat", true);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>StopAutoAttack</c> operation.
+        /// </summary>
         public void StopAutoAttack()
         {
             ClientAccountManager.PlayerActor.Server_StopAutoAttack();
@@ -238,11 +259,17 @@ namespace Game.Client
 
         }
 
+        /// <summary>
+        /// Executes the client-side <c>IsOnGlobalCooldown</c> operation.
+        /// </summary>
         public bool IsOnGlobalCooldown()
         {
             return globalCooldownRemaining > 0f;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>IsSpellOnCooldown</c> operation.
+        /// </summary>
         public bool IsSpellOnCooldown(SpellDefinition spell)
         {
             return activeCooldowns.ContainsKey(spell);

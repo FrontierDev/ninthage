@@ -1,14 +1,17 @@
-using UnityEngine;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Defines the client-side <c>NameplateHealthBarDisplayMode</c> options.
+    /// </summary>
     public enum NameplateHealthBarDisplayMode
     {
         Always,
@@ -17,6 +20,9 @@ namespace Game.Client.UI
         Never
     }
 
+    /// <summary>
+    /// Defines the client-side <c>NameplateNameDisplayMode</c> options.
+    /// </summary>
     public enum NameplateNameDisplayMode
     {
         Always,
@@ -24,6 +30,9 @@ namespace Game.Client.UI
         Never
     }
 
+    /// <summary>
+    /// Defines the client-side <c>NameplateCastBarDisplayMode</c> options.
+    /// </summary>
     public enum NameplateCastBarDisplayMode
     {
         Always,
@@ -31,28 +40,61 @@ namespace Game.Client.UI
         Never
     }
 
+    /// <summary>
+    /// Defines the client-side <c>NameplateOverlapMode</c> options.
+    /// </summary>
     public enum NameplateOverlapMode
     {
         Overlap,
         Stack
     }
 
+    /// <summary>
+    /// Provides the client-side <c>UI_NameplateManager</c> implementation.
+    /// </summary>
     public class UI_NameplateManager : UI_WorldSpaceUIManager
     {
         private static UI_NameplateManager instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_NameplateManager Instance => instance;
 
         // The prefab for nameplates.
+        /// <summary>
+        /// Stores the <c>nameplatePrefab</c> value.
+        /// </summary>
         public GameObject nameplatePrefab;
 
         // Visibility settings.
+        /// <summary>
+        /// Stores the <c>healthBarDisplayMode</c> value.
+        /// </summary>
         public NameplateHealthBarDisplayMode healthBarDisplayMode = NameplateHealthBarDisplayMode.Always;
+        /// <summary>
+        /// Stores the <c>nameDisplayMode</c> value.
+        /// </summary>
         public NameplateNameDisplayMode nameDisplayMode = NameplateNameDisplayMode.Always;
+        /// <summary>
+        /// Stores the <c>castBarDisplayMode</c> value.
+        /// </summary>
         public NameplateCastBarDisplayMode castBarDisplayMode = NameplateCastBarDisplayMode.Always;
+        /// <summary>
+        /// Stores the <c>overlapMode</c> value.
+        /// </summary>
         public NameplateOverlapMode overlapMode = NameplateOverlapMode.Overlap;
+        /// <summary>
+        /// Stores the <c>showOwnNameplate</c> value.
+        /// </summary>
         public bool showOwnNameplate = false;
 
+        /// <summary>
+        /// Gets the active nameplates keyed by actor.
+        /// </summary>
         public Dictionary<Actor, UI_Nameplate> activeNameplates = new();
+        /// <summary>
+        /// Stores the <c>hoveredActor</c> value.
+        /// </summary>
         public Actor hoveredActor;
         private Actor targetedActor => ClientAccountManager.PlayerActor?.Target;
 
@@ -262,7 +304,7 @@ namespace Game.Client.UI
             GameObject nameplate = Instantiate(nameplatePrefab, UI_WorldSpace.Instance.nameplateContainer);
 
             // Initialize the nameplate
-            UI_Nameplate nameplateView = nameplate.GetComponent<UI_Nameplate>();
+            var nameplateView = nameplate.GetComponent<UI_Nameplate>();
             if (nameplateView != null)
             {
                 nameplateView.Initialize(actor, UI_WorldSpace.Instance.root);
@@ -341,6 +383,9 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetHoveredActor</c>.
+        /// </summary>
         public void SetHoveredActor(Actor actor)
         {
             if (hoveredActor == actor) return;
@@ -355,6 +400,9 @@ namespace Game.Client.UI
             }
         }
 
+        /// <summary>
+        /// Handles the <c>OnLateTargetChanged</c> callback.
+        /// </summary>
         public void OnLateTargetChanged(Actor previousActor, Actor actor)
         {
             var prevNameplate = previousActor != null && activeNameplates.TryGetValue(previousActor, out var prev) ? prev : null;

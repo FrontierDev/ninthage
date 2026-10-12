@@ -1,19 +1,25 @@
-using UnityEngine;
-using UnityEngine.AddressableAssets;
-using System.Collections;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared;
+using Game.Shared.Data;
+using Game.Shared.Utility;
 using LoadingScreen = Game.Client.UI.LoadingScreenController;
 using PurrNet;
 using PurrNet.Transports;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
 using UnityEngine.SceneManagement;
-using Game.Shared.Utility;
-using Game.Shared.Data;
-using Game.Shared;
 
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>ClientInitialization</c> implementation.
+    /// </summary>
     public static class ClientInitialization
     {
+        /// <summary>
+        /// Executes the client-side <c>Begin</c> operation.
+        /// </summary>
         public static void Begin(MonoBehaviour host)
         {
             host.StartCoroutine(InitializationProcess());

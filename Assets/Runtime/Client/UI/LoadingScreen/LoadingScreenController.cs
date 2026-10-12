@@ -1,18 +1,27 @@
-using UnityEngine;
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.Collections;
-using UnityEngine.UI;
 using System.Collections;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>LoadingScreenController</c> implementation.
+    /// </summary>
     public class LoadingScreenController : MonoBehaviour
     {
         private static LoadingScreenController _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static LoadingScreenController Instance => _instance;
 
         [SerializeField]
         private LoadingScreenCollection _collection;
+        /// <summary>
+        /// Gets the <c>Collection</c> value.
+        /// </summary>
         public LoadingScreenCollection Collection => _collection;
 
         [Header("UI References")]
@@ -61,6 +70,9 @@ namespace Game.Client.UI
             _collection = collection;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Show</c> operation.
+        /// </summary>
         public void Show(int stages = 1)
         {
             // Cancel any in-progress fade-out from a previous loading screen.
@@ -84,6 +96,9 @@ namespace Game.Client.UI
             isShowing = true;
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Tick</c> operation.
+        /// </summary>
         public void Tick()
         {
             if (stage >= maxStages) return;
@@ -99,6 +114,9 @@ namespace Game.Client.UI
             else loadingIcon.fillAmount = Mathf.Lerp(loadingIcon.fillAmount, targetFillAmount, Time.deltaTime * FILL_SPEED);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Finish</c> operation.
+        /// </summary>
         public void Finish()
         {
             if (!isShowing) return;
@@ -106,6 +124,9 @@ namespace Game.Client.UI
             HideLoadingScreen();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>Cancel</c> operation.
+        /// </summary>
         public void Cancel()
         {
             if (_fadeCoroutine != null)

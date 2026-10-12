@@ -1,11 +1,14 @@
-using UnityEngine;
-using System.Collections.Generic;
 using ClassDefinitionLibrary = Game.Shared.Data.ClassDefinitionLibrary;
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CC_RaceListPanel</c> implementation.
+    /// </summary>
     public class UI_CC_RaceListPanel : UI_Panel, IListPanel
     {
         [Header("Race List Settings")]
@@ -16,7 +19,10 @@ namespace Game.Client.UI
 
         private RaceDefinitionLibrary raceDefinitionLibrary;
 
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         private void Start()
         {
@@ -32,6 +38,7 @@ namespace Game.Client.UI
             PopulateList();
         }
 
+        /// <inheritdoc/>
         public override void Show()
         {
             base.Show();
@@ -47,6 +54,7 @@ namespace Game.Client.UI
             UI_CC_NextStageButton.Instance?.SetCurrentPanel("RaceSelection");
         }
 
+        /// <inheritdoc/>
         public override void Hide()
         {
             base.Hide();
@@ -54,11 +62,15 @@ namespace Game.Client.UI
                 UI_CharacterCreationWindow.Instance.HidePanel("RaceInfo");
         }
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             PopulateList(true);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear) ((IListPanel)this).ClearList();

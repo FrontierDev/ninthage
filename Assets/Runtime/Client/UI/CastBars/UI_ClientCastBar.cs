@@ -1,15 +1,21 @@
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     // Technically a window.
+    /// <summary>
+    /// Provides the client-side <c>UI_ClientCastBarWindow</c> implementation.
+    /// </summary>
     public sealed class UI_ClientCastBarWindow : UI_Window
     {
         private static UI_ClientCastBarWindow _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_ClientCastBarWindow Instance => _instance;
 
         [SerializeField] private UI_CastBar castBar;

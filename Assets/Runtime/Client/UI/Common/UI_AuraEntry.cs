@@ -1,17 +1,23 @@
-using System;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Runtime.Spellcasting;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-using Game.Shared.Runtime.Spellcasting;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_AuraEntry</c> implementation.
+    /// </summary>
     public sealed class UI_AuraEntry : UI_ListEntry<AuraInstance>
     {
         [SerializeField] private AuraInstance data;
+        /// <summary>
+        /// Gets the <c>Data</c> value.
+        /// </summary>
         public AuraInstance Data => data;
 
         [SerializeField] private Image graphics;
@@ -19,6 +25,7 @@ namespace Game.Client.UI
 
         private int index;
 
+        /// <inheritdoc/>
         public override void Initialize(AuraInstance data, int index)
         {
             this.data = data;
@@ -44,6 +51,9 @@ namespace Game.Client.UI
             UpdateDisplay(data.Duration);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>UpdateDisplay</c> operation.
+        /// </summary>
         public void UpdateDisplay(float currentDuration = -1f)
         {
             if (data.Definition.StackBehavior == AuraStackBehavior.Condition_Stack ||
@@ -64,6 +74,7 @@ namespace Game.Client.UI
             }
         }
 
+        /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
             // Do nothing for now.

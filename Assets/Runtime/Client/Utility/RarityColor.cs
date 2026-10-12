@@ -4,8 +4,14 @@ using UnityEngine;
 
 namespace Game.Client.Utility
 {
+    /// <summary>
+    /// Provides the client-side <c>RarityColor</c> implementation.
+    /// </summary>
     public static class RarityColor
     {
+        /// <summary>
+        /// Gets the value provided by <c>GetColor</c>.
+        /// </summary>
         public static Color GetColor(ItemQuality rarity)
         {
             switch (rarity)

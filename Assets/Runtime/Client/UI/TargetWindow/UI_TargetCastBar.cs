@@ -1,12 +1,15 @@
-using System.Collections;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_TargetCastBar</c> implementation.
+    /// </summary>
     public sealed class UI_TargetCastBar : UI_ProgressBar
     {
         [SerializeField] private TMP_Text spellNameText;

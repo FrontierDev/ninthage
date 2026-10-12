@@ -1,22 +1,31 @@
-using System.Collections.Generic;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_ReputationHeaderPanel</c> implementation.
+    /// </summary>
     public sealed class UI_ReputationHeaderPanel : UI_Panel, IListPanel
     {
         private static UI_ReputationHeaderPanel _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_ReputationHeaderPanel Instance => _instance;
 
         [SerializeField] private GameObject container;
         [SerializeField] private UI_ReputationHeaderEntry slotEntryPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         private FactionCategory currentCategory = FactionCategory.Primary;
         private PlayerReputation playerReputation;
@@ -36,6 +45,9 @@ namespace Game.Client.UI
             playerReputation = actor.GetComponent<PlayerReputation>();
         }
 
+        /// <summary>
+        /// Handles the <c>OnClientReputationUpdated</c> callback.
+        /// </summary>
         public void OnClientReputationUpdated(string factionID, int reputation, int delta)
         {
             if (playerReputation == null) return;
@@ -64,6 +76,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear) ClearEntries();

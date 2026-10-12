@@ -1,7 +1,7 @@
+using PurrNet;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Collections.Generic;
-using PurrNet;
 
 namespace Game.Client
 {
@@ -13,8 +13,14 @@ namespace Game.Client
     public class ClientPositionManager : MonoBehaviour
     {
         private static ClientPositionManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static ClientPositionManager Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
         /// <summary> The chunk the client currently considers as origin. </summary>
@@ -36,7 +42,7 @@ namespace Game.Client
         /// </summary>
         public void ApplyOriginToScene(Scene scene)
         {
-            Vector3 originOffset = new Vector3(OriginChunk.x * chunkSize, 0f, OriginChunk.y * chunkSize);
+            var originOffset = new Vector3(OriginChunk.x * chunkSize, 0f, OriginChunk.y * chunkSize);
 
             foreach (var root in scene.GetRootGameObjects())
                 root.transform.position -= originOffset;
@@ -53,7 +59,7 @@ namespace Game.Client
             if (delta == Vector2Int.zero)
                 return;
 
-            Vector3 shift = new Vector3(delta.x * chunkSize, 0f, delta.y * chunkSize);
+            var shift = new Vector3(delta.x * chunkSize, 0f, delta.y * chunkSize);
 
             // Shift world chunk scenes.
             var worldScenes = new List<Scene>();
@@ -114,7 +120,7 @@ namespace Game.Client
             var chunk = new Vector2Int(cx, cz);
 
             Vector2Int offset = chunk - OriginChunk;
-            Vector3 local = new Vector3(
+            var local = new Vector3(
                 unityPosition.x - offset.x * chunkSize,
                 unityPosition.y,
                 unityPosition.z - offset.y * chunkSize

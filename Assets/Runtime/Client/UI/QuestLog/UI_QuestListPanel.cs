@@ -1,23 +1,35 @@
+using Game.Shared;
+using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using System.Linq;
-using Game.Shared;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_QuestListPanel</c> implementation.
+    /// </summary>
     public sealed class UI_QuestListPanel : UI_Panel, IListPanel
     {
         private static UI_QuestListPanel instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_QuestListPanel Instance => instance;
 
         [SerializeField] private GameObject container;
         [SerializeField] private UI_QuestListEntry slotEntryPrefab;
         GameObject IListPanel.contentContainer => container;
         GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
-        public List<UI_ListEntry> currentEntries { get; set; } = new List<UI_ListEntry>();
+        /// <summary>
+        /// Gets the current list entries.
+        /// </summary>
+        public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         private PlayerQuests quests;
+        /// <summary>
+        /// Gets the <c>Quests</c> value.
+        /// </summary>
         public PlayerQuests Quests => quests;
 
         protected override void Awake()
@@ -43,6 +55,7 @@ namespace Game.Client.UI
             Refresh();
         }
 
+        /// <inheritdoc/>
         public override void Refresh()
         {
             base.Refresh();
@@ -93,6 +106,9 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <summary>
+        /// Executes the client-side <c>PopulateList</c> operation.
+        /// </summary>
         public void PopulateList(bool forceClear = false)
         {
             if (forceClear)

@@ -1,13 +1,16 @@
-using UnityEngine;
-using System.Collections.Generic;
-using Game.Shared.Persistence;
 using Debug = Game.Shared.Utility.FormattedDebug;
-using Game.Shared;
 using Game.Client.UI;
-
+using Game.Shared;
+using Game.Shared.Persistence;
 using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
+using UnityEngine;
+
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>ClientAccountManager</c> implementation.
+    /// </summary>
     public sealed class ClientAccountManager : MonoBehaviour
     {
         private static ClientAccountManager _instance;
@@ -23,6 +26,9 @@ namespace Game.Client
             }
         }
         private static bool _initialized = false;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
         private static string _currentUsername;
@@ -33,8 +39,14 @@ namespace Game.Client
 
         // Get the current active character.
         private static CharacterData _activeCharacter;
+        /// <summary>
+        /// Gets the <c>ActiveCharacter</c> value.
+        /// </summary>
         public static CharacterData ActiveCharacter => _activeCharacter;
         private static Actor _playerActor;
+        /// <summary>
+        /// Gets the <c>PlayerActor</c> value.
+        /// </summary>
         public static Actor PlayerActor => _playerActor;
 
         #region Lifecycle
@@ -103,6 +115,9 @@ namespace Game.Client
         }
         #endregion
 
+        /// <summary>
+        /// Executes the client-side <c>UpdateCharacterList</c> operation.
+        /// </summary>
         public static void UpdateCharacterList(List<CharacterData> newCharacterList)
         {
             _received = true;
@@ -110,8 +125,14 @@ namespace Game.Client
             Debug.Log($"Updated character list with {newCharacterList.Count} characters.");
         }
 
+        /// <summary>
+        /// Executes the client-side <c>HasReceivedCharacters</c> operation.
+        /// </summary>
         public static bool HasReceivedCharacters() => _received;
 
+        /// <summary>
+        /// Executes the client-side <c>TryGetCharacterList</c> operation.
+        /// </summary>
         public static bool TryGetCharacterList(out List<CharacterData> characterList)
         {
             if (_characterList != null)
@@ -127,6 +148,9 @@ namespace Game.Client
             }
         }
 
+        /// <summary>
+        /// Gets the value provided by <c>GetCharacterData</c>.
+        /// </summary>
         public static CharacterData GetCharacterData()
         {
             if (_activeCharacter != null)

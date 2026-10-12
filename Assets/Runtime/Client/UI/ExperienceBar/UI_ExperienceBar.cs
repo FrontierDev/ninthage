@@ -1,10 +1,13 @@
-using System.Diagnostics;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using Game.Shared.Utility;
-using Debug = Game.Shared.Utility.FormattedDebug;
+using System.Diagnostics;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_ExperienceBar</c> implementation.
+    /// </summary>
     public sealed class UI_ExperienceBar : UI_ProgressBar
     {
         private void Awake()

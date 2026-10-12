@@ -1,16 +1,19 @@
-using System;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.UI;
 using Game.Shared;
 using Game.Shared.Networking;
+using Game.Shared.Runtime;
+using Game.Shared.Runtime.Actors;
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Runtime;
 namespace Game.Client
 {
+    /// <summary>
+    /// Defines the client-side <c>InputMode</c> options.
+    /// </summary>
     public enum InputMode
     {
         GameplayMovement,
@@ -19,21 +22,54 @@ namespace Game.Client
         Disabled
     }
 
+    /// <summary>
+    /// Provides the client-side <c>ClientInputController</c> implementation.
+    /// </summary>
     public class ClientInputController : MonoBehaviour
     {
         private static ClientInputController _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static ClientInputController Instance => _instance;
 
         private InputMode _currentMode = InputMode.Disabled;
+        /// <summary>
+        /// Gets the <c>CurrentMode</c> value.
+        /// </summary>
         public InputMode CurrentMode => _currentMode;
 
+        /// <summary>
+        /// Raised by the client-side <c>onInputModeChanged</c> event.
+        /// </summary>
         public event System.Action<InputMode> onInputModeChanged;
+        /// <summary>
+        /// Raised by the client-side <c>onMovementInput</c> event.
+        /// </summary>
         public event System.Action<Vector2> onMovementInput;
+        /// <summary>
+        /// Raised by the client-side <c>onJumpInput</c> event.
+        /// </summary>
         public event System.Action onJumpInput;
+        /// <summary>
+        /// Raised by the client-side <c>onInteractInput</c> event.
+        /// </summary>
         public event System.Action onInteractInput;
+        /// <summary>
+        /// Raised by the client-side <c>onCancelInput</c> event.
+        /// </summary>
         public event System.Action onCancelInput;
+        /// <summary>
+        /// Raised by the client-side <c>onHoverInteractable</c> event.
+        /// </summary>
         public event System.Action<Game.Shared.Runtime.IInteractable> onHoverInteractable;
+        /// <summary>
+        /// Raised by the client-side <c>onActionBarInput</c> event.
+        /// </summary>
         public event System.Action<int, int> onActionBarInput;
+        /// <summary>
+        /// Raised by the client-side <c>onInterfaceHotkeyInput</c> event.
+        /// </summary>
         public event System.Action<string> onInterfaceHotkeyInput;
 
         private InputActionMap _gameplayMap;
@@ -102,6 +138,9 @@ namespace Game.Client
             UI_Manager.Instance.Initialize();
         }
 
+        /// <summary>
+        /// Sets the value managed by <c>SetInputMode</c>.
+        /// </summary>
         public void SetInputMode(InputMode mode)
         {
             if (_currentMode == mode) return;

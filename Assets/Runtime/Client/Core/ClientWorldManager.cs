@@ -1,12 +1,15 @@
-using UnityEngine;
-using UnityEngine.SceneManagement;
+using Game.Client.UI;
+using PurrNet;
 using System.Collections;
 using System.Collections.Generic;
-using PurrNet;
-using Game.Client.UI;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>ClientWorldManager</c> implementation.
+    /// </summary>
     public sealed class ClientWorldManager : MonoBehaviour
     {
         private static ClientWorldManager _instance;
@@ -16,15 +19,18 @@ namespace Game.Client
             {
                 if (_instance == null)
                 {
-                    _instance = new ClientWorldManager();
+                    _instance = new();
                 }
                 return _instance;
             }
         }
         private static bool _initialized = false;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
-        private List<Scene> loadedScenes = new List<Scene>();
+        private List<Scene> loadedScenes = new();
 
         #region Lifecycle
         private void Awake()
@@ -61,6 +67,9 @@ namespace Game.Client
             ClientPositionManager.Instance.SetOriginChunk(chunk);
         }
 
+        /// <summary>
+        /// Handles the <c>OnSceneLoaded</c> callback.
+        /// </summary>
         public void OnSceneLoaded(SceneID sceneId, bool asServer)
         {
             if (!NetworkManager.main.sceneModule.TryGetSceneState(sceneId, out var state)) return;
@@ -103,6 +112,9 @@ namespace Game.Client
         }
         #endregion
 
+        /// <summary>
+        /// Gets the value provided by <c>GetWorldScenes</c>.
+        /// </summary>
         public void GetWorldScenes(List<Scene> buffer)
         {
             buffer.Clear();

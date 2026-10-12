@@ -1,11 +1,11 @@
 using Game.Shared;
-
 using Game.Shared.Runtime.VFX;
+
 namespace Game.Client.VFX
 {
+    using Game.Client.UI;
     using System.Collections;
     using UnityEngine;
-    using Game.Client.UI;
 
     /// <summary>
     /// Drives the <c>_OpenAmount</c> shader property on the rift's MeshRenderer.
@@ -262,11 +262,17 @@ namespace Game.Client.VFX
         private static float EaseOut(float t) => 1f - (1f - t) * (1f - t);
         private static float EaseIn(float t) => t * t;
 
+        /// <summary>
+        /// Executes the client-side <c>VFXFadeOut</c> operation.
+        /// </summary>
         public void VFXFadeOut()
         {
             // NYI
         }
 
+        /// <summary>
+        /// Executes the client-side <c>VFXFadeIn</c> operation.
+        /// </summary>
         public void VFXFadeIn()
         {
             // NYI

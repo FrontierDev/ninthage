@@ -1,16 +1,19 @@
-using System.Collections.Generic;
-using System.Linq;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using UnityEngine;
-using UnityEngine.UI;
-using Debug = Game.Shared.Utility.FormattedDebug;
-
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.UI;
+
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_TargetAuraBar</c> implementation.
+    /// </summary>
     public sealed class UI_TargetAuraBar : UI_AuraBar
     {
         [SerializeField] private bool interactable = false;
@@ -108,6 +111,7 @@ namespace Game.Client.UI
             currentEntries.Clear();
         }
 
+        /// <inheritdoc/>
         public override void PopulateList(bool forceClear = false)
         {
             if (actor == null) return;

@@ -1,14 +1,17 @@
-using System.Collections.Generic;
-using System.Linq;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
+using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_TargetResourceBar</c> implementation.
+    /// </summary>
     public sealed class UI_TargetResourceBar : UI_ProgressBar
     {
         [SerializeField] private List<ActorStatDefinition> trackedResources = new();
@@ -54,7 +57,7 @@ namespace Game.Client.UI
 
             if (newTarget != null)
             {
-                ActorStatContainer actorStatContainer = newTarget.GetComponent<ActorStatContainer>();
+                var actorStatContainer = newTarget.GetComponent<ActorStatContainer>();
 
                 foreach (var resourceDef in trackedResources)
                 {

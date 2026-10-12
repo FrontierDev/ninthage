@@ -1,22 +1,31 @@
-using System;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Networking;
-using PurrNet;
-using UnityEngine;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
-using Debug = Game.Shared.Utility.FormattedDebug;
-
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Runtime.VFX;
+using PurrNet;
+using System;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+
 namespace Game.Client
 {
+    /// <summary>
+    /// Provides the client-side <c>ClientVFXManager</c> implementation.
+    /// </summary>
     public sealed class ClientVFXManager : MonoBehaviour
     {
         private static ClientVFXManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static ClientVFXManager Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>
+        /// Gets the <c>Initialized</c> value.
+        /// </summary>
         public static bool Initialized => _initialized;
 
         private void Awake()

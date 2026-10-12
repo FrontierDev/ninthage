@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Game.Client.UI
 {
+    /// <summary>
+    /// Provides the client-side <c>UI_CastBar</c> implementation.
+    /// </summary>
     public sealed class UI_CastBar : UI_ProgressBar
     {
         private string parentWindowName;
@@ -18,6 +21,9 @@ namespace Game.Client.UI
             SetMaterial(defaultMaterial);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>StartCast</c> operation.
+        /// </summary>
         public void StartCast(float duration, bool reverse = false)
         {
             StopActiveCast();
@@ -26,6 +32,9 @@ namespace Game.Client.UI
             _activeCoroutine = StartCoroutine(CastBarCoroutine(duration, reverse));
         }
 
+        /// <summary>
+        /// Executes the client-side <c>InterruptCast</c> operation.
+        /// </summary>
         public void InterruptCast()
         {
             StopActiveCast();
@@ -33,6 +42,9 @@ namespace Game.Client.UI
             UI_Manager.Instance.HideWindow(parentWindowName);
         }
 
+        /// <summary>
+        /// Executes the client-side <c>FinishCast</c> operation.
+        /// </summary>
         public void FinishCast()
         {
             StopActiveCast();
