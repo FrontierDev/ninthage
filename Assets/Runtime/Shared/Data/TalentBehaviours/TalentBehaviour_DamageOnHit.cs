@@ -12,20 +12,18 @@ namespace Game.Shared.Data
 
         public override void OnActivate(PlayerActor actor)
         {
-            actor.GetComponent<ActorEvents>().onServerAutoAttackHit += (ctx, target) =>
-            {
-                for (int i = 0; i < damageTicks; i++)
-                    damageEffect.Execute(ctx, target);
-            };
+            actor.GetComponent<ActorEvents>().onServerAutoAttackHit += OnServerAutoAttackHit;
         }
 
         public override void OnDeactivate(PlayerActor actor)
         {
-            actor.GetComponent<ActorEvents>().onServerAutoAttackHit -= (ctx, target) =>
-            {
-                for (int i = 0; i < damageTicks; i++)
-                    damageEffect.Execute(ctx, target);
-            };
+            actor.GetComponent<ActorEvents>().onServerAutoAttackHit -= OnServerAutoAttackHit;
+        }
+
+        private void OnServerAutoAttackHit(SpellContext ctx, Actor target)
+        {
+            for (int i = 0; i < damageTicks; i++)
+                damageEffect.Execute(ctx, target);
         }
     }
 }

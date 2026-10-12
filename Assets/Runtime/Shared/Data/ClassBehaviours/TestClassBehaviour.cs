@@ -15,12 +15,18 @@ namespace Game.Shared.Data
 
         public override void OnActivate(PlayerActor actor)
         {
-            actor.GetComponent<ActorEvents>().onServerAutoAttackHit += (ctx, target) => GenerateMana(actor, manaPerHit);
+            actor.GetComponent<ActorEvents>().onServerAutoAttackHit += OnServerAutoAttackHit;
         }
 
         public override void OnDeactivate(PlayerActor actor)
         {
-            actor.GetComponent<ActorEvents>().onServerAutoAttackHit -= (ctx, target) => GenerateMana(actor, manaPerHit);
+            actor.GetComponent<ActorEvents>().onServerAutoAttackHit -= OnServerAutoAttackHit;
+        }
+
+        private void OnServerAutoAttackHit(SpellContext ctx, Actor target)
+        {
+            if (ctx.Caster is PlayerActor player)
+                GenerateMana(player, manaPerHit);
         }
 
         private void GenerateMana(PlayerActor actor, float amount)
