@@ -601,26 +601,29 @@ Players may still participate economically through:
 - Legendary cooperation;
 - other tradeable outputs defined later.
 
-### 12.2 Economy decisions still required
+### 12.2 Economy integration and remaining decisions
 
-The following remain unresolved:
+The [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md) now defines the shared economic framework:
+
+- Gold is the ordinary currency.
+- Eligible crafted goods may participate in the global exchange.
+- Market access is channel-based, including restricted channels where authored.
+- Public and private crafting work orders are supported.
+- Work-order customer materials use authoritative escrow.
+- Market listings use deposits and transaction taxation.
+- NPC repair is a recurring gold sink under the Items PDD.
+- There is no general salvage/disenchant material economy.
+- Recrafting/rerolling of acquired base items is not part of the Items PDD.
+
+The following crafting-specific details remain unresolved:
 
 - binding rules for Standard and Superior output;
-- repair/durability implications for crafted gear;
-- crafting fees and workstation costs;
-- vendor values;
-- auction-house access by item category;
-- material sinks;
-- component sinks;
-- salvage/disassembly systems;
-- recrafting;
-- rerolling or modification;
-- whether unwanted BoA Masterwork gear has any account-safe recycling path;
-- service-fee support for cooperative crafting;
-- taxation or listing costs;
-- whether recipe mastery itself consumes special materials or currency.
-
-The economy must be modelled before these are fixed.
+- exact crafting fees and workstation costs;
+- exact vendor values for crafted outputs;
+- material/component sink quantities by recipe/profession;
+- whether unwanted BoA Masterwork gear has any account-safe recycling path that does not create an open trade loophole;
+- exact service-fee behaviour for cooperative crafting outside work orders;
+- whether recipe mastery itself consumes special materials or gold.
 
 ---
 

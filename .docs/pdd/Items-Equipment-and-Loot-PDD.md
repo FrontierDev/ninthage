@@ -31,7 +31,7 @@ It owns the player-facing rules for:
 
 The [Crafting System PDD](Crafting-System-PDD.md) remains authoritative for profession progression, exact-recipe mastery, cooperative crafting and the Standard → Superior → Masterwork → Legendary craftsmanship progression.
 
-The [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md) will eventually own the detailed numerical character-stat and scaling curves. This document defines which statistics are intended to participate in equipment itemisation, but deliberately leaves unresolved numerical curves to that system where appropriate.
+The [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md) owns the character-stat progression architecture and level-relative scaling model. This document defines which statistics participate in equipment itemisation, while exact item stat budgets and character-stat balance curves remain data-driven where appropriate.
 
 Where future implementation work conflicts with this document, this document takes precedence until the design is intentionally revised.
 
@@ -1249,7 +1249,7 @@ Rules:
 - payment/commission may be part of the work order;
 - normal binding and craftsmanship rules still apply.
 
-Public/private visibility, order browsing and acceptance flow remain to be defined with the economy/crafting systems.
+Public and private work orders are both supported under the Economy, Trade and Markets PDD. Public orders are browsable by eligible crafters; private orders target a specified crafter. Customer-supplied materials remain server-controlled in escrow while the order is active.
 
 ---
 
@@ -1702,7 +1702,7 @@ Implementation must migrate them toward the PDD rather than treating the current
 
 This system directly depends on or constrains:
 
-- [MMORPG Master PDD](MMORPG-Master-PDD.md)
+- [MMORPG Master PDD](../MMORPG-Master-PDD.md)
 - [Crafting System PDD](Crafting-System-PDD.md)
 - [Class Design PDD](Class-Design-PDD.md)
 - [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md)

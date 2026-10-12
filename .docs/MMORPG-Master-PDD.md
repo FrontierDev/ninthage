@@ -3,7 +3,7 @@
 **Status:** Authoritative design index and project-level design baseline  
 **Project:** Ninth Age  
 **Scope:** Product-wide MMORPG design, subsystem ownership, PDD hierarchy, cross-system principles and unresolved product decisions  
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-07
 
 ---
 
@@ -69,8 +69,8 @@ Technical documents describe or prescribe how the game is implemented.
 
 Current technical references include:
 
-- [C# Architecture](../CSharp-Architecture.md)
-- [C# Style Conventions](../CSharp-Style-Conventions.md)
+- [C# Architecture](CSharp-Architecture.md)
+- [C# Style Conventions](CSharp-Style-Conventions.md)
 
 These documents do not replace game-design decisions.
 
@@ -82,9 +82,11 @@ Implementation plans describe how approved design and architecture will be turne
 
 They are not design authority.
 
-The current example is:
+Current implementation plans include:
 
-- [C# Restyling Plan](CSharp-Restyling-Plan.md)
+- [Project Roadmap](Plans/Project-Roadmap.md) — dependency-ordered game/project delivery and milestone sequencing;
+- [Business, Publicity and Funding Roadmap](Plans/Business-Publicity-and-Funding-Roadmap.md) — website, public presence, community, commercial preparation and funding sequencing;
+- [C# Restyling Plan](Plans/CSharp-Restyling-Plan.md) — focused codebase consistency and style migration.
 
 Implementation plans may sequence work, identify files and define validation, but should not create new game rules unless the relevant PDD is explicitly updated.
 
@@ -151,7 +153,7 @@ Product design should not assume that important world or combat outcomes can exi
 
 The authoritative visual direction is defined by:
 
-- [Graphical Approach PDD](../Graphical-Approach-PDD.md)
+- [Graphical Approach PDD](pdd/Graphical-Approach-PDD.md)
 
 The central visual principle is:
 
@@ -214,44 +216,44 @@ MMORPG Master PDD
 ├── Character and Combat
 │   ├── Class Design PDD                         [EXISTS]
 │   ├── Combat System PDD                       [EXISTS]
-│   ├── Character Stats and Progression PDD     [PLACEHOLDER]
-│   ├── Abilities and Talents PDD               [PLACEHOLDER]
-│   └── Items, Equipment and Loot PDD            [PLACEHOLDER]
+│   ├── Character Stats and Progression PDD     [EXISTS]
+│   ├── Abilities and Talents PDD               [EXISTS]
+│   └── Items, Equipment and Loot PDD            [EXISTS]
 │
 ├── World and PvE Content
 │   ├── World and Zone Design PDD               [EXISTS]
 │   ├── Movement and Traversal PDD               [EXISTS]
 │   ├── NPC and Creature Design PDD              [EXISTS]
 │   ├── AI and Encounter Behaviour PDD           [EXISTS]
-│   ├── Quest, Narrative and Dialogue PDD        [PLACEHOLDER]
-│   ├── Dungeon and Group Content PDD            [PLACEHOLDER]
-│   ├── Open-World Events PDD                    [PLACEHOLDER]
-│   └── Factions and Reputation PDD              [PLACEHOLDER]
+│   ├── Quest, Narrative and Dialogue PDD        [EXISTS]
+│   ├── Dungeon and Group Content PDD            [EXISTS]
+│   ├── Open-World Events PDD                    [EXISTS]
+│   └── Factions and Reputation PDD              [EXISTS]
 │
 ├── Economy and Professions
 │   ├── Crafting System PDD                      [EXISTS]
-│   ├── Items, Equipment and Loot PDD            [PLACEHOLDER / SHARED DEPENDENCY]
-│   └── Economy, Trade and Markets PDD           [PLACEHOLDER]
+│   ├── Items, Equipment and Loot PDD            [EXISTS / SHARED DEPENDENCY]
+│   └── Economy, Trade and Markets PDD           [EXISTS]
 │
 ├── Multiplayer and Social
-│   ├── Group and Raid Systems PDD               [PLACEHOLDER]
-│   ├── Guild and Social Systems PDD             [PLACEHOLDER]
-│   ├── Communication Systems PDD                [PLACEHOLDER]
-│   └── PvP PDD                                  [PLACEHOLDER / UNRESOLVED SCOPE]
+│   ├── Group and Raid Systems PDD               [EXISTS]
+│   ├── Guild and Social Systems PDD             [EXISTS]
+│   ├── Communication Systems PDD                [EXISTS]
+│   └── PvP PDD                                  [EXISTS]
 │
 ├── Player Experience
-│   ├── UI and UX PDD                            [PLACEHOLDER]
-│   ├── Character Creation and Identity PDD      [PLACEHOLDER]
-│   ├── Audio and Music PDD                      [PLACEHOLDER]
-│   └── Accessibility and Input PDD              [PLACEHOLDER]
+│   ├── UI and UX PDD                            [EXISTS]
+│   ├── Character Creation and Identity PDD      [EXISTS]
+│   ├── Audio and Music PDD                      [EXISTS]
+│   └── Accessibility and Input PDD              [EXISTS]
 │
 ├── Presentation
 │   └── Graphical Approach PDD                   [EXISTS]
 │
 └── Technical/Product Boundary
-    ├── Account, Character and Persistence PDD   [PLACEHOLDER]
+    ├── Account, Character and Persistence PDD   [EXISTS]
     ├── World Runtime and Instancing PDD         [EXISTS]
-    └── Live Content and Versioning PDD           [PLACEHOLDER]
+    └── Live Content and Versioning PDD           [EXISTS]
 ```
 
 The status labels above describe documentation state, not implementation state.
@@ -264,7 +266,7 @@ The status labels above describe documentation state, not implementation state.
 
 **Document:**
 
-- [Class Design PDD](Class-Design-PDD.md)
+- [Class Design PDD](pdd/Class-Design-PDD.md)
 
 This document owns:
 
@@ -286,7 +288,7 @@ Several class mechanics remain intentionally unresolved and must not be implemen
 
 **Document:**
 
-- [Combat System PDD](Combat-System-PDD.md)
+- [Combat System PDD](pdd/Combat-System-PDD.md)
 
 This should define the fundamental moment-to-moment combat model.
 
@@ -319,64 +321,61 @@ The project still needs explicit decisions on the exact baseline combat model be
 
 ---
 
-## 6.3 Character Stats and Progression PDD — Placeholder
+## 6.3 Character Stats and Progression PDD — Existing
 
 **Document:**
 
-- [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md)
+- [Character Stats and Progression PDD](pdd/Character-Stats-and-Progression-PDD.md)
 
-This should define:
+This document defines:
 
-- character level structure;
-- level cap philosophy;
-- primary attributes;
-- secondary attributes;
-- derived statistics;
-- health and other universal resources;
-- stat scaling by level;
-- progression pacing;
-- experience acquisition;
-- level-up rewards;
-- stat caps or diminishing returns;
-- progression at maximum level;
-- character power sources and their relative contribution;
-- respec philosophy where relevant.
+- level 1–60 character progression;
+- the permanent level-60 cap;
+- the RPE2-derived initial + (level - 1) × per-level progression architecture;
+- race and class stat/resource progression;
+- Strength, Dexterity, Stamina, Intelligence and Willpower;
+- multi-source derived statistics;
+- intrinsic versus effective resource maxima;
+- Health/Mana hybrid progression;
+- level-relative combat ratings with permanent level-60 reference;
+- weapon-skill progression;
+- talent-point entitlement from level 10 through 60;
+- maximum-level progression without further character levels;
+- account-wide Legacy progression constraints.
 
-This document is a dependency for class balance, itemisation, combat and encounter design.
+Exact numerical class endpoints, XP pacing, rating coefficients and Legacy perk values remain balance data.
 
 ---
 
-## 6.4 Abilities and Talents PDD — Placeholder
+## 6.4 Abilities and Talents PDD — Existing
 
 **Document:**
 
-- [Abilities and Talents PDD](Abilities-and-Talents-PDD.md)
+- [Abilities and Talents PDD](pdd/Abilities-and-Talents-PDD.md)
 
-This should define:
+This document defines:
 
-- what constitutes an ability;
-- active versus passive abilities;
-- ability acquisition;
-- talent structure;
-- talent progression;
-- specialisation selection;
-- respecialisation;
-- loadout rules;
-- action-bar expectations;
-- ability ranks, scaling or replacement where applicable;
-- class-wide versus specialisation-specific abilities;
-- ability modification through talents;
-- interaction with equipment and item effects.
+- class-trainer acquisition of class-wide abilities;
+- active specialisation selection at level 10;
+- free talent investment across all three specialisation trees;
+- points-spent-in-tree depth gating;
+- 1/2/3/5-rank talents;
+- passive and active talent abilities;
+- specialisation-specific known-ability ownership;
+- respecialisation availability and post-level-20 fee requirement;
+- spell/ability ranks that improve base effects before stat scaling;
+- unrestricted traditional action-bar binding;
+- server-authoritative talent, specialisation and learned-ability validation.
 
-Class-specific talent trees or ability lists may later receive their own subordinate documents if needed.
+Class-specific talent trees and ability lists may receive subordinate content documents.
 
 ---
 
-## 6.5 Items, Equipment and Loot PDD — Placeholder
+## 6.5 Items, Equipment and Loot PDD — Existing
 
 **Document:**
 
-- [Items, Equipment and Loot PDD](Items-Equipment-and-Loot-PDD.md)
+- [Items, Equipment and Loot PDD](pdd/Items-Equipment-and-Loot-PDD.md)
 
 This should define:
 
@@ -408,7 +407,7 @@ This PDD must be reconciled directly with the Crafting PDD.
 
 **Document:**
 
-- [World and Zone Design PDD](World-and-Zone-Design-PDD.md)
+- [World and Zone Design PDD](pdd/World-and-Zone-Design-PDD.md)
 
 This should define the player-facing structure of the world rather than the technical streaming implementation.
 
@@ -438,7 +437,7 @@ The visual implementation must remain compatible with the Graphical Approach PDD
 
 **Document:**
 
-- [Movement and Traversal PDD](Movement-and-Traversal-PDD.md)
+- [Movement and Traversal PDD](pdd/Movement-and-Traversal-PDD.md)
 
 This should define:
 
@@ -465,7 +464,7 @@ It should specify desired player experience independently of the technical movem
 
 **Document:**
 
-- [NPC and Creature Design PDD](NPC-and-Creature-Design-PDD.md)
+- [NPC and Creature Design PDD](pdd/NPC-and-Creature-Design-PDD.md)
 
 This should define:
 
@@ -493,7 +492,7 @@ The AI PDD owns how behaviour is structured.
 
 **Document:**
 
-- [AI and Encounter Behaviour PDD](AI-and-Encounter-Behaviour-PDD.md)
+- [AI and Encounter Behaviour PDD](pdd/AI-and-Encounter-Behaviour-PDD.md)
 
 This should define:
 
@@ -514,11 +513,11 @@ The exact AI implementation belongs in technical architecture documentation.
 
 ---
 
-## 7.5 Quest, Narrative and Dialogue PDD — Placeholder
+## 7.5 Quest, Narrative and Dialogue PDD — Existing
 
 **Document:**
 
-- [Quest, Narrative and Dialogue PDD](Quest-Narrative-and-Dialogue-PDD.md)
+- [Quest, Narrative and Dialogue PDD](pdd/Quest-Narrative-and-Dialogue-PDD.md)
 
 This should define:
 
@@ -540,11 +539,11 @@ This should define:
 
 ---
 
-## 7.6 Dungeon and Group Content PDD — Placeholder
+## 7.6 Dungeon and Group Content PDD — Existing
 
 **Document:**
 
-- [Dungeon and Group Content PDD](Dungeon-and-Group-Content-PDD.md)
+- [Dungeon and Group Content PDD](pdd/Dungeon-and-Group-Content-PDD.md)
 
 This should define:
 
@@ -570,11 +569,11 @@ The technical scene/instance implementation belongs in the World Runtime and Ins
 
 ---
 
-## 7.7 Open-World Events PDD — Placeholder
+## 7.7 Open-World Events PDD — Existing
 
 **Document:**
 
-- [Open-World Events PDD](Open-World-Events-PDD.md)
+- [Open-World Events PDD](pdd/Open-World-Events-PDD.md)
 
 Potential scope includes:
 
@@ -592,11 +591,11 @@ The exact feature set remains open.
 
 ---
 
-## 7.8 Factions and Reputation PDD — Placeholder
+## 7.8 Factions and Reputation PDD — Existing
 
 **Document:**
 
-- [Factions and Reputation PDD](Factions-and-Reputation-PDD.md)
+- [Factions and Reputation PDD](pdd/Factions-and-Reputation-PDD.md)
 
 Potential scope includes:
 
@@ -618,7 +617,7 @@ The exact role of reputation in Ninth Age remains to be designed.
 
 **Document:**
 
-- [Crafting System PDD](Crafting-System-PDD.md)
+- [Crafting System PDD](pdd/Crafting-System-PDD.md)
 
 This document already owns:
 
@@ -637,11 +636,11 @@ Its locked design decisions should not be redefined by future economy or item PD
 
 ---
 
-## 8.2 Economy, Trade and Markets PDD — Placeholder
+## 8.2 Economy, Trade and Markets PDD — Existing
 
 **Document:**
 
-- [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md)
+- [Economy, Trade and Markets PDD](pdd/Economy-Trade-and-Markets-PDD.md)
 
 This should define:
 
@@ -664,11 +663,11 @@ It must be designed jointly with Crafting and Items/Loot.
 
 # 9. Multiplayer and Social PDDs
 
-## 9.1 Group and Raid Systems PDD — Placeholder
+## 9.1 Group and Raid Systems PDD — Existing
 
 **Document:**
 
-- [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md)
+- [Group and Raid Systems PDD](pdd/Group-and-Raid-Systems-PDD.md)
 
 This should define:
 
@@ -688,164 +687,191 @@ This should define:
 
 ---
 
-## 9.2 Guild and Social Systems PDD — Placeholder
+## 9.2 Guild and Social Systems PDD — Existing
 
 **Document:**
 
-- [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md)
+- [Guild and Social Systems PDD](pdd/Guild-and-Social-Systems-PDD.md)
 
-This should define:
+This document defines:
 
-- guild creation;
-- membership;
-- ranks;
-- permissions;
-- guild identity;
-- guild progression if any;
-- guild storage if any;
-- friends;
-- ignore/block relationships;
-- social presence;
-- social incentives.
+- global cross-world guild identity and stable GuildIDs;
+- character-owned guild membership;
+- custom ranks and granular permissions;
+- guild storage, treasury and auditability;
+- no mandatory guild-level XP treadmill or passive combat-stat bonuses;
+- world-specific rented guild halls;
+- authored settlement properties ranging from camps/houses to manors/fortified compounds;
+- weekly rent, recoverable investment, arrears and two-missed-payment eviction;
+- dedicated hall-rent funding;
+- optional transparent guild tariffs on eligible economic activity;
+- guild halls as gathering/trophy spaces rather than replacements for public crafting, banking and market services;
+- guild trophy persistence;
+- friend/social-presence direction;
+- server-enforced ignore/block relationships.
 
-The existence of this PDD category does not automatically approve guild progression, guild housing or other optional features.
+Exact membership caps, founding costs, rank counts, bank sizes, tariff limits and rent/refund percentages remain provisional balancing values.
 
 ---
 
-## 9.3 Communication Systems PDD — Placeholder
+## 9.3 Communication Systems PDD — Existing
 
 **Document:**
 
-- [Communication Systems PDD](Communication-Systems-PDD.md)
+- [Communication Systems PDD](pdd/Communication-Systems-PDD.md)
 
-Potential scope includes:
+This document defines:
 
-- text chat;
-- channels;
-- whispers;
-- party/guild communication;
-- emotes;
-- moderation;
-- spam prevention;
-- social visibility.
-
-Voice communication should only be included if intentionally adopted.
+- proximity Say, Yell and free-text emotes;
+- `/e` and `/me` as aliases;
+- cross-world online whispers;
+- party/raid/guild communication routing;
+- permission-controlled private guild chat;
+- world-specific General, Trade and Looking for Group channels;
+- cross-world custom player channels;
+- normal cross-faction communication;
+- account-level mutual friends;
+- account-level server-enforced blocks;
+- rich item/ability/quest/player/guild/location links;
+- local finite chat history;
+- optional client profanity filtering;
+- server-side spam/flood protection;
+- reporting with authoritative message context;
+- no built-in voice-chat requirement for the initial system.
 
 ---
 
-## 9.4 PvP PDD — Placeholder / Scope Unresolved
+## 9.4 PvP PDD — Existing
 
 **Document:**
 
-- [PvP PDD](PvP-PDD.md)
+- [PvP PDD](pdd/PvP-PDD.md)
 
-The project must explicitly decide the intended PvP scope before PvP assumptions leak into classes, itemisation or world design.
+This document defines:
 
-Questions include:
+- two-faction open-world PvP;
+- Normal worlds with opt-in PvP;
+- PvP worlds with permanent open-world PvP flagging;
+- no low-level or city PvP immunity on PvP worlds;
+- cross-faction PvE grouping and temporary group friendliness;
+- Free-For-All PvP outside party/raid and guild relationships;
+- consensual duels;
+- contest-zone world PvP objectives;
+- runtime support for future battlegrounds and arenas;
+- cross-world structured-PvP support;
+- seasonal 14-rank PvP progression;
+- non-decaying seasonal Rank Points and separate spendable Honor;
+- honorable-kill and repeat-kill reward validation;
+- PvP death/durability expectations;
+- explicit PvP-specific balance modifiers where needed.
 
-- whether PvP is a major game pillar;
-- open-world PvP;
-- duelling;
-- battleground or arena content;
-- PvP-specific balance;
-- PvP progression and rewards;
-- faction relationships;
-- opt-in/opt-out rules.
-
-Until resolved, PvP-specific behaviour should not be treated as a core implementation requirement.
+Exact rank titles, season length, Honor/Rank Point curves and individual PvP objectives remain balance/content data.
 
 ---
 
 # 10. Player Experience PDDs
 
-## 10.1 UI and UX PDD — Placeholder
+## 10.1 UI and UX PDD — Existing
 
 **Document:**
 
-- [UI and UX PDD](UI-and-UX-PDD.md)
+- [UI and UX PDD](pdd/UI-and-UX-PDD.md)
 
-This should define:
+This document defines:
 
-- HUD;
-- action bars;
-- target and party frames;
-- inventory;
-- character sheet;
-- quest UI;
-- maps;
-- menus;
-- tooltips;
-- combat feedback;
-- accessibility of combat information;
-- window interaction conventions;
-- keyboard/mouse and controller assumptions;
-- scaling and resolution behaviour;
-- visual relationship between UI and the graphical direction.
-
-It should specify product behaviour without duplicating implementation details from client architecture.
+- Radiant Slate as the authoritative UI design system;
+- shared typography, colour, spacing, icon and component-size tokens;
+- shader-first UI presentation using the existing ArcaneSlate family;
+- Manrope as the functional UI typeface;
+- shared interaction states and Radiant Gold focus/selection;
+- HUD Edit Mode and discrete module scaling;
+- traditional multi-bar 12-slot action bars;
+- low-profile player/target frames, nameplates, auras and cast bars;
+- floating combat text and combat-log presentation;
+- inventory/equipment slot sizing and drag/drop conventions;
+- tooltip and item-comparison presentation;
+- character, talent, quest and reputation window conventions;
+- minimap/world-map presentation;
+- contextual non-blocking tips;
+- LIFO window/Escape behaviour;
+- local UI settings and persistence expectations.
 
 ---
 
-## 10.2 Character Creation and Identity PDD — Placeholder
+## 10.2 Character Creation and Identity PDD — Existing
 
 **Document:**
 
-- [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md)
+- [Character Creation and Identity PDD](pdd/Character-Creation-and-Identity-PDD.md)
 
-This should define:
+This document defines:
 
-- playable peoples/races if applicable;
-- appearance customisation;
-- naming;
-- class selection;
-- starting locations;
-- character slots;
-- identity information;
-- appearance changes after creation;
-- relationship between visual identity and equipment.
+- Race → Class → Appearance → Name → Review/Create flow;
+- Level-1 starts with no active specialisation or talent allocation;
+- all playable races able to select all playable classes by default, with explicit exceptions only;
+- race-derived faction, starting reputation and starting region;
+- minimal Level-1 Standard starter equipment and 0 starting gold;
+- free initial Level-1 class abilities learned through class trainers;
+- no tutorial island, tutorial mode or mandatory handholding sequence;
+- contextual non-blocking UI tips for onboarding;
+- cosmetic-only sex/body/height/build/face/hair and race-specific appearance;
+- required FirstName and LastName, each 2–12 characters, with globally unique normalized full-name pairs;
+- post-creation appearance changes and renaming;
+- no ordinary race-change or class-change service;
+- 12-slot character-selection and deleted-character restoration presentation.
 
 ---
 
-## 10.3 Audio and Music PDD — Placeholder
+## 10.3 Audio and Music PDD — Existing
 
 **Document:**
 
-- [Audio and Music PDD](Audio-and-Music-PDD.md)
+- [Audio and Music PDD](pdd/Audio-and-Music-PDD.md)
 
-This should eventually define:
+This document defines:
 
-- world ambience;
-- combat audio;
-- ability readability;
-- UI audio;
-- music structure;
-- zone music;
-- dungeon music;
-- day/night response;
-- voice presentation where applicable;
-- performance and concurrency expectations.
+- required Master/Music/Effects/Dialogue/UI/Ambience volume categories;
+- 2D UI/music versus spatial world audio;
+- layered ambience, environmental emitters, weather and day/night sound;
+- surface-based footsteps and repeated-sound variation;
+- combat-audio priority, concurrency and distance culling;
+- simple occlusion and authored acoustic/reverb spaces;
+- restrained Radiant Slate UI audio;
+- selective rather than universal voice acting;
+- classic-WoW-like sparse, location-led music using complete compositions;
+- substantial ambience-only periods between music;
+- no general adaptive music or retail-like runtime stem layering;
+- complete-track pools for zones, settlements and dungeons;
+- explicit complete boss/scripted tracks where authored;
+- procedural sound generation as an Editor-only authoring workflow;
+- the required evolution of the current Addressable/native-Unity audio foundation.
 
 ---
 
-## 10.4 Accessibility and Input PDD — Placeholder
+## 10.4 Accessibility and Input PDD — Existing
 
 **Document:**
 
-- [Accessibility and Input PDD](Accessibility-and-Input-PDD.md)
+- [Accessibility and Input PDD](pdd/Accessibility-and-Input-PDD.md)
 
-This should define product requirements for:
+This document defines:
 
-- remapping;
-- controller support if required;
-- text readability;
-- UI scaling;
-- colour dependence;
-- combat-information alternatives;
-- subtitle behaviour;
-- motion and camera options;
-- input accessibility.
-
-Implementation details should remain in client-side technical documentation.
+- keyboard/mouse as the reference scheme with semantic Input Actions;
+- runtime remapping, multiple bindings, modifier bindings and mouse-button bindings;
+- keyboard-only UI navigation and visible focus;
+- architecture for complete controller operation;
+- input-device switching and controller sensitivity/dead-zone requirements;
+- camera sensitivity, inversion, recentering, shake, bob/sway and motion-blur controls;
+- 75–200% global UI scaling;
+- independent text scaling to 200%;
+- chat/tooltip readability options;
+- subtitles and non-dialogue closed captions;
+- non-colour cues and semantic-colour accessibility;
+- flashing/VFX/screen-effect reduction;
+- Floating Combat Text accessibility;
+- independent accessibility-relevant audio categories;
+- account/client-level accessibility/input persistence;
+- refactoring current direct keyboard/mouse polling into remappable semantic actions.
 
 ---
 
@@ -855,7 +881,7 @@ Implementation details should remain in client-side technical documentation.
 
 **Document:**
 
-- [Graphical Approach PDD](../Graphical-Approach-PDD.md)
+- [Graphical Approach PDD](pdd/Graphical-Approach-PDD.md)
 
 This is the authoritative source for:
 
@@ -880,28 +906,27 @@ Other PDDs should reference it rather than invent independent visual styles.
 
 These documents are needed because several systems contain both player-facing rules and significant server/runtime constraints.
 
-## 12.1 Account, Character and Persistence PDD — Placeholder
+## 12.1 Account, Character and Persistence PDD — Existing
 
 **Document:**
 
-- [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md)
+- [Account, Character and Persistence PDD](pdd/Account-Character-and-Persistence-PDD.md)
 
-This should define the product-level persistence contract:
+This document defines:
 
-- account identity;
-- character records;
-- character creation/deletion;
-- saved character state;
-- inventory persistence;
-- quest persistence;
-- profession persistence;
-- social persistence;
-- world-state persistence where applicable;
-- logout/login expectations;
-- disconnect recovery;
-- server ownership of persistent state.
-
-Database implementation belongs in technical architecture.
+- immutable AccountID and CharacterID identity;
+- 12 character slots per account;
+- account-owned HomeWorldID and Legacy state;
+- globally unique two-part character names;
+- one-account/one-session authority;
+- login/logout and 30-second disconnect-grace behaviour;
+- combat/damage restrictions on logout and world transfer;
+- persistence-neutral Health/resource/cooldown/aura semantics;
+- 30-day soft character deletion and restoration;
+- transactional ownership/progression persistence;
+- migration away from whole-file JSON storage;
+- relational SQL persistence with PostgreSQL / EF-Core-style architecture based on the `FrontierDev/webrpgapp` reference;
+- schema migration, integrity and auditability requirements.
 
 ---
 
@@ -909,7 +934,7 @@ Database implementation belongs in technical architecture.
 
 **Document:**
 
-- [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md)
+- [World Runtime and Instancing PDD](pdd/World-Runtime-and-Instancing-PDD.md)
 
 This should define the product requirements that sit between world design and technical scene streaming:
 
@@ -927,23 +952,32 @@ Technical chunk loading, Addressables, additive scenes, interest management and 
 
 ---
 
-## 12.3 Live Content and Versioning PDD — Placeholder
+## 12.3 Live Content and Versioning PDD — Existing
 
 **Document:**
 
-- [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md)
+- [Live Content and Versioning PDD](pdd/Live-Content-and-Versioning-PDD.md)
 
-This should eventually define:
+This document defines:
 
-- compatibility expectations between client and server versions;
-- content-data versioning;
-- migration of persistent data;
-- patch behaviour;
-- scheduled content changes;
-- live-event content if supported;
-- rollback expectations at the product level.
-
-This should be written before live persistent player data makes incompatible design changes expensive.
+- immutable Production Release States and release manifests;
+- separate client-build, network-protocol, gameplay-content, Addressables-catalog and database-schema version identities;
+- strict compatibility validation before world entry;
+- Addressables Content Update as the canonical live-content/hotfix mechanism;
+- local bootstrap versus remote-content ownership;
+- hotfixable ScriptableObject gameplay definitions when runtime schema remains compatible;
+- migration away from Resources/direct-reference registries as the authority for remotely hotfixable definitions;
+- AssetBundle grouping by update frequency, dependency structure and patch cost;
+- coherent gameplay hotfix domains instead of monolithic or per-asset bundle extremes;
+- independently patchable world-chunk content and intentional shared-dependency ownership;
+- preserved production `addressables_content_state.bin` artifacts;
+- immutable bundle publication, bundle-first/catalog-last activation and CDN-independent content hosting;
+- cache reuse, changed-bundle downloads and unreferenced-cache cleanup;
+- server/client pinning to an explicitly activated gameplay/content revision rather than arbitrary latest CDN state;
+- content-only versus executable-release classification;
+- ordered database migrations, maintenance and rollback safety;
+- scheduled live content using authoritative server time;
+- release gates for content integrity, dependencies and unexpected patch size.
 
 ---
 
@@ -967,9 +1001,15 @@ The following dependencies should be treated as particularly important.
 | Quests/Narrative | World, NPCs, Groups, Persistence |
 | Economy | Crafting, Items, Vendors, Persistence |
 | Groups/Raids | Combat, Dungeons, UI, Social |
+| Guilds/Social | Economy, World Runtime, World/Zones, UI, Communication, Persistence |
+| Communication | Guilds/Social, Groups/Raids, World Runtime, UI, Persistence |
+| PvP | Combat, Groups/Raids, Factions, World/Zones, World Runtime, Items, UI, Persistence |
 | UI/UX | Nearly all player-facing systems |
+| Accessibility/Input | UI/UX, Combat, Abilities, Communication, Audio, Graphics, Client Settings |
+| Audio/Music | World/Zones, Combat, Abilities, NPCs, Dungeons, PvP, UI/UX, Accessibility |
 | Persistence | Character progression, Items, Quests, Crafting, Social |
 | World Runtime | World design, Groups, Dungeons, Persistence |
+| Live Content/Versioning | Client/Server builds, Networking, Addressables, Gameplay definitions, Persistence, World Runtime, UI update UX |
 
 A change to a foundational PDD should therefore include a review of its dependent documents.
 
@@ -1078,15 +1118,15 @@ State the conditions under which the design can be considered correctly implemen
 Product design documents should use:
 
 ```text
-.docs/Plans/<System-Name>-PDD.md
+.docs/pdd/<System-Name>-PDD.md
 ```
 
 Examples:
 
 ```text
-.docs/Plans/Combat-System-PDD.md
-.docs/Plans/Items-Equipment-and-Loot-PDD.md
-.docs/Plans/World-and-Zone-Design-PDD.md
+.docs/pdd/Combat-System-PDD.md
+.docs/pdd/Items-Equipment-and-Loot-PDD.md
+.docs/pdd/World-and-Zone-Design-PDD.md
 ```
 
 Exceptions may remain outside `.docs/Plans` where already established, such as the existing Graphical Approach PDD.
@@ -1103,76 +1143,59 @@ The project currently has the following major product-design documents:
 
 | PDD | Status | Scope |
 |---|---|---|
-| [Graphical Approach PDD](../Graphical-Approach-PDD.md) | Authoritative | Visual identity and graphical presentation |
-| [Crafting System PDD](Crafting-System-PDD.md) | Authoritative | Gathering, professions, mastery and cooperative crafting |
-| [Class Design PDD](Class-Design-PDD.md) | Draft / design baseline | Class roster, identity and unresolved class mechanics |
+| [Graphical Approach PDD](pdd/Graphical-Approach-PDD.md) | Authoritative | Visual identity and graphical presentation |
+| [Crafting System PDD](pdd/Crafting-System-PDD.md) | Authoritative | Gathering, professions, mastery and cooperative crafting |
+| [Class Design PDD](pdd/Class-Design-PDD.md) | Draft / design baseline | Class roster, identity and unresolved class mechanics |
 | **MMORPG Master PDD** | Authoritative index / baseline | Product-wide design hierarchy and subsystem map |
-| [Combat System PDD](Combat-System-PDD.md) | Authoritative | Core combat model, combat state, targeting, threat and combat resolution |
-| [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md) | Authoritative | Persistent worlds, streaming, floating origin, actor visibility and runtime instances |
-| [Movement and Traversal PDD](Movement-and-Traversal-PDD.md) | Authoritative | Ground movement, traversal, mounts, transport and lodestone travel |
-| [World and Zone Design PDD](World-and-Zone-Design-PDD.md) | Authoritative | World structure, zones, routes, wilderness, exploration and geography |
-| [NPC and Creature Design PDD](NPC-and-Creature-Design-PDD.md) | Authoritative | NPC taxonomy, factions, populations, spawning and reusable creature authoring |
-| [AI and Encounter Behaviour PDD](AI-and-Encounter-Behaviour-PDD.md) | Authoritative | NPC perception, threat, behaviour, encounter state and open-world readiness |
+| [Combat System PDD](pdd/Combat-System-PDD.md) | Authoritative | Core combat model, combat state, targeting, threat and combat resolution |
+| [World Runtime and Instancing PDD](pdd/World-Runtime-and-Instancing-PDD.md) | Authoritative | Persistent worlds, streaming, floating origin, actor visibility and runtime instances |
+| [Movement and Traversal PDD](pdd/Movement-and-Traversal-PDD.md) | Authoritative | Ground movement, traversal, mounts, transport and lodestone travel |
+| [World and Zone Design PDD](pdd/World-and-Zone-Design-PDD.md) | Authoritative | World structure, zones, routes, wilderness, exploration and geography |
+| [NPC and Creature Design PDD](pdd/NPC-and-Creature-Design-PDD.md) | Authoritative | NPC taxonomy, factions, populations, spawning and reusable creature authoring |
+| [AI and Encounter Behaviour PDD](pdd/AI-and-Encounter-Behaviour-PDD.md) | Authoritative | NPC perception, threat, behaviour, encounter state and open-world readiness |
 
-## 16.2 Placeholder Subsystem PDDs
+## 16.2 Subsystem Product Design Documents
 
-The following subsystem documents now exist as placeholders. Their presence reserves design ownership and file location; it does **not** mean their systems are designed or approved.
+The following subsystem documents define the current authoritative design state. Their status refers to documentation authority, not implementation completeness.
 
 | PDD | Status | Intended scope |
 |---|---|---|
-| [Character Stats and Progression PDD](Character-Stats-and-Progression-PDD.md) | Placeholder / design required | Character levels, experience, attributes, derived statistics, scaling, progression pacing and endgame character progression. |
-| [Items, Equipment and Loot PDD](Items-Equipment-and-Loot-PDD.md) | Placeholder / design required | Item categories, equipment, weapons, armour, item power and quality, loot generation, binding and loot ownership. |
-| [Abilities and Talents PDD](Abilities-and-Talents-PDD.md) | Placeholder / design required | Ability acquisition and structure, specialisations, talents, loadouts, scaling, respecialisation and action-bar expectations. |
-| [Quest, Narrative and Dialogue PDD](Quest-Narrative-and-Dialogue-PDD.md) | Placeholder / design required | Narrative delivery, quests, objectives, dialogue, branching, rewards, shared credit, world-state consequences and narrative persistence. |
-| [Dungeon and Group Content PDD](Dungeon-and-Group-Content-PDD.md) | Placeholder / design required | Dungeon structure, group expectations, world integration, encounters, bosses, checkpoints, difficulty, rewards and lockouts. |
-| [Open-World Events PDD](Open-World-Events-PDD.md) | Placeholder / design required | Dynamic public events, world bosses, contribution, scaling, event chains, failure states, rewards and persistence. |
-| [Factions and Reputation PDD](Factions-and-Reputation-PDD.md) | Placeholder / design required | World factions, reputation, hostility, faction rewards and services, narrative relationships and account/character progression. |
-| [Economy, Trade and Markets PDD](Economy-Trade-and-Markets-PDD.md) | Placeholder / design required | Currencies, vendors, player trade, markets, economic sinks, restrictions and the relationship between crafting and the player economy. |
-| [Group and Raid Systems PDD](Group-and-Raid-Systems-PDD.md) | Placeholder / design required | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
-| [Guild and Social Systems PDD](Guild-and-Social-Systems-PDD.md) | Placeholder / design required | Guild creation, membership, ranks, permissions, identity, friends, ignore/block relationships and persistent social systems. |
-| [Communication Systems PDD](Communication-Systems-PDD.md) | Placeholder / design required | Text communication, channels, whispers, group/guild communication, emotes, moderation and spam prevention. |
-| [PvP PDD](PvP-PDD.md) | Placeholder / design required | The role and scope of player-versus-player gameplay, if adopted, including open-world PvP, duels, structured PvP, balance and rewards. |
-| [UI and UX PDD](UI-and-UX-PDD.md) | Placeholder / design required | HUD, action bars, frames, inventory, character sheet, maps, menus, tooltips, combat feedback and general interaction conventions. |
-| [Character Creation and Identity PDD](Character-Creation-and-Identity-PDD.md) | Placeholder / design required | Playable identities, appearance customisation, naming, class selection, starting locations, character slots and appearance changes. |
-| [Audio and Music PDD](Audio-and-Music-PDD.md) | Placeholder / design required | World ambience, combat and UI audio, music structure, zone and dungeon music, day/night response and voice presentation. |
-| [Accessibility and Input PDD](Accessibility-and-Input-PDD.md) | Placeholder / design required | Input remapping, controller requirements, readability, UI scaling, colour dependence, subtitles, camera options and input accessibility. |
-| [Account, Character and Persistence PDD](Account-Character-and-Persistence-PDD.md) | Placeholder / design required | Product-level account and character persistence, saved state, login/logout behaviour, disconnect recovery and server-owned persistent data. |
-| [Live Content and Versioning PDD](Live-Content-and-Versioning-PDD.md) | Placeholder / design required | Client/server compatibility, content-data versioning, persistent-data migration, patch behaviour, live content and rollback expectations. |
+| [Character Stats and Progression PDD](pdd/Character-Stats-and-Progression-PDD.md) | Authoritative | Character levels, experience, attributes, derived statistics, scaling, progression pacing and endgame character progression. |
+| [Items, Equipment and Loot PDD](pdd/Items-Equipment-and-Loot-PDD.md) | Authoritative | Item categories, equipment, weapons, armour, item power and quality, loot generation, binding and loot ownership. |
+| [Abilities and Talents PDD](pdd/Abilities-and-Talents-PDD.md) | Authoritative | Ability acquisition and structure, specialisations, talents, loadouts, scaling, respecialisation and action-bar expectations. |
+| [Quest, Narrative and Dialogue PDD](pdd/Quest-Narrative-and-Dialogue-PDD.md) | Authoritative | Narrative delivery, quests, objectives, dialogue, branching, rewards, shared credit, world-state consequences and narrative persistence. |
+| [Dungeon and Group Content PDD](pdd/Dungeon-and-Group-Content-PDD.md) | Authoritative | Dungeon structure, group expectations, world integration, encounters, bosses, checkpoints, difficulty, rewards and lockouts. |
+| [Open-World Events PDD](pdd/Open-World-Events-PDD.md) | Authoritative | Dynamic public events, world bosses, contribution, scaling, event chains, failure states, rewards and persistence. |
+| [Factions and Reputation PDD](pdd/Factions-and-Reputation-PDD.md) | Authoritative | World factions, reputation, hostility, faction rewards and services, narrative relationships and account/character progression. |
+| [Economy, Trade and Markets PDD](pdd/Economy-Trade-and-Markets-PDD.md) | Authoritative | Currencies, vendors, player trade, markets, economic sinks, restrictions and the relationship between crafting and the player economy. |
+| [Group and Raid Systems PDD](pdd/Group-and-Raid-Systems-PDD.md) | Authoritative | Party and raid structure, leadership, invitations, roles, group visibility, shared credit, markers and group formation. |
+| [Guild and Social Systems PDD](pdd/Guild-and-Social-Systems-PDD.md) | Authoritative | Global guild identity, membership, ranks/permissions, guild storage, world-specific rentable halls, rent/tariffs/trophies and persistent social relationships. |
+| [Communication Systems PDD](pdd/Communication-Systems-PDD.md) | Authoritative | Spatial/public/social chat, whispers, group/guild/custom channels, account friends/blocks, rich links, spam protection, reporting and moderation context. |
+| [PvP PDD](pdd/PvP-PDD.md) | Authoritative | Two-faction open-world PvP, Normal/PvP world rulesets, FFA, duels, contest objectives, structured-PvP support and seasonal ranks/Honor. |
+| [UI and UX PDD](pdd/UI-and-UX-PDD.md) | Authoritative | Radiant Slate design tokens, shader-driven UI, HUD/action bars/frames, RPG windows, maps, tooltips, combat feedback, contextual tips and interaction conventions. |
+| [Character Creation and Identity PDD](pdd/Character-Creation-and-Identity-PDD.md) | Authoritative | Race/class selection, appearance, two-part naming, starting state/location, contextual onboarding tips and identity-change services. |
+| [Audio and Music PDD](pdd/Audio-and-Music-PDD.md) | Authoritative | Spatial/world/combat/UI audio, ambience/weather/acoustics, selective voice and sparse location-led complete-track music without adaptive stem layering. |
+| [Accessibility and Input PDD](pdd/Accessibility-and-Input-PDD.md) | Authoritative | Semantic/remappable input, keyboard/controller navigation, global/text scaling, subtitles/captions, colour/motion accessibility and camera/input options. |
+| [Account, Character and Persistence PDD](pdd/Account-Character-and-Persistence-PDD.md) | Authoritative | Account/character ownership, session continuity, login/logout, disconnect recovery, state persistence and relational database requirements. |
+| [Live Content and Versioning PDD](pdd/Live-Content-and-Versioning-PDD.md) | Authoritative | Release manifests, client/server/content/schema compatibility, Addressables/CDN hotfixing and bundle architecture, migrations, maintenance and rollback. |
 
 ## 16.3 Existing Supporting Technical Documents
 
 | Document | Role |
 |---|---|
-| [C# Architecture](../CSharp-Architecture.md) | Current code architecture reference |
-| [C# Style Conventions](../CSharp-Style-Conventions.md) | C# style authority |
-| [C# Restyling Plan](CSharp-Restyling-Plan.md) | Implementation/refactoring plan |
+| [C# Architecture](CSharp-Architecture.md) | Current code architecture reference |
+| [C# Style Conventions](CSharp-Style-Conventions.md) | C# style authority |
+| [C# Restyling Plan](Plans/CSharp-Restyling-Plan.md) | Implementation/refactoring plan |
 
 ---
 
-# 17. Highest-Priority Placeholder PDDs
+# 17. Subsystem PDD Completion Status
 
-All listed subsystem PDD files now exist. The next design work should focus on filling the placeholders that unblock the largest number of other systems.
+All subsystem PDDs currently listed in the Master PDD map now have substantive design documents. **No placeholder subsystem PDDs remain.**
 
-Recommended order:
+This does not mean implementation is complete, nor that balance/content tuning and explicitly deferred decisions are closed. It means every currently identified major product domain has an owning design document rather than a reserved placeholder.
 
-1. **Combat System PDD**
-2. **Character Stats and Progression PDD**
-3. **Items, Equipment and Loot PDD**
-4. **Abilities and Talents PDD**
-5. **World and Zone Design PDD**
-6. **NPC and Creature Design PDD**
-7. **AI and Encounter Behaviour PDD**
-8. **Dungeon and Group Content PDD**
-9. **Account, Character and Persistence PDD**
-10. **UI and UX PDD**
-11. **Economy, Trade and Markets PDD**
-12. **Quest, Narrative and Dialogue PDD**
-13. **Movement and Traversal PDD**
-14. **Group and Raid Systems PDD**
-15. **Guild and Social Systems PDD**
-
-This order is a design dependency recommendation, not an implementation roadmap.
-
+New major product domains should receive an explicit owning PDD before implementation turns provisional behaviour into permanent product rules.
 ---
 
 # 18. Project-Level Further Consideration Required
@@ -1238,11 +1261,26 @@ The project must define:
 
 ## 18.6 PvP
 
-The role of PvP is not yet sufficiently defined to treat it as a foundational game pillar.
+PvP is now formally defined as a two-faction world system with:
+
+- Normal-world opt-in PvP;
+- always-flagged PvP worlds without level/city immunity;
+- FFA PvP;
+- duels;
+- contest-zone objectives;
+- future battleground/arena support;
+- seasonal rank/Honor progression;
+- continued cross-faction PvE cooperation.
+
+Exact PvP rank titles, progression curves, season length, structured-PvP content and balance tuning remain content/tuning decisions rather than unresolved architecture.
 
 ## 18.7 Social Structure
 
-Guilds, friends, communication and other persistent social systems require formal design.
+Guild identity, membership, ranks/permissions, world-specific guild halls and guild storage are defined by the Guild and Social Systems PDD.
+
+Spatial/public/social chat, cross-world communication, account-level friends/blocks, spam protection and reporting are defined by the Communication Systems PDD.
+
+Detailed presence/privacy option tuning may continue during Accessibility/UI implementation without requiring a redesign of the social architecture.
 
 ## 18.8 Endgame
 

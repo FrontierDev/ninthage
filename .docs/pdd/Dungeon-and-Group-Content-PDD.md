@@ -503,7 +503,9 @@ A raid must nevertheless define a **minimum required player count**.
 
 Scaling must not allow a raid intended as large-group content to collapse into effectively small-party content.
 
-Detailed raid sizes, scaling ranges, compositions and difficulty modes remain for later raid design.
+Raid minimum, maximum and intended group sizes are authored per raid under the Group and Raid Systems PDD.
+
+Exact encounter-scaling formulas and difficulty modes remain raid/content-specific.
 
 ---
 
@@ -523,15 +525,14 @@ Dungeon rewards may still be subject to appropriate anti-exploit or reward-syste
 
 Lockouts are reserved for raids.
 
-The detailed raid lockout model remains deferred.
+The Group and Raid Systems PDD defines the common lockout contract:
 
-Future raid design should determine:
+- each raid authors an **X-day lockout duration**;
+- lockout/reset state is server-authoritative and character-persistent;
+- raid definitions may use different lockout durations;
+- exact boss-specific versus instance-progression binding behaviour remains authored per raid/content policy.
 
-- lockout duration;
-- boss-specific versus instance-wide lockouts;
-- group identity implications;
-- reward eligibility;
-- reset cadence.
+Normal five-player dungeons remain lockout-free.
 
 ---
 

@@ -484,16 +484,19 @@ dungeon / raid progression
 
 World bosses should therefore be worthwhile without automatically making comparable dungeons or raids obsolete.
 
+World-boss **participation eligibility and personal reward-lockout behaviour** are defined by the Group and Raid Systems PDD.
+
+World bosses use personal meaningful-participation eligibility rather than first-tag or raid ownership, followed by independent personal reward rolls.
+
 Exact:
 
-- drop quantities;
-- eligibility;
-- distribution;
+- item probabilities and exceptional drop quantities;
 - item levels;
 - rarity;
-- cooldown-based reward restrictions;
+- guaranteed baseline rewards;
+- individual boss reward-lockout duration;
 
-belong to the Items, Equipment and Loot PDD and later balance work.
+remain content/item balance decisions.
 
 ---
 
