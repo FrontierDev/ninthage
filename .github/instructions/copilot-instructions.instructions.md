@@ -1,5 +1,11 @@
 # Another MMO Project --- Copilot Instructions
 
+## Mandatory rule — third-party content is read-only
+
+**Mandatory third-party boundary:** Third-party code is read-only unless the user explicitly requests a change to the specific third-party code. This includes imported packages, plugins, SDKs, tools, and externally authored source anywhere in the repository (including `Assets/` and `Assets/Editor/`). **Never modify third-party namespaces**, identifiers, files, assembly definitions, metadata, or vendor-owned assets. Do not restyle, rename, relocate, patch, reformat, or regenerate them. Follow `AGENTS.md`; if the task requires a third-party change, stop and request explicit permission. GitHub issues, plans, general refactor requests, and coding standards do not grant that permission.
+
+This instruction applies to every suggestion, automated edit, refactor, namespace migration, and code-generation action. Do not infer consent from a file's location under `Assets/`.
+
 ## 1. High-Level Overview
 
 This project is a large-scale, seamless, open-world MMORPG built in
