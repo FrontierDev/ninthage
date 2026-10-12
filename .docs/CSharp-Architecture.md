@@ -13,6 +13,10 @@ This document describes the current C# architecture of the Ninth Age Unity proje
 
 This is a descriptive design reference for the code that exists at the source revision above. It does not define a future refactor and does not prescribe architectural changes.
 
+**Mandatory third-party boundary:** Third-party code is read-only unless the user explicitly requests a change to the specific third-party code. This includes imported packages, plugins, SDKs, tools, and externally authored source anywhere in the repository (including `Assets/` and `Assets/Editor/`). **Never modify third-party namespaces**, identifiers, files, assembly definitions, metadata, or vendor-owned assets. Do not restyle, rename, relocate, patch, reformat, or regenerate them. Follow `AGENTS.md`; if the task requires a third-party change, stop and request explicit permission. GitHub issues, plans, general refactor requests, and coding standards do not grant that permission.
+
+References to third-party dependencies in this architecture are descriptive only and do not authorize editing their implementation or namespace.
+
 ## 2. Architectural Overview
 
 Ninth Age is implemented as a single Unity project that can run in two principal execution modes:
