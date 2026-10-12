@@ -1,5 +1,27 @@
 # Ninth Age — Repository Agent Instructions
 
+Implement the task described in `task.md`.
+
+1. Read `AGENTS.md`, relevant project documentation and the existing implementation before making changes.
+2. Identify the root cause, affected systems and any dependencies.
+3. Implement the complete task, including all requirements and acceptance criteria.
+4. Follow existing architecture and coding conventions. Avoid unnecessary abstractions, workarounds, fallbacks and unrelated changes.
+5. Add or update regression tests where appropriate.
+6. Perform all available static validation and tests. Do not claim validation that was not performed.
+7. Review the final diff for correctness, regressions and unintended changes.
+
+Do not commit or push changes.
+
+When finished, provide a concise summary of:
+- Changes made.
+- Files affected.
+- Validation performed and results.
+- Any unresolved issues or limitations.
+
+## Unity Editor Restrictions
+
+Never interact with the Unity Editor GUI or control the user's mouse, keyboard, windows or desktop. Do not use Computer Use, desktop automation, or GUI-control scripts. Implement changes directly in project files and perform non-interactive static validation where possible. Leave Unity Test Runner, Play Mode testing and other interactive Editor validation to the user. Report any required manual validation steps instead of attempting them automatically.
+
 ## Mandatory: third-party code is read-only
 
 **NEVER modify third-party code unless the user explicitly requests modifications to that specific third-party code.**
