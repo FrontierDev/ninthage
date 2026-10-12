@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -8,17 +9,19 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_SpecialResourceCounter : UI_ListEntry<Sprite>
     {
-        [SerializeField] private Image background;
-        [SerializeField] private Image icon;
+        [FormerlySerializedAs("background")]
+        [SerializeField] private Image _background;
+        [FormerlySerializedAs("icon")]
+        [SerializeField] private Image _icon;
 
-        private int index;
+        private int _index;
 
         /// <inheritdoc/>
-        public override void Initialize(Sprite sprite, int slotId)
+        public override void Initialize(Sprite sprite, int slotID)
         {
-            background.sprite = sprite;
-            icon.sprite = sprite;
-            index = slotId;
+            _background.sprite = sprite;
+            _icon.sprite = sprite;
+            _index = slotID;
         }
 
         /// <summary>
@@ -26,8 +29,8 @@ namespace Game.Client.UI
         /// </summary>
         public void SetFilled(bool filled)
         {
-            if (icon != null)
-                icon.enabled = filled;
+            if (_icon != null)
+                _icon.enabled = filled;
         }
 
         /// <inheritdoc/>

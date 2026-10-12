@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -18,21 +19,30 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_ReputationBodyPanel Instance => _instance;
 
-        [SerializeField] private UI_ProgressBar progressBar;
-        [SerializeField] private Image factionIcon;
-        [SerializeField] private TMP_Text factionNameText;
-        [SerializeField] private TMP_Text reputationValueText;
-        [SerializeField] private TMP_Text reputationRankText;
-        [SerializeField] private TMP_Text factionDescriptionText;
+        [FormerlySerializedAs("progressBar")]
+        [SerializeField] private UI_ProgressBar _progressBar;
+        [FormerlySerializedAs("factionIcon")]
+        [SerializeField] private Image _factionIcon;
+        [FormerlySerializedAs("factionNameText")]
+        [SerializeField] private TMP_Text _factionNameText;
+        [FormerlySerializedAs("reputationValueText")]
+        [SerializeField] private TMP_Text _reputationValueText;
+        [FormerlySerializedAs("reputationRankText")]
+        [SerializeField] private TMP_Text _reputationRankText;
+        [FormerlySerializedAs("factionDescriptionText")]
+        [SerializeField] private TMP_Text _factionDescriptionText;
 
-        private FactionDefinition currentFaction;
-        private float currentProgress;
+        private FactionDefinition _currentFaction;
+        private float _currentProgress;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_ReputationRewardEntry slotEntryPrefab;
-        [SerializeField] private GameObject markerPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("slotEntryPrefab")]
+        [SerializeField] private UI_ReputationRewardEntry _slotEntryPrefab;
+        [FormerlySerializedAs("markerPrefab")]
+        [SerializeField] private GameObject _markerPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _slotEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
@@ -49,38 +59,38 @@ namespace Game.Client.UI
         /// </summary>
         public void SetFaction(FactionDefinition faction, float progress)
         {
-            currentFaction = faction;
-            currentProgress = progress;
+            _currentFaction = faction;
+            _currentProgress = progress;
 
             // Set the progress bar
-            progressBar.SetProgress(progress);
+            _progressBar.SetProgress(progress);
 
             // Set the name, icon and description
-            factionNameText.text = currentFaction.DisplayName;
-            factionIcon.sprite = currentFaction.Icon;
-            factionDescriptionText.text = currentFaction.Description;
+            _factionNameText.text = _currentFaction.DisplayName;
+            _factionIcon.sprite = _currentFaction.Icon;
+            _factionDescriptionText.text = _currentFaction.Description;
 
             // Calculate reputation value from progress
             int reputationValue;
-            if (currentFaction.CanWar)
+            if (_currentFaction.CanWar)
             {
                 // Reputation ranges from -maxPoints to +maxPoints
-                reputationValue = Mathf.RoundToInt(-currentFaction.MaxPoints + (progress * 2 * currentFaction.MaxPoints));
+                reputationValue = Mathf.RoundToInt(-_currentFaction.MaxPoints + (progress * 2 * _currentFaction.MaxPoints));
             }
             else
             {
                 // Reputation ranges from 0 to +maxPoints
-                reputationValue = Mathf.RoundToInt(progress * currentFaction.MaxPoints);
+                reputationValue = Mathf.RoundToInt(progress * _currentFaction.MaxPoints);
             }
 
             // Display reputation value
-            if (reputationValueText != null)
-                reputationValueText.text = $"{reputationValue} / {currentFaction.MaxPoints}";
+            if (_reputationValueText != null)
+                _reputationValueText.text = $"{reputationValue} / {_currentFaction.MaxPoints}";
 
             // Find current rank/tier based on progress
             string currentRank = "Unknown";
             bool isPositiveRank = false;
-            var rewards = currentFaction.RewardDescriptions;
+            var rewards = _currentFaction.RewardDescriptions;
             if (rewards.Count > 0)
             {
                 // Find the tier that the current progress falls into
@@ -101,11 +111,11 @@ namespace Game.Client.UI
                 }
             }
 
-            if (reputationRankText != null)
+            if (_reputationRankText != null)
             {
-                reputationRankText.text = $"Current Rank: {currentRank}";
+                _reputationRankText.text = $"Current Rank: {currentRank}";
                 // Color based on positive/negative rank
-                reputationRankText.color = isPositiveRank
+                _reputationRankText.color = isPositiveRank
                     ? new Color(0.22f, 0.725f, 0.525f)  // Green for positive
                     : new Color(0.91f, 0.541f, 0.322f); // Orange for negative
             }
@@ -131,17 +141,17 @@ namespace Game.Client.UI
             if (forceClear)
                 ClearEntries();
 
-            if (currentFaction == null) return;
+            if (_currentFaction == null) return;
 
-            var rewardsList = new List<FactionRewardDescriptionEntry>(currentFaction.RewardDescriptions);
+            var rewardsList = new List<FactionRewardDescriptionEntry>(_currentFaction.RewardDescriptions);
 
             // Clear any existing markers
-            if (markerPrefab != null)
+            if (_markerPrefab != null)
             {
-                var progressBarTransform = progressBar.transform;
+                var progressBarTransform = _progressBar.transform;
                 foreach (Transform child in progressBarTransform)
                 {
-                    if (child.gameObject != progressBar.gameObject)
+                    if (child.gameObject != _progressBar.gameObject)
                         Destroy(child.gameObject);
                 }
             }
@@ -149,7 +159,7 @@ namespace Game.Client.UI
             for (int i = 0; i < rewardsList.Count; i++)
             {
                 var reward = rewardsList[i];
-                var entryObj = Instantiate(slotEntryPrefab.gameObject, container.transform);
+                var entryObj = Instantiate(_slotEntryPrefab.gameObject, _container.transform);
                 var entry = entryObj.GetComponent<UI_ReputationRewardEntry>();
                 entry.Initialize(reward, i);
 
@@ -159,17 +169,17 @@ namespace Game.Client.UI
 
                 // Convert normalized thresholds to actual reputation points
                 int minRep, maxRep;
-                if (currentFaction.CanWar)
+                if (_currentFaction.CanWar)
                 {
                     // Reputation ranges from -maxPoints to +maxPoints
-                    minRep = Mathf.RoundToInt(-currentFaction.MaxPoints + (minThreshold * 2 * currentFaction.MaxPoints));
-                    maxRep = Mathf.RoundToInt(-currentFaction.MaxPoints + (maxThreshold * 2 * currentFaction.MaxPoints));
+                    minRep = Mathf.RoundToInt(-_currentFaction.MaxPoints + (minThreshold * 2 * _currentFaction.MaxPoints));
+                    maxRep = Mathf.RoundToInt(-_currentFaction.MaxPoints + (maxThreshold * 2 * _currentFaction.MaxPoints));
                 }
                 else
                 {
                     // Reputation ranges from 0 to +maxPoints
-                    minRep = Mathf.RoundToInt(minThreshold * currentFaction.MaxPoints);
-                    maxRep = Mathf.RoundToInt(maxThreshold * currentFaction.MaxPoints);
+                    minRep = Mathf.RoundToInt(minThreshold * _currentFaction.MaxPoints);
+                    maxRep = Mathf.RoundToInt(maxThreshold * _currentFaction.MaxPoints);
                 }
 
                 entry.SetThresholdLevels(minRep, maxRep);
@@ -178,8 +188,8 @@ namespace Game.Client.UI
 
                 // Check if this is the current reward tier
                 float minThresholdCheck = i == 0 ? 0f : rewardsList[i - 1].threshold;
-                bool isCurrentTier = (currentProgress >= minThresholdCheck && currentProgress < maxThreshold) ||
-                                     (i == rewardsList.Count - 1 && currentProgress >= maxThreshold);
+                bool isCurrentTier = (_currentProgress >= minThresholdCheck && _currentProgress < maxThreshold) ||
+                                     (i == rewardsList.Count - 1 && _currentProgress >= maxThreshold);
 
                 if (isCurrentTier)
                 {
@@ -191,13 +201,13 @@ namespace Game.Client.UI
                 }
 
                 // Instantiate marker on progress bar at threshold position (skip if at max)
-                if (markerPrefab != null && maxThreshold < 1.0f)
+                if (_markerPrefab != null && maxThreshold < 1.0f)
                 {
-                    var markerObj = Instantiate(markerPrefab, progressBar.transform);
+                    var markerObj = Instantiate(_markerPrefab, _progressBar.transform);
                     var markerRect = markerObj.GetComponent<RectTransform>();
                     if (markerRect != null)
                     {
-                        var progressBarRect = progressBar.GetComponent<RectTransform>();
+                        var progressBarRect = _progressBar.GetComponent<RectTransform>();
                         if (progressBarRect != null)
                         {
                             // Position marker based on normalized threshold (0-1)
@@ -212,13 +222,13 @@ namespace Game.Client.UI
                     {
                         // Convert threshold to actual reputation value
                         int repValue;
-                        if (currentFaction.CanWar)
+                        if (_currentFaction.CanWar)
                         {
-                            repValue = Mathf.RoundToInt(-currentFaction.MaxPoints + (maxThreshold * 2 * currentFaction.MaxPoints));
+                            repValue = Mathf.RoundToInt(-_currentFaction.MaxPoints + (maxThreshold * 2 * _currentFaction.MaxPoints));
                         }
                         else
                         {
-                            repValue = Mathf.RoundToInt(maxThreshold * currentFaction.MaxPoints);
+                            repValue = Mathf.RoundToInt(maxThreshold * _currentFaction.MaxPoints);
                         }
                         markerText.text = repValue.ToString();
                     }

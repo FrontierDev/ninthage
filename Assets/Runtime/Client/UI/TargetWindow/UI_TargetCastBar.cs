@@ -4,6 +4,7 @@ using Game.Shared.Runtime.Actors;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -12,8 +13,10 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_TargetCastBar : UI_ProgressBar
     {
-        [SerializeField] private TMP_Text spellNameText;
-        [SerializeField] private TMP_Text spellTimeText;
+        [FormerlySerializedAs("spellNameText")]
+        [SerializeField] private TMP_Text _spellNameText;
+        [FormerlySerializedAs("spellTimeText")]
+        [SerializeField] private TMP_Text _spellTimeText;
 
         private void Awake()
         {
@@ -38,7 +41,7 @@ namespace Game.Client.UI
             while (elapsed < castTime)
             {
                 SetProgress(elapsed / castTime);
-                spellTimeText.text = $"{castTime - elapsed:0.0}s";
+                _spellTimeText.text = $"{castTime - elapsed:0.0}s";
                 elapsed += Time.deltaTime;
                 yield return null;
             }
@@ -52,8 +55,8 @@ namespace Game.Client.UI
                 gameObject.SetActive(true);
                 SetProgress(0f);
                 Show();
-                spellNameText.text = SpellDefinitionLibrary.Instance.GetDefinition(spellID)?.DisplayName ?? "Unknown Spell";
-                spellTimeText.text = $"{finalCastTime:0.0}s";
+                _spellNameText.text = SpellDefinitionLibrary.Instance.GetDefinition(spellID)?.DisplayName ?? "Unknown Spell";
+                _spellTimeText.text = $"{finalCastTime:0.0}s";
                 StartCoroutine(CastBarRoutine(finalCastTime));
             }
         }

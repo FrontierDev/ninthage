@@ -11,21 +11,21 @@ namespace Game.Client.Utility
     /// </summary>
     public static class ItemTooltipFactory
     {
-        private static Dictionary<ItemInstance, UI_TooltipLine[]> cache = new();
+        private static Dictionary<ItemInstance, UI_TooltipLine[]> _cache = new();
 
         /// <summary>
         /// Gets the value provided by <c>GetOrCreateTooltip</c>.
         /// </summary>
         public static UI_TooltipLine[] GetOrCreateTooltip(ItemInstance item)
         {
-            if (cache.TryGetValue(item, out var tooltip))
+            if (_cache.TryGetValue(item, out var tooltip))
             {
                 return tooltip;
             }
             else
             {
                 var newTooltip = CreateTooltip(item);
-                cache[item] = newTooltip;
+                _cache[item] = newTooltip;
                 return newTooltip;
             }
         }

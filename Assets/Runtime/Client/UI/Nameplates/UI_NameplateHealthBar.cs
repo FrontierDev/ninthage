@@ -3,6 +3,7 @@ using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -11,9 +12,12 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_NameplateHealthBar : UI_ProgressBar
     {
-        [SerializeField] private TMP_Text nameText;
-        [SerializeField] private TMP_Text percentText;
-        [SerializeField] private TMP_Text levelText;
+        [FormerlySerializedAs("nameText")]
+        [SerializeField] private TMP_Text _nameText;
+        [FormerlySerializedAs("percentText")]
+        [SerializeField] private TMP_Text _percentText;
+        [FormerlySerializedAs("levelText")]
+        [SerializeField] private TMP_Text _levelText;
 
         [SerializeField]
         private Color hostileColor = new(0.878f, 0.749f, 0.447f);
@@ -37,18 +41,18 @@ namespace Game.Client.UI
             {
                 case FactionRelationState.Hostile:
                     UIShaderProperties.SetColor(graphics, "_MainColor", Color.red);
-                    nameText.color = hostileColor;
-                    percentText.color = hostileColor;
+                    _nameText.color = hostileColor;
+                    _percentText.color = hostileColor;
                     break;
                 case FactionRelationState.Allied:
                     UIShaderProperties.SetColor(graphics, "_MainColor", Color.green);
-                    nameText.color = alliedColor;
-                    percentText.color = alliedColor;
+                    _nameText.color = alliedColor;
+                    _percentText.color = alliedColor;
                     break;
                 case FactionRelationState.Neutral:
                     UIShaderProperties.SetColor(graphics, "_MainColor", Color.softYellow);
-                    nameText.color = neutralColor;
-                    percentText.color = neutralColor;
+                    _nameText.color = neutralColor;
+                    _percentText.color = neutralColor;
                     break;
             }
         }
@@ -58,8 +62,8 @@ namespace Game.Client.UI
         /// </summary>
         public void SetName(string name)
         {
-            if (nameText != null)
-                nameText.text = name;
+            if (_nameText != null)
+                _nameText.text = name;
         }
 
         /// <summary>
@@ -67,8 +71,8 @@ namespace Game.Client.UI
         /// </summary>
         public void SetLevel(int level)
         {
-            if (levelText != null)
-                levelText.text = level.ToString();
+            if (_levelText != null)
+                _levelText.text = level.ToString();
         }
 
         /// <summary>
@@ -77,7 +81,7 @@ namespace Game.Client.UI
         public void SetHealthPercent(float percent)
         {
             UIShaderProperties.SetFloat(graphics, "_FillAmount", percent);
-            percentText.text = $"{percent * 100:0}%";
+            _percentText.text = $"{percent * 100:0}%";
         }
     }
 }

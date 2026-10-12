@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -9,7 +10,8 @@ namespace Game.Client.UI
     /// </summary>
     public abstract class UI_ProgressBar : MonoBehaviour
     {
-        [SerializeField] private CanvasGroup canvasGroup;
+        [FormerlySerializedAs("canvasGroup")]
+        [SerializeField] private CanvasGroup _canvasGroup;
         [SerializeField] internal Image graphics;
 
         /// <summary>
@@ -26,7 +28,7 @@ namespace Game.Client.UI
         /// </summary>
         public void Show()
         {
-            canvasGroup.alpha = 1f;
+            _canvasGroup.alpha = 1f;
         }
 
         /// <summary>
@@ -34,7 +36,7 @@ namespace Game.Client.UI
         /// </summary>
         public void Hide()
         {
-            canvasGroup.alpha = 0f;
+            _canvasGroup.alpha = 0f;
         }
 
         /// <summary>

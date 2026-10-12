@@ -3,6 +3,7 @@ using Game.Shared.Data;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Game.Client
 {
@@ -18,13 +19,16 @@ namespace Game.Client
         public static CharacterCreationManager Instance => _instance;
 
         // Internal UI references.
-        private UI.UI_CharacterCreationWindow characterCreationWindow;
+        private UI.UI_CharacterCreationWindow _characterCreationWindow;
 
-        [SerializeField] private CinemachineCamera sceneCamera;
+        [FormerlySerializedAs("sceneCamera")]
+        [SerializeField] private CinemachineCamera _sceneCamera;
 
         [Header("Selected Options")]
-        [SerializeField] private string _selectedClassId;
-        [SerializeField] private string _selectedRaceId;
+        [FormerlySerializedAs("_selectedClassId")]
+        [SerializeField] private string _selectedClassID;
+        [FormerlySerializedAs("_selectedRaceId")]
+        [SerializeField] private string _selectedRaceID;
 
         private void Awake()
         {
@@ -35,8 +39,8 @@ namespace Game.Client
             }
             _instance = this;
 
-            characterCreationWindow = UI.UI_CharacterCreationWindow.Instance;
-            characterCreationWindow.ShowImmediate();
+            _characterCreationWindow = UI.UI_CharacterCreationWindow.Instance;
+            _characterCreationWindow.ShowImmediate();
 
             // Subscribe to character creation-related events.
             Game.Shared.Networking.AccountEndpoint.onCharacterCreated += OnCharacterCreated;
@@ -44,7 +48,7 @@ namespace Game.Client
 
         private void Start()
         {
-            sceneCamera.Prioritize();
+            _sceneCamera.Prioritize();
         }
 
         /// <summary>
@@ -53,14 +57,14 @@ namespace Game.Client
         public void SelectClass(ClassDefinition def)
         {
             Debug.Log($"Selected class: {def.DefinitionID}");
-            _selectedClassId = def.DefinitionID;
-            characterCreationWindow.onClassSelected?.Invoke(def);
+            _selectedClassID = def.DefinitionID;
+            _characterCreationWindow.onClassSelected?.Invoke(def);
         }
 
         /// <summary>
-        /// Gets the value provided by <c>GetCurrentClassId</c>.
+        /// Gets the value provided by <c>GetCurrentClassID</c>.
         /// </summary>
-        public string GetCurrentClassId() { return _selectedClassId; }
+        public string GetCurrentClassID() { return _selectedClassID; }
 
         /// <summary>
         /// Executes the client-side <c>SelectRace</c> operation.
@@ -68,21 +72,21 @@ namespace Game.Client
         public void SelectRace(RaceDefinition def)
         {
             Debug.Log($"Selecteed race: {def.DefinitionID}");
-            _selectedRaceId = def.DefinitionID;
-            characterCreationWindow.onRaceSelected?.Invoke(def);
+            _selectedRaceID = def.DefinitionID;
+            _characterCreationWindow.onRaceSelected?.Invoke(def);
         }
 
         /// <summary>
-        /// Gets the value provided by <c>GetCurrentRaceId</c>.
+        /// Gets the value provided by <c>GetCurrentRaceID</c>.
         /// </summary>
-        public string GetCurrentRaceId() { return _selectedRaceId; }
+        public string GetCurrentRaceID() { return _selectedRaceID; }
 
         /// <summary>
         /// Executes the client-side <c>CreateCharacter</c> operation.
         /// </summary>
         public void CreateCharacter(string characterName)
         {
-            if (string.IsNullOrEmpty(_selectedClassId) || string.IsNullOrEmpty(_selectedRaceId))
+            if (string.IsNullOrEmpty(_selectedClassID) || string.IsNullOrEmpty(_selectedRaceID))
             {
                 Debug.Error("Cannot create character: Class or Race not selected.");
                 return;
@@ -91,8 +95,8 @@ namespace Game.Client
             Game.Shared.Networking.AccountEndpoint.Server_TryCreateCharacter(new Game.Shared.Persistence.NewCharacterData
             {
                 Name = characterName,
-                ClassID = _selectedClassId,
-                RaceID = _selectedRaceId
+                ClassID = _selectedClassID,
+                RaceID = _selectedRaceID
             });
         }
 

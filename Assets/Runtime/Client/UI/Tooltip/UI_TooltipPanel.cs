@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -20,37 +21,43 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_TooltipPanel : UI_Panel
     {
-        [SerializeField] private TMP_Text tooltipHeader;
-        [SerializeField] private GameObject tooltipBody;
-        [SerializeField] private TMP_Text tooltipFooter;
-        [SerializeField] private Image tooltipIcon;
+        [FormerlySerializedAs("tooltipHeader")]
+        [SerializeField] private TMP_Text _tooltipHeader;
+        [FormerlySerializedAs("tooltipBody")]
+        [SerializeField] private GameObject _tooltipBody;
+        [FormerlySerializedAs("tooltipFooter")]
+        [SerializeField] private TMP_Text _tooltipFooter;
+        [FormerlySerializedAs("tooltipIcon")]
+        [SerializeField] private Image _tooltipIcon;
 
-        [SerializeField] private GameObject singleLinePrefab;
-        [SerializeField] private GameObject doubleLinePrefab;
+        [FormerlySerializedAs("singleLinePrefab")]
+        [SerializeField] private GameObject _singleLinePrefab;
+        [FormerlySerializedAs("doubleLinePrefab")]
+        [SerializeField] private GameObject _doubleLinePrefab;
 
         /// <summary>
         /// Sets the value managed by <c>SetTooltip</c>.
         /// </summary>
         public void SetTooltip(string header, UI_TooltipLine[] lines, string footer, Sprite icon)
         {
-            tooltipHeader.text = header;
-            tooltipFooter.text = footer;
-            tooltipIcon.sprite = icon;
+            _tooltipHeader.text = header;
+            _tooltipFooter.text = footer;
+            _tooltipIcon.sprite = icon;
 
             if (string.IsNullOrEmpty(header))
-                tooltipHeader.gameObject.SetActive(false);
+                _tooltipHeader.gameObject.SetActive(false);
             else
-                tooltipHeader.gameObject.SetActive(true);
+                _tooltipHeader.gameObject.SetActive(true);
 
             if (string.IsNullOrEmpty(footer))
-                tooltipFooter.gameObject.SetActive(false);
+                _tooltipFooter.gameObject.SetActive(false);
             else
-                tooltipFooter.gameObject.SetActive(true);
+                _tooltipFooter.gameObject.SetActive(true);
 
             if (icon == null)
-                tooltipIcon.gameObject.SetActive(false);
+                _tooltipIcon.gameObject.SetActive(false);
             else
-                tooltipIcon.gameObject.SetActive(true);
+                _tooltipIcon.gameObject.SetActive(true);
 
             ClearLines();
             SetBody(lines);
@@ -61,7 +68,7 @@ namespace Game.Client.UI
 
         private void ClearLines()
         {
-            foreach (Transform child in tooltipBody.transform)
+            foreach (Transform child in _tooltipBody.transform)
             {
                 Destroy(child.gameObject);
             }
@@ -73,12 +80,12 @@ namespace Game.Client.UI
             {
                 if (line.text.Length == 1)
                 {
-                    var entry = Instantiate(singleLinePrefab, tooltipBody.transform);
+                    var entry = Instantiate(_singleLinePrefab, _tooltipBody.transform);
                     entry.GetComponent<UI_TooltipSingleLine>().Set(line.text);
                 }
                 else if (line.text.Length == 2)
                 {
-                    var entry = Instantiate(doubleLinePrefab, tooltipBody.transform);
+                    var entry = Instantiate(_doubleLinePrefab, _tooltipBody.transform);
                     entry.GetComponent<UI_TooltipDoubleLine>().Set(line.text);
                 }
             }

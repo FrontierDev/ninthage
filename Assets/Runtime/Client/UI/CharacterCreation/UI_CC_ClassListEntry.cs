@@ -4,6 +4,7 @@ using TMPro;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -13,20 +14,21 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CC_ClassListEntry : UI_ListEntry<ClassDefinition>
     {
-        [SerializeField] private Image classIconImage;
+        [FormerlySerializedAs("classIconImage")]
+        [SerializeField] private Image _classIconImage;
 
         /// <summary>
         /// Stores the <c>classDefinition</c> value.
         /// </summary>
         public ClassDefinition classDefinition;
-        private int index;
+        private int _index;
 
         /// <inheritdoc/>
         public override void Initialize(ClassDefinition _classDefinition, int _index)
         {
-            index = _index;
+            this._index = _index;
             classDefinition = _classDefinition;
-            classIconImage.sprite = classDefinition.Icon;
+            _classIconImage.sprite = classDefinition.Icon;
 
             UI_CharacterCreationWindow.Instance.onClassSelected += OnClassSelected;
         }
@@ -64,14 +66,14 @@ namespace Game.Client.UI
         /// <inheritdoc/>
         public override void Focus()
         {
-            classIconImage.color = Color.yellow; // Example visual feedback for focus
+            _classIconImage.color = Color.yellow; // Example visual feedback for focus
             isFocused = true;
         }
 
         /// <inheritdoc/>
         public override void Unfocus()
         {
-            classIconImage.color = Color.white; // Reset to default color
+            _classIconImage.color = Color.white; // Reset to default color
             isFocused = false;
         }
     }

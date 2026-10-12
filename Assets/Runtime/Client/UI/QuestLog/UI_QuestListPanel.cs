@@ -3,6 +3,7 @@ using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -11,40 +12,42 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_QuestListPanel : UI_Panel, IListPanel
     {
-        private static UI_QuestListPanel instance;
+        private static UI_QuestListPanel _instance;
         /// <summary>
         /// Gets the shared client-side instance.
         /// </summary>
-        public static UI_QuestListPanel Instance => instance;
+        public static UI_QuestListPanel Instance => _instance;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_QuestListEntry slotEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("slotEntryPrefab")]
+        [SerializeField] private UI_QuestListEntry _slotEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _slotEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        private PlayerQuests quests;
+        private PlayerQuests _quests;
         /// <summary>
         /// Gets the <c>Quests</c> value.
         /// </summary>
-        public PlayerQuests Quests => quests;
+        public PlayerQuests Quests => _quests;
 
         protected override void Awake()
         {
             Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
-            instance = this;
+            _instance = this;
             base.Awake();
         }
 
         private void OnPlayerActorAssigned(Actor actor)
         {
-            quests = actor.GetComponent<PlayerQuests>();
-            if (quests != null)
+            _quests = actor.GetComponent<PlayerQuests>();
+            if (_quests != null)
             {
-                quests.onUpdate += OnQuestsUpdated;
+                _quests.onUpdate += OnQuestsUpdated;
             }
 
             PopulateList(forceClear: true);
@@ -61,7 +64,7 @@ namespace Game.Client.UI
             base.Refresh();
 
             var activeQuestIds = new System.Collections.Generic.HashSet<string>(
-                quests.ActiveQuests.Select(q => q.Quest.DefinitionID));
+                _quests.ActiveQuests.Select(q => q.Quest.DefinitionID));
 
             // Remove entries for quests no longer active
             for (int i = currentEntries.Count - 1; i >= 0; i--)
@@ -76,7 +79,7 @@ namespace Game.Client.UI
 
             // Add entries for new quests and re-initialize existing ones
             int index = 0;
-            foreach (var questProgress in quests.ActiveQuests)
+            foreach (var questProgress in _quests.ActiveQuests)
             {
                 var existing = currentEntries
                     .FirstOrDefault(e => (e as UI_QuestListEntry)?.Data.DefinitionID == questProgress.Quest.DefinitionID)
@@ -88,7 +91,7 @@ namespace Game.Client.UI
                 }
                 else
                 {
-                    var entryObj = Instantiate(slotEntryPrefab.gameObject, container.transform);
+                    var entryObj = Instantiate(_slotEntryPrefab.gameObject, _container.transform);
                     var entry = entryObj.GetComponent<UI_QuestListEntry>();
                     entry.Initialize(questProgress.Quest, index);
                     entry.Register(this);
@@ -115,9 +118,9 @@ namespace Game.Client.UI
                 ClearEntries();
 
             int index = 0;
-            foreach (var quest in quests.ActiveQuests)
+            foreach (var quest in _quests.ActiveQuests)
             {
-                var entryObj = Instantiate(slotEntryPrefab.gameObject, container.transform);
+                var entryObj = Instantiate(_slotEntryPrefab.gameObject, _container.transform);
                 var entry = entryObj.GetComponent<UI_QuestListEntry>();
                 entry.Initialize(quest.Quest, index);
                 entry.Register(this);

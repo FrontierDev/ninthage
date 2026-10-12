@@ -2,6 +2,7 @@
 using Game.Shared.Data;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -10,23 +11,25 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_QuestObjectivesPanel : UI_Panel, IListPanel
     {
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_QuestObjectivesEntry slotEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("slotEntryPrefab")]
+        [SerializeField] private UI_QuestObjectivesEntry _slotEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _slotEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        private QuestDefinition def;
+        private QuestDefinition _def;
 
         /// <summary>
         /// Sets the value managed by <c>SetQuestDefinition</c>.
         /// </summary>
         public void SetQuestDefinition(QuestDefinition def)
         {
-            this.def = def;
+            this._def = def;
             PopulateList(true);
         }
 
@@ -58,9 +61,9 @@ namespace Game.Client.UI
             if (forceClear) ClearEntries();
 
             int index = 0;
-            foreach (QuestObjective objective in def.Objectives)
+            foreach (QuestObjective objective in _def.Objectives)
             {
-                var entryObj = Instantiate(slotEntryPrefab.gameObject, container.transform);
+                var entryObj = Instantiate(_slotEntryPrefab.gameObject, _container.transform);
                 var entry = entryObj.GetComponent<UI_QuestObjectivesEntry>();
                 entry.Initialize(objective, index);
                 entry.Register(this);

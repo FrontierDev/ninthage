@@ -54,11 +54,11 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_NameplateManager : UI_WorldSpaceUIManager
     {
-        private static UI_NameplateManager instance;
+        private static UI_NameplateManager _instance;
         /// <summary>
         /// Gets the shared client-side instance.
         /// </summary>
-        public static UI_NameplateManager Instance => instance;
+        public static UI_NameplateManager Instance => _instance;
 
         // The prefab for nameplates.
         /// <summary>
@@ -96,12 +96,12 @@ namespace Game.Client.UI
         /// Stores the <c>hoveredActor</c> value.
         /// </summary>
         public Actor hoveredActor;
-        private Actor targetedActor => ClientAccountManager.PlayerActor?.Target;
+        private Actor _targetedActor => ClientAccountManager.PlayerActor?.Target;
 
         private void Awake()
         {
-            if (instance != null) return;
-            instance = this;
+            if (_instance != null) return;
+            _instance = this;
         }
 
         private void Start()
@@ -167,7 +167,7 @@ namespace Game.Client.UI
                 if (j != i) child.SetSiblingIndex(j);
             }
 
-            if (targetedActor != null && activeNameplates.TryGetValue(targetedActor, out var targetNameplate))
+            if (_targetedActor != null && activeNameplates.TryGetValue(_targetedActor, out var targetNameplate))
             {
                 targetNameplate.transform.SetAsLastSibling();
             }
@@ -192,34 +192,34 @@ namespace Game.Client.UI
             }
         }
 
-        private readonly List<UI_Nameplate> sortedForStacking = new();
+        private readonly List<UI_Nameplate> _sortedForStacking = new();
 
         private void ResolveStacking(Camera cam)
         {
-            sortedForStacking.Clear();
+            _sortedForStacking.Clear();
 
             foreach (var kvp in activeNameplates)
             {
                 if (kvp.Key == null || kvp.Value == null) continue;
                 if (kvp.Key == ClientAccountManager.PlayerActor) continue;
                 kvp.Value.StackOffset = 0f;
-                sortedForStacking.Add(kvp.Value);
+                _sortedForStacking.Add(kvp.Value);
             }
 
-            if (sortedForStacking.Count < 2) return;
+            if (_sortedForStacking.Count < 2) return;
 
             // Priority: targeted first, then closer actors
-            sortedForStacking.Sort((a, b) =>
+            _sortedForStacking.Sort((a, b) =>
             {
-                bool aTargeted = a.Actor == targetedActor;
-                bool bTargeted = b.Actor == targetedActor;
+                bool aTargeted = a.Actor == _targetedActor;
+                bool bTargeted = b.Actor == _targetedActor;
                 if (aTargeted != bTargeted) return aTargeted ? -1 : 1;
                 return a.SortingDistance.CompareTo(b.SortingDistance);
             });
 
             // Compute base screen positions (actor pos + heightOffset, no stack offset)
             // and screen heights for each nameplate
-            int count = sortedForStacking.Count;
+            int count = _sortedForStacking.Count;
             var screenYPositions = new float[count];
             var screenHeights = new float[count];
             var screenXPositions = new float[count];
@@ -227,7 +227,7 @@ namespace Game.Client.UI
 
             for (int i = 0; i < count; i++)
             {
-                var np = sortedForStacking[i];
+                var np = _sortedForStacking[i];
                 Vector3 baseWorldPos = np.Actor.transform.position + Vector3.up * np.HeightOffset;
                 Vector3 screenPos = cam.WorldToScreenPoint(baseWorldPos);
                 behind[i] = screenPos.z <= 0f;
@@ -270,7 +270,7 @@ namespace Game.Client.UI
             {
                 if (behind[i]) continue;
 
-                var np = sortedForStacking[i];
+                var np = _sortedForStacking[i];
                 Vector3 baseWorldPos = np.Actor.transform.position + Vector3.up * np.HeightOffset;
                 Vector3 baseScreenPos = cam.WorldToScreenPoint(baseWorldPos);
                 float screenDelta = screenYPositions[i] - baseScreenPos.y;

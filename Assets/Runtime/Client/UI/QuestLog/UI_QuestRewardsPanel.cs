@@ -2,6 +2,7 @@ using Game.Shared.Data;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -11,47 +12,57 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_QuestRewardsPanel : UI_Panel, IListPanel
     {
-        [SerializeField] private TMP_Text choiceText;
+        [FormerlySerializedAs("choiceText")]
+        [SerializeField] private TMP_Text _choiceText;
 
-        [SerializeField] private GameObject goldReward;
-        [SerializeField] private TMP_Text goldAmountText;
+        [FormerlySerializedAs("goldReward")]
+        [SerializeField] private GameObject _goldReward;
+        [FormerlySerializedAs("goldAmountText")]
+        [SerializeField] private TMP_Text _goldAmountText;
 
-        [SerializeField] private GameObject xpReward;
-        [SerializeField] private TMP_Text xpAmountText;
+        [FormerlySerializedAs("xpReward")]
+        [SerializeField] private GameObject _xpReward;
+        [FormerlySerializedAs("xpAmountText")]
+        [SerializeField] private TMP_Text _xpAmountText;
 
-        [SerializeField] private GameObject factionReward;
-        [SerializeField] private Image factionIcon;
-        [SerializeField] private TMP_Text factionReputationText;
+        [FormerlySerializedAs("factionReward")]
+        [SerializeField] private GameObject _factionReward;
+        [FormerlySerializedAs("factionIcon")]
+        [SerializeField] private Image _factionIcon;
+        [FormerlySerializedAs("factionReputationText")]
+        [SerializeField] private TMP_Text _factionReputationText;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_QuestRewardsEntry slotEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("slotEntryPrefab")]
+        [SerializeField] private UI_QuestRewardsEntry _slotEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _slotEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        private QuestDefinition def;
+        private QuestDefinition _def;
 
         /// <summary>
         /// Sets the value managed by <c>SetQuestDefinition</c>.
         /// </summary>
         public void SetQuestDefinition(Shared.Data.QuestDefinition def)
         {
-            this.def = def;
+            this._def = def;
 
-            goldReward.SetActive(def.GoldReward > 0);
-            goldAmountText.text = $"{def.GoldReward}g";
+            _goldReward.SetActive(def.GoldReward > 0);
+            _goldAmountText.text = $"{def.GoldReward}g";
 
-            xpReward.SetActive(def.ExperienceReward > 0);
-            xpAmountText.text = $"{def.ExperienceReward} XP";
+            _xpReward.SetActive(def.ExperienceReward > 0);
+            _xpAmountText.text = $"{def.ExperienceReward} XP";
 
-            factionReward.SetActive(def.ReputationReward != null && def.ReputationReward.ReputationPoints > 0 && def.ReputationReward.Faction != null);
-            if (factionReward.activeInHierarchy)
+            _factionReward.SetActive(def.ReputationReward != null && def.ReputationReward.ReputationPoints > 0 && def.ReputationReward.Faction != null);
+            if (_factionReward.activeInHierarchy)
             {
-                factionIcon.sprite = def.ReputationReward.Faction.Icon;
-                factionReputationText.text = $"{def.ReputationReward.ReputationPoints}";
+                _factionIcon.sprite = def.ReputationReward.Faction.Icon;
+                _factionReputationText.text = $"{def.ReputationReward.ReputationPoints}";
             }
 
             PopulateList(true);
@@ -74,15 +85,15 @@ namespace Game.Client.UI
         {
             if (forceClear) ClearEntries();
 
-            if (def.GiveAllItems)
-                choiceText.text = "all items:";
+            if (_def.GiveAllItems)
+                _choiceText.text = "all items:";
             else
-                choiceText.text = "choice of items:";
+                _choiceText.text = "choice of items:";
 
             int index = 0;
-            foreach (QuestItemReward reward in def.ItemRewards)
+            foreach (QuestItemReward reward in _def.ItemRewards)
             {
-                var entryObj = Instantiate(slotEntryPrefab.gameObject, container.transform);
+                var entryObj = Instantiate(_slotEntryPrefab.gameObject, _container.transform);
                 var entry = entryObj.GetComponent<UI_QuestRewardsEntry>();
                 entry.Initialize(reward, index);
                 entry.Register(this);

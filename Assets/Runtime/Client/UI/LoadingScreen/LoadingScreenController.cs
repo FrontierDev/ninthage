@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.Collections;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -25,15 +26,18 @@ namespace Game.Client.UI
         public LoadingScreenCollection Collection => _collection;
 
         [Header("UI References")]
-        [SerializeField] private CanvasGroup canvasGroup;
-        [SerializeField] private Image splashImage;
-        [SerializeField] private Image loadingIcon;
+        [FormerlySerializedAs("canvasGroup")]
+        [SerializeField] private CanvasGroup _canvasGroup;
+        [FormerlySerializedAs("splashImage")]
+        [SerializeField] private Image _splashImage;
+        [FormerlySerializedAs("loadingIcon")]
+        [SerializeField] private Image _loadingIcon;
 
-        private int stage = 0;
-        private int maxStages = 1;
-        private float targetFillAmount = 0f;
+        private int _stage = 0;
+        private int _maxStages = 1;
+        private float _targetFillAmount = 0f;
         private const float FILL_SPEED = 5.0f;
-        private bool isShowing = false;
+        private bool _isShowing = false;
         private Coroutine _fadeCoroutine;
 
         #region Lifecycle
@@ -83,17 +87,17 @@ namespace Game.Client.UI
             }
 
             // Set the expected number of stages.
-            this.maxStages = stages;
-            this.stage = 0;
-            this.targetFillAmount = 0f;
+            this._maxStages = stages;
+            this._stage = 0;
+            this._targetFillAmount = 0f;
 
             // Reset the loading bar/loading icon.
-            loadingIcon.fillAmount = 0f;
+            _loadingIcon.fillAmount = 0f;
 
             // Show the loading screen and refresh the splash image.
             ShowLoadingScreen();
             RefreshSplashImage();
-            isShowing = true;
+            _isShowing = true;
         }
 
         /// <summary>
@@ -101,17 +105,17 @@ namespace Game.Client.UI
         /// </summary>
         public void Tick()
         {
-            if (stage >= maxStages) return;
-            stage++;
-            targetFillAmount = (float)stage / maxStages;
+            if (_stage >= _maxStages) return;
+            _stage++;
+            _targetFillAmount = (float)_stage / _maxStages;
         }
 
         private void Update()
         {
-            if (!isShowing) return;
+            if (!_isShowing) return;
 
-            if (loadingIcon.fillAmount >= 0.99f) Finish();
-            else loadingIcon.fillAmount = Mathf.Lerp(loadingIcon.fillAmount, targetFillAmount, Time.deltaTime * FILL_SPEED);
+            if (_loadingIcon.fillAmount >= 0.99f) Finish();
+            else _loadingIcon.fillAmount = Mathf.Lerp(_loadingIcon.fillAmount, _targetFillAmount, Time.deltaTime * FILL_SPEED);
         }
 
         /// <summary>
@@ -119,8 +123,8 @@ namespace Game.Client.UI
         /// </summary>
         public void Finish()
         {
-            if (!isShowing) return;
-            isShowing = false;
+            if (!_isShowing) return;
+            _isShowing = false;
             HideLoadingScreen();
         }
 
@@ -135,19 +139,19 @@ namespace Game.Client.UI
                 _fadeCoroutine = null;
             }
 
-            isShowing = false;
-            canvasGroup.alpha = 0f;
-            canvasGroup.interactable = false;
-            canvasGroup.blocksRaycasts = false;
+            _isShowing = false;
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.interactable = false;
+            _canvasGroup.blocksRaycasts = false;
         }
         #endregion
 
         #region Helper Methods
         private void ShowLoadingScreen()
         {
-            canvasGroup.alpha = 1f;
-            canvasGroup.interactable = true;
-            canvasGroup.blocksRaycasts = true;
+            _canvasGroup.alpha = 1f;
+            _canvasGroup.interactable = true;
+            _canvasGroup.blocksRaycasts = true;
         }
 
         private void HideLoadingScreen()
@@ -164,13 +168,13 @@ namespace Game.Client.UI
             {
                 elapsedTime += Time.deltaTime;
                 float alpha = Mathf.Lerp(1f, 0f, elapsedTime / duration);
-                canvasGroup.alpha = alpha;
+                _canvasGroup.alpha = alpha;
                 yield return null;
             }
 
-            canvasGroup.alpha = 0f;
-            canvasGroup.interactable = false;
-            canvasGroup.blocksRaycasts = false;
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.interactable = false;
+            _canvasGroup.blocksRaycasts = false;
             _fadeCoroutine = null;
         }
 
@@ -178,7 +182,7 @@ namespace Game.Client.UI
         {
             if (Collection != null && Collection.Count > 0)
             {
-                splashImage.sprite = Collection.GetRandom();
+                _splashImage.sprite = Collection.GetRandom();
             }
             else
             {

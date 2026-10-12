@@ -1,6 +1,7 @@
 using Game.Shared.Data;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -10,24 +11,30 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_QuestDetailsPanel : UI_Panel
     {
-        private static UI_QuestDetailsPanel instance;
+        private static UI_QuestDetailsPanel _instance;
         /// <summary>
         /// Gets the shared client-side instance.
         /// </summary>
-        public static UI_QuestDetailsPanel Instance => instance;
+        public static UI_QuestDetailsPanel Instance => _instance;
 
-        [SerializeField] private TMP_Text questName;
-        [SerializeField] private TMP_Text questSubtext;
-        [SerializeField] private Image questIcon;
-        [SerializeField] private TMP_Text questDescription;
-        [SerializeField] private UI_QuestObjectivesPanel objectivesPanel;
-        [SerializeField] private UI_QuestRewardsPanel rewardsPanel;
+        [FormerlySerializedAs("questName")]
+        [SerializeField] private TMP_Text _questName;
+        [FormerlySerializedAs("questSubtext")]
+        [SerializeField] private TMP_Text _questSubtext;
+        [FormerlySerializedAs("questIcon")]
+        [SerializeField] private Image _questIcon;
+        [FormerlySerializedAs("questDescription")]
+        [SerializeField] private TMP_Text _questDescription;
+        [FormerlySerializedAs("objectivesPanel")]
+        [SerializeField] private UI_QuestObjectivesPanel _objectivesPanel;
+        [FormerlySerializedAs("rewardsPanel")]
+        [SerializeField] private UI_QuestRewardsPanel _rewardsPanel;
 
-        private QuestDefinition def;
+        private QuestDefinition _def;
 
         protected override void Awake()
         {
-            instance = this;
+            _instance = this;
             base.Awake();
         }
 
@@ -36,15 +43,15 @@ namespace Game.Client.UI
         /// </summary>
         public void SetQuestDefinition(QuestDefinition def)
         {
-            this.def = def;
+            this._def = def;
 
-            questName.text = def.DisplayName;
-            questSubtext.text = "";
-            questIcon.sprite = def.Icon;
-            questDescription.text = def.Description;
+            _questName.text = def.DisplayName;
+            _questSubtext.text = "";
+            _questIcon.sprite = def.Icon;
+            _questDescription.text = def.Description;
 
-            objectivesPanel.SetQuestDefinition(def);
-            rewardsPanel.SetQuestDefinition(def);
+            _objectivesPanel.SetQuestDefinition(def);
+            _rewardsPanel.SetQuestDefinition(def);
 
             UpdateObjectivesProgress();
         }
@@ -54,7 +61,7 @@ namespace Game.Client.UI
         /// </summary>
         public void UpdateObjectivesProgress()
         {
-            objectivesPanel.UpdateEntries(UI_QuestListPanel.Instance.Quests.GetQuestProgress(def.DefinitionID));
+            _objectivesPanel.UpdateEntries(UI_QuestListPanel.Instance.Quests.GetQuestProgress(_def.DefinitionID));
         }
     }
 }

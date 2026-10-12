@@ -2,6 +2,7 @@ using Game.Shared.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -11,34 +12,39 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_QuestListEntry : UI_ListEntry<QuestDefinition>
     {
-        [SerializeField] private TMP_Text titleText;
-        [SerializeField] private TMP_Text subtext;
-        [SerializeField] private TMP_Text levelText;
-        [SerializeField] private Image icon;
+        [FormerlySerializedAs("titleText")]
+        [SerializeField] private TMP_Text _titleText;
+        [FormerlySerializedAs("subtext")]
+        [SerializeField] private TMP_Text _subtext;
+        [FormerlySerializedAs("levelText")]
+        [SerializeField] private TMP_Text _levelText;
+        [FormerlySerializedAs("icon")]
+        [SerializeField] private Image _icon;
 
-        [SerializeField] private QuestDefinition data;
+        [FormerlySerializedAs("data")]
+        [SerializeField] private QuestDefinition _data;
         /// <summary>
         /// Gets the <c>Data</c> value.
         /// </summary>
-        public QuestDefinition Data => data;
-        private int index;
+        public QuestDefinition Data => _data;
+        private int _index;
 
         /// <inheritdoc/>
-        public override void Initialize(QuestDefinition data, int index)
+        public override void Initialize(QuestDefinition _data, int index)
         {
-            this.data = data;
-            this.index = index;
+            this._data = _data;
+            this._index = index;
 
-            titleText.text = data.DisplayName;
-            levelText.text = $"Lv. {data.Level}";
-            subtext.text = "";
-            icon.sprite = data.Icon;
+            _titleText.text = _data.DisplayName;
+            _levelText.text = $"Lv. {_data.Level}";
+            _subtext.text = "";
+            _icon.sprite = _data.Icon;
         }
 
         /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
-            UI_QuestDetailsPanel.Instance.SetQuestDefinition(data);
+            UI_QuestDetailsPanel.Instance.SetQuestDefinition(_data);
             UI_QuestDetailsPanel.Instance.Show();
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }

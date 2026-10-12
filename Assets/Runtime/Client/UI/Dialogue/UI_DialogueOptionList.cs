@@ -2,6 +2,7 @@ using Game.Shared.Data;
 using Game.Shared.Data.Dialogue;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -21,12 +22,14 @@ namespace Game.Client.UI
         /// </summary>
         public static bool IsInitialized => _initialized;
 
-        private DialogueNode currentNode;
+        private DialogueNode _currentNode;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_DialogueOptionEntry slotEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("slotEntryPrefab")]
+        [SerializeField] private UI_DialogueOptionEntry _slotEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _slotEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
@@ -44,7 +47,7 @@ namespace Game.Client.UI
         /// </summary>
         public void SetNode(int nodeID)
         {
-            currentNode = UI_DialogueWindow.Instance.CurrentDialogue.GetNode(nodeID);
+            _currentNode = UI_DialogueWindow.Instance.CurrentDialogue.GetNode(nodeID);
         }
 
         /// <inheritdoc/>
@@ -71,9 +74,9 @@ namespace Game.Client.UI
             if (forceClear) ClearEntries();
 
             int index = 0;
-            foreach (DialogueChoice choice in currentNode.Choices)
+            foreach (DialogueChoice choice in _currentNode.Choices)
             {
-                var entryObj = Instantiate(slotEntryPrefab.gameObject, container.transform);
+                var entryObj = Instantiate(_slotEntryPrefab.gameObject, _container.transform);
                 var entry = entryObj.GetComponent<UI_DialogueOptionEntry>();
                 entry.Initialize(choice, index);
                 entry.Register(this);

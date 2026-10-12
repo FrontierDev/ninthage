@@ -4,6 +4,7 @@ using TMPro;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -13,20 +14,21 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CC_RaceListEntry : UI_ListEntry<RaceDefinition>
     {
-        [SerializeField] private Image raceIconImage;
+        [FormerlySerializedAs("raceIconImage")]
+        [SerializeField] private Image _raceIconImage;
 
         /// <summary>
         /// Stores the <c>raceDefinition</c> value.
         /// </summary>
         public RaceDefinition raceDefinition;
-        private int index;
+        private int _index;
 
         /// <inheritdoc/>
         public override void Initialize(RaceDefinition _raceDefinition, int _index)
         {
-            index = _index;
+            this._index = _index;
             raceDefinition = _raceDefinition;
-            raceIconImage.sprite = raceDefinition.Icon;
+            _raceIconImage.sprite = raceDefinition.Icon;
 
             UI_CharacterCreationWindow.Instance.onRaceSelected += OnRaceSelected;
         }
@@ -64,14 +66,14 @@ namespace Game.Client.UI
         /// <inheritdoc/>
         public override void Focus()
         {
-            raceIconImage.color = Color.yellow; // Example visual feedback for focus
+            _raceIconImage.color = Color.yellow; // Example visual feedback for focus
             isFocused = true;
         }
 
         /// <inheritdoc/>
         public override void Unfocus()
         {
-            raceIconImage.color = Color.white; // Reset to default color
+            _raceIconImage.color = Color.white; // Reset to default color
             isFocused = false;
         }
     }

@@ -30,7 +30,7 @@ namespace Game.Client
         /// </summary>
         public static bool Initialized => _initialized;
 
-        private List<Scene> loadedScenes = new();
+        private List<Scene> _loadedScenes = new();
 
         #region Lifecycle
         private void Awake()
@@ -70,23 +70,23 @@ namespace Game.Client
         /// <summary>
         /// Handles the <c>OnSceneLoaded</c> callback.
         /// </summary>
-        public void OnSceneLoaded(SceneID sceneId, bool asServer)
+        public void OnSceneLoaded(SceneID sceneID, bool asServer)
         {
-            if (!NetworkManager.main.sceneModule.TryGetSceneState(sceneId, out var state)) return;
+            if (!NetworkManager.main.sceneModule.TryGetSceneState(sceneID, out var state)) return;
             if (state.scene.name.StartsWith("World"))
             {
-                if (loadedScenes.Contains(state.scene)) return;
+                if (_loadedScenes.Contains(state.scene)) return;
 
-                loadedScenes.Add(state.scene);
+                _loadedScenes.Add(state.scene);
 
                 // Offset the new scene to match the current floating origin.
                 ClientPositionManager.Instance.ApplyOriginToScene(state.scene);
             }
         }
 
-        private void OnSceneUnloaded(SceneID sceneId, bool asServer)
+        private void OnSceneUnloaded(SceneID sceneID, bool asServer)
         {
-            loadedScenes.RemoveAll(s => !s.isLoaded);
+            _loadedScenes.RemoveAll(s => !s.isLoaded);
         }
 
         private IEnumerator OnEnteringWorld(string sceneName)
@@ -105,7 +105,7 @@ namespace Game.Client
             yield return new WaitUntil(() => loadOp.isDone);
             SceneManager.SetActiveScene(SceneManager.GetSceneByName("global_world"));
 
-            yield return new WaitUntil(() => loadedScenes.Count >= 9);
+            yield return new WaitUntil(() => _loadedScenes.Count >= 9);
 
             Game.Shared.Networking.AccountEndpoint.onEnteredWorld?.Invoke();
             LoadingScreenController.Instance.Finish();
@@ -118,7 +118,7 @@ namespace Game.Client
         public void GetWorldScenes(List<Scene> buffer)
         {
             buffer.Clear();
-            buffer.AddRange(loadedScenes);
+            buffer.AddRange(_loadedScenes);
         }
 
         private static Vector2Int ParseChunkCoordinate(string sceneName)

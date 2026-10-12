@@ -20,9 +20,9 @@ namespace Game.Client.UI
             }
         }
 
-        private Image iconImage;
-        private RectTransform rectTransform;
-        private Canvas rootCanvas;
+        private Image _iconImage;
+        private RectTransform _rectTransform;
+        private Canvas _rootCanvas;
 
         private static void CreateInstance()
         {
@@ -43,9 +43,9 @@ namespace Game.Client.UI
             image.raycastTarget = false;
 
             var ghost = ghostObj.AddComponent<UI_DragGhost>();
-            ghost.iconImage = image;
-            ghost.rectTransform = rt;
-            ghost.rootCanvas = canvas;
+            ghost._iconImage = image;
+            ghost._rectTransform = rt;
+            ghost._rootCanvas = canvas;
             ghost.gameObject.SetActive(false);
 
             _instance = ghost;
@@ -56,8 +56,8 @@ namespace Game.Client.UI
         /// </summary>
         public void Show(Sprite icon)
         {
-            iconImage.sprite = icon;
-            iconImage.color = new Color(1f, 1f, 1f, 0.8f);
+            _iconImage.sprite = icon;
+            _iconImage.color = new Color(1f, 1f, 1f, 0.8f);
             gameObject.SetActive(true);
         }
 
@@ -66,7 +66,7 @@ namespace Game.Client.UI
         /// </summary>
         public void UpdatePosition(Vector2 screenPosition)
         {
-            rectTransform.position = screenPosition;
+            _rectTransform.position = screenPosition;
         }
 
         /// <summary>
@@ -75,7 +75,7 @@ namespace Game.Client.UI
         public void Hide()
         {
             gameObject.SetActive(false);
-            iconImage.sprite = null;
+            _iconImage.sprite = null;
         }
     }
 }

@@ -1,6 +1,7 @@
 using Game.Shared.Data;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -10,26 +11,27 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_QuestRewardsEntry : UI_ListEntry<QuestItemReward>
     {
-        [SerializeField] private Image graphics;
+        [FormerlySerializedAs("graphics")]
+        [SerializeField] private Image _graphics;
 
-        private QuestItemReward data;
-        private int index;
+        private QuestItemReward _data;
+        private int _index;
 
         void Awake()
         {
-            graphics.material = new Material(graphics.material);
+            _graphics.material = new Material(_graphics.material);
         }
 
         /// <inheritdoc/>
         public override void Initialize(QuestItemReward data, int index)
         {
-            this.data = data;
-            this.index = index;
+            this._data = data;
+            this._index = index;
 
-            UIShaderProperties.SetTexture(graphics, "_IconTex", data.Item.Icon.texture);
-            UIShaderProperties.SetFloat(graphics, "_IconAmount", 1f);
-            UIShaderProperties.SetColor(graphics, "_RarityColor", Utility.RarityColor.GetColor(data.Item.Rarity));
-            UIShaderProperties.SetFloat(graphics, "_RarityAmount", 1.0f);
+            UIShaderProperties.SetTexture(_graphics, "_IconTex", data.Item.Icon.texture);
+            UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1f);
+            UIShaderProperties.SetColor(_graphics, "_RarityColor", Utility.RarityColor.GetColor(data.Item.Rarity));
+            UIShaderProperties.SetFloat(_graphics, "_RarityAmount", 1.0f);
         }
 
         /// <inheritdoc/>

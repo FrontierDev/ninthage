@@ -4,6 +4,7 @@ using Game.Shared.Runtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -22,8 +23,10 @@ namespace Game.Client.UI
         /// </summary>
         public int index;
 
-        [SerializeField] private TMP_Text choiceText;
-        [SerializeField] private Image choiceIcon;
+        [FormerlySerializedAs("choiceText")]
+        [SerializeField] private TMP_Text _choiceText;
+        [FormerlySerializedAs("choiceIcon")]
+        [SerializeField] private Image _choiceIcon;
 
         /// <inheritdoc/>
         public override void Initialize(DialogueChoice data, int index)
@@ -35,7 +38,7 @@ namespace Game.Client.UI
         [ToDo("Set the choice icon sprite.")]
         private void UpdateEntry()
         {
-            choiceText.text = data.ChoiceText;
+            _choiceText.text = data.ChoiceText;
             // choiceIcon.sprite = data.Icon;
         }
 

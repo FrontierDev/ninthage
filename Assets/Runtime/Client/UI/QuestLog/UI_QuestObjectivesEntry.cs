@@ -2,6 +2,7 @@ using Game.Shared.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -11,17 +12,18 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_QuestObjectivesEntry : UI_ListEntry<QuestObjective>
     {
-        private QuestObjective data;
-        private int index;
+        private QuestObjective _data;
+        private int _index;
 
-        [SerializeField] private TMP_Text objectiveText;
+        [FormerlySerializedAs("objectiveText")]
+        [SerializeField] private TMP_Text _objectiveText;
         // [SerialzieField] private UI_Checkbox checkbox;
 
         /// <inheritdoc/>
         public override void Initialize(QuestObjective data, int index)
         {
-            this.data = data;
-            this.index = index;
+            this._data = data;
+            this._index = index;
         }
 
         /// <summary>
@@ -29,9 +31,9 @@ namespace Game.Client.UI
         /// </summary>
         public void UpdateEntry(int progress)
         {
-            var text = data.Description + " (" + progress + "/" + data.RequiredAmount + ")";
-            objectiveText.text = text;
-            LayoutRebuilder.ForceRebuildLayoutImmediate(objectiveText.rectTransform);
+            var text = _data.Description + " (" + progress + "/" + _data.RequiredAmount + ")";
+            _objectiveText.text = text;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_objectiveText.rectTransform);
         }
 
         /// <inheritdoc/>

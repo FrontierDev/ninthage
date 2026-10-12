@@ -1,6 +1,7 @@
 using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -16,10 +17,12 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_InventoryGridPanel Instance => _instance;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_InventorySlotEntry slotEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("slotEntryPrefab")]
+        [SerializeField] private UI_InventorySlotEntry _slotEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _slotEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
@@ -89,14 +92,14 @@ namespace Game.Client.UI
             for (int i = 0; i < slots; i++)
             {
                 var item = items.ContainsKey(i) ? items[i] : null;
-                var entryObj = Instantiate(slotEntryPrefab.gameObject, container.transform);
+                var entryObj = Instantiate(_slotEntryPrefab.gameObject, _container.transform);
                 var entry = entryObj.GetComponent<UI_InventorySlotEntry>();
                 entry.Initialize(item, i);
                 entry.Register(this);
                 currentEntries.Add(entry);
             }
 
-            LayoutRebuilder.ForceRebuildLayoutImmediate(container.GetComponent<RectTransform>());
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_container.GetComponent<RectTransform>());
             LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponentInParent<RectTransform>());
             LayoutRebuilder.ForceRebuildLayoutImmediate(UI_InventoryWindow.Instance.GetComponent<RectTransform>());
         }

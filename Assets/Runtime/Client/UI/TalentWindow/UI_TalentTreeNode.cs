@@ -1,6 +1,7 @@
 using Game.Shared.Data;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -10,13 +11,14 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_TalentTreeNode : UI_Button
     {
-        [SerializeField] private Image graphics;
-        private TalentDefinition talentDefinition;
-        private int rank;
+        [FormerlySerializedAs("graphics")]
+        [SerializeField] private Image _graphics;
+        private TalentDefinition _talentDefinition;
+        private int _rank;
 
         private void Awake()
         {
-            graphics.material = new Material(graphics.material);
+            _graphics.material = new Material(_graphics.material);
         }
 
         /// <summary>
@@ -24,17 +26,17 @@ namespace Game.Client.UI
         /// </summary>
         public void Initialize(TalentDefinition definition, int rank = 0)
         {
-            talentDefinition = definition;
-            this.rank = rank;
+            _talentDefinition = definition;
+            this._rank = rank;
 
-            UIShaderProperties.SetTexture(graphics, "_IconTex", talentDefinition.Icon.texture);
-            UIShaderProperties.SetFloat(graphics, "_IconAmount", 1f);
+            UIShaderProperties.SetTexture(_graphics, "_IconTex", _talentDefinition.Icon.texture);
+            UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1f);
         }
 
         /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
-            UI_TalentTreeViewerPanel.Instance.ShowTalentInfo(talentDefinition);
+            UI_TalentTreeViewerPanel.Instance.ShowTalentInfo(_talentDefinition);
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
     }

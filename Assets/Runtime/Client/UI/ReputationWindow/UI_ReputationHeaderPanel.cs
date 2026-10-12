@@ -4,6 +4,7 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -18,17 +19,19 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_ReputationHeaderPanel Instance => _instance;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_ReputationHeaderEntry slotEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("slotEntryPrefab")]
+        [SerializeField] private UI_ReputationHeaderEntry _slotEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _slotEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        private FactionCategory currentCategory = FactionCategory.Primary;
-        private PlayerReputation playerReputation;
+        private FactionCategory _currentCategory = FactionCategory.Primary;
+        private PlayerReputation _playerReputation;
 
         protected override void Awake()
         {
@@ -42,7 +45,7 @@ namespace Game.Client.UI
 
         private void OnPlayerActorAssigned(Actor actor)
         {
-            playerReputation = actor.GetComponent<PlayerReputation>();
+            _playerReputation = actor.GetComponent<PlayerReputation>();
         }
 
         /// <summary>
@@ -50,7 +53,7 @@ namespace Game.Client.UI
         /// </summary>
         public void OnClientReputationUpdated(string factionID, int reputation, int delta)
         {
-            if (playerReputation == null) return;
+            if (_playerReputation == null) return;
 
             if (currentEntries.Count == 0) PopulateList(true);
 
@@ -59,7 +62,7 @@ namespace Game.Client.UI
                 if (entry is UI_ReputationHeaderEntry repEntry)
                 {
                     var def = repEntry.Data;
-                    if (def != null && playerReputation.Reputations.TryGetValue(def.DefinitionID, out int rep))
+                    if (def != null && _playerReputation.Reputations.TryGetValue(def.DefinitionID, out int rep))
                     {
                         repEntry.UpdateEntry(rep);
                     }
@@ -84,14 +87,14 @@ namespace Game.Client.UI
             if (forceClear) ClearEntries();
 
             int i = 0;
-            Debug.Log($"Populating reputation header for category {currentCategory} with {playerReputation.Reputations.Count} reputations");
-            foreach (var rep in playerReputation.Reputations)
+            Debug.Log($"Populating reputation header for category {_currentCategory} with {_playerReputation.Reputations.Count} reputations");
+            foreach (var rep in _playerReputation.Reputations)
             {
                 var def = FactionDefinitionLibrary.Instance.GetDefinition(rep.Key);
-                Debug.Log($"Checking reputation entry for faction {def.DisplayName} with category {def.Category} against current category {currentCategory}");
-                if (def.Category == currentCategory)
+                Debug.Log($"Checking reputation entry for faction {def.DisplayName} with category {def.Category} against current category {_currentCategory}");
+                if (def.Category == _currentCategory)
                 {
-                    var entryObj = Instantiate(slotEntryPrefab.gameObject, container.transform);
+                    var entryObj = Instantiate(_slotEntryPrefab.gameObject, _container.transform);
                     var entry = entryObj.GetComponent<UI_ReputationHeaderEntry>();
                     entry.Initialize(def, i);
                     entry.Register(this);

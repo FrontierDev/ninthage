@@ -2,6 +2,7 @@ using Game.Shared;
 using Game.Shared.Runtime.Actors;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -10,8 +11,10 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_TargetInfoPanel : UI_Panel
     {
-        [SerializeField] private TMP_Text actorNameText;
-        [SerializeField] private TMP_Text actorInfoText;
+        [FormerlySerializedAs("actorNameText")]
+        [SerializeField] private TMP_Text _actorNameText;
+        [FormerlySerializedAs("actorInfoText")]
+        [SerializeField] private TMP_Text _actorInfoText;
 
         protected override void Awake()
         {
@@ -24,28 +27,28 @@ namespace Game.Client.UI
         {
             if (newTarget != null)
             {
-                actorInfoText.text = string.Empty;
+                _actorInfoText.text = string.Empty;
 
                 if (newTarget.TryGetComponent<Game.Shared.Runtime.Actors.NPCActor>(out var npc))
                 {
-                    actorNameText.text = npc.GetName();
-                    actorInfoText.text = $"Level {npc.GetLevel()}";
+                    _actorNameText.text = npc.GetName();
+                    _actorInfoText.text = $"Level {npc.GetLevel()}";
                 }
                 else
                 {
                     PlayerActor player = newTarget as PlayerActor;
-                    actorNameText.text = player.GetName();
+                    _actorNameText.text = player.GetName();
 
                     var raceDef = Game.Shared.Data.RaceDefinitionLibrary.Instance.GetDefinition(player.raceID.value);
                     var classDef = Game.Shared.Data.ClassDefinitionLibrary.Instance.GetDefinition(player.classID.value);
 
-                    actorInfoText.text = $"Level {player.level.value} {raceDef.DisplayName} {classDef.DisplayName}";
+                    _actorInfoText.text = $"Level {player.level.value} {raceDef.DisplayName} {classDef.DisplayName}";
                 }
             }
             else
             {
-                actorNameText.text = string.Empty;
-                actorInfoText.text = string.Empty;
+                _actorNameText.text = string.Empty;
+                _actorInfoText.text = string.Empty;
             }
         }
     }

@@ -4,6 +4,7 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -13,12 +14,17 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_TalentHeaderPanel : UI_Panel
     {
-        [SerializeField] private Image classIconImage;
-        [SerializeField] private TMP_Text classNameText;
-        [SerializeField] private TMP_Text characterLevelText;
+        [FormerlySerializedAs("classIconImage")]
+        [SerializeField] private Image _classIconImage;
+        [FormerlySerializedAs("classNameText")]
+        [SerializeField] private TMP_Text _classNameText;
+        [FormerlySerializedAs("characterLevelText")]
+        [SerializeField] private TMP_Text _characterLevelText;
 
-        [SerializeField] private TMP_Text unspentPointsText;
-        [SerializeField] private TMP_Text spentPointsText;
+        [FormerlySerializedAs("unspentPointsText")]
+        [SerializeField] private TMP_Text _unspentPointsText;
+        [FormerlySerializedAs("spentPointsText")]
+        [SerializeField] private TMP_Text _spentPointsText;
 
         override protected void Awake()
         {
@@ -33,17 +39,17 @@ namespace Game.Client.UI
             {
                 var classID = characterData.ClassID;
                 var classDef = ClassDefinitionLibrary.Instance.GetDefinition(classID);
-                classIconImage.sprite = classDef.Icon;
-                classNameText.text = classID;
+                _classIconImage.sprite = classDef.Icon;
+                _classNameText.text = classID;
 
                 var level = characterData.Level;
-                characterLevelText.text = $"level {level}";
+                _characterLevelText.text = $"level {level}";
             }
         }
 
         private void OnClientExperienceUpdated(int level, int experience, int delta)
         {
-            characterLevelText.text = $"level {level}";
+            _characterLevelText.text = $"level {level}";
             SetTalentPoints();
         }
 
@@ -53,8 +59,8 @@ namespace Game.Client.UI
             if (playerActor != null)
             {
                 var talents = playerActor.GetComponent<PlayerTalents>();
-                unspentPointsText.text = $"{talents.GetUnspentTalentPoints()}";
-                spentPointsText.text = $"{talents.SpentTalentPoints}/{talents.GetMaximumTalentPoints()}";
+                _unspentPointsText.text = $"{talents.GetUnspentTalentPoints()}";
+                _spentPointsText.text = $"{talents.SpentTalentPoints}/{talents.GetMaximumTalentPoints()}";
             }
         }
     }

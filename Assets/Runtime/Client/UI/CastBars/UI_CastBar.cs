@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -8,17 +9,18 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CastBar : UI_ProgressBar
     {
-        private string parentWindowName;
+        private string _parentWindowName;
         private Coroutine _activeCoroutine;
 
-        [SerializeField] private Material defaultMaterial;
+        [FormerlySerializedAs("defaultMaterial")]
+        [SerializeField] private Material _defaultMaterial;
 
         private void Awake()
         {
             var parentWindow = GetComponentInParent<UI_Window>(true);
-            parentWindowName = parentWindow.WindowName;
+            _parentWindowName = parentWindow.WindowName;
 
-            SetMaterial(defaultMaterial);
+            SetMaterial(_defaultMaterial);
         }
 
         /// <summary>
@@ -27,7 +29,7 @@ namespace Game.Client.UI
         public void StartCast(float duration, bool reverse = false)
         {
             StopActiveCast();
-            UI_Manager.Instance.ShowWindow(parentWindowName);
+            UI_Manager.Instance.ShowWindow(_parentWindowName);
             Show();
             _activeCoroutine = StartCoroutine(CastBarCoroutine(duration, reverse));
         }
@@ -39,7 +41,7 @@ namespace Game.Client.UI
         {
             StopActiveCast();
             Hide();
-            UI_Manager.Instance.HideWindow(parentWindowName);
+            UI_Manager.Instance.HideWindow(_parentWindowName);
         }
 
         /// <summary>
@@ -49,7 +51,7 @@ namespace Game.Client.UI
         {
             StopActiveCast();
             Hide();
-            UI_Manager.Instance.HideWindow(parentWindowName);
+            UI_Manager.Instance.HideWindow(_parentWindowName);
         }
 
         private void StopActiveCast()

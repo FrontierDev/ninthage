@@ -2,6 +2,7 @@ using Game.Shared.Runtime;
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -12,7 +13,8 @@ namespace Game.Client.UI
     [ToDo("Remove this as it is obsolete.")]
     public sealed class UI_CharacterStatTypeButton : UI_Button
     {
-        [SerializeField] private string statTypeTag;
+        [FormerlySerializedAs("statTypeTag")]
+        [SerializeField] private string _statTypeTag;
 
         /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData)

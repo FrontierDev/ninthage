@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -27,8 +28,10 @@ namespace Game.Client.UI
         }
 
         [Header("UI References - Finalize Character")]
-        [SerializeField] private UI_Button createButton;
-        [SerializeField] private TMP_InputField nameInput;
+        [FormerlySerializedAs("createButton")]
+        [SerializeField] private UI_Button _createButton;
+        [FormerlySerializedAs("nameInput")]
+        [SerializeField] private TMP_InputField _nameInput;
 
         /// <inheritdoc/>
         public override void Show()
@@ -44,7 +47,7 @@ namespace Game.Client.UI
         /// </summary>
         public string GetCharacterName()
         {
-            return nameInput.text;
+            return _nameInput.text;
         }
     }
 }

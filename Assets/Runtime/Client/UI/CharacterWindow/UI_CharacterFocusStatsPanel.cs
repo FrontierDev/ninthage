@@ -4,6 +4,7 @@ using Game.Shared.Data;
 using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -18,17 +19,19 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_CharacterFocusStatsPanel Instance => _instance;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_CharacterStatEntry statEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => statEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("statEntryPrefab")]
+        [SerializeField] private UI_CharacterStatEntry _statEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _statEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
         private List<ActorStatDefinition> focusStatDefinitions = new();
-        private ActorStatContainer currentStats;
+        private ActorStatContainer _currentStats;
 
         protected override void Awake()
         {
@@ -55,7 +58,7 @@ namespace Game.Client.UI
                 var stats = ClientAccountManager.PlayerActor.GetComponent<ActorStatContainer>();
                 if (stats != null)
                 {
-                    currentStats = stats;
+                    _currentStats = stats;
                     Refresh();
                 }
             }
@@ -66,7 +69,7 @@ namespace Game.Client.UI
             // Only update for the player's own actor.
             if (ClientAccountManager.PlayerActor == null) return;
             if (actor.ID != ClientAccountManager.PlayerActor.ID) return;
-            currentStats = statContainer;
+            _currentStats = statContainer;
             Refresh();
         }
 
@@ -75,13 +78,13 @@ namespace Game.Client.UI
         {
             base.Refresh();
 
-            if (currentStats == null) return;
+            if (_currentStats == null) return;
 
             foreach (var entry in currentEntries)
             {
                 if ((UI_CharacterStatEntry)entry is UI_CharacterStatEntry statEntry)
                 {
-                    statEntry.Refresh(currentStats);
+                    statEntry.Refresh(_currentStats);
                 }
             }
         }
@@ -110,7 +113,7 @@ namespace Game.Client.UI
             int index = 0;
             foreach (var statDef in focusStatDefinitions)
             {
-                var entryObj = Instantiate(statEntryPrefab.gameObject, container.transform);
+                var entryObj = Instantiate(_statEntryPrefab.gameObject, _container.transform);
                 var entry = entryObj.GetComponent<UI_CharacterStatEntry>();
                 entry.Initialize(statDef, index);
                 entry.Register(this);

@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -12,9 +13,12 @@ namespace Game.Client.UI
     public class UI_CC_ClassInfoPanel : UI_Panel
     {
         [Header("UI References")]
-        [SerializeField] private TextMeshProUGUI classNameText;
-        [SerializeField] private TextMeshProUGUI classDescriptionText;
-        [SerializeField] private Image classIconImage;
+        [FormerlySerializedAs("classNameText")]
+        [SerializeField] private TextMeshProUGUI _classNameText;
+        [FormerlySerializedAs("classDescriptionText")]
+        [SerializeField] private TextMeshProUGUI _classDescriptionText;
+        [FormerlySerializedAs("classIconImage")]
+        [SerializeField] private Image _classIconImage;
 
         private void Start()
         {
@@ -30,9 +34,9 @@ namespace Game.Client.UI
             }
 
             Show();
-            classNameText.text = def.DisplayName;
-            classDescriptionText.text = def.Description;
-            classIconImage.sprite = def.Icon;
+            _classNameText.text = def.DisplayName;
+            _classDescriptionText.text = def.Description;
+            _classIconImage.sprite = def.Icon;
             Refresh();
         }
     }

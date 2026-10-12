@@ -4,6 +4,7 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using PurrNet;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client
 {
@@ -19,10 +20,12 @@ namespace Game.Client
         /// </summary>
         public static Test_CharacterController Instance => _instance;
 
-        [SerializeField] private float moveSpeed = 5f;
-        [SerializeField] private float jumpPower = 4f;
+        [FormerlySerializedAs("moveSpeed")]
+        [SerializeField] private float _moveSpeed = 5f;
+        [FormerlySerializedAs("jumpPower")]
+        [SerializeField] private float _jumpPower = 4f;
 
-        private ActorMotor actorMotor;
+        private ActorMotor _actorMotor;
         private CharacterController _cc;
 
         private Vector2 _currentMovementInput = Vector2.zero;
@@ -45,8 +48,8 @@ namespace Game.Client
         {
             if (actor.gameObject != gameObject) return;
 
-            actorMotor = actor.GetComponent<ActorMotor>();
-            if (actorMotor == null) return;
+            _actorMotor = actor.GetComponent<ActorMotor>();
+            if (_actorMotor == null) return;
 
             _cc = GetComponent<CharacterController>();
             _instance = this;
@@ -74,33 +77,33 @@ namespace Game.Client
             bool jump = _jumpRequested && _cc.isGrounded;
             if (jump)
             {
-                actorMotor.verticalVelocity = jumpPower;
+                _actorMotor.verticalVelocity = _jumpPower;
                 _jumpRequested = false;
             }
 
             float yaw = transform.eulerAngles.y;
             float dt = Time.deltaTime;
 
-            actorMotor.verticalVelocity = MovementSimulation.ApplyGravity(
-                actorMotor.verticalVelocity, config.Gravity, config.MaxFallSpeed,
+            _actorMotor.verticalVelocity = MovementSimulation.ApplyGravity(
+                _actorMotor.verticalVelocity, config.Gravity, config.MaxFallSpeed,
                 dt, _cc.isGrounded);
 
             var delta = MovementSimulation.ComputeMoveDelta(
-                _currentMovementInput, yaw, moveSpeed,
-                actorMotor.verticalVelocity, dt, _cc.isGrounded,
+                _currentMovementInput, yaw, _moveSpeed,
+                _actorMotor.verticalVelocity, dt, _cc.isGrounded,
                 out var hVel);
 
             if (!_cc.isGrounded)
-                delta = actorMotor.horizontalVelocity * dt
-                      + new Vector3(0f, actorMotor.verticalVelocity * dt, 0f);
+                delta = _actorMotor.horizontalVelocity * dt
+                      + new Vector3(0f, _actorMotor.verticalVelocity * dt, 0f);
             else
-                actorMotor.horizontalVelocity = hVel;
+                _actorMotor.horizontalVelocity = hVel;
 
             _cc.Move(delta);
 
-            actorMotor.isGrounded = _cc.isGrounded;
-            if (_cc.isGrounded && actorMotor.verticalVelocity < 0)
-                actorMotor.verticalVelocity = 0;
+            _actorMotor.isGrounded = _cc.isGrounded;
+            if (_cc.isGrounded && _actorMotor.verticalVelocity < 0)
+                _actorMotor.verticalVelocity = 0;
 
             var animator = GetComponent<NetworkAnimator>();
             if (animator != null)
@@ -120,9 +123,9 @@ namespace Game.Client
             _cc.enabled = false;
             transform.position = correctedPos;
             _cc.enabled = true;
-            actorMotor.verticalVelocity = 0f;
-            actorMotor.horizontalVelocity = Vector3.zero;
-            actorMotor.isGrounded = true;
+            _actorMotor.verticalVelocity = 0f;
+            _actorMotor.horizontalVelocity = Vector3.zero;
+            _actorMotor.isGrounded = true;
         }
 
         private void OnMovementInput(Vector2 direction) => _currentMovementInput = direction;

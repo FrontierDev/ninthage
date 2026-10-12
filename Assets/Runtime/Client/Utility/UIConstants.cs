@@ -11,10 +11,10 @@ namespace Game.Client.Utility
         /// <summary>
         /// Gets the primary text color.
         /// </summary>
-        public static readonly Color PrimaryText = new(230f / 255f, 234f / 255f, 242f / 255f, 1f);
+        public static readonly Color PRIMARY_TEXT = new(230f / 255f, 234f / 255f, 242f / 255f, 1f);
         /// <summary>
         /// Gets the secondary text color.
         /// </summary>
-        public static readonly Color SecondaryText = new(182f / 255f, 190f / 255f, 204f / 255f, 1.0f);
+        public static readonly Color SECONDARY_TEXT = new(182f / 255f, 190f / 255f, 204f / 255f, 1.0f);
     }
 }

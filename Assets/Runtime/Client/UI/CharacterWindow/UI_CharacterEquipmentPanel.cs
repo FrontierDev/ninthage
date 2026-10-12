@@ -1,6 +1,7 @@
 using Game.Shared.Networking;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -16,7 +17,8 @@ namespace Game.Client.UI
         public static UI_CharacterEquipmentPanel Instance => _instance;
 
         [Header("Sub-panels")]
-        [SerializeField] private List<UI_Panel> subPanels;
+        [FormerlySerializedAs("subPanels")]
+        [SerializeField] private List<UI_Panel> _subPanels;
 
         protected override void Awake()
         {
@@ -24,8 +26,8 @@ namespace Game.Client.UI
 
             foreach (UI_Panel panel in GetComponentsInChildren<UI_Panel>())
             {
-                if (panel != this && !subPanels.Contains(panel))
-                    subPanels.Add(panel);
+                if (panel != this && !_subPanels.Contains(panel))
+                    _subPanels.Add(panel);
             }
 
             base.Awake();
@@ -35,7 +37,7 @@ namespace Game.Client.UI
         public override void OnShow()
         {
             base.OnShow();
-            foreach (UI_Panel panel in subPanels)
+            foreach (UI_Panel panel in _subPanels)
             {
                 if (panel != null) panel.ShowImmediate();
             }
@@ -46,7 +48,7 @@ namespace Game.Client.UI
         public override void OnHide()
         {
 
-            foreach (UI_Panel panel in subPanels)
+            foreach (UI_Panel panel in _subPanels)
             {
                 if (panel != null) panel.HideImmediate();
             }

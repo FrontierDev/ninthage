@@ -3,6 +3,7 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -11,20 +12,26 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_Nameplate : MonoBehaviour
     {
-        private bool initialized = false;
+        private bool _initialized = false;
 
-        [SerializeField] private float heightOffset = 2f; // Height above actor's head
-        [SerializeField] private float screenSize = 0.02f; // Fraction of screen height
+        [FormerlySerializedAs("heightOffset")]
+        [SerializeField] private float _heightOffset = 2f; // Height above actor's head
+        [FormerlySerializedAs("screenSize")]
+        [SerializeField] private float _screenSize = 0.02f; // Fraction of screen height
 
         [Header("UI References")]
-        [SerializeField] private TextMeshProUGUI nameText;
-        [SerializeField] private GameObject barsContainer;
-        [SerializeField] private UI_NameplateHealthBar healthBar;
-        [SerializeField] private UI_NameplateCastBar castBar;
+        [FormerlySerializedAs("nameText")]
+        [SerializeField] private TextMeshProUGUI _nameText;
+        [FormerlySerializedAs("barsContainer")]
+        [SerializeField] private GameObject _barsContainer;
+        [FormerlySerializedAs("healthBar")]
+        [SerializeField] private UI_NameplateHealthBar _healthBar;
+        [FormerlySerializedAs("castBar")]
+        [SerializeField] private UI_NameplateCastBar _castBar;
 
-        private Actor actor;
-        private RectTransform rectTransform;
-        private Canvas canvas;
+        private Actor _actor;
+        private RectTransform _rectTransform;
+        private Canvas _canvas;
         private bool _isCasting;
 
         /// <summary>
@@ -34,15 +41,15 @@ namespace Game.Client.UI
         /// <summary>
         /// Gets the <c>Actor</c> value.
         /// </summary>
-        public Actor Actor => actor;
+        public Actor Actor => _actor;
         /// <summary>
         /// Gets the <c>RectTransform</c> value.
         /// </summary>
-        public RectTransform RectTransform => rectTransform;
+        public RectTransform RectTransform => _rectTransform;
         /// <summary>
         /// Gets the <c>HeightOffset</c> value.
         /// </summary>
-        public float HeightOffset => heightOffset;
+        public float HeightOffset => _heightOffset;
         /// <summary>
         /// Gets the <c>StackOffset</c> value.
         /// </summary>
@@ -60,12 +67,12 @@ namespace Game.Client.UI
 
         private void OnPlayerActorAssigned(Actor playerActor)
         {
-            if (!initialized)
+            if (!_initialized)
             {
-                var relation = actor.GetFactionRelation(playerActor.GetComponent<PlayerReputation>());
-                healthBar.SetRelation(relation);
-                OnStatsUpdated(actor, actor.GetComponent<ActorStatContainer>());
-                initialized = true;
+                var relation = _actor.GetFactionRelation(playerActor.GetComponent<PlayerReputation>());
+                _healthBar.SetRelation(relation);
+                OnStatsUpdated(_actor, _actor.GetComponent<ActorStatContainer>());
+                _initialized = true;
             }
         }
 
@@ -74,24 +81,24 @@ namespace Game.Client.UI
         /// </summary>
         public void Initialize(Actor target, Canvas worldCanvas)
         {
-            actor = target;
-            canvas = worldCanvas;
-            rectTransform = GetComponent<RectTransform>();
+            _actor = target;
+            _canvas = worldCanvas;
+            _rectTransform = GetComponent<RectTransform>();
 
             // Display the actor's name
-            if (nameText != null)
-                nameText.text = actor.GetName();
+            if (_nameText != null)
+                _nameText.text = _actor.GetName();
 
-            healthBar.SetName(actor.GetName());
-            healthBar.SetLevel(actor.GetLevel());
+            _healthBar.SetName(_actor.GetName());
+            _healthBar.SetLevel(_actor.GetLevel());
 
             var playerActor = ClientAccountManager.PlayerActor;
             if (playerActor != null)
             {
-                var relation = actor.GetFactionRelation(playerActor.GetComponent<PlayerReputation>());
-                healthBar.SetRelation(relation);
-                OnStatsUpdated(actor, actor.GetComponent<ActorStatContainer>());
-                initialized = true;
+                var relation = _actor.GetFactionRelation(playerActor.GetComponent<PlayerReputation>());
+                _healthBar.SetRelation(relation);
+                OnStatsUpdated(_actor, _actor.GetComponent<ActorStatContainer>());
+                _initialized = true;
             }
 
             EvaluateHealthBarVisibility();
@@ -101,14 +108,14 @@ namespace Game.Client.UI
 
         private void Update()
         {
-            if (actor == null)
+            if (_actor == null)
             {
                 Destroy(gameObject);
                 return;
             }
 
             // Position nameplate above actor's head in world space
-            Vector3 targetPos = actor.transform.position + Vector3.up * (heightOffset + StackOffset);
+            Vector3 targetPos = _actor.transform.position + Vector3.up * (_heightOffset + StackOffset);
             transform.position = targetPos;
 
             // Face camera, but use camera's up so text stays screen-aligned
@@ -120,7 +127,7 @@ namespace Game.Client.UI
                 // Scale to maintain constant screen size regardless of distance
                 float dist = Vector3.Distance(mainCam.transform.position, targetPos);
                 float frustumHeight = 2f * dist * Mathf.Tan(mainCam.fieldOfView * 0.5f * Mathf.Deg2Rad);
-                float scale = frustumHeight * screenSize;
+                float scale = frustumHeight * _screenSize;
                 transform.localScale = Vector3.one * scale;
             }
         }
@@ -130,13 +137,13 @@ namespace Game.Client.UI
         /// </summary>
         public void OnStatsUpdated(Actor actor, ActorStatContainer statContainer)
         {
-            if (this.actor != actor)
+            if (this._actor != actor)
                 return;
 
             if (statContainer.TryGetStat("health", out var healthStat))
             {
                 float healthPercent = healthStat.CurrentValue / healthStat.EffectiveMaximum;
-                healthBar.SetHealthPercent(healthPercent);
+                _healthBar.SetHealthPercent(healthPercent);
             }
         }
 
@@ -167,8 +174,8 @@ namespace Game.Client.UI
         private void EvaluateVisibility()
         {
             var manager = UI_NameplateManager.Instance;
-            bool isHovered = manager.hoveredActor == actor;
-            bool isTargeted = ClientAccountManager.PlayerActor != null && ClientAccountManager.PlayerActor.Target == actor;
+            bool isHovered = manager.hoveredActor == _actor;
+            bool isTargeted = ClientAccountManager.PlayerActor != null && ClientAccountManager.PlayerActor.Target == _actor;
 
             // Determine health bar visibility
             bool showHealthBar = false;
@@ -233,19 +240,19 @@ namespace Game.Client.UI
             // Bars container and name are mutually exclusive; bars take priority
             if (showHealthBar)
             {
-                barsContainer.SetActive(true);
-                nameText.gameObject.SetActive(false);
+                _barsContainer.SetActive(true);
+                _nameText.gameObject.SetActive(false);
             }
             else
             {
-                barsContainer.SetActive(false);
-                nameText.gameObject.SetActive(showName);
+                _barsContainer.SetActive(false);
+                _nameText.gameObject.SetActive(showName);
             }
 
             if (showCastBar)
-                castBar.Show();
+                _castBar.Show();
             else
-                castBar.Hide();
+                _castBar.Hide();
         }
 
         /// <summary>
@@ -254,7 +261,7 @@ namespace Game.Client.UI
         public void SetTargetedIndicatorVisibility(bool isVisible)
         {
             float amount = isVisible ? 1f : 0f;
-            UIShaderProperties.SetFloat(healthBar.graphics, "_SelectedAmount", amount);
+            UIShaderProperties.SetFloat(_healthBar.graphics, "_SelectedAmount", amount);
         }
 
         /// <summary>
@@ -263,7 +270,7 @@ namespace Game.Client.UI
         public void StartCast(float duration, bool reverse)
         {
             _isCasting = true;
-            castBar.StartCast(duration, reverse);
+            _castBar.StartCast(duration, reverse);
             EvaluateCastBarVisibility();
         }
 
@@ -273,7 +280,7 @@ namespace Game.Client.UI
         public void InterruptCast()
         {
             _isCasting = false;
-            castBar.InterruptCast();
+            _castBar.InterruptCast();
             EvaluateCastBarVisibility();
         }
 
@@ -283,7 +290,7 @@ namespace Game.Client.UI
         public void FinishCast()
         {
             _isCasting = false;
-            castBar.FinishCast();
+            _castBar.FinishCast();
             EvaluateCastBarVisibility();
         }
     }

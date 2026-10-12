@@ -7,6 +7,7 @@ using Game.Shared.Runtime.Spellcasting;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -16,7 +17,8 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_TargetAuraBar : UI_AuraBar
     {
-        [SerializeField] private bool interactable = false;
+        [FormerlySerializedAs("interactable")]
+        [SerializeField] private bool _interactable = false;
 
         protected override void Awake()
         {

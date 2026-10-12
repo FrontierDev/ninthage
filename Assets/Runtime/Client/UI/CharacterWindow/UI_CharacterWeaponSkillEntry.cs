@@ -2,6 +2,7 @@ using Game.Shared.Data;
 using Game.Shared.Utility;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -10,25 +11,28 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CharacterWeaponSkillEntry : UI_ListEntry<ItemWeaponType>
     {
-        [SerializeField] private TextMeshProUGUI weaponTypeText;
-        [SerializeField] private TextMeshProUGUI levelText;
-        [SerializeField] private UI_CharacterWeaponSkillBar weaponSkillBar;
+        [FormerlySerializedAs("weaponTypeText")]
+        [SerializeField] private TextMeshProUGUI _weaponTypeText;
+        [FormerlySerializedAs("levelText")]
+        [SerializeField] private TextMeshProUGUI _levelText;
+        [FormerlySerializedAs("weaponSkillBar")]
+        [SerializeField] private UI_CharacterWeaponSkillBar _weaponSkillBar;
 
-        private ItemWeaponType weaponType;
+        private ItemWeaponType _weaponType;
         /// <summary>
         /// Gets the <c>WeaponType</c> value.
         /// </summary>
-        public ItemWeaponType WeaponType => weaponType;
+        public ItemWeaponType WeaponType => _weaponType;
 
-        private int index;
+        private int _index;
 
         /// <inheritdoc/>
         public override void Initialize(ItemWeaponType _weaponType, int _index)
         {
-            this.index = _index;
-            this.weaponType = _weaponType;
+            this._index = _index;
+            this._weaponType = _weaponType;
 
-            weaponTypeText.text = weaponType.ToString().ToLower();
+            _weaponTypeText.text = _weaponType.ToString().ToLower();
         }
 
         /// <summary>
@@ -36,10 +40,10 @@ namespace Game.Client.UI
         /// </summary>
         public void UpdateWeaponSkill(int level, int experience)
         {
-            levelText.text = $"{level}";
+            _levelText.text = $"{level}";
 
             var progress = (float)experience / (float)ExperienceCalculator.GetExpForLevel(level);
-            weaponSkillBar.SetProgress(progress);
+            _weaponSkillBar.SetProgress(progress);
         }
 
         /// <inheritdoc/>

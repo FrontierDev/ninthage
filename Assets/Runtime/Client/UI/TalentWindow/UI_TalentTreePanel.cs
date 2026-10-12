@@ -5,6 +5,7 @@ using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -14,29 +15,36 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_TalentTreePanel : UI_Panel
     {
-        [SerializeField] private Image graphics;
-        [SerializeField] private TMP_Text specNameText;
-        [SerializeField] private TMP_Text spentPointsText;
-        [SerializeField] private int specIndex;
+        [FormerlySerializedAs("graphics")]
+        [SerializeField] private Image _graphics;
+        [FormerlySerializedAs("specNameText")]
+        [SerializeField] private TMP_Text _specNameText;
+        [FormerlySerializedAs("spentPointsText")]
+        [SerializeField] private TMP_Text _spentPointsText;
+        [FormerlySerializedAs("specIndex")]
+        [SerializeField] private int _specIndex;
 
-        [SerializeField] private UI_TalentTreeNode talentNodePanelPrefab;
-        [SerializeField] private Transform talentNodePanelContainer;
-        [SerializeField] private float rowSpacing;
+        [FormerlySerializedAs("talentNodePanelPrefab")]
+        [SerializeField] private UI_TalentTreeNode _talentNodePanelPrefab;
+        [FormerlySerializedAs("talentNodePanelContainer")]
+        [SerializeField] private Transform _talentNodePanelContainer;
+        [FormerlySerializedAs("rowSpacing")]
+        [SerializeField] private float _rowSpacing;
 
         /// <summary>
         /// Talent tree nodes, organised by row.
         /// </summary>
-        private Dictionary<int, List<UI_TalentTreeNode>> talentNodes = new();
+        private Dictionary<int, List<UI_TalentTreeNode>> _talentNodes = new();
 
         // Internal private members.
-        private ClassSpecialisation specialisation;
+        private ClassSpecialisation _specialisation;
 
         protected override void Awake()
         {
             base.Awake();
 
-            if (graphics.material != null)
-                graphics.material = new Material(graphics.material);
+            if (_graphics.material != null)
+                _graphics.material = new Material(_graphics.material);
 
             ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
         }
@@ -48,9 +56,9 @@ namespace Game.Client.UI
             {
                 var classID = characterData.ClassID;
                 var classDef = ClassDefinitionLibrary.Instance.GetDefinition(classID);
-                specialisation = classDef.Specialisations[specIndex - 1];
-                UIShaderProperties.SetColor(graphics, "_AccentColor", specialisation.color);
-                Initialize(specialisation);
+                _specialisation = classDef.Specialisations[_specIndex - 1];
+                UIShaderProperties.SetColor(_graphics, "_AccentColor", _specialisation.color);
+                Initialize(_specialisation);
 
             }
         }
@@ -63,23 +71,23 @@ namespace Game.Client.UI
         private void Initialize(ClassSpecialisation spec)
         {
             // Set the spec.
-            specialisation = spec;
-            specNameText.text = spec.name;
-            spentPointsText.text = ClientAccountManager.PlayerActor.GetComponent<PlayerTalents>().GetSpentTalentPoints(spec).ToString();
+            _specialisation = spec;
+            _specNameText.text = spec.name;
+            _spentPointsText.text = ClientAccountManager.PlayerActor.GetComponent<PlayerTalents>().GetSpentTalentPoints(spec).ToString();
 
             // Clear previous nodes in the container and internal state.
-            if (talentNodePanelContainer != null)
+            if (_talentNodePanelContainer != null)
             {
-                for (int i = talentNodePanelContainer.childCount - 1; i >= 0; i--)
+                for (int i = _talentNodePanelContainer.childCount - 1; i >= 0; i--)
                 {
-                    var child = talentNodePanelContainer.GetChild(i).gameObject;
+                    var child = _talentNodePanelContainer.GetChild(i).gameObject;
                     if (Application.isPlaying)
                         Destroy(child);
                     else
                         DestroyImmediate(child);
                 }
             }
-            talentNodes.Clear();
+            _talentNodes.Clear();
 
             // First pass: instantiate nodes and group them by row.
             foreach (TalentDefinition talent in spec.talents)
@@ -87,33 +95,33 @@ namespace Game.Client.UI
                 if (talent == null)
                     continue;
 
-                var go = Instantiate(talentNodePanelPrefab, talentNodePanelContainer);
+                var go = Instantiate(_talentNodePanelPrefab, _talentNodePanelContainer);
                 go.Initialize(talent);
 
                 var talentNode = go.GetComponent<UI_TalentTreeNode>();
                 talentNode.Initialize(talent);
                 var row = GetRowNumber(talent.MinLevel);
 
-                if (!talentNodes.TryGetValue(row, out var nodesInRow))
+                if (!_talentNodes.TryGetValue(row, out var nodesInRow))
                 {
                     nodesInRow = new();
-                    talentNodes[row] = nodesInRow;
+                    _talentNodes[row] = nodesInRow;
                 }
 
                 nodesInRow.Add(talentNode);
             }
 
             // Second pass: position nodes now that we know counts per row.
-            var rows = new List<int>(talentNodes.Keys);
+            var rows = new List<int>(_talentNodes.Keys);
             rows.Sort();
             foreach (var row in rows)
             {
-                var nodesInRow = talentNodes[row];
+                var nodesInRow = _talentNodes[row];
                 int count = nodesInRow.Count;
                 for (int index = 0; index < count; index++)
                 {
-                    float xPos = (index - (count - 1) * 0.5f) * rowSpacing;
-                    float yPos = -row * rowSpacing;
+                    float xPos = (index - (count - 1) * 0.5f) * _rowSpacing;
+                    float yPos = -row * _rowSpacing;
                     var rt = nodesInRow[index].GetComponent<RectTransform>();
                     rt.anchoredPosition = new Vector2(xPos, yPos);
                 }

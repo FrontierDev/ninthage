@@ -7,11 +7,11 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_WorldSpace : MonoBehaviour
     {
-        private static UI_WorldSpace instance;
+        private static UI_WorldSpace _instance;
         /// <summary>
         /// Gets the shared client-side instance.
         /// </summary>
-        public static UI_WorldSpace Instance => instance;
+        public static UI_WorldSpace Instance => _instance;
 
         [Header("UI References")]
         [SerializeField] public Canvas root;
@@ -21,9 +21,9 @@ namespace Game.Client.UI
 
         private void Awake()
         {
-            if (instance != null) return;
+            if (_instance != null) return;
 
-            instance = this;
+            _instance = this;
             root = GetComponent<Canvas>();
             rootCanvasGroup = GetComponent<CanvasGroup>();
 

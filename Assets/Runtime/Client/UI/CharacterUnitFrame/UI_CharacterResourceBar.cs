@@ -5,6 +5,7 @@ using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -13,10 +14,14 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_CharacterResourceBar : UI_ProgressBar
     {
-        [SerializeField] private ActorStatContainer playerStatContainer;
-        [SerializeField] private TMP_Text valueText;
-        [SerializeField] private TMP_Text percentageText;
-        [SerializeField] private List<ActorStatDefinition> trackedResources = new();
+        [FormerlySerializedAs("playerStatContainer")]
+        [SerializeField] private ActorStatContainer _playerStatContainer;
+        [FormerlySerializedAs("valueText")]
+        [SerializeField] private TMP_Text _valueText;
+        [FormerlySerializedAs("percentageText")]
+        [SerializeField] private TMP_Text _percentageText;
+        [FormerlySerializedAs("trackedResources")]
+        [SerializeField] private List<ActorStatDefinition> _trackedResources = new();
 
         private void Awake()
         {
@@ -28,8 +33,8 @@ namespace Game.Client.UI
         {
             if (playerActor != null)
             {
-                playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
-                if (playerStatContainer != null)
+                _playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
+                if (_playerStatContainer != null)
                 {
                     StatEndpoint.onStatsUpdated += OnStatsUpdated;
                     Refresh();
@@ -47,22 +52,22 @@ namespace Game.Client.UI
 
         private void Refresh()
         {
-            if (playerStatContainer == null) return;
+            if (_playerStatContainer == null) return;
 
             // For now we just display the first resource stat we find, if any.
-            foreach (var def in trackedResources)
+            foreach (var def in _trackedResources)
             {
-                if (playerStatContainer.TryGetStat(def.DefinitionID, out var stat))
+                if (_playerStatContainer.TryGetStat(def.DefinitionID, out var stat))
                 {
                     var currentValue = stat.CurrentValue;
                     var maxValue = stat.EffectiveMaximum;
 
                     SetProgress(currentValue / maxValue);
-                    if (valueText != null)
-                        valueText.text = $"{currentValue:0}";
+                    if (_valueText != null)
+                        _valueText.text = $"{currentValue:0}";
 
-                    if (percentageText != null)
-                        percentageText.text = $"{(maxValue > 0 ? (currentValue / maxValue) * 100 : 0):0}%";
+                    if (_percentageText != null)
+                        _percentageText.text = $"{(maxValue > 0 ? (currentValue / maxValue) * 100 : 0):0}%";
 
                     return;
                 }

@@ -6,6 +6,7 @@ using Game.Shared.Runtime.Items;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -14,11 +15,14 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CharacterEquipmentList : UI_Panel, IListPanel
     {
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_CharacterEquipmentEntry slotEntryPrefab;
-        [SerializeField] private List<ItemSlot> equipmentSlots;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => slotEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("slotEntryPrefab")]
+        [SerializeField] private UI_CharacterEquipmentEntry _slotEntryPrefab;
+        [FormerlySerializedAs("equipmentSlots")]
+        [SerializeField] private List<ItemSlot> _equipmentSlots;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _slotEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
@@ -71,9 +75,9 @@ namespace Game.Client.UI
 
             if (currentEntries.Count == 0)
             {
-                foreach (var slot in equipmentSlots.OrderBy(x => (int)x))
+                foreach (var slot in _equipmentSlots.OrderBy(x => (int)x))
                 {
-                    var entry = Instantiate(slotEntryPrefab, container.transform);
+                    var entry = Instantiate(_slotEntryPrefab, _container.transform);
                     entry.Initialize(null, (int)slot);
                     entry.Register(this);
                     currentEntries.Add(entry);

@@ -3,6 +3,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -12,12 +13,14 @@ namespace Game.Client.UI
     public class UI_CC_RaceListPanel : UI_Panel, IListPanel
     {
         [Header("Race List Settings")]
-        [SerializeField] private GameObject contentContainer;
-        [SerializeField] private GameObject entryPrefab;
-        GameObject IListPanel.contentContainer => contentContainer;
-        GameObject IListPanel.entryPrefab => entryPrefab;
+        [FormerlySerializedAs("contentContainer")]
+        [SerializeField] private GameObject _contentContainer;
+        [FormerlySerializedAs("entryPrefab")]
+        [SerializeField] private GameObject _entryPrefab;
+        GameObject IListPanel.contentContainer => _contentContainer;
+        GameObject IListPanel.entryPrefab => _entryPrefab;
 
-        private RaceDefinitionLibrary raceDefinitionLibrary;
+        private RaceDefinitionLibrary _raceDefinitionLibrary;
 
         /// <summary>
         /// Gets the current list entries.
@@ -26,8 +29,8 @@ namespace Game.Client.UI
 
         private void Start()
         {
-            raceDefinitionLibrary = RaceDefinitionLibrary.Instance;
-            if (raceDefinitionLibrary == null)
+            _raceDefinitionLibrary = RaceDefinitionLibrary.Instance;
+            if (_raceDefinitionLibrary == null)
             {
                 Debug.Error("Could not load RaceDefinitionLibrary");
                 return;
@@ -42,7 +45,7 @@ namespace Game.Client.UI
         public override void Show()
         {
             base.Show();
-            if (CharacterCreationManager.Instance != null && CharacterCreationManager.Instance.GetCurrentRaceId() != "")
+            if (CharacterCreationManager.Instance != null && CharacterCreationManager.Instance.GetCurrentRaceID() != "")
             {
                 UI_CharacterCreationWindow.Instance.ShowPanel("RaceInfo");
             }
@@ -58,7 +61,7 @@ namespace Game.Client.UI
         public override void Hide()
         {
             base.Hide();
-            if (CharacterCreationManager.Instance == null || CharacterCreationManager.Instance.GetCurrentRaceId() == "")
+            if (CharacterCreationManager.Instance == null || CharacterCreationManager.Instance.GetCurrentRaceID() == "")
                 UI_CharacterCreationWindow.Instance.HidePanel("RaceInfo");
         }
 
@@ -76,9 +79,9 @@ namespace Game.Client.UI
             if (forceClear) ((IListPanel)this).ClearList();
 
             int _index = 0;
-            foreach (var raceDef in raceDefinitionLibrary.GetAllDefinitions())
+            foreach (var raceDef in _raceDefinitionLibrary.GetAllDefinitions())
             {
-                var entryObj = GameObject.Instantiate(entryPrefab, contentContainer.transform);
+                var entryObj = GameObject.Instantiate(_entryPrefab, _contentContainer.transform);
                 var entry = entryObj.GetComponent<UI_ListEntry>() as UI_CC_RaceListEntry;
                 if (entry == null)
                 {

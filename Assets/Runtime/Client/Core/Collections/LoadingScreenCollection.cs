@@ -1,6 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.Collections
 {
@@ -11,20 +12,21 @@ namespace Game.Client.Collections
     [CreateAssetMenu(fileName = "LoadingScreenCollection", menuName = "NinthAge/Collections/Loading Screen Collection", order = 1)]
     public class LoadingScreenCollection : ScriptableObject
     {
-        [SerializeField] private List<Sprite> splashImages = new();
+        [FormerlySerializedAs("splashImages")]
+        [SerializeField] private List<Sprite> _splashImages = new();
 
         /// <summary>
         /// Get a random splash art image from the collection.
         /// </summary>
         public Sprite GetRandom()
         {
-            if (splashImages == null || Count == 0)
+            if (_splashImages == null || Count == 0)
             {
                 Debug.Warning("No splash images configured.");
                 return null;
             }
 
-            return splashImages[Random.Range(0, Count)];
+            return _splashImages[Random.Range(0, Count)];
         }
 
         /// <summary>
@@ -32,18 +34,18 @@ namespace Game.Client.Collections
         /// </summary>
         public Sprite Get(int index)
         {
-            if (splashImages == null || Count == 0)
+            if (_splashImages == null || Count == 0)
             {
                 Debug.Warning("No splash images configured.");
                 return null;
             }
 
-            return splashImages[Mathf.Clamp(index, 0, Count - 1)];
+            return _splashImages[Mathf.Clamp(index, 0, Count - 1)];
         }
 
         /// <summary>
         /// Get the total number of splash images in the collection.
         /// </summary>
-        public int Count => splashImages?.Count ?? 0;
+        public int Count => _splashImages?.Count ?? 0;
     }
 }

@@ -14,8 +14,8 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_CC_NextStageButton Instance => _instance;
 
-        private string currentPanel;
-        private string nextPanel;
+        private string _currentPanel;
+        private string _nextPanel;
 
         private void Awake()
         {
@@ -32,14 +32,14 @@ namespace Game.Client.UI
         /// <inheritdoc/>
         public override void OnClick(UnityEngine.EventSystems.PointerEventData eventData)
         {
-            if (string.IsNullOrEmpty(nextPanel)) return;
+            if (string.IsNullOrEmpty(_nextPanel)) return;
             if (UI_CharacterCreationWindow.Instance == null) return;
 
-            if (!string.IsNullOrEmpty(currentPanel))
-                UI_CharacterCreationWindow.Instance.HidePanel(currentPanel);
+            if (!string.IsNullOrEmpty(_currentPanel))
+                UI_CharacterCreationWindow.Instance.HidePanel(_currentPanel);
 
-            UI_CharacterCreationWindow.Instance.ShowPanel(nextPanel);
-            currentPanel = nextPanel;
+            UI_CharacterCreationWindow.Instance.ShowPanel(_nextPanel);
+            _currentPanel = _nextPanel;
 
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
@@ -49,7 +49,7 @@ namespace Game.Client.UI
         /// </summary>
         public void SetCurrentPanel(string panelName)
         {
-            currentPanel = panelName;
+            _currentPanel = panelName;
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Game.Client.UI
         /// </summary>
         public void SetNextPanel(string panelName)
         {
-            nextPanel = panelName;
+            _nextPanel = panelName;
 
             if (!IsVisible()) Show();
         }

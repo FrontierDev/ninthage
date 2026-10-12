@@ -3,6 +3,7 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -18,11 +19,15 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_ClientCastBarWindow Instance => _instance;
 
-        [SerializeField] private UI_CastBar castBar;
+        [FormerlySerializedAs("castBar")]
+        [SerializeField] private UI_CastBar _castBar;
 
-        [SerializeField] private Color castColor;
-        [SerializeField] private Color interruptColor;
-        [SerializeField] private Color completeColor;
+        [FormerlySerializedAs("castColor")]
+        [SerializeField] private Color _castColor;
+        [FormerlySerializedAs("interruptColor")]
+        [SerializeField] private Color _interruptColor;
+        [FormerlySerializedAs("completeColor")]
+        [SerializeField] private Color _completeColor;
 
         private void Awake()
         {
@@ -39,22 +44,22 @@ namespace Game.Client.UI
 
             var spellDef = SpellDefinitionLibrary.Instance.GetDefinition(spellID);
 
-            castBar.SetColor(castColor);
-            castBar.StartCast(duration, spellDef != null && spellDef.IsChanneled);
+            _castBar.SetColor(_castColor);
+            _castBar.StartCast(duration, spellDef != null && spellDef.IsChanneled);
         }
 
         private void OnSpellCastInterrupted(Actor actor)
         {
             if (actor != ClientAccountManager.PlayerActor) return;
-            castBar.SetColor(interruptColor);
-            castBar.InterruptCast();
+            _castBar.SetColor(_interruptColor);
+            _castBar.InterruptCast();
         }
 
         private void OnSpellCastCompleted(Actor actor)
         {
             if (actor != ClientAccountManager.PlayerActor) return;
-            castBar.SetColor(completeColor);
-            castBar.FinishCast();
+            _castBar.SetColor(_completeColor);
+            _castBar.FinishCast();
         }
     }
 }

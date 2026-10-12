@@ -4,6 +4,7 @@ using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -18,17 +19,20 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_CharacterWeaponSkillsList Instance => _instance;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private GameObject skillEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => skillEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("skillEntryPrefab")]
+        [SerializeField] private GameObject _skillEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _skillEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        [SerializeField] private List<ItemWeaponType> trackedWeaponTypes = new();
-        private PlayerExperience playerExperience;
+        [FormerlySerializedAs("trackedWeaponTypes")]
+        [SerializeField] private List<ItemWeaponType> _trackedWeaponTypes = new();
+        private PlayerExperience _playerExperience;
 
         protected override void Awake()
         {
@@ -48,8 +52,8 @@ namespace Game.Client.UI
             var classId = ClientAccountManager.ActiveCharacter.ClassID;
             var classDef = ClassDefinitionLibrary.Instance.GetDefinition(classId);
 
-            trackedWeaponTypes = new List<ItemWeaponType>(classDef.WeaponTypes);
-            playerExperience = actor.GetComponent<PlayerExperience>();
+            _trackedWeaponTypes = new List<ItemWeaponType>(classDef.WeaponTypes);
+            _playerExperience = actor.GetComponent<PlayerExperience>();
 
             PopulateList(true);
         }
@@ -75,7 +79,7 @@ namespace Game.Client.UI
             {
                 if (entry is UI_CharacterWeaponSkillEntry skillEntry)
                 {
-                    var weaponSkill = playerExperience.WeaponSkills.FirstOrDefault(ws => ws.WeaponType == skillEntry.WeaponType);
+                    var weaponSkill = _playerExperience.WeaponSkills.FirstOrDefault(ws => ws.WeaponType == skillEntry.WeaponType);
                     if (weaponSkill != null)
                     {
                         skillEntry.UpdateWeaponSkill(weaponSkill.Level, weaponSkill.Experience);
@@ -98,7 +102,7 @@ namespace Game.Client.UI
         /// </summary>
         public void PopulateList(bool forceClear = false)
         {
-            if (ClientAccountManager.PlayerActor == null || playerExperience == null) return;
+            if (ClientAccountManager.PlayerActor == null || _playerExperience == null) return;
 
             if (forceClear)
             {
@@ -106,15 +110,15 @@ namespace Game.Client.UI
             }
 
             int index = 0;
-            foreach (var weaponType in trackedWeaponTypes)
+            foreach (var weaponType in _trackedWeaponTypes)
             {
-                var entryObj = Instantiate(skillEntryPrefab, container.transform);
+                var entryObj = Instantiate(_skillEntryPrefab, _container.transform);
                 var entry = entryObj.GetComponent<UI_CharacterWeaponSkillEntry>();
                 entry.Initialize(weaponType, index);
                 entry.Register(this);
 
                 // Try live data first, fall back to saved character data
-                var weaponSkill = playerExperience.WeaponSkills.FirstOrDefault(ws => ws.WeaponType == weaponType);
+                var weaponSkill = _playerExperience.WeaponSkills.FirstOrDefault(ws => ws.WeaponType == weaponType);
                 if (weaponSkill != null)
                 {
                     entry.UpdateWeaponSkill(weaponSkill.Level, weaponSkill.Experience);

@@ -4,6 +4,7 @@ using Game.Shared.Persistence;
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client
 {
@@ -19,9 +20,10 @@ namespace Game.Client
         public static CharacterSelectionManager Instance => _instance;
 
         // Internal UI references.
-        private UI.UI_CharacterSelectWindow characterSelectionWindow;
+        private UI.UI_CharacterSelectWindow _characterSelectionWindow;
 
-        [SerializeField] private CinemachineCamera sceneCamera;
+        [FormerlySerializedAs("sceneCamera")]
+        [SerializeField] private CinemachineCamera _sceneCamera;
 
         private CharacterData _selectedCharacter;
 
@@ -34,20 +36,20 @@ namespace Game.Client
             }
             _instance = this;
 
-            characterSelectionWindow = UI.UI_CharacterSelectWindow.Instance;
-            characterSelectionWindow.ShowImmediate();
+            _characterSelectionWindow = UI.UI_CharacterSelectWindow.Instance;
+            _characterSelectionWindow.ShowImmediate();
 
             // Subscribe to character selection-related events.
             Game.Shared.Networking.AccountEndpoint.onCharacterListReceived += OnCharacterListReceived;
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorld;
 
             if (Game.Client.ClientAccountManager.TryGetCharacterList(out List<CharacterData> characters))
-                characterSelectionWindow.PopulateCharacterList(characters);
+                _characterSelectionWindow.PopulateCharacterList(characters);
         }
 
         private void Start()
         {
-            sceneCamera.Prioritize();
+            _sceneCamera.Prioritize();
         }
 
         /// <summary>
@@ -56,12 +58,12 @@ namespace Game.Client
         public void SelectCharacter(CharacterData character)
         {
             _selectedCharacter = character;
-            characterSelectionWindow.onCharacterSelected?.Invoke(character);
+            _characterSelectionWindow.onCharacterSelected?.Invoke(character);
         }
 
         private void OnCharacterListReceived(List<CharacterData> characters)
         {
-            characterSelectionWindow.PopulateCharacterList(characters);
+            _characterSelectionWindow.PopulateCharacterList(characters);
         }
 
         /// <summary>

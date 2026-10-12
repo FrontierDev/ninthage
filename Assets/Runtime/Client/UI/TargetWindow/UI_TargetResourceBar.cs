@@ -6,6 +6,7 @@ using System.Linq;
 using TMPro;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -14,9 +15,12 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_TargetResourceBar : UI_ProgressBar
     {
-        [SerializeField] private List<ActorStatDefinition> trackedResources = new();
-        [SerializeField] private TMP_Text valueText;
-        [SerializeField] private TMP_Text percentageText;
+        [FormerlySerializedAs("trackedResources")]
+        [SerializeField] private List<ActorStatDefinition> _trackedResources = new();
+        [FormerlySerializedAs("valueText")]
+        [SerializeField] private TMP_Text _valueText;
+        [FormerlySerializedAs("percentageText")]
+        [SerializeField] private TMP_Text _percentageText;
 
         private void Awake()
         {
@@ -30,18 +34,18 @@ namespace Game.Client.UI
 
             if (ClientAccountManager.PlayerActor.Target == actor)
             {
-                foreach (var resourceDef in trackedResources)
+                foreach (var resourceDef in _trackedResources)
                 {
                     if (statContainer.TryGetStat(resourceDef.DefinitionID, out StatInstance stat))
                     {
                         float progress = stat.EffectiveMaximum > 0 ? stat.CurrentValue / stat.EffectiveMaximum : 0f;
                         SetProgress(progress);
 
-                        if (valueText != null)
-                            valueText.text = $"{stat.CurrentValue:0}";
+                        if (_valueText != null)
+                            _valueText.text = $"{stat.CurrentValue:0}";
 
-                        if (percentageText != null)
-                            percentageText.text = $"{progress * 100:0}%";
+                        if (_percentageText != null)
+                            _percentageText.text = $"{progress * 100:0}%";
 
                         return;
                     }
@@ -59,18 +63,18 @@ namespace Game.Client.UI
             {
                 var actorStatContainer = newTarget.GetComponent<ActorStatContainer>();
 
-                foreach (var resourceDef in trackedResources)
+                foreach (var resourceDef in _trackedResources)
                 {
                     if (actorStatContainer.TryGetStat(resourceDef.DefinitionID, out StatInstance stat))
                     {
                         float progress = stat.EffectiveMaximum > 0 ? stat.CurrentValue / stat.EffectiveMaximum : 0f;
                         SetProgress(progress);
 
-                        if (valueText != null)
-                            valueText.text = $"{stat.CurrentValue:0}";
+                        if (_valueText != null)
+                            _valueText.text = $"{stat.CurrentValue:0}";
 
-                        if (percentageText != null)
-                            percentageText.text = $"{progress * 100:0}%";
+                        if (_percentageText != null)
+                            _percentageText.text = $"{progress * 100:0}%";
 
                         Show();
                         return;

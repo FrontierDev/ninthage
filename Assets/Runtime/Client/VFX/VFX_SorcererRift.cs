@@ -6,6 +6,7 @@ namespace Game.Client.VFX
     using Game.Client.UI;
     using System.Collections;
     using UnityEngine;
+    using UnityEngine.Serialization;
 
     /// <summary>
     /// Drives the <c>_OpenAmount</c> shader property on the rift's MeshRenderer.
@@ -23,56 +24,67 @@ namespace Game.Client.VFX
     {
         [Header("Animation")]
         [Tooltip("Seconds to grow from centre to fully open.")]
-        [SerializeField, Min(0.01f)] private float openDuration = 1.2f;
+        [FormerlySerializedAs("openDuration")]
+        [SerializeField, Min(0.01f)] private float _openDuration = 1.2f;
 
         [Tooltip("Seconds to close when the rift expires or Close() is called.")]
-        [SerializeField, Min(0.01f)] private float closeDuration = 0.35f;
+        [FormerlySerializedAs("closeDuration")]
+        [SerializeField, Min(0.01f)] private float _closeDuration = 0.35f;
 
         [Header("Lifetime")]
         [Tooltip("Seconds the rift stays open before auto-closing. Set to -1 to disable auto-close.")]
-        [SerializeField] private float lifetime = -1f;
+        [FormerlySerializedAs("lifetime")]
+        [SerializeField] private float _lifetime = -1f;
 
         [Header("Distortion")]
         [Tooltip("Material using NinthAge/VFX/VFXQuadRipple shader.")]
-        [SerializeField] private Material distortionMaterial;
+        [FormerlySerializedAs("distortionMaterial")]
+        [SerializeField] private Material _distortionMaterial;
         [Tooltip("Size of the gravitational-lensing quad (metres).")]
-        [SerializeField, Min(0.1f)] private float distortionSize = 2.0f;
+        [FormerlySerializedAs("distortionSize")]
+        [SerializeField, Min(0.1f)] private float _distortionSize = 2.0f;
         [Tooltip("Vertical offset from the rift's pivot to the quad centre (metres). Set to half the rift's visual height.")]
-        [SerializeField] private float distortionYOffset = 1.0f;
+        [FormerlySerializedAs("distortionYOffset")]
+        [SerializeField] private float _distortionYOffset = 1.0f;
 
         [Header("Pulse Wave")]
         [Tooltip("Material using NinthAge/VFX/AoEPulseShader shader.")]
-        [SerializeField] private Material pulseWaveMaterial;
+        [FormerlySerializedAs("pulseWaveMaterial")]
+        [SerializeField] private Material _pulseWaveMaterial;
         [Tooltip("How far the ring travels from the rift base (metres).")]
-        [SerializeField, Min(0.1f)] private float pulseMaxRadius = 8f;
+        [FormerlySerializedAs("pulseMaxRadius")]
+        [SerializeField, Min(0.1f)] private float _pulseMaxRadius = 8f;
         [Tooltip("Height of the 3D shock ring wall (metres).")]
-        [SerializeField, Min(0.05f)] private float pulseWaveHeight = 1.5f;
+        [FormerlySerializedAs("pulseWaveHeight")]
+        [SerializeField, Min(0.05f)] private float _pulseWaveHeight = 1.5f;
         [Tooltip("Brightness of the ground trail disc left behind the wave (0=off, 1=full).")]
-        [SerializeField, Range(0f, 1f)] private float pulseTrailStrength = 0.35f;
+        [FormerlySerializedAs("pulseTrailStrength")]
+        [SerializeField, Range(0f, 1f)] private float _pulseTrailStrength = 0.35f;
         [Tooltip("Seconds for the pulse wave to travel from centre to max radius.")]
-        [SerializeField, Min(0.1f)] private float pulseDuration = 0.8f;
+        [FormerlySerializedAs("pulseDuration")]
+        [SerializeField, Min(0.1f)] private float _pulseDuration = 0.8f;
 
         // -- Private state ---------------------------------------------------------
 
-        private const string OpenAmountProperty = "_OpenAmount";
+        private const string OPEN_AMOUNT_PROPERTY = "_OpenAmount";
 
-        private static readonly int ShaderProgress = Shader.PropertyToID("_Progress");
-        private static readonly int ShaderTrailStrength = Shader.PropertyToID("_TrailStrength");
+        private static readonly int SHADER_PROGRESS = Shader.PropertyToID("_Progress");
+        private static readonly int SHADER_TRAIL_STRENGTH = Shader.PropertyToID("_TrailStrength");
 
-        private MeshRenderer meshRenderer;
-        private Coroutine activeCoroutine;
-        private Coroutine triggerCoroutine;
-        private bool closing;
-        private float currentOpenAmount;
-        private Material distortionMat;
-        private Transform distortionTransform;
+        private MeshRenderer _meshRenderer;
+        private Coroutine _activeCoroutine;
+        private Coroutine _triggerCoroutine;
+        private bool _closing;
+        private float _currentOpenAmount;
+        private Material _distortionMat;
+        private Transform _distortionTransform;
 
         // -- Unity lifecycle -------------------------------------------------------
 
         private void Awake()
         {
-            meshRenderer = GetComponentInChildren<MeshRenderer>(true);
-            if (meshRenderer == null)
+            _meshRenderer = GetComponentInChildren<MeshRenderer>(true);
+            if (_meshRenderer == null)
             {
                 Debug.LogError($"[RiftLifetime] No MeshRenderer found in hierarchy of '{name}'.", this);
                 return;
@@ -80,26 +92,26 @@ namespace Game.Client.VFX
 
             // Create a per-instance material so the shared asset is never modified,
             // matching the same pattern used in UI_ProgressBar.SetMaterial().
-            if (meshRenderer.sharedMaterial != null)
-                meshRenderer.material = new Material(meshRenderer.sharedMaterial);
+            if (_meshRenderer.sharedMaterial != null)
+                _meshRenderer.material = new Material(_meshRenderer.sharedMaterial);
 
             // Spawn the gravitational-lensing quad that persists while the rift is open.
             // It is placed slightly behind the rift (negative local Z) so the rift
             // renders on top and is not itself distorted.
-            if (distortionMaterial != null)
+            if (_distortionMaterial != null)
             {
                 var distortionGO = new GameObject("RiftDistortion");
                 distortionGO.transform.SetParent(transform, worldPositionStays: false);
-                distortionGO.transform.localScale = Vector3.one * distortionSize;
-                distortionGO.transform.localPosition = new Vector3(0f, distortionYOffset, 0.01f);
+                distortionGO.transform.localScale = Vector3.one * _distortionSize;
+                distortionGO.transform.localPosition = new Vector3(0f, _distortionYOffset, 0.01f);
 
                 var dmf = distortionGO.AddComponent<MeshFilter>();
                 dmf.sharedMesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
 
-                distortionMat = new Material(distortionMaterial);
+                _distortionMat = new Material(_distortionMaterial);
                 var dmr = distortionGO.AddComponent<MeshRenderer>();
-                dmr.material = distortionMat;
-                distortionTransform = distortionGO.transform;
+                dmr.material = _distortionMat;
+                _distortionTransform = distortionGO.transform;
             }
 
             SetOpenAmount(0f);
@@ -107,35 +119,35 @@ namespace Game.Client.VFX
 
         private void OnEnable()
         {
-            closing = false;
-            activeCoroutine = StartCoroutine(OpenThenWait());
+            _closing = false;
+            _activeCoroutine = StartCoroutine(OpenThenWait());
         }
 
         private void OnDisable()
         {
-            if (activeCoroutine != null)
-                StopCoroutine(activeCoroutine);
-            if (triggerCoroutine != null)
-                StopCoroutine(triggerCoroutine);
+            if (_activeCoroutine != null)
+                StopCoroutine(_activeCoroutine);
+            if (_triggerCoroutine != null)
+                StopCoroutine(_triggerCoroutine);
         }
 
         private void LateUpdate()
         {
-            if (distortionTransform == null) return;
+            if (_distortionTransform == null) return;
             Camera cam = Camera.main;
             if (cam == null) return;
             // Rotate quad to face the camera (billboard in world space).
-            distortionTransform.rotation = Quaternion.LookRotation(
-                distortionTransform.position - cam.transform.position);
+            _distortionTransform.rotation = Quaternion.LookRotation(
+                _distortionTransform.position - cam.transform.position);
         }
 
         private void OnDestroy()
         {
             // Clean up the instanced materials we created.
-            if (meshRenderer != null && meshRenderer.material != null)
-                Destroy(meshRenderer.material);
-            if (distortionMat != null)
-                Destroy(distortionMat);
+            if (_meshRenderer != null && _meshRenderer.material != null)
+                Destroy(_meshRenderer.material);
+            if (_distortionMat != null)
+                Destroy(_distortionMat);
         }
 
         // -- Public API ------------------------------------------------------------
@@ -146,9 +158,9 @@ namespace Game.Client.VFX
         /// </summary>
         public void Close()
         {
-            if (closing) return;
-            if (activeCoroutine != null) StopCoroutine(activeCoroutine);
-            activeCoroutine = StartCoroutine(CloseAndDestroy());
+            if (_closing) return;
+            if (_activeCoroutine != null) StopCoroutine(_activeCoroutine);
+            _activeCoroutine = StartCoroutine(CloseAndDestroy());
         }
 
         /// <summary>
@@ -157,9 +169,9 @@ namespace Game.Client.VFX
         /// </summary>
         public void Open()
         {
-            closing = false;
-            if (activeCoroutine != null) StopCoroutine(activeCoroutine);
-            activeCoroutine = StartCoroutine(OpenThenWait());
+            _closing = false;
+            if (_activeCoroutine != null) StopCoroutine(_activeCoroutine);
+            _activeCoroutine = StartCoroutine(OpenThenWait());
         }
 
         /// <summary>
@@ -168,32 +180,32 @@ namespace Game.Client.VFX
         /// </summary>
         public void Trigger()
         {
-            if (pulseWaveMaterial == null) return;
-            if (triggerCoroutine != null) StopCoroutine(triggerCoroutine);
-            triggerCoroutine = StartCoroutine(GroundPulseWave());
+            if (_pulseWaveMaterial == null) return;
+            if (_triggerCoroutine != null) StopCoroutine(_triggerCoroutine);
+            _triggerCoroutine = StartCoroutine(GroundPulseWave());
         }
 
         // -- Coroutines ------------------------------------------------------------
 
         private IEnumerator OpenThenWait()
         {
-            float startValue = currentOpenAmount;
-            yield return Animate(startValue, 1f, openDuration * (1f - startValue), EaseOut);
+            float startValue = _currentOpenAmount;
+            yield return Animate(startValue, 1f, _openDuration * (1f - startValue), EaseOut);
 
-            if (lifetime >= 0f)
+            if (_lifetime >= 0f)
             {
-                yield return new WaitForSeconds(lifetime);
+                yield return new WaitForSeconds(_lifetime);
                 Close();
             }
         }
 
         private IEnumerator CloseAndDestroy()
         {
-            closing = true;
+            _closing = true;
 
             // Animate from wherever we currently are so Close() mid-open doesn't jump.
-            float startValue = currentOpenAmount;
-            yield return Animate(startValue, 0f, closeDuration * startValue, EaseOut);
+            float startValue = _currentOpenAmount;
+            yield return Animate(startValue, 0f, _closeDuration * startValue, EaseOut);
 
             Destroy(gameObject);
         }
@@ -224,37 +236,37 @@ namespace Game.Client.VFX
             mf.sharedMesh = Resources.GetBuiltinResource<Mesh>("Cylinder.fbx");
 
             var mr = go.AddComponent<MeshRenderer>();
-            var mat = new Material(pulseWaveMaterial);
-            mat.SetFloat(ShaderTrailStrength, pulseTrailStrength);
+            var mat = new Material(_pulseWaveMaterial);
+            mat.SetFloat(SHADER_TRAIL_STRENGTH, _pulseTrailStrength);
             mr.material = mat;
 
             float elapsed = 0f;
-            while (elapsed < pulseDuration)
+            while (elapsed < _pulseDuration)
             {
                 elapsed += Time.deltaTime;
-                float progress = Mathf.Clamp01(elapsed / pulseDuration);
-                float currentRadius = progress * pulseMaxRadius;
+                float progress = Mathf.Clamp01(elapsed / _pulseDuration);
+                float currentRadius = progress * _pulseMaxRadius;
                 // XZ scale: cylinder radius 0.5 OS → world radius = scale * 0.5
                 // Y scale: pulseWaveHeight controls the 3D ring wall height.
                 // Offset up by half world height so bottom cap sits at ground level.
-                go.transform.localScale = new Vector3(currentRadius * 2f, pulseWaveHeight, currentRadius * 2f);
-                go.transform.position = transform.position + Vector3.up * (pulseWaveHeight * 0.5f + 0.01f); // minimal z-fight lift
-                mat.SetFloat(ShaderProgress, progress);
+                go.transform.localScale = new Vector3(currentRadius * 2f, _pulseWaveHeight, currentRadius * 2f);
+                go.transform.position = transform.position + Vector3.up * (_pulseWaveHeight * 0.5f + 0.01f); // minimal z-fight lift
+                mat.SetFloat(SHADER_PROGRESS, progress);
                 yield return null;
             }
 
             Destroy(mat);
             Destroy(go);
-            triggerCoroutine = null;
+            _triggerCoroutine = null;
         }
 
         private void SetOpenAmount(float value)
         {
-            currentOpenAmount = value;
-            UIShaderProperties.SetFloat(meshRenderer, OpenAmountProperty, value);
+            _currentOpenAmount = value;
+            UIShaderProperties.SetFloat(_meshRenderer, OPEN_AMOUNT_PROPERTY, value);
             // Distortion is fully active when the rift is open (_Progress 1) and
             // invisible when closed (_Progress 0).
-            distortionMat?.SetFloat(ShaderProgress, value);
+            _distortionMat?.SetFloat(SHADER_PROGRESS, value);
         }
 
         // -- Easing functions ------------------------------------------------------

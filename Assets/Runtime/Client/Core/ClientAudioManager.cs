@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.Serialization;
 
 namespace Game.Client
 {
@@ -26,9 +27,10 @@ namespace Game.Client
         /// </summary>
         public static bool Initialized => _initialized;
 
-        private const int MaxCacheSize = 50; // Prevent unbounded memory growth
+        private const int MAX_CACHE_SIZE = 50; // Prevent unbounded memory growth
 
-        [SerializeField] private AudioSource sfxSource;
+        [FormerlySerializedAs("sfxSource")]
+        [SerializeField] private AudioSource _sfxSource;
 
         private readonly Dictionary<string, AudioClip> _cache = new();
         private readonly Dictionary<string, AsyncOperationHandle<AudioClip>> _pendingLoads = new();
@@ -47,11 +49,11 @@ namespace Game.Client
             _instance = this;
             _initialized = true;
 
-            if (sfxSource == null)
+            if (_sfxSource == null)
             {
-                sfxSource = gameObject.AddComponent<AudioSource>();
-                sfxSource.playOnAwake = false;
-                sfxSource.spatialBlend = 0f;
+                _sfxSource = gameObject.AddComponent<AudioSource>();
+                _sfxSource.playOnAwake = false;
+                _sfxSource.spatialBlend = 0f;
             }
 
             // Preload commonly used UI SFX to reduce latency on first play.
@@ -88,7 +90,7 @@ namespace Game.Client
 
         private void EvictCacheIfNeeded()
         {
-            if (_cache.Count >= MaxCacheSize)
+            if (_cache.Count >= MAX_CACHE_SIZE)
             {
                 // Remove least recently used entry
                 if (_cacheAccessOrder.Count > 0)
@@ -116,7 +118,7 @@ namespace Game.Client
             if (_cache.TryGetValue(addressablePath, out AudioClip clip))
             {
                 UpdateCacheAccessOrder(addressablePath);
-                sfxSource.PlayOneShot(clip);
+                _sfxSource.PlayOneShot(clip);
                 return;
             }
 
@@ -140,7 +142,7 @@ namespace Game.Client
                 EvictCacheIfNeeded();
                 _cache[addressablePath] = loadHandle.Result;
                 UpdateCacheAccessOrder(addressablePath);
-                sfxSource.PlayOneShot(loadHandle.Result);
+                _sfxSource.PlayOneShot(loadHandle.Result);
             };
         }
 

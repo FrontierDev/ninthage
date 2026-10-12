@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -15,9 +16,12 @@ namespace Game.Client.UI
         public static UI_MainMenuWindow Instance => _instance;
 
         [Header("UI References - Login")]
-        [SerializeField] private TMP_InputField usernameInput;
-        [SerializeField] private TMP_InputField passwordInput;
-        [SerializeField] private UI_Button loginButton;
+        [FormerlySerializedAs("usernameInput")]
+        [SerializeField] private TMP_InputField _usernameInput;
+        [FormerlySerializedAs("passwordInput")]
+        [SerializeField] private TMP_InputField _passwordInput;
+        [FormerlySerializedAs("loginButton")]
+        [SerializeField] private UI_Button _loginButton;
 
         #region Lifecycle
         protected override void Start()
@@ -40,11 +44,11 @@ namespace Game.Client.UI
         /// <summary>
         /// Gets the value provided by <c>GetUsername</c>.
         /// </summary>
-        public string GetUsername() => usernameInput.text;
+        public string GetUsername() => _usernameInput.text;
         /// <summary>
         /// Gets the value provided by <c>GetPassword</c>.
         /// </summary>
-        public string GetPassword() => passwordInput.text;
+        public string GetPassword() => _passwordInput.text;
         #endregion
     }
 }

@@ -2,6 +2,7 @@ using Game.Shared.Runtime.Actors;
 using TMPro;
 
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -10,8 +11,10 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_InventoryFooterPanel : UI_Panel
     {
-        [SerializeField] private TMP_Text capacityText;
-        [SerializeField] private TMP_Text currencyText;
+        [FormerlySerializedAs("capacityText")]
+        [SerializeField] private TMP_Text _capacityText;
+        [FormerlySerializedAs("currencyText")]
+        [SerializeField] private TMP_Text _currencyText;
 
         protected override void Awake()
         {
@@ -34,12 +37,12 @@ namespace Game.Client.UI
 
         private void SetCapacity(int current, int max)
         {
-            capacityText.text = $"{current}/{max}";
+            _capacityText.text = $"{current}/{max}";
         }
 
         private void SetCurrency(int current)
         {
-            currencyText.text = $"{current}";
+            _currencyText.text = $"{current}";
         }
     }
 }

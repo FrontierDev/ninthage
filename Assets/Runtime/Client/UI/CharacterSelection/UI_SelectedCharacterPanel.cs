@@ -1,6 +1,7 @@
 using Game.Shared.Persistence;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -17,9 +18,12 @@ namespace Game.Client.UI
         public static UI_SelectedCharacterPanel Instance => _instance;
 
         [Header("UI References - Character Info")]
-        [SerializeField] private UI_Button enterWorldButton;
-        [SerializeField] private TMP_Text characterNameText;
-        [SerializeField] private TMP_Text characterInfoText;
+        [FormerlySerializedAs("enterWorldButton")]
+        [SerializeField] private UI_Button _enterWorldButton;
+        [FormerlySerializedAs("characterNameText")]
+        [SerializeField] private TMP_Text _characterNameText;
+        [FormerlySerializedAs("characterInfoText")]
+        [SerializeField] private TMP_Text _characterInfoText;
 
         protected override void Awake()
         {
@@ -46,8 +50,8 @@ namespace Game.Client.UI
             }
 
             Show();
-            characterNameText.text = characterData.Name;
-            characterInfoText.text = $"Level {characterData.Level} {characterData.RaceID} {characterData.ClassID}";
+            _characterNameText.text = characterData.Name;
+            _characterInfoText.text = $"Level {characterData.Level} {characterData.RaceID} {characterData.ClassID}";
         }
     }
 }

@@ -16,8 +16,8 @@ namespace Game.Client.Utility
     /// </summary>
     public static class PlaceholderText
     {
-        private static readonly Regex PlaceholderRegex = new(@"\$[^$]+\$");
-        private static readonly Dictionary<string, Func<string, string>> resolvers = new();
+        private static readonly Regex PLACEHOLDER_REGEX = new(@"\$[^$]+\$");
+        private static readonly Dictionary<string, Func<string, string>> RESOLVERS = new();
 
         /// <summary>
         /// The local player's stat container. Set this when the local player spawns
@@ -31,7 +31,7 @@ namespace Game.Client.Utility
         /// </summary>
         public static void RegisterResolver(string category, Func<string, string> resolver)
         {
-            resolvers[category.ToLower()] = resolver;
+            RESOLVERS[category.ToLower()] = resolver;
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Game.Client.Utility
             if (category == "mit")
                 return ResolveMitigation(id);
 
-            if (resolvers.TryGetValue(category, out var resolver))
+            if (RESOLVERS.TryGetValue(category, out var resolver))
                 return resolver(id);
 
             return placeholder; // No resolver registered for this category
@@ -115,7 +115,7 @@ namespace Game.Client.Utility
             if (string.IsNullOrEmpty(text))
                 return text;
 
-            return PlaceholderRegex.Replace(text, match => ResolvePlaceholder(match.Value));
+            return PLACEHOLDER_REGEX.Replace(text, match => ResolvePlaceholder(match.Value));
         }
     }
 }

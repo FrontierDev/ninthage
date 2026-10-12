@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -32,10 +33,12 @@ namespace Game.Client.UI
         /// </summary>
         public static bool Initialized => _initialized;
 
-        [SerializeField] private UI_ContextMenuPanel contentsPanel;
-        [SerializeField] private Image backdropBlocker;
+        [FormerlySerializedAs("contentsPanel")]
+        [SerializeField] private UI_ContextMenuPanel _contentsPanel;
+        [FormerlySerializedAs("backdropBlocker")]
+        [SerializeField] private Image _backdropBlocker;
 
-        private RectTransform panelRect;
+        private RectTransform _panelRect;
 
         private void Awake()
         {
@@ -46,7 +49,7 @@ namespace Game.Client.UI
             }
             _instance = this;
             _initialized = true;
-            panelRect = contentsPanel.GetComponent<RectTransform>();
+            _panelRect = _contentsPanel.GetComponent<RectTransform>();
         }
 
         /// <summary>
@@ -54,7 +57,7 @@ namespace Game.Client.UI
         /// </summary>
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (!RectTransformUtility.RectangleContainsScreenPoint(panelRect, eventData.position))
+            if (!RectTransformUtility.RectangleContainsScreenPoint(_panelRect, eventData.position))
                 Hide();
         }
 
@@ -63,7 +66,7 @@ namespace Game.Client.UI
         /// </summary>
         public void Show(Vector2 position, ContextMenuPivot pivot, GameObject entryPrefab, Action<UI_ContextMenuPanel> populate)
         {
-            panelRect.pivot = pivot switch
+            _panelRect.pivot = pivot switch
             {
                 ContextMenuPivot.TopLeft => new Vector2(0f, 1f),
                 ContextMenuPivot.TopRight => new Vector2(1f, 1f),
@@ -71,15 +74,15 @@ namespace Game.Client.UI
                 ContextMenuPivot.BottomRight => new Vector2(1f, 0f),
                 _ => new Vector2(0f, 1f)
             };
-            contentsPanel.Populate(entryPrefab, populate);
-            panelRect.position = position;
+            _contentsPanel.Populate(entryPrefab, populate);
+            _panelRect.position = position;
             Show();
         }
 
         /// <inheritdoc/>
         public override void Hide()
         {
-            contentsPanel.PopulateList(true);
+            _contentsPanel.PopulateList(true);
             base.Hide();
         }
 

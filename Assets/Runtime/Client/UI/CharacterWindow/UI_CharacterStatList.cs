@@ -3,6 +3,7 @@ using Game.Shared.Data;
 using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -17,19 +18,24 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_CharacterStatList Instance => _instance;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private GameObject statEntryPrefab;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => statEntryPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("statEntryPrefab")]
+        [SerializeField] private GameObject _statEntryPrefab;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _statEntryPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        [SerializeField] private List<ActorStatDefinition> statDefinitions = new();
-        [SerializeField] private List<ActorStatDefinition> focusStatDefinitions = new();
-        [SerializeField] private List<ActorStatDefinition> relevantStatDefinitions = new();
-        private ActorStatContainer currentStats;
+        [FormerlySerializedAs("statDefinitions")]
+        [SerializeField] private List<ActorStatDefinition> _statDefinitions = new();
+        [FormerlySerializedAs("focusStatDefinitions")]
+        [SerializeField] private List<ActorStatDefinition> _focusStatDefinitions = new();
+        [FormerlySerializedAs("relevantStatDefinitions")]
+        [SerializeField] private List<ActorStatDefinition> _relevantStatDefinitions = new();
+        private ActorStatContainer _currentStats;
 
         protected override void Awake()
         {
@@ -48,8 +54,8 @@ namespace Game.Client.UI
             var charClassID = ClientAccountManager.GetCharacterData()?.ClassID;
             var def = ClassDefinitionLibrary.Instance.GetDefinition(charClassID);
 
-            focusStatDefinitions = def.FocusStats as List<ActorStatDefinition> ?? new List<ActorStatDefinition>();
-            relevantStatDefinitions = def.RelevantStats as List<ActorStatDefinition> ?? new List<ActorStatDefinition>();
+            _focusStatDefinitions = def.FocusStats as List<ActorStatDefinition> ?? new List<ActorStatDefinition>();
+            _relevantStatDefinitions = def.RelevantStats as List<ActorStatDefinition> ?? new List<ActorStatDefinition>();
             PopulateList(forceClear: true);
 
             if (ClientAccountManager.PlayerActor != null)
@@ -57,7 +63,7 @@ namespace Game.Client.UI
                 var stats = ClientAccountManager.PlayerActor.GetComponent<ActorStatContainer>();
                 if (stats != null)
                 {
-                    currentStats = stats;
+                    _currentStats = stats;
                     Refresh();
                 }
             }
@@ -69,13 +75,13 @@ namespace Game.Client.UI
         {
             base.Refresh();
 
-            if (currentStats == null) return;
+            if (_currentStats == null) return;
 
             foreach (var entry in currentEntries)
             {
                 if ((UI_CharacterStatEntry)entry is UI_CharacterStatEntry statEntry)
                 {
-                    statEntry.Refresh(currentStats);
+                    statEntry.Refresh(_currentStats);
                 }
             }
         }
@@ -85,7 +91,7 @@ namespace Game.Client.UI
             // Only update for the player's own actor.
             if (ClientAccountManager.PlayerActor == null) return;
             if (actor.ID != ClientAccountManager.PlayerActor.ID) return;
-            currentStats = statContainer;
+            _currentStats = statContainer;
             Refresh();
         }
 
@@ -111,12 +117,12 @@ namespace Game.Client.UI
             }
 
             int index = 0;
-            foreach (var statDef in statDefinitions)
+            foreach (var statDef in _statDefinitions)
             {
-                if (!focusStatDefinitions.Contains(statDef) && !relevantStatDefinitions.Contains(statDef))
+                if (!_focusStatDefinitions.Contains(statDef) && !_relevantStatDefinitions.Contains(statDef))
                     continue;
 
-                var entryObj = Instantiate(statEntryPrefab, container.transform);
+                var entryObj = Instantiate(_statEntryPrefab, _container.transform);
                 var entry = entryObj.GetComponent<UI_CharacterStatEntry>();
                 entry.Initialize(statDef, index);
                 entry.Register(this);

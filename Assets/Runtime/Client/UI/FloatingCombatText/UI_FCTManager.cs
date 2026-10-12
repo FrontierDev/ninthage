@@ -5,6 +5,7 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -13,32 +14,42 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_FCTManager : MonoBehaviour
     {
-        private static UI_FCTManager instance;
+        private static UI_FCTManager _instance;
         /// <summary>
         /// Gets the shared client-side instance.
         /// </summary>
-        public static UI_FCTManager Instance => instance;
+        public static UI_FCTManager Instance => _instance;
 
         [Header("Prefab")]
-        [SerializeField] private GameObject fctPrefab;
+        [FormerlySerializedAs("fctPrefab")]
+        [SerializeField] private GameObject _fctPrefab;
 
         [Header("Colors")]
-        [SerializeField] private Color autoHitColor = Color.white;
-        [SerializeField] private Color abilityHitColor = Color.lightGoldenRodYellow;
-        [SerializeField] private Color petHitColor = Color.darkOrange;
-        [SerializeField] private Color healColor = Color.green;
-        [SerializeField] private Color buffColor = Color.cyan;
-        [SerializeField] private Color debuffColor = Color.yellow;
-        [SerializeField] private Color experienceColor = Color.magenta;
+        [FormerlySerializedAs("autoHitColor")]
+        [SerializeField] private Color _autoHitColor = Color.white;
+        [FormerlySerializedAs("abilityHitColor")]
+        [SerializeField] private Color _abilityHitColor = Color.lightGoldenRodYellow;
+        [FormerlySerializedAs("petHitColor")]
+        [SerializeField] private Color _petHitColor = Color.darkOrange;
+        [FormerlySerializedAs("healColor")]
+        [SerializeField] private Color _healColor = Color.green;
+        [FormerlySerializedAs("buffColor")]
+        [SerializeField] private Color _buffColor = Color.cyan;
+        [FormerlySerializedAs("debuffColor")]
+        [SerializeField] private Color _debuffColor = Color.yellow;
+        [FormerlySerializedAs("experienceColor")]
+        [SerializeField] private Color _experienceColor = Color.magenta;
 
         [Header("Spawn")]
-        [SerializeField] private float heightOffset = 2f;
-        [SerializeField] private float randomSpreadX = 0.3f;
+        [FormerlySerializedAs("heightOffset")]
+        [SerializeField] private float _heightOffset = 2f;
+        [FormerlySerializedAs("randomSpreadX")]
+        [SerializeField] private float _randomSpreadX = 0.3f;
 
         private void Awake()
         {
-            if (instance != null) return;
-            instance = this;
+            if (_instance != null) return;
+            _instance = this;
         }
 
         private void Start()
@@ -56,13 +67,13 @@ namespace Game.Client.UI
         private void OnExperienceUpdated(int level, int experience, int delta)
         {
             string content = $"+{delta} XP";
-            Color color = experienceColor;
+            Color color = _experienceColor;
 
-            Vector3 spawnPos = ClientAccountManager.PlayerActor.transform.position + Vector3.up * heightOffset;
-            float spreadX = UnityEngine.Random.Range(-randomSpreadX, randomSpreadX);
+            Vector3 spawnPos = ClientAccountManager.PlayerActor.transform.position + Vector3.up * _heightOffset;
+            float spreadX = UnityEngine.Random.Range(-_randomSpreadX, _randomSpreadX);
             Vector3 direction = (Vector3.up + Vector3.right * spreadX).normalized;
 
-            GameObject fctObj = Instantiate(fctPrefab, spawnPos, Quaternion.identity, UI_WorldSpace.Instance.fctContainer);
+            GameObject fctObj = Instantiate(_fctPrefab, spawnPos, Quaternion.identity, UI_WorldSpace.Instance.fctContainer);
             var fct = fctObj.GetComponent<UI_FloatingCombatText>();
             fct.Initialize(content, color, direction, 1, 3);
         }
@@ -117,7 +128,7 @@ namespace Game.Client.UI
                     break;
                 case CombatHistoryEntryType.Heal:
                     content = $"+{entry.Amount}";
-                    color = healColor;
+                    color = _healColor;
                     if (entry.ResultType == CombatLogResultType.CriticalHeal)
                     {
                         sizeMultiplier = 1.5f;
@@ -126,23 +137,23 @@ namespace Game.Client.UI
                     break;
                 case CombatHistoryEntryType.BuffApplied:
                 case CombatHistoryEntryType.BuffRemoved:
-                    color = buffColor;
+                    color = _buffColor;
                     content = entry.Amount.ToString();
                     break;
                 case CombatHistoryEntryType.DebuffApplied:
                 case CombatHistoryEntryType.DebuffRemoved:
-                    color = debuffColor;
+                    color = _debuffColor;
                     content = entry.Amount.ToString();
                     break;
                 default:
                     return;
             }
 
-            Vector3 spawnPos = entry.Target.transform.position + Vector3.up * heightOffset;
-            float spreadX = UnityEngine.Random.Range(-randomSpreadX, randomSpreadX);
+            Vector3 spawnPos = entry.Target.transform.position + Vector3.up * _heightOffset;
+            float spreadX = UnityEngine.Random.Range(-_randomSpreadX, _randomSpreadX);
             Vector3 direction = ((entry.Target != ClientAccountManager.PlayerActor ? Vector3.up : Vector3.down) + Vector3.right * spreadX).normalized;
 
-            GameObject fctObj = Instantiate(fctPrefab, spawnPos, Quaternion.identity, UI_WorldSpace.Instance.fctContainer);
+            GameObject fctObj = Instantiate(_fctPrefab, spawnPos, Quaternion.identity, UI_WorldSpace.Instance.fctContainer);
             var fct = fctObj.GetComponent<UI_FloatingCombatText>();
             fct.Initialize(content, color, direction, sizeMultiplier, durationMultiplier);
         }
@@ -151,10 +162,10 @@ namespace Game.Client.UI
         {
             return hitType switch
             {
-                SpellHitType.Auto => autoHitColor,
-                SpellHitType.Ability => abilityHitColor,
-                SpellHitType.Pet => petHitColor,
-                _ => autoHitColor
+                SpellHitType.Auto => _autoHitColor,
+                SpellHitType.Ability => _abilityHitColor,
+                SpellHitType.Pet => _petHitColor,
+                _ => _autoHitColor
             };
         }
     }

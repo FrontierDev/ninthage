@@ -2,6 +2,7 @@ using Game.Shared;
 using Game.Shared.Runtime.Actors;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -22,9 +23,12 @@ namespace Game.Client.UI
         /// </summary>
         public static bool IsInitialized => _initialized;
 
-        [SerializeField] private TMP_Text npcNameText;
-        [SerializeField] private TMP_Text npcSubtext;
-        [SerializeField] private Image npcPortrait;
+        [FormerlySerializedAs("npcNameText")]
+        [SerializeField] private TMP_Text _npcNameText;
+        [FormerlySerializedAs("npcSubtext")]
+        [SerializeField] private TMP_Text _npcSubtext;
+        [FormerlySerializedAs("npcPortrait")]
+        [SerializeField] private Image _npcPortrait;
 
         protected override void Awake()
         {
@@ -38,8 +42,8 @@ namespace Game.Client.UI
         /// </summary>
         public void UpdateNPC(Actor npc)
         {
-            npcNameText.text = npc.Name;
-            npcSubtext.text = "";
+            _npcNameText.text = npc.Name;
+            _npcSubtext.text = "";
             Refresh();
         }
     }

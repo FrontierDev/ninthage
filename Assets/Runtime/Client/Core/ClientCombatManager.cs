@@ -31,18 +31,18 @@ namespace Game.Client
         public static bool Initialized => _initialized;
 
         // Combat
-        private bool inCombat = false;
+        private bool _inCombat = false;
         /// <summary>
         /// Gets the <c>InCombat</c> value.
         /// </summary>
-        public bool InCombat => inCombat;
+        public bool InCombat => _inCombat;
 
         // Spellcasting
         private SpellDefinition _currentCastingSpell;
 
         // Cooldowns
-        private Dictionary<SpellDefinition, float> activeCooldowns = new();
-        private float globalCooldownRemaining = 0f;
+        private Dictionary<SpellDefinition, float> _activeCooldowns = new();
+        private float _globalCooldownRemaining = 0f;
 
         #region Lifecycle
         private void Awake()
@@ -66,20 +66,20 @@ namespace Game.Client
             float deltaTime = Time.deltaTime;
 
             // Update global cooldown
-            if (globalCooldownRemaining > 0f)
+            if (_globalCooldownRemaining > 0f)
             {
-                globalCooldownRemaining -= deltaTime;
-                if (globalCooldownRemaining < 0f)
-                    globalCooldownRemaining = 0f;
+                _globalCooldownRemaining -= deltaTime;
+                if (_globalCooldownRemaining < 0f)
+                    _globalCooldownRemaining = 0f;
             }
 
             // Update active cooldowns
-            var spellsOnCooldown = new List<SpellDefinition>(activeCooldowns.Keys);
+            var spellsOnCooldown = new List<SpellDefinition>(_activeCooldowns.Keys);
             foreach (var spell in spellsOnCooldown)
             {
-                activeCooldowns[spell] -= deltaTime;
-                if (activeCooldowns[spell] <= 0f)
-                    activeCooldowns.Remove(spell);
+                _activeCooldowns[spell] -= deltaTime;
+                if (_activeCooldowns[spell] <= 0f)
+                    _activeCooldowns.Remove(spell);
             }
         }
 
@@ -138,14 +138,14 @@ namespace Game.Client
 
         private void OnStartGlobalCooldown()
         {
-            globalCooldownRemaining = GameConfigurationManager.Config.GlobalCooldownDuration;
+            _globalCooldownRemaining = GameConfigurationManager.Config.GlobalCooldownDuration;
         }
 
         private void OnStartCooldown(string spellID, float duration)
         {
             var spellDef = SpellDefinitionLibrary.Instance.GetDefinition(spellID);
             if (spellDef != null)
-                activeCooldowns[spellDef] = duration;
+                _activeCooldowns[spellDef] = duration;
         }
         #endregion
 
@@ -163,7 +163,7 @@ namespace Game.Client
                 return;
             }
 
-            if (activeCooldowns.ContainsKey(spellDef))
+            if (_activeCooldowns.ContainsKey(spellDef))
             {
                 Debug.Log($"Cannot cast spell '{spellID}' - spell is on cooldown.");
                 return;
@@ -206,7 +206,7 @@ namespace Game.Client
         public void StartAutoAttack()
         {
             ClientAccountManager.PlayerActor.Server_StartAutoAttack();
-            inCombat = true;
+            _inCombat = true;
             ActorEndpoint.onClientEnteredCombat?.Invoke();
             ClientAccountManager.PlayerActor.GetComponent<NetworkAnimator>().SetBool("InCombat", true);
         }
@@ -217,7 +217,7 @@ namespace Game.Client
         public void StopAutoAttack()
         {
             ClientAccountManager.PlayerActor.Server_StopAutoAttack();
-            inCombat = false;
+            _inCombat = false;
             ActorEndpoint.onClientExitedCombat?.Invoke();
             ClientAccountManager.PlayerActor.GetComponent<NetworkAnimator>().SetBool("InCombat", false);
         }
@@ -264,7 +264,7 @@ namespace Game.Client
         /// </summary>
         public bool IsOnGlobalCooldown()
         {
-            return globalCooldownRemaining > 0f;
+            return _globalCooldownRemaining > 0f;
         }
 
         /// <summary>
@@ -272,7 +272,7 @@ namespace Game.Client
         /// </summary>
         public bool IsSpellOnCooldown(SpellDefinition spell)
         {
-            return activeCooldowns.ContainsKey(spell);
+            return _activeCooldowns.ContainsKey(spell);
         }
     }
 }

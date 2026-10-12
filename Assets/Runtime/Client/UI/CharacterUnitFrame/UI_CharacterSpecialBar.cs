@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -20,21 +21,24 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_CharacterSpecialBar Instance => _instance;
 
-        private ActorStatContainer playerStatContainer;
-        private ActorStatDefinition trackedStat;
+        private ActorStatContainer _playerStatContainer;
+        private ActorStatDefinition _trackedStat;
 
-        [SerializeField] private GameObject container;
-        [SerializeField] private UI_SpecialResourceCounter counterPrefab;
-        [SerializeField] private List<Sprite> counters;
-        GameObject IListPanel.contentContainer => container;
-        GameObject IListPanel.entryPrefab => counterPrefab.gameObject;
+        [FormerlySerializedAs("container")]
+        [SerializeField] private GameObject _container;
+        [FormerlySerializedAs("counterPrefab")]
+        [SerializeField] private UI_SpecialResourceCounter _counterPrefab;
+        [FormerlySerializedAs("counters")]
+        [SerializeField] private List<Sprite> _counters;
+        GameObject IListPanel.contentContainer => _container;
+        GameObject IListPanel.entryPrefab => _counterPrefab.gameObject;
         /// <summary>
         /// Gets the current list entries.
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        private int currentMax = 0;
-        private int currentValue = 0;
+        private int _currentMax = 0;
+        private int _currentValue = 0;
 
         protected override void Awake()
         {
@@ -51,14 +55,14 @@ namespace Game.Client.UI
 
         private void OnPlayerActorAssigned(Actor playerActor)
         {
-            playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
+            _playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
 
             // Get the tracked stat from the class definition.
             var classId = ClientAccountManager.ActiveCharacter.ClassID;
             var def = ClassDefinitionLibrary.Instance.GetDefinition(classId);
-            trackedStat = def.BaseStats.FirstOrDefault(x => x.definition.Tags.Any(tag => tag == "special"))?.definition;
+            _trackedStat = def.BaseStats.FirstOrDefault(x => x.definition.Tags.Any(tag => tag == "special"))?.definition;
 
-            if (trackedStat == null)
+            if (_trackedStat == null)
             {
                 canvasGroup.alpha = 0f;
                 canvasGroup.blocksRaycasts = false;
@@ -70,7 +74,7 @@ namespace Game.Client.UI
                 canvasGroup.blocksRaycasts = false;
                 canvasGroup.interactable = false;
 
-                if (playerStatContainer != null)
+                if (_playerStatContainer != null)
                 {
                     StatEndpoint.onStatsUpdated += OnStatsUpdated;
                     Refresh();
@@ -89,24 +93,24 @@ namespace Game.Client.UI
         /// <inheritdoc/>
         public override void Refresh()
         {
-            if (playerStatContainer == null || trackedStat == null) return;
+            if (_playerStatContainer == null || _trackedStat == null) return;
             base.Refresh();
 
-            if (!playerStatContainer.TryGetStat(trackedStat.DefinitionID, out var stat)) return;
+            if (!_playerStatContainer.TryGetStat(_trackedStat.DefinitionID, out var stat)) return;
 
-            if (Mathf.FloorToInt(stat.EffectiveMaximum) != currentMax)
+            if (Mathf.FloorToInt(stat.EffectiveMaximum) != _currentMax)
             {
-                currentMax = Mathf.FloorToInt(stat.EffectiveMaximum);
+                _currentMax = Mathf.FloorToInt(stat.EffectiveMaximum);
                 PopulateList(true);
             }
 
-            currentValue = Mathf.FloorToInt(stat.CurrentValue);
+            _currentValue = Mathf.FloorToInt(stat.CurrentValue);
             for (int i = 0; i < currentEntries.Count; i++)
             {
                 var counter = currentEntries[i] as UI_SpecialResourceCounter;
                 if (counter != null)
                 {
-                    counter.SetFilled(i < currentValue);
+                    counter.SetFilled(i < _currentValue);
                 }
             }
         }
@@ -126,10 +130,10 @@ namespace Game.Client.UI
             }
 
             int index = 0;
-            for (int i = 0; i < currentMax; i++)
+            for (int i = 0; i < _currentMax; i++)
             {
-                var entry = Instantiate(counterPrefab, container.transform);
-                entry.Initialize(trackedStat.Icon, index);
+                var entry = Instantiate(_counterPrefab, _container.transform);
+                entry.Initialize(_trackedStat.Icon, index);
                 entry.Register(this);
                 index++;
             }

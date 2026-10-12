@@ -6,6 +6,7 @@ using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -14,7 +15,8 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_InstabilityBar : UI_ProgressBar, ISpecialResourceBar
     {
-        [SerializeField] private ActorStatContainer playerStatContainer;
+        [FormerlySerializedAs("playerStatContainer")]
+        [SerializeField] private ActorStatContainer _playerStatContainer;
 
         /// <summary>
         /// Executes the client-side <c>Initialize</c> operation.
@@ -23,8 +25,8 @@ namespace Game.Client.UI
         {
             if (playerActor != null)
             {
-                playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
-                if (playerStatContainer != null)
+                _playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
+                if (_playerStatContainer != null)
                 {
                     StatEndpoint.onStatsUpdated += OnStatsUpdated;
                     SetMaterial(graphics.material);
@@ -44,9 +46,9 @@ namespace Game.Client.UI
 
         private void Refresh()
         {
-            if (playerStatContainer == null) return;
+            if (_playerStatContainer == null) return;
 
-            if (playerStatContainer.TryGetStat("instability", out var stat))
+            if (_playerStatContainer.TryGetStat("instability", out var stat))
             {
                 var currentValue = stat.CurrentValue;
                 var maxValue = stat.EffectiveMaximum;

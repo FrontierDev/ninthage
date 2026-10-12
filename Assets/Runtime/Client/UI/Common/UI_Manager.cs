@@ -12,11 +12,11 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_Manager : MonoBehaviour
     {
-        private static UI_Manager instance;
+        private static UI_Manager _instance;
         /// <summary>
         /// Gets the shared client-side instance.
         /// </summary>
-        public static UI_Manager Instance => instance;
+        public static UI_Manager Instance => _instance;
 
         [Header("UI References")]
         [SerializeField] protected Canvas root;
@@ -37,7 +37,7 @@ namespace Game.Client.UI
                 return;
             }
 
-            instance = this;
+            _instance = this;
             root = GetComponent<Canvas>();
             rootCanvasGroup = GetComponent<CanvasGroup>();
 

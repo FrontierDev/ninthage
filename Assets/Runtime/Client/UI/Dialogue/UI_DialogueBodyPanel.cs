@@ -2,6 +2,7 @@ using Game.Shared.Data;
 using Game.Shared.Data.Dialogue;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -22,8 +23,10 @@ namespace Game.Client.UI
         /// </summary>
         public static bool IsInitialized => _initialized;
 
-        [SerializeField] private TMP_Text dialogueText;
-        [SerializeField] private UI_DialogueOptionList optionList;
+        [FormerlySerializedAs("dialogueText")]
+        [SerializeField] private TMP_Text _dialogueText;
+        [FormerlySerializedAs("optionList")]
+        [SerializeField] private UI_DialogueOptionList _optionList;
 
         /// <summary>
         /// Gets the <c>CurrentNodeID</c> value.
@@ -45,17 +48,17 @@ namespace Game.Client.UI
             CurrentNodeID = nodeID;
 
             var node = dialogue.GetNode(nodeID);
-            dialogueText.text = node != null ? node.DialogueText : $"[Missing dialogue text for node ID {nodeID}]";
+            _dialogueText.text = node != null ? node.DialogueText : $"[Missing dialogue text for node ID {nodeID}]";
 
             if (node.Choices.Count > 0)
             {
-                optionList.gameObject.SetActive(true);
-                optionList.SetNode(nodeID);
-                optionList.Refresh();
+                _optionList.gameObject.SetActive(true);
+                _optionList.SetNode(nodeID);
+                _optionList.Refresh();
             }
             else
             {
-                optionList.gameObject.SetActive(false);
+                _optionList.gameObject.SetActive(false);
             }
 
             Refresh();

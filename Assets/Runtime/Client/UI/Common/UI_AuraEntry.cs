@@ -5,6 +5,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -14,41 +15,44 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_AuraEntry : UI_ListEntry<AuraInstance>
     {
-        [SerializeField] private AuraInstance data;
+        [FormerlySerializedAs("data")]
+        [SerializeField] private AuraInstance _data;
         /// <summary>
         /// Gets the <c>Data</c> value.
         /// </summary>
-        public AuraInstance Data => data;
+        public AuraInstance Data => _data;
 
-        [SerializeField] private Image graphics;
-        [SerializeField] private TMP_Text durationText;
+        [FormerlySerializedAs("graphics")]
+        [SerializeField] private Image _graphics;
+        [FormerlySerializedAs("durationText")]
+        [SerializeField] private TMP_Text _durationText;
 
-        private int index;
+        private int _index;
 
         /// <inheritdoc/>
-        public override void Initialize(AuraInstance data, int index)
+        public override void Initialize(AuraInstance _data, int index)
         {
-            this.data = data;
-            this.index = index;
+            this._data = _data;
+            this._index = index;
 
-            if (graphics.material != null)
-                graphics.material = new Material(graphics.material);
+            if (_graphics.material != null)
+                _graphics.material = new Material(_graphics.material);
 
-            if (data.Definition.Icon != null)
+            if (_data.Definition.Icon != null)
             {
-                UIShaderProperties.SetTexture(graphics, "_IconTex", data.Definition.Icon.texture);
-                UIShaderProperties.SetFloat(graphics, "_IconAmount", 1.0f);
-                UIShaderProperties.SetColor(graphics, "_RarityColor", Color.red);
-                UIShaderProperties.SetFloat(graphics, "_RarityAmount", 1.0f);
+                UIShaderProperties.SetTexture(_graphics, "_IconTex", _data.Definition.Icon.texture);
+                UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1.0f);
+                UIShaderProperties.SetColor(_graphics, "_RarityColor", Color.red);
+                UIShaderProperties.SetFloat(_graphics, "_RarityAmount", 1.0f);
             }
 
             else
             {
-                UIShaderProperties.SetTexture(graphics, "_IconTex", Texture2D.whiteTexture);
-                UIShaderProperties.SetFloat(graphics, "_IconAmount", 1.0f);
+                UIShaderProperties.SetTexture(_graphics, "_IconTex", Texture2D.whiteTexture);
+                UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1.0f);
             }
 
-            UpdateDisplay(data.Duration);
+            UpdateDisplay(_data.Duration);
         }
 
         /// <summary>
@@ -56,21 +60,21 @@ namespace Game.Client.UI
         /// </summary>
         public void UpdateDisplay(float currentDuration = -1f)
         {
-            if (data.Definition.StackBehavior == AuraStackBehavior.Condition_Stack ||
-                data.Definition.StackBehavior == AuraStackBehavior.Condition_Extend)
+            if (_data.Definition.StackBehavior == AuraStackBehavior.Condition_Stack ||
+                _data.Definition.StackBehavior == AuraStackBehavior.Condition_Extend)
             {
                 // Show stack count for condition auras
-                durationText.text = $"{data.Stacks}";
+                _durationText.text = $"{_data.Stacks}";
             }
             else
             {
                 // Show duration for other auras
-                if (data.Definition.BaseDuration <= 0)
+                if (_data.Definition.BaseDuration <= 0)
                     return;
                 else if (currentDuration <= 10.0f)
-                    durationText.text = $"{currentDuration:F1}";
+                    _durationText.text = $"{currentDuration:F1}";
                 else
-                    durationText.text = $"{Mathf.CeilToInt(currentDuration)}s";
+                    _durationText.text = $"{Mathf.CeilToInt(currentDuration)}s";
             }
         }
 

@@ -13,25 +13,25 @@ namespace Game.Client.UI
         /// </summary>
         public Vector2 scrollSpeed = new Vector2(0.01f, 0.02f);
 
-        private Material mat;
-        private Vector2 offset;
+        private Material _mat;
+        private Vector2 _offset;
 
         void Start()
         {
             var rawImage = GetComponent<RawImage>();
-            mat = Instantiate(rawImage.material);
-            rawImage.material = mat;
+            _mat = Instantiate(rawImage.material);
+            rawImage.material = _mat;
         }
 
         void Update()
         {
-            offset += scrollSpeed * Time.deltaTime;
-            mat.SetTextureOffset("_MainTex", offset);
+            _offset += scrollSpeed * Time.deltaTime;
+            _mat.SetTextureOffset("_MainTex", _offset);
         }
 
         void OnDestroy()
         {
-            if (mat) Destroy(mat);
+            if (_mat) Destroy(_mat);
         }
     }
 }

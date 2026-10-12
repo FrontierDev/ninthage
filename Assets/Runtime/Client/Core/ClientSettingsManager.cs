@@ -13,7 +13,7 @@ namespace Game.Client
     /// </summary>
     public static class ClientSettingsManager
     {
-        private static Dictionary<string, object> settings = new();
+        private static Dictionary<string, object> _settings = new();
         private const string SETTINGS_PREFIX = "setting_";
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace Game.Client
         /// </summary>
         public static void Initialize()
         {
-            settings.Clear();
+            _settings.Clear();
             onSettingsLoaded?.Invoke();
         }
 
@@ -39,7 +39,7 @@ namespace Game.Client
         /// </summary>
         public static T GetSetting<T>(string key, T defaultValue = default)
         {
-            if (settings.TryGetValue(key, out var value))
+            if (_settings.TryGetValue(key, out var value))
             {
                 return (T)value;
             }
@@ -51,7 +51,7 @@ namespace Game.Client
                 if (PlayerPrefs.HasKey(prefKey))
                 {
                     var result = (T)(object)PlayerPrefs.GetInt(prefKey);
-                    settings[key] = result;
+                    _settings[key] = result;
                     return result;
                 }
             }
@@ -60,7 +60,7 @@ namespace Game.Client
                 if (PlayerPrefs.HasKey(prefKey))
                 {
                     var result = (T)(object)PlayerPrefs.GetFloat(prefKey);
-                    settings[key] = result;
+                    _settings[key] = result;
                     return result;
                 }
             }
@@ -69,7 +69,7 @@ namespace Game.Client
                 if (PlayerPrefs.HasKey(prefKey))
                 {
                     var result = (T)(object)PlayerPrefs.GetString(prefKey);
-                    settings[key] = result;
+                    _settings[key] = result;
                     return result;
                 }
             }
@@ -78,12 +78,12 @@ namespace Game.Client
                 if (PlayerPrefs.HasKey(prefKey))
                 {
                     var result = (T)(object)(PlayerPrefs.GetInt(prefKey) == 1);
-                    settings[key] = result;
+                    _settings[key] = result;
                     return result;
                 }
             }
 
-            settings[key] = defaultValue;
+            _settings[key] = defaultValue;
             return defaultValue;
         }
 
@@ -92,7 +92,7 @@ namespace Game.Client
         /// </summary>
         public static void SetSetting<T>(string key, T value)
         {
-            settings[key] = value;
+            _settings[key] = value;
 
             string prefKey = SETTINGS_PREFIX + key;
 
@@ -130,7 +130,7 @@ namespace Game.Client
         /// </summary>
         public static void DeleteSetting(string key)
         {
-            settings.Remove(key);
+            _settings.Remove(key);
             PlayerPrefs.DeleteKey(SETTINGS_PREFIX + key);
             PlayerPrefs.Save();
         }
@@ -140,7 +140,7 @@ namespace Game.Client
         /// </summary>
         public static void ClearAllSettings()
         {
-            settings.Clear();
+            _settings.Clear();
             PlayerPrefs.DeleteAll();
             PlayerPrefs.Save();
         }

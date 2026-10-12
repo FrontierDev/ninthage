@@ -19,7 +19,7 @@ namespace Game.Client.UI
         /// </summary>
         public static bool IsInitialized => _initialized;
 
-        private List<UI_Panel> subPanels = new();
+        private List<UI_Panel> _subPanels = new();
 
         protected override void Awake()
         {
@@ -27,8 +27,8 @@ namespace Game.Client.UI
 
             foreach (UI_Panel panel in GetComponentsInChildren<UI_Panel>())
             {
-                if (panel != this && !subPanels.Contains(panel))
-                    subPanels.Add(panel);
+                if (panel != this && !_subPanels.Contains(panel))
+                    _subPanels.Add(panel);
             }
             base.Awake();
         }
@@ -37,7 +37,7 @@ namespace Game.Client.UI
         public override void OnShow()
         {
             base.OnShow();
-            foreach (UI_Panel panel in subPanels)
+            foreach (UI_Panel panel in _subPanels)
             {
                 if (panel != null) panel.ShowImmediate();
             }
@@ -47,7 +47,7 @@ namespace Game.Client.UI
         public override void OnHide()
         {
             base.OnHide();
-            foreach (UI_Panel panel in subPanels)
+            foreach (UI_Panel panel in _subPanels)
             {
                 if (panel != null) panel.HideImmediate();
             }

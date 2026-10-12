@@ -2,6 +2,7 @@ using Game.Shared;
 using Game.Shared.Runtime.VFX;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.VFX
 {
@@ -12,7 +13,8 @@ namespace Game.Client.VFX
     {
         private Coroutine _lifetimeCoroutine;
 
-        [SerializeField] private float lifetime = 2f;
+        [FormerlySerializedAs("lifetime")]
+        [SerializeField] private float _lifetime = 2f;
 
         private void Start()
         {
@@ -22,7 +24,7 @@ namespace Game.Client.VFX
 
         private IEnumerator DestroyAfterLifetime()
         {
-            yield return new WaitForSeconds(lifetime);
+            yield return new WaitForSeconds(_lifetime);
             Destroy(gameObject);
         }
 

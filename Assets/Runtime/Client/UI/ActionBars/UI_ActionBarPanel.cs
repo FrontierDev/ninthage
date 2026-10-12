@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -9,7 +10,8 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_ActionBarPanel : UI_Panel
     {
-        [SerializeField] private int actionBarIndex;
+        [FormerlySerializedAs("actionBarIndex")]
+        [SerializeField] private int _actionBarIndex;
         private UI_ActionBarButton[] _buttons;
 
         protected override void Awake()
@@ -22,7 +24,7 @@ namespace Game.Client.UI
         /// </summary>
         public void Initialize(int index)
         {
-            actionBarIndex = index;
+            _actionBarIndex = index;
             panelName = $"ActionBar{index}";
             _buttons = GetComponentsInChildren<UI_ActionBarButton>(true);
 

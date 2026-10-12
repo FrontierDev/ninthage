@@ -3,6 +3,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -12,12 +13,14 @@ namespace Game.Client.UI
     public class UI_CC_ClassListPanel : UI_Panel, IListPanel
     {
         [Header("Character List Settings")]
-        [SerializeField] private GameObject contentContainer;
-        [SerializeField] private GameObject entryPrefab;
-        GameObject IListPanel.contentContainer => contentContainer;
-        GameObject IListPanel.entryPrefab => entryPrefab;
+        [FormerlySerializedAs("contentContainer")]
+        [SerializeField] private GameObject _contentContainer;
+        [FormerlySerializedAs("entryPrefab")]
+        [SerializeField] private GameObject _entryPrefab;
+        GameObject IListPanel.contentContainer => _contentContainer;
+        GameObject IListPanel.entryPrefab => _entryPrefab;
 
-        private ClassDefinitionLibrary classDefinitionLibrary;
+        private ClassDefinitionLibrary _classDefinitionLibrary;
 
         /// <summary>
         /// Gets the current list entries.
@@ -26,8 +29,8 @@ namespace Game.Client.UI
 
         private void Start()
         {
-            classDefinitionLibrary = ClassDefinitionLibrary.Instance;
-            if (classDefinitionLibrary == null)
+            _classDefinitionLibrary = ClassDefinitionLibrary.Instance;
+            if (_classDefinitionLibrary == null)
             {
                 Debug.Error("Could not load ClassDefinitionLibrary");
                 return;
@@ -48,7 +51,7 @@ namespace Game.Client.UI
         public override void Show()
         {
             base.Show();
-            if (CharacterCreationManager.Instance != null && CharacterCreationManager.Instance.GetCurrentClassId() != "")
+            if (CharacterCreationManager.Instance != null && CharacterCreationManager.Instance.GetCurrentClassID() != "")
             {
                 UI_CharacterCreationWindow.Instance.ShowPanel("ClassInfo");
             }
@@ -64,7 +67,7 @@ namespace Game.Client.UI
         public override void Hide()
         {
             base.Hide();
-            if (CharacterCreationManager.Instance == null || CharacterCreationManager.Instance.GetCurrentClassId() == "")
+            if (CharacterCreationManager.Instance == null || CharacterCreationManager.Instance.GetCurrentClassID() == "")
                 UI_CharacterCreationWindow.Instance.HidePanel("ClassInfo");
         }
 
@@ -76,9 +79,9 @@ namespace Game.Client.UI
             if (forceClear) ((IListPanel)this).ClearList();
 
             int _index = 0;
-            foreach (var classDef in classDefinitionLibrary.GetAllDefinitions())
+            foreach (var classDef in _classDefinitionLibrary.GetAllDefinitions())
             {
-                var entryObj = GameObject.Instantiate(entryPrefab, contentContainer.transform);
+                var entryObj = GameObject.Instantiate(_entryPrefab, _contentContainer.transform);
                 var entry = entryObj.GetComponent<UI_ListEntry>() as UI_CC_ClassListEntry;
                 if (entry == null)
                 {

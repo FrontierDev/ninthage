@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Client.UI
 {
@@ -8,14 +9,15 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_TooltipSingleLine : MonoBehaviour, ITooltipLine
     {
-        [SerializeField] private TMP_Text lineText;
+        [FormerlySerializedAs("lineText")]
+        [SerializeField] private TMP_Text _lineText;
 
         /// <summary>
         /// Sets the value managed by <c>Set</c>.
         /// </summary>
         public void Set(string[] text)
         {
-            lineText.text = text[0];
+            _lineText.text = text[0];
         }
     }
 }

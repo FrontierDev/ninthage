@@ -5,6 +5,7 @@ using TMPro;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -14,28 +15,32 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CharacterListEntry : UI_ListEntry<CharacterData>
     {
-        [SerializeField] private Image classIconImage;
-        [SerializeField] private TMP_Text characterNameText;
-        [SerializeField] private TMP_Text characterInfoText;
-        [SerializeField] private Image factionIcon;
+        [FormerlySerializedAs("classIconImage")]
+        [SerializeField] private Image _classIconImage;
+        [FormerlySerializedAs("characterNameText")]
+        [SerializeField] private TMP_Text _characterNameText;
+        [FormerlySerializedAs("characterInfoText")]
+        [SerializeField] private TMP_Text _characterInfoText;
+        [FormerlySerializedAs("factionIcon")]
+        [SerializeField] private Image _factionIcon;
 
         /// <summary>
         /// Stores the <c>characterData</c> value.
         /// </summary>
         public CharacterData characterData;
-        private int index;
+        private int _index;
 
         /// <inheritdoc/>
         public override void Initialize(CharacterData _characterData, int _index)
         {
             // Metadata setup.
-            index = _index;
+            this._index = _index;
             characterData = _characterData;
 
             // UI setup.
-            characterNameText.text = characterData.Name;
-            characterInfoText.text = $"Level {characterData.Level} {characterData.RaceID} {characterData.ClassID}";
-            classIconImage.sprite = ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID)?.Icon;
+            _characterNameText.text = characterData.Name;
+            _characterInfoText.text = $"Level {characterData.Level} {characterData.RaceID} {characterData.ClassID}";
+            _classIconImage.sprite = ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID)?.Icon;
 
             // NYI factionIcon.sprite = FactionDefinitionLibrary.Instance.GetDefinition(characterData.FactionID)?.Icon
 

@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -10,28 +11,31 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CharacterTabButton : UI_Button
     {
-        [SerializeField] private UI_Panel associatedPanel;
-        [SerializeField] private TMP_Text tabText;
-        [SerializeField] private Image tabGraphics;
+        [FormerlySerializedAs("associatedPanel")]
+        [SerializeField] private UI_Panel _associatedPanel;
+        [FormerlySerializedAs("tabText")]
+        [SerializeField] private TMP_Text _tabText;
+        [FormerlySerializedAs("tabGraphics")]
+        [SerializeField] private Image _tabGraphics;
         /// <summary>
         /// Gets the <c>TabGraphics</c> value.
         /// </summary>
-        public Image TabGraphics => tabGraphics;
+        public Image TabGraphics => _tabGraphics;
         /// <summary>
         /// Gets the <c>AssociatedPanel</c> value.
         /// </summary>
-        public UI_Panel AssociatedPanel => associatedPanel;
+        public UI_Panel AssociatedPanel => _associatedPanel;
         /// <summary>
         /// Gets the <c>TabText</c> value.
         /// </summary>
-        public TMP_Text TabText => tabText;
+        public TMP_Text TabText => _tabText;
 
-        private UI_CharacterTabPanel characterTabPanel;
+        private UI_CharacterTabPanel _characterTabPanel;
 
         private void Awake()
         {
-            if (tabGraphics != null && tabGraphics.material != null)
-                tabGraphics.material = new Material(tabGraphics.material);
+            if (_tabGraphics != null && _tabGraphics.material != null)
+                _tabGraphics.material = new Material(_tabGraphics.material);
         }
 
         /// <summary>
@@ -39,13 +43,13 @@ namespace Game.Client.UI
         /// </summary>
         public void Register(UI_CharacterTabPanel panel)
         {
-            characterTabPanel = panel;
+            _characterTabPanel = panel;
         }
 
         /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData = null)
         {
-            characterTabPanel.OnTabSelected(this);
+            _characterTabPanel.OnTabSelected(this);
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
     }

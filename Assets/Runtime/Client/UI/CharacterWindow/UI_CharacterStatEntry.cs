@@ -5,6 +5,7 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -14,23 +15,26 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CharacterStatEntry : UI_ListEntry<ActorStatDefinition>
     {
-        [SerializeField] private TextMeshProUGUI statNameText;
-        [SerializeField] private TextMeshProUGUI currentValueText;
-        [SerializeField] private Image statIcon;
+        [FormerlySerializedAs("statNameText")]
+        [SerializeField] private TextMeshProUGUI _statNameText;
+        [FormerlySerializedAs("currentValueText")]
+        [SerializeField] private TextMeshProUGUI _currentValueText;
+        [FormerlySerializedAs("statIcon")]
+        [SerializeField] private Image _statIcon;
 
         /// <summary>
         /// Stores the <c>statDefinition</c> value.
         /// </summary>
         public ActorStatDefinition statDefinition;
-        private int index;
+        private int _index;
 
         /// <summary>
         /// Sets the value managed by <c>SetStat</c>.
         /// </summary>
         public void SetStat(StatSnapshotEntry statEntry)
         {
-            statNameText.text = statEntry.StatID; // In a real implementation, you'd want to localize this.
-            currentValueText.text = statEntry.EffectiveMax.ToString("0");
+            _statNameText.text = statEntry.StatID; // In a real implementation, you'd want to localize this.
+            _currentValueText.text = statEntry.EffectiveMax.ToString("0");
         }
 
         /// <summary>
@@ -43,11 +47,11 @@ namespace Game.Client.UI
             {
                 if (statDefinition.Category == ActorStatCategory.Resource)
                 {
-                    currentValueText.text = statEntry.EffectiveMaximum.ToString("0");
+                    _currentValueText.text = statEntry.EffectiveMaximum.ToString("0");
                 }
                 else
                 {
-                    currentValueText.text = statEntry.CurrentValue.ToString("0");
+                    _currentValueText.text = statEntry.CurrentValue.ToString("0");
                 }
             }
         }
@@ -56,23 +60,23 @@ namespace Game.Client.UI
         public override void Initialize(ActorStatDefinition _statDefinition, int _index)
         {
             // Metadata setup.
-            index = _index;
+            this._index = _index;
             statDefinition = _statDefinition;
 
             // UI setup.
-            statNameText.text = statDefinition.DisplayName;
-            currentValueText.text = "0"; // Will be updated when stats are received.
+            _statNameText.text = statDefinition.DisplayName;
+            _currentValueText.text = "0"; // Will be updated when stats are received.
 
-            if (statIcon == null) return;
+            if (_statIcon == null) return;
 
             if (statDefinition.Icon == null)
             {
-                statIcon.gameObject.SetActive(false);
+                _statIcon.gameObject.SetActive(false);
             }
             else
             {
-                statIcon.gameObject.SetActive(true);
-                statIcon.sprite = statDefinition.Icon;
+                _statIcon.gameObject.SetActive(true);
+                _statIcon.sprite = statDefinition.Icon;
             }
         }
 
@@ -111,7 +115,7 @@ namespace Game.Client.UI
         /// </summary>
         public void SetStatValue(float current)
         {
-            currentValueText.text = $"{current:0}";
+            _currentValueText.text = $"{current:0}";
         }
     }
 }

@@ -26,12 +26,12 @@ namespace Game.Client
         /// <summary> The chunk the client currently considers as origin. </summary>
         public Vector2Int OriginChunk { get; private set; }
 
-        private int chunkSize;
+        private int _chunkSize;
 
         private void Awake()
         {
             _instance = this;
-            chunkSize = Game.Shared.GameConfigurationManager.Config.ChunkSize;
+            _chunkSize = Game.Shared.GameConfigurationManager.Config.ChunkSize;
             _initialized = true;
         }
 
@@ -42,7 +42,7 @@ namespace Game.Client
         /// </summary>
         public void ApplyOriginToScene(Scene scene)
         {
-            var originOffset = new Vector3(OriginChunk.x * chunkSize, 0f, OriginChunk.y * chunkSize);
+            var originOffset = new Vector3(OriginChunk.x * _chunkSize, 0f, OriginChunk.y * _chunkSize);
 
             foreach (var root in scene.GetRootGameObjects())
                 root.transform.position -= originOffset;
@@ -59,7 +59,7 @@ namespace Game.Client
             if (delta == Vector2Int.zero)
                 return;
 
-            var shift = new Vector3(delta.x * chunkSize, 0f, delta.y * chunkSize);
+            var shift = new Vector3(delta.x * _chunkSize, 0f, delta.y * _chunkSize);
 
             // Shift world chunk scenes.
             var worldScenes = new List<Scene>();
@@ -93,9 +93,9 @@ namespace Game.Client
         {
             Vector2Int offset = chunk - OriginChunk;
             return new Vector3(
-                offset.x * chunkSize + positionInChunk.x,
+                offset.x * _chunkSize + positionInChunk.x,
                 positionInChunk.y,
-                offset.y * chunkSize + positionInChunk.z
+                offset.y * _chunkSize + positionInChunk.z
             );
         }
 
@@ -115,15 +115,15 @@ namespace Game.Client
         /// </summary>
         public (Vector2Int chunk, Vector3 local) LocalToChunkRelative(Vector3 unityPosition)
         {
-            int cx = Mathf.FloorToInt(unityPosition.x / chunkSize) + OriginChunk.x;
-            int cz = Mathf.FloorToInt(unityPosition.z / chunkSize) + OriginChunk.y;
+            int cx = Mathf.FloorToInt(unityPosition.x / _chunkSize) + OriginChunk.x;
+            int cz = Mathf.FloorToInt(unityPosition.z / _chunkSize) + OriginChunk.y;
             var chunk = new Vector2Int(cx, cz);
 
             Vector2Int offset = chunk - OriginChunk;
             var local = new Vector3(
-                unityPosition.x - offset.x * chunkSize,
+                unityPosition.x - offset.x * _chunkSize,
                 unityPosition.y,
-                unityPosition.z - offset.y * chunkSize
+                unityPosition.z - offset.y * _chunkSize
             );
             return (chunk, local);
         }

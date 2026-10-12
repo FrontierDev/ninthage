@@ -2,6 +2,7 @@ namespace Game.Client.VFX
 {
     using System;
     using UnityEngine;
+    using UnityEngine.Serialization;
 
     /// <summary>
     /// Provides the client-side <c>ProceduralRiftMesh</c> implementation.
@@ -12,45 +13,57 @@ namespace Game.Client.VFX
     public sealed class ProceduralRiftMesh : MonoBehaviour
     {
         [Header("Cylinder Bounds")]
-        [SerializeField] private float radius = 1.5f;
-        [SerializeField] private float height = 3.0f;
+        [FormerlySerializedAs("radius")]
+        [SerializeField] private float _radius = 1.5f;
+        [FormerlySerializedAs("height")]
+        [SerializeField] private float _height = 3.0f;
 
         [Header("Shape")]
-        [SerializeField, Min(4)] private int segments = 18;
-        [SerializeField, Range(0.0f, 1.0f)] private float minWidthFactor = 0.18f;
-        [SerializeField, Range(0.0f, 1.0f)] private float maxWidthFactor = 0.75f;
-        [SerializeField, Min(0.0f)] private float edgeJitter = 0.15f;
-        [SerializeField, Min(0.0f)] private float centreWobble = 0.1f;
-        [SerializeField, Min(0.01f)] private float thickness = 0.2f;
+        [FormerlySerializedAs("segments")]
+        [SerializeField, Min(4)] private int _segments = 18;
+        [FormerlySerializedAs("minWidthFactor")]
+        [SerializeField, Range(0.0f, 1.0f)] private float _minWidthFactor = 0.18f;
+        [FormerlySerializedAs("maxWidthFactor")]
+        [SerializeField, Range(0.0f, 1.0f)] private float _maxWidthFactor = 0.75f;
+        [FormerlySerializedAs("edgeJitter")]
+        [SerializeField, Min(0.0f)] private float _edgeJitter = 0.15f;
+        [FormerlySerializedAs("centreWobble")]
+        [SerializeField, Min(0.0f)] private float _centreWobble = 0.1f;
+        [FormerlySerializedAs("thickness")]
+        [SerializeField, Min(0.01f)] private float _thickness = 0.2f;
 
         [Header("Spiral")]
-        [SerializeField, Range(-5.0f, 5.0f)] private float spiralTurns = 0.75f;
-        [SerializeField, Range(0.0f, 1.0f)] private float spiralJitter = 0.3f;
+        [FormerlySerializedAs("spiralTurns")]
+        [SerializeField, Range(-5.0f, 5.0f)] private float _spiralTurns = 0.75f;
+        [FormerlySerializedAs("spiralJitter")]
+        [SerializeField, Range(0.0f, 1.0f)] private float _spiralJitter = 0.3f;
 
         [Header("Random")]
-        [SerializeField] private bool randomiseOnAwake = true;
-        [SerializeField] private int seed = 0;
+        [FormerlySerializedAs("randomiseOnAwake")]
+        [SerializeField] private bool _randomiseOnAwake = true;
+        [FormerlySerializedAs("seed")]
+        [SerializeField] private int _seed = 0;
 
         /// <summary>Fired at the end of every Generate() call.</summary>
-        public event System.Action OnGenerated;
+        public event System.Action onGenerated;
 
         /// <summary>
         /// Gets the <c>SharedMesh</c> value.
         /// </summary>
-        public Mesh SharedMesh => mesh;
+        public Mesh SharedMesh => _mesh;
         /// <summary>
         /// Gets the <c>Segments</c> value.
         /// </summary>
-        public int Segments => segments;
+        public int Segments => _segments;
 
-        private Mesh mesh;
+        private Mesh _mesh;
 
         private void Awake()
         {
-            if (randomiseOnAwake)
+            if (_randomiseOnAwake)
                 Generate(UnityEngine.Random.Range(int.MinValue, int.MaxValue));
             else
-                Generate(seed);
+                Generate(_seed);
         }
 
         /// <summary>
@@ -58,25 +71,25 @@ namespace Game.Client.VFX
         /// </summary>
         public void Generate(int newSeed)
         {
-            seed = newSeed;
+            _seed = newSeed;
 
-            if (mesh == null)
+            if (_mesh == null)
             {
-                mesh = new()
+                _mesh = new()
                 {
                     name = "Procedural Rift Mesh"
                 };
 
-                GetComponent<MeshFilter>().sharedMesh = mesh;
+                GetComponent<MeshFilter>().sharedMesh = _mesh;
             }
             else
             {
-                mesh.Clear();
+                _mesh.Clear();
             }
 
-            System.Random rng = new(seed);
+            System.Random rng = new(_seed);
 
-            int rowCount = segments + 1;
+            int rowCount = _segments + 1;
 
             // Diamond cross-section per row: left (0), right (1), front peak (2), back peak (3).
             // Two tip vertices close off the top and bottom ends.
@@ -85,44 +98,44 @@ namespace Game.Client.VFX
 
             // Side: segments × 4 faces × 2 tris × 3 verts = segments × 24 indices.
             // Caps: 2 ends × 4 tris × 3 verts = 24 indices.
-            var triangles = new int[segments * 24 + 24];
+            var triangles = new int[_segments * 24 + 24];
 
-            float halfHeight = height * 0.5f;
-            float maxHalfWidth = radius * maxWidthFactor;
-            float minHalfWidth = radius * minWidthFactor;
+            float halfHeight = _height * 0.5f;
+            float maxHalfWidth = _radius * _maxWidthFactor;
+            float minHalfWidth = _radius * _minWidthFactor;
 
             // Spine Z accumulates as we go up, pulled back to 0 at both tips.
             float spineZ = 0f;
             float rollAngle = 0f;  // accumulated spiral angle in radians
-            float baseAngleStep = spiralTurns * Mathf.PI * 2f / segments;
+            float baseAngleStep = _spiralTurns * Mathf.PI * 2f / _segments;
 
             for (int i = 0; i < rowCount; i++)
             {
-                float t = i / (float)segments;
+                float t = i / (float)_segments;
                 float y = Mathf.Lerp(-halfHeight, halfHeight, t);
                 float profile = Mathf.Sin(t * Mathf.PI); // 0 at tips, 1 at mid
 
                 float baseHalfWidth = Mathf.Lerp(minHalfWidth, maxHalfWidth, profile);
-                float jitterStrength = edgeJitter * profile;
+                float jitterStrength = _edgeJitter * profile;
 
                 float leftJitter = RandomRange(rng, -jitterStrength, jitterStrength);
                 float rightJitter = RandomRange(rng, -jitterStrength, jitterStrength);
-                float centreOffset = RandomRange(rng, -centreWobble, centreWobble) * profile;
+                float centreOffset = RandomRange(rng, -_centreWobble, _centreWobble) * profile;
 
                 // Spine wanders through Z space, tapering back to 0 at the tips.
-                float spineStep = RandomRange(rng, -centreWobble, centreWobble) * 0.5f;
+                float spineStep = RandomRange(rng, -_centreWobble, _centreWobble) * 0.5f;
                 spineZ = Mathf.Lerp(0f, spineZ + spineStep, profile);
 
                 // Spiral: accumulate angle each step, with optional per-step jitter.
-                float jitteredStep = baseAngleStep * (1f + RandomRange(rng, -spiralJitter, spiralJitter));
+                float jitteredStep = baseAngleStep * (1f + RandomRange(rng, -_spiralJitter, _spiralJitter));
                 if (i > 0) rollAngle += jitteredStep;
 
-                float leftX = Mathf.Clamp(centreOffset - baseHalfWidth + leftJitter, -radius, radius);
-                float rightX = Mathf.Clamp(centreOffset + baseHalfWidth + rightJitter, -radius, radius);
+                float leftX = Mathf.Clamp(centreOffset - baseHalfWidth + leftJitter, -_radius, _radius);
+                float rightX = Mathf.Clamp(centreOffset + baseHalfWidth + rightJitter, -_radius, _radius);
                 float centreX = (leftX + rightX) * 0.5f;
 
                 // Diamond half-depth is a fixed world-space value, not scaled by radius.
-                float halfDepth = thickness * profile;
+                float halfDepth = _thickness * profile;
 
                 // Rotate the four diamond corners around the spine centre in the XZ plane.
                 float cos = Mathf.Cos(rollAngle);
@@ -152,11 +165,11 @@ namespace Game.Client.VFX
             int topTip = rowCount * 4 + 1;
 
             Vector3 botAvg = (vertices[0] + vertices[1] + vertices[2] + vertices[3]) * 0.25f;
-            Vector3 topAvg = (vertices[segments * 4] + vertices[segments * 4 + 1] +
-                              vertices[segments * 4 + 2] + vertices[segments * 4 + 3]) * 0.25f;
+            Vector3 topAvg = (vertices[_segments * 4] + vertices[_segments * 4 + 1] +
+                              vertices[_segments * 4 + 2] + vertices[_segments * 4 + 3]) * 0.25f;
 
-            vertices[bottomTip] = botAvg - new Vector3(0f, height * 0.03f, 0f);
-            vertices[topTip] = topAvg + new Vector3(0f, height * 0.03f, 0f);
+            vertices[bottomTip] = botAvg - new Vector3(0f, _height * 0.03f, 0f);
+            vertices[topTip] = topAvg + new Vector3(0f, _height * 0.03f, 0f);
             uvs[bottomTip] = new Vector2(0.5f, 0f);
             uvs[topTip] = new Vector2(0.5f, 1f);
 
@@ -165,7 +178,7 @@ namespace Game.Client.VFX
 
             // Side faces. Diamond CCW from +Y: L(0) → F(2) → R(1) → B(3) → L.
             // Each face pair (A→B): triangles (A0,B0,B1) and (A0,B1,A1).
-            for (int i = 0; i < segments; i++)
+            for (int i = 0; i < _segments; i++)
             {
                 int b0 = i * 4, b1 = (i + 1) * 4;
                 int L0 = b0, R0 = b0 + 1, F0 = b0 + 2, B0 = b0 + 3;
@@ -196,7 +209,7 @@ namespace Game.Client.VFX
 
             // Top cap — normal faces +Y.
             {
-                int bt = segments * 4;
+                int bt = _segments * 4;
                 int L = bt, R = bt + 1, F = bt + 2, B = bt + 3;
                 triangles[tri++] = topTip; triangles[tri++] = L; triangles[tri++] = F;
                 triangles[tri++] = topTip; triangles[tri++] = F; triangles[tri++] = R;
@@ -204,14 +217,14 @@ namespace Game.Client.VFX
                 triangles[tri++] = topTip; triangles[tri++] = B; triangles[tri++] = L;
             }
 
-            mesh.vertices = vertices;
-            mesh.uv = uvs;
-            mesh.triangles = triangles;
+            _mesh.vertices = vertices;
+            _mesh.uv = uvs;
+            _mesh.triangles = triangles;
 
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
+            _mesh.RecalculateNormals();
+            _mesh.RecalculateBounds();
 
-            OnGenerated?.Invoke();
+            onGenerated?.Invoke();
         }
 
         private static float RandomRange(System.Random rng, float min, float max)
@@ -222,18 +235,18 @@ namespace Game.Client.VFX
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            segments = Mathf.Max(4, segments);
-            radius = Mathf.Max(0.01f, radius);
-            height = Mathf.Max(0.01f, height);
+            _segments = Mathf.Max(4, _segments);
+            _radius = Mathf.Max(0.01f, _radius);
+            _height = Mathf.Max(0.01f, _height);
 
             if (!Application.isPlaying)
-                Generate(seed);
+                Generate(_seed);
         }
 
         private void OnDrawGizmosSelected()
         {
             Gizmos.color = new Color(0.4f, 0.8f, 1f, 0.25f);
-            Gizmos.DrawWireCube(transform.position, new Vector3(radius * 2f, height, radius * 2f));
+            Gizmos.DrawWireCube(transform.position, new Vector3(_radius * 2f, _height, _radius * 2f));
         }
 #endif
     }

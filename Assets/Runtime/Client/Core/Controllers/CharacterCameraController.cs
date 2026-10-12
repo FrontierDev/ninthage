@@ -3,6 +3,7 @@ using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 namespace Game.Client
 {
@@ -17,11 +18,14 @@ namespace Game.Client
         /// </summary>
         public static CharacterCameraController Instance => _instance;
 
-        [SerializeField] private CinemachineInputAxisController cameraInputController;
-        [SerializeField] private CinemachineOrbitalFollow orbitalFollow;
+        [FormerlySerializedAs("cameraInputController")]
+        [SerializeField] private CinemachineInputAxisController _cameraInputController;
+        [FormerlySerializedAs("orbitalFollow")]
+        [SerializeField] private CinemachineOrbitalFollow _orbitalFollow;
 
         [Header("Right-click character rotation")]
-        [SerializeField] private float characterRotationSpeed = 0.2f;
+        [FormerlySerializedAs("characterRotationSpeed")]
+        [SerializeField] private float _characterRotationSpeed = 0.2f;
 
         private bool _leftHeld;
         private bool _rightHeld;
@@ -31,12 +35,12 @@ namespace Game.Client
 
         private void Awake()
         {
-            if (cameraInputController == null)
-                cameraInputController = GetComponent<CinemachineInputAxisController>();
-            if (orbitalFollow == null)
-                orbitalFollow = GetComponent<CinemachineOrbitalFollow>();
+            if (_cameraInputController == null)
+                _cameraInputController = GetComponent<CinemachineInputAxisController>();
+            if (_orbitalFollow == null)
+                _orbitalFollow = GetComponent<CinemachineOrbitalFollow>();
 
-            if (cameraInputController == null)
+            if (_cameraInputController == null)
             {
                 Debug.Error("No CinemachineInputAxisController assigned.");
                 enabled = false;
@@ -44,25 +48,25 @@ namespace Game.Client
             }
 
             // Intercept Cinemachine's input reading so we can gate axes per mouse button.
-            cameraInputController.ReadControlValueOverride = FilterInput;
+            _cameraInputController.ReadControlValueOverride = FilterInput;
 
             // Enable horizontal recentering so Cinemachine dynamically updates
             // HorizontalAxis.Center to the angle behind the tracking target.
             // Without this, Center stays at its initial value and never tracks the character.
-            if (orbitalFollow != null)
+            if (_orbitalFollow != null)
             {
-                var h = orbitalFollow.HorizontalAxis;
+                var h = _orbitalFollow.HorizontalAxis;
                 h.Recentering.Enabled = true;
                 h.Recentering.Wait = 1f;
                 h.Recentering.Time = 0.5f;
-                orbitalFollow.HorizontalAxis = h;
+                _orbitalFollow.HorizontalAxis = h;
             }
         }
 
         private void OnDestroy()
         {
-            if (cameraInputController != null)
-                cameraInputController.ReadControlValueOverride = null;
+            if (_cameraInputController != null)
+                _cameraInputController.ReadControlValueOverride = null;
         }
 
         private void Update()
@@ -89,21 +93,21 @@ namespace Game.Client
                 if (character != null)
                 {
                     float deltaX = mouse.delta.ReadValue().x;
-                    character.transform.Rotate(0f, deltaX * characterRotationSpeed, 0f, Space.World);
+                    character.transform.Rotate(0f, deltaX * _characterRotationSpeed, 0f, Space.World);
                 }
 
                 // Force camera horizontal axis to its center (which Cinemachine keeps
                 // aligned behind the tracking target) so the camera follows the character.
-                if (orbitalFollow != null)
-                    orbitalFollow.HorizontalAxis.Value = orbitalFollow.HorizontalAxis.Center;
+                if (_orbitalFollow != null)
+                    _orbitalFollow.HorizontalAxis.Value = _orbitalFollow.HorizontalAxis.Center;
             }
 
             // WASD movement: smoothly recenter camera behind the character.
             // Cancel the recentering when keys are released so it doesn't keep drifting.
-            if (_movementInput && !_leftHeld && orbitalFollow != null)
-                orbitalFollow.HorizontalAxis.TriggerRecentering();
-            else if (!_movementInput && !_leftHeld && !_rightHeld && orbitalFollow != null)
-                orbitalFollow.HorizontalAxis.CancelRecentering();
+            if (_movementInput && !_leftHeld && _orbitalFollow != null)
+                _orbitalFollow.HorizontalAxis.TriggerRecentering();
+            else if (!_movementInput && !_leftHeld && !_rightHeld && _orbitalFollow != null)
+                _orbitalFollow.HorizontalAxis.CancelRecentering();
         }
 
         private float FilterInput(

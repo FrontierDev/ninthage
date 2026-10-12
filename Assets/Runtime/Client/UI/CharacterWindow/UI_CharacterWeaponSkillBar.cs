@@ -5,7 +5,7 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_CharacterWeaponSkillBar : UI_ProgressBar
     {
-        private UI_CharacterWeaponSkillEntry weaponSkillEntry;
+        private UI_CharacterWeaponSkillEntry _weaponSkillEntry;
 
         private void Awake()
         {

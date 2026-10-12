@@ -4,6 +4,7 @@ using Game.Shared.Runtime.Actors;
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -24,14 +25,22 @@ namespace Game.Client.UI
         /// </summary>
         public static bool IsInitialized => _initialized;
 
-        [SerializeField] private TMP_Text characterNameText;
-        [SerializeField] private TMP_Text characterTitleText;
-        [SerializeField] private TMP_Text characterLevelText;
-        [SerializeField] private TMP_Text characterClassText;
-        [SerializeField] private TMP_Text characterRaceText;
-        [SerializeField] private Image characterClassIcon;
-        [SerializeField] private Image characterRaceIcon;
-        [SerializeField] private Image characterClassBackground;
+        [FormerlySerializedAs("characterNameText")]
+        [SerializeField] private TMP_Text _characterNameText;
+        [FormerlySerializedAs("characterTitleText")]
+        [SerializeField] private TMP_Text _characterTitleText;
+        [FormerlySerializedAs("characterLevelText")]
+        [SerializeField] private TMP_Text _characterLevelText;
+        [FormerlySerializedAs("characterClassText")]
+        [SerializeField] private TMP_Text _characterClassText;
+        [FormerlySerializedAs("characterRaceText")]
+        [SerializeField] private TMP_Text _characterRaceText;
+        [FormerlySerializedAs("characterClassIcon")]
+        [SerializeField] private Image _characterClassIcon;
+        [FormerlySerializedAs("characterRaceIcon")]
+        [SerializeField] private Image _characterRaceIcon;
+        [FormerlySerializedAs("characterClassBackground")]
+        [SerializeField] private Image _characterClassBackground;
 
         protected override void Awake()
         {
@@ -56,26 +65,26 @@ namespace Game.Client.UI
             var characterData = ClientAccountManager.ActiveCharacter;
             if (characterData != null)
             {
-                characterNameText.text = characterData.Name;
-                characterTitleText.text = characterData.Title;
-                characterLevelText.text = $"Level {actor.GetLevel()}";
-                characterClassText.text = characterData.ClassID;
-                characterRaceText.text = characterData.RaceID;
+                _characterNameText.text = characterData.Name;
+                _characterTitleText.text = characterData.Title;
+                _characterLevelText.text = $"Level {actor.GetLevel()}";
+                _characterClassText.text = characterData.ClassID;
+                _characterRaceText.text = characterData.RaceID;
 
                 var classDef = Shared.Data.ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID);
                 var raceDef = Shared.Data.RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID);
 
                 if (classDef != null && classDef.Icon != null)
                 {
-                    characterClassIcon.sprite = classDef.Icon;
-                    characterClassIcon.enabled = true;
-                    characterClassBackground.sprite = classDef.Icon;
+                    _characterClassIcon.sprite = classDef.Icon;
+                    _characterClassIcon.enabled = true;
+                    _characterClassBackground.sprite = classDef.Icon;
                 }
 
                 if (raceDef != null && raceDef.Icon != null)
                 {
-                    characterRaceIcon.sprite = raceDef.Icon;
-                    characterRaceIcon.enabled = true;
+                    _characterRaceIcon.sprite = raceDef.Icon;
+                    _characterRaceIcon.enabled = true;
                 }
             }
             else

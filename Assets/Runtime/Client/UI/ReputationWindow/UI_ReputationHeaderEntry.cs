@@ -1,5 +1,6 @@
 using Game.Shared.Data;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -9,25 +10,27 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_ReputationHeaderEntry : UI_ListEntry<FactionDefinition>
     {
-        [SerializeField] private UI_ProgressBar progressBar;
-        [SerializeField] private Image factionIcon;
+        [FormerlySerializedAs("progressBar")]
+        [SerializeField] private UI_ProgressBar _progressBar;
+        [FormerlySerializedAs("factionIcon")]
+        [SerializeField] private Image _factionIcon;
 
-        private FactionDefinition data;
+        private FactionDefinition _data;
         /// <summary>
         /// Gets the <c>Data</c> value.
         /// </summary>
-        public FactionDefinition Data => data;
-        private float progress;
-        private int index;
+        public FactionDefinition Data => _data;
+        private float _progress;
+        private int _index;
 
         /// <inheritdoc/>
         public override void Initialize(FactionDefinition data, int index)
         {
-            this.data = data;
-            this.index = index;
+            this._data = data;
+            this._index = index;
 
-            factionIcon.sprite = data.Icon;
-            progressBar.SetMaterial(progressBar.graphics.material); // Ensure we have a unique material instance for this progress bar
+            _factionIcon.sprite = data.Icon;
+            _progressBar.SetMaterial(_progressBar.graphics.material); // Ensure we have a unique material instance for this progress bar
         }
 
         /// <summary>
@@ -37,41 +40,41 @@ namespace Game.Client.UI
         {
             // Get reputation progress. For factions we can go to war with, we need to offset the progress
             // by 50% so that '0' sits at 0.5.
-            if (data == null)
+            if (_data == null)
             {
                 Debug.LogWarning("UI_ReputationHeaderEntry.UpdateEntry called before Initialize; data is null");
                 return;
             }
 
-            if (progressBar == null)
+            if (_progressBar == null)
             {
                 Debug.LogWarning("UI_ReputationHeaderEntry.UpdateEntry: progressBar not assigned");
                 return;
             }
 
-            var denom = 2f * data.MaxPoints;
-            progress = denom != 0f ? ((float)rep / denom) + (data.CanWar ? 0.5f : 0f) : (data.CanWar ? 0.5f : 0f);
-            progress = Mathf.Clamp01(progress);
-            progressBar.SetProgress(progress);
+            var denom = 2f * _data.MaxPoints;
+            _progress = denom != 0f ? ((float)rep / denom) + (_data.CanWar ? 0.5f : 0f) : (_data.CanWar ? 0.5f : 0f);
+            _progress = Mathf.Clamp01(_progress);
+            _progressBar.SetProgress(_progress);
 
             // Set color based on whether we're in negative or positive territory, or if we've reached max rep
-            if (data.CanWar)
+            if (_data.CanWar)
             {
                 if (rep < 0)
-                    progressBar.SetColor(new Color(0.91f, 0.541f, 0.322f));
+                    _progressBar.SetColor(new Color(0.91f, 0.541f, 0.322f));
                 else if (rep >= 0)
-                    progressBar.SetColor(new Color(0.22f, 0.725f, 0.525f));
+                    _progressBar.SetColor(new Color(0.22f, 0.725f, 0.525f));
             }
             else
             {
-                progressBar.SetColor(new Color(0.22f, 0.725f, 0.525f));
+                _progressBar.SetColor(new Color(0.22f, 0.725f, 0.525f));
             }
         }
 
         /// <inheritdoc/>
         public override void OnClick(UnityEngine.EventSystems.PointerEventData eventData)
         {
-            UI_ReputationBodyPanel.Instance.SetFaction(data, progress);
+            UI_ReputationBodyPanel.Instance.SetFaction(_data, _progress);
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
     }

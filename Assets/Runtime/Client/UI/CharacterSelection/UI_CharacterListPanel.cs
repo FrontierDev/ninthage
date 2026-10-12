@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
@@ -16,10 +17,12 @@ namespace Game.Client.UI
         public static UI_CharacterListPanel Instance => _instance;
 
         [Header("Character List Settings")]
-        [SerializeField] private GameObject contentContainer;
-        [SerializeField] private GameObject entryPrefab;
-        GameObject IListPanel.contentContainer => contentContainer;
-        GameObject IListPanel.entryPrefab => entryPrefab;
+        [FormerlySerializedAs("contentContainer")]
+        [SerializeField] private GameObject _contentContainer;
+        [FormerlySerializedAs("entryPrefab")]
+        [SerializeField] private GameObject _entryPrefab;
+        GameObject IListPanel.contentContainer => _contentContainer;
+        GameObject IListPanel.entryPrefab => _entryPrefab;
 
         /// <summary>
         /// Gets the current list entries.
@@ -44,7 +47,7 @@ namespace Game.Client.UI
                 int index = 0;
                 foreach (var character in characters)
                 {
-                    var entryObj = Instantiate(entryPrefab, contentContainer.transform);
+                    var entryObj = Instantiate(_entryPrefab, _contentContainer.transform);
                     if (entryObj.TryGetComponent(out UI_CharacterListEntry entry))
                     {
                         entry.Initialize(character, index);
@@ -54,7 +57,7 @@ namespace Game.Client.UI
                 }
             }
 
-            LayoutRebuilder.ForceRebuildLayoutImmediate(contentContainer.GetComponent<RectTransform>());
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_contentContainer.GetComponent<RectTransform>());
         }
     }
 }
