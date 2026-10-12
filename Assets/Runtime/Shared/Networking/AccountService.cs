@@ -18,7 +18,6 @@ namespace Game.Shared.Networking
         // Client callbacks.
         public static Action<List<CharacterData>> onCharacterListReceived;
         public static Action<CharacterData, string> onEnteringWorld;
-        public static Action<Actor> onPlayerActorAssigned;
         public static Action onEnteredWorld;
 
         // Server callbacks
@@ -31,13 +30,6 @@ namespace Game.Shared.Networking
         {
             Debug.Log($"Received character list with {characterList.Count} characters.");
             onCharacterListReceived?.Invoke(characterList);
-        }
-
-        [TargetRpc]
-        public static void Client_SetPlayerActor(PlayerID target, NetworkIdentity actorIdentity, RPCInfo rpcInfo = default)
-        {
-            var actor = actorIdentity.GetComponent<Actor>();
-            onPlayerActorAssigned?.Invoke(actor);
         }
 
         [ServerRpc]

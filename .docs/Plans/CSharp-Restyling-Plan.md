@@ -732,7 +732,7 @@ Use `Endpoint` rather than `Channel` because PurrNet already uses **Channel** as
 
 - Alphabetize `using` directives.
 - Parameter acronym: `characterGuid` → `characterGUID` in `Server_RequestEnterWorld`.
-- XML documentation: add docs to callbacks `onCharacterListReceived`, `onEnteringWorld`, `onPlayerActorAssigned`, `onEnteredWorld`, `onCharacterCreationRequest`, `onCharacterCreated`, `onEnterWorldRequest`; and RPC methods `Client_UpdateCharacterList`, `Client_SetPlayerActor`, `Server_TryCreateCharacter`, `Client_NotifyCharacterCreationResult`, `Server_RequestEnterWorld`, `Client_EnterWorld`.
+- XML documentation: add docs to callbacks `onCharacterListReceived`, `onEnteringWorld`, `onEnteredWorld`, `onCharacterCreationRequest`, `onCharacterCreated`, `onEnterWorldRequest`; and RPC methods `Client_UpdateCharacterList`, `Server_TryCreateCharacter`, `Client_NotifyCharacterCreationResult`, `Server_RequestEnterWorld`, `Client_EnterWorld`.
 - Do **not** rename `actorIdentity`; `Identity` is a word/type concept, not an `ID` suffix.
 
 <<<<<<< HEAD
@@ -766,7 +766,7 @@ Use `Endpoint` rather than `Channel` because PurrNet already uses **Channel** as
 >>>>>>> 9a7bc0bf025116f222e60b4a96e94acc51c7dbef
 
 - Alphabetize `using` directives.
-- XML documentation: add docs to callbacks `onClientLearnedSpell`, `onClientKnownSpellsUpdated`, `onClientInventoryUpdated`, `onClientCurrencyUpdated`, `onClientEquipmentUpdated`, `onClientTalentsUpdated`, `onClientExperienceUpdated`, `onClientWeaponSkillUpdated`, `onClientReputationUpdated`, `onClientLevelUpdated`, `onClientQuestUpdated`, `onLearnSpellRequest`, `onUpdateStatsRequest`; and RPCs `Server_RequestLearnSpell`, `Client_LearnSpell`, `Client_ExperienceUpdated`, `Client_WeaponSkillUpdated`, `Client_ReputationUpdated`, `Client_QuestUpdated`.
+- XML documentation: add docs to callbacks `onClientLearnedSpell`, `onClientInventoryUpdated`, `onClientCurrencyUpdated`, `onClientEquipmentUpdated`, `onClientTalentsUpdated`, `onClientExperienceUpdated`, `onClientWeaponSkillUpdated`, `onClientReputationUpdated`, `onClientQuestUpdated`, `onLearnSpellRequest`, `onUpdateStatsRequest`; and RPCs `Server_RequestLearnSpell`, `Client_LearnSpell`, `Client_ExperienceUpdated`, `Client_WeaponSkillUpdated`, `Client_ReputationUpdated`, `Client_QuestUpdated`.
 
 #### `Assets/Runtime/Shared/Networking/ChunkSubscriptions.cs`
 

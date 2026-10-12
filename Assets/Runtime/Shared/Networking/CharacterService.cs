@@ -13,7 +13,6 @@ namespace Game.Shared.Networking
     {
         // Client callbacks
         public static Action<string> onClientLearnedSpell;
-        public static Action onClientKnownSpellsUpdated;
 
         public static Action onClientInventoryUpdated;
         public static Action onClientCurrencyUpdated;
@@ -24,7 +23,6 @@ namespace Game.Shared.Networking
         public static Action<int, int, int> onClientExperienceUpdated;
         public static Action<ItemWeaponType, int, int, int> onClientWeaponSkillUpdated;
         public static Action<string, int, int> onClientReputationUpdated;
-        public static Action<int> onClientLevelUpdated;
         public static Action<string, int[], bool> onClientQuestUpdated;
 
         // Server callbacks
