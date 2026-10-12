@@ -33,7 +33,7 @@ namespace Game.Shared.Data
 
                 if (distance > maxRange)
                 {
-                    ActorService.onServerSpellCastInterrupted?.Invoke(ctx.Caster.Id, ctx.Spell.BaseDefinition.DefinitionId);
+                    ActorEndpoint.onServerSpellCastInterrupted?.Invoke(ctx.Caster.Id, ctx.Spell.BaseDefinition.DefinitionId);
                     return new List<Actor>();
                 }
             }

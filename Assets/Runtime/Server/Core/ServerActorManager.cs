@@ -66,9 +66,9 @@ namespace Game.Server
             }
             _instance = this;
 
-            ActorService.onServerActorSpawned += OnActorSpawned;
-            ActorService.onServerActorOwnerChanged += OnActorOwnerChanged;
-            ActorService.onServerActorInterestChanged += OnActorInterestChanged;
+            ActorEndpoint.onServerActorSpawned += OnActorSpawned;
+            ActorEndpoint.onServerActorOwnerChanged += OnActorOwnerChanged;
+            ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
 
             var world = ECS.ServerECSManager.DefaultWorld;
             entityManager = world.EntityManager;
@@ -79,9 +79,9 @@ namespace Game.Server
 
         private void OnDestroy()
         {
-            ActorService.onServerActorSpawned -= OnActorSpawned;
-            ActorService.onServerActorOwnerChanged -= OnActorOwnerChanged;
-            ActorService.onServerActorInterestChanged -= OnActorInterestChanged;
+            ActorEndpoint.onServerActorSpawned -= OnActorSpawned;
+            ActorEndpoint.onServerActorOwnerChanged -= OnActorOwnerChanged;
+            ActorEndpoint.onServerActorInterestChanged -= OnActorInterestChanged;
 
             _actorObjects.Clear();
             _playerActors.Clear();
@@ -324,7 +324,7 @@ namespace Game.Server
                 {
                     Debug.Log($"NPC '{state.NPC.Name}' aggroed player '{closest.Name}'.");
                     state.NPC.SetTargetFromServer(closest);
-                    ActorService.onServerStartAutoAttack?.Invoke(state.NPC);
+                    ActorEndpoint.onServerStartAutoAttack?.Invoke(state.NPC);
                     state.PendingTarget = null;
                     state.AggroTimer = 0f;
                 }
@@ -373,7 +373,7 @@ namespace Game.Server
                         Debug.Warning("Player " + playerId + " exceeded max speed (" + speed.ToString("F1") + " m/s) " + _violationCounters[playerId] + " times. Correcting.");
                         var worldPos = new WorldPosition(lastPos.x, lastPos.y, lastPos.z);
                         var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(worldPos);
-                        MovementService.Client_ServerCorrection(playerId, chunk, localPos);
+                        MovementEndpoint.Client_ServerCorrection(playerId, chunk, localPos);
 
                         // Reset after correction — give the snap time to take effect.
                         _lastValidatedPositions[playerId] = lastPos;

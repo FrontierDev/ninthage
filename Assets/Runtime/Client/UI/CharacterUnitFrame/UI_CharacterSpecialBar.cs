@@ -34,7 +34,7 @@ namespace Game.Client.UI
                 return;
             }
 
-            ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
+            ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
 
             _instance = this;
         }
@@ -62,7 +62,7 @@ namespace Game.Client.UI
 
                 if (playerStatContainer != null)
                 {
-                    StatService.onStatsUpdated += OnStatsUpdated;
+                    StatEndpoint.onStatsUpdated += OnStatsUpdated;
                     Refresh();
                 }
             }

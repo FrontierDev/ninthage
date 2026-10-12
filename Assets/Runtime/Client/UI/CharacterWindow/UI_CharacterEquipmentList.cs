@@ -23,16 +23,16 @@ namespace Game.Client.UI
                 currentEntries.Add(slot);
             }
 
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned += (actor) => Refresh();
-            CharacterService.onClientEquipmentUpdated += Refresh;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += (actor) => Refresh();
+            CharacterEndpoint.onClientEquipmentUpdated += Refresh;
 
             base.Awake();
         }
 
         private void OnDestroy()
         {
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned -= (actor) => Refresh();
-            CharacterService.onClientEquipmentUpdated -= Refresh;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned -= (actor) => Refresh();
+            CharacterEndpoint.onClientEquipmentUpdated -= Refresh;
         }
 
         public override void Refresh()

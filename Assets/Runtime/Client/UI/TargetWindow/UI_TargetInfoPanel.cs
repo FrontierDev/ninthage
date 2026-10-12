@@ -13,7 +13,7 @@ namespace Game.Client.UI
         {
             base.Awake();
 
-            Game.Shared.Networking.ActorService.onClientLateTargetedActorChanged += OnTargetChanged;
+            Game.Shared.Networking.ActorEndpoint.onClientLateTargetedActorChanged += OnTargetChanged;
         }
 
         private void OnTargetChanged(Game.Shared.Actor oldTarget, Game.Shared.Actor newTarget)

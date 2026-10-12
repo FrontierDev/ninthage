@@ -115,9 +115,9 @@ namespace Game.Shared
             if (statId == "health" && instance.CurrentValue <= 0 && !GetComponent<Actor>().isDead)
             {
                 Debug.Log($"{GetComponent<Actor>().Name} has died.");
-                ActorService.onActorDeath?.Invoke(GetComponent<Actor>());
+                ActorEndpoint.onActorDeath?.Invoke(GetComponent<Actor>());
                 GetComponent<Actor>().isDead = true;
-                ActorService.onServerStopAutoAttack?.Invoke(GetComponent<Actor>());
+                ActorEndpoint.onServerStopAutoAttack?.Invoke(GetComponent<Actor>());
             }
         }
 
@@ -180,7 +180,7 @@ namespace Game.Shared
                 stats[entry.StatId] = new StatInstance(0, entry.FlatModifier, entry.PercentModifier, entry.EffectiveMax, entry.Current);
             }
 
-            Game.Shared.Networking.StatService.onStatsUpdated?.Invoke(GetComponent<Actor>(), this);
+            Game.Shared.Networking.StatEndpoint.onStatsUpdated?.Invoke(GetComponent<Actor>(), this);
         }
 
         public StatSnapshot BuildSnapshot(ActorStatReplicationMode mode)

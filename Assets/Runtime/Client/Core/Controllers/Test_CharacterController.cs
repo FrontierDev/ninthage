@@ -23,7 +23,7 @@ namespace Game.Client
         private void Awake()
         {
             enabled = false;
-            ActorService.onActorOwnershipTaken += OnActorOwnershipTaken;
+            ActorEndpoint.onActorOwnershipTaken += OnActorOwnershipTaken;
 
             if (ClientInputController.Instance != null)
             {
@@ -42,14 +42,14 @@ namespace Game.Client
 
             _cc = GetComponent<CharacterController>();
             _instance = this;
-            MovementService.onServerCorrection += OnServerCorrection;
+            MovementEndpoint.onServerCorrection += OnServerCorrection;
             enabled = true;
         }
 
         private void OnDestroy()
         {
-            ActorService.onActorOwnershipTaken -= OnActorOwnershipTaken;
-            MovementService.onServerCorrection -= OnServerCorrection;
+            ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
+            MovementEndpoint.onServerCorrection -= OnServerCorrection;
 
             if (ClientInputController.Instance != null)
             {

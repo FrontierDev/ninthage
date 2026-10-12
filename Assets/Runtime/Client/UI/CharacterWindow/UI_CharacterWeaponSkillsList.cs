@@ -24,8 +24,8 @@ namespace Game.Client.UI
         {
             _instance = this;
 
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
-            Game.Shared.Networking.CharacterService.onClientWeaponSkillUpdated += OnWeaponSkillUpdated;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
+            Game.Shared.Networking.CharacterEndpoint.onClientWeaponSkillUpdated += OnWeaponSkillUpdated;
 
             base.Awake();
         }

@@ -14,7 +14,7 @@ namespace Game.Client.UI
             }
             _instance = this;
 
-            Game.Shared.Networking.AccountService.onEnteredWorld += OnEnteredWorld;
+            Game.Shared.Networking.AccountEndpoint.onEnteredWorld += OnEnteredWorld;
         }
 
         private void OnEnteredWorld()

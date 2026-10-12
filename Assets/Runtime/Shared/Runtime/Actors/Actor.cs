@@ -95,7 +95,7 @@ namespace Game.Shared
 
             if (!Runtime.IsServer())
             {
-                Game.Shared.Networking.ActorService.onActorSpawned?.Invoke(this);
+                Game.Shared.Networking.ActorEndpoint.onActorSpawned?.Invoke(this);
             }
         }
 
@@ -115,7 +115,7 @@ namespace Game.Shared
 
             foreach (var id in expiredAurasThisFrame)
             {
-                ActorService.onClientExpireAura?.Invoke(activeAuras[id], this, id);
+                ActorEndpoint.onClientExpireAura?.Invoke(activeAuras[id], this, id);
                 activeAuras.Remove(id);
             }
 
@@ -126,11 +126,11 @@ namespace Game.Shared
         protected override void OnDestroy()
         {
             if (NetworkManager.isServerStatic)
-                Game.Shared.Networking.ActorService.onServerActorDespawned?.Invoke(this);
+                Game.Shared.Networking.ActorEndpoint.onServerActorDespawned?.Invoke(this);
 
             base.OnDestroy();
             //else
-            //Game.Shared.Networking.ActorService.onActorDespawned?.Invoke(this);
+            //Game.Shared.Networking.ActorEndpoint.onActorDespawned?.Invoke(this);
         }
 
         public virtual string GetName()
@@ -215,7 +215,7 @@ namespace Game.Shared
             // If this is our own actor, also trigger the late targeted actor changed event 
             // for any UI that needs to update based on the new target.
             if (Owner == NetworkManager.main.localPlayer)
-                ActorService.onClientLateTargetedActorChanged?.Invoke(oldTarget, newTarget);
+                ActorEndpoint.onClientLateTargetedActorChanged?.Invoke(oldTarget, newTarget);
         }
 
         [ServerRpc(requireOwnership: true)]
@@ -227,13 +227,13 @@ namespace Game.Shared
         [ServerRpc(requireOwnership: true)]
         public void Server_StartAutoAttack(RPCInfo rpcInfo = default)
         {
-            ActorService.onServerStartAutoAttack?.Invoke(this);
+            ActorEndpoint.onServerStartAutoAttack?.Invoke(this);
         }
 
         [ServerRpc(requireOwnership: true)]
         public void Server_StopAutoAttack(RPCInfo rpcInfo = default)
         {
-            ActorService.onServerStopAutoAttack?.Invoke(this);
+            ActorEndpoint.onServerStopAutoAttack?.Invoke(this);
         }
 
         public void SetOwner(PlayerID? newOwner)
@@ -243,16 +243,16 @@ namespace Game.Shared
 
             if (NetworkManager.isServerStatic)
             {
-                Game.Shared.Networking.ActorService.onServerActorOwnerChanged?.Invoke(this);
+                Game.Shared.Networking.ActorEndpoint.onServerActorOwnerChanged?.Invoke(this);
             }
             else
             {
-                Game.Shared.Networking.ActorService.onActorOwnerChanged?.Invoke(this);
+                Game.Shared.Networking.ActorEndpoint.onActorOwnerChanged?.Invoke(this);
             }
 
             if (Owner == NetworkManager.main.localPlayer && !NetworkManager.isServerStatic)
             {
-                Game.Shared.Networking.ActorService.onActorOwnershipTaken?.Invoke(this);
+                Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken?.Invoke(this);
             }
         }
 
@@ -270,13 +270,13 @@ namespace Game.Shared
         /// This is called on the CASTER of the spell.
         public void Observers_ReceivedCombatLogEntry(CombatLogEntry entry, RPCInfo info = default)
         {
-            ActorService.onCombatLogEntryReceived?.Invoke(entry);
+            ActorEndpoint.onCombatLogEntryReceived?.Invoke(entry);
         }
 
         [TargetRpc]
         public void Client_ReceiveCombatLogEntry(PlayerID player, CombatLogEntry entry, RPCInfo info = default)
         {
-            ActorService.onCombatLogEntryReceived?.Invoke(entry);
+            ActorEndpoint.onCombatLogEntryReceived?.Invoke(entry);
         }
 
         [ObserversRpc]
@@ -292,7 +292,7 @@ namespace Game.Shared
 
                 activeAuras[instancedID] = existingAura; // Update the dictionary entry.
 
-                ActorService.onClientUpdateAura?.Invoke(existingAura, this, instancedID);
+                ActorEndpoint.onClientUpdateAura?.Invoke(existingAura, this, instancedID);
             }
             else
             {
@@ -300,7 +300,7 @@ namespace Game.Shared
                 var newAura = new AuraInstance(instancedID, def, null, this, duration, stacks);
                 activeAuras.Add(instancedID, newAura);
 
-                ActorService.onClientApplyAura?.Invoke(newAura, this, instancedID);
+                ActorEndpoint.onClientApplyAura?.Invoke(newAura, this, instancedID);
             }
         }
 
@@ -321,7 +321,7 @@ namespace Game.Shared
             if (activeAuras.TryGetValue(instancedID, out var existingAura))
             {
                 activeAuras.Remove(instancedID);
-                ActorService.onClientExpireAura?.Invoke(existingAura, this, instancedID);
+                ActorEndpoint.onClientExpireAura?.Invoke(existingAura, this, instancedID);
             }
         }
 
@@ -332,7 +332,7 @@ namespace Game.Shared
             {
                 existingAura.SetStacks(stacks);
                 existingAura.SetDuration(duration);
-                ActorService.onClientTickAura?.Invoke(existingAura, this, instancedID);
+                ActorEndpoint.onClientTickAura?.Invoke(existingAura, this, instancedID);
             }
         }
 
@@ -342,7 +342,7 @@ namespace Game.Shared
             if (activeAuras.TryGetValue(instancedID, out var existingAura))
             {
                 activeAuras.Remove(instancedID);
-                ActorService.onClientDispelAura?.Invoke(existingAura, this, instancedID);
+                ActorEndpoint.onClientDispelAura?.Invoke(existingAura, this, instancedID);
             }
         }
         #endregion
@@ -350,12 +350,12 @@ namespace Game.Shared
         #region Client-side Interaction
         public virtual void OnPointerEnter(Actor interactor)
         {
-            ActorService.onClientHoveredActorChanged?.Invoke(this);
+            ActorEndpoint.onClientHoveredActorChanged?.Invoke(this);
         }
 
         public virtual void OnPointerClick(Actor interactor)
         {
-            ActorService.onClientTargetedActorChanged?.Invoke(this);
+            ActorEndpoint.onClientTargetedActorChanged?.Invoke(this);
         }
         #endregion
     }

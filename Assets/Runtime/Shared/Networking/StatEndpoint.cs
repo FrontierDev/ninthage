@@ -7,7 +7,7 @@ namespace Game.Shared.Networking
     /// such as updating actor stats and notifying clients about stat changes. 
     /// It serves as a central hub for stat updates and synchronization in the networking layer.
     /// </summary>
-    public static class StatService
+    public static class StatEndpoint
     {
         public static Action<Actor, ActorStatContainer> onStatsUpdated;
     }

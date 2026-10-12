@@ -31,7 +31,7 @@ namespace Game.Client.UI
 
         private void Awake()
         {
-            ActorService.onPlayerActorAssigned += (playerActor) =>
+            ActorEndpoint.onPlayerActorAssigned += (playerActor) =>
             {
                 if (!initialized)
                 {

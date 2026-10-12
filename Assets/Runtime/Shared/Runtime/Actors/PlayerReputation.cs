@@ -25,7 +25,7 @@ namespace Game.Shared
 
         void Awake()
         {
-            CharacterService.onClientReputationUpdated += OnClientReputationUpdated;
+            CharacterEndpoint.onClientReputationUpdated += OnClientReputationUpdated;
         }
 
         public void OnClientReputationUpdated(string factionID, int reputation, int delta)
@@ -47,7 +47,7 @@ namespace Game.Shared
             }
 
             pvpFaction = data.PvPFactionID != null ? Game.Shared.Data.FactionDefinitionLibrary.Instance.GetDefinition(data.PvPFactionID) : null;
-            CharacterService.onClientReputationUpdated?.Invoke(pvpFaction?.DefinitionId, reputations.TryGetValue(pvpFaction?.DefinitionId ?? "", out int rep) ? rep : 0, 0);
+            CharacterEndpoint.onClientReputationUpdated?.Invoke(pvpFaction?.DefinitionId, reputations.TryGetValue(pvpFaction?.DefinitionId ?? "", out int rep) ? rep : 0, 0);
         }
 
         public void SetReputation(FactionDefinition def, int reputation)

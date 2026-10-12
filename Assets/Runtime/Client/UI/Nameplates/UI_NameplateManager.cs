@@ -64,26 +64,26 @@ namespace Game.Client.UI
         private void Start()
         {
             // Subscribe to actor spawn events
-            ActorService.onActorSpawned += OnActorSpawned;
-            ActorService.onClientHoveredActorChanged += SetHoveredActor;
-            ActorService.onClientLateTargetedActorChanged += OnLateTargetChanged;
-            ActorService.onSpellCastStarted += OnSpellCastStarted;
-            ActorService.onSpellCastInterrupted += OnSpellCastInterrupted;
-            ActorService.onSpellCastCompleted += OnSpellCastCompleted;
-            StatService.onStatsUpdated += OnStatsUpdated;
+            ActorEndpoint.onActorSpawned += OnActorSpawned;
+            ActorEndpoint.onClientHoveredActorChanged += SetHoveredActor;
+            ActorEndpoint.onClientLateTargetedActorChanged += OnLateTargetChanged;
+            ActorEndpoint.onSpellCastStarted += OnSpellCastStarted;
+            ActorEndpoint.onSpellCastInterrupted += OnSpellCastInterrupted;
+            ActorEndpoint.onSpellCastCompleted += OnSpellCastCompleted;
+            StatEndpoint.onStatsUpdated += OnStatsUpdated;
             ClientSettingsManager.onSettingChanged += OnSettingChanged;
             ClientSettingsManager.onSettingsLoaded += OnSettingsLoaded;
         }
 
         private void OnDestroy()
         {
-            ActorService.onActorSpawned -= OnActorSpawned;
-            ActorService.onClientHoveredActorChanged -= SetHoveredActor;
-            ActorService.onClientLateTargetedActorChanged -= OnLateTargetChanged;
-            ActorService.onSpellCastStarted -= OnSpellCastStarted;
-            ActorService.onSpellCastInterrupted -= OnSpellCastInterrupted;
-            ActorService.onSpellCastCompleted -= OnSpellCastCompleted;
-            StatService.onStatsUpdated -= OnStatsUpdated;
+            ActorEndpoint.onActorSpawned -= OnActorSpawned;
+            ActorEndpoint.onClientHoveredActorChanged -= SetHoveredActor;
+            ActorEndpoint.onClientLateTargetedActorChanged -= OnLateTargetChanged;
+            ActorEndpoint.onSpellCastStarted -= OnSpellCastStarted;
+            ActorEndpoint.onSpellCastInterrupted -= OnSpellCastInterrupted;
+            ActorEndpoint.onSpellCastCompleted -= OnSpellCastCompleted;
+            StatEndpoint.onStatsUpdated -= OnStatsUpdated;
             ClientSettingsManager.onSettingChanged -= OnSettingChanged;
             ClientSettingsManager.onSettingsLoaded -= OnSettingsLoaded;
         }

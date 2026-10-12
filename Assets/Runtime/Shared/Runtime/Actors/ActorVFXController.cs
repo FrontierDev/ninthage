@@ -33,7 +33,7 @@ namespace Game.Shared
         [ObserversRpc]
         public void Observer_SpawnEffectAtPosition(int id, string addressablePath, Vector3 position, float lifetime)
         {
-            ActorService.onClientSpawnVFXAtPosition?.Invoke(this, id, addressablePath, position, lifetime);
+            ActorEndpoint.onClientSpawnVFXAtPosition?.Invoke(this, id, addressablePath, position, lifetime);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace Game.Shared
         [ObserversRpc]
         public void Observer_SpawnProjectile(Actor target, string addressablePath, float speed)
         {
-            ActorService.onClientSpawnProjectile?.Invoke(this, target, addressablePath, speed);
+            ActorEndpoint.onClientSpawnProjectile?.Invoke(this, target, addressablePath, speed);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Game.Shared
         [ObserversRpc]
         public void Observer_TriggerEffect(int id)
         {
-            ActorService.onClientTriggerEffect?.Invoke(this, id);
+            ActorEndpoint.onClientTriggerEffect?.Invoke(this, id);
         }
     }
 }

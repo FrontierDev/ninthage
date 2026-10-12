@@ -20,9 +20,9 @@ namespace Game.Client
         {
             _instance = this;
 
-            ActorService.onClientSpawnVFXAtPosition += OnClientSpawnVFXAtPosition;
-            ActorService.onClientSpawnProjectile += OnClientSpawnProjectile;
-            ActorService.onClientTriggerEffect += OnClientTriggerEffect;
+            ActorEndpoint.onClientSpawnVFXAtPosition += OnClientSpawnVFXAtPosition;
+            ActorEndpoint.onClientSpawnProjectile += OnClientSpawnProjectile;
+            ActorEndpoint.onClientTriggerEffect += OnClientTriggerEffect;
 
             _initialized = true;
         }

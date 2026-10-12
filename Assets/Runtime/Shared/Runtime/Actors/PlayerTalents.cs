@@ -54,7 +54,7 @@ namespace Game.Shared
             }
 
             if (!Game.Shared.Runtime.IsServer())
-                CharacterService.onClientTalentsUpdated?.Invoke();
+                CharacterEndpoint.onClientTalentsUpdated?.Invoke();
             else
                 GetComponent<ActorSpellcaster>().RecalculateOverrides();
         }
@@ -146,7 +146,7 @@ namespace Game.Shared
                 }
             }
 
-            CharacterService.onClientTalentsUpdated?.Invoke();
+            CharacterEndpoint.onClientTalentsUpdated?.Invoke();
         }
         #endregion
     }

@@ -15,22 +15,22 @@ namespace Game.Client.UI
 
         protected override void Awake()
         {
-            ActorService.onClientApplyAura += OnApplyAura;
-            ActorService.onClientUpdateAura += OnUpdateAura;
-            ActorService.onClientExpireAura += OnExpireAura;
-            ActorService.onClientDispelAura += OnExpireAura;
+            ActorEndpoint.onClientApplyAura += OnApplyAura;
+            ActorEndpoint.onClientUpdateAura += OnUpdateAura;
+            ActorEndpoint.onClientExpireAura += OnExpireAura;
+            ActorEndpoint.onClientDispelAura += OnExpireAura;
 
-            ActorService.onClientTargetedActorChanged += OnTargetActorChanged;
+            ActorEndpoint.onClientTargetedActorChanged += OnTargetActorChanged;
         }
 
         private void OnDestroy()
         {
-            ActorService.onClientApplyAura -= OnApplyAura;
-            ActorService.onClientUpdateAura -= OnUpdateAura;
-            ActorService.onClientExpireAura -= OnExpireAura;
-            ActorService.onClientDispelAura -= OnExpireAura;
+            ActorEndpoint.onClientApplyAura -= OnApplyAura;
+            ActorEndpoint.onClientUpdateAura -= OnUpdateAura;
+            ActorEndpoint.onClientExpireAura -= OnExpireAura;
+            ActorEndpoint.onClientDispelAura -= OnExpireAura;
 
-            ActorService.onClientTargetedActorChanged -= OnTargetActorChanged;
+            ActorEndpoint.onClientTargetedActorChanged -= OnTargetActorChanged;
         }
 
         private void Update()

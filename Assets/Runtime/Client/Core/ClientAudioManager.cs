@@ -48,15 +48,15 @@ namespace Game.Client
             PreloadSFX("sfx_click_generic");
 
             // Set up callbacks
-            ActorService.onClientPlaySFX += PlaySFX;
-            ActorService.onClientPlaySFXOnAudioSource += PlaySFXOnAudioSource;
+            ActorEndpoint.onClientPlaySFX += PlaySFX;
+            ActorEndpoint.onClientPlaySFXOnAudioSource += PlaySFXOnAudioSource;
         }
 
         private void OnDestroy()
         {
             // Unsubscribe from events
-            ActorService.onClientPlaySFX -= PlaySFX;
-            ActorService.onClientPlaySFXOnAudioSource -= PlaySFXOnAudioSource;
+            ActorEndpoint.onClientPlaySFX -= PlaySFX;
+            ActorEndpoint.onClientPlaySFXOnAudioSource -= PlaySFXOnAudioSource;
 
             // Release pending async operations
             foreach (var handle in _pendingLoads.Values)

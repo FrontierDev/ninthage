@@ -35,14 +35,14 @@ namespace Game.Client
         {
             _instance = this;
 
-            ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
-            ActorService.onClientTargetedActorChanged += OnTargetChanged;
-            ActorService.onStartGlobalCooldown += OnStartGlobalCooldown;
-            ActorService.onStartCooldown += OnStartCooldown;
-            ActorService.onSpellCastStarted += OnSpellCastStarted;
-            ActorService.onSpellCastCompleted += OnSpellCastComplete;
-            ActorService.onSpellCastInterrupted += OnSpellCastInterrupted;
-            CharacterService.onClientLearnedSpell += OnClientLearnedSpell;
+            ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
+            ActorEndpoint.onClientTargetedActorChanged += OnTargetChanged;
+            ActorEndpoint.onStartGlobalCooldown += OnStartGlobalCooldown;
+            ActorEndpoint.onStartCooldown += OnStartCooldown;
+            ActorEndpoint.onSpellCastStarted += OnSpellCastStarted;
+            ActorEndpoint.onSpellCastCompleted += OnSpellCastComplete;
+            ActorEndpoint.onSpellCastInterrupted += OnSpellCastInterrupted;
+            CharacterEndpoint.onClientLearnedSpell += OnClientLearnedSpell;
 
             _initialized = true;
         }
@@ -74,14 +74,14 @@ namespace Game.Client
             _instance = null;
             _initialized = false;
 
-            ActorService.onPlayerActorAssigned -= OnPlayerActorAssigned;
-            ActorService.onClientTargetedActorChanged -= OnTargetChanged;
-            ActorService.onStartGlobalCooldown -= OnStartGlobalCooldown;
-            ActorService.onStartCooldown -= OnStartCooldown;
-            ActorService.onSpellCastStarted -= OnSpellCastStarted;
-            ActorService.onSpellCastCompleted -= OnSpellCastComplete;
-            ActorService.onSpellCastInterrupted -= OnSpellCastInterrupted;
-            CharacterService.onClientLearnedSpell -= OnClientLearnedSpell;
+            ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssigned;
+            ActorEndpoint.onClientTargetedActorChanged -= OnTargetChanged;
+            ActorEndpoint.onStartGlobalCooldown -= OnStartGlobalCooldown;
+            ActorEndpoint.onStartCooldown -= OnStartCooldown;
+            ActorEndpoint.onSpellCastStarted -= OnSpellCastStarted;
+            ActorEndpoint.onSpellCastCompleted -= OnSpellCastComplete;
+            ActorEndpoint.onSpellCastInterrupted -= OnSpellCastInterrupted;
+            CharacterEndpoint.onClientLearnedSpell -= OnClientLearnedSpell;
         }
 
         private void OnPlayerActorAssigned(Actor playerActor)
@@ -187,7 +187,7 @@ namespace Game.Client
         {
             ClientAccountManager.PlayerActor.Server_StartAutoAttack();
             inCombat = true;
-            ActorService.onClientEnteredCombat?.Invoke();
+            ActorEndpoint.onClientEnteredCombat?.Invoke();
             ClientAccountManager.PlayerActor.GetComponent<NetworkAnimator>().SetBool("InCombat", true);
         }
 
@@ -195,7 +195,7 @@ namespace Game.Client
         {
             ClientAccountManager.PlayerActor.Server_StopAutoAttack();
             inCombat = false;
-            ActorService.onClientExitedCombat?.Invoke();
+            ActorEndpoint.onClientExitedCombat?.Invoke();
             ClientAccountManager.PlayerActor.GetComponent<NetworkAnimator>().SetBool("InCombat", false);
         }
 

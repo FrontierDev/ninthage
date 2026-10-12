@@ -56,7 +56,7 @@ namespace Game.Server.Services
             if (!validRace || !validClass || !validName)
             {
                 Debug.Log($"Character creation validation failed for player {playerId}. ValidRace: {validRace}, ValidClass: {validClass}, ValidName: {validName}");
-                Game.Shared.Networking.AccountService.Client_NotifyCharacterCreationResult(playerId, false, "Character creation failed. Please check your selected options.");
+                Game.Shared.Networking.AccountEndpoint.Client_NotifyCharacterCreationResult(playerId, false, "Character creation failed. Please check your selected options.");
                 return;
             }
             else
@@ -81,8 +81,8 @@ namespace Game.Server.Services
             accountData.Characters.Add(character);
             PlayerDatabase.SavePlayerAccount(accountData);
             Debug.Log($"Character '{character.Name}' created for player {playerId}. Account '{accountData.Username} has {accountData.Characters.Count} characters.");
-            Game.Shared.Networking.AccountService.Client_NotifyCharacterCreationResult(playerId, true, $"Character '{character.Name}' created successfully.");
-            Game.Shared.Networking.AccountService.Client_UpdateCharacterList(playerId, accountData.Characters);
+            Game.Shared.Networking.AccountEndpoint.Client_NotifyCharacterCreationResult(playerId, true, $"Character '{character.Name}' created successfully.");
+            Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(playerId, accountData.Characters);
         }
     }
 }

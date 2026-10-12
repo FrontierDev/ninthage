@@ -12,13 +12,13 @@ namespace Game.Shared.Data
         public override void OnActivate(PlayerActor actor)
         {
             actor.GetComponent<ActorEvents>().onServerAutoAttackHit += (ctx, target) =>
-                ActorService.onServerApplyAura?.Invoke(aura, actor, target, stacks);
+                ActorEndpoint.onServerApplyAura?.Invoke(aura, actor, target, stacks);
         }
 
         public override void OnDeactivate(PlayerActor actor)
         {
             actor.GetComponent<ActorEvents>().onServerAutoAttackHit -= (ctx, target) =>
-                ActorService.onServerApplyAura?.Invoke(aura, actor, target, stacks);
+                ActorEndpoint.onServerApplyAura?.Invoke(aura, actor, target, stacks);
         }
     }
 }

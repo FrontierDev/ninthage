@@ -24,8 +24,8 @@ namespace Game.Client.UI
         {
             _instance = this;
 
-            ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
-            CharacterService.onClientReputationUpdated += OnClientReputationUpdated;
+            ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
+            CharacterEndpoint.onClientReputationUpdated += OnClientReputationUpdated;
 
             base.Awake();
         }

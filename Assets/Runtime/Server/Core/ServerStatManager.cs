@@ -31,7 +31,7 @@ namespace Game.Server
             _instance = this;
 
             // Subscribe to character service events for stat updates
-            Game.Shared.Networking.CharacterService.onUpdateStatsRequest += (container) =>
+            Game.Shared.Networking.CharacterEndpoint.onUpdateStatsRequest += (container) =>
             {
                 Recalculate(container);
                 FillAttributesToMax(container);

@@ -49,7 +49,7 @@ namespace Game.Server
             networkManager = NetworkManager.main;
             networkManager.sceneModule.onPostSceneLoaded += OnPostSceneLoaded;
 
-            Game.Shared.Networking.ActorService.onServerActorDespawned += OnServerActorDespawned;
+            Game.Shared.Networking.ActorEndpoint.onServerActorDespawned += OnServerActorDespawned;
 
             var world = ECS.ServerECSManager.DefaultWorld;
             entityManager = world.EntityManager;
@@ -276,12 +276,12 @@ namespace Game.Server
             playerActor.isDead = false;
 
             // Trigger initial 3x3 chunk interest around the spawn location.
-            Game.Shared.Networking.MovementService.onInterestRequest?.Invoke(playerId, spawnScene);
+            Game.Shared.Networking.MovementEndpoint.onInterestRequest?.Invoke(playerId, spawnScene);
 
             // Send the finalized character data to the client now, after all server-side
             // modifications are complete. This must happen before AddPlayerToScene so
             // the client has _activeCharacter set before actor ownership is replicated.
-            Game.Shared.Networking.AccountService.Client_EnterWorld(playerId, characterData, $"World_{spawnScene.x}_{spawnScene.y}");
+            Game.Shared.Networking.AccountEndpoint.Client_EnterWorld(playerId, characterData, $"World_{spawnScene.x}_{spawnScene.y}");
 
             // Add the player to global_actors AFTER ChunkSubscriptions is populated.
             // This avoids a race where PurrNet's Spawn() and OnPlayerLoadedScene both
@@ -382,7 +382,7 @@ namespace Game.Server
                     }
 
                     // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
-                    Game.Shared.Networking.ActorService.onServerActorSpawned?.Invoke(actor);
+                    Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
 
                     // Link the actor to the player's session data for disconnect cleanup.
                     if (cmd.Owner != default)

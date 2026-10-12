@@ -31,7 +31,7 @@ namespace Game.Client
         {
             _instance = this;
 
-            Game.Shared.Networking.AccountService.onEnteringWorld += (characterData, sceneName) => StartCoroutine(OnEnteringWorld(sceneName));
+            Game.Shared.Networking.AccountEndpoint.onEnteringWorld += (characterData, sceneName) => StartCoroutine(OnEnteringWorld(sceneName));
             _initialized = true;
         }
 
@@ -64,7 +64,7 @@ namespace Game.Client
             // Subscribe BEFORE loading global_world to avoid missing scene callbacks
             NetworkManager.main.sceneModule.onSceneLoaded += OnSceneLoaded;
             NetworkManager.main.sceneModule.onSceneUnloaded += OnSceneUnloaded;
-            Game.Shared.Networking.MovementService.onClientInterestRequest += ClientPositionManager.Instance.SetOriginChunk;
+            Game.Shared.Networking.MovementEndpoint.onClientInterestRequest += ClientPositionManager.Instance.SetOriginChunk;
 
             var loadOp = SceneManager.LoadSceneAsync("global_world", LoadSceneMode.Additive);
             yield return new WaitUntil(() => loadOp.isDone);
@@ -72,7 +72,7 @@ namespace Game.Client
 
             yield return new WaitUntil(() => loadedScenes.Count >= 9);
 
-            Game.Shared.Networking.AccountService.onEnteredWorld?.Invoke();
+            Game.Shared.Networking.AccountEndpoint.onEnteredWorld?.Invoke();
             LoadingScreenController.Instance.Finish();
         }
         #endregion

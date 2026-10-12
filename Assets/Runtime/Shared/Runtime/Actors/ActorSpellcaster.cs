@@ -64,8 +64,8 @@ namespace Game.Shared
         private void Awake()
         {
             // Update spell overrides whenever equipment, talents or stats change.
-            CharacterService.onClientEquipmentUpdated += RecalculateOverrides;
-            CharacterService.onClientTalentsUpdated += RecalculateOverrides;
+            CharacterEndpoint.onClientEquipmentUpdated += RecalculateOverrides;
+            CharacterEndpoint.onClientTalentsUpdated += RecalculateOverrides;
         }
 
         #region Spell Management
@@ -235,7 +235,7 @@ namespace Game.Shared
             if (!CanCastSpell(spellID, out var spellDef)) return;
 
             Debug.Log($"Actor {name} is casting spell '{spellID}'");
-            ActorService.onServerSpellCastStarted?.Invoke(GetComponent<Actor>(), spellDef);
+            ActorEndpoint.onServerSpellCastStarted?.Invoke(GetComponent<Actor>(), spellDef);
         }
 
         [ServerRpc(requireOwnership: true)]
@@ -245,7 +245,7 @@ namespace Game.Shared
 
             Debug.Log($"Actor {name} is casting ground spell '{spellID}' at {groundPosition}");
             spellDef.PositionTarget = groundPosition;
-            ActorService.onServerSpellCastStarted?.Invoke(GetComponent<Actor>(), spellDef);
+            ActorEndpoint.onServerSpellCastStarted?.Invoke(GetComponent<Actor>(), spellDef);
             spellDef.PositionTarget = default;
         }
 
@@ -257,14 +257,14 @@ namespace Game.Shared
             if (!CanCastSpell(spellID, out var spellDef)) return;
 
             Debug.Log($"Actor {name} is casting spell '{spellID}'");
-            ActorService.onServerSpellCastStarted?.Invoke(GetComponent<Actor>(), spellDef);
+            ActorEndpoint.onServerSpellCastStarted?.Invoke(GetComponent<Actor>(), spellDef);
         }
 
         [ServerRpc(requireOwnership: true)]
         public void Server_CancelSpellCast(RPCInfo rpcInfo = default)
         {
             var actor = GetComponent<Actor>();
-            ActorService.onServerRequestSpellCastCancel?.Invoke(actor);
+            ActorEndpoint.onServerRequestSpellCastCancel?.Invoke(actor);
         }
 
         [ServerOnly]
@@ -354,7 +354,7 @@ namespace Game.Shared
         public void Observer_StartSpellCast(string spellID, float finalCastTime, RPCInfo rpcInfo = default)
         {
             isCasting = true;
-            ActorService.onSpellCastStarted?.Invoke(GetComponent<Actor>(), spellID, finalCastTime);
+            ActorEndpoint.onSpellCastStarted?.Invoke(GetComponent<Actor>(), spellID, finalCastTime);
         }
 
 
@@ -369,14 +369,14 @@ namespace Game.Shared
         public void Observer_InterruptSpellCast(string spellID)
         {
             isCasting = false;
-            ActorService.onSpellCastInterrupted?.Invoke(GetComponent<Actor>());
+            ActorEndpoint.onSpellCastInterrupted?.Invoke(GetComponent<Actor>());
         }
 
         [ObserversRpc]
         public void Observer_FinishSpellCast(string spellID)
         {
             isCasting = false;
-            ActorService.onSpellCastCompleted?.Invoke(GetComponent<Actor>());
+            ActorEndpoint.onSpellCastCompleted?.Invoke(GetComponent<Actor>());
         }
 
         [ObserversRpc]
@@ -390,13 +390,13 @@ namespace Game.Shared
         [TargetRpc]
         public void Client_StartGlobalCooldown(PlayerID playerId, float duration, RPCInfo info = default)
         {
-            ActorService.onStartGlobalCooldown?.Invoke();
+            ActorEndpoint.onStartGlobalCooldown?.Invoke();
         }
 
         [TargetRpc]
         public void Client_StartSpellCooldown(PlayerID playerId, string spellID, float duration, RPCInfo info = default)
         {
-            ActorService.onStartCooldown?.Invoke(spellID, duration);
+            ActorEndpoint.onStartCooldown?.Invoke(spellID, duration);
         }
         #endregion
     }

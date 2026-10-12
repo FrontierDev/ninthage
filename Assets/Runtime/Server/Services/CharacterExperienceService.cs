@@ -22,7 +22,7 @@ namespace Game.Server.Services
             playerExperience.SetExperience(level, experience, experienceGained);
 
             // Notify clients about the experience update
-            CharacterService.Client_ExperienceUpdated(playerActor.owner.Value, level, experience, experienceGained);
+            CharacterEndpoint.Client_ExperienceUpdated(playerActor.owner.Value, level, experience, experienceGained);
         }
 
         public void AddExperience(int amount)

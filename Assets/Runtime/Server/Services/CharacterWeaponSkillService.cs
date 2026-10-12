@@ -29,7 +29,7 @@ namespace Game.Server.Services
             playerExperience.SetWeaponSkill(weaponType, level, experience, experienceGained);
 
             // Notify clients about the experience update
-            CharacterService.Client_WeaponSkillUpdated(playerActor.owner.Value, (int)weaponType, level, experience, experienceGained);
+            CharacterEndpoint.Client_WeaponSkillUpdated(playerActor.owner.Value, (int)weaponType, level, experience, experienceGained);
         }
 
         public void AddWeaponSkillExperience(int amount)

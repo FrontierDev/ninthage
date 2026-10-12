@@ -24,8 +24,8 @@ namespace Game.Client.UI
         {
             _instance = this;
 
-            Game.Shared.Networking.StatService.onStatsUpdated += OnStatsUpdated;
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
+            Game.Shared.Networking.StatEndpoint.onStatsUpdated += OnStatsUpdated;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
 
             base.Awake();
         }

@@ -21,9 +21,9 @@ namespace Game.Client.UI
         {
             _instance = this;
 
-            ActorService.onSpellCastStarted += OnSpellCastStarted;
-            ActorService.onSpellCastInterrupted += OnSpellCastInterrupted;
-            ActorService.onSpellCastCompleted += OnSpellCastCompleted;
+            ActorEndpoint.onSpellCastStarted += OnSpellCastStarted;
+            ActorEndpoint.onSpellCastInterrupted += OnSpellCastInterrupted;
+            ActorEndpoint.onSpellCastCompleted += OnSpellCastCompleted;
         }
 
         private void OnSpellCastStarted(Actor actor, string spellID, float duration)

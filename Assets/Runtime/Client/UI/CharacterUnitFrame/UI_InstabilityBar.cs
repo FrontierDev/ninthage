@@ -19,7 +19,7 @@ namespace Game.Client.UI
                 playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
                 if (playerStatContainer != null)
                 {
-                    StatService.onStatsUpdated += OnStatsUpdated;
+                    StatEndpoint.onStatsUpdated += OnStatsUpdated;
                     SetMaterial(graphics.material);
                     SetProgress(0f);
                     Refresh();

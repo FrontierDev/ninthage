@@ -16,7 +16,7 @@ namespace Game.Client.UI
             }
             _instance = this;
 
-            Game.Shared.Networking.ActorService.onClientLateTargetedActorChanged += OnClientLateTargetedActorChanged;
+            Game.Shared.Networking.ActorEndpoint.onClientLateTargetedActorChanged += OnClientLateTargetedActorChanged;
         }
 
         private void OnClientLateTargetedActorChanged(Actor oldTarget, Actor newTarget)

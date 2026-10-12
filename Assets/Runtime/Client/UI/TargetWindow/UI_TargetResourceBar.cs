@@ -16,8 +16,8 @@ namespace Game.Client.UI
 
         private void Awake()
         {
-            Game.Shared.Networking.ActorService.onClientLateTargetedActorChanged += OnClientLateTargetedActorChanged;
-            Game.Shared.Networking.StatService.onStatsUpdated += OnStatsUpdated;
+            Game.Shared.Networking.ActorEndpoint.onClientLateTargetedActorChanged += OnClientLateTargetedActorChanged;
+            Game.Shared.Networking.StatEndpoint.onStatsUpdated += OnStatsUpdated;
         }
 
         private void OnStatsUpdated(Actor actor, ActorStatContainer statContainer)

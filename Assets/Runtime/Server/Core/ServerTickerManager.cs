@@ -46,22 +46,22 @@ namespace Game.Server
             entityManager = world.EntityManager;
             actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
-            ActorService.onServerActorTick += OnActorTick;
-            ActorService.onServerActorTickerExpired += OnActorTickerExpired;
-            ActorService.onServerAddTicker += OnAddTickerRequest;
-            ActorService.onServerRemoveTickerByTag += OnRemoveTickerByTagRequest;
-            ActorService.onServerActorDespawned += OnActorDespawned;
+            ActorEndpoint.onServerActorTick += OnActorTick;
+            ActorEndpoint.onServerActorTickerExpired += OnActorTickerExpired;
+            ActorEndpoint.onServerAddTicker += OnAddTickerRequest;
+            ActorEndpoint.onServerRemoveTickerByTag += OnRemoveTickerByTagRequest;
+            ActorEndpoint.onServerActorDespawned += OnActorDespawned;
 
             _initialized = true;
         }
 
         private void OnDestroy()
         {
-            ActorService.onServerActorTick -= OnActorTick;
-            ActorService.onServerActorTickerExpired -= OnActorTickerExpired;
-            ActorService.onServerAddTicker -= OnAddTickerRequest;
-            ActorService.onServerRemoveTickerByTag -= OnRemoveTickerByTagRequest;
-            ActorService.onServerActorDespawned -= OnActorDespawned;
+            ActorEndpoint.onServerActorTick -= OnActorTick;
+            ActorEndpoint.onServerActorTickerExpired -= OnActorTickerExpired;
+            ActorEndpoint.onServerAddTicker -= OnAddTickerRequest;
+            ActorEndpoint.onServerRemoveTickerByTag -= OnRemoveTickerByTagRequest;
+            ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
 
             _tickers.Clear();
             _tagIndex.Clear();
@@ -210,7 +210,7 @@ namespace Game.Server
             _actorTickerIds.Remove(actor.Id);
         }
 
-        // ── Cross-assembly bridge (Game.Shared callers via ActorService events) ──────
+        // ── Cross-assembly bridge (Game.Shared callers via ActorEndpoint events) ──────
 
         private void OnAddTickerRequest(Actor actor, float tickInterval, float duration,
             string tag, Action<Actor> onTick, Action<Actor> onExpire)

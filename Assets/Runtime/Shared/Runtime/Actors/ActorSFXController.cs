@@ -37,7 +37,7 @@ namespace Game.Shared
         public void PlaySFX(string addressablePath)
         {
             // Invoke the action to play audio on this actor's AudioSource
-            ActorService.onClientPlaySFXOnAudioSource?.Invoke(_audioSource, addressablePath);
+            ActorEndpoint.onClientPlaySFXOnAudioSource?.Invoke(_audioSource, addressablePath);
         }
     }
 }

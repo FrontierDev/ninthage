@@ -28,14 +28,14 @@ namespace Game.Server.Services
                 playerReputation.SetReputation(faction, currentReputation);
 
                 // Notify clients about the reputation update
-                CharacterService.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionId, currentReputation, amount);
+                CharacterEndpoint.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionId, currentReputation, amount);
             }
             else
             {
                 playerReputation.SetReputation(faction, amount);
 
                 // Notify clients about the reputation update
-                CharacterService.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionId, amount, amount);
+                CharacterEndpoint.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionId, amount, amount);
             }
         }
     }

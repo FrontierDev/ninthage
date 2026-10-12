@@ -11,12 +11,12 @@ namespace Game.Client.UI
         {
             SetMaterial(graphics.material);
 
-            CharacterService.onClientExperienceUpdated += OnExperienceUpdated;
+            CharacterEndpoint.onClientExperienceUpdated += OnExperienceUpdated;
         }
 
         private void OnDestroy()
         {
-            CharacterService.onClientExperienceUpdated -= OnExperienceUpdated;
+            CharacterEndpoint.onClientExperienceUpdated -= OnExperienceUpdated;
         }
 
         private void OnExperienceUpdated(int level, int experience, int delta)

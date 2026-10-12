@@ -33,7 +33,7 @@ namespace Game.Client
             characterCreationWindow.ShowImmediate();
 
             // Subscribe to character creation-related events.
-            Game.Shared.Networking.AccountService.onCharacterCreated += OnCharacterCreated;
+            Game.Shared.Networking.AccountEndpoint.onCharacterCreated += OnCharacterCreated;
         }
 
         private void Start()
@@ -67,7 +67,7 @@ namespace Game.Client
                 return;
             }
 
-            Game.Shared.Networking.AccountService.Server_TryCreateCharacter(new Game.Shared.Persistence.NewCharacterData
+            Game.Shared.Networking.AccountEndpoint.Server_TryCreateCharacter(new Game.Shared.Persistence.NewCharacterData
             {
                 Name = characterName,
                 ClassID = _selectedClassId,

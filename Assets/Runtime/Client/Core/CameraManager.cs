@@ -32,8 +32,8 @@ namespace Game.Client
 
             _instance = this;
 
-            Game.Shared.Networking.AccountService.onEnteredWorld += OnEnteredWorld;
-            Game.Shared.Networking.ActorService.onActorOwnershipTaken += OnActorOwnershipTaken;
+            Game.Shared.Networking.AccountEndpoint.onEnteredWorld += OnEnteredWorld;
+            Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken += OnActorOwnershipTaken;
         }
 
         private void OnEnteredWorld()

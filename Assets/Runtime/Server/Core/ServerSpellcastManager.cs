@@ -41,12 +41,12 @@ namespace Game.Server
             entityManager = world.EntityManager;
             actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
-            ActorService.onServerSpellCastStarted += OnSpellCastStarted;
-            ActorService.onServerSpellCastTick += OnSpellCastTick;
-            ActorService.onServerSpellCastCompleted += OnSpellCastCompleted;
-            ActorService.onServerSpellCastDelayedAction += OnSpellCastDelayedAction;
-            ActorService.onServerSpellCastInterrupted += OnSpellCastInterrupted;
-            ActorService.onServerRequestSpellCastCancel += (actor) => TryInterruptCast(actor.Id);
+            ActorEndpoint.onServerSpellCastStarted += OnSpellCastStarted;
+            ActorEndpoint.onServerSpellCastTick += OnSpellCastTick;
+            ActorEndpoint.onServerSpellCastCompleted += OnSpellCastCompleted;
+            ActorEndpoint.onServerSpellCastDelayedAction += OnSpellCastDelayedAction;
+            ActorEndpoint.onServerSpellCastInterrupted += OnSpellCastInterrupted;
+            ActorEndpoint.onServerRequestSpellCastCancel += (actor) => TryInterruptCast(actor.Id);
 
             _initialized = true;
         }
@@ -73,12 +73,12 @@ namespace Game.Server
         {
             _activeSpellCasts.Clear();
 
-            ActorService.onServerSpellCastStarted -= OnSpellCastStarted;
-            ActorService.onServerSpellCastTick -= OnSpellCastTick;
-            ActorService.onServerSpellCastCompleted -= OnSpellCastCompleted;
-            ActorService.onServerSpellCastInterrupted -= OnSpellCastInterrupted;
-            ActorService.onServerSpellCastDelayedAction -= OnSpellCastDelayedAction;
-            ActorService.onServerRequestSpellCastCancel -= (actor) => TryInterruptCast(actor.Id);
+            ActorEndpoint.onServerSpellCastStarted -= OnSpellCastStarted;
+            ActorEndpoint.onServerSpellCastTick -= OnSpellCastTick;
+            ActorEndpoint.onServerSpellCastCompleted -= OnSpellCastCompleted;
+            ActorEndpoint.onServerSpellCastInterrupted -= OnSpellCastInterrupted;
+            ActorEndpoint.onServerSpellCastDelayedAction -= OnSpellCastDelayedAction;
+            ActorEndpoint.onServerRequestSpellCastCancel -= (actor) => TryInterruptCast(actor.Id);
 
             _instance = null;
             _initialized = false;
@@ -137,7 +137,7 @@ namespace Game.Server
                     {
                         // Trigger GCD for instant casts.
                         if (spell.BaseDefinition.TriggersGCD)
-                            ActorService.onServerStartCooldown?.Invoke(caster.Id, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
+                            ActorEndpoint.onServerStartCooldown?.Invoke(caster.Id, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
 
                         // Instant cast - skip straight to completion.
                         OnSpellCastCompleted(caster.Id, spell.BaseDefinition.DefinitionId);
@@ -165,7 +165,7 @@ namespace Game.Server
                     // Trigger GCD for casted spells (at cast start).
                     if (spell.BaseDefinition.TriggersGCD)
                     {
-                        ActorService.onServerStartCooldown?.Invoke(caster.Id, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
+                        ActorEndpoint.onServerStartCooldown?.Invoke(caster.Id, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
 
                         if (caster.Owner != null)
                             caster.GetComponent<ActorSpellcaster>()?.Client_StartGlobalCooldown(caster.Owner.Value, GameConfigurationManager.Config.GlobalCooldownDuration);
@@ -174,7 +174,7 @@ namespace Game.Server
                     // Channelled spells start their individual cooldown immediately.
                     if (spell.BaseDefinition.IsChanneled && spell.Cooldown > 0f)
                     {
-                        ActorService.onServerStartCooldown?.Invoke(caster.Id, spell.BaseDefinition.DefinitionId, spell.Cooldown);
+                        ActorEndpoint.onServerStartCooldown?.Invoke(caster.Id, spell.BaseDefinition.DefinitionId, spell.Cooldown);
 
                         if (caster.Owner != null)
                             caster.GetComponent<ActorSpellcaster>()?.Client_StartSpellCooldown(caster.Owner.Value, spell.BaseDefinition.DefinitionId, spell.Cooldown);
@@ -330,7 +330,7 @@ namespace Game.Server
             // Start individual spell cooldown if defined (channelled spells already started theirs at cast start).
             if (ctx.Spell.Cooldown > 0f && !ctx.Spell.BaseDefinition.IsChanneled)
             {
-                ActorService.onServerStartCooldown?.Invoke(actorId, spellID, ctx.Spell.Cooldown);
+                ActorEndpoint.onServerStartCooldown?.Invoke(actorId, spellID, ctx.Spell.Cooldown);
 
                 if (ctx.Caster.Owner != null)
                 {
@@ -400,7 +400,7 @@ namespace Game.Server
             if (!_activeSpellCasts.TryGetValue(actorId, out var ctx))
                 return false;
 
-            ActorService.onServerSpellCastInterrupted?.Invoke(actorId, ctx.Spell.BaseDefinition.DefinitionId);
+            ActorEndpoint.onServerSpellCastInterrupted?.Invoke(actorId, ctx.Spell.BaseDefinition.DefinitionId);
             return true;
         }
     }

@@ -35,14 +35,14 @@ namespace Game.Client.UI
 
         private void Start()
         {
-            ActorService.onCombatLogEntryReceived += OnCombatLogEntryReceived;
-            CharacterService.onClientExperienceUpdated += OnExperienceUpdated;
+            ActorEndpoint.onCombatLogEntryReceived += OnCombatLogEntryReceived;
+            CharacterEndpoint.onClientExperienceUpdated += OnExperienceUpdated;
         }
 
         private void OnDestroy()
         {
-            ActorService.onCombatLogEntryReceived -= OnCombatLogEntryReceived;
-            CharacterService.onClientExperienceUpdated -= OnExperienceUpdated;
+            ActorEndpoint.onCombatLogEntryReceived -= OnCombatLogEntryReceived;
+            CharacterEndpoint.onClientExperienceUpdated -= OnExperienceUpdated;
         }
 
         private void OnExperienceUpdated(int level, int experience, int delta)

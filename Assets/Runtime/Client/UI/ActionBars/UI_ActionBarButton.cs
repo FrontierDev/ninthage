@@ -32,7 +32,7 @@ namespace Game.Client.UI
             if (spellIconImage != null && spellIconImage.material != null)
                 spellIconImage.material = new Material(spellIconImage.material);
 
-            ActorService.onStartGlobalCooldown += OnStartGlobalCooldown;
+            ActorEndpoint.onStartGlobalCooldown += OnStartGlobalCooldown;
         }
 
         public void SetKeybindText(string text)

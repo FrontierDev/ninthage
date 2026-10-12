@@ -38,7 +38,7 @@ namespace Game.Server
             networkManager = NetworkManager.main;
 
             // Listen for interest requests from the movement service.
-            Game.Shared.Networking.MovementService.onInterestRequest += OnInterestRequest;
+            Game.Shared.Networking.MovementEndpoint.onInterestRequest += OnInterestRequest;
             networkManager.onPlayerLeft += OnPlayerLeft;
 
             _initialized = true;
@@ -159,7 +159,7 @@ namespace Game.Server
             // Notify that the actor's scene (center chunk) changed.
             if (ServerWorldManager.Instance.TryGetChunkSceneId(centerChunk, out var _centerSceneId))
             {
-                Game.Shared.Networking.ActorService.onServerActorInterestChanged?.Invoke(actor, _centerSceneId);
+                Game.Shared.Networking.ActorEndpoint.onServerActorInterestChanged?.Invoke(actor, _centerSceneId);
             }
         }
 

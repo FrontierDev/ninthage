@@ -24,8 +24,8 @@ namespace Game.Client.UI
             }
             _instance = this;
 
-            Game.Shared.Networking.CharacterService.onClientInventoryUpdated += Refresh;
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned += (actor) => Refresh();
+            Game.Shared.Networking.CharacterEndpoint.onClientInventoryUpdated += Refresh;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += (actor) => Refresh();
 
             base.Awake();
         }

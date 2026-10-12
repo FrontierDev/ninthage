@@ -30,7 +30,7 @@ namespace Game.Shared.Data
 
         public override void Execute(SpellContext ctx, Actor target)
         {
-            ActorService.onServerApplyAura?.Invoke(Aura, ctx.Caster, target, Stacks);
+            ActorEndpoint.onServerApplyAura?.Invoke(Aura, ctx.Caster, target, Stacks);
         }
     }
 }

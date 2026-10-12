@@ -37,19 +37,19 @@ namespace Game.Server
             entityManager = world.EntityManager;
             actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
-            ActorService.onServerApplyAura += OnApplyAuraRequest;
-            ActorService.onServerAuraTick += OnAuraTick;
-            ActorService.onServerAuraExpired += OnAuraExpired;
-            ActorService.onServerAuraDispelled += OnAuraDispelled;
+            ActorEndpoint.onServerApplyAura += OnApplyAuraRequest;
+            ActorEndpoint.onServerAuraTick += OnAuraTick;
+            ActorEndpoint.onServerAuraExpired += OnAuraExpired;
+            ActorEndpoint.onServerAuraDispelled += OnAuraDispelled;
 
             _initialized = true;
         }
 
         private void OnDestroy()
         {
-            ActorService.onServerAuraTick -= OnAuraTick;
-            ActorService.onServerAuraExpired -= OnAuraExpired;
-            ActorService.onServerAuraDispelled -= OnAuraDispelled;
+            ActorEndpoint.onServerAuraTick -= OnAuraTick;
+            ActorEndpoint.onServerAuraExpired -= OnAuraExpired;
+            ActorEndpoint.onServerAuraDispelled -= OnAuraDispelled;
 
             _activeAuras.Clear();
             _instance = null;
@@ -86,7 +86,7 @@ namespace Game.Server
                             ExecuteAuraComponent(ctx, auraComponent);
                     }
 
-                    ActorService.onServerAuraApplied?.Invoke(target.Id, definition.DefinitionId, instanceId);
+                    ActorEndpoint.onServerAuraApplied?.Invoke(target.Id, definition.DefinitionId, instanceId);
                     definition.AuraBehaviour.OnApplied(caster, target, stacks);
 
                     Debug.Log($"Aura '{definition.DisplayName}' applied to {target.Name} by {caster.Name} (instance {instanceId})");
@@ -340,7 +340,7 @@ namespace Game.Server
                         string auraDefId = buffer[i].AuraDefinitionId.ToString();
                         buffer.RemoveAt(i);
 
-                        ActorService.onServerAuraDispelled?.Invoke(target.Id, auraDefId, instanceId);
+                        ActorEndpoint.onServerAuraDispelled?.Invoke(target.Id, auraDefId, instanceId);
 
                         return true;
                     }

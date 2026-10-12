@@ -88,7 +88,7 @@ namespace Game.Shared
             }
 
             if (!Game.Shared.Runtime.IsServer())
-                CharacterService.onClientEquipmentUpdated?.Invoke();
+                CharacterEndpoint.onClientEquipmentUpdated?.Invoke();
             else
                 GetComponent<ActorSpellcaster>().RecalculateOverrides();
         }
@@ -124,7 +124,7 @@ namespace Game.Shared
 
             if (Game.Shared.Runtime.IsServer())
             {
-                CharacterService.onUpdateStatsRequest?.Invoke(statContainer);
+                CharacterEndpoint.onUpdateStatsRequest?.Invoke(statContainer);
                 Client_UpdateEquipment(owner.Value, delta);
             }
 
@@ -150,7 +150,7 @@ namespace Game.Shared
                     {
                         Client_UpdateEquipment(owner.Value, delta);
                         GetComponent<ActorSpellcaster>().RecalculateOverrides();
-                        CharacterService.onUpdateStatsRequest?.Invoke(statContainer);
+                        CharacterEndpoint.onUpdateStatsRequest?.Invoke(statContainer);
                     }
                 }
                 else
@@ -204,7 +204,7 @@ namespace Game.Shared
                 }
             }
 
-            CharacterService.onClientEquipmentUpdated?.Invoke();
+            CharacterEndpoint.onClientEquipmentUpdated?.Invoke();
         }
     }
 }

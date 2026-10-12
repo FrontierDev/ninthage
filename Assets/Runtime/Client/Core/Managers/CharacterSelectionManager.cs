@@ -32,8 +32,8 @@ namespace Game.Client
             characterSelectionWindow.ShowImmediate();
 
             // Subscribe to character selection-related events.
-            Game.Shared.Networking.AccountService.onCharacterListReceived += OnCharacterListReceived;
-            Game.Shared.Networking.AccountService.onEnteringWorld += OnEnteringWorld;
+            Game.Shared.Networking.AccountEndpoint.onCharacterListReceived += OnCharacterListReceived;
+            Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorld;
 
             if (Game.Client.ClientAccountManager.TryGetCharacterList(out List<CharacterData> characters))
                 characterSelectionWindow.PopulateCharacterList(characters);
@@ -63,7 +63,7 @@ namespace Game.Client
                 return;
             }
 
-            Game.Shared.Networking.AccountService.Server_RequestEnterWorld(_selectedCharacter.Guid);
+            Game.Shared.Networking.AccountEndpoint.Server_RequestEnterWorld(_selectedCharacter.Guid);
         }
 
         private void OnEnteringWorld(CharacterData characterData, string sceneName)

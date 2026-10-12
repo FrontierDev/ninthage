@@ -4,7 +4,7 @@ using System;
 
 namespace Game.Shared.Networking
 {
-    public sealed class MovementService
+    public sealed class MovementEndpoint
     {
         // Client callbacks.
         public static Action<Vector2Int[]> onInterestUpdated;

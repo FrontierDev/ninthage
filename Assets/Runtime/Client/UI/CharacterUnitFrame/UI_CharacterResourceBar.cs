@@ -16,7 +16,7 @@ namespace Game.Client.UI
 
         private void Awake()
         {
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
             SetMaterial(graphics.material);
         }
 
@@ -27,7 +27,7 @@ namespace Game.Client.UI
                 playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
                 if (playerStatContainer != null)
                 {
-                    StatService.onStatsUpdated += OnStatsUpdated;
+                    StatEndpoint.onStatsUpdated += OnStatsUpdated;
                     Refresh();
                 }
             }

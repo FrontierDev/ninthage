@@ -9,7 +9,7 @@ namespace Game.Shared.Networking
     /// This manages all actor-related events and RPCs, such as spawning/despawning actors, 
     /// assigning ownership, and notifying clients about changes to their player actor. It serves as a central hub for actor lifecycle events and ownership management in the networking layer.
     /// </summary>
-    public static class ActorService
+    public static class ActorEndpoint
     {
         public static Action<Actor> onActorDeath;
 

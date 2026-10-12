@@ -69,7 +69,7 @@ namespace Game.Server
                 Debug.Log($" - # of Characters: {accountData.Characters.Count}");
 
                 // Send character list to client
-                Game.Shared.Networking.AccountService.Client_UpdateCharacterList(playerId, accountData.Characters);
+                Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(playerId, accountData.Characters);
             }
             else
             {

@@ -58,7 +58,7 @@ namespace Game.Shared
             }
 
             if (!Game.Shared.Runtime.IsServer())
-                CharacterService.onClientInventoryUpdated?.Invoke();
+                CharacterEndpoint.onClientInventoryUpdated?.Invoke();
         }
 
         public int GetRemainingSlots()
@@ -376,7 +376,7 @@ namespace Game.Shared
                 }
             }
 
-            CharacterService.onClientInventoryUpdated?.Invoke();
+            CharacterEndpoint.onClientInventoryUpdated?.Invoke();
         }
     }
 }

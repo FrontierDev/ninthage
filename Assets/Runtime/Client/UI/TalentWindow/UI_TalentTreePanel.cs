@@ -34,7 +34,7 @@ namespace Game.Client.UI
             if (graphics.material != null)
                 graphics.material = new Material(graphics.material);
 
-            ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
+            ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
         }
 
         private void OnPlayerActorAssigned(Actor actor)

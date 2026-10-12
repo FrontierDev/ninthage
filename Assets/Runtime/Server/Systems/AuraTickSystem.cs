@@ -26,7 +26,7 @@ namespace Game.Server.ECS
                     {
                         entry.TimeSinceLastTick -= entry.TickInterval;
 
-                        ActorService.onServerAuraTick?.Invoke(
+                        ActorEndpoint.onServerAuraTick?.Invoke(
                             actor.ValueRO.ActorId,
                             entry.AuraDefinitionId.ToString(),
                             entry.InstanceId);
@@ -34,7 +34,7 @@ namespace Game.Server.ECS
 
                     if (entry.RemainingDuration <= 0f)
                     {
-                        ActorService.onServerAuraExpired?.Invoke(
+                        ActorEndpoint.onServerAuraExpired?.Invoke(
                             actor.ValueRO.ActorId,
                             entry.AuraDefinitionId.ToString(),
                             entry.InstanceId);

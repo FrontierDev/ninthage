@@ -26,7 +26,7 @@ namespace Game.Server.ECS
                     {
                         spellCast.ValueRW.TimeSinceLastTick -= tickInterval;
 
-                        ActorService.onServerSpellCastTick?.Invoke(
+                        ActorEndpoint.onServerSpellCastTick?.Invoke(
                             actor.ValueRO.ActorId,
                             spellCast.ValueRO.SpellID.ToString());
                     }
@@ -38,7 +38,7 @@ namespace Game.Server.ECS
                     state.EntityManager.SetComponentEnabled<SpellCastComponent>(entity, false);
 
                     // Fire an event so the MonoBehaviour layer can resolve the spell
-                    ActorService.onServerSpellCastCompleted?.Invoke(
+                    ActorEndpoint.onServerSpellCastCompleted?.Invoke(
                         actor.ValueRO.ActorId,
                         spellCast.ValueRO.SpellID.ToString());
                 }

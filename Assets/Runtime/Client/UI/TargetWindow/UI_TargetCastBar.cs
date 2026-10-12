@@ -14,10 +14,10 @@ namespace Game.Client.UI
         private void Awake()
         {
             SetMaterial(graphics.material);
-            Game.Shared.Networking.ActorService.onClientLateTargetedActorChanged += OnClientLateTargetedActorChanged;
-            Game.Shared.Networking.ActorService.onSpellCastStarted += OnSpellCastStarted;
-            Game.Shared.Networking.ActorService.onSpellCastCompleted += OnSpellCastFinished;
-            Game.Shared.Networking.ActorService.onSpellCastInterrupted += OnSpellCastFinished;
+            Game.Shared.Networking.ActorEndpoint.onClientLateTargetedActorChanged += OnClientLateTargetedActorChanged;
+            Game.Shared.Networking.ActorEndpoint.onSpellCastStarted += OnSpellCastStarted;
+            Game.Shared.Networking.ActorEndpoint.onSpellCastCompleted += OnSpellCastFinished;
+            Game.Shared.Networking.ActorEndpoint.onSpellCastInterrupted += OnSpellCastFinished;
         }
 
         private void StopCastBar()

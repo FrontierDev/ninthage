@@ -41,16 +41,16 @@ namespace Game.Server
             if (_autoAttackSpell == null)
                 Debug.Warning("GameConfiguration.AutoAttackSpell is not assigned. Auto-attacks will not function.");
 
-            ActorService.onServerStartAutoAttack += OnStartAutoAttack;
-            ActorService.onServerStopAutoAttack += OnStopAutoAttack;
+            ActorEndpoint.onServerStartAutoAttack += OnStartAutoAttack;
+            ActorEndpoint.onServerStopAutoAttack += OnStopAutoAttack;
 
             _initialized = true;
         }
 
         private void OnDestroy()
         {
-            ActorService.onServerStartAutoAttack -= OnStartAutoAttack;
-            ActorService.onServerStopAutoAttack -= OnStopAutoAttack;
+            ActorEndpoint.onServerStartAutoAttack -= OnStartAutoAttack;
+            ActorEndpoint.onServerStopAutoAttack -= OnStopAutoAttack;
 
             _activeAutoAttackers.Clear();
 

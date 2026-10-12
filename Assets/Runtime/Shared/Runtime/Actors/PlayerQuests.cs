@@ -24,7 +24,7 @@ namespace Game.Shared
 
         void Awake()
         {
-            CharacterService.onClientQuestUpdated += OnClientQuestUpdated;
+            CharacterEndpoint.onClientQuestUpdated += OnClientQuestUpdated;
         }
 
         public void OnClientQuestUpdated(string questID, int[] progress, bool isCompleted = false)

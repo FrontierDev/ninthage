@@ -25,8 +25,8 @@ namespace Game.Shared.Test
 
         private void OnMove()
         {
-            MovementService.onClientInterestRequest?.Invoke(currentTile);
-            MovementService.Server_RequestChunkInterest(currentTile);
+            MovementEndpoint.onClientInterestRequest?.Invoke(currentTile);
+            MovementEndpoint.Server_RequestChunkInterest(currentTile);
         }
 
         public Vector2Int GetCurrentTile() { return currentTile; }

@@ -34,14 +34,14 @@ namespace Game.Server
             entityManager = world.EntityManager;
             actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
-            ActorService.onServerStartCooldown += StartCooldown;
+            ActorEndpoint.onServerStartCooldown += StartCooldown;
 
             _initialized = true;
         }
 
         private void OnDestroy()
         {
-            ActorService.onServerStartCooldown -= StartCooldown;
+            ActorEndpoint.onServerStartCooldown -= StartCooldown;
 
             _instance = null;
             _initialized = false;

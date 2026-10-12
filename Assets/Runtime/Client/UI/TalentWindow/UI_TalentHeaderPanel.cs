@@ -18,8 +18,8 @@ namespace Game.Client.UI
 
         override protected void Awake()
         {
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
-            CharacterService.onClientExperienceUpdated += OnClientExperienceUpdated;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
+            CharacterEndpoint.onClientExperienceUpdated += OnClientExperienceUpdated;
         }
 
         private void OnPlayerActorAssigned(Actor actor)

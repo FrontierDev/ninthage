@@ -9,7 +9,7 @@ namespace Game.Shared.Networking
     /// This class is intended to manage character-related events and RPCs, 
     /// such as learning spells, unlocking achievements, or other character progression features.
     /// </summary>
-    public static class CharacterService
+    public static class CharacterEndpoint
     {
         // Client callbacks
         public static Action<string> onClientLearnedSpell;

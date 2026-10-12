@@ -16,7 +16,7 @@ namespace Game.Server.Networking
     {
         public static void RegisterHooks()
         {
-            Game.Shared.Networking.ActorService.onActorDeath += OnActorDeath;
+            Game.Shared.Networking.ActorEndpoint.onActorDeath += OnActorDeath;
         }
 
         private static void OnActorDeath(Actor actor)
@@ -59,7 +59,7 @@ namespace Game.Server.Networking
 
                             if (updateQuest)
                             {
-                                CharacterService.Client_QuestUpdated(playerActor.Owner.Value, quest.Quest.DefinitionId, quest.Progress, quest.IsCompleted);
+                                CharacterEndpoint.Client_QuestUpdated(playerActor.Owner.Value, quest.Quest.DefinitionId, quest.Progress, quest.IsCompleted);
                             }
                         }
                     }

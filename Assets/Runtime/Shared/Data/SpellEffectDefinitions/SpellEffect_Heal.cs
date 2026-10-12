@@ -59,7 +59,7 @@ namespace Game.Shared.Data
                     ?.Observer_SpawnProjectile(target, ProjectileAddressablePath, ProjectileSpeed);
 
                 Actor capturedTarget = target;
-                ActorService.onServerSpellCastDelayedAction?.Invoke(delay, () =>
+                ActorEndpoint.onServerSpellCastDelayedAction?.Invoke(delay, () =>
                 {
                     if (capturedTarget != null)
                         ApplyHealing(ctx, capturedTarget, healing);
@@ -113,7 +113,7 @@ namespace Game.Shared.Data
 
             // Apply aura if applicable
             if (ApplyAura && Aura != null)
-                ActorService.onServerApplyAura?.Invoke(Aura, ctx.Caster, target, AuraStacks);
+                ActorEndpoint.onServerApplyAura?.Invoke(Aura, ctx.Caster, target, AuraStacks);
 
         }
     }

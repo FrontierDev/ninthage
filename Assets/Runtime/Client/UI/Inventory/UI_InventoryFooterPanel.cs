@@ -10,8 +10,8 @@ namespace Game.Client.UI
 
         protected override void Awake()
         {
-            Game.Shared.Networking.CharacterService.onClientInventoryUpdated += OnClientInventoryUpdated;
-            Game.Shared.Networking.CharacterService.onClientCurrencyUpdated += OnClientCurrencyUpdated;
+            Game.Shared.Networking.CharacterEndpoint.onClientInventoryUpdated += OnClientInventoryUpdated;
+            Game.Shared.Networking.CharacterEndpoint.onClientCurrencyUpdated += OnClientCurrencyUpdated;
             base.Awake();
         }
 

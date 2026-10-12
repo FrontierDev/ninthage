@@ -21,7 +21,7 @@ namespace Game.Client.UI
 
         protected override void Awake()
         {
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
             instance = this;
             base.Awake();
         }

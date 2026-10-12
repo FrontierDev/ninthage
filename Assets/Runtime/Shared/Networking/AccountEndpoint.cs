@@ -13,7 +13,7 @@ namespace Game.Shared.Networking
     /// but currently only contains server-to-client RPCs. 
     /// Future expansions may include client-to-server RPCs for account management actions.
     /// </summary>
-    public static class AccountService
+    public static class AccountEndpoint
     {
         // Client callbacks.
         public static Action<List<CharacterData>> onCharacterListReceived;

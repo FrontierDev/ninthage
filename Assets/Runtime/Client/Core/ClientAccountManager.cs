@@ -42,11 +42,11 @@ namespace Game.Client
             _instance = this;
 
             // Subscribe to account-related events 
-            Game.Shared.Networking.AccountService.onCharacterListReceived += UpdateCharacterList;
-            Game.Shared.Networking.AccountService.onEnteringWorld += OnEnterWorld;
-            Game.Shared.Networking.ActorService.onActorOwnershipTaken += OnActorOwnershipTaken;
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned += OnPlayerActorAssigned;
-            Game.Shared.Networking.CharacterService.onClientLearnedSpell += OnClientLearnedSpell;
+            Game.Shared.Networking.AccountEndpoint.onCharacterListReceived += UpdateCharacterList;
+            Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnterWorld;
+            Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken += OnActorOwnershipTaken;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
+            Game.Shared.Networking.CharacterEndpoint.onClientLearnedSpell += OnClientLearnedSpell;
 
             _initialized = true;
         }
@@ -54,11 +54,11 @@ namespace Game.Client
         private void OnDestroy()
         {
             // Unsubscribe from events to prevent memory leaks
-            Game.Shared.Networking.AccountService.onCharacterListReceived -= UpdateCharacterList;
-            Game.Shared.Networking.AccountService.onEnteringWorld -= OnEnterWorld;
-            Game.Shared.Networking.ActorService.onActorOwnershipTaken -= OnActorOwnershipTaken;
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned -= OnPlayerActorAssigned;
-            Game.Shared.Networking.CharacterService.onClientLearnedSpell -= OnClientLearnedSpell;
+            Game.Shared.Networking.AccountEndpoint.onCharacterListReceived -= UpdateCharacterList;
+            Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnterWorld;
+            Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssigned;
+            Game.Shared.Networking.CharacterEndpoint.onClientLearnedSpell -= OnClientLearnedSpell;
             _instance = null;
         }
 
@@ -73,7 +73,7 @@ namespace Game.Client
             Debug.Log($"Taking control of {actor.Name} (ID: {actor.Id})");
             _playerActor = actor;
             Game.Client.Utility.PlaceholderText.LocalContainer = actor.GetComponent<ActorStatContainer>();
-            Game.Shared.Networking.ActorService.onPlayerActorAssigned?.Invoke(actor);
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned?.Invoke(actor);
         }
 
         private void OnPlayerActorAssigned(Actor actor)

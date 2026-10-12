@@ -39,8 +39,8 @@ namespace Game.Shared
 
         private void Awake()
         {
-            CharacterService.onClientExperienceUpdated += SetExperience;
-            CharacterService.onClientWeaponSkillUpdated += SetWeaponSkill;
+            CharacterEndpoint.onClientExperienceUpdated += SetExperience;
+            CharacterEndpoint.onClientWeaponSkillUpdated += SetWeaponSkill;
         }
 
         public void LoadExperience(CharacterData data)

@@ -44,12 +44,12 @@ namespace Game.Shared.Data
 
             // Start a permanent 1s monitor ticker that handles instability decay.
             _lastInstabilityTime[actor] = float.MaxValue; // no cast yet — decay is immediately eligible but instability is 0 so no-ops
-            ActorService.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_instability_decay",
+            ActorEndpoint.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_instability_decay",
                 OnInstabilityDecayTick, null);
 
             // Start a permanent 1s ticker that decays surge when not casting.
             _lastSpellCastTime[actor] = float.MaxValue;
-            ActorService.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_surge_decay",
+            ActorEndpoint.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_surge_decay",
                 OnSurgeDecayTick, null);
         }
 
@@ -62,11 +62,11 @@ namespace Game.Shared.Data
             _activeRifts.Remove(actor);
 
             // Remove any active instability/surge tickers.
-            ActorService.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_instability_decay");
-            ActorService.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_unstable");
-            ActorService.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_critical");
-            ActorService.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_surge_decay");
-            ActorService.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_rift");
+            ActorEndpoint.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_instability_decay");
+            ActorEndpoint.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_unstable");
+            ActorEndpoint.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_critical");
+            ActorEndpoint.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_surge_decay");
+            ActorEndpoint.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_rift");
         }
 
         private void OnServerSpellCastComplete(SpellContext ctx)
@@ -103,8 +103,8 @@ namespace Game.Shared.Data
             _activeRifts[caster] = new RiftData { Position = position, Radius = radius, VFXId = vfxId };
 
             // Replace any existing rift ticker.
-            ActorService.onServerRemoveTickerByTag?.Invoke(caster, "sorcerer_rift");
-            ActorService.onServerAddTicker?.Invoke(caster, duration, duration, "sorcerer_rift",
+            ActorEndpoint.onServerRemoveTickerByTag?.Invoke(caster, "sorcerer_rift");
+            ActorEndpoint.onServerAddTicker?.Invoke(caster, duration, duration, "sorcerer_rift",
                 null, a => _activeRifts.Remove(a));
         }
 
@@ -249,16 +249,16 @@ namespace Game.Shared.Data
 
             // Remove states that no longer apply.
             if (wasCritical && !nowCritical)
-                ActorService.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_critical");
+                ActorEndpoint.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_critical");
             if (wasUnstable && !nowUnstable)
-                ActorService.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_unstable");
+                ActorEndpoint.onServerRemoveTickerByTag?.Invoke(actor, "sorcerer_unstable");
 
             // Add states that are newly entered.
             if (nowCritical && !wasCritical)
-                ActorService.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_critical",
+                ActorEndpoint.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_critical",
                     a => ApplyInstabilityDamage(a, CriticalDamagePerTick), null);
             if (nowUnstable && !wasUnstable)
-                ActorService.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_unstable",
+                ActorEndpoint.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_unstable",
                     a => ApplyInstabilityDamage(a, UnstableDamagePerTick), null);
         }
 

@@ -9,8 +9,8 @@ namespace Game.Server.Networking
     {
         public static void RegisterHooks()
         {
-            Game.Shared.Networking.AccountService.onCharacterCreationRequest += OnCharacterCreationRequest;
-            Game.Shared.Networking.AccountService.onEnterWorldRequest += OnEnterWorldRequest;
+            Game.Shared.Networking.AccountEndpoint.onCharacterCreationRequest += OnCharacterCreationRequest;
+            Game.Shared.Networking.AccountEndpoint.onEnterWorldRequest += OnEnterWorldRequest;
         }
 
         private static void OnCharacterCreationRequest(PlayerID sender, NewCharacterData newCharacterData)

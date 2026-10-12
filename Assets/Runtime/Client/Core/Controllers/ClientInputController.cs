@@ -77,8 +77,8 @@ namespace Game.Client
             _interfaceMap.Disable();
 
             // Start in disabled mode until the player enters the world.
-            ActorService.onPlayerActorAssigned += (playerActor) => SetInputMode(InputMode.GameplayMovement);
-            ActorService.onPlayerActorAssigned += (playerActor) => UI_Manager.Instance.Initialize();
+            ActorEndpoint.onPlayerActorAssigned += (playerActor) => SetInputMode(InputMode.GameplayMovement);
+            ActorEndpoint.onPlayerActorAssigned += (playerActor) => UI_Manager.Instance.Initialize();
         }
 
         private void OnDestroy()
@@ -131,7 +131,7 @@ namespace Game.Client
                 if (interactable != null)
                     interactable.OnPointerEnter(ClientAccountManager.PlayerActor);
                 else
-                    ActorService.onClientHoveredActorChanged?.Invoke(null);
+                    ActorEndpoint.onClientHoveredActorChanged?.Invoke(null);
             }
 
             if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -139,7 +139,7 @@ namespace Game.Client
                 if (interactable != null)
                     interactable.OnPointerClick(ClientAccountManager.PlayerActor);
                 else
-                    ActorService.onClientTargetedActorChanged?.Invoke(null);
+                    ActorEndpoint.onClientTargetedActorChanged?.Invoke(null);
             }
 
             if (Mouse.current.rightButton.wasPressedThisFrame)
