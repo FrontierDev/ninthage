@@ -488,8 +488,8 @@ namespace Game.Server
             for (int i = 0; i < data.SavedResources.Count; i++)
             {
                 var saved = data.SavedResources[i];
-                if (!container.TryGetStat(saved.StatId, out var stat)) continue;
-                container.SetStat(saved.StatId, new StatInstance(
+                if (!container.TryGetStat(saved.StatID, out var stat)) continue;
+                container.SetStat(saved.StatID, new StatInstance(
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, saved.Current));
             }

@@ -90,7 +90,7 @@ namespace Game.Server
                 connectedPlayers.TryGetValue(playerId, out var account) &&
                 session.PlayerActor != null)
             {
-                var charData = account.Characters.Find(c => c.Guid == session.CharacterId);
+            var charData = account.Characters.Find(c => c.GUID == session.CharacterId);
                 if (charData != null)
                 {
                     Persistence.PlayerDatabase.SavePlayerAccount(account);

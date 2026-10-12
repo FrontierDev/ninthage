@@ -63,7 +63,7 @@ namespace Game.Client
                 return;
             }
 
-            Game.Shared.Networking.AccountEndpoint.Server_RequestEnterWorld(_selectedCharacter.Guid);
+            Game.Shared.Networking.AccountEndpoint.Server_RequestEnterWorld(_selectedCharacter.GUID);
         }
 
         private void OnEnteringWorld(CharacterData characterData, string sceneName)

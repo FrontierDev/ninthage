@@ -39,7 +39,7 @@ namespace Game.Editor.Inspectors
                         EditorGUILayout.IntField("Level", data.Level);
                         EditorGUILayout.TextField("Class ID", data.ClassID ?? "(null)");
                         EditorGUILayout.TextField("Race ID", data.RaceID ?? "(null)");
-                        EditorGUILayout.TextField("PvP Faction", data.PvPFactionID ?? "(null)");
+                        EditorGUILayout.TextField("PvP Faction", data.PVPFactionID ?? "(null)");
                     }
                 }
                 else

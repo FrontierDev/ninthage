@@ -52,7 +52,7 @@ namespace Game.Shared
                 Debug.Log($"Loaded reputation for faction {entry.FactionID} with value {entry.Reputation}");
             }
 
-            _pvpFaction = data.PvPFactionID != null ? Game.Shared.Data.FactionDefinitionLibrary.Instance.GetDefinition(data.PvPFactionID) : null;
+            _pvpFaction = data.PVPFactionID != null ? Game.Shared.Data.FactionDefinitionLibrary.Instance.GetDefinition(data.PVPFactionID) : null;
             CharacterEndpoint.onClientReputationUpdated?.Invoke(_pvpFaction?.DefinitionID, _reputations.TryGetValue(_pvpFaction?.DefinitionID ?? "", out int rep) ? rep : 0, 0);
         }
 

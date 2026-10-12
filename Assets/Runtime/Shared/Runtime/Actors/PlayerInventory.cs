@@ -60,8 +60,8 @@ namespace Game.Shared
             _inventory.Clear();
             foreach (var entry in data.SavedInventory)
             {
-                var itemInstance = new ItemInstance(entry.ItemGuid,
-                    entry.ItemId,
+                var itemInstance = new ItemInstance(entry.ItemGUID,
+                    entry.ItemID,
                     entry.Modifications,
                     entry.Durability, entry.StackSize);
                 _inventory[entry.SlotIndex] = itemInstance;

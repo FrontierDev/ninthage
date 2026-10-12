@@ -37,7 +37,7 @@ namespace Game.Shared
                 classID.value = data.ClassID;
                 raceID.value = data.RaceID;
                 characterName.value = data.Name;
-                PVPFactionID.value = data.PvPFactionID;
+            PVPFactionID.value = data.PVPFactionID;
 
                 GetComponent<ActorSpellcaster>().LoadKnownSpells(data.KnownSpellIDs);
                 GetComponent<PlayerInventory>().LoadInventory(data);

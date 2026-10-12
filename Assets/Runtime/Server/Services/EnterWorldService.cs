@@ -44,7 +44,7 @@ namespace Game.Server.Services
                 return false;
             }
 
-            CharacterData characterData = accountData.Characters.Find(c => c.Guid == characterGuid);
+            CharacterData characterData = accountData.Characters.Find(c => c.GUID == characterGuid);
             if (characterData == null)
             {
                 Debug.Error($"Character with GUID {characterGuid} not found for player {playerId}.");

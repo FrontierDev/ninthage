@@ -159,7 +159,7 @@ namespace Game.Server
 
             // Look up the character data from the account and assign it to the PlayerActor.
             var accountData = ServerConnectionManager.Instance.GetAccountData(playerId);
-            var characterData = accountData?.Characters.Find(c => c.Guid == session.CharacterId);
+            var characterData = accountData?.Characters.Find(c => c.GUID == session.CharacterId);
             if (characterData == null)
             {
                 Debug.Error($"Character data not found for player {playerId}, character GUID {session.CharacterId}.");
@@ -193,19 +193,19 @@ namespace Game.Server
                 }
             }
 
-            characterData.PvPFactionID = RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID)?.DefaultPVPFaction?.DefinitionID;
+            characterData.PVPFactionID = RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID)?.DefaultPVPFaction?.DefinitionID;
 
             for (int i = characterData.SavedInventory.Count - 1; i >= 0; i--)
             {
                 var entry = characterData.SavedInventory[i];
-                if (Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemId) == null)
+                if (Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemID) == null)
                 {
-                    Debug.Warning($"Removing invalid inventory entry at slot {entry.SlotIndex} with unknown item '{entry.ItemId}' for player {playerId}.");
+                    Debug.Warning($"Removing invalid inventory entry at slot {entry.SlotIndex} with unknown item '{entry.ItemID}' for player {playerId}.");
                     characterData.SavedInventory.RemoveAt(i);
                 }
-                else if (string.IsNullOrEmpty(entry.ItemGuid))
+                else if (string.IsNullOrEmpty(entry.ItemGUID))
                 {
-                    entry.ItemGuid = System.Guid.NewGuid().ToString("N");
+                    entry.ItemGUID = System.Guid.NewGuid().ToString("N");
                     characterData.SavedInventory[i] = entry;
                     Debug.Log($"Assigned GUID to inventory entry at slot {entry.SlotIndex} for player {playerId}.");
                 }
@@ -214,15 +214,15 @@ namespace Game.Server
             for (int i = characterData.SavedEquipment.Count - 1; i >= 0; i--)
             {
                 var entry = characterData.SavedEquipment[i];
-                var def = Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemId);
+                var def = Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemID);
                 if (def == null || (def.ItemType != Shared.Data.ItemType.Weapon && def.ItemType != Shared.Data.ItemType.Armor))
                 {
-                    Debug.Warning($"Removing invalid equipment entry at slot {entry.SlotIndex} with unknown item '{entry.ItemId}' for player {playerId}.");
+                    Debug.Warning($"Removing invalid equipment entry at slot {entry.SlotIndex} with unknown item '{entry.ItemID}' for player {playerId}.");
                     characterData.SavedEquipment.RemoveAt(i);
                 }
-                else if (string.IsNullOrEmpty(entry.ItemGuid))
+                else if (string.IsNullOrEmpty(entry.ItemGUID))
                 {
-                    entry.ItemGuid = System.Guid.NewGuid().ToString("N");
+                    entry.ItemGUID = System.Guid.NewGuid().ToString("N");
                     characterData.SavedEquipment[i] = entry;
                     Debug.Log($"Assigned GUID to equipment entry at slot {entry.SlotIndex} for player {playerId}.");
                 }

@@ -13,7 +13,7 @@ namespace Game.Shared.Persistence
         /// <summary>Gets or sets the character title.</summary>
         public string Title;
         /// <summary>Gets or sets the character GUID.</summary>
-        public string Guid;
+        public string GUID;
         /// <summary>Gets or sets the character level.</summary>
         public int Level;
         /// <summary>Gets or sets the character experience.</summary>
@@ -23,7 +23,7 @@ namespace Game.Shared.Persistence
         /// <summary>Gets or sets the race identifier.</summary>
         public string RaceID;
         /// <summary>Gets or sets the player-versus-player faction identifier.</summary>
-        public string PvPFactionID;
+        public string PVPFactionID;
         /// <summary>Gets or sets known spell identifiers.</summary>
         public List<string> KnownSpellIDs = new();
         /// <summary>Gets or sets saved inventory entries.</summary>
@@ -50,11 +50,11 @@ namespace Game.Shared.Persistence
         /// <summary>Initializes persisted character state with all saved identity values.</summary>
         public CharacterData(string guid, string name, int level, int experience, string title, string classID, string raceID, string pvpFactionID)
         {
-            Guid = guid;
+            GUID = guid;
             Name = name;
             Title = title;
             Level = level;
-            PvPFactionID = pvpFactionID;
+            PVPFactionID = pvpFactionID;
             Experience = experience;
             ClassID = classID;
             RaceID = raceID;
@@ -67,16 +67,16 @@ namespace Game.Shared.Persistence
             ClassID = classID;
             RaceID = raceID;
             Level = level;
-            PvPFactionID = pvpFactionID;
+            PVPFactionID = pvpFactionID;
 
-            if (string.IsNullOrEmpty(PvPFactionID))
+            if (string.IsNullOrEmpty(PVPFactionID))
             {
                 var def = Game.Shared.Data.RaceDefinitionLibrary.Instance.GetDefinition(RaceID).DefaultPVPFaction;
-                PvPFactionID = def != null ? def.DefinitionID : null;
+                PVPFactionID = def != null ? def.DefinitionID : null;
             }
 
             // Generate GUID
-            Guid = System.Guid.NewGuid().ToString();
+            GUID = System.Guid.NewGuid().ToString();
         }
     }
 
@@ -85,7 +85,7 @@ namespace Game.Shared.Persistence
     public struct SavedResourceEntry
     {
         /// <summary>Gets or sets the resource stat identifier.</summary>
-        public string StatId;
+        public string StatID;
         /// <summary>Gets or sets the current resource value.</summary>
         public float Current;
     }
@@ -97,9 +97,9 @@ namespace Game.Shared.Persistence
         /// <summary>Gets or sets the inventory slot index.</summary>
         public int SlotIndex;
         /// <summary>Gets or sets the item GUID.</summary>
-        public string ItemGuid;
+        public string ItemGUID;
         /// <summary>Gets or sets the item identifier.</summary>
-        public string ItemId;
+        public string ItemID;
         /// <summary>Gets or sets the stack size.</summary>
         public int StackSize;
         /// <summary>Gets or sets the durability.</summary>
@@ -113,8 +113,8 @@ namespace Game.Shared.Persistence
     public struct SavedEquipmentEntry
     {
         public int SlotIndex;
-        public string ItemGuid;
-        public string ItemId;
+        public string ItemGUID;
+        public string ItemID;
         public int StackSize;
         public int Durability;
         public List<string> Modifications;

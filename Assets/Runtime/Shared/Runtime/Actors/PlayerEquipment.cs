@@ -89,8 +89,8 @@ namespace Game.Shared
 
             foreach (var entry in data.SavedEquipment)
             {
-                var itemInstance = new ItemInstance(entry.ItemGuid,
-                    entry.ItemId,
+                var itemInstance = new ItemInstance(entry.ItemGUID,
+                    entry.ItemID,
                     entry.Modifications,
                     entry.Durability,
                     entry.StackSize);
