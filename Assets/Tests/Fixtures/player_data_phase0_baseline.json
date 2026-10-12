@@ -1,0 +1,86 @@
+{
+  "Accounts": [
+    {
+      "Username": "phase0_baseline_user",
+      "PasswordHash": "phase0-baseline-password-hash",
+      "PasswordSalt": "phase0-baseline-password-salt",
+      "Characters": [
+        {
+          "Name": "Aveline Stone",
+          "Title": "The Wayfinder",
+          "Guid": "character-phase0-baseline-0001",
+          "Level": 27,
+          "Experience": 123456,
+          "ClassID": "class_ranger",
+          "RaceID": "race_human",
+          "PvPFactionID": "faction_silver_covenant",
+          "KnownSpellIDs": [
+            "spell_arcane_bolt",
+            "spell_healing_wind"
+          ],
+          "SavedInventory": [
+            {
+              "SlotIndex": 3,
+              "ItemGuid": "item-inventory-phase0-0001",
+              "ItemId": "item_health_potion",
+              "StackSize": 4,
+              "Durability": 87,
+              "Modifications": [
+                "mod_healing_potion",
+                "mod_phase0_baseline"
+              ]
+            }
+          ],
+          "SavedEquipment": [
+            {
+              "SlotIndex": 1,
+              "ItemGuid": "item-equipment-phase0-0001",
+              "ItemId": "item_wayfinder_bow",
+              "StackSize": 1,
+              "Durability": 64,
+              "Modifications": [
+                "mod_precision",
+                "mod_wind_attunement"
+              ]
+            }
+          ],
+          "SavedWeaponSkills": [
+            {
+              "WeaponType": 2,
+              "Level": 11,
+              "Experience": 7654
+            }
+          ],
+          "SavedTalents": [
+            {
+              "TalentID": "talent_eagle_eye",
+              "Rank": 3
+            }
+          ],
+          "SavedReputations": [
+            {
+              "FactionID": "faction_silver_covenant",
+              "Reputation": 845
+            }
+          ],
+          "SavedQuests": [
+            {
+              "QuestID": "quest_find_waystone",
+              "Progress": [
+                2,
+                5
+              ],
+              "IsCompleted": false
+            }
+          ],
+          "SavedResources": [
+            {
+              "StatId": "health",
+              "Current": 87.5
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

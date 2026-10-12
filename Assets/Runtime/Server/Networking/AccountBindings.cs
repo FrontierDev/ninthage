@@ -1,16 +1,23 @@
 using Debug = Game.Shared.FormattedDebug;
+using Game.Server.Services;
+using Game.Shared.Networking;
 using NewCharacterData = Game.Shared.Persistence.NewCharacterData;
 using PurrNet;
-using Game.Server.Services;
 
 namespace Game.Server.Networking
 {
-    public static class AccountServiceHooks
+    /// <summary>
+    /// Registers server handlers for account-related endpoint requests.
+    /// </summary>
+    public static class AccountBindings
     {
-        public static void RegisterHooks()
+        /// <summary>
+        /// Registers account request handlers with the shared account endpoint.
+        /// </summary>
+        public static void Register()
         {
-            Game.Shared.Networking.AccountEndpoint.onCharacterCreationRequest += OnCharacterCreationRequest;
-            Game.Shared.Networking.AccountEndpoint.onEnterWorldRequest += OnEnterWorldRequest;
+            AccountEndpoint.onCharacterCreationRequest += OnCharacterCreationRequest;
+            AccountEndpoint.onEnterWorldRequest += OnEnterWorldRequest;
         }
 
         private static void OnCharacterCreationRequest(PlayerID sender, NewCharacterData newCharacterData)

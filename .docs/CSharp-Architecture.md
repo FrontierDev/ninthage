@@ -527,7 +527,7 @@ The main server managers are MonoBehaviour-based, process-wide components create
 
 `ServerStatManager`, `ServerSpellCastManager`, `ServerAuraManager`, `ServerTickerManager`, `ServerCooldownManager`, and `ServerAutoAttackManager` own authoritative gameplay subsystems of the same names.
 
-`ServerHooksManager` initialises server-side hooks used to connect shared network/RPC surfaces to server implementations.
+`ServerBindings` initialises server-side bindings used to connect shared network/RPC surfaces to server implementations.
 
 ### 11.2 Server service layer
 
@@ -545,10 +545,10 @@ These services operate on shared data contracts while remaining server-owned imp
 
 ### 11.3 Server networking support
 
-`Server/Networking` currently contains supporting hook/session types including:
+`Server/Networking` currently contains supporting binding/session types including:
 
-- `AccountServiceHooks`;
-- `ActorDeathHooks`;
+- `AccountBindings`;
+- `ActorDeathBindings`;
 - `PlayerSessionData`.
 
 These types connect shared networking services and actor events to server state.

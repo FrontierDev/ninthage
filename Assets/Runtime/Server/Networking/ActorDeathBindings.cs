@@ -1,22 +1,25 @@
-using System.Collections.Generic;
-using System.Linq;
+using Debug = Game.Shared.FormattedDebug;
 using Game.Server.Services;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using Debug = Game.Shared.FormattedDebug;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Game.Server.Networking
 {
     /// <summary>
-    /// Server-only hooks related to actor deaths, such as handling experience distribution, 
+    /// Server-only bindings related to actor deaths, such as handling experience distribution,
     /// loot drops, and death notifications.
     /// </summary>
-    public static class ActorDeathHooks
+    public static class ActorDeathBindings
     {
-        public static void RegisterHooks()
+        /// <summary>
+        /// Registers the server actor-death handler with the shared actor endpoint.
+        /// </summary>
+        public static void Register()
         {
-            Game.Shared.Networking.ActorEndpoint.onActorDeath += OnActorDeath;
+            ActorEndpoint.onActorDeath += OnActorDeath;
         }
 
         private static void OnActorDeath(Actor actor)

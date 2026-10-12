@@ -39,8 +39,8 @@ namespace Game.Server
             // Step 5: Start server simulation loop.
             yield return ServerStartSimulation();
 
-            // Step 6: Initialise server-side hooks for RPC handlers.
-            yield return ServerInitializeRPCHooks();
+            // Step 6: Initialise server-side bindings for RPC handlers.
+            yield return ServerInitializeBindings();
 
             // Step 7: Load player database.
             yield return ServerInitializePlayerDatabase();
@@ -152,14 +152,14 @@ namespace Game.Server
             Debug.Warning(" ✓ Step 5: Server simulation loop not yet implemented.");
         }
 
-        private static IEnumerator ServerInitializeRPCHooks()
+        private static IEnumerator ServerInitializeBindings()
         {
-            Debug.Log(" - Step 6: Initializing server RPC hooks...");
+            Debug.Log(" - Step 6: Initializing server bindings...");
 
-            ServerHooksManager.ServerInitializeRPCHooks();
+            ServerBindings.Initialize();
 
-            yield return new WaitUntil(() => ServerHooksManager.Initialized == true);
-            Debug.Log(" ✓ Step 6: Server RPC hooks initialized successfully.");
+            yield return new WaitUntil(() => ServerBindings.Initialized == true);
+            Debug.Log(" ✓ Step 6: Server bindings initialized successfully.");
         }
 
         private static IEnumerator ServerInitializePlayerDatabase()
