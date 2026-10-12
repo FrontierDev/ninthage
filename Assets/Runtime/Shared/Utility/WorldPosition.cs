@@ -3,12 +3,17 @@ using UnityEngine;
 namespace Game.Shared.Utility
 {
     [System.Serializable]
+    /// <summary>Represents a double-precision position in the streamed world.</summary>
     public struct WorldPosition
     {
+        /// <summary>Gets or sets the world X coordinate.</summary>
         public double x;
+        /// <summary>Gets or sets the world Y coordinate.</summary>
         public double y;
+        /// <summary>Gets or sets the world Z coordinate.</summary>
         public double z;
 
+        /// <summary>Initializes a world position.</summary>
         public WorldPosition(double x, double y, double z)
         {
             this.x = x;
@@ -59,6 +64,7 @@ namespace Game.Shared.Utility
         }
 
         // Convert to local-space Vector3 relative to a floating origin
+        /// <summary>Converts this position to local coordinates relative to an origin.</summary>
         public Vector3 ToLocal(WorldPosition origin)
         {
             return new Vector3(
@@ -68,9 +74,11 @@ namespace Game.Shared.Utility
             );
         }
 
+        /// <summary>Adds two world positions.</summary>
         public static WorldPosition operator +(WorldPosition a, WorldPosition b)
             => new WorldPosition(a.x + b.x, a.y + b.y, a.z + b.z);
 
+        /// <summary>Subtracts two world positions.</summary>
         public static WorldPosition operator -(WorldPosition a, WorldPosition b)
             => new WorldPosition(a.x - b.x, a.y - b.y, a.z - b.z);
     }

@@ -4,8 +4,11 @@ using UnityEngine;
 
 namespace Game.Shared.Data
 {
+    /// <summary>Identifies whether a stat is an attribute or a resource.</summary>
     public enum ActorStatCategory { Attribute, Resource }
+    /// <summary>Identifies how a stat's base value is calculated.</summary>
     public enum ActorStatBaseValueMode { Fixed, Derived, Rating }
+    /// <summary>Identifies which clients receive stat updates.</summary>
     public enum ActorStatReplicationMode { Server, Owner, Observers }
 
     /// <summary>
@@ -20,6 +23,7 @@ namespace Game.Shared.Data
 
         [SerializeField]
         private Sprite icon;
+        /// <summary>Gets the stat icon.</summary>
         public Sprite Icon => icon;
 
         [SerializeField]
@@ -54,10 +58,12 @@ namespace Game.Shared.Data
 
         [SerializeField]
         private ActorStatReplicationMode replicationMode = ActorStatReplicationMode.Owner;
+        /// <summary>Gets the stat replication mode.</summary>
         public ActorStatReplicationMode ReplicationMode => replicationMode;
 
         [SerializeField]
         private List<string> tags = new();
+        /// <summary>Gets the tags assigned to this stat.</summary>
         public List<string> Tags => tags;
 
         /// <summary>
@@ -100,9 +106,13 @@ namespace Game.Shared.Data
         /// <returns></returns>
         public bool StartsAtZero => startsAtZero;
 
+        /// <summary>Gets how regeneration is calculated.</summary>
         public ActorStatBaseValueMode RegenMode => regenMode;
+        /// <summary>Gets the regeneration rate per second.</summary>
         public float RegenPerSecond => regenPerSecond;
+        /// <summary>Gets the stat used as the regeneration source.</summary>
         public ActorStatDefinition RegenSourceStat => regenSourceStat;
+        /// <summary>Gets the regeneration multiplier.</summary>
         public float RegenMultiplier => regenMultiplier;
 
         protected override string AssetPrefix => "ActorStat";

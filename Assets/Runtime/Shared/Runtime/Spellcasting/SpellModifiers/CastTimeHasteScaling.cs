@@ -5,6 +5,7 @@ using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared
 {
+    /// <summary>Scales spell cast time using actor haste.</summary>
     [Serializable]
     public class CastTimeHasteScaling : ISpellModifier
     {

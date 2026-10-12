@@ -6,18 +6,23 @@ using UnityEngine;
 namespace Game.Shared.Data
 {
     [Serializable]
+    /// <summary>Defines one weighted item entry in a loot table.</summary>
     public class LootTableEntry
     {
         [SerializeField] private ItemDefinition item;
+        /// <summary>Gets the item awarded by this entry.</summary>
         public ItemDefinition Item => item;
 
         // Relative weight among all eligible entries.
         [SerializeField, Min(0f)] private float weight = 1f;
+        /// <summary>Gets the relative entry weight.</summary>
         public float Weight => weight;
 
         [SerializeField, Range(0f, 1f)] private float chance = 1.0f;
+        /// <summary>Gets the normalized drop chance.</summary>
         public float Chance => chance;
 
+        /// <summary>Sets the normalized drop chance for this entry.</summary>
         public void SetDropChance(float newChance)
         {
             chance = Mathf.Clamp01(newChance);
@@ -34,14 +39,17 @@ namespace Game.Shared.Data
     {
         // Chance for this table itself to be rolled.
         [SerializeField, Range(0f, 1f)] private float rollChance = 1.0f;
+        /// <summary>Gets the chance for this table to be rolled.</summary>
         public float RollChance => rollChance;
 
         // Chance for this loot table to yield nothing.
         [SerializeField, Range(0f, 1f)] private float nullRollChance = 0.1f;
+        /// <summary>Gets the chance for the table to yield no item.</summary>
         public float NullRollChance => nullRollChance;
 
         // Editor-authored weights.
         [SerializeField] private List<LootTableEntry> entryDefinitions = new();
+        /// <summary>Gets the authored loot entries.</summary>
         public IReadOnlyList<LootTableEntry> EntryDefinitions => entryDefinitions;
 
         /// <summary>

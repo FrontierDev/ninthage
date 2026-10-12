@@ -1,20 +1,25 @@
+using Debug = Game.Shared.FormattedDebug;
 using System.Collections.Generic;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared.Data
 {
     [System.Serializable]
+    /// <summary>Targets a ground location and optionally actors around it.</summary>
     public class SpellTarget_GroundLocation : SpellTargetDefinition
     {
+        /// <summary>Gets or sets the query radius.</summary>
         public float Radius = 10f;
+        /// <summary>Gets or sets whether actors in the radius are returned.</summary>
         public bool GetActorsInRadius = false;
 
+        /// <summary>Initializes a ground-location target definition.</summary>
         public SpellTarget_GroundLocation()
         {
             _requiresTarget = false;
         }
 
+        /// <summary>Creates a copy of this target definition.</summary>
         public override SpellTargetDefinition Clone()
         {
             return new SpellTarget_GroundLocation
@@ -24,6 +29,7 @@ namespace Game.Shared.Data
             };
         }
 
+        /// <summary>Evaluates the ground location and optional nearby actors.</summary>
         public override List<Actor> Evaluate(SpellContext ctx)
         {
             if (!GetActorsInRadius)

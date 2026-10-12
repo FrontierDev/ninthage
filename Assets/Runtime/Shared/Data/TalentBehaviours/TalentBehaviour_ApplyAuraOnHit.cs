@@ -3,17 +3,20 @@ using UnityEngine;
 
 namespace Game.Shared.Data
 {
+    /// <summary>Applies an aura whenever the player hits with an auto attack.</summary>
     [CreateAssetMenu(menuName = "NinthAge/Talent Behaviours/Apply Aura On Hit")]
     public class TalentBehaviour_ApplyAuraOnHit : TalentBehaviour
     {
         [SerializeField] private AuraDefinition aura;
         [SerializeField] private int stacks = 1;
 
+        /// <summary>Activates the auto-attack aura handler.</summary>
         public override void OnActivate(PlayerActor actor)
         {
             actor.GetComponent<ActorEvents>().onServerAutoAttackHit += OnServerAutoAttackHit;
         }
 
+        /// <summary>Deactivates the auto-attack aura handler.</summary>
         public override void OnDeactivate(PlayerActor actor)
         {
             actor.GetComponent<ActorEvents>().onServerAutoAttackHit -= OnServerAutoAttackHit;

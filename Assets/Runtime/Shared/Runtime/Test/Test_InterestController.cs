@@ -1,13 +1,15 @@
+using Game.Shared.Networking;
 using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Game.Shared.Networking;
 
 namespace Game.Shared.Test
 {
+    /// <summary>Moves a test actor between interest chunks using keyboard input.</summary>
     public sealed class Test_InterestController : MonoBehaviour
     {
         private static Test_InterestController _instance;
+        /// <summary>Gets the active test interest controller.</summary>
         public static Test_InterestController Instance => _instance;
 
         private Action onMove;
@@ -29,6 +31,7 @@ namespace Game.Shared.Test
             MovementEndpoint.Server_RequestChunkInterest(currentTile);
         }
 
+        /// <summary>Gets the current test chunk.</summary>
         public Vector2Int GetCurrentTile() { return currentTile; }
 
         private void PollKeys()

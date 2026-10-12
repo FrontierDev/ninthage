@@ -1,48 +1,61 @@
-using System.Collections.Generic;
-using Game.Shared.Networking;
-using UnityEngine;
 using Debug = Game.Shared.FormattedDebug;
+using Game.Shared.Networking;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace Game.Shared.Data
 {
     [System.Serializable]
+    /// <summary>Calculates and applies healing to a spell target.</summary>
     public class SpellEffect_Heal : SpellEffectDefinition
     {
+        /// <summary>Gets or sets the base healing amount.</summary>
         public float BaseHealing;
+        /// <summary>Gets or sets the stat scaling entries.</summary>
         public List<StatScaling> StatScaling = new();
 
+        /// <summary>Gets or sets whether healing uses a projectile.</summary>
         public bool UsesProjectile = false;
+        /// <summary>Gets or sets the projectile addressable path.</summary>
         public string ProjectileAddressablePath;
+        /// <summary>Gets or sets the projectile speed.</summary>
         public float ProjectileSpeed;
 
+        /// <summary>Gets or sets whether healing applies an aura.</summary>
         public bool ApplyAura = false;
+        /// <summary>Gets or sets the aura applied with healing.</summary>
         public AuraDefinition Aura;
+        /// <summary>Gets or sets the aura stack count.</summary>
         public int AuraStacks = 1;
 
         [SerializeField] private List<SpellActorEvent> casterEvents = new();
+        /// <summary>Gets the caster events raised by this effect.</summary>
         public override List<SpellActorEvent> CasterEvents => casterEvents;
 
         [SerializeField] private List<SpellActorEvent> targetEvents = new();
+        /// <summary>Gets the target events raised by this effect.</summary>
         public override List<SpellActorEvent> TargetEvents => targetEvents;
 
+        /// <summary>Creates a copy of this effect.</summary>
         public override SpellEffectDefinition Clone()
         {
             var clone = (SpellEffect_Heal)MemberwiseClone();
 
             clone.BaseHealing = this.BaseHealing;
-            clone.StatScaling = new List<StatScaling>(this.StatScaling);
+            clone.StatScaling = new(this.StatScaling);
             clone.UsesProjectile = this.UsesProjectile;
             clone.ProjectileAddressablePath = this.ProjectileAddressablePath;
             clone.ProjectileSpeed = this.ProjectileSpeed;
             clone.ApplyAura = this.ApplyAura;
             clone.Aura = this.Aura;
             clone.AuraStacks = this.AuraStacks;
-            clone.casterEvents = new List<SpellActorEvent>(this.casterEvents);
-            clone.targetEvents = new List<SpellActorEvent>(this.targetEvents);
+            clone.casterEvents = new(this.casterEvents);
+            clone.targetEvents = new(this.targetEvents);
 
             return clone;
         }
 
+        /// <summary>Calculates and applies the configured healing.</summary>
         public override void Execute(SpellContext ctx, Actor target)
         {
             // Calculate the healing now.

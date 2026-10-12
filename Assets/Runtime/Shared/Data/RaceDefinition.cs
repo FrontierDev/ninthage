@@ -5,9 +5,12 @@ using UnityEngine;
 namespace Game.Shared.Data
 {
     [System.Serializable]
+    /// <summary>Defines a faction reputation granted when a character starts.</summary>
     public class PlayerStartingReputation
     {
+        /// <summary>Gets or sets the starting faction.</summary>
         public FactionDefinition Faction;
+        /// <summary>Gets or sets the starting reputation.</summary>
         public int Reputation;
     }
 
@@ -29,14 +32,17 @@ namespace Game.Shared.Data
 
         [SerializeField]
         private FactionDefinition defaultPVPFaction;
+        /// <summary>Gets the default player-versus-player faction.</summary>
         public FactionDefinition DefaultPVPFaction => defaultPVPFaction;
 
         [SerializeField]
         private List<PlayerStartingReputation> startingReputations = new();
+        /// <summary>Gets the starting reputation entries.</summary>
         public IReadOnlyList<PlayerStartingReputation> StartingReputations => startingReputations;
 
         [SerializeField]
         private List<ActorStatBaseEntry> baseStats = new();
+        /// <summary>Gets the base stats for the race.</summary>
         public IReadOnlyList<ActorStatBaseEntry> BaseStats => baseStats;
 
         /// <summary>

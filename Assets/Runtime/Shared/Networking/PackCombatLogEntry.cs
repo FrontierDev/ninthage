@@ -1,13 +1,15 @@
-using System.Collections.Generic;
 using Game.Shared.Data;
 using PurrNet.Modules;
 using PurrNet.Packing;
+using System.Collections.Generic;
 
 namespace Game.Shared.Networking
 {
+    /// <summary>Provides PurrNet serialization for combat log entries.</summary>
     public static class PackCombatLogEntry
     {
         [UsedByIL]
+        /// <summary>Writes a combat log entry to a bit packer.</summary>
         public static void Write(this BitPacker packer, CombatLogEntry value)
         {
             Packer<Actor>.Write(packer, value.Source);
@@ -30,6 +32,7 @@ namespace Game.Shared.Networking
         }
 
         [UsedByIL]
+        /// <summary>Reads a combat log entry from a bit packer.</summary>
         public static void Read(this BitPacker packer, ref CombatLogEntry value)
         {
             Actor source = default;
@@ -47,7 +50,7 @@ namespace Game.Shared.Networking
             List<DamageSchoolDefinition> damageTypes = null;
             if (damageTypesLength > 0)
             {
-                damageTypes = new List<DamageSchoolDefinition>(damageTypesLength);
+                damageTypes = new(damageTypesLength);
                 var library = DamageSchoolDefinitionLibrary.Instance;
                 for (int i = 0; i < damageTypesLength; i++)
                 {

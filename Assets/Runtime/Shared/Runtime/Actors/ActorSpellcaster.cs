@@ -1,25 +1,34 @@
-using System.Collections.Generic;
-using System.Linq;
+using Debug = Game.Shared.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using PurrNet;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared
 {
+    /// <summary>Contains a spell definition and its runtime modifier state.</summary>
     public sealed class SpellOverride
     {
+        /// <summary>Gets the base spell definition.</summary>
         public SpellDefinition BaseDefinition;
 
+        /// <summary>Gets or sets the effective spell range.</summary>
         public float Range;
+        /// <summary>Gets or sets the effective cooldown.</summary>
         public float Cooldown;
+        /// <summary>Gets or sets the effective cast time.</summary>
         public float CastTime;
+        /// <summary>Gets or sets the effective tick count.</summary>
         public float TotalTicks;
+        /// <summary>Gets or sets the ground target position.</summary>
         public Vector3 PositionTarget;
 
+        /// <summary>Gets the cloned runtime components.</summary>
         public List<SpellComponent> Components = new();
 
+        /// <summary>Initializes a runtime override from a base definition.</summary>
         public SpellOverride(SpellDefinition baseDefinition)
         {
             BaseDefinition = baseDefinition;
@@ -44,21 +53,26 @@ namespace Game.Shared
     }
 
     [RequireComponent(typeof(Actor))]
+    /// <summary>Manages an actor's known spells and effective spell modifiers.</summary>
     public sealed class ActorSpellcaster : NetworkBehaviour
     {
         /// <summary>
         /// The base spell IDs known by the actor.
         /// </summary>
         [SerializeField] private List<string> knownSpellIDs = new();
+        /// <summary>Gets the spell identifiers known by the actor.</summary>
         public IReadOnlyList<string> KnownSpellIDs => knownSpellIDs;
 
         [SerializeField] private Dictionary<string, SpellOverride> spells = new();
+        /// <summary>Gets the actor's runtime spell overrides.</summary>
         public IReadOnlyDictionary<string, SpellOverride> Spells => spells;
 
         private readonly Dictionary<string, List<ISpellModifier>> modifiersBySource = new();
+        /// <summary>Gets all modifiers currently applied to the actor.</summary>
         public IReadOnlyList<ISpellModifier> SpellModifiers => modifiersBySource.Values.SelectMany(l => l).ToList();
 
         private bool isCasting;
+        /// <summary>Gets whether the actor is currently casting.</summary>
         public bool IsCasting => isCasting;
 
         private void Awake()
@@ -69,6 +83,7 @@ namespace Game.Shared
         }
 
         #region Spell Management
+        /// <summary>Adds a spell to the actor's known spells.</summary>
         public void LearnSpell(string spellID)
         {
             var spellDef = SpellDefinitionLibrary.Instance.GetDefinition(spellID);
@@ -85,6 +100,7 @@ namespace Game.Shared
                 spells.Add(spellID, new SpellOverride(spellDef));
         }
 
+        /// <summary>Loads known spells and their default runtime modifiers.</summary>
         public void LoadKnownSpells(List<string> spellIDs)
         {
             knownSpellIDs.AddRange(spellIDs);
@@ -114,6 +130,7 @@ namespace Game.Shared
         #endregion
 
         #region Spell Modifiers
+        /// <summary>Adds or replaces a spell modifier from a source.</summary>
         public void AddModifier(string source, ISpellModifier modifier, int rank = 1)
         {
             if (string.IsNullOrEmpty(source) || modifier == null) return;
@@ -123,7 +140,7 @@ namespace Game.Shared
 
             if (!modifiersBySource.TryGetValue(source, out var list))
             {
-                list = new List<ISpellModifier>();
+                list = new();
                 modifiersBySource[source] = list;
             }
 
@@ -149,6 +166,7 @@ namespace Game.Shared
             RecalculateOverrides();
         }
 
+        /// <summary>Removes a spell modifier from a source.</summary>
         public void RemoveModifier(string source, ISpellModifier modifier)
         {
             if (string.IsNullOrEmpty(source) || modifier == null) return;
@@ -192,6 +210,7 @@ namespace Game.Shared
                 try { return (ISpellModifier)System.Activator.CreateInstance(modifier.GetType()); } catch { return modifier; }
             }
         }
+        /// <summary>Rebuilds effective spell overrides from base definitions and modifiers.</summary>
         public void RecalculateOverrides()
         {
             var actor = GetComponent<Actor>();

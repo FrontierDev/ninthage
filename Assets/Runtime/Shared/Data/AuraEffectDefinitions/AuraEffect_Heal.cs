@@ -1,21 +1,26 @@
+using Debug = Game.Shared.FormattedDebug;
+using Game.Shared.Networking;
 using System.Collections.Generic;
 using System.Linq;
-using Game.Shared.Networking;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared.Data
 {
+    /// <summary>Applies healing to an aura target.</summary>
     [System.Serializable]
     public class AuraEffect_Heal : AuraEffectDefinition
     {
+        /// <summary>Gets the generated effect description.</summary>
         public override string Description => $"Healing {BaseHealing} health per tick.";
 
+        /// <summary>Gets or sets the base healing amount.</summary>
         public float BaseHealing;
+        /// <summary>Gets or sets stat scaling entries.</summary>
         public List<StatScaling> StatScaling = new();
 
         private const string StatHealth = "health";
 
+        /// <summary>Executes healing for an aura target.</summary>
         public override void Execute(AuraContext ctx, Actor target)
         {
             if (target == null) return;

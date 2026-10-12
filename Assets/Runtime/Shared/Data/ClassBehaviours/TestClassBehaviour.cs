@@ -1,9 +1,10 @@
-using UnityEngine;
 using Debug = Game.Shared.FormattedDebug;
+using UnityEngine;
 
 namespace Game.Shared.Data
 {
     // TestClassBehaviour.cs — one asset handles all test passives
+    /// <summary>Provides the test class passive behaviours.</summary>
     [CreateAssetMenu(menuName = "NinthAge/Class Behaviours/Test")]
     public class TestClassBehaviour : ClassBehaviour
     {
@@ -11,13 +12,16 @@ namespace Game.Shared.Data
         [SerializeField] private float manaOnDamageTaken = 5f;
 
         [SerializeField] private GameObject resourcePrefab;
+        /// <summary>Gets the test class resource prefab.</summary>
         public override GameObject ResourcePrefab => resourcePrefab;
 
+        /// <summary>Activates the test class event handlers.</summary>
         public override void OnActivate(PlayerActor actor)
         {
             actor.GetComponent<ActorEvents>().onServerAutoAttackHit += OnServerAutoAttackHit;
         }
 
+        /// <summary>Deactivates the test class event handlers.</summary>
         public override void OnDeactivate(PlayerActor actor)
         {
             actor.GetComponent<ActorEvents>().onServerAutoAttackHit -= OnServerAutoAttackHit;

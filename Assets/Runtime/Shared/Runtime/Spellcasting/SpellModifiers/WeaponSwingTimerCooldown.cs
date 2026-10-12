@@ -5,6 +5,7 @@ using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared
 {
+    /// <summary>Sets auto-attack cooldown from the actor's weapon swing timer.</summary>
     [Serializable]
     public class WeaponSwingTimerCooldown : ISpellModifier
     {

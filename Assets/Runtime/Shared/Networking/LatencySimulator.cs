@@ -1,11 +1,12 @@
-using UnityEngine;
+using LiteNetLib;
 using PurrNet;
 using PurrNet.Transports;
 using System.Reflection;
-using LiteNetLib;
+using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Applies optional latency and packet-loss simulation to the client transport.</summary>
     public class LatencySimulator : MonoBehaviour
     {
         [Header("Latency Simulation (DEBUG builds only)")]

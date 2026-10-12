@@ -5,6 +5,7 @@ using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared
 {
+    /// <summary>Scales spell cooldown using actor haste.</summary>
     [Serializable]
     public class CooldownHasteScaling : ISpellModifier
     {

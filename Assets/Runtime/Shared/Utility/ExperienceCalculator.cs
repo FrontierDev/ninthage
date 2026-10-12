@@ -22,7 +22,7 @@ namespace Game.Shared.Utility
 
         static ExperienceCalculator()
         {
-            LevelXpRequirements = new Dictionary<int, int>(MaxLevel);
+            LevelXpRequirements = new(MaxLevel);
             Initialize();
         }
 
@@ -60,6 +60,7 @@ namespace Game.Shared.Utility
             return (int)MathF.Round(xp);
         }
 
+        /// <summary>Gets the experience required to advance from a level.</summary>
         public static int GetExpForLevel(int level)
         {
             if (!LevelXpRequirements.TryGetValue(level, out int xp))
@@ -68,6 +69,7 @@ namespace Game.Shared.Utility
             return xp;
         }
 
+        /// <summary>Gets current level progress as a value from zero to one.</summary>
         public static float GetLevelProgress01(int currentLevel, int currentExp)
         {
             if (currentLevel < MinLevel || currentLevel > MaxLevel)

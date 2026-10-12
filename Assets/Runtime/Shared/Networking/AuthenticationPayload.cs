@@ -12,12 +12,14 @@ namespace Game.Shared.Authentication
         public string Username { get; set; }
         public string Password { get; set; }
 
+        /// <summary>Initializes credentials with the supplied username and password.</summary>
         public AuthenticationPayload(string username, string password)
         {
             Username = username;
             Password = password;
         }
 
+        /// <summary>Initializes an empty authentication payload.</summary>
         public AuthenticationPayload()
         {
             Username = string.Empty;

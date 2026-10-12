@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Game.Shared.Data
 {
+    /// <summary>Requires an actor to meet a minimum level.</summary>
     [System.Serializable]
     public sealed class Condition_ActorLevel : ConditionDefinition
     {
@@ -10,6 +11,7 @@ namespace Game.Shared.Data
 
         private readonly string tooltipFormat = "Requires level {0}";
 
+        /// <summary>Evaluates the actor level requirement.</summary>
         public override bool Evaluate(object context)
         {
             if (typeof(PlayerActor).IsAssignableFrom(context.GetType()))
@@ -25,6 +27,7 @@ namespace Game.Shared.Data
             return false;
         }
 
+        /// <summary>Gets the level requirement as tooltip text.</summary>
         public override string GetTooltipLine()
         {
             return string.Format(tooltipFormat, requiredLevel);

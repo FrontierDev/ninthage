@@ -5,12 +5,15 @@ using UnityEngine;
 namespace Game.Shared.Data
 {
     [Serializable]
+    /// <summary>Defines one selectable dialogue choice.</summary>
     public class DialogueChoice
     {
         [SerializeField] private string id;
+        /// <summary>Gets the choice identifier.</summary>
         public string ID => id;
 
         [SerializeField] private string choiceText;
+        /// <summary>Gets or sets the choice text.</summary>
         public string ChoiceText
         {
             get => choiceText;
@@ -18,16 +21,20 @@ namespace Game.Shared.Data
         }
 
         [SerializeField] private Sprite icon;
+        /// <summary>Gets the choice icon.</summary>
         public Sprite Icon => icon;
 
         [SerializeField] private List<DialogueCondition> conditions = new();
+        /// <summary>Gets the conditions for showing the choice.</summary>
         public IReadOnlyList<DialogueCondition> Conditions => conditions;
 
+        /// <summary>Adds a condition to the choice.</summary>
         public void AddCondition(DialogueCondition condition)
         {
             conditions.Add(condition);
         }
 
+        /// <summary>Removes a condition at the specified index.</summary>
         public void RemoveConditionAt(int index)
         {
             if (index >= 0 && index < conditions.Count)
@@ -35,6 +42,7 @@ namespace Game.Shared.Data
         }
 
         [SerializeField] private bool showAlways = false;
+        /// <summary>Gets whether the choice is shown regardless of conditions.</summary>
         public bool ShowAlways => showAlways;
 
         // Links are stored by id to avoid nested serialization cycles.
@@ -43,12 +51,14 @@ namespace Game.Shared.Data
         // each other. We now store only `nextNodeId` and resolve at runtime when
         // a containing DialogueDefinition is available.
         [SerializeField] private int nextNodeId = -1;
+        /// <summary>Gets or sets the next dialogue node identifier.</summary>
         public int NextNodeID
         {
             get => nextNodeId;
             set => nextNodeId = value;
         }
 
+        /// <summary>Resolves the next node from the containing dialogue definition.</summary>
         public DialogueNode ResolveNextNode(DialogueDefinition root)
         {
             if (root == null || nextNodeId == -1) return null;

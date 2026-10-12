@@ -1,8 +1,8 @@
-using System.Threading.Tasks;
+using Debug = Game.Shared.FormattedDebug;
 using PurrNet;
 using PurrNet.Authentication;
 using PurrNet.Transports;
-using Debug = Game.Shared.FormattedDebug;
+using System.Threading.Tasks;
 
 namespace Game.Shared.Authentication
 {
@@ -43,7 +43,9 @@ namespace Game.Shared.Authentication
         #endregion
 
         #region Public API - Server Session (delegated to IPlayerAuthService)
+        /// <summary>Gets the next username validated by the authentication service.</summary>
         public static string GetNextValidatedUsername() => _authService?.GetNextValidatedUsername() ?? "Unknown";
+        /// <summary>Gets whether the next validated player is new.</summary>
         public static bool GetNextPlayerIsNew() => _authService?.GetNextPlayerIsNew() ?? false;
         #endregion
 

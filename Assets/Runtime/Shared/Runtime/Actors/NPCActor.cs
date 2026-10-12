@@ -3,9 +3,12 @@ using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Represents a non-player actor.</summary>
     public sealed class NPCActor : Actor, IInteractable
     {
+        /// <summary>Gets whether this actor is a player.</summary>
         public override bool IsPlayer => false;
+        /// <summary>Gets or sets the NPC definition identifier.</summary>
         public string NpcID = null;
         [SerializeField] private string DisplayName = "";
         [SerializeField, Range(1, 100)] public (int, int) levelRange = (1, 1);
@@ -20,11 +23,13 @@ namespace Game.Shared
             }
         }
 
+        /// <summary>Gets the NPC's display name.</summary>
         public override string GetName()
         {
             return string.IsNullOrEmpty(DisplayName) ? base.GetName() : DisplayName;
         }
 
+        /// <summary>Gets the NPC's current level.</summary>
         public override int GetLevel()
         {
             return level.value > 0 ? level.value : levelRange.Item1;

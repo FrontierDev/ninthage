@@ -102,12 +102,15 @@ namespace Game.Shared.Data
     }
 
     [System.Serializable]
+    /// <summary>Defines a stat value granted by an item.</summary>
     public class ItemStat
     {
         [SerializeField] private ActorStatDefinition stat;
         [SerializeField] private float value;
 
+        /// <summary>Gets the stat affected by this entry.</summary>
         public ActorStatDefinition Stat => stat;
+        /// <summary>Gets the stat value granted by this entry.</summary>
         public float Value => value;
     }
 
@@ -140,38 +143,60 @@ namespace Game.Shared.Data
         [SerializeField] private float swingTimer = 1.0f; // For weapons, the time in seconds between attacks (used for stat calculations)
         [SerializeField] private DamageSchoolDefinition damageSchool; // For weapons, the damage school it belongs to (used for stat calculations)
 
-        [SerializeField] private List<ItemSlot> validSlots = new List<ItemSlot>();
-        [SerializeField] private List<ItemStat> stats = new List<ItemStat>();
-        [SerializeReference] private List<ConditionDefinition> conditions = new List<ConditionDefinition>();
+        [SerializeField] private List<ItemSlot> validSlots = new();
+        [SerializeField] private List<ItemStat> stats = new();
+        [SerializeReference] private List<ConditionDefinition> conditions = new();
 
         [SerializeField] private Action onEquipAction;
         [SerializeField] private Action onUnequipAction;
 
+        /// <summary>Gets the item's quality.</summary>
         public ItemQuality Quality => quality;
+        /// <summary>Gets the item's quality using the legacy rarity name.</summary>
         public ItemQuality Rarity => quality;
+        /// <summary>Gets the item's icon.</summary>
         public Sprite Icon => icon;
+        /// <summary>Gets the item's description.</summary>
         public string Description => description;
+        /// <summary>Gets the item set key.</summary>
         public string ItemSetKey => itemSetKey;
 
+        /// <summary>Gets the item's category.</summary>
         public ItemType ItemType => itemType;
+        /// <summary>Gets the item's weapon type.</summary>
         public ItemWeaponType WeaponType => weaponType;
+        /// <summary>Gets the item's armor weight class.</summary>
         public ItemArmorWeightClass ArmorWeight => armorWeight;
 
+        /// <summary>Gets whether the item requires two hands.</summary>
         public bool IsTwoHanded => isTwoHanded;
+        /// <summary>Gets the weapon's damage per second.</summary>
         public float DamagePerSecond => damagePerSecond;
+        /// <summary>Gets the weapon's swing timer in seconds.</summary>
         public float SwingTimer => swingTimer;
+        /// <summary>Gets the weapon's damage school.</summary>
         public DamageSchoolDefinition DamageSchool => damageSchool;
 
+        /// <summary>Gets the item's uniqueness rules.</summary>
         public ItemUniqueFlag UniqueFlag => uniqueFlag;
+        /// <summary>Gets whether the item can stack.</summary>
         public bool CanStack => canStack;
+        /// <summary>Gets the maximum stack size.</summary>
         public int MaxStackSize => maxStackSize;
+        /// <summary>Gets whether the item can be traded.</summary>
         public bool CanTrade => canTrade;
+        /// <summary>Gets whether the item can be sold.</summary>
         public bool CanSell => canSell;
+        /// <summary>Gets the item's sell price.</summary>
         public int SellPrice => sellPrice;
+        /// <summary>Gets whether the item can be disenchanted.</summary>
         public bool CanDisenchant => canDisenchant;
 
+        /// <summary>Gets the valid equipment slots.</summary>
         public IReadOnlyList<ItemSlot> ValidSlots => validSlots;
+        /// <summary>Gets the item's stat entries.</summary>
         public IReadOnlyList<ItemStat> Stats => stats;
+        /// <summary>Gets the conditions required to use the item.</summary>
         public IReadOnlyList<ConditionDefinition> Conditions => conditions;
 
         protected override string AssetPrefix => "Item";

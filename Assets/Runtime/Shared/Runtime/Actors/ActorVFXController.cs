@@ -1,23 +1,27 @@
-using System.Collections;
-using System.Collections.Generic;
+using Debug = Game.Shared.FormattedDebug;
 using Game.Shared.Networking;
 using PurrNet;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared
 {
+    /// <summary>Coordinates networked actor visual effects.</summary>
     [RequireComponent(typeof(Actor))]
     public sealed class ActorVFXController : NetworkBehaviour
     {
         [SerializeField] private Transform spellEffectSpawnPoint;
+        /// <summary>Gets the spell effect spawn point.</summary>
         public Transform SpellEffectSpawnPoint => spellEffectSpawnPoint;
 
         [SerializeField] private Dictionary<int, GameObject> activeVFX = new();
+        /// <summary>Gets active visual effects by identifier.</summary>
         public IReadOnlyDictionary<int, GameObject> ActiveEffects => activeVFX;
 
+        /// <summary>Registers a visual effect by identifier.</summary>
         public void RegisterEffect(int id, GameObject go)
         {
             activeVFX[id] = go;

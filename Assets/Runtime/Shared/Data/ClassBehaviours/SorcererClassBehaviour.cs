@@ -1,12 +1,13 @@
+using Debug = Game.Shared.FormattedDebug;
+using Game.Shared.Networking;
 using System.Collections.Generic;
 using System.Linq;
-using Game.Shared.Networking;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared.Data
 {
     // SorcererClassBehaviour.cs — one asset handles all sorcerer passives
+    /// <summary>Implements the Sorcerer class passive behaviour.</summary>
     [CreateAssetMenu(menuName = "NinthAge/Class Behaviours/Sorcerer")]
     public class SorcererClassBehaviour : ClassBehaviour
     {
@@ -29,15 +30,20 @@ namespace Game.Shared.Data
 
         private struct RiftData
         {
+            /// <summary>Gets or sets the rift world position.</summary>
             public Vector3 Position;
+            /// <summary>Gets or sets the rift radius.</summary>
             public float Radius;
+            /// <summary>Gets or sets the rift visual effect identifier.</summary>
             public int VFXId;
         }
         private readonly Dictionary<Actor, RiftData> _activeRifts = new();
 
         [SerializeField] private GameObject resourcePrefab;
+        /// <summary>Gets the Sorcerer resource prefab.</summary>
         public override GameObject ResourcePrefab => resourcePrefab;
 
+        /// <summary>Activates Sorcerer event handlers and tickers.</summary>
         public override void OnActivate(PlayerActor actor)
         {
             actor.GetComponent<ActorEvents>().onServerSpellCastComplete += OnServerSpellCastComplete;
@@ -53,6 +59,7 @@ namespace Game.Shared.Data
                 OnSurgeDecayTick, null);
         }
 
+        /// <summary>Deactivates Sorcerer event handlers and tickers.</summary>
         public override void OnDeactivate(PlayerActor actor)
         {
             actor.GetComponent<ActorEvents>().onServerSpellCastComplete -= OnServerSpellCastComplete;
@@ -353,8 +360,8 @@ namespace Game.Shared.Data
                 ResultType = CombatLogResultType.Hit,
                 HitType = SpellHitType.Ability,
                 DamageTypes = instabilityDamageSchool != null
-                    ? new List<DamageSchoolDefinition> { instabilityDamageSchool }
-                    : new List<DamageSchoolDefinition>()
+                    ? new() { instabilityDamageSchool }
+                    : new()
             });
 
             statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));

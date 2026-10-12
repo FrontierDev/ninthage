@@ -18,8 +18,11 @@ namespace Game.Runtime.Shared
     [CreateAssetMenu(menuName = "NinthAge/Terrain/Zone Definition", fileName = "NewZoneDefinition")]
     public class ZoneDefinition : ScriptableObject
     {
+        /// <summary>Gets or sets the zone display name.</summary>
         public string zoneName;
+        /// <summary>Gets or sets the zone albedo texture array.</summary>
         public Texture2DArray albedoArray;
+        /// <summary>Gets or sets the zone normal texture array.</summary>
         public Texture2DArray normalArray;
     }
 }

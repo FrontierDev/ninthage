@@ -1,10 +1,11 @@
+using Debug = Game.Shared.FormattedDebug;
 using Game.Shared.Networking;
 using PurrNet;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared
 {
+    /// <summary>Plays networked spatial sound effects for an actor.</summary>
     [RequireComponent(typeof(Actor))]
     public sealed class ActorSFXController : NetworkBehaviour
     {

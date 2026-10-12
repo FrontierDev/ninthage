@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Adds flat fire damage to fire spell effects.</summary>
     [Serializable]
     public class FireDamageBonus : IScalableModifier
     {

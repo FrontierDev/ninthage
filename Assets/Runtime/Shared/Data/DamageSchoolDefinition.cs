@@ -14,10 +14,14 @@ namespace Game.Shared.Data
         [SerializeField] private ActorStatDefinition mitigationRatingStat;
         [SerializeField] private float ratingPerPercent = 10f;
 
+        /// <summary>Gets the damage school icon.</summary>
         public Sprite Icon => icon;
+        /// <summary>Gets the stat used to calculate mitigation.</summary>
         public ActorStatDefinition MitigationRatingStat => mitigationRatingStat;
+        /// <summary>Gets the rating required for one percent mitigation.</summary>
         public float RatingPerPercent => ratingPerPercent;
 
+        /// <summary>Calculates mitigation for the supplied actor stats.</summary>
         public float CalculateMitigation(ActorStatContainer targetStats)
         {
             if (mitigationRatingStat == null) return 0f;

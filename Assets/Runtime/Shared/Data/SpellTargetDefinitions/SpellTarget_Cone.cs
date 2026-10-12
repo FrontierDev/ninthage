@@ -1,20 +1,25 @@
+using Debug = Game.Shared.FormattedDebug;
 using System.Collections.Generic;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared.Data
 {
     [System.Serializable]
+    /// <summary>Targets actors within a cone in front of the caster.</summary>
     public class SpellTarget_Cone : SpellTargetDefinition
     {
+        /// <summary>Gets or sets the cone range.</summary>
         public float Range = 10f;
+        /// <summary>Gets or sets the cone angle.</summary>
         public float Angle = 30f;
 
+        /// <summary>Initializes a cone target definition.</summary>
         public SpellTarget_Cone()
         {
             _requiresTarget = false;
         }
 
+        /// <summary>Creates a copy of this target definition.</summary>
         public override SpellTargetDefinition Clone()
         {
             return new SpellTarget_Cone
@@ -24,6 +29,7 @@ namespace Game.Shared.Data
             };
         }
 
+        /// <summary>Evaluates actors inside the cone.</summary>
         public override List<Actor> Evaluate(SpellContext ctx)
         {
             var results = new List<Actor>();

@@ -4,24 +4,40 @@ using PurrNet;
 
 namespace Game.Shared.Persistence
 {
+    /// <summary>Persisted character state shared by client and server.</summary>
     [System.Serializable]
     public sealed class CharacterData
     {
+        /// <summary>Gets or sets the character name.</summary>
         public string Name;
+        /// <summary>Gets or sets the character title.</summary>
         public string Title;
+        /// <summary>Gets or sets the character GUID.</summary>
         public string Guid;
+        /// <summary>Gets or sets the character level.</summary>
         public int Level;
+        /// <summary>Gets or sets the character experience.</summary>
         public int Experience;
+        /// <summary>Gets or sets the class identifier.</summary>
         public string ClassID;
+        /// <summary>Gets or sets the race identifier.</summary>
         public string RaceID;
+        /// <summary>Gets or sets the player-versus-player faction identifier.</summary>
         public string PvPFactionID;
-        public List<string> KnownSpellIDs = new List<string>();
-        public List<SavedInventoryEntry> SavedInventory = new List<SavedInventoryEntry>();
-        public List<SavedEquipmentEntry> SavedEquipment = new List<SavedEquipmentEntry>();
-        public List<SavedWeaponSkill> SavedWeaponSkills = new List<SavedWeaponSkill>();
-        public List<SavedTalentEntry> SavedTalents = new List<SavedTalentEntry>();
-        public List<SavedReputationEntry> SavedReputations = new List<SavedReputationEntry>();
-        public List<SavedQuestEntry> SavedQuests = new List<SavedQuestEntry>();
+        /// <summary>Gets or sets known spell identifiers.</summary>
+        public List<string> KnownSpellIDs = new();
+        /// <summary>Gets or sets saved inventory entries.</summary>
+        public List<SavedInventoryEntry> SavedInventory = new();
+        /// <summary>Gets or sets saved equipment entries.</summary>
+        public List<SavedEquipmentEntry> SavedEquipment = new();
+        /// <summary>Gets or sets saved weapon skills.</summary>
+        public List<SavedWeaponSkill> SavedWeaponSkills = new();
+        /// <summary>Gets or sets saved talents.</summary>
+        public List<SavedTalentEntry> SavedTalents = new();
+        /// <summary>Gets or sets saved reputations.</summary>
+        public List<SavedReputationEntry> SavedReputations = new();
+        /// <summary>Gets or sets saved quests.</summary>
+        public List<SavedQuestEntry> SavedQuests = new();
 
         /// <summary>
         /// Persisted resource current values (health, mana, etc.).
@@ -29,8 +45,9 @@ namespace Game.Shared.Persistence
         /// Excluded from PurrNet serialization — this is server-only persistence data.
         /// </summary>
         [DontPack]
-        public List<SavedResourceEntry> SavedResources = new List<SavedResourceEntry>();
+        public List<SavedResourceEntry> SavedResources = new();
 
+        /// <summary>Initializes persisted character state with all saved identity values.</summary>
         public CharacterData(string guid, string name, int level, int experience, string title, string classID, string raceID, string pvpFactionID)
         {
             Guid = guid;
@@ -43,6 +60,7 @@ namespace Game.Shared.Persistence
             RaceID = raceID;
         }
 
+        /// <summary>Initializes a new character with its starting identity values.</summary>
         public CharacterData(string name, int level, string classID, string raceID, string pvpFactionID)
         {
             Name = name;
@@ -63,24 +81,35 @@ namespace Game.Shared.Persistence
     }
 
     [System.Serializable]
+    /// <summary>Stores a persisted resource value.</summary>
     public struct SavedResourceEntry
     {
+        /// <summary>Gets or sets the resource stat identifier.</summary>
         public string StatId;
+        /// <summary>Gets or sets the current resource value.</summary>
         public float Current;
     }
 
     [System.Serializable]
+    /// <summary>Stores a persisted inventory entry.</summary>
     public struct SavedInventoryEntry
     {
+        /// <summary>Gets or sets the inventory slot index.</summary>
         public int SlotIndex;
+        /// <summary>Gets or sets the item GUID.</summary>
         public string ItemGuid;
+        /// <summary>Gets or sets the item identifier.</summary>
         public string ItemId;
+        /// <summary>Gets or sets the stack size.</summary>
         public int StackSize;
+        /// <summary>Gets or sets the durability.</summary>
         public int Durability;
+        /// <summary>Gets or sets item modifications.</summary>
         public List<string> Modifications;
     }
 
     [System.Serializable]
+    /// <summary>Stores a persisted equipment entry.</summary>
     public struct SavedEquipmentEntry
     {
         public int SlotIndex;
@@ -92,6 +121,7 @@ namespace Game.Shared.Persistence
     }
 
     [System.Serializable]
+    /// <summary>Stores a persisted weapon skill.</summary>
     public struct SavedWeaponSkill
     {
         public int WeaponType;
@@ -100,6 +130,7 @@ namespace Game.Shared.Persistence
     }
 
     [System.Serializable]
+    /// <summary>Stores a persisted talent entry.</summary>
     public struct SavedTalentEntry
     {
         public string TalentID;
@@ -107,6 +138,7 @@ namespace Game.Shared.Persistence
     }
 
     [System.Serializable]
+    /// <summary>Stores a persisted reputation entry.</summary>
     public struct SavedReputationEntry
     {
         public string FactionID;
@@ -114,6 +146,7 @@ namespace Game.Shared.Persistence
     }
 
     [System.Serializable]
+    /// <summary>Stores a persisted quest entry.</summary>
     public struct SavedQuestEntry
     {
         public string QuestID;

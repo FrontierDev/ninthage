@@ -1,25 +1,28 @@
-using System.Collections.Generic;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Persistence;
 using PurrNet;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Describes how an equipment slot changed.</summary>
     public enum EquipmentSlotChangeType : byte
     {
         Set,
         Removed
     }
 
+    /// <summary>Describes one equipment slot change.</summary>
     public struct EquipmentSlotChange
     {
         public ItemSlot Slot;
         public EquipmentSlotChangeType ChangeType;
         public ItemInstance Item; // null when ChangeType == Removed
 
+        /// <summary>Initializes an equipment slot change.</summary>
         public EquipmentSlotChange(ItemSlot slot, EquipmentSlotChangeType changeType, ItemInstance item = null)
         {
             Slot = slot;
@@ -28,19 +31,23 @@ namespace Game.Shared
         }
     }
 
+    /// <summary>Contains a set of equipment changes.</summary>
     public struct EquipmentDelta
     {
         public List<EquipmentSlotChange> Changes;
 
+        /// <summary>Initializes an equipment delta.</summary>
         public EquipmentDelta(List<EquipmentSlotChange> changes)
         {
             Changes = changes;
         }
     }
 
+    /// <summary>Manages a player's equipped items.</summary>
     public sealed class PlayerEquipment : NetworkBehaviour
     {
-        [SerializeField] private readonly Dictionary<ItemSlot, ItemInstance> equipment = new Dictionary<ItemSlot, ItemInstance>();
+        [SerializeField] private readonly Dictionary<ItemSlot, ItemInstance> equipment = new();
+        /// <summary>Gets the equipped items by slot.</summary>
         public IReadOnlyDictionary<ItemSlot, ItemInstance> Equipment => equipment;
 
         private PlayerInventory playerInventory;
@@ -57,6 +64,7 @@ namespace Game.Shared
             }
         }
 
+        /// <summary>Gets an equipped item for a slot, if present.</summary>
         public bool TryGetItem(ItemSlot slot, out ItemInstance item)
         {
             if (equipment.ContainsKey(slot))
@@ -69,6 +77,7 @@ namespace Game.Shared
             return false;
         }
 
+        /// <summary>Loads equipment from persisted character data.</summary>
         public void LoadEquipment(CharacterData data)
         {
             equipment.Clear();
@@ -93,6 +102,7 @@ namespace Game.Shared
                 GetComponent<ActorSpellcaster>().RecalculateOverrides();
         }
 
+        /// <summary>Equips an item and updates the inventory.</summary>
         public void EquipItem(ItemSlot slot, ItemInstance itemInstance, int? inventorySlot = null)
         {
             // Check if the player can equip the item (TO DO)
@@ -117,7 +127,7 @@ namespace Game.Shared
                 playerInventory.RemoveItemAtSlot(inventorySlot.Value, 1);
             }
 
-            EquipmentDelta delta = new EquipmentDelta(new List<EquipmentSlotChange>
+            var delta = new EquipmentDelta(new List<EquipmentSlotChange>
             {
                 new EquipmentSlotChange(slot, EquipmentSlotChangeType.Set, itemInstance)
             });
@@ -131,6 +141,7 @@ namespace Game.Shared
             GetComponent<ActorSpellcaster>().RecalculateOverrides();
         }
 
+        /// <summary>Unequips an item into the inventory.</summary>
         public void UnequipItem(ItemSlot slot)
         {
             if (equipment.ContainsKey(slot))
@@ -141,7 +152,7 @@ namespace Game.Shared
                     equipment[slot] = null;
                     playerInventory.AddItem(existingItem, out var remainder, 1);
 
-                    EquipmentDelta delta = new EquipmentDelta(new List<EquipmentSlotChange>
+                    var delta = new EquipmentDelta(new List<EquipmentSlotChange>
                     {
                         new EquipmentSlotChange(slot, EquipmentSlotChangeType.Removed)
                     });
@@ -165,6 +176,7 @@ namespace Game.Shared
         }
 
         [ServerRpc]
+        /// <summary>Requests that the server equip an inventory item.</summary>
         public void Server_RequestEquipItem(ItemSlot slot, int inventorySlot, RPCInfo rpcInfo = default)
         {
             var clientId = rpcInfo.sender;
@@ -179,6 +191,7 @@ namespace Game.Shared
         }
 
         [ServerRpc]
+        /// <summary>Requests that the server unequip an item.</summary>
         public void Server_RequestUnequipItem(ItemSlot slot, RPCInfo rpcInfo = default)
         {
             var clientId = rpcInfo.sender;
@@ -189,6 +202,7 @@ namespace Game.Shared
         }
 
         [TargetRpc]
+        /// <summary>Applies an equipment update on a client.</summary>
         public void Client_UpdateEquipment(PlayerID target, EquipmentDelta delta, RPCInfo rpcInfo = default)
         {
             foreach (var change in delta.Changes)

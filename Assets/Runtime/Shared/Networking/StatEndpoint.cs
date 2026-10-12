@@ -9,6 +9,7 @@ namespace Game.Shared.Networking
     /// </summary>
     public static class StatEndpoint
     {
+        /// <summary>Raised when an actor's stat container is updated.</summary>
         public static Action<Actor, ActorStatContainer> onStatsUpdated;
     }
 }

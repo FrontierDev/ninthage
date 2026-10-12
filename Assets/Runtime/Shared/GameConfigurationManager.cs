@@ -4,6 +4,7 @@ using UnityEngine.AddressableAssets;
 
 namespace Game.Shared
 {
+    /// <summary>Loads and exposes the shared game configuration.</summary>
     public static class GameConfigurationManager
     {
         private static GameConfiguration config;
@@ -20,6 +21,7 @@ namespace Game.Shared
         }
 
         private static bool _initialized = false;
+        /// <summary>Gets whether configuration initialization has completed.</summary>
         public static bool IsInitialized => _initialized;
 
         /// <summary>

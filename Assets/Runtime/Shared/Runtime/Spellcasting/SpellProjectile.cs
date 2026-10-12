@@ -1,9 +1,10 @@
+using Debug = Game.Shared.FormattedDebug;
 using Game.Shared.Networking;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared
 {
+    /// <summary>Moves a spell projectile along a configured trajectory.</summary>
     public sealed class SpellProjectile : MonoBehaviour
     {
         private Transform _target;
@@ -15,8 +16,11 @@ namespace Game.Shared
 
         [SerializeField] private GameObject impactEffectPrefab;
 
+        /// <summary>Gets or sets the sound played when the projectile is created.</summary>
         [SerializeField] public string onCreateSFX;
+        /// <summary>Gets or sets the sound played on impact.</summary>
         [SerializeField] public string onImpactSFX;
+        /// <summary>Gets or sets the sound played while the projectile loops.</summary>
         [SerializeField] public string onLoopSFX;
 
         [Header("Trajectory")]

@@ -1,23 +1,27 @@
-using System.Collections.Generic;
-using Game.Shared.Networking;
-using UnityEngine;
 using Debug = Game.Shared.FormattedDebug;
+using Game.Shared.Networking;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace Game.Shared.Data
 {
     [System.Serializable]
+    /// <summary>Targets the actor selected by the spell context.</summary>
     public class SpellTarget_Single : SpellTargetDefinition
     {
+        /// <summary>Initializes a single-target definition.</summary>
         public SpellTarget_Single()
         {
             _requiresTarget = true;
         }
 
+        /// <summary>Creates a copy of this target definition.</summary>
         public override SpellTargetDefinition Clone()
         {
             return new SpellTarget_Single();
         }
 
+        /// <summary>Evaluates the selected actor and validates range when required.</summary>
         public override List<Actor> Evaluate(SpellContext ctx)
         {
             // If the cast phase is a channelling tick or has ended, we need to check that the target

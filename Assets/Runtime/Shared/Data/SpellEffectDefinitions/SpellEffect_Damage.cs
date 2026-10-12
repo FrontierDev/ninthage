@@ -1,10 +1,11 @@
+using Game.Shared.Networking;
 using System.Collections.Generic;
 using System.Linq;
-using Game.Shared.Networking;
 using UnityEngine;
 
 namespace Game.Shared.Data
 {
+    /// <summary>Identifies which weapon damage is included in a spell effect.</summary>
     public enum SpellWeaponDamageMode
     {
         None,
@@ -14,28 +15,44 @@ namespace Game.Shared.Data
     }
 
     [System.Serializable]
+    /// <summary>Calculates and applies damage to a spell target.</summary>
     public class SpellEffect_Damage : SpellEffectDefinition
     {
+        /// <summary>Gets or sets the base damage.</summary>
         public float BaseDamage;
+        /// <summary>Gets or sets the weapon damage contribution.</summary>
         public SpellWeaponDamageMode WeaponDamageMode = SpellWeaponDamageMode.None;
+        /// <summary>Gets or sets the stat scaling entries.</summary>
         public List<StatScaling> StatScaling = new();
+        /// <summary>Gets or sets the damage schools.</summary>
         public List<DamageSchoolDefinition> DamageSchools = new();
+        /// <summary>Gets or sets the hit category.</summary>
         public SpellHitType HitType = SpellHitType.Auto;
+        /// <summary>Gets or sets the damage category.</summary>
         public SpellDamageType DamageType = SpellDamageType.Spell;
+        /// <summary>Gets or sets whether the effect bypasses hit checks.</summary>
         public bool AlwaysHits = false;
 
+        /// <summary>Gets or sets whether damage uses a projectile.</summary>
         public bool UsesProjectile = false;
+        /// <summary>Gets or sets the projectile addressable path.</summary>
         public string ProjectileAddressablePath;
+        /// <summary>Gets or sets the projectile speed.</summary>
         public float ProjectileSpeed;
 
+        /// <summary>Gets or sets whether damage applies an aura.</summary>
         public bool ApplyAura = false;
+        /// <summary>Gets or sets the aura applied with damage.</summary>
         public AuraDefinition Aura;
+        /// <summary>Gets or sets the aura stack count.</summary>
         public int AuraStacks = 1;
 
         [SerializeField] private List<SpellActorEvent> casterEvents = new();
+        /// <summary>Gets the caster events raised by this effect.</summary>
         public override List<SpellActorEvent> CasterEvents => casterEvents;
 
         [SerializeField] private List<SpellActorEvent> targetEvents = new();
+        /// <summary>Gets the target events raised by this effect.</summary>
         public override List<SpellActorEvent> TargetEvents => targetEvents;
 
         private const string StatDodgeChance = "dodge_chance";
@@ -45,6 +62,7 @@ namespace Game.Shared.Data
         private const string StatSpellExpertise = "spell_expertise";
         private const string StatHealth = "health";
 
+        /// <summary>Creates a copy of this effect.</summary>
         public override SpellEffectDefinition Clone()
         {
             var clone = (SpellEffect_Damage)MemberwiseClone();
@@ -72,12 +90,13 @@ namespace Game.Shared.Data
                 .Select(ds => ds) // If DamageSchoolDefinition is mutable, clone if needed
                 .ToList();
 
-            clone.casterEvents = new List<SpellActorEvent>(this.casterEvents);
-            clone.targetEvents = new List<SpellActorEvent>(this.targetEvents);
+            clone.casterEvents = new(this.casterEvents);
+            clone.targetEvents = new(this.targetEvents);
 
             return clone;
         }
 
+        /// <summary>Calculates and applies the configured damage.</summary>
         public override void Execute(SpellContext ctx, Actor target)
         {
             var casterStats = ctx.Caster.GetComponent<ActorStatContainer>();

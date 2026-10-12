@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Defines an actor spawn location and spawn settings.</summary>
     public class ActorSpawnPoint : MonoBehaviour
     {
         [SerializeField] private string guid;
@@ -11,9 +12,13 @@ namespace Game.Shared
         [SerializeField] private float spawnCooldown = 10f;
         [SerializeField] private bool spawnOnStart = true;
 
+        /// <summary>Gets the actor prefab to spawn.</summary>
         public Actor Actor => actor;
+        /// <summary>Gets the delay between spawns.</summary>
         public float SpawnCooldown => spawnCooldown;
+        /// <summary>Gets whether spawning begins automatically.</summary>
         public bool SpawnOnStart => spawnOnStart;
+        /// <summary>Gets the spawn point GUID.</summary>
         public Guid Guid => string.IsNullOrEmpty(guid) ? Guid.Empty : System.Guid.Parse(guid);
 
 

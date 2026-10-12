@@ -1,13 +1,11 @@
-using UnityEngine;
 using Debug = Game.Shared.FormattedDebug;
-using System.Collections;
 using PurrNet;
+using System.Collections;
+using UnityEngine;
 
 namespace Game.Shared.Test
 {
-    /// <summary>
-    /// NPC spawning data for a single chunk.
-    /// </summary>
+    /// <summary>Animates a test object while it is active on the server.</summary>
     public class Test_SpawnedObject : MonoBehaviour
     {
         private void Start()

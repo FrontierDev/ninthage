@@ -1,21 +1,27 @@
+using Game.Shared.Networking;
 using System.Collections.Generic;
 using System.Linq;
-using Game.Shared.Networking;
 using UnityEngine;
 
 namespace Game.Shared.Data
 {
+    /// <summary>Applies mitigated damage to an aura target.</summary>
     [System.Serializable]
     public class AuraEffect_Damage : AuraEffectDefinition
     {
+        /// <summary>Gets the generated effect description.</summary>
         public override string Description => $"Taking {BaseDamage} {string.Join("/", DamageSchools.Select(ds => ds.DisplayName))} damage.";
 
+        /// <summary>Gets or sets the base damage amount.</summary>
         public float BaseDamage;
+        /// <summary>Gets or sets stat scaling entries.</summary>
         public List<StatScaling> StatScaling = new();
+        /// <summary>Gets or sets the damage schools.</summary>
         public List<DamageSchoolDefinition> DamageSchools = new();
 
         private const string StatHealth = "health";
 
+        /// <summary>Executes damage for an aura target.</summary>
         public override void Execute(AuraContext ctx, Actor target)
         {
             if (target == null) return;

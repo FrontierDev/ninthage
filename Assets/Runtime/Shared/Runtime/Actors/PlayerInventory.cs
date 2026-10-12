@@ -1,23 +1,26 @@
-using System.Collections.Generic;
 using Game.Shared.Networking;
 using Game.Shared.Persistence;
 using PurrNet;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Describes how an inventory slot changed.</summary>
     public enum InventorySlotChangeType : byte
     {
         Set,
         Removed
     }
 
+    /// <summary>Describes one inventory slot change.</summary>
     public struct InventorySlotChange
     {
         public int SlotIndex;
         public InventorySlotChangeType ChangeType;
         public ItemInstance Item; // null when ChangeType == Removed
 
+        /// <summary>Initializes an inventory slot change.</summary>
         public InventorySlotChange(int slotIndex, InventorySlotChangeType changeType, ItemInstance item = null)
         {
             SlotIndex = slotIndex;
@@ -26,25 +29,31 @@ namespace Game.Shared
         }
     }
 
+    /// <summary>Contains a set of inventory changes.</summary>
     public struct InventoryDelta
     {
         public List<InventorySlotChange> Changes;
 
+        /// <summary>Initializes an inventory delta.</summary>
         public InventoryDelta(List<InventorySlotChange> changes)
         {
             Changes = changes;
         }
     }
 
+    /// <summary>Manages a player's inventory slots.</summary>
     public sealed class PlayerInventory : NetworkBehaviour
     {
         // Dictionary of int (slot index) to ItemInstance, representing the player's inventory slots
-        [SerializeField] private readonly Dictionary<int, ItemInstance> inventory = new Dictionary<int, ItemInstance>();
+        [SerializeField] private readonly Dictionary<int, ItemInstance> inventory = new();
+        /// <summary>Gets the inventory items by slot index.</summary>
         public IReadOnlyDictionary<int, ItemInstance> Inventory => inventory;
 
         private int maxSlots = 20; // Default max slots, can be modified by player progression or items
+        /// <summary>Gets the maximum number of inventory slots.</summary>
         public int MaxSlots => maxSlots;
 
+        /// <summary>Loads inventory from persisted character data.</summary>
         public void LoadInventory(CharacterData data)
         {
             inventory.Clear();
@@ -61,11 +70,13 @@ namespace Game.Shared
                 CharacterEndpoint.onClientInventoryUpdated?.Invoke();
         }
 
+        /// <summary>Gets the number of unused inventory slots.</summary>
         public int GetRemainingSlots()
         {
             return maxSlots - inventory.Count;
         }
 
+        /// <summary>Gets the item at a slot, if present.</summary>
         public ItemInstance GetItemAtSlot(int slotIndex)
         {
             inventory.TryGetValue(slotIndex, out var item);

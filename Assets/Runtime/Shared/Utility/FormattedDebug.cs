@@ -1,19 +1,23 @@
 namespace Game.Shared
 {
+    /// <summary>Writes consistently formatted diagnostic messages.</summary>
     public static class FormattedDebug
     {
+        /// <summary>Writes an informational message.</summary>
         public static void Log(string message)
         {
             string caller = GetCallerName();
             UnityEngine.Debug.Log(string.Format("INFO | {0} | [{1}] {2}", System.DateTime.Now.ToString("HH:mm:ss"), caller, message));
         }
 
+        /// <summary>Writes a warning message.</summary>
         public static void Warning(string message)
         {
             string caller = GetCallerName();
             UnityEngine.Debug.LogWarning(string.Format("WARN | {0} | [{1}] {2}", System.DateTime.Now.ToString("HH:mm:ss"), caller, message));
         }
 
+        /// <summary>Writes an error message.</summary>
         public static void Error(string message)
         {
             string caller = GetCallerName();

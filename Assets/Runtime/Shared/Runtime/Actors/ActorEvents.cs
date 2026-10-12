@@ -1,23 +1,31 @@
-using System;
 using Game.Shared.Data;
 using Game.Shared.Persistence;
 using PurrNet;
+using System;
 using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Exposes actor combat and spell events to shared systems.</summary>
     public class ActorEvents : NetworkBehaviour
     {
         // Server events
+        /// <summary>Raised when the actor's auto attack hits.</summary>
         public Action<SpellContext, Actor> onServerAutoAttackHit;
+        /// <summary>Raised when the actor is hit by an auto attack.</summary>
         public Action<SpellContext, Actor> onServerAutoAttackTaken;
+        /// <summary>Raised when the actor finishes casting a spell.</summary>
         public Action<SpellContext> onServerSpellCastComplete;
 
         // Client events
+        /// <summary>Raised when the actor's auto attack hits on the client.</summary>
         public Action<SpellContext, Actor> onClientAutoAttackHit;
+        /// <summary>Raised when the actor is hit by an auto attack on the client.</summary>
         public Action<SpellContext, Actor> onClientAutoAttackTaken;
+        /// <summary>Raised when the actor finishes casting a spell on the client.</summary>
         public Action<SpellContext> onClientSpellCastComplete;
 
+        /// <summary>Loads the class behavior event handlers from persisted character data.</summary>
         public void LoadClassEvents(CharacterData data)
         {
             try

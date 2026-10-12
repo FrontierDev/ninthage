@@ -10,9 +10,12 @@ namespace Game.Shared
     /// </summary>
     public sealed class ConditionStack
     {
+        /// <summary>Gets or sets the caster that applied the stack.</summary>
         public Actor Caster;
+        /// <summary>Gets or sets the remaining stack duration.</summary>
         public float Duration; // Only used by Condition (independent durations). Ignored by Condition_Extend.
 
+        /// <summary>Initializes a condition stack.</summary>
         public ConditionStack(Actor caster, float duration)
         {
             Caster = caster;
@@ -20,17 +23,25 @@ namespace Game.Shared
         }
     }
 
+    /// <summary>Contains mutable state for an aura execution.</summary>
     public sealed class AuraContext
     {
+        /// <summary>Gets or sets the current aura phase.</summary>
         public AuraPhase Phase = AuraPhase.OnApply;
 
-        public AuraDefinition Definition;    // original asset reference
-        public Actor Caster;                 // who applied the aura (or the first applicator for conditions)
-        public Actor Target;                 // who the aura is applied to (one target per instance)
+        /// <summary>Gets or sets the original aura definition.</summary>
+        public AuraDefinition Definition;
+        /// <summary>Gets or sets the actor that applied the aura.</summary>
+        public Actor Caster;
+        /// <summary>Gets or sets the actor affected by the aura.</summary>
+        public Actor Target;
 
         // Mutable copies from AuraDefinition
+        /// <summary>Gets or sets the current duration.</summary>
         public float Duration;
+        /// <summary>Gets or sets the current tick interval.</summary>
         public float TickInterval;
+        /// <summary>Gets or sets the current stack count.</summary>
         public int Stacks;
 
         /// <summary>
@@ -39,7 +50,9 @@ namespace Game.Shared
         /// </summary>
         public List<ConditionStack> ConditionStacks;
 
+        /// <summary>Initializes an empty aura context.</summary>
         public AuraContext() { }
+        /// <summary>Initializes an aura context from its definition and actors.</summary>
         public AuraContext(AuraDefinition definition, Actor caster, Actor target)
         {
             Definition = definition;
@@ -51,8 +64,10 @@ namespace Game.Shared
         }
 
         // Per-component overrides (keyed by AuraComponent.Guid)
+        /// <summary>Gets component-specific runtime overrides.</summary>
         public Dictionary<string, SpellComponentOverrides> ComponentOverrides = new();
 
+        /// <summary>Gets or creates overrides for a component.</summary>
         public SpellComponentOverrides GetOrCreateOverrides(string componentGuid)
         {
             if (!ComponentOverrides.TryGetValue(componentGuid, out var overrides))

@@ -1,12 +1,13 @@
-using System.Collections.Generic;
+using Debug = Game.Shared.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using PurrNet;
+using System.Collections.Generic;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
 
 namespace Game.Shared
 {
+    /// <summary>Stores one actor stat's base, modifier, and current values.</summary>
     public class StatInstance
     {
         private float baseValue;
@@ -40,12 +41,14 @@ namespace Game.Shared
         }
     }
 
+    /// <summary>Identifies the source of an actor stat modifier.</summary>
     public enum ActorStatModifierSource
     {
         Aura,
         Talent
     }
 
+    /// <summary>Defines a flat and percentage modifier for a stat.</summary>
     public sealed class StatModifier
     {
         public ActorStatModifierSource Source;
@@ -68,6 +71,7 @@ namespace Game.Shared
 
 
     [RequireComponent(typeof(Actor))]
+    /// <summary>Stores and replicates an actor's stats and modifiers.</summary>
     public sealed class ActorStatContainer : NetworkBehaviour
     {
         private Dictionary<string, StatInstance> stats = new();

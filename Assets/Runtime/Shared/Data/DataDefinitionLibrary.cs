@@ -1,6 +1,6 @@
-using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 namespace Game.Shared.Data
 {
@@ -11,7 +11,7 @@ namespace Game.Shared.Data
     public abstract class DataDefinitionLibrary<T> : ScriptableObject where T : DataDefinition
     {
         [SerializeField]
-        private List<T> definitions = new List<T>();
+        private List<T> definitions = new();
 
         /// <summary>
         /// The serialized list of definitions, accessible to subclasses.

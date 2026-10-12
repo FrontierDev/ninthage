@@ -3,9 +3,11 @@ using PurrNet.Packing;
 
 namespace Game.Shared.Networking
 {
+    /// <summary>Provides PurrNet serialization for stat snapshots.</summary>
     public static class PackStatSnapshot
     {
         [UsedByIL]
+        /// <summary>Writes a stat entry to a bit packer.</summary>
         public static void Write(this BitPacker packer, StatSnapshotEntry value)
         {
             packer.Write(value.StatId);
@@ -14,6 +16,7 @@ namespace Game.Shared.Networking
         }
 
         [UsedByIL]
+        /// <summary>Reads a stat entry from a bit packer.</summary>
         public static void Read(this BitPacker packer, ref StatSnapshotEntry value)
         {
             string statId = default;
@@ -31,6 +34,7 @@ namespace Game.Shared.Networking
         }
 
         [UsedByIL]
+        /// <summary>Writes a stat snapshot to a bit packer.</summary>
         public static void Write(this BitPacker packer, StatSnapshot value)
         {
             int length = value.Stats?.Length ?? 0;
@@ -40,6 +44,7 @@ namespace Game.Shared.Networking
         }
 
         [UsedByIL]
+        /// <summary>Reads a stat snapshot from a bit packer.</summary>
         public static void Read(this BitPacker packer, ref StatSnapshot value)
         {
             int length = default;

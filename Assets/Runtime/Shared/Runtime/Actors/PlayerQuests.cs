@@ -1,25 +1,32 @@
-using System;
-using System.Collections.Generic;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Persistence;
 using PurrNet;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Stores progress for one active quest.</summary>
     public sealed class PlayerQuestProgress
     {
+        /// <summary>Gets or sets the quest definition.</summary>
         public QuestDefinition Quest;
+        /// <summary>Gets or sets objective progress.</summary>
         public int[] Progress;
+        /// <summary>Gets or sets whether the quest is complete.</summary>
         public bool IsCompleted;
     }
 
+    /// <summary>Manages a player's active quest progress.</summary>
     public sealed class PlayerQuests : NetworkBehaviour
     {
         [SerializeField] private List<PlayerQuestProgress> activeQuests = new();
+        /// <summary>Gets the active quests.</summary>
         public IReadOnlyList<PlayerQuestProgress> ActiveQuests => activeQuests;
 
+        /// <summary>Raised when quest state changes.</summary>
         public Action onUpdate;
 
         void Awake()
@@ -27,6 +34,7 @@ namespace Game.Shared
             CharacterEndpoint.onClientQuestUpdated += OnClientQuestUpdated;
         }
 
+        /// <summary>Applies a quest update received by the client.</summary>
         public void OnClientQuestUpdated(string questID, int[] progress, bool isCompleted = false)
         {
             var questDef = QuestDefinitionLibrary.Instance.GetDefinition(questID);
@@ -137,6 +145,7 @@ namespace Game.Shared
             onUpdate?.Invoke();
         }
 
+        /// <summary>Gets progress for an active quest.</summary>
         public int[] GetQuestProgress(string questID)
         {
             var questProgress = activeQuests.Find(q => q.Quest.DefinitionId == questID);

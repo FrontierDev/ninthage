@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace Game.Shared.Data
 {
+    /// <summary>Classifies a faction by its visibility and role.</summary>
     public enum FactionCategory
     {
         Primary,
@@ -12,13 +13,20 @@ namespace Game.Shared.Data
     }
 
     [Serializable]
+    /// <summary>Describes a reputation reward threshold.</summary>
     public class FactionRewardDescriptionEntry
     {
+        /// <summary>Gets or sets the normalized reputation threshold.</summary>
         [Range(0f, 1f)] public float threshold;
+        /// <summary>Gets or sets whether the reward is positive.</summary>
         public bool isPositive;
+        /// <summary>Gets or sets the reward icon.</summary>
         public Sprite icon;
+        /// <summary>Gets or sets the reward title.</summary>
         public string title;
+        /// <summary>Gets or sets the listed benefits.</summary>
         public List<string> benefits = new();
+        /// <summary>Gets or sets the listed penalties.</summary>
         public List<string> penalties = new();
     }
 
@@ -45,18 +53,23 @@ namespace Game.Shared.Data
         private bool isPlayable;
 
         [SerializeField] private bool canWar = false;
+        /// <summary>Gets whether this faction can participate in faction wars.</summary>
         public bool CanWar => canWar;
 
         [SerializeField] private int maxPoints;
+        /// <summary>Gets the maximum reputation points.</summary>
         public int MaxPoints => maxPoints;
 
         [SerializeField] private List<string> alliedFactionIDs = new();
+        /// <summary>Gets the allied faction identifiers.</summary>
         public IReadOnlyList<string> AlliedFactionIDs => alliedFactionIDs;
 
         [SerializeField] private List<string> enemyFactionIDs = new();
+        /// <summary>Gets the enemy faction identifiers.</summary>
         public IReadOnlyList<string> EnemyFactionIDs => enemyFactionIDs;
 
         [SerializeField] private List<FactionRewardDescriptionEntry> rewardDescriptions = new();
+        /// <summary>Gets the reputation reward descriptions.</summary>
         public IReadOnlyList<FactionRewardDescriptionEntry> RewardDescriptions => rewardDescriptions;
 
         /// <summary>

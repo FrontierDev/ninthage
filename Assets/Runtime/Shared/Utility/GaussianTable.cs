@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 
+/// <summary>Provides a deterministic sequence of sampled Gaussian multipliers.</summary>
 public static class GaussianTable
 {
     private static readonly float[] _samples;
@@ -19,6 +20,7 @@ public static class GaussianTable
         }
     }
 
+    /// <summary>Gets the next sampled multiplier.</summary>
     public static float Next()
     {
         float val = _samples[_index];

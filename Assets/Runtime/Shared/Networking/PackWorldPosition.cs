@@ -1,13 +1,15 @@
-using UnityEngine;
+using Game.Shared.Utility;
 using PurrNet.Modules;
 using PurrNet.Packing;
-using Game.Shared.Utility;
+using UnityEngine;
 
 namespace Game.Shared.Networking
 {
+    /// <summary>Provides PurrNet serialization for world positions.</summary>
     public static class PackWorldPosition
     {
         [UsedByIL]
+        /// <summary>Writes a world position to a bit packer.</summary>
         public static void Write(this BitPacker packer, WorldPosition value)
         {
             Vector2Int chunk = value.Chunk;
@@ -20,6 +22,7 @@ namespace Game.Shared.Networking
         }
 
         [UsedByIL]
+        /// <summary>Reads a world position from a bit packer.</summary>
         public static void Read(this BitPacker packer, ref WorldPosition value)
         {
             int cx = default;

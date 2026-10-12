@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace Game.Shared
 {
+    /// <summary>Converts combat ratings into level-scaled percentages.</summary>
     public static class CombatRatingHelper
     {
         private const int ReferenceLevel = 60;
@@ -14,6 +15,7 @@ namespace Game.Shared
         /// <param name="rating">The raw rating value.</param>
         /// <param name="level">The character's level.</param>
         /// <param name="baseRatingPerPercent">How much rating equals 1% at the reference level.</param>
+        /// <summary>Converts a rating to a percentage for a character level.</summary>
         public static float RatingToPercent(float rating, int level, float baseRatingPerPercent)
         {
             float ratingPerPercent = Mathf.Max(1f, baseRatingPerPercent

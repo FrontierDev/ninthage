@@ -1,19 +1,22 @@
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Persistence;
+using Guid = System.Guid;
 using PurrNet;
 using UnityEngine;
-using Guid = System.Guid;
 
 namespace Game.Shared
 {
+    /// <summary>Represents a player-controlled actor and its persisted character state.</summary>
     [RequireComponent(typeof(NetworkIdentity))]
     [ToDo("Store references to the individual components for ease of access rather than relying on GetComponent calls.")]
     public class PlayerActor : Actor, IInteractable
     {
+        /// <summary>Gets whether this actor is a player.</summary>
         public override bool IsPlayer => true;
 
         private CharacterData characterData;
+        /// <summary>Gets the loaded character data.</summary>
         public CharacterData CharacterData => characterData;
 
         [SerializeField] public readonly SyncVar<int> level = new();
@@ -47,6 +50,7 @@ namespace Game.Shared
             }
         }
 
+        /// <summary>Gets equipped weapon damage for a slot.</summary>
         public override float GetWeaponDamage(ItemSlot slot)
         {
             if (GetComponent<PlayerEquipment>().TryGetItem(slot, out var item))
@@ -61,6 +65,7 @@ namespace Game.Shared
             return 0;
         }
 
+        /// <summary>Gets the equipped weapon swing timer for a slot.</summary>
         public override float GetWeaponSwingTimer(ItemSlot slot)
         {
             if (GetComponent<PlayerEquipment>().TryGetItem(slot, out var item))
@@ -75,16 +80,19 @@ namespace Game.Shared
             return 1.6f;
         }
 
+        /// <summary>Gets the player's character name.</summary>
         public override string GetName()
         {
             return characterName.value;
         }
 
+        /// <summary>Gets the player's current level.</summary>
         public override int GetLevel()
         {
             return level.value;
         }
 
+        /// <summary>Gets the player's combat faction.</summary>
         public override FactionDefinition GetCombatFaction()
         {
             return GetComponent<PlayerReputation>().PvPFaction;

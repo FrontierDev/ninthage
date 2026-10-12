@@ -1,33 +1,43 @@
-using PurrNet;
-using UnityEngine;
-using UnityEngine.AI;
+using Debug = Game.Shared.FormattedDebug;
+using Game.Shared.Data;
+using Game.Shared.Networking;
 using Game.Shared.Utility;
 using Guid = System.Guid;
-using Game.Shared.Networking;
-using Debug = Game.Shared.FormattedDebug;
-using System.Collections.Generic;
-using Game.Shared.Data;
-using System.Linq;
+using PurrNet;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.AI;
 
 namespace Game.Shared
 {
+    /// <summary>Base networked actor shared by players and NPCs.</summary>
     public class Actor : NetworkBehaviour, ILevelledActor
     {
+        /// <summary>Gets the actor's unique identifier.</summary>
         public Guid Id { get; private set; } = System.Guid.NewGuid();
+        /// <summary>Gets the associated spawn point identifier.</summary>
         public Guid SpawnPointGuid { get; private set; }
+        /// <summary>Gets the actor's display name.</summary>
         public string Name { get; private set; } = "Unknown";
+        /// <summary>Gets the owning player, when one exists.</summary>
         public PlayerID? Owner { get; private set; }
+        /// <summary>Gets whether this actor represents a player.</summary>
         public virtual bool IsPlayer => false;
 
+        /// <summary>Gets or sets whether the actor is dead.</summary>
         public bool isDead = false;
 
+        /// <summary>Gets or sets the current streamed world chunk.</summary>
         public string CurrentChunk { get; set; }
 
         private float? _cachedHitboxRadius;
 
+        /// <summary>Raised when the actor's auto attack hits.</summary>
         public Action onAutoAttackHit;
 
+        /// <summary>Gets the transform used as the actor's hit location.</summary>
         [SerializeField] public Transform hitLocation;
 
         /// <summary>
@@ -69,17 +79,20 @@ namespace Game.Shared
         public WorldPosition WorldPos { get; set; }
 
         [SerializeField] private Actor target;
+        /// <summary>Gets the actor's current target.</summary>
         public Actor Target => target;
 
         [SerializeField] private Transform projectileTarget;
+        /// <summary>Gets the transform used for projectile targeting.</summary>
         public Transform ProjectileTarget => projectileTarget;
 
         /// <summary>
         /// The auras that are active ON the target (not BY the target).
         /// </summary>
-        [SerializeField] private Dictionary<int, AuraInstance> activeAuras = new Dictionary<int, AuraInstance>();
-        private List<int> expiredAurasThisFrame = new List<int>();
+        [SerializeField] private Dictionary<int, AuraInstance> activeAuras = new();
+        private List<int> expiredAurasThisFrame = new();
 
+        /// <summary>Initializes the actor identity.</summary>
         public void Initialize(Guid id, string name)
         {
             Id = id;
@@ -133,17 +146,20 @@ namespace Game.Shared
             //Game.Shared.Networking.ActorEndpoint.onActorDespawned?.Invoke(this);
         }
 
+        /// <summary>Gets the actor's display name.</summary>
         public virtual string GetName()
         {
             return Name;
         }
 
+        /// <summary>Gets the actor's level.</summary>
         public virtual int GetLevel()
         {
             Debug.Warning($"GetLevel() not overridden for actor '{Name}' - defaulting to level 1.");
             return 1;
         }
 
+        /// <summary>Gets the faction used for combat relations.</summary>
         public virtual FactionDefinition GetCombatFaction()
         {
             if (TryGetComponent<NPCBehavior>(out var behavior))
@@ -154,6 +170,7 @@ namespace Game.Shared
             return null;
         }
 
+        /// <summary>Gets the actor's relation to a player's faction.</summary>
         public virtual FactionRelationState GetFactionRelation(PlayerReputation playerReputation)
         {
             var npcFaction = GetCombatFaction();
@@ -172,11 +189,13 @@ namespace Game.Shared
                 return FactionRelationState.Neutral;
         }
 
+        /// <summary>Gets weapon damage for an equipment slot.</summary>
         public virtual float GetWeaponDamage(ItemSlot slot)
         {
             return GetComponent<NPCStatProfile>()?.GetWeaponDamage(slot, out float damage) ?? 0;
         }
 
+        /// <summary>Gets the weapon swing timer for an equipment slot.</summary>
         public virtual float GetWeaponSwingTimer(ItemSlot slot)
         {
             switch (slot)
@@ -191,6 +210,7 @@ namespace Game.Shared
         }
 
         [ServerRpc(requireOwnership: true)]
+        /// <summary>Requests a target assignment from the server.</summary>
         public void Server_SetTarget(Actor newTarget)
         {
             target = newTarget;
@@ -207,6 +227,7 @@ namespace Game.Shared
         }
 
         [ObserversRpc]
+        /// <summary>Replicates an actor target to observers.</summary>
         public void Observers_SetTarget(Actor newTarget)
         {
             var oldTarget = target;
@@ -219,23 +240,27 @@ namespace Game.Shared
         }
 
         [ServerRpc(requireOwnership: true)]
+        /// <summary>Requests a spell cast from the server.</summary>
         public void Server_RequestSpellCast(string spellID, RPCInfo rpcInfo = default)
         {
             GetComponent<ActorSpellcaster>()?.Server_RequestSpellCast(spellID);
         }
 
         [ServerRpc(requireOwnership: true)]
+        /// <summary>Requests that the server start auto attacking.</summary>
         public void Server_StartAutoAttack(RPCInfo rpcInfo = default)
         {
             ActorEndpoint.onServerStartAutoAttack?.Invoke(this);
         }
 
         [ServerRpc(requireOwnership: true)]
+        /// <summary>Requests that the server stop auto attacking.</summary>
         public void Server_StopAutoAttack(RPCInfo rpcInfo = default)
         {
             ActorEndpoint.onServerStopAutoAttack?.Invoke(this);
         }
 
+        /// <summary>Assigns the actor's owner and raises ownership callbacks.</summary>
         public void SetOwner(PlayerID? newOwner)
         {
             var oldOwner = Owner;
@@ -256,11 +281,13 @@ namespace Game.Shared
             }
         }
 
+        /// <summary>Sets the actor's display name.</summary>
         public void SetDisplayName(string newName)
         {
             Name = newName;
         }
 
+        /// <summary>Sets the actor's spawn point identifier.</summary>
         public void SetSpawnPointGuid(Guid spawnPointGuid)
         {
             SpawnPointGuid = spawnPointGuid;

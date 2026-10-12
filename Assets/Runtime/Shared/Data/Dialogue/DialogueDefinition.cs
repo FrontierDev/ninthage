@@ -14,10 +14,12 @@ namespace Game.Shared.Data
     public class DialogueDefinition : DataDefinition
     {
         [SerializeField] private List<DialogueNode> nodes = new();
+        /// <summary>Gets the dialogue nodes.</summary>
         public IReadOnlyList<DialogueNode> Nodes => nodes;
 
         protected override string AssetPrefix => "Dialog";
 
+        /// <summary>Gets a dialogue node by identifier.</summary>
         public DialogueNode GetNode(int nodeID)
         {
             return Nodes.FirstOrDefault(n => n.ID == nodeID);

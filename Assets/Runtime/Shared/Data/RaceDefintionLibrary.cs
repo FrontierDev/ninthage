@@ -1,5 +1,5 @@
-using UnityEngine;
 using Debug = Game.Shared.FormattedDebug;
+using UnityEngine;
 
 namespace Game.Shared.Data
 {
