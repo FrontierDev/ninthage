@@ -1,9 +1,11 @@
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+namespace Game.Shared.Data.QuestObjectives
 {
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     /// <summary>Requires collecting a specified item.</summary>
     public sealed class Quest_ItemObjective : QuestObjective
     {

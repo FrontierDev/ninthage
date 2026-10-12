@@ -49,12 +49,12 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 5229246757690409035
-      type: {class: SpellTarget_GroundLocation, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellTarget_GroundLocation, ns: Game.Shared.Data.SpellTargetDefinitions, asm: Game.Shared}
       data:
         Radius: 10
         GetActorsInRadius: 0
     - rid: 5229246757690409036
-      type: {class: SpellEffect_PlaceRift, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellEffect_PlaceRift, ns: Game.Shared.Data.SpellEffectDefinitions, asm: Game.Shared}
       data:
         ClassBehaviour: {fileID: 11400000, guid: dea61810712aa9645957f7e8bb9d5727, type: 2}
         Radius: 5

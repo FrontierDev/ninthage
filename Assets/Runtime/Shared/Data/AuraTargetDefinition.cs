@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using Game.Shared.Runtime.Spellcasting;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Data
 {
     /// <summary>Defines how an aura resolves its affected actors.</summary>

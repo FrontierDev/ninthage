@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using Game.Editor.WorldEditor;
-using Game.Runtime.Shared;
+using Game.Shared.Components;
 using System.Collections.Generic;
 
 namespace Game.Editor.WorldEditor

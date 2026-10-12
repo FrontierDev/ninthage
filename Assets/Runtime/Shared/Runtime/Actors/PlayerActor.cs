@@ -1,11 +1,12 @@
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Persistence;
+using Game.Shared.Runtime;
 using Guid = System.Guid;
 using PurrNet;
 using UnityEngine;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Represents a player-controlled actor and its persisted character state.</summary>
     [RequireComponent(typeof(NetworkIdentity))]
@@ -31,7 +32,7 @@ namespace Game.Shared
             _characterData = data;
 
             // Push to SyncVars so observers get current values
-            if (Game.Shared.Runtime.IsServer())
+            if (Game.Shared.Runtime.Runtime.IsServer())
             {
                 level.value = data.Level;
                 classID.value = data.ClassID;

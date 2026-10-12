@@ -7,6 +7,8 @@ using Game.Shared;
 using Game.Shared.Data;
 using Game.Editor.Data;
 
+using Game.Shared.Runtime.Items;
+using Game.Shared.Utility;
 namespace Game.Editor.Windows
 {
     /// <summary>

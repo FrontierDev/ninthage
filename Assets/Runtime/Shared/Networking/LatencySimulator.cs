@@ -5,7 +5,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Networking
 {
     /// <summary>Applies optional latency and packet-loss simulation to the client transport.</summary>
     public class LatencySimulator : MonoBehaviour
@@ -21,7 +21,7 @@ namespace Game.Shared
 
         private void Start()
         {
-            if (Runtime.IsServer()) return;
+            if (Game.Shared.Runtime.Runtime.IsServer()) return;
 
             var networkManager = NetworkManager.main;
             if (!networkManager) return;

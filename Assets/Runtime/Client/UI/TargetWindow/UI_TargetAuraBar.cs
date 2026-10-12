@@ -5,8 +5,10 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using UnityEngine;
 using UnityEngine.UI;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
 namespace Game.Client.UI
 {
     public sealed class UI_TargetAuraBar : UI_AuraBar

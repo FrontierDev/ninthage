@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using System;
 using UnityEngine.UI;
 
@@ -24,7 +24,7 @@ namespace Game.Client.UI
 
         private void Awake()
         {
-            if (Game.Shared.Runtime.IsServer())
+            if (Game.Shared.Runtime.Runtime.IsServer())
             {
                 Debug.Log("Removing UI from the server.");
                 Destroy(this.gameObject);

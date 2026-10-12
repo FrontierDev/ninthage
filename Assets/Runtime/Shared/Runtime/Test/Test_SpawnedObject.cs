@@ -1,9 +1,9 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using System.Collections;
 using UnityEngine;
 
-namespace Game.Shared.Test
+namespace Game.Shared.Runtime.Test
 {
     /// <summary>Animates a test object while it is active on the server.</summary>
     public class Test_SpawnedObject : MonoBehaviour

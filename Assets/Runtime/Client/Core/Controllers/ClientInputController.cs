@@ -5,8 +5,10 @@ using Game.Shared.Networking;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime;
 namespace Game.Client
 {
     public enum InputMode
@@ -30,7 +32,7 @@ namespace Game.Client
         public event System.Action onJumpInput;
         public event System.Action onInteractInput;
         public event System.Action onCancelInput;
-        public event System.Action<Game.Shared.IInteractable> onHoverInteractable;
+        public event System.Action<Game.Shared.Runtime.IInteractable> onHoverInteractable;
         public event System.Action<int, int> onActionBarInput;
         public event System.Action<string> onInterfaceHotkeyInput;
 
@@ -137,10 +139,10 @@ namespace Game.Client
 
             var ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
 
-            Game.Shared.IInteractable interactable = null;
+            Game.Shared.Runtime.IInteractable interactable = null;
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                interactable = hit.collider.GetComponent<Game.Shared.IInteractable>();
+                interactable = hit.collider.GetComponent<Game.Shared.Runtime.IInteractable>();
                 if (interactable != null)
                     interactable.OnPointerEnter(ClientAccountManager.PlayerActor);
                 else

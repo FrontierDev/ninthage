@@ -1,6 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Server.ECS
 {

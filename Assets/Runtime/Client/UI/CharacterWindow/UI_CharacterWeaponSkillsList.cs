@@ -4,6 +4,7 @@ using Game.Shared;
 using Game.Shared.Data;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_CharacterWeaponSkillsList : UI_Panel, IListPanel

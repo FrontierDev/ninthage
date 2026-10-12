@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using System.Collections;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using PurrNet.Transports;
 using Game.Server.Persistence;
@@ -172,7 +172,7 @@ namespace Game.Server
             }
 
             var authService = new PlayerAuthService();
-            Game.Shared.Authentication.LoginAuthenticator.SetAuthService(authService);
+            Game.Shared.Networking.LoginAuthenticator.SetAuthService(authService);
 
             yield return null;
             Debug.Log(" ✓ Step 7: Player database initialized successfully.");

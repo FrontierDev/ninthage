@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Game.Shared.Runtime.Actors;
 using UnityEngine;
 using UnityEngine.Serialization;
 

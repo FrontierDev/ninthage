@@ -4,6 +4,7 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_ReputationHeaderPanel : UI_Panel, IListPanel

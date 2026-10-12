@@ -37,12 +37,12 @@ namespace Game.Runtime.Tests.Persistence
             Assert.That(character, Is.Not.Null);
             Assert.That(character.Name, Is.EqualTo("Aveline Stone"));
             Assert.That(character.Title, Is.EqualTo("The Wayfinder"));
-            Assert.That(character.Guid, Is.EqualTo("character-phase0-baseline-0001"));
+            Assert.That(character.GUID, Is.EqualTo("character-phase0-baseline-0001"));
             Assert.That(character.Level, Is.EqualTo(27));
             Assert.That(character.Experience, Is.EqualTo(123456));
             Assert.That(character.ClassID, Is.EqualTo("class_ranger"));
             Assert.That(character.RaceID, Is.EqualTo("race_human"));
-            Assert.That(character.PvPFactionID, Is.EqualTo("faction_silver_covenant"));
+            Assert.That(character.PVPFactionID, Is.EqualTo("faction_silver_covenant"));
             AssertStringListEquivalent(new[] { "spell_arcane_bolt", "spell_healing_wind" }, character.KnownSpellIDs);
 
             Assert.That(character.SavedInventory, Has.Count.EqualTo(1));
@@ -84,7 +84,7 @@ namespace Game.Runtime.Tests.Persistence
             Assert.That(character.SavedQuests[0].IsCompleted, Is.False);
 
             Assert.That(character.SavedResources, Has.Count.EqualTo(1));
-            Assert.That(character.SavedResources[0].StatId, Is.EqualTo("health"));
+            Assert.That(character.SavedResources[0].StatID, Is.EqualTo("health"));
             Assert.That(character.SavedResources[0].Current, Is.EqualTo(87.5f));
 
             var serializedJson = JsonUtility.ToJson(loadedData);
@@ -112,12 +112,12 @@ namespace Game.Runtime.Tests.Persistence
         {
             Assert.That(actual.Name, Is.EqualTo(expected.Name));
             Assert.That(actual.Title, Is.EqualTo(expected.Title));
-            Assert.That(actual.Guid, Is.EqualTo(expected.Guid));
+            Assert.That(actual.GUID, Is.EqualTo(expected.GUID));
             Assert.That(actual.Level, Is.EqualTo(expected.Level));
             Assert.That(actual.Experience, Is.EqualTo(expected.Experience));
             Assert.That(actual.ClassID, Is.EqualTo(expected.ClassID));
             Assert.That(actual.RaceID, Is.EqualTo(expected.RaceID));
-            Assert.That(actual.PvPFactionID, Is.EqualTo(expected.PvPFactionID));
+            Assert.That(actual.PVPFactionID, Is.EqualTo(expected.PVPFactionID));
             AssertStringListEquivalent(expected.KnownSpellIDs, actual.KnownSpellIDs);
 
             Assert.That(actual.SavedInventory, Has.Count.EqualTo(expected.SavedInventory.Count));
@@ -161,7 +161,7 @@ namespace Game.Runtime.Tests.Persistence
             Assert.That(actual.SavedResources, Has.Count.EqualTo(expected.SavedResources.Count));
             for (var index = 0; index < expected.SavedResources.Count; index++)
             {
-                Assert.That(actual.SavedResources[index].StatId, Is.EqualTo(expected.SavedResources[index].StatId));
+                Assert.That(actual.SavedResources[index].StatID, Is.EqualTo(expected.SavedResources[index].StatID));
                 Assert.That(actual.SavedResources[index].Current, Is.EqualTo(expected.SavedResources[index].Current));
             }
         }
@@ -185,8 +185,8 @@ namespace Game.Runtime.Tests.Persistence
             IList<string> modifications)
         {
             Assert.That(entry.SlotIndex, Is.EqualTo(slotIndex));
-            Assert.That(entry.ItemGuid, Is.EqualTo(itemGuid));
-            Assert.That(entry.ItemId, Is.EqualTo(itemId));
+            Assert.That(entry.ItemGUID, Is.EqualTo(itemGuid));
+            Assert.That(entry.ItemID, Is.EqualTo(itemId));
             Assert.That(entry.StackSize, Is.EqualTo(stackSize));
             Assert.That(entry.Durability, Is.EqualTo(durability));
             AssertStringListEquivalent(modifications, entry.Modifications);
@@ -202,8 +202,8 @@ namespace Game.Runtime.Tests.Persistence
             IList<string> modifications)
         {
             Assert.That(entry.SlotIndex, Is.EqualTo(slotIndex));
-            Assert.That(entry.ItemGuid, Is.EqualTo(itemGuid));
-            Assert.That(entry.ItemId, Is.EqualTo(itemId));
+            Assert.That(entry.ItemGUID, Is.EqualTo(itemGuid));
+            Assert.That(entry.ItemID, Is.EqualTo(itemId));
             Assert.That(entry.StackSize, Is.EqualTo(stackSize));
             Assert.That(entry.Durability, Is.EqualTo(durability));
             AssertStringListEquivalent(modifications, entry.Modifications);
@@ -214,8 +214,8 @@ namespace Game.Runtime.Tests.Persistence
             AssertInventoryEntry(
                 actual,
                 expected.SlotIndex,
-                expected.ItemGuid,
-                expected.ItemId,
+                expected.ItemGUID,
+                expected.ItemID,
                 expected.StackSize,
                 expected.Durability,
                 expected.Modifications);
@@ -226,8 +226,8 @@ namespace Game.Runtime.Tests.Persistence
             AssertEquipmentEntry(
                 actual,
                 expected.SlotIndex,
-                expected.ItemGuid,
-                expected.ItemId,
+                expected.ItemGUID,
+                expected.ItemID,
                 expected.StackSize,
                 expected.Durability,
                 expected.Modifications);

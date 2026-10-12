@@ -1,4 +1,4 @@
-namespace Game.Shared
+namespace Game.Shared.Runtime.VFX
 {
     /// <summary>
     /// Implemented by VFX GameObjects that support a one-shot triggered effect.

@@ -1,4 +1,5 @@
 using Game.Shared;
+using Game.Shared.Movement;
 using NUnit.Framework;
 using UnityEngine;
 

@@ -7,7 +7,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Describes the relation between factions.</summary>
     public enum FactionRelationState

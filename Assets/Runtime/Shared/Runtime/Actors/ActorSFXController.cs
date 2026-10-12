@@ -1,9 +1,9 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using PurrNet;
 using UnityEngine;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Plays networked spatial sound effects for an actor.</summary>
     [RequireComponent(typeof(Actor))]
@@ -26,7 +26,7 @@ namespace Game.Shared
         /// Play a spatial sound effect on this actor. Call via RPC from all clients.
         /// </summary>
         [ObserversRpc]
-        public void Observer_PlaySFX(string addressablePath)
+        public void Observers_PlaySFX(string addressablePath)
         {
             PlaySFX(addressablePath);
         }

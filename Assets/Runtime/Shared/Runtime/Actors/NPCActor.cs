@@ -1,8 +1,9 @@
 using PurrNet;
+using Game.Shared.Runtime;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Represents a non-player actor.</summary>
     public sealed class NPCActor : Actor, IInteractable
@@ -19,7 +20,7 @@ namespace Game.Shared
 
         private void Awake()
         {
-            if (Game.Shared.Runtime.IsServer())
+            if (Game.Shared.Runtime.Runtime.IsServer())
             {
                 level.value = Random.Range(levelRange.Item1, levelRange.Item2 + 1);
             }

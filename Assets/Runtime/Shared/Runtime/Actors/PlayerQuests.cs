@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Stores progress for one active quest.</summary>
     public sealed class PlayerQuestProgress

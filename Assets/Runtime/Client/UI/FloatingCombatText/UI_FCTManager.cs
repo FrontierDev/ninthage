@@ -2,8 +2,10 @@ using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
 namespace Game.Client.UI
 {
     public class UI_FCTManager : MonoBehaviour

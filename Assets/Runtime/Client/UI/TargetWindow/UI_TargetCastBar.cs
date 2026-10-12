@@ -4,6 +4,7 @@ using Game.Shared.Data;
 using TMPro;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_TargetCastBar : UI_ProgressBar
@@ -41,7 +42,7 @@ namespace Game.Client.UI
             SetProgress(1f);
         }
 
-        private void OnSpellCastStarted(Game.Shared.Actor caster, string spellID, float finalCastTime)
+        private void OnSpellCastStarted(Game.Shared.Runtime.Actors.Actor caster, string spellID, float finalCastTime)
         {
             if (ClientAccountManager.PlayerActor.Target == caster)
             {
@@ -54,7 +55,7 @@ namespace Game.Client.UI
             }
         }
 
-        private void OnSpellCastFinished(Game.Shared.Actor caster)
+        private void OnSpellCastFinished(Game.Shared.Runtime.Actors.Actor caster)
         {
             if (ClientAccountManager.PlayerActor.Target == caster)
             {
@@ -62,7 +63,7 @@ namespace Game.Client.UI
             }
         }
 
-        private void OnClientLateTargetedActorChanged(Game.Shared.Actor oldTarget, Game.Shared.Actor newTarget)
+        private void OnClientLateTargetedActorChanged(Game.Shared.Runtime.Actors.Actor oldTarget, Game.Shared.Runtime.Actors.Actor newTarget)
         {
             bool shouldShow = false;
             if (newTarget != null && newTarget.TryGetComponent<ActorSpellcaster>(out var spellcaster))

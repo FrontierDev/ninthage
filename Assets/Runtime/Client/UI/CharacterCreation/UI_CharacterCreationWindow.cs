@@ -1,4 +1,4 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Classes = Game.Shared.Data.ClassDefinitionLibrary;
 using System;
 using Game.Shared.Data;

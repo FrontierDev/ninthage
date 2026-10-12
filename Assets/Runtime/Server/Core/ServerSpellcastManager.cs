@@ -8,8 +8,10 @@ using Game.Shared.Networking;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
 namespace Game.Server
 {
     public sealed class ServerSpellCastManager : MonoBehaviour
@@ -162,7 +164,7 @@ namespace Game.Server
                         entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, true);
 
                         caster.GetComponent<ActorSpellcaster>()
-                              ?.Observer_StartSpellCast(spell.BaseDefinition.DefinitionID, spell.CastTime);
+                              ?.Observers_StartSpellCast(spell.BaseDefinition.DefinitionID, spell.CastTime);
 
                         Debug.Log($"Spell cast started: {caster.Name} casting '{spell.BaseDefinition.DisplayName}' ({spell.CastTime}s)");
                     }
@@ -254,7 +256,7 @@ namespace Game.Server
                     statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
             }
 
-            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observer_TickSpellCast(spellID);
+            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observers_TickSpellCast(spellID);
         }
 
         /// <summary>
@@ -303,7 +305,7 @@ namespace Game.Server
             // ctx.Definition.BaseResourceCosts[i].RefundOnInterrupt
 
             // Notify clients
-            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observer_InterruptSpellCast(spellID);
+            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observers_InterruptSpellCast(spellID);
             Debug.Log($"Spell cast interrupted: {ctx.Caster.Name} stopped casting '{spellID}'");
         }
 
@@ -382,7 +384,7 @@ namespace Game.Server
 
             // Notify the observers that the cast has completed, 
             // so they can resolve the spell effects and targets.
-            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observer_FinishSpellCast(spellID);
+            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observers_FinishSpellCast(spellID);
             ctx.Caster.GetComponent<ActorEvents>()?.onServerSpellCastComplete?.Invoke(ctx);
             Debug.Log($"Spell cast completed: {ctx.Caster.Name} finished '{spellID}'");
         }

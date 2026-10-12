@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using Game.Shared.Runtime.Spellcasting;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Data
 {
     /// <summary>Provides a description for an authored effect.</summary>

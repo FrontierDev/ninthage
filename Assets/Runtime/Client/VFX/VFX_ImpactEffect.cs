@@ -2,6 +2,7 @@ using System.Collections;
 using Game.Shared;
 using UnityEngine;
 
+using Game.Shared.Runtime.VFX;
 namespace Game.Client.VFX
 {
     /// <summary>

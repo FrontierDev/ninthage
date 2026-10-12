@@ -1,11 +1,15 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using System.Collections.Generic;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.SpellTargetDefinitions
 {
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     /// <summary>Targets the actor selected by the spell context.</summary>
     public class SpellTarget_Single : SpellTargetDefinition
     {

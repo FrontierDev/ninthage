@@ -7,6 +7,7 @@ using System;
 using System.Linq;
 using Game.Shared;
 
+using Game.Shared.Runtime.Spellcasting;
 namespace Game.Editor.Windows
 {
     /// <summary>

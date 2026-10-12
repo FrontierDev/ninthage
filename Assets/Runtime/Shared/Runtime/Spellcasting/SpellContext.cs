@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>Contains runtime state for one spell cast.</summary>
     public sealed class SpellContext

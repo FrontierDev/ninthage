@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using PurrNet;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Networking
 {
     /// <summary>Tracks actor and identity subscriptions for streamed scene chunks.</summary>

@@ -3,7 +3,7 @@ using Game.Shared.Data;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Unity.Entities.UniversalDelegates;
 
 namespace Game.Client.UI

@@ -1,4 +1,4 @@
-namespace Game.Shared
+namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>Stores runtime multipliers and bonuses for a spell component.</summary>
     public sealed class SpellComponentOverrides

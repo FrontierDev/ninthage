@@ -6,7 +6,7 @@ using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Tracks a player's skill for one weapon type.</summary>
     public sealed class PlayerWeaponSkill

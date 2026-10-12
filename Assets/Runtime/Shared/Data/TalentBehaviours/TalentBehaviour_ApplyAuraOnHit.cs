@@ -1,8 +1,10 @@
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.TalentBehaviours
 {
     /// <summary>Applies an aura whenever the player hits with an auto attack.</summary>
     [CreateAssetMenu(menuName = "NinthAge/Talent Behaviours/Apply Aura On Hit")]

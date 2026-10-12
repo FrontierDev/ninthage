@@ -1,4 +1,4 @@
-namespace Game.Shared
+namespace Game.Shared.Utility
 {
     /// <summary>Writes consistently formatted diagnostic messages.</summary>
     public static class FormattedDebug

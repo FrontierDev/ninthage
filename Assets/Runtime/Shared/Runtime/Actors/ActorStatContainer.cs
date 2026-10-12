@@ -1,11 +1,11 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Stores one actor stat's base, modifier, and current values.</summary>
     public class StatInstance

@@ -6,6 +6,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_TalentTreePanel : UI_Panel

@@ -50,7 +50,7 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 1492967587744579662
-      type: {class: SpellEffect_Damage, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellEffect_Damage, ns: Game.Shared.Data.SpellEffectDefinitions, asm: Game.Shared}
       data:
         BaseDamage: 10
         WeaponDamageMode: 0
@@ -69,7 +69,7 @@ MonoBehaviour:
         Aura: {fileID: 11400000, guid: 103a7514ac4b9e14eac72cc7ac1e1042, type: 2}
         AuraStacks: 1
     - rid: 1492967587744579663
-      type: {class: SpellTarget_Cone, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellTarget_Cone, ns: Game.Shared.Data.SpellTargetDefinitions, asm: Game.Shared}
       data:
         Range: 10
         Angle: 30

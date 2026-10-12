@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+using Game.Shared.Runtime.Spellcasting;
 namespace Game.Client.UI
 {
     public sealed class UI_AuraEntry : UI_ListEntry<AuraInstance>

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Game.Runtime.Shared
+namespace Game.Shared.Terrain
 {
     /// <summary>
     /// Defines the texture assets for a named zone.

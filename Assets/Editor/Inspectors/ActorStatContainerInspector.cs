@@ -1,3 +1,4 @@
+using Game.Shared.Runtime.Actors;
 namespace Game.Editor.Inspectors
 {
     using Game.Shared;

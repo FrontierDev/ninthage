@@ -1,5 +1,8 @@
 using System;
 
+namespace Game.Shared.Runtime
+{
+
 [AttributeUsage(
     AttributeTargets.Class |
     AttributeTargets.Struct |
@@ -18,4 +21,5 @@ public sealed class ToDoAttribute : Attribute
     {
         Message = message;
     }
+}
 }

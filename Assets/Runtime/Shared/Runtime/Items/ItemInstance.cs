@@ -3,7 +3,7 @@ using Game.Shared.Data;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Items
 {
     /// <summary>Represents a runtime item instance owned by a character.</summary>
     public sealed class ItemInstance

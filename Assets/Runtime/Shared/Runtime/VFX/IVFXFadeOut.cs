@@ -1,4 +1,5 @@
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Runtime.VFX
 {
     /// <summary>
     /// Implemented by VFX GameObjects that manage their own close/destroy animation.

@@ -2,12 +2,13 @@ using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Persistence;
+using Game.Shared.Runtime.Items;
 using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Describes how an equipment slot changed.</summary>
     public enum EquipmentSlotChangeType : byte
@@ -97,7 +98,7 @@ namespace Game.Shared
                 _equipment[(ItemSlot)entry.SlotIndex] = itemInstance;
             }
 
-            if (!Game.Shared.Runtime.IsServer())
+            if (!Game.Shared.Runtime.Runtime.IsServer())
                 CharacterEndpoint.onClientEquipmentUpdated?.Invoke();
             else
                 GetComponent<ActorSpellcaster>().RecalculateOverrides();
@@ -133,7 +134,7 @@ namespace Game.Shared
                 new EquipmentSlotChange(slot, EquipmentSlotChangeType.Set, itemInstance)
             });
 
-            if (Game.Shared.Runtime.IsServer())
+            if (Game.Shared.Runtime.Runtime.IsServer())
             {
                 CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
                 Client_UpdateEquipment(owner.Value, delta);
@@ -158,7 +159,7 @@ namespace Game.Shared
                         new EquipmentSlotChange(slot, EquipmentSlotChangeType.Removed)
                     });
 
-                    if (Game.Shared.Runtime.IsServer())
+                    if (Game.Shared.Runtime.Runtime.IsServer())
                     {
                         Client_UpdateEquipment(owner.Value, delta);
                         GetComponent<ActorSpellcaster>().RecalculateOverrides();

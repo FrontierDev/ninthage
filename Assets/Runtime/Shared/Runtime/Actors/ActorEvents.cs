@@ -1,10 +1,12 @@
 using Game.Shared.Data;
 using Game.Shared.Persistence;
+using Game.Shared.Runtime.Spellcasting;
 using PurrNet;
 using System;
 using UnityEngine;
 
-namespace Game.Shared
+using Game.Shared.Data.ClassBehaviours;
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Exposes actor combat and spell events to shared systems.</summary>
     public class ActorEvents : NetworkBehaviour

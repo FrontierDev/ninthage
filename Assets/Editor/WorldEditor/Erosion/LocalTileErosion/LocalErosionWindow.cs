@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using System.Collections.Generic;
 using System.IO;
-using Game.Runtime.Shared;
+using Game.Shared.Components;
 
 namespace Game.Editor.WorldEditor
 {
@@ -753,7 +753,7 @@ namespace Game.Editor.WorldEditor
 
 #if UNITY_EDITOR
                 // Check for tile component on the terrain's parent (chunkRoot)
-                var tileComponent = terrain.transform.parent?.GetComponent<Game.Runtime.Shared.TerrainTileComponent>();
+                var tileComponent = terrain.transform.parent?.GetComponent<Game.Shared.Components.TerrainTileComponent>();
                 if (tileComponent != null && tileComponent.TileX == targetX && tileComponent.TileZ == targetZ)
                 {
                     _centerTerrain = terrain;

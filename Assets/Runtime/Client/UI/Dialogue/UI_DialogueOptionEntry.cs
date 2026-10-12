@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+using Game.Shared.Data.Dialogue;
+using Game.Shared.Runtime;
 namespace Game.Client.UI
 {
     public sealed class UI_DialogueOptionEntry : UI_ListEntry<DialogueChoice>

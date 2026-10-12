@@ -8,8 +8,9 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_ActionBarButton : UI_Button, IPointerClickHandler

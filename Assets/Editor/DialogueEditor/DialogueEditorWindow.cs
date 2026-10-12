@@ -5,6 +5,7 @@ using UnityEngine;
 using Game.Shared.Data;
 using System.Linq;
 
+using Game.Shared.Data.Dialogue;
 namespace Game.Editor.Dialogue
 {
     public class DialogueEditorWindow : EditorWindow

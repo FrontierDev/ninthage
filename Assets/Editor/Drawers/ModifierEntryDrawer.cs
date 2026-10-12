@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using Game.Shared.Data;
 
+using Game.Shared.Runtime.Spellcasting;
 namespace Game.Editor.Drawers
 {
     [CustomPropertyDrawer(typeof(ModifierEntry))]
@@ -102,7 +103,7 @@ namespace Game.Editor.Drawers
             if (cachedModifierTypes != null) return;
             cachedModifierTypes = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })
-                .Where(t => !t.IsAbstract && typeof(Game.Shared.ISpellModifier).IsAssignableFrom(t))
+                .Where(t => !t.IsAbstract && typeof(Game.Shared.Runtime.Spellcasting.ISpellModifier).IsAssignableFrom(t))
                 .OrderBy(t => t.Name)
                 .ToArray();
             cachedModifierNames = cachedModifierTypes.Select(t => ObjectNames.NicifyVariableName(t.Name)).ToArray();

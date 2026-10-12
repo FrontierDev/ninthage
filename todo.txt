@@ -1,5 +1,5 @@
 TODO REPORT
-Generated: 2026-10-12 21:48:58
+Generated: 2026-10-12 23:21:05
 
 [METHOD] Game.Client.ClientAudioManager.Awake()
   - Implement a more robust caching strategy if needed, e.g. separate pools for UI vs world SFX, or reference counting for shared clips.
@@ -22,18 +22,18 @@ Generated: 2026-10-12 21:48:58
 [TYPE] Game.Server.Services.PartyLootService
   - This is a very basic implementation that just gives all loot to each player. This will need to be reworked once the party system is implemented.
 
-[METHOD] Game.Shared.Actor.OnDestroy()
+[METHOD] Game.Shared.Runtime.Actors.Actor.OnDestroy()
   - Any onActorDespawned logic.
 
-[TYPE] Game.Shared.PlayerActor
+[TYPE] Game.Shared.Runtime.Actors.PlayerActor
   - Store references to the individual components for ease of access rather than relying on GetComponent calls.
 
-[METHOD] Game.Shared.Data.SorcererClassBehaviour.GenerateSurgeFromSpell()
+[TYPE] Game.Shared.Data.Dialogue.DialogueCondition
+  - Evaluate whether this can be skipped and if we can just use ConditionDefinition directly in DialogueChoice. It was added to allow for inversion of conditions, but maybe that's not necessary?
+
+[METHOD] Game.Shared.Data.ClassBehaviours.SorcererClassBehaviour.GenerateSurgeFromSpell()
   - Increase the actor's haste rating according to their surge.
 
-[METHOD] Game.Shared.Data.SorcererClassBehaviour.ApplyInstabilityDamage()
+[METHOD] Game.Shared.Data.ClassBehaviours.SorcererClassBehaviour.ApplyInstabilityDamage()
   - Base instability damage on something other than a hardcoded value, and include damage type/school.
-
-[TYPE] Game.Shared.Data.DialogueCondition
-  - Evaluate whether this can be skipped and if we can just use ConditionDefinition directly in DialogueChoice. It was added to allow for inversion of conditions, but maybe that's not necessary?
 

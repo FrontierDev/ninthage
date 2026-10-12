@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using Game.Shared;
 using Game.Shared.Networking;
+using Game.Shared.Runtime;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client
 {

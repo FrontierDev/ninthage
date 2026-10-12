@@ -1,5 +1,6 @@
 using Game.Shared;
 
+using Game.Shared.Runtime.VFX;
 namespace Game.Client.VFX
 {
     using System.Collections;

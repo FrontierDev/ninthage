@@ -33,10 +33,10 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 1492967861679292493
-      type: {class: AuraTarget_Target, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: AuraTarget_Target, ns: Game.Shared.Data.AuraTargetDefinitions, asm: Game.Shared}
       data: 
     - rid: 1492967861679292494
-      type: {class: AuraEffect_Damage, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: AuraEffect_Damage, ns: Game.Shared.Data.AuraEffectDefinitions, asm: Game.Shared}
       data:
         BaseDamage: 1
         StatScaling:

@@ -1,8 +1,10 @@
 using Game.Shared.Data;
+using Game.Shared.Runtime.Spellcasting;
 using PurrNet.Modules;
 using PurrNet.Packing;
 using System.Collections.Generic;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Networking
 {
     /// <summary>Provides PurrNet serialization for combat log entries.</summary>

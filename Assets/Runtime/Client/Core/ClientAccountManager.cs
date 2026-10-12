@@ -1,10 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Game.Shared.Persistence;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Client.UI;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client
 {
     public sealed class ClientAccountManager : MonoBehaviour

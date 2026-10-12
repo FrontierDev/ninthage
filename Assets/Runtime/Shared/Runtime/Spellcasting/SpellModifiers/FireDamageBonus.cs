@@ -1,14 +1,19 @@
 using System;
 using System.Linq;
 using Game.Shared.Data;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
+using Game.Shared.Data.SpellEffectDefinitions;
+namespace Game.Shared.Runtime.Spellcasting.SpellModifiers
 {
     /// <summary>Adds flat fire damage to fire spell effects.</summary>
     [Serializable]
+    [MovedFrom(true, "Game.Shared", "Game.Shared")]
     public class FireDamageBonus : IScalableModifier
     {
         [SerializeField, FormerlySerializedAs("bonusDamage")] private float _bonusDamage;

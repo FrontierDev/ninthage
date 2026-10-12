@@ -1,4 +1,5 @@
 using Game.Shared;
+using Game.Shared.Runtime.Actors;
 using NUnit.Framework;
 
 namespace Game.Shared.Tests.Shared

@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Defines an actor spawn location and spawn settings.</summary>
     public class ActorSpawnPoint : MonoBehaviour

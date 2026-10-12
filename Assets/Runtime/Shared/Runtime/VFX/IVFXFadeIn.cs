@@ -1,4 +1,4 @@
-namespace Game.Shared
+namespace Game.Shared.Runtime.VFX
 {
     /// <summary>
     /// Implemented by VFX GameObjects that support an explicit open/reveal animation.

@@ -1,8 +1,10 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.ClassBehaviours
 {
     // Test_ClassBehaviour.cs — one asset handles all test passives
     /// <summary>Provides the test class passive behaviours.</summary>

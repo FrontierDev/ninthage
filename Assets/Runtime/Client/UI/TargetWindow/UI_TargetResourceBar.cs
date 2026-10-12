@@ -6,6 +6,7 @@ using TMPro;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_TargetResourceBar : UI_ProgressBar
@@ -47,7 +48,7 @@ namespace Game.Client.UI
             }
         }
 
-        private void OnClientLateTargetedActorChanged(Game.Shared.Actor oldTarget, Game.Shared.Actor newTarget)
+        private void OnClientLateTargetedActorChanged(Game.Shared.Runtime.Actors.Actor oldTarget, Game.Shared.Runtime.Actors.Actor newTarget)
         {
             if (ClientAccountManager.PlayerActor == null) return;
 

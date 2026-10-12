@@ -1,4 +1,4 @@
-namespace Game.Shared.Authentication
+namespace Game.Shared.Networking
 {
     /// <summary>
     /// Abstraction over the server's player authentication and persistence layer.

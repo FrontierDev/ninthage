@@ -3,6 +3,7 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Utility;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Server.Services
 {
     public sealed class CharacterReputationService

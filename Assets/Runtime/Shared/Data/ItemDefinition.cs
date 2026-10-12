@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Game.Shared.Data.Conditions;
 using UnityEngine;
 using UnityEngine.Serialization;
 

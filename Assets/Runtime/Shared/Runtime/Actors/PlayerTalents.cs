@@ -7,7 +7,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Manages a player's learned talents and specialisation points.</summary>
     public sealed class PlayerTalents : NetworkBehaviour
@@ -61,7 +61,7 @@ namespace Game.Shared
                 }
             }
 
-            if (!Game.Shared.Runtime.IsServer())
+            if (!Game.Shared.Runtime.Runtime.IsServer())
                 CharacterEndpoint.onClientTalentsUpdated?.Invoke();
             else
                 GetComponent<ActorSpellcaster>().RecalculateOverrides();

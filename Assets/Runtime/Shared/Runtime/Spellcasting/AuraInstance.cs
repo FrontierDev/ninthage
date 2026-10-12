@@ -1,7 +1,8 @@
 using Game.Shared.Data;
 using UnityEngine;
 
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>Represents an aura applied to an actor.</summary>
     public sealed class AuraInstance

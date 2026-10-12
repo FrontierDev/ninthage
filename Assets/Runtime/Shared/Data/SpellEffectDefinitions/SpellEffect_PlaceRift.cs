@@ -1,10 +1,15 @@
 using System.Collections.Generic;
+using Game.Shared.Data.ClassBehaviours;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.SpellEffectDefinitions
 {
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     /// <summary>Places a Sorcerer rift at the spell target position.</summary>
     public class SpellEffect_PlaceRift : SpellEffectDefinition
     {
@@ -42,7 +47,7 @@ namespace Game.Shared.Data
             {
                 int effectId = Time.time.GetHashCode(); // Generate a unique ID for this effect instance
                 ctx.Caster.GetComponent<ActorVFXController>()
-                    ?.Observer_SpawnEffectAtPosition(effectId, RiftPrefabAddressablePath, ctx.PositionTarget, Duration);
+                    ?.Observers_SpawnEffectAtPosition(effectId, RiftPrefabAddressablePath, ctx.PositionTarget, Duration);
                 ClassBehaviour.RegisterRift(ctx.Caster, ctx.PositionTarget, Duration, Radius, effectId);
             }
             else

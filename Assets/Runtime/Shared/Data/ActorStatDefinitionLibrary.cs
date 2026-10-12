@@ -1,6 +1,7 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Data
 {
     /// <summary>

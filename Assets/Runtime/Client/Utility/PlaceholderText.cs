@@ -5,6 +5,8 @@ using Game.Shared.Data;
 using Game.Client;
 using Game.Shared;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 namespace Game.Client.Utility
 {
     /// <summary>

@@ -6,6 +6,7 @@ using Game.Shared.Networking;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_CharacterSpecialBar : UI_Panel, IListPanel

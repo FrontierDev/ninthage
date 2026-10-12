@@ -1,7 +1,8 @@
 using PurrNet;
 using UnityEngine;
-using Actor = Game.Shared.Actor;
+using Actor = Game.Shared.Runtime.Actors.Actor;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Server.Networking
 {
     public class PlayerSessionData

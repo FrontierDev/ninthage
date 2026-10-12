@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using Game.Shared.Data;
 
+using Game.Shared.Data.Conditions;
 namespace Game.Editor.Drawers
 {
     [CustomPropertyDrawer(typeof(ConditionDefinition), useForChildren: true)]

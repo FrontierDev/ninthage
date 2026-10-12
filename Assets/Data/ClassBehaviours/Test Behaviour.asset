@@ -11,6 +11,6 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9e03fb58156f2db43a77cea5361b692b, type: 3}
   m_Name: Test Behaviour
-  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.Test_ClassBehaviour
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.ClassBehaviours.Test_ClassBehaviour
   manaPerHit: 10
   manaOnDamageTaken: 5

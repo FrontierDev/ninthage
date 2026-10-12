@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client.Collections
 {

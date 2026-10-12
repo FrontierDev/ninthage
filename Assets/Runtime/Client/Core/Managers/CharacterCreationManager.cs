@@ -1,6 +1,6 @@
 using Game.Shared.Data;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Unity.Cinemachine;
 using UnityEngine.SceneManagement;
 

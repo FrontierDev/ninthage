@@ -7,6 +7,7 @@ using Game.Shared;
 using Game.Shared.Data;
 using Game.Editor.Data;
 
+using Game.Shared.Data.QuestObjectives;
 namespace Game.Editor.Windows
 {
     /// <summary>
@@ -540,7 +541,7 @@ namespace Game.Editor.Windows
                         {
                             prop.arraySize++;
                             prop.GetArrayElementAtIndex(prop.arraySize - 1).managedReferenceValue =
-                                new Game.Shared.Data.Quest_KillObjective();
+                                new Game.Shared.Data.QuestObjectives.Quest_KillObjective();
                             serializedObject.ApplyModifiedProperties();
                             objectiveList = null;
                         });
@@ -548,7 +549,7 @@ namespace Game.Editor.Windows
                         {
                             prop.arraySize++;
                             prop.GetArrayElementAtIndex(prop.arraySize - 1).managedReferenceValue =
-                                new Game.Shared.Data.Quest_ItemObjective();
+                                new Game.Shared.Data.QuestObjectives.Quest_ItemObjective();
                             serializedObject.ApplyModifiedProperties();
                             objectiveList = null;
                         });

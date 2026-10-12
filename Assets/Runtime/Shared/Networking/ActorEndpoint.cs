@@ -1,4 +1,6 @@
 using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
 using PurrNet;
 using System;
 using UnityEngine;

@@ -1,4 +1,4 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using UnityEngine;
 using System;
@@ -8,6 +8,7 @@ using Unity.Entities.UniversalDelegates;
 using Game.Shared;
 using Game.Server.Networking;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
     /// <summary>

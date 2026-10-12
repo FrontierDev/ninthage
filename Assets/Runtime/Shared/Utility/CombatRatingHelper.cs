@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Game.Shared
+namespace Game.Shared.Utility
 {
     /// <summary>Converts combat ratings into level-scaled percentages.</summary>
     public static class CombatRatingHelper

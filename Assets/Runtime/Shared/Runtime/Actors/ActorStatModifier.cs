@@ -1,7 +1,7 @@
 using Game.Shared.Data;
 using System.Collections.Generic;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Defines a stat modifier used by actor systems.</summary>
     public sealed class ActorStatModifier

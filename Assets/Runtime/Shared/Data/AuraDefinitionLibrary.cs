@@ -1,4 +1,4 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using UnityEngine;
 
 namespace Game.Shared.Data

@@ -3,6 +3,8 @@ using Game.Shared.Networking;
 using PurrNet;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Movement;
 namespace Game.Client
 {
     [RequireComponent(typeof(CharacterController))]
@@ -33,7 +35,7 @@ namespace Game.Client
             }
         }
 
-        private void OnActorOwnershipTaken(Game.Shared.Actor actor)
+        private void OnActorOwnershipTaken(Game.Shared.Runtime.Actors.Actor actor)
         {
             if (actor.gameObject != gameObject) return;
 

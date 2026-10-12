@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_InventoryGridPanel : UI_Panel, IListPanel
@@ -39,7 +40,7 @@ namespace Game.Client.UI
                 _instance = null;
         }
 
-        private void OnPlayerActorAssigned(Game.Shared.Actor actor)
+        private void OnPlayerActorAssigned(Game.Shared.Runtime.Actors.Actor actor)
         {
             Refresh();
         }
@@ -63,7 +64,7 @@ namespace Game.Client.UI
         {
             if (ClientAccountManager.PlayerActor == null) return;
 
-            var inventory = ClientAccountManager.PlayerActor.GetComponent<Game.Shared.PlayerInventory>();
+            var inventory = ClientAccountManager.PlayerActor.GetComponent<Game.Shared.Runtime.Actors.PlayerInventory>();
             if (inventory == null) return;
 
             var items = inventory.Inventory;

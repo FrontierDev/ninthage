@@ -1,6 +1,6 @@
 using System;
 
-namespace Game.Shared.Authentication
+namespace Game.Shared.Networking
 {
     /// <summary>
     /// Payload sent from client to server during authentication.

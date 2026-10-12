@@ -5,8 +5,9 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using UnityEngine;
 using UnityEngine.AI;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
     public sealed class ServerAutoAttackManager : MonoBehaviour

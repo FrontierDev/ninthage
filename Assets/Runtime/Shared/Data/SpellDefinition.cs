@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
+using Game.Shared.Data.SpellEffectDefinitions;
 namespace Game.Shared.Data
 {
     [Serializable]

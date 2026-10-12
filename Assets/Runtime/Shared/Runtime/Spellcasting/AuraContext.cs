@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using Game.Shared.Data;
 
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>
     /// Tracks an individual stack within a Condition aura, including which caster applied it.

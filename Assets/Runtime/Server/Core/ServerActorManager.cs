@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
-using Actor = Game.Shared.Actor;
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Actor = Game.Shared.Runtime.Actors.Actor;
 using Unity.Entities;
 using Unity.Collections;
 using PurrNet;
@@ -11,6 +11,8 @@ using Game.Shared.Networking;
 using Game.Shared.Utility;
 using UnityEngine.AI;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime;
 namespace Game.Server
 {
     /// <summary>

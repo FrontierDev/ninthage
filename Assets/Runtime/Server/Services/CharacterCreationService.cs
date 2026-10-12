@@ -1,6 +1,6 @@
 using Game.Shared.Persistence;
 using Game.Shared.Data;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using Game.Server.Persistence;
 

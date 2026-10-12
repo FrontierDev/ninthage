@@ -3,6 +3,7 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     // Technically a window.

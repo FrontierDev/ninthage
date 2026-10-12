@@ -4,11 +4,13 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 using Game.Shared.Data;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using System.Linq;
 using Game.Client.Utility;
 using System.Collections;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Items;
 namespace Game.Client.UI
 {
     public class UI_InventorySlotEntry : UI_ListEntry<ItemInstance>, IPointerClickHandler,

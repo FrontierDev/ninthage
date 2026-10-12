@@ -3,7 +3,7 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace Game.Shared.Test
+namespace Game.Shared.Runtime.Test
 {
     /// <summary>Moves a test actor between interest chunks using keyboard input.</summary>
     public sealed class Test_InterestController : MonoBehaviour

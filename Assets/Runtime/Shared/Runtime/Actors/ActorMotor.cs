@@ -1,7 +1,7 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using UnityEngine;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Tracks shared actor movement state.</summary>
     [RequireComponent(typeof(Actor))]

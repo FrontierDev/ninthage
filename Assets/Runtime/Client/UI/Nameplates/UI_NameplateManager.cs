@@ -2,10 +2,11 @@ using UnityEngine;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using System.Collections.Generic;
 using System.Linq;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public enum NameplateHealthBarDisplayMode

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+namespace Game.Shared.Data.Dialogue
 {
     [Serializable]
     /// <summary>Defines one selectable dialogue choice.</summary>

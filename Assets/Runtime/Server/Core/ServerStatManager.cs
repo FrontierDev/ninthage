@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
-using Actor = Game.Shared.Actor;
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Actor = Game.Shared.Runtime.Actors.Actor;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Persistence;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 namespace Game.Server
 {
     public sealed class ServerStatManager : MonoBehaviour

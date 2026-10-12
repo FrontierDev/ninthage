@@ -1,7 +1,9 @@
 using UnityEngine;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.AuraBehaviours
 {
     /// <summary>Heals an attacker when it hits an aura host with an auto attack.</summary>
     [CreateAssetMenu(menuName = "NinthAge/Aura Behaviours/Heal Attacker On Hit")]

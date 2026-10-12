@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
-using Game.Shared.Authentication;
-using Debug = Game.Shared.FormattedDebug;
+using Game.Shared.Networking;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PlayerDatabase = Game.Server.Persistence.PlayerDatabase;
 
 namespace Game.Server.Persistence

@@ -1,8 +1,9 @@
 using UnityEngine;
 using UnityEditor;
 using System.IO;
-using Game.Runtime.Shared;
+using Game.Shared.Components;
 
+using Game.Shared.Terrain;
 namespace Game.Editor.WorldEditor
 {
     /// <summary>

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Game.Shared;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public abstract class UI_AuraBar : UI_Panel, IListPanel

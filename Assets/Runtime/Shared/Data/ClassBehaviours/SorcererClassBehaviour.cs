@@ -1,11 +1,14 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Runtime;
+using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Networking;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.ClassBehaviours
 {
     // SorcererClassBehaviour.cs — one asset handles all sorcerer passives
     /// <summary>Implements the Sorcerer class passive behaviour.</summary>
@@ -131,7 +134,7 @@ namespace Game.Shared.Data
                 ApplyRiftPulseDamage(caster, target);
             }
 
-            caster.GetComponent<ActorVFXController>()?.Observer_TriggerEffect(rift.VFXID);
+            caster.GetComponent<ActorVFXController>()?.Observers_TriggerEffect(rift.VFXID);
         }
 
 

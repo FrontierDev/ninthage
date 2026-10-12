@@ -1,11 +1,14 @@
 using Game.Shared.Persistence;
+using Game.Shared.Runtime.Actors;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+namespace Game.Shared.Data.Conditions
 {
     /// <summary>Requires a player to have a specified class.</summary>
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     public sealed class Condition_PlayerClass : ConditionDefinition
     {
         [SerializeField, FormerlySerializedAs("requiredClass")] private ClassDefinition _requiredClass;

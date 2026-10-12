@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Runtime.Actors;
 
 namespace Game.Editor.Drawers
 {

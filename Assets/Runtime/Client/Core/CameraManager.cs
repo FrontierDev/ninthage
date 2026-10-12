@@ -1,9 +1,10 @@
 ﻿using UnityEngine;
 using Unity.Cinemachine;
-using Debug = Game.Shared.FormattedDebug;
-using Actor = Game.Shared.Actor;
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Actor = Game.Shared.Runtime.Actors.Actor;
 using UnityEngine.AddressableAssets;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client
 {
     public sealed class CameraManager : MonoBehaviour

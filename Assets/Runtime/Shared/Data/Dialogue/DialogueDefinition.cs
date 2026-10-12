@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+namespace Game.Shared.Data.Dialogue
 {
 
 

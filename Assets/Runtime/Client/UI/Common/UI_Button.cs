@@ -13,7 +13,7 @@ namespace Game.Client.UI
 
         public virtual void Start()
         {
-            if (Game.Shared.Runtime.IsServer()) return;
+            if (Game.Shared.Runtime.Runtime.IsServer()) return;
             if (button != null) button.onClick.AddListener(() => OnClick());
         }
 

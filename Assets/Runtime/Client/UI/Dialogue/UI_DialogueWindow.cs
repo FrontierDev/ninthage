@@ -1,6 +1,8 @@
 using Game.Shared;
 using Game.Shared.Data;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Data.Dialogue;
 namespace Game.Client.UI
 {
     public class UI_DialogueWindow : UI_Window

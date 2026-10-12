@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using ClassDefinitionLibrary = Game.Shared.Data.ClassDefinitionLibrary;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 
 namespace Game.Client.UI

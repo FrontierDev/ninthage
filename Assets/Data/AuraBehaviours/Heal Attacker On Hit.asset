@@ -11,14 +11,14 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 815772185d2002c409c5eb0c7cb1fafd, type: 3}
   m_Name: Heal Attacker On Hit
-  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.AuraBehaviour_DamageHostOnHit
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.AuraBehaviours.AuraBehaviour_DamageHostOnHit
   healEffect:
     rid: 5229246728291745870
   references:
     version: 2
     RefIds:
     - rid: 5229246728291745870
-      type: {class: SpellEffect_Heal, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellEffect_Heal, ns: Game.Shared.Data.SpellEffectDefinitions, asm: Game.Shared}
       data:
         BaseHealing: 3
         StatScaling: []

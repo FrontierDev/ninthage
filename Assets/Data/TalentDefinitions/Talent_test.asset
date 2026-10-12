@@ -905,7 +905,7 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 1492967912068612171
-      type: {class: FireDamageBonus, ns: Game.Shared, asm: Game.Shared}
+      type: {class: FireDamageBonus, ns: Game.Shared.Runtime.Spellcasting.SpellModifiers, asm: Game.Shared}
       data:
         bonusDamage: 10
         source: 

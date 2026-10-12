@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Game.Shared.Networking;
 using Game.Shared.Utility;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client.UI
 {

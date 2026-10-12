@@ -1,4 +1,4 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Services;
 using Game.Shared.Networking;
 using NewCharacterData = Game.Shared.Persistence.NewCharacterData;

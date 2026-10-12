@@ -44,10 +44,10 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 5229246728291745868
-      type: {class: SpellTarget_Single, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellTarget_Single, ns: Game.Shared.Data.SpellTargetDefinitions, asm: Game.Shared}
       data: 
     - rid: 5229246728291745869
-      type: {class: SpellEffect_ApplyAura, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellEffect_ApplyAura, ns: Game.Shared.Data.SpellEffectDefinitions, asm: Game.Shared}
       data:
         Aura: {fileID: 11400000, guid: 9419b955d46b30e4d81eac4e9d1b7966, type: 2}
         Stacks: 1

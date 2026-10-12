@@ -40,7 +40,7 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 1492967587744579665
-      type: {class: SpellEffect_Damage, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellEffect_Damage, ns: Game.Shared.Data.SpellEffectDefinitions, asm: Game.Shared}
       data:
         BaseDamage: 6
         StatScaling: []
@@ -52,5 +52,5 @@ MonoBehaviour:
         ProjectileAddressablePath: PH Projectile Test
         ProjectileSpeed: 50
     - rid: 1492967587744579668
-      type: {class: SpellTarget_Single, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellTarget_Single, ns: Game.Shared.Data.SpellTargetDefinitions, asm: Game.Shared}
       data: 

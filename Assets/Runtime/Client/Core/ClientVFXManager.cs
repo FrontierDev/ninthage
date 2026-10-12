@@ -5,8 +5,11 @@ using PurrNet;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
+using Game.Shared.Runtime.VFX;
 namespace Game.Client
 {
     public sealed class ClientVFXManager : MonoBehaviour

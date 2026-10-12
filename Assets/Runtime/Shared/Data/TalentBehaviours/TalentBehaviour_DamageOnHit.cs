@@ -1,12 +1,16 @@
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.TalentBehaviours
 {
     /// <summary>Executes a damage effect whenever the player hits with an auto attack.</summary>
     [CreateAssetMenu(menuName = "NinthAge/Talent Behaviours/Damage On Hit")]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     public class TalentBehaviour_DamageOnHit : TalentBehaviour
     {
         [SerializeReference, FormerlySerializedAs("damageEffect")] private SpellEffectDefinition _damageEffect;

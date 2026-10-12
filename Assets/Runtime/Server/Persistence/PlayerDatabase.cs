@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using Game.Shared.Persistence;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Server.Persistence
 {

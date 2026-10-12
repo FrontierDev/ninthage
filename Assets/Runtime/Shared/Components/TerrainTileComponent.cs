@@ -1,7 +1,8 @@
 using UnityEngine;
+using Game.Shared.Terrain;
 using UnityEngine.Serialization;
 
-namespace Game.Runtime.Shared
+namespace Game.Shared.Components
 {
 #if UNITY_EDITOR
     /// <summary>

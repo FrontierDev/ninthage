@@ -29,7 +29,7 @@ namespace Game.Client.UI
 
         protected virtual void Awake()
         {
-            if (Game.Shared.Runtime.IsServer()) return;
+            if (Game.Shared.Runtime.Runtime.IsServer()) return;
 
             onShowWindow += OnShow;
             onHideWindow += OnHide;

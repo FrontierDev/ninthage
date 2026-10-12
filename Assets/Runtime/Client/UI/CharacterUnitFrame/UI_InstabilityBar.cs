@@ -6,6 +6,7 @@ using Game.Shared.Networking;
 using TMPro;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public class UI_InstabilityBar : UI_ProgressBar, ISpecialResourceBar

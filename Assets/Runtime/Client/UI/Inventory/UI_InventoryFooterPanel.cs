@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_InventoryFooterPanel : UI_Panel
@@ -17,13 +18,13 @@ namespace Game.Client.UI
 
         private void OnClientInventoryUpdated()
         {
-            var inventory = ClientAccountManager.PlayerActor.GetComponent<Game.Shared.PlayerInventory>();
+            var inventory = ClientAccountManager.PlayerActor.GetComponent<Game.Shared.Runtime.Actors.PlayerInventory>();
             SetCapacity(inventory.Inventory.Count, inventory.MaxSlots);
         }
 
         private void OnClientCurrencyUpdated()
         {
-            // var inventory = ClientAccountManager.PlayerActor.GetComponent<Game.Shared.PlayerInventory>();
+            // var inventory = ClientAccountManager.PlayerActor.GetComponent<Game.Shared.Runtime.Actors.PlayerInventory>();
             // SetCapacity(inventory.Inventory.Count, inventory.MaxSlots);
         }
 

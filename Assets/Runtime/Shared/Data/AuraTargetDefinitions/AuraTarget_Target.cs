@@ -1,8 +1,12 @@
 using System.Collections.Generic;
+using Game.Shared.Runtime.Spellcasting;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.AuraTargetDefinitions
 {
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     /// <summary>Resolves the aura host target.</summary>
     public class AuraTarget_Target : AuraTargetDefinition
     {

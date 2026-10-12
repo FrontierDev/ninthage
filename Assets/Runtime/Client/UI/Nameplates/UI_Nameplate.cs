@@ -3,6 +3,7 @@ using TMPro;
 using Game.Shared;
 using Game.Shared.Networking;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public class UI_Nameplate : MonoBehaviour

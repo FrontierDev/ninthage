@@ -1,10 +1,14 @@
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Spellcasting;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
+namespace Game.Shared.Data.SpellEffectDefinitions
 {
     /// <summary>Identifies which weapon damage is included in a spell effect.</summary>
     public enum SpellWeaponDamageMode
@@ -16,6 +20,7 @@ namespace Game.Shared.Data
     }
 
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     /// <summary>Calculates and applies damage to a spell target.</summary>
     public class SpellEffect_Damage : SpellEffectDefinition
     {
@@ -109,7 +114,7 @@ namespace Game.Shared.Data
                 float delay = distance / ProjectileSpeed;
 
                 ctx.Caster.GetComponent<ActorVFXController>()
-                    ?.Observer_SpawnProjectile(target, ProjectileAddressablePath, ProjectileSpeed);
+                    ?.Observers_SpawnProjectile(target, ProjectileAddressablePath, ProjectileSpeed);
 
                 Actor capturedTarget = target;
                 ActorEndpoint.onServerSpellCastDelayedAction?.Invoke(delay, () =>

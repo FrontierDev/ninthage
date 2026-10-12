@@ -1,12 +1,13 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System;
 using System.Collections.Generic;
-using Actor = Game.Shared.Actor;
+using Actor = Game.Shared.Runtime.Actors.Actor;
 using PurrNet.Modules;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
     /// <summary>

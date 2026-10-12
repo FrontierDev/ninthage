@@ -1,6 +1,8 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Spellcasting;
+using Game.Shared.Runtime.Spellcasting.SpellModifiers;
 using PurrNet;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +10,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Contains a spell definition and its runtime modifier state.</summary>
     public sealed class SpellOverride
@@ -373,7 +375,7 @@ namespace Game.Shared
         /// <param name="finalCastTime"></param>
         /// <param name="rpcInfo"></param>
         [ObserversRpc]
-        public void Observer_StartSpellCast(string spellID, float finalCastTime, RPCInfo rpcInfo = default)
+        public void Observers_StartSpellCast(string spellID, float finalCastTime, RPCInfo rpcInfo = default)
         {
             _isCasting = true;
             ActorEndpoint.onSpellCastStarted?.Invoke(GetComponent<Actor>(), spellID, finalCastTime);
@@ -382,20 +384,20 @@ namespace Game.Shared
 
 
         [ObserversRpc]
-        public void Observer_TickSpellCast(string spellID)
+        public void Observers_TickSpellCast(string spellID)
         {
             // TO DO...
         }
 
         [ObserversRpc]
-        public void Observer_InterruptSpellCast(string spellID)
+        public void Observers_InterruptSpellCast(string spellID)
         {
             _isCasting = false;
             ActorEndpoint.onSpellCastInterrupted?.Invoke(GetComponent<Actor>());
         }
 
         [ObserversRpc]
-        public void Observer_FinishSpellCast(string spellID)
+        public void Observers_FinishSpellCast(string spellID)
         {
             _isCasting = false;
             ActorEndpoint.onSpellCastCompleted?.Invoke(GetComponent<Actor>());

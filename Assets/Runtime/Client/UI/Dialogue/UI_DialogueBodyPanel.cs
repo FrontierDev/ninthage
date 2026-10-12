@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using Game.Shared.Data;
 
+using Game.Shared.Data.Dialogue;
 namespace Game.Client.UI
 {
     public sealed class UI_DialogueBodyPanel : UI_Panel

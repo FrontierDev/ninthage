@@ -1,3 +1,5 @@
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Data.SpellEffectDefinitions;
 namespace Game.Editor.Inspectors
 {
     using System.Linq;

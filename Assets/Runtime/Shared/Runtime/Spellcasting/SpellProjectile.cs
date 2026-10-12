@@ -1,9 +1,10 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>Moves a spell projectile along a configured trajectory.</summary>
     public sealed class SpellProjectile : MonoBehaviour

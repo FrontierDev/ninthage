@@ -1,5 +1,6 @@
 using System;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Networking
 {
     /// <summary>

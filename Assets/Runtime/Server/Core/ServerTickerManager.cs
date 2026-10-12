@@ -5,8 +5,9 @@ using Game.Shared.Networking;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
     public sealed class ServerTickerManager : MonoBehaviour

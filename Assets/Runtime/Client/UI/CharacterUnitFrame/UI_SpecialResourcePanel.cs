@@ -3,6 +3,8 @@ using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Data.ClassBehaviours;
 namespace Game.Client.UI
 {
     public interface ISpecialResourceBar
@@ -23,7 +25,7 @@ namespace Game.Client.UI
 
         public void OnPlayerActorAssigned(Actor playerActor)
         {
-            if (Game.Shared.Runtime.IsServer()) return; // This UI should not be active on the server.
+            if (Game.Shared.Runtime.Runtime.IsServer()) return; // This UI should not be active on the server.
 
             var classId = ClientAccountManager.ActiveCharacter.ClassID;
             var def = ClassDefinitionLibrary.Instance.GetDefinition(classId);

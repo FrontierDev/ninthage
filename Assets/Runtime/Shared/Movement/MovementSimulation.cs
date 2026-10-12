@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Game.Shared
+namespace Game.Shared.Movement
 {
     /// <summary>
     /// Deterministic movement math shared by client (prediction) and server (replay).

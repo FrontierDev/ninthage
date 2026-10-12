@@ -1,10 +1,10 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using PurrNet.Authentication;
 using PurrNet.Transports;
 using System.Threading.Tasks;
 
-namespace Game.Shared.Authentication
+namespace Game.Shared.Networking
 {
     /// <summary>
     /// Game-specific authenticator for SpaceSim.

@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using Game.Shared;
 using Game.Shared.Data;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_CharacterFocusStatsPanel : UI_Panel, IListPanel

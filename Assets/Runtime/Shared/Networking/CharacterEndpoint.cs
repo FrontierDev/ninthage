@@ -1,9 +1,10 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using PurrNet;
 using System;
 using System.Diagnostics;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Networking
 {   /// <summary>
     /// This class is intended to manage character-related events and RPCs, 

@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client.UI
 {
@@ -27,7 +27,7 @@ namespace Game.Client.UI
 
         protected virtual void Start()
         {
-            if (Game.Shared.Runtime.IsServer()) return;
+            if (Game.Shared.Runtime.Runtime.IsServer()) return;
 
             // Get panels in children.
             panels = GetComponentsInChildren<UI_Panel>(true);

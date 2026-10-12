@@ -1,4 +1,5 @@
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>Defines a modifier that can scale by talent rank.</summary>
     public interface IScalableModifier : ISpellModifier

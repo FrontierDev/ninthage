@@ -1,5 +1,5 @@
 using UnityEngine;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using System.Collections.Generic;
 using Game.Shared.Persistence;
 using Unity.Cinemachine;

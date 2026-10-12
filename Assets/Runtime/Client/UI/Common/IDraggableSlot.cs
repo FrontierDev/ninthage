@@ -1,6 +1,7 @@
 using Game.Shared;
 using UnityEngine;
 
+using Game.Shared.Runtime.Items;
 namespace Game.Client.UI
 {
     public interface IDraggableSlot

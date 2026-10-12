@@ -1,11 +1,12 @@
 using Game.Shared.Networking;
 using Game.Shared.Persistence;
+using Game.Shared.Runtime.Items;
 using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Describes how an inventory slot changed.</summary>
     public enum InventorySlotChangeType : byte
@@ -67,7 +68,7 @@ namespace Game.Shared
                 _inventory[entry.SlotIndex] = itemInstance;
             }
 
-            if (!Game.Shared.Runtime.IsServer())
+            if (!Game.Shared.Runtime.Runtime.IsServer())
                 CharacterEndpoint.onClientInventoryUpdated?.Invoke();
         }
 
@@ -90,7 +91,7 @@ namespace Game.Shared
         /// </summary>
         public bool AddItem(ItemInstance item, out int remainder, int amount = 1)
         {
-            if (!Game.Shared.Runtime.IsServer() || amount <= 0)
+            if (!Game.Shared.Runtime.Runtime.IsServer() || amount <= 0)
             {
                 remainder = amount;
                 return false;
@@ -146,7 +147,7 @@ namespace Game.Shared
         /// </summary>
         public int RemoveItem(string itemID, int amount = 1)
         {
-            if (!Game.Shared.Runtime.IsServer() || amount <= 0)
+            if (!Game.Shared.Runtime.Runtime.IsServer() || amount <= 0)
                 return amount;
 
             int remaining = amount;
@@ -188,7 +189,7 @@ namespace Game.Shared
         /// </summary>
         public bool RemoveItemAtSlot(int slotIndex, int amount = 1)
         {
-            if (!Game.Shared.Runtime.IsServer() || amount <= 0)
+            if (!Game.Shared.Runtime.Runtime.IsServer() || amount <= 0)
                 return false;
 
             if (!_inventory.TryGetValue(slotIndex, out var existing))
@@ -218,7 +219,7 @@ namespace Game.Shared
         /// </summary>
         public bool MoveItem(int fromSlot, int toSlot)
         {
-            if (!Game.Shared.Runtime.IsServer()) return false;
+            if (!Game.Shared.Runtime.Runtime.IsServer()) return false;
             if (fromSlot == toSlot) return false;
             if (toSlot < 0 || toSlot >= _maxSlots) return false;
             if (!_inventory.TryGetValue(fromSlot, out var fromItem)) return false;
@@ -277,7 +278,7 @@ namespace Game.Shared
         /// </summary>
         public bool SplitStack(int fromSlot, int toSlot, int amount)
         {
-            if (!Game.Shared.Runtime.IsServer()) return false;
+            if (!Game.Shared.Runtime.Runtime.IsServer()) return false;
             if (fromSlot == toSlot || amount <= 0) return false;
             if (toSlot < 0 || toSlot >= _maxSlots) return false;
             if (!_inventory.TryGetValue(fromSlot, out var fromItem)) return false;
@@ -313,7 +314,7 @@ namespace Game.Shared
         /// </summary>
         public bool MergeStacks(int fromSlot, int toSlot)
         {
-            if (!Game.Shared.Runtime.IsServer()) return false;
+            if (!Game.Shared.Runtime.Runtime.IsServer()) return false;
             if (fromSlot == toSlot) return false;
             if (!_inventory.TryGetValue(fromSlot, out var fromItem)) return false;
             if (!_inventory.TryGetValue(toSlot, out var toItem)) return false;

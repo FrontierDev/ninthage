@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using UnityEditor;
 using Game.Shared.Data;
+using Game.Shared.Data.Dialogue;
 
 public static class DialogueEditorUtils
 {

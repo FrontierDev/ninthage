@@ -1,6 +1,9 @@
 using System;
 using UnityEngine;
 
+namespace Game.Shared.Utility
+{
+
 /// <summary>Provides a deterministic sequence of sampled Gaussian multipliers.</summary>
 public static class GaussianTable
 {
@@ -27,4 +30,5 @@ public static class GaussianTable
         _index = (_index + 1) % SIZE;
         return val;
     }
+}
 }

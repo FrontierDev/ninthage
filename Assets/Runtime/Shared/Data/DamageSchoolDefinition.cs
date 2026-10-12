@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 namespace Game.Shared.Data
 {
     /// <summary>

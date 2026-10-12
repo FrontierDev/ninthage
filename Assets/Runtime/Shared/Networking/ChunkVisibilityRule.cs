@@ -1,6 +1,7 @@
 using PurrNet;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Networking
 {
     /// <summary>Determines visibility from the target actor's subscribed scene chunk.</summary>

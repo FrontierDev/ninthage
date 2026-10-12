@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
 using UnityEngine.Serialization;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Data
 {
     /// <summary>Defines behavior applied while a talent is active.</summary>

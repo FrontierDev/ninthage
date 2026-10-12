@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime
 {
     /// <summary>Provides shared runtime environment checks.</summary>
     public static class Runtime

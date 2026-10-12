@@ -1,5 +1,5 @@
 using CharacterData = Game.Shared.Persistence.CharacterData;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using System;
 using System.Collections.Generic;

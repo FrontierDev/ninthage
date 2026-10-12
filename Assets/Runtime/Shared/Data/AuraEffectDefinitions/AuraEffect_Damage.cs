@@ -1,12 +1,17 @@
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Spellcasting;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
+namespace Game.Shared.Data.AuraEffectDefinitions
 {
     /// <summary>Applies mitigated damage to an aura target.</summary>
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     public class AuraEffect_Damage : AuraEffectDefinition
     {
         /// <summary>Gets the generated effect description.</summary>

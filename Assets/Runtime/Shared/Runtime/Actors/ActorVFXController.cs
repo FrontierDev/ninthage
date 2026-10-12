@@ -1,4 +1,4 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using PurrNet;
 using System.Collections;
@@ -8,7 +8,7 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Coordinates networked actor visual effects.</summary>
     [RequireComponent(typeof(Actor))]
@@ -36,7 +36,7 @@ namespace Game.Shared
         /// <param name="position">Physics-space world position.</param>
         /// <param name="lifetime">Seconds until the object is auto-destroyed. 0 = prefab manages its own lifecycle.</param>
         [ObserversRpc]
-        public void Observer_SpawnEffectAtPosition(int id, string addressablePath, Vector3 position, float lifetime)
+        public void Observers_SpawnEffectAtPosition(int id, string addressablePath, Vector3 position, float lifetime)
         {
             ActorEndpoint.onClientSpawnVFXAtPosition?.Invoke(this, id, addressablePath, position, lifetime);
         }
@@ -48,7 +48,7 @@ namespace Game.Shared
         /// Trajectory properties (arc, deviation) are configured on the projectile prefab.
         /// </summary>
         [ObserversRpc]
-        public void Observer_SpawnProjectile(Actor target, string addressablePath, float speed)
+        public void Observers_SpawnProjectile(Actor target, string addressablePath, float speed)
         {
             ActorEndpoint.onClientSpawnProjectile?.Invoke(this, target, addressablePath, speed);
         }
@@ -58,7 +58,7 @@ namespace Game.Shared
         /// registered under <paramref name="id"/>. Only that specific effect is triggered.
         /// </summary>
         [ObserversRpc]
-        public void Observer_TriggerEffect(int id)
+        public void Observers_TriggerEffect(int id)
         {
             ActorEndpoint.onClientTriggerEffect?.Invoke(this, id);
         }

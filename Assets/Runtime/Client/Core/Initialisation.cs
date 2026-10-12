@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using System.Collections;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using LoadingScreen = Game.Client.UI.LoadingScreenController;
 using PurrNet;
 using PurrNet.Transports;

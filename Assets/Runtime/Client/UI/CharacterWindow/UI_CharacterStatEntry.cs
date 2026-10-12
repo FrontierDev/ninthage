@@ -6,6 +6,7 @@ using UnityEngine;
 using Game.Shared;
 using UnityEngine.UI;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_CharacterStatEntry : UI_ListEntry<ActorStatDefinition>

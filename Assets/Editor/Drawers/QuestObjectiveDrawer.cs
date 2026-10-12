@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEditor;
 using Game.Shared.Data;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Data.QuestObjectives;
 namespace Game.Editor.Drawers
 {
     [CustomPropertyDrawer(typeof(QuestObjective), useForChildren: true)]
@@ -159,7 +161,7 @@ namespace Game.Editor.Drawers
             var picked = (GameObject)EditorGUI.ObjectField(fieldRect, currentPrefab, typeof(GameObject), false);
             if (EditorGUI.EndChangeCheck())
             {
-                if (picked != null && picked.TryGetComponent<Game.Shared.NPCActor>(out var npc))
+                if (picked != null && picked.TryGetComponent<Game.Shared.Runtime.Actors.NPCActor>(out var npc))
                     prop.stringValue = npc.NPCID ?? string.Empty;
                 else
                     prop.stringValue = string.Empty;
@@ -197,7 +199,7 @@ namespace Game.Editor.Drawers
                 .FirstOrDefault(go =>
                 {
                     if (go == null) return false;
-                    if (!go.TryGetComponent<Game.Shared.NPCActor>(out var npc)) return false;
+                    if (!go.TryGetComponent<Game.Shared.Runtime.Actors.NPCActor>(out var npc)) return false;
                     return npc.NPCID == npcId;
                 });
         }

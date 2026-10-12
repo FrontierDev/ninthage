@@ -1,7 +1,9 @@
 using UnityEngine;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.AuraBehaviours
 {
     /// <summary>Damages an aura host when it is hit by an auto attack.</summary>
     [CreateAssetMenu(menuName = "NinthAge/Aura Behaviours/Damage Host On Hit")]

@@ -8,8 +8,10 @@ using PurrNet;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TextCore.Text;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Data.SpellTargetDefinitions;
 namespace Game.Client
 {
     public sealed class ClientCombatManager : MonoBehaviour

@@ -1,8 +1,9 @@
-using Game.Runtime.Shared;
+using Game.Shared.Components;
 using Game.Editor.WorldEditor;
 using UnityEditor;
 using UnityEngine;
 
+using Game.Shared.Terrain;
 namespace Game.Editor.Components
 {
     internal static class TerrainTileGizmoDrawer

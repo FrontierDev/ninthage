@@ -5,6 +5,8 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Items;
 namespace Game.Client.UI
 {
     public sealed class UI_CharacterEquipmentList : UI_Panel, IListPanel

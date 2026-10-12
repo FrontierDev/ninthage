@@ -3,7 +3,7 @@ using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using PurrNet.Modules;
 using System.Collections;
@@ -16,6 +16,9 @@ using Unity.Entities.UniversalDelegates;
 using System.Linq;
 using Game.Shared.Data;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime;
+using Game.Shared.Utility;
 namespace Game.Server
 {
     public sealed class ServerSpawnManager : MonoBehaviour
@@ -166,7 +169,7 @@ namespace Game.Server
                 yield break;
             }
 
-            var playerActor = session.PlayerActor as Game.Shared.PlayerActor;
+            var playerActor = session.PlayerActor as Game.Shared.Runtime.Actors.PlayerActor;
             if (playerActor == null)
             {
                 Debug.Error($"PlayerPrefab is missing a PlayerActor component. " +
@@ -343,7 +346,7 @@ namespace Game.Server
                     var go = PurrNet.UnityProxy.Instantiate(prefab, cmd.Position, Quaternion.identity, scene);
                     Debug.Log($"Spawned '{prefab.name}' at {cmd.Position} in scene '{scene.name}'.");
 
-                    var actor = go.GetComponent<Game.Shared.Actor>();
+                    var actor = go.GetComponent<Game.Shared.Runtime.Actors.Actor>();
                     if (actor == null)
                     {
                         Debug.Error($"Prefab '{prefab.name}' is missing an Actor component. Add it to the prefab in the editor.");

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Game.Shared.Data;
 using UnityEngine;
 
+using Game.Shared.Data.Dialogue;
 namespace Game.Client.UI
 {
     public sealed class UI_DialogueOptionList : UI_Panel, IListPanel

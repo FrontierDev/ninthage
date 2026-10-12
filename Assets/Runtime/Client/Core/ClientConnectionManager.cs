@@ -1,8 +1,8 @@
 using UnityEngine;
 using System.Collections;
 using LoadingScreen = Game.Client.UI.LoadingScreenController;
-using Debug = Game.Shared.FormattedDebug;
-using Authentication = Game.Shared.Authentication.LoginAuthenticator;
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Authentication = Game.Shared.Networking.LoginAuthenticator;
 using MainMenu = Game.Client.UI.UI_MainMenuWindow;
 using PurrNet;
 using Game.Shared;

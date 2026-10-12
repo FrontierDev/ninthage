@@ -1,11 +1,15 @@
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Spellcasting;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.Serialization;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.SpellEffectDefinitions
 {
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     /// <summary>Applies an aura to the effect target.</summary>
     public class SpellEffect_ApplyAura : SpellEffectDefinition
     {

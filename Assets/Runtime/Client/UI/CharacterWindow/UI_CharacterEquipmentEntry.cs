@@ -6,6 +6,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Items;
 namespace Game.Client.UI
 {
     public sealed class UI_CharacterEquipmentEntry : UI_ListEntry<ItemInstance>, IPointerClickHandler

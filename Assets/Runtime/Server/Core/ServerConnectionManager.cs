@@ -1,10 +1,11 @@
 using UnityEngine;
 using PurrNet;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using System.Collections;
 using System.Collections.Generic;
 using Game.Server.Networking;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
     public class ServerConnectionManager : PurrMonoBehaviour
@@ -61,7 +62,7 @@ namespace Game.Server
 
         private void OnPlayerJoined(PlayerID playerId, bool isReconnect, bool asServer)
         {
-            var username = Game.Shared.Authentication.LoginAuthenticator.GetNextValidatedUsername();
+            var username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
 
             if (Game.Server.Persistence.PlayerDatabase.TryGetPlayerAccount(username, out var accountData))
             {

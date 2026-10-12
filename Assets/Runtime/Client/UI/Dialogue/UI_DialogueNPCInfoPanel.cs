@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using Game.Shared;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_DialogueNPCInfoPanel : UI_Panel

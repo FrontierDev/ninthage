@@ -2,7 +2,8 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using System.Collections.Generic;
 
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>Identifies the kind of combat-history entry.</summary>
     public enum CombatHistoryEntryType

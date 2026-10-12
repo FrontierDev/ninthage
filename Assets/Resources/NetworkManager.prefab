@@ -91,7 +91,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 944ea5b9ce632764294ee56ce82a6918, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Game.Shared::Game.Shared.Authentication.LoginAuthenticator
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Networking.LoginAuthenticator
   _timeout: 10
 --- !u!114 &1126216602961344859
 MonoBehaviour:
@@ -104,7 +104,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: feae5f9755a406e438aeefe8018bc578, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Game.Shared::Game.Shared.LatencySimulator
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Networking.LatencySimulator
   simulateLatency: 1
   minLatencyMs: 30
   maxLatencyMs: 80

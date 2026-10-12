@@ -1,4 +1,5 @@
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Runtime
 {
     /// <summary>Defines pointer interactions supported by an actor.</summary>
     public interface IInteractable

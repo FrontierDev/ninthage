@@ -1,10 +1,14 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using System.Collections.Generic;
+using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.SpellTargetDefinitions
 {
     [System.Serializable]
+    [MovedFrom(true, "Game.Shared.Data", "Game.Shared")]
     /// <summary>Targets a ground location and optionally actors around it.</summary>
     public class SpellTarget_GroundLocation : SpellTargetDefinition
     {

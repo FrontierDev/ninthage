@@ -3,6 +3,7 @@ using System.Linq;
 using Game.Shared;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_QuestListPanel : UI_Panel, IListPanel

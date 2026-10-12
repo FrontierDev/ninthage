@@ -1,5 +1,5 @@
 using PurrNet;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using CharacterData = Game.Shared.Persistence.CharacterData;
 using Game.Server.Networking;
 using UnityEngine;

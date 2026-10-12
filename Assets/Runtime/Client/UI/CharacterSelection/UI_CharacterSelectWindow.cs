@@ -1,6 +1,6 @@
 using System;
 using Game.Shared.Persistence;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Client.UI
 {

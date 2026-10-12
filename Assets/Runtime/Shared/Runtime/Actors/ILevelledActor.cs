@@ -1,4 +1,4 @@
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Provides level information for an actor.</summary>
     public interface ILevelledActor

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using Game.Editor.WorldEditor.Streaming;
-using Game.Runtime.Shared;
+using Game.Shared.Components;
 
 namespace Game.Editor.WorldEditor
 {

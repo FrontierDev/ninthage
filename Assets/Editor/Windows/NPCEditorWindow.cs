@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Editor.Windows
 {
     /// <summary>

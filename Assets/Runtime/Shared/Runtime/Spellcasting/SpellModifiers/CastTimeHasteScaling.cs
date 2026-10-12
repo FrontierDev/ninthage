@@ -1,12 +1,17 @@
 using System;
 using System.Linq;
 using Game.Shared.Data;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Game.Shared
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
+using Game.Shared.Utility;
+namespace Game.Shared.Runtime.Spellcasting.SpellModifiers
 {
     /// <summary>Scales spell cast time using actor haste.</summary>
     [Serializable]
+    [MovedFrom(true, "Game.Shared", "Game.Shared")]
     public class CastTimeHasteScaling : ISpellModifier
     {
         public int Priority => 100; // runs first — sets the base cooldown
@@ -18,7 +23,7 @@ namespace Game.Shared
         public void Apply(SpellOverride spell, Actor actor)
         {
             var hastePct = 0f;
-            if (Game.Shared.Runtime.IsServer())
+            if (Game.Shared.Runtime.Runtime.IsServer())
             {
                 if (actor.GetComponent<ActorStatContainer>().TryGetStat("haste_pct", out var stat))
                     hastePct = stat.EffectiveMaximum / 100f;

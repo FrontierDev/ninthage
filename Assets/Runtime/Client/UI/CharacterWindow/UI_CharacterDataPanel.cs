@@ -3,8 +3,9 @@ using Game.Shared;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_CharacterDataPanel : UI_Panel

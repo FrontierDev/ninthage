@@ -1,5 +1,6 @@
 using Game.Shared;
 
+using Game.Shared.Runtime.Actors;
 namespace Game.Client.UI
 {
     public sealed class UI_TargetWindow : UI_Window

@@ -3,6 +3,7 @@ using Game.Client.UI;
 using Game.Shared;
 using Game.Shared.Data;
 
+using Game.Shared.Runtime.Items;
 namespace Game.Client.Utility
 {
     public static class ItemTooltipFactory

@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using Game.Shared.Data;
+using Game.Shared.Data.Dialogue;
 
 [CustomEditor(typeof(DialogueDefinition))]
 public class DialogueDefinitionEditor : Editor

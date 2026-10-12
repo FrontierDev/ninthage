@@ -46,10 +46,10 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 1492967610426589259
-      type: {class: SpellTarget_Single, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellTarget_Single, ns: Game.Shared.Data.SpellTargetDefinitions, asm: Game.Shared}
       data: 
     - rid: 1492967610426589260
-      type: {class: SpellEffect_Damage, ns: Game.Shared.Data, asm: Game.Shared}
+      type: {class: SpellEffect_Damage, ns: Game.Shared.Data.SpellEffectDefinitions, asm: Game.Shared}
       data:
         BaseDamage: 1
         WeaponDamageMode: 1

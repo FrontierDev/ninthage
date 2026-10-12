@@ -1,11 +1,12 @@
 using Game.Shared.Data;
+using Game.Shared.Data.Dialogue;
 using PurrNet;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Defines one NPC loot table and its number of rolls.</summary>
     [System.Serializable]

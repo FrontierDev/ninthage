@@ -1,7 +1,9 @@
-using Debug = Game.Shared.FormattedDebug;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Utility;
+using Game.Shared.Runtime;
+using Game.Shared.Runtime.Spellcasting;
 using Guid = System.Guid;
 using PurrNet;
 using System;
@@ -11,7 +13,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Serialization;
 
-namespace Game.Shared
+namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Base networked actor shared by players and NPCs.</summary>
     public class Actor : NetworkBehaviour, ILevelledActor
@@ -107,7 +109,7 @@ namespace Game.Shared
             if (identity != null && identity.hasOwner)
                 SetOwner(identity.owner);
 
-            if (!Runtime.IsServer())
+            if (!Game.Shared.Runtime.Runtime.IsServer())
             {
                 Game.Shared.Networking.ActorEndpoint.onActorSpawned?.Invoke(this);
             }

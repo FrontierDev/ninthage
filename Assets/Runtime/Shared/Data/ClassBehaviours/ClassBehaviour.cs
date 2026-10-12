@@ -1,6 +1,7 @@
 using UnityEngine;
 
-namespace Game.Shared.Data
+using Game.Shared.Runtime.Actors;
+namespace Game.Shared.Data.ClassBehaviours
 {
     /// <summary>Defines the lifecycle contract for a class behaviour.</summary>
     public interface IClassBehaviour

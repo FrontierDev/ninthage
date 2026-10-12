@@ -1,4 +1,4 @@
-namespace Game.Shared.Data
+namespace Game.Shared.Data.Conditions
 {
     [System.Serializable]
     /// <summary>Defines a condition used to filter authored game content.</summary>
