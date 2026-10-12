@@ -18,7 +18,7 @@ namespace Game.Shared.Data
         /// <summary>Gets or sets stat scaling entries.</summary>
         public List<StatScaling> StatScaling = new();
 
-        private const string StatHealth = "health";
+        private const string STAT_HEALTH = "health";
 
         /// <summary>Executes healing for an aura target.</summary>
         public override void Execute(AuraContext ctx, Actor target)
@@ -74,11 +74,11 @@ namespace Game.Shared.Data
 
         private void ApplyHealing(Actor source, ActorStatContainer targetStats, Actor target, int healing)
         {
-            if (!targetStats.TryGetStat(StatHealth, out var health))
+            if (!targetStats.TryGetStat(STAT_HEALTH, out var health))
                 return;
 
             float newCurrent = Mathf.Min(health.EffectiveMaximum, health.CurrentValue + healing);
-            targetStats.SetStat(StatHealth, new StatInstance(
+            targetStats.SetStat(STAT_HEALTH, new StatInstance(
                 health.BaseValue, health.FlatModifier, health.PercentModifier,
                 health.EffectiveMaximum, newCurrent));
 

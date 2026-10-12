@@ -90,7 +90,7 @@ namespace Game.Shared
         /// The auras that are active ON the target (not BY the target).
         /// </summary>
         [SerializeField] private Dictionary<int, AuraInstance> activeAuras = new();
-        private List<int> expiredAurasThisFrame = new();
+        private List<int> _expiredAurasThisFrame = new();
 
         /// <summary>Initializes the actor identity.</summary>
         public void Initialize(Guid id, string name)
@@ -121,18 +121,18 @@ namespace Game.Shared
 
                 if (aura.Duration <= 0)
                 {
-                    expiredAurasThisFrame.Add(kvp.Key);
+                    _expiredAurasThisFrame.Add(kvp.Key);
 
                 }
             }
 
-            foreach (var id in expiredAurasThisFrame)
+            foreach (var id in _expiredAurasThisFrame)
             {
                 ActorEndpoint.onClientExpireAura?.Invoke(activeAuras[id], this, id);
                 activeAuras.Remove(id);
             }
 
-            expiredAurasThisFrame.Clear();
+            _expiredAurasThisFrame.Clear();
         }
 
         [ToDo("Any onActorDespawned logic.")]

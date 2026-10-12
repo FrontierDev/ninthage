@@ -7,16 +7,16 @@ namespace Game.Shared
     /// <summary>Loads and exposes the shared game configuration.</summary>
     public static class GameConfigurationManager
     {
-        private static GameConfiguration config;
+        private static GameConfiguration _config;
         public static GameConfiguration Config
         {
             get
             {
-                if (config == null)
+                if (_config == null)
                 {
                     Debug.Error("Game configuration accessed before initialization!");
                 }
-                return config;
+                return _config;
             }
         }
 
@@ -39,8 +39,8 @@ namespace Game.Shared
             }
 
             // Load the configuration asset from Resources.
-            config = Resources.Load<GameConfiguration>("GameConfiguration");
-            if (config == null)
+            _config = Resources.Load<GameConfiguration>("GameConfiguration");
+            if (_config == null)
             {
                 Debug.Error("Failed to load game configuration from Resources. Ensure the asset is placed in a Resources folder and named 'GameConfiguration'.");
                 return;

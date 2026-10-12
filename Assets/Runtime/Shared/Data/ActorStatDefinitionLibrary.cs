@@ -10,7 +10,7 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "ActorStatDefinitionLibrary", menuName = "NinthAge/Definition Libraries/Actor Stat")]
     public class ActorStatDefinitionLibrary : DataDefinitionLibrary<ActorStatDefinition>
     {
-        private static ActorStatDefinitionLibrary instance;
+        private static ActorStatDefinitionLibrary _instance;
 
         /// <summary>
         /// Get the singleton instance (loaded from Resources).
@@ -19,15 +19,15 @@ namespace Game.Shared.Data
         {
             get
             {
-                if (instance == null)
+                if (_instance == null)
                 {
-                    instance = Resources.Load<ActorStatDefinitionLibrary>("ActorStatDefinitionLibrary");
-                    if (instance == null)
+                    _instance = Resources.Load<ActorStatDefinitionLibrary>("ActorStatDefinitionLibrary");
+                    if (_instance == null)
                     {
                         Debug.Error("Could not load ActorStatDefinitionLibrary from Resources");
                     }
                 }
-                return instance;
+                return _instance;
             }
         }
 
@@ -36,7 +36,7 @@ namespace Game.Shared.Data
         /// </summary>
         public static void ResetInstance()
         {
-            instance = null;
+            _instance = null;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "TalentDefinitionLibrary", menuName = "NinthAge/Definition Libraries/Talent Definition")]
     public class TalentDefinitionLibrary : DataDefinitionLibrary<TalentDefinition>
     {
-        private static TalentDefinitionLibrary instance;
+        private static TalentDefinitionLibrary _instance;
 
         /// <summary>
         /// Get the singleton instance (loaded from Resources).
@@ -19,15 +19,15 @@ namespace Game.Shared.Data
         {
             get
             {
-                if (instance == null)
+                if (_instance == null)
                 {
-                    instance = Resources.Load<TalentDefinitionLibrary>("TalentDefinitionLibrary");
-                    if (instance == null)
+                    _instance = Resources.Load<TalentDefinitionLibrary>("TalentDefinitionLibrary");
+                    if (_instance == null)
                     {
                         Debug.Error("Could not load TalentDefinitionLibrary from Resources");
                     }
                 }
-                return instance;
+                return _instance;
             }
         }
 
@@ -36,7 +36,7 @@ namespace Game.Shared.Data
         /// </summary>
         public static void ResetInstance()
         {
-            instance = null;
+            _instance = null;
         }
     }
 }

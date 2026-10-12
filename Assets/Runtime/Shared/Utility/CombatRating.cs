@@ -5,8 +5,8 @@ namespace Game.Shared
     /// <summary>Converts combat ratings into level-scaled percentages.</summary>
     public static class CombatRatingHelper
     {
-        private const int ReferenceLevel = 60;
-        private const float ScalingExponent = 1.5f;
+        private const int REFERENCE_LEVEL = 60;
+        private const float SCALING_EXPONENT = 1.5f;
 
         /// <summary>
         /// Converts a flat rating value to a percentage, scaled by character level.
@@ -19,7 +19,7 @@ namespace Game.Shared
         public static float RatingToPercent(float rating, int level, float baseRatingPerPercent)
         {
             float ratingPerPercent = Mathf.Max(1f, baseRatingPerPercent
-                * Mathf.Pow((float)level / ReferenceLevel, ScalingExponent));
+                * Mathf.Pow((float)level / REFERENCE_LEVEL, SCALING_EXPONENT));
             return rating / ratingPerPercent;
         }
     }

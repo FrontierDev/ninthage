@@ -27,13 +27,13 @@ namespace Game.Server.Services
 
         public void AddExperience(int amount)
         {
-            if (level >= ExperienceCalculator.MaxLevel)
+            if (level >= ExperienceCalculator.MAX_LEVEL)
                 return;
 
             experience += amount;
 
             int required = ExperienceCalculator.GetExpForLevel(level);
-            while (experience >= required && level < ExperienceCalculator.MaxLevel)
+            while (experience >= required && level < ExperienceCalculator.MAX_LEVEL)
             {
                 experience -= required;
                 level++;

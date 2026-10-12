@@ -67,13 +67,13 @@ namespace Game.Shared
         /// <summary>Gets the actor's runtime spell overrides.</summary>
         public IReadOnlyDictionary<string, SpellOverride> Spells => spells;
 
-        private readonly Dictionary<string, List<ISpellModifier>> modifiersBySource = new();
+        private readonly Dictionary<string, List<ISpellModifier>> _modifiersBySource = new();
         /// <summary>Gets all modifiers currently applied to the actor.</summary>
-        public IReadOnlyList<ISpellModifier> SpellModifiers => modifiersBySource.Values.SelectMany(l => l).ToList();
+        public IReadOnlyList<ISpellModifier> SpellModifiers => _modifiersBySource.Values.SelectMany(l => l).ToList();
 
-        private bool isCasting;
+        private bool _isCasting;
         /// <summary>Gets whether the actor is currently casting.</summary>
-        public bool IsCasting => isCasting;
+        public bool IsCasting => _isCasting;
 
         private void Awake()
         {
@@ -138,10 +138,10 @@ namespace Game.Shared
             // Clone incoming modifier so we don't mutate shared assets
             var clone = CloneModifier(modifier, source);
 
-            if (!modifiersBySource.TryGetValue(source, out var list))
+            if (!_modifiersBySource.TryGetValue(source, out var list))
             {
                 list = new();
-                modifiersBySource[source] = list;
+                _modifiersBySource[source] = list;
             }
 
             // If the modifier has ranks (e.g., for talents), then we should multiply the effects
@@ -171,12 +171,12 @@ namespace Game.Shared
         {
             if (string.IsNullOrEmpty(source) || modifier == null) return;
 
-            if (!modifiersBySource.TryGetValue(source, out var list)) return;
+            if (!_modifiersBySource.TryGetValue(source, out var list)) return;
 
             // Remove by concrete type so callers can pass asset instances
             list.RemoveAll(m => m.GetType() == modifier.GetType());
             if (list.Count == 0)
-                modifiersBySource.Remove(source);
+                _modifiersBySource.Remove(source);
 
             RecalculateOverrides();
         }
@@ -214,7 +214,7 @@ namespace Game.Shared
         public void RecalculateOverrides()
         {
             var actor = GetComponent<Actor>();
-            var sorted = modifiersBySource.Values.SelectMany(l => l).OrderBy(m => m.Priority);
+            var sorted = _modifiersBySource.Values.SelectMany(l => l).OrderBy(m => m.Priority);
 
             foreach (var spell in spells.Values)
             {
@@ -372,7 +372,7 @@ namespace Game.Shared
         [ObserversRpc]
         public void Observer_StartSpellCast(string spellID, float finalCastTime, RPCInfo rpcInfo = default)
         {
-            isCasting = true;
+            _isCasting = true;
             ActorEndpoint.onSpellCastStarted?.Invoke(GetComponent<Actor>(), spellID, finalCastTime);
         }
 
@@ -387,14 +387,14 @@ namespace Game.Shared
         [ObserversRpc]
         public void Observer_InterruptSpellCast(string spellID)
         {
-            isCasting = false;
+            _isCasting = false;
             ActorEndpoint.onSpellCastInterrupted?.Invoke(GetComponent<Actor>());
         }
 
         [ObserversRpc]
         public void Observer_FinishSpellCast(string spellID)
         {
-            isCasting = false;
+            _isCasting = false;
             ActorEndpoint.onSpellCastCompleted?.Invoke(GetComponent<Actor>());
         }
 

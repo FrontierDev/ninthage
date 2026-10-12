@@ -10,7 +10,7 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "AuraDefinitionLibrary", menuName = "NinthAge/Definition Libraries/Aura Definition")]
     public class AuraDefinitionLibrary : DataDefinitionLibrary<AuraDefinition>
     {
-        private static AuraDefinitionLibrary instance;
+        private static AuraDefinitionLibrary _instance;
 
         /// <summary>
         /// Get the singleton instance (loaded from Resources).
@@ -19,15 +19,15 @@ namespace Game.Shared.Data
         {
             get
             {
-                if (instance == null)
+                if (_instance == null)
                 {
-                    instance = Resources.Load<AuraDefinitionLibrary>("AuraDefinitionLibrary");
-                    if (instance == null)
+                    _instance = Resources.Load<AuraDefinitionLibrary>("AuraDefinitionLibrary");
+                    if (_instance == null)
                     {
                         Debug.Error("Could not load AuraDefinitionLibrary from Resources");
                     }
                 }
-                return instance;
+                return _instance;
             }
         }
 
@@ -36,7 +36,7 @@ namespace Game.Shared.Data
         /// </summary>
         public static void ResetInstance()
         {
-            instance = null;
+            _instance = null;
         }
     }
 }

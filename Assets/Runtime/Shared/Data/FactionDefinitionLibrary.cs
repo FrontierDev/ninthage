@@ -10,7 +10,7 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "FactionDefinitionLibrary", menuName = "NinthAge/Definition Libraries/Faction")]
     public class FactionDefinitionLibrary : DataDefinitionLibrary<FactionDefinition>
     {
-        private static FactionDefinitionLibrary instance;
+        private static FactionDefinitionLibrary _instance;
 
         /// <summary>
         /// Get the singleton instance (loaded from Resources).
@@ -19,15 +19,15 @@ namespace Game.Shared.Data
         {
             get
             {
-                if (instance == null)
+                if (_instance == null)
                 {
-                    instance = Resources.Load<FactionDefinitionLibrary>("FactionDefinitionLibrary");
-                    if (instance == null)
+                    _instance = Resources.Load<FactionDefinitionLibrary>("FactionDefinitionLibrary");
+                    if (_instance == null)
                     {
                         Debug.Error("Could not load FactionDefinitionLibrary from Resources");
                     }
                 }
-                return instance;
+                return _instance;
             }
         }
 
@@ -36,7 +36,7 @@ namespace Game.Shared.Data
         /// </summary>
         public static void ResetInstance()
         {
-            instance = null;
+            _instance = null;
         }
     }
 }

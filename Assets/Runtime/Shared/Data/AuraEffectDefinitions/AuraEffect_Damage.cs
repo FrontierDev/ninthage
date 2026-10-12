@@ -19,7 +19,7 @@ namespace Game.Shared.Data
         /// <summary>Gets or sets the damage schools.</summary>
         public List<DamageSchoolDefinition> DamageSchools = new();
 
-        private const string StatHealth = "health";
+        private const string STAT_HEALTH = "health";
 
         /// <summary>Executes damage for an aura target.</summary>
         public override void Execute(AuraContext ctx, Actor target)
@@ -77,11 +77,11 @@ namespace Game.Shared.Data
 
         private void ApplyDamage(Actor source, ActorStatContainer targetStats, Actor target, int damage)
         {
-            if (!targetStats.TryGetStat(StatHealth, out var health))
+            if (!targetStats.TryGetStat(STAT_HEALTH, out var health))
                 return;
 
             float newCurrent = Mathf.Max(0f, health.CurrentValue - damage);
-            targetStats.SetStat(StatHealth, new StatInstance(
+            targetStats.SetStat(STAT_HEALTH, new StatInstance(
                 health.BaseValue, health.FlatModifier, health.PercentModifier,
                 health.EffectiveMaximum, newCurrent));
 

@@ -7,34 +7,34 @@ namespace Game.Shared.Utility
     /// Stores per-level XP requirements for a WoW-like levelling curve.
     /// The table is generated once when the class is first accessed.
     ///
-    /// LevelXpRequirements[level] = XP required to go from that level to the next.
-    /// Example: LevelXpRequirements[10] = XP required for level 10 -> 11.
+    /// LEVEL_XP_REQUIREMENTS[level] = XP required to go from that level to the next.
+    /// Example: LEVEL_XP_REQUIREMENTS[10] = XP required for level 10 -> 11.
     /// </summary>
     public static class ExperienceCalculator
     {
-        public const int MinLevel = 1;
-        public const int MaxLevel = 60;
+        public const int MIN_LEVEL = 1;
+        public const int MAX_LEVEL = 60;
 
         /// <summary>
         /// XP required to go from level N to level N+1.
         /// </summary>
-        public static readonly Dictionary<int, int> LevelXpRequirements;
+        public static readonly Dictionary<int, int> LEVEL_XP_REQUIREMENTS;
 
         static ExperienceCalculator()
         {
-            LevelXpRequirements = new(MaxLevel);
+            LEVEL_XP_REQUIREMENTS = new(MAX_LEVEL);
             Initialize();
         }
 
         private static void Initialize()
         {
-            for (int level = MinLevel; level < MaxLevel; level++)
+            for (int level = MIN_LEVEL; level < MAX_LEVEL; level++)
             {
-                LevelXpRequirements[level] = CalculateRequiredExp(level);
+                LEVEL_XP_REQUIREMENTS[level] = CalculateRequiredExp(level);
             }
 
             // At level cap, no further XP is required.
-            LevelXpRequirements[MaxLevel] = 0;
+            LEVEL_XP_REQUIREMENTS[MAX_LEVEL] = 0;
         }
 
         /// <summary>
@@ -43,13 +43,13 @@ namespace Game.Shared.Utility
         /// </summary>
         private static int CalculateRequiredExp(int level)
         {
-            if (level < MinLevel)
-                throw new ArgumentOutOfRangeException(nameof(level), $"Level must be >= {MinLevel}.");
+            if (level < MIN_LEVEL)
+                throw new ArgumentOutOfRangeException(nameof(level), $"Level must be >= {MIN_LEVEL}.");
 
-            if (level >= MaxLevel)
+            if (level >= MAX_LEVEL)
                 return 0;
 
-            float t = (level - MinLevel) / (float)(MaxLevel - MinLevel);
+            float t = (level - MIN_LEVEL) / (float)(MAX_LEVEL - MIN_LEVEL);
 
             float xp =
                 400f +
@@ -63,8 +63,8 @@ namespace Game.Shared.Utility
         /// <summary>Gets the experience required to advance from a level.</summary>
         public static int GetExpForLevel(int level)
         {
-            if (!LevelXpRequirements.TryGetValue(level, out int xp))
-                throw new ArgumentOutOfRangeException(nameof(level), $"Level must be between {MinLevel} and {MaxLevel}.");
+            if (!LEVEL_XP_REQUIREMENTS.TryGetValue(level, out int xp))
+                throw new ArgumentOutOfRangeException(nameof(level), $"Level must be between {MIN_LEVEL} and {MAX_LEVEL}.");
 
             return xp;
         }
@@ -72,10 +72,10 @@ namespace Game.Shared.Utility
         /// <summary>Gets current level progress as a value from zero to one.</summary>
         public static float GetLevelProgress01(int currentLevel, int currentExp)
         {
-            if (currentLevel < MinLevel || currentLevel > MaxLevel)
-                throw new ArgumentOutOfRangeException(nameof(currentLevel), $"Current level must be between {MinLevel} and {MaxLevel}.");
+            if (currentLevel < MIN_LEVEL || currentLevel > MAX_LEVEL)
+                throw new ArgumentOutOfRangeException(nameof(currentLevel), $"Current level must be between {MIN_LEVEL} and {MAX_LEVEL}.");
 
-            if (currentLevel == MaxLevel)
+            if (currentLevel == MAX_LEVEL)
                 return 1f;
 
             int expRequired = GetExpForLevel(currentLevel);

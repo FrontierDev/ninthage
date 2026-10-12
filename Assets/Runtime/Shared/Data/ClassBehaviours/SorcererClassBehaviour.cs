@@ -11,15 +11,15 @@ namespace Game.Shared.Data
     [CreateAssetMenu(menuName = "NinthAge/Class Behaviours/Sorcerer")]
     public class SorcererClassBehaviour : ClassBehaviour
     {
-        private const float UnstableThreshold = 0.4f;
-        private const float CriticalThreshold = 0.8f;
-        private const float UnstableDamagePerTick = 1f;
-        private const float CriticalDamagePerTick = 5f;
-        private const float DecayDelay = 6f;      // seconds after last instability cast before decay begins
-        private const float DecayPerSecond = 3f;   // instability lost per second whilst decaying
-        private const float UnstableSurgeRatio = 1.5f;
-        private const float CriticalSurgeRatio = 3f;
-        private const float SurgeDecayPerSecond = 0.03f; // 3% of max per second
+        private const float UNSTABLE_THRESHOLD = 0.4f;
+        private const float CRITICAL_THRESHOLD = 0.8f;
+        private const float UNSTABLE_DAMAGE_PER_TICK = 1f;
+        private const float CRITICAL_DAMAGE_PER_TICK = 5f;
+        private const float DECAY_DELAY = 6f;      // seconds after last instability cast before decay begins
+        private const float DECAY_PER_SECOND = 3f;   // instability lost per second whilst decaying
+        private const float UNSTABLE_SURGE_RATIO = 1.5f;
+        private const float CRITICAL_SURGE_RATIO = 3f;
+        private const float SURGE_DECAY_PER_SECOND = 0.03f; // 3% of max per second
 
         [SerializeField] private DamageSchoolDefinition instabilityDamageSchool;
 
@@ -35,7 +35,7 @@ namespace Game.Shared.Data
             /// <summary>Gets or sets the rift radius.</summary>
             public float Radius;
             /// <summary>Gets or sets the rift visual effect identifier.</summary>
-            public int VFXId;
+            public int VFXID;
         }
         private readonly Dictionary<Actor, RiftData> _activeRifts = new();
 
@@ -104,10 +104,10 @@ namespace Game.Shared.Data
         /// <param name="position"></param>
         /// <param name="duration"></param>
         /// <param name="radius"></param>
-        /// <param name="vfxId"></param>
-        public void RegisterRift(Actor caster, Vector3 position, float duration, float radius, int vfxId)
+        /// <param name="vfxID"></param>
+        public void RegisterRift(Actor caster, Vector3 position, float duration, float radius, int vfxID)
         {
-            _activeRifts[caster] = new RiftData { Position = position, Radius = radius, VFXId = vfxId };
+            _activeRifts[caster] = new RiftData { Position = position, Radius = radius, VFXID = vfxID };
 
             // Replace any existing rift ticker.
             ActorEndpoint.onServerRemoveTickerByTag?.Invoke(caster, "sorcerer_rift");
@@ -130,7 +130,7 @@ namespace Game.Shared.Data
                 ApplyRiftPulseDamage(caster, target);
             }
 
-            caster.GetComponent<ActorVFXController>()?.Observer_TriggerEffect(rift.VFXId);
+            caster.GetComponent<ActorVFXController>()?.Observer_TriggerEffect(rift.VFXID);
         }
 
 
@@ -171,10 +171,10 @@ namespace Game.Shared.Data
             float instabilityPercent = instability.CurrentValue / maxInstability;
 
             float surgeRatio;
-            if (instabilityPercent >= CriticalThreshold)
-                surgeRatio = CriticalSurgeRatio;
-            else if (instabilityPercent >= UnstableThreshold)
-                surgeRatio = UnstableSurgeRatio;
+            if (instabilityPercent >= CRITICAL_THRESHOLD)
+                surgeRatio = CRITICAL_SURGE_RATIO;
+            else if (instabilityPercent >= UNSTABLE_THRESHOLD)
+                surgeRatio = UNSTABLE_SURGE_RATIO;
             else
                 return; // No surge outside of unstable/critical.
 
@@ -249,10 +249,10 @@ namespace Game.Shared.Data
         /// <param name="newPercent"></param>
         private void UpdateInstabilityState(Actor actor, float oldPercent, float newPercent)
         {
-            bool wasCritical = oldPercent >= CriticalThreshold;
-            bool wasUnstable = oldPercent >= UnstableThreshold && !wasCritical;
-            bool nowCritical = newPercent >= CriticalThreshold;
-            bool nowUnstable = newPercent >= UnstableThreshold && !nowCritical;
+            bool wasCritical = oldPercent >= CRITICAL_THRESHOLD;
+            bool wasUnstable = oldPercent >= UNSTABLE_THRESHOLD && !wasCritical;
+            bool nowCritical = newPercent >= CRITICAL_THRESHOLD;
+            bool nowUnstable = newPercent >= UNSTABLE_THRESHOLD && !nowCritical;
 
             // Remove states that no longer apply.
             if (wasCritical && !nowCritical)
@@ -263,10 +263,10 @@ namespace Game.Shared.Data
             // Add states that are newly entered.
             if (nowCritical && !wasCritical)
                 ActorEndpoint.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_critical",
-                    a => ApplyInstabilityDamage(a, CriticalDamagePerTick), null);
+                    a => ApplyInstabilityDamage(a, CRITICAL_DAMAGE_PER_TICK), null);
             if (nowUnstable && !wasUnstable)
                 ActorEndpoint.onServerAddTicker?.Invoke(actor, 1f, float.MaxValue, "sorcerer_unstable",
-                    a => ApplyInstabilityDamage(a, UnstableDamagePerTick), null);
+                    a => ApplyInstabilityDamage(a, UNSTABLE_DAMAGE_PER_TICK), null);
         }
 
         /// <summary>
@@ -277,7 +277,7 @@ namespace Game.Shared.Data
         {
             if (actor == null) return;
             if (!_lastInstabilityTime.TryGetValue(actor, out float lastTime)) return;
-            if (Time.time - lastTime < DecayDelay) return;
+            if (Time.time - lastTime < DECAY_DELAY) return;
 
             var statContainer = actor.GetComponent<ActorStatContainer>();
             if (statContainer == null) return;
@@ -288,7 +288,7 @@ namespace Game.Shared.Data
             var def = ActorStatDefinitionLibrary.Instance.GetDefinition("instability");
             float maxInstability = stat.EffectiveMaximum > 0f ? stat.EffectiveMaximum : 100f;
             float oldPercent = stat.CurrentValue / maxInstability;
-            float newCurrent = Mathf.Max(0f, stat.CurrentValue - DecayPerSecond);
+            float newCurrent = Mathf.Max(0f, stat.CurrentValue - DECAY_PER_SECOND);
             float newPercent = newCurrent / maxInstability;
 
             statContainer.SetStat("instability", new StatInstance(
@@ -311,7 +311,7 @@ namespace Game.Shared.Data
         {
             if (actor == null) return;
             if (!_lastSpellCastTime.TryGetValue(actor, out float lastCast)) return;
-            if (Time.time - lastCast < DecayDelay) return;
+            if (Time.time - lastCast < DECAY_DELAY) return;
 
             var statContainer = actor.GetComponent<ActorStatContainer>();
             if (statContainer == null) return;
@@ -319,7 +319,7 @@ namespace Game.Shared.Data
             if (!statContainer.TryGetStat("surge", out var surge)) return;
             if (surge.CurrentValue <= 0f) return;
 
-            float decayAmount = surge.EffectiveMaximum * SurgeDecayPerSecond;
+            float decayAmount = surge.EffectiveMaximum * SURGE_DECAY_PER_SECOND;
             float newSurge = Mathf.Max(0f, surge.CurrentValue - decayAmount);
 
             statContainer.SetStat("surge", new StatInstance(

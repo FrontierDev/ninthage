@@ -15,20 +15,20 @@ namespace Game.Shared
         /// <summary>Gets whether this actor is a player.</summary>
         public override bool IsPlayer => true;
 
-        private CharacterData characterData;
+        private CharacterData _characterData;
         /// <summary>Gets the loaded character data.</summary>
-        public CharacterData CharacterData => characterData;
+        public CharacterData CharacterData => _characterData;
 
         [SerializeField] public readonly SyncVar<int> level = new();
         [SerializeField] public readonly SyncVar<string> classID = new();
         [SerializeField] public readonly SyncVar<string> raceID = new();
         [SerializeField] public readonly SyncVar<string> characterName = new();
-        [SerializeField] public readonly SyncVar<string> pvpFactionID = new();
+        [SerializeField] public readonly SyncVar<string> PVPFactionID = new();
 
         // This is done on the SERVER.
         public void SetCharacterData(CharacterData data)
         {
-            characterData = data;
+            _characterData = data;
 
             // Push to SyncVars so observers get current values
             if (Game.Shared.Runtime.IsServer())
@@ -37,7 +37,7 @@ namespace Game.Shared
                 classID.value = data.ClassID;
                 raceID.value = data.RaceID;
                 characterName.value = data.Name;
-                pvpFactionID.value = data.PvPFactionID;
+                PVPFactionID.value = data.PvPFactionID;
 
                 GetComponent<ActorSpellcaster>().LoadKnownSpells(data.KnownSpellIDs);
                 GetComponent<PlayerInventory>().LoadInventory(data);

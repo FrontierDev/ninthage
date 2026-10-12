@@ -34,7 +34,7 @@ namespace Game.Server.Services
 
         public void AddWeaponSkillExperience(int amount)
         {
-            if (level >= ExperienceCalculator.MaxLevel)
+            if (level >= ExperienceCalculator.MAX_LEVEL)
                 return;
 
             experience += amount;

@@ -18,11 +18,11 @@ namespace Game.Shared
         /// <summary>Gets or sets the actor's horizontal velocity.</summary>
         public Vector3 horizontalVelocity = Vector3.zero;
 
-        private Actor actor;
+        private Actor _actor;
 
         private void Awake()
         {
-            actor = GetComponent<Actor>();
+            _actor = GetComponent<Actor>();
         }
     }
 }

@@ -6,9 +6,9 @@ namespace Game.Shared.Data
     [CreateAssetMenu(menuName = "NinthAge/Aura Behaviours/Heal Attacker On Hit")]
     public class AuraBehaviour_HealAttackerOnHit : AuraBehaviour
     {
-        private const string note = "Heals the attacker when hitting the host of the aura with an auto attack.";
+        private const string NOTE = "Heals the attacker when hitting the host of the aura with an auto attack.";
         /// <summary>Gets the behavior description.</summary>
-        public override string Description => note;
+        public override string Description => NOTE;
 
         [SerializeReference] private SpellEffectDefinition healEffect;
 

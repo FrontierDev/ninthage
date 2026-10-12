@@ -157,7 +157,7 @@ namespace Game.Server
 
                 foreach (var chunk in changedChunks)
                 {
-                    if (!Game.Shared.Networking.ChunkSubscriptions.SceneIdentities.TryGetValue(chunk, out var identities))
+                    if (!Game.Shared.Networking.ChunkSubscriptions.SCENE_IDENTITIES.TryGetValue(chunk, out var identities))
                         continue;
 
                     foreach (var id in identities)

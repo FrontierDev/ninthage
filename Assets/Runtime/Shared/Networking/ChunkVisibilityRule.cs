@@ -17,10 +17,10 @@ namespace Game.Shared.Networking
             if (targetActor == null || string.IsNullOrEmpty(targetActor.CurrentChunk))
                 return false;
 
-            if (!ChunkSubscriptions.SceneActors.TryGetValue(targetActor.CurrentChunk, out var subscribers))
+            if (!ChunkSubscriptions.SCENE_ACTORS.TryGetValue(targetActor.CurrentChunk, out var subscribers))
                 return false;
 
-            if (!ChunkSubscriptions.PlayerActors.TryGetValue(player, out var playerActor))
+            if (!ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(player, out var playerActor))
                 return false;
 
             return subscribers.Contains(playerActor);

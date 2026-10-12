@@ -12,7 +12,7 @@ namespace Game.Shared.Test
         /// <summary>Gets the active test interest controller.</summary>
         public static Test_InterestController Instance => _instance;
 
-        private Action onMove;
+        private Action _onMove;
 
         [SerializeField] Vector2Int currentTile;
         [SerializeField] Vector2Int lastTile;
@@ -20,7 +20,7 @@ namespace Game.Shared.Test
         private void Start()
         {
             _instance = this;
-            onMove += OnMove;
+            _onMove += OnMove;
         }
 
         private void Update() { PollKeys(); }
@@ -43,25 +43,25 @@ namespace Game.Shared.Test
             {
                 lastTile = currentTile;
                 currentTile.x -= 1;
-                onMove?.Invoke();
+                _onMove?.Invoke();
             }
             else if (keyboard.dKey.wasPressedThisFrame)
             {
                 lastTile = currentTile;
                 currentTile.x += 1;
-                onMove?.Invoke();
+                _onMove?.Invoke();
             }
             else if (keyboard.wKey.wasPressedThisFrame)
             {
                 lastTile = currentTile;
                 currentTile.y += 1;
-                onMove?.Invoke();
+                _onMove?.Invoke();
             }
             else if (keyboard.sKey.wasPressedThisFrame)
             {
                 lastTile = currentTile;
                 currentTile.y -= 1;
-                onMove?.Invoke();
+                _onMove?.Invoke();
             }
         }
     }

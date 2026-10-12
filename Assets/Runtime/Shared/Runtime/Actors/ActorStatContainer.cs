@@ -10,34 +10,34 @@ namespace Game.Shared
     /// <summary>Stores one actor stat's base, modifier, and current values.</summary>
     public class StatInstance
     {
-        private float baseValue;
-        private float flatModifier;
-        private float percentModifier;
-        private float effectiveMaximum;
-        private float currentValue;
+        private float _baseValue;
+        private float _flatModifier;
+        private float _percentModifier;
+        private float _effectiveMaximum;
+        private float _currentValue;
 
-        public float BaseValue => baseValue;
-        public float FlatModifier => flatModifier;
-        public float PercentModifier => percentModifier;
-        public float EffectiveMaximum => effectiveMaximum;
-        public float CurrentValue => Mathf.Clamp(currentValue, 0, EffectiveMaximum);
+        public float BaseValue => _baseValue;
+        public float FlatModifier => _flatModifier;
+        public float PercentModifier => _percentModifier;
+        public float EffectiveMaximum => _effectiveMaximum;
+        public float CurrentValue => Mathf.Clamp(_currentValue, 0, EffectiveMaximum);
 
         public StatInstance() { }
         public StatInstance(float baseValue, float flatModifier, float percentModifier, float effectiveMaximum, float currentValue)
         {
-            this.baseValue = baseValue;
-            this.flatModifier = flatModifier;
-            this.percentModifier = percentModifier;
-            this.effectiveMaximum = effectiveMaximum;
-            this.currentValue = currentValue;
+            _baseValue = baseValue;
+            _flatModifier = flatModifier;
+            _percentModifier = percentModifier;
+            _effectiveMaximum = effectiveMaximum;
+            _currentValue = currentValue;
         }
 
-        public void SetBaseValue(float value) { baseValue = value; }
-        public void SetFlatModifier(float value) { flatModifier = value; }
-        public void SetPercentModifier(float value) { percentModifier = value; }
+        public void SetBaseValue(float value) { _baseValue = value; }
+        public void SetFlatModifier(float value) { _flatModifier = value; }
+        public void SetPercentModifier(float value) { _percentModifier = value; }
         public void RecalculateEffectiveMax()
         {
-            effectiveMaximum = (baseValue + flatModifier) * (1f + percentModifier);
+            _effectiveMaximum = (_baseValue + _flatModifier) * (1f + _percentModifier);
         }
     }
 
@@ -74,15 +74,15 @@ namespace Game.Shared
     /// <summary>Stores and replicates an actor's stats and modifiers.</summary>
     public sealed class ActorStatContainer : NetworkBehaviour
     {
-        private Dictionary<string, StatInstance> stats = new();
-        private List<StatModifier> modifiers = new();
+        private Dictionary<string, StatInstance> _stats = new();
+        private List<StatModifier> _modifiers = new();
 
         protected override void OnObserverAdded(PlayerID player)
         {
             base.OnObserverAdded(player);
 
             if (!isServer) return;
-            if (stats.Count == 0) return;
+            if (_stats.Count == 0) return;
 
             var observerSnapshot = BuildSnapshot(ActorStatReplicationMode.Observers);
             if (observerSnapshot.Stats.Length > 0)
@@ -99,22 +99,22 @@ namespace Game.Shared
         #region Stat Management
         public StatInstance GetStat(string statId)
         {
-            if (stats.TryGetValue(statId, out var stat))
+            if (_stats.TryGetValue(statId, out var stat))
                 return stat;
             Debug.Error($"Stat with ID {statId} not found in ActorStatContainer.");
             return null;
         }
 
-        public IEnumerable<KeyValuePair<string, StatInstance>> All => stats;
+        public IEnumerable<KeyValuePair<string, StatInstance>> All => _stats;
 
         public bool TryGetStat(string statId, out StatInstance stat)
         {
-            return stats.TryGetValue(statId, out stat);
+            return _stats.TryGetValue(statId, out stat);
         }
 
         public void SetStat(string statId, StatInstance instance)
         {
-            stats[statId] = instance;
+            _stats[statId] = instance;
 
             if (statId == "health" && instance.CurrentValue <= 0 && !GetComponent<Actor>().isDead)
             {
@@ -145,15 +145,15 @@ namespace Game.Shared
         #endregion
 
         #region Modifier Management
-        public void AddModifier(StatModifier modifier) => modifiers.Add(modifier);
-        public void RemoveModifier(StatModifier modifier) => modifiers.Remove(modifier);
+        public void AddModifier(StatModifier modifier) => _modifiers.Add(modifier);
+        public void RemoveModifier(StatModifier modifier) => _modifiers.Remove(modifier);
 
         public bool TryGetModifiersForStat(string statId, out List<StatModifier> flatModifiers, out List<StatModifier> percentModifiers)
         {
             flatModifiers = new List<StatModifier>();
             percentModifiers = new List<StatModifier>();
 
-            foreach (var mod in modifiers)
+            foreach (var mod in _modifiers)
             {
                 if (mod.StatId != statId) continue;
                 if (mod.FlatModifier != 0) flatModifiers.Add(mod);
@@ -181,7 +181,7 @@ namespace Game.Shared
         {
             foreach (var entry in snapshot.Stats)
             {
-                stats[entry.StatId] = new StatInstance(0, entry.FlatModifier, entry.PercentModifier, entry.EffectiveMax, entry.Current);
+                _stats[entry.StatId] = new StatInstance(0, entry.FlatModifier, entry.PercentModifier, entry.EffectiveMax, entry.Current);
             }
 
             Game.Shared.Networking.StatEndpoint.onStatsUpdated?.Invoke(GetComponent<Actor>(), this);
@@ -191,7 +191,7 @@ namespace Game.Shared
         {
             var library = ActorStatDefinitionLibrary.Instance;
             var list = new List<StatSnapshotEntry>();
-            foreach (var kvp in stats)
+            foreach (var kvp in _stats)
             {
                 var def = library.GetDefinition(kvp.Key);
                 if (def == null || def.ReplicationMode != mode) continue;

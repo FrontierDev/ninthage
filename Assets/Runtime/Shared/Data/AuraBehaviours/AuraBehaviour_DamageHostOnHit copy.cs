@@ -6,9 +6,9 @@ namespace Game.Shared.Data
     [CreateAssetMenu(menuName = "NinthAge/Aura Behaviours/Damage Host On Hit")]
     public class AuraBehaviour_DamageHostOnHit : AuraBehaviour
     {
-        private const string note = "Damages the host of the aura when hit by an auto attack.";
+        private const string NOTE = "Damages the host of the aura when hit by an auto attack.";
         /// <summary>Gets the behavior description.</summary>
-        public override string Description => note;
+        public override string Description => NOTE;
 
         [SerializeReference] private SpellEffectDefinition damageEffect;
 

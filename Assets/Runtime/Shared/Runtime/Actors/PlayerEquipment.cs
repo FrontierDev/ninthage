@@ -51,12 +51,12 @@ namespace Game.Shared
         public IReadOnlyDictionary<ItemSlot, ItemInstance> Equipment => equipment;
 
         private PlayerInventory playerInventory;
-        private ActorStatContainer statContainer;
+        private ActorStatContainer _statContainer;
 
         private void Awake()
         {
             playerInventory = GetComponent<PlayerInventory>();
-            statContainer = GetComponent<ActorStatContainer>();
+            _statContainer = GetComponent<ActorStatContainer>();
 
             foreach (var slot in System.Enum.GetValues(typeof(ItemSlot)))
             {
@@ -134,7 +134,7 @@ namespace Game.Shared
 
             if (Game.Shared.Runtime.IsServer())
             {
-                CharacterEndpoint.onUpdateStatsRequest?.Invoke(statContainer);
+                CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
                 Client_UpdateEquipment(owner.Value, delta);
             }
 
@@ -161,7 +161,7 @@ namespace Game.Shared
                     {
                         Client_UpdateEquipment(owner.Value, delta);
                         GetComponent<ActorSpellcaster>().RecalculateOverrides();
-                        CharacterEndpoint.onUpdateStatsRequest?.Invoke(statContainer);
+                        CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
                     }
                 }
                 else

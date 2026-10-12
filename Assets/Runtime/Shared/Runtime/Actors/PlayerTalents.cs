@@ -16,9 +16,9 @@ namespace Game.Shared
         public IReadOnlyDictionary<TalentDefinition, int> Talents => talents;
 
         // Talent points
-        private Dictionary<ClassSpecialisation, int> spentTalentPointsBySpecialisation = new();
+        private Dictionary<ClassSpecialisation, int> _spentTalentPointsBySpecialisation = new();
         /// <summary>Gets the number of spent talent points.</summary>
-        public int SpentTalentPoints => spentTalentPointsBySpecialisation.Values.Sum();
+        public int SpentTalentPoints => _spentTalentPointsBySpecialisation.Values.Sum();
         /// <summary>Gets the number of unspent talent points.</summary>
         public int GetUnspentTalentPoints() { return GetMaximumTalentPoints() - SpentTalentPoints; }
 
@@ -37,7 +37,7 @@ namespace Game.Shared
         /// <summary>Gets points spent in a specialisation.</summary>
         public int GetSpentTalentPoints(ClassSpecialisation spec)
         {
-            return spentTalentPointsBySpecialisation.TryGetValue(spec, out var points) ? points : 0;
+            return _spentTalentPointsBySpecialisation.TryGetValue(spec, out var points) ? points : 0;
         }
 
         #region Talent Management
@@ -81,10 +81,10 @@ namespace Game.Shared
             if (def.AssociatedSpecialisations.Count > 0)
             {
                 var spec = def.AssociatedSpecialisations[0];
-                if (spentTalentPointsBySpecialisation.ContainsKey(spec))
-                    spentTalentPointsBySpecialisation[spec] += rankDelta;
+                if (_spentTalentPointsBySpecialisation.ContainsKey(spec))
+                    _spentTalentPointsBySpecialisation[spec] += rankDelta;
                 else
-                    spentTalentPointsBySpecialisation.Add(spec, rankDelta);
+                    _spentTalentPointsBySpecialisation.Add(spec, rankDelta);
             }
 
             foreach (var mod in def.Modifiers)
@@ -107,8 +107,8 @@ namespace Game.Shared
                 if (def.AssociatedSpecialisations.Count > 0)
                 {
                     var spec = def.AssociatedSpecialisations[0];
-                    if (spentTalentPointsBySpecialisation.ContainsKey(spec))
-                        spentTalentPointsBySpecialisation[spec] -= talents[def];
+                    if (_spentTalentPointsBySpecialisation.ContainsKey(spec))
+                        _spentTalentPointsBySpecialisation[spec] -= talents[def];
                 }
                 foreach (var mod in def.Modifiers)
                     GetComponent<ActorSpellcaster>().RemoveModifier($"talent_{def.DefinitionId}", mod);
