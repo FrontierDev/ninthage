@@ -99,35 +99,35 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Quest ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Level:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("level"), GUIContent.none, GUILayout.Width(100));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_level"), GUIContent.none, GUILayout.Width(100));
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Type:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("type"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_type"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
@@ -137,7 +137,7 @@ namespace Game.Editor.Windows
             var descRect = EditorGUILayout.GetControlRect(GUILayout.Height(200));
             descriptionScrollPosition = GUI.BeginScrollView(descRect, descriptionScrollPosition, new Rect(0, 0, descRect.width - 16, 500), false, true);
 
-            var descriptionProp = serializedObject.FindProperty("description");
+            var descriptionProp = serializedObject.FindProperty("_description");
             var descStyle = new GUIStyle(EditorStyles.textArea)
             {
                 wordWrap = true
@@ -176,14 +176,14 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Gold Reward:", GUILayout.Width(120));
-            var goldProp = serializedObject.FindProperty("goldReward");
+            var goldProp = serializedObject.FindProperty("_goldReward");
             if (goldProp != null)
                 EditorGUILayout.PropertyField(goldProp, GUIContent.none, GUILayout.Width(100));
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Experience Reward:", GUILayout.Width(120));
-            var expProp = serializedObject.FindProperty("experienceReward");
+            var expProp = serializedObject.FindProperty("_experienceReward");
             if (expProp != null)
                 EditorGUILayout.PropertyField(expProp, GUIContent.none, GUILayout.Width(100));
             EditorGUILayout.EndHorizontal();
@@ -191,7 +191,7 @@ namespace Game.Editor.Windows
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Faction Reputation", EditorStyles.boldLabel);
-            var repProp = serializedObject.FindProperty("reputationReward");
+            var repProp = serializedObject.FindProperty("_reputationReward");
             if (repProp != null)
             {
                 EditorGUILayout.PropertyField(repProp, new GUIContent("Reputation Reward"), true);
@@ -199,7 +199,7 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.Space();
 
-            var itemRewardsProp = serializedObject.FindProperty("itemRewards");
+            var itemRewardsProp = serializedObject.FindProperty("_itemRewards");
             if (itemRewardsProp != null)
                 DrawItemRewardList(itemRewardsProp);
 
@@ -234,12 +234,12 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Recommended Players:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("recommendedPlayers"), GUIContent.none, GUILayout.Width(80));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_recommendedPlayers"), GUIContent.none, GUILayout.Width(80));
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Timer (seconds):", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("timerSeconds"), GUIContent.none, GUILayout.Width(80));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_timerSeconds"), GUIContent.none, GUILayout.Width(80));
             EditorGUILayout.LabelField("(0 = no timer)", EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
 
@@ -249,15 +249,15 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Is Repeatable:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("isRepeatable"), GUIContent.none, GUILayout.Width(50));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_isRepeatable"), GUIContent.none, GUILayout.Width(50));
             EditorGUILayout.EndHorizontal();
 
-            if (serializedObject.FindProperty("isRepeatable").boolValue)
+            if (serializedObject.FindProperty("_isRepeatable").boolValue)
             {
                 EditorGUI.indentLevel++;
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField("Cooldown:", GUILayout.Width(120));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("cooldown"), GUIContent.none);
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_cooldown"), GUIContent.none);
                 EditorGUILayout.EndHorizontal();
                 EditorGUI.indentLevel--;
             }
@@ -289,8 +289,8 @@ namespace Game.Editor.Windows
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.BeginVertical();
 
-                var itemProp = element.FindPropertyRelative("item");
-                var quantityProp = element.FindPropertyRelative("quantity");
+                var itemProp = element.FindPropertyRelative("_item");
+                var quantityProp = element.FindPropertyRelative("_quantity");
 
                 if (itemProp != null)
                     EditorGUILayout.PropertyField(itemProp, new GUIContent("Item"));
@@ -516,7 +516,7 @@ namespace Game.Editor.Windows
         {
             if (objectiveList == null)
             {
-                var prop = serializedObject.FindProperty("objectives");
+                var prop = serializedObject.FindProperty("_objectives");
                 objectiveList = new ReorderableList(serializedObject, prop, true, true, true, true)
                 {
                     drawHeaderCallback = rect =>
@@ -563,7 +563,7 @@ namespace Game.Editor.Windows
         {
             if (requirementList == null)
             {
-                var prop = serializedObject.FindProperty("requirements");
+                var prop = serializedObject.FindProperty("_requirements");
                 requirementList = new ReorderableList(serializedObject, prop, true, false, true, true)
                 {
                     drawElementCallback = (rect, index, isActive, isFocused) =>

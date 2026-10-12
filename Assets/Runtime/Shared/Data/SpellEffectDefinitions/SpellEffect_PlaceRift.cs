@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -16,20 +17,20 @@ namespace Game.Shared.Data
         /// <summary>Gets or sets the rift prefab addressable path.</summary>
         [SerializeField] public string RiftPrefabAddressablePath;
 
-        [SerializeField] private List<SpellActorEvent> casterEvents = new();
+        [SerializeField, FormerlySerializedAs("casterEvents")] private List<SpellActorEvent> _casterEvents = new();
         /// <summary>Gets the caster events raised by this effect.</summary>
-        public override List<SpellActorEvent> CasterEvents => casterEvents;
+        public override List<SpellActorEvent> CasterEvents => _casterEvents;
 
-        [SerializeField] private List<SpellActorEvent> targetEvents = new();
+        [SerializeField, FormerlySerializedAs("targetEvents")] private List<SpellActorEvent> _targetEvents = new();
         /// <summary>Gets the target events raised by this effect.</summary>
-        public override List<SpellActorEvent> TargetEvents => targetEvents;
+        public override List<SpellActorEvent> TargetEvents => _targetEvents;
 
         /// <summary>Creates a copy of this effect.</summary>
         public override SpellEffectDefinition Clone()
         {
             var clone = (SpellEffect_PlaceRift)MemberwiseClone();
-            clone.casterEvents = new List<SpellActorEvent>(casterEvents);
-            clone.targetEvents = new List<SpellActorEvent>(targetEvents);
+            clone._casterEvents = new List<SpellActorEvent>(_casterEvents);
+            clone._targetEvents = new List<SpellActorEvent>(_targetEvents);
             return clone;
         }
 

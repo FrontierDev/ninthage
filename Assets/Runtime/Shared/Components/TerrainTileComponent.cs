@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Runtime.Shared
 {
@@ -12,52 +13,57 @@ namespace Game.Runtime.Shared
     public class TerrainTileComponent : MonoBehaviour
     {
         [SerializeField]
-        private int tileX = 0;
+        [FormerlySerializedAs("tileX")]
+        private int _tileX = 0;
 
         [SerializeField]
-        private int tileZ = 0;
+        [FormerlySerializedAs("tileZ")]
+        private int _tileZ = 0;
 
         [SerializeField]
-        private bool hasBeenEroded = false;
+        [FormerlySerializedAs("hasBeenEroded")]
+        private bool _hasBeenEroded = false;
 
         [SerializeField]
-        private string lastErosionProfileUsed = "";
+        [FormerlySerializedAs("lastErosionProfileUsed")]
+        private string _lastErosionProfileUsed = "";
 
         [Header("Zone & Texturing")]
         [SerializeField]
-        private int zoneID = 0;
+        [FormerlySerializedAs("zoneID")]
+        private int _zoneID = 0;
 
         [SerializeField]
         private ZoneDefinition _zoneDefinition;
 
         public int TileX
         {
-            get => tileX;
-            set => tileX = value;
+            get => _tileX;
+            set => _tileX = value;
         }
 
         public int TileZ
         {
-            get => tileZ;
-            set => tileZ = value;
+            get => _tileZ;
+            set => _tileZ = value;
         }
 
         public bool HasBeenEroded
         {
-            get => hasBeenEroded;
-            set => hasBeenEroded = value;
+            get => _hasBeenEroded;
+            set => _hasBeenEroded = value;
         }
 
         public string LastErosionProfileUsed
         {
-            get => lastErosionProfileUsed;
-            set => lastErosionProfileUsed = value;
+            get => _lastErosionProfileUsed;
+            set => _lastErosionProfileUsed = value;
         }
 
         public int ZoneID
         {
-            get => zoneID;
-            set => zoneID = value;
+            get => _zoneID;
+            set => _zoneID = value;
         }
 
         public ZoneDefinition ZoneDefinition

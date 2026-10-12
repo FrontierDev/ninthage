@@ -5,6 +5,7 @@ using PurrNet;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -22,9 +23,9 @@ namespace Game.Shared
     /// <summary>Manages a player's active quest progress.</summary>
     public sealed class PlayerQuests : NetworkBehaviour
     {
-        [SerializeField] private List<PlayerQuestProgress> activeQuests = new();
+        [SerializeField, FormerlySerializedAs("activeQuests")] private List<PlayerQuestProgress> _activeQuests = new();
         /// <summary>Gets the active quests.</summary>
-        public IReadOnlyList<PlayerQuestProgress> ActiveQuests => activeQuests;
+        public IReadOnlyList<PlayerQuestProgress> ActiveQuests => _activeQuests;
 
         /// <summary>Raised when quest state changes.</summary>
         public Action onUpdate;
@@ -51,7 +52,7 @@ namespace Game.Shared
                 return;
             }
 
-            var existingProgress = activeQuests.Find(q => q.Quest.DefinitionId == questID);
+            var existingProgress = _activeQuests.Find(q => q.Quest.DefinitionId == questID);
             if (existingProgress != null)
             {
                 existingProgress.Progress = progress;
@@ -59,7 +60,7 @@ namespace Game.Shared
             }
             else
             {
-                activeQuests.Add(new PlayerQuestProgress
+                _activeQuests.Add(new PlayerQuestProgress
                 {
                     Quest = questDef,
                     Progress = progress,
@@ -76,7 +77,7 @@ namespace Game.Shared
         /// <param name="data"></param>
         public void LoadQuests(CharacterData data)
         {
-            activeQuests.Clear();
+            _activeQuests.Clear();
 
             foreach (var entry in data.SavedQuests)
             {
@@ -94,7 +95,7 @@ namespace Game.Shared
                     continue;
                 }
 
-                activeQuests.Add(new PlayerQuestProgress
+                _activeQuests.Add(new PlayerQuestProgress
                 {
                     Quest = questDef,
                     Progress = entry.Progress,
@@ -112,7 +113,7 @@ namespace Game.Shared
         /// </summary>
         public void CompleteQuest(string questID)
         {
-            var questProgress = activeQuests.Find(q => q.Quest.DefinitionId == questID);
+            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionId == questID);
             if (questProgress == null)
             {
                 Debug.LogWarning($"Attempted to complete quest {questID} but it is not in active quests");
@@ -128,7 +129,7 @@ namespace Game.Shared
         /// </summary>
         public void UpdateObjectiveProgress(string questID, int objectiveIndex, int value)
         {
-            var questProgress = activeQuests.Find(q => q.Quest.DefinitionId == questID);
+            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionId == questID);
             if (questProgress == null)
             {
                 Debug.LogWarning($"Attempted to update progress for quest {questID} but it is not in active quests");
@@ -148,7 +149,7 @@ namespace Game.Shared
         /// <summary>Gets progress for an active quest.</summary>
         public int[] GetQuestProgress(string questID)
         {
-            var questProgress = activeQuests.Find(q => q.Quest.DefinitionId == questID);
+            var questProgress = _activeQuests.Find(q => q.Quest.DefinitionId == questID);
             if (questProgress == null)
             {
                 Debug.LogWarning($"Attempted to get progress for quest {questID} but it is not in active quests");

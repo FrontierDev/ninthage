@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -11,19 +12,20 @@ namespace Game.Shared.Data
     public abstract class DataDefinitionLibrary<T> : ScriptableObject where T : DataDefinition
     {
         [SerializeField]
-        private List<T> definitions = new();
+        [FormerlySerializedAs("definitions")]
+        private List<T> _definitions = new();
 
         /// <summary>
         /// The serialized list of definitions, accessible to subclasses.
         /// </summary>
-        protected List<T> Definitions => definitions;
+        protected List<T> Definitions => _definitions;
 
         /// <summary>
         /// Get a definition by ID.
         /// </summary>
         public T GetDefinition(string definitionId)
         {
-            foreach (var def in definitions)
+            foreach (var def in _definitions)
             {
                 if (def != null && def.DefinitionId == definitionId)
                     return def;
@@ -37,7 +39,7 @@ namespace Game.Shared.Data
         /// </summary>
         public IReadOnlyList<T> GetAllDefinitions()
         {
-            return definitions.AsReadOnly();
+            return _definitions.AsReadOnly();
         }
 
         /// <summary>
@@ -45,7 +47,7 @@ namespace Game.Shared.Data
         /// </summary>
         public bool HasDefinition(string definitionId)
         {
-            return definitions.Any(d => d != null && d.DefinitionId == definitionId);
+            return _definitions.Any(d => d != null && d.DefinitionId == definitionId);
         }
 
         /// <summary>
@@ -56,16 +58,16 @@ namespace Game.Shared.Data
             bool isValid = true;
             var seenIds = new HashSet<string>();
 
-            for (int i = definitions.Count - 1; i >= 0; i--)
+            for (int i = _definitions.Count - 1; i >= 0; i--)
             {
-                if (definitions[i] == null)
+                if (_definitions[i] == null)
                 {
                     Debug.LogWarning($"[{GetType().Name}] Removing null definition from library");
-                    definitions.RemoveAt(i);
+                    _definitions.RemoveAt(i);
                 }
             }
 
-            foreach (var def in definitions)
+            foreach (var def in _definitions)
             {
                 if (!def.IsValid())
                 {

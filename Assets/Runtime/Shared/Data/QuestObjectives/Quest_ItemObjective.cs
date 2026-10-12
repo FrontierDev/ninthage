@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -6,10 +7,10 @@ namespace Game.Shared.Data
     /// <summary>Requires collecting a specified item.</summary>
     public sealed class Quest_ItemObjective : QuestObjective
     {
-        [SerializeField] private string targetItemID;
+        [SerializeField, FormerlySerializedAs("targetItemID")] private string _targetItemID;
 
         /// <summary>Gets the target item identifier.</summary>
-        public string TargetItemID => targetItemID;
+        public string TargetItemID => _targetItemID;
 
         /// <summary>Initializes an empty item objective.</summary>
         public Quest_ItemObjective() { }
@@ -17,7 +18,7 @@ namespace Game.Shared.Data
         /// <summary>Initializes an item objective.</summary>
         public Quest_ItemObjective(string description, int requiredAmount, string targetItemID) : base(description, requiredAmount)
         {
-            this.targetItemID = targetItemID;
+            _targetItemID = targetItemID;
         }
     }
 }

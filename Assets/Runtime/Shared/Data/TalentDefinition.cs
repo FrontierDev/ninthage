@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -23,55 +24,55 @@ namespace Game.Shared.Data
         /// <summary>
         /// Detailed description of this race.
         /// </summary>
-        [SerializeField][TextArea(3, 5)] private string description;
-        public string Description => description;
+        [SerializeField, TextArea(3, 5), FormerlySerializedAs("description")] private string _description;
+        public string Description => _description;
 
         /// <summary>
         /// Icon sprite for UI display.
         /// </summary>
-        [SerializeField] private Sprite icon;
-        public Sprite Icon => icon;
+        [SerializeField, FormerlySerializedAs("icon")] private Sprite _icon;
+        public Sprite Icon => _icon;
 
         /// <summary>
         /// Maximum rank/level of this talent. Some talents can be leveled up multiple times for increased effect, while others are one-time unlocks.
         /// </summary>
-        [SerializeField] private int maxRank = 1;
-        public int MaxRank => maxRank;
+        [SerializeField, FormerlySerializedAs("maxRank")] private int _maxRank = 1;
+        public int MaxRank => _maxRank;
 
-        [SerializeField] private int minLevel = 10;
+        [SerializeField, FormerlySerializedAs("minLevel")] private int _minLevel = 10;
         /// <summary>Gets the minimum player level required by this talent.</summary>
-        public int MinLevel => minLevel;
+        public int MinLevel => _minLevel;
 
         /// <summary>
         /// List of prerequisite talent IDs that must be unlocked before this talent can be unlocked. 
         /// This allows for creating talent trees with dependencies between talents.
         /// </summary>
-        [SerializeField] private List<string> prerequisiteTalentIDs = new();
-        public IReadOnlyList<string> PrerequisiteTalentIDs => prerequisiteTalentIDs;
+        [SerializeField, FormerlySerializedAs("prerequisiteTalentIDs")] private List<string> _prerequisiteTalentIDs = new();
+        public IReadOnlyList<string> PrerequisiteTalentIDs => _prerequisiteTalentIDs;
 
-        [SerializeField] private List<ModifierEntry> modifiers = new();
+        [SerializeField, FormerlySerializedAs("modifiers")] private List<ModifierEntry> _modifiers = new();
         /// <summary>Gets the spell modifiers provided by this talent.</summary>
-        public IReadOnlyList<ISpellModifier> Modifiers => modifiers.Select(e => e.Modifier).ToList();
+        public IReadOnlyList<ISpellModifier> Modifiers => _modifiers.Select(e => e.Modifier).ToList();
 
-        [SerializeField] private List<string> tags = new();
+        [SerializeField, FormerlySerializedAs("tags")] private List<string> _tags = new();
         /// <summary>Gets the tags assigned to this talent.</summary>
-        public IReadOnlyList<string> Tags => tags;
+        public IReadOnlyList<string> Tags => _tags;
 
-        [SerializeField] private List<ClassSpecialisation> associatedSpecialisations = new();
+        [SerializeField, FormerlySerializedAs("associatedSpecialisations")] private List<ClassSpecialisation> _associatedSpecialisations = new();
         /// <summary>Gets the specialisations associated with this talent.</summary>
-        public IReadOnlyList<ClassSpecialisation> AssociatedSpecialisations => associatedSpecialisations;
+        public IReadOnlyList<ClassSpecialisation> AssociatedSpecialisations => _associatedSpecialisations;
 
-        [SerializeField] private TalentBehaviour talentBehaviour;
+        [SerializeField, FormerlySerializedAs("talentBehaviour")] private TalentBehaviour _talentBehaviour;
         /// <summary>Gets the behavior applied by this talent.</summary>
-        public TalentBehaviour TalentBehaviour => talentBehaviour;
+        public TalentBehaviour TalentBehaviour => _talentBehaviour;
 
         protected override string AssetPrefix => "Talent";
 
         /// <summary>Adds a specialisation association if it is not already present.</summary>
         public void AddAssociatedSpecialisation(ClassSpecialisation spec)
         {
-            if (!associatedSpecialisations.Contains(spec))
-                associatedSpecialisations.Add(spec);
+            if (!_associatedSpecialisations.Contains(spec))
+                _associatedSpecialisations.Add(spec);
         }
 
         protected override void OnDefinitionValidate() { }

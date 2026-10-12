@@ -343,7 +343,7 @@ namespace Game.Editor.Windows
         {
             if (spellcasterSO == null) return;
 
-            var prop = spellcasterSO.FindProperty("knownSpellIDs");
+            var prop = spellcasterSO.FindProperty("_knownSpellIDs");
             prop.ClearArray();
 
             foreach (var def in cachedSpellDefinitions)
@@ -539,22 +539,22 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Main-Hand DPS:", GUILayout.Width(150));
-            EditorGUILayout.PropertyField(statProfileSO.FindProperty("mainHandDPS"), GUIContent.none);
+            EditorGUILayout.PropertyField(statProfileSO.FindProperty("_mainHandDPS"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Off-Hand DPS:", GUILayout.Width(150));
-            EditorGUILayout.PropertyField(statProfileSO.FindProperty("offHandDPS"), GUIContent.none);
+            EditorGUILayout.PropertyField(statProfileSO.FindProperty("_offHandDPS"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Main-Hand Swing:", GUILayout.Width(150));
-            EditorGUILayout.PropertyField(statProfileSO.FindProperty("mainHandSwingSpeed"), GUIContent.none);
+            EditorGUILayout.PropertyField(statProfileSO.FindProperty("_mainHandSwingSpeed"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Off-Hand Swing:", GUILayout.Width(150));
-            EditorGUILayout.PropertyField(statProfileSO.FindProperty("offHandSwingSpeed"), GUIContent.none);
+            EditorGUILayout.PropertyField(statProfileSO.FindProperty("_offHandSwingSpeed"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
@@ -567,7 +567,7 @@ namespace Game.Editor.Windows
         {
             if (baseStatsList != null) return baseStatsList;
 
-            var prop = statProfileSO.FindProperty("baseStats");
+            var prop = statProfileSO.FindProperty("_baseStats");
             baseStatsList = new ReorderableList(statProfileSO, prop, true, true, true, true);
             baseStatsList.drawHeaderCallback = rect =>
                 EditorGUI.LabelField(rect, "Base Stats");
@@ -609,7 +609,7 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Effect Spawn Point:", GUILayout.Width(150));
-            EditorGUILayout.PropertyField(spellcasterSO.FindProperty("spellEffectSpawnPoint"), GUIContent.none);
+            EditorGUILayout.PropertyField(spellcasterSO.FindProperty("_spellEffectSpawnPoint"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();

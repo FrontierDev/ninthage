@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -10,7 +11,7 @@ namespace Game.Shared.Data
         /// <summary>Gets the behavior description.</summary>
         public override string Description => NOTE;
 
-        [SerializeReference] private SpellEffectDefinition damageEffect;
+        [SerializeReference, FormerlySerializedAs("damageEffect")] private SpellEffectDefinition _damageEffect;
 
         /// <summary>Subscribes the behavior to the host's auto-attack events.</summary>
         public override void OnApplied(Actor caster, Actor target, int stacks)
@@ -29,6 +30,6 @@ namespace Game.Shared.Data
         }
 
         private void OnHit(SpellContext ctx, Actor target) =>
-            damageEffect?.Execute(ctx, target);
+            _damageEffect?.Execute(ctx, target);
     }
 }

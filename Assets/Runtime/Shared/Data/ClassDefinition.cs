@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -49,59 +50,59 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "ClassDefinition_", menuName = "NinthAge/Definitions/Class Definition")]
     public class ClassDefinition : DataDefinition
     {
-        [SerializeField][TextArea(3, 5)] private string description;
+        [SerializeField, TextArea(3, 5), FormerlySerializedAs("description")] private string _description;
 
-        [SerializeField] private Sprite icon;
+        [SerializeField, FormerlySerializedAs("icon")] private Sprite _icon;
 
-        [SerializeField] private List<ClassStatGrowth> statGrowthPerLevel = new();
+        [SerializeField, FormerlySerializedAs("statGrowthPerLevel")] private List<ClassStatGrowth> _statGrowthPerLevel = new();
 
-        [SerializeField] private List<ActorStatBaseEntry> baseStats = new();
+        [SerializeField, FormerlySerializedAs("baseStats")] private List<ActorStatBaseEntry> _baseStats = new();
 
-        [SerializeField] private List<ClassSpell> classSpellList = new();
+        [SerializeField, FormerlySerializedAs("classSpellList")] private List<ClassSpell> _classSpellList = new();
 
-        [SerializeField] private List<ActorStatDefinition> focusStats = new();
-        [SerializeField] private List<ActorStatDefinition> relevantStats = new();
-        [SerializeField] private List<ItemWeaponType> weaponTypes = new();
-        [SerializeField] private List<ClassSpecialisation> specialisations = new();
+        [SerializeField, FormerlySerializedAs("focusStats")] private List<ActorStatDefinition> _focusStats = new();
+        [SerializeField, FormerlySerializedAs("relevantStats")] private List<ActorStatDefinition> _relevantStats = new();
+        [SerializeField, FormerlySerializedAs("weaponTypes")] private List<ItemWeaponType> _weaponTypes = new();
+        [SerializeField, FormerlySerializedAs("specialisations")] private List<ClassSpecialisation> _specialisations = new();
 
-        [SerializeField] private ClassBehaviour classBehaviour;
+        [SerializeField, FormerlySerializedAs("classBehaviour")] private ClassBehaviour _classBehaviour;
 
         /// <summary>
         /// Detailed description of this class.
         /// </summary>
-        public string Description => description;
+        public string Description => _description;
 
         /// <summary>
         /// Icon sprite for UI display.
         /// </summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
 
         /// <summary>
         /// Stat growth per level for this class.
         /// </summary>
-        public List<ClassStatGrowth> StatGrowthPerLevel => statGrowthPerLevel;
+        public List<ClassStatGrowth> StatGrowthPerLevel => _statGrowthPerLevel;
         /// <summary>Gets the spells available to the class.</summary>
-        public List<ClassSpell> ClassSpellList => classSpellList;
+        public List<ClassSpell> ClassSpellList => _classSpellList;
         /// <summary>Gets the class base stats.</summary>
-        public IReadOnlyList<ActorStatBaseEntry> BaseStats => baseStats;
+        public IReadOnlyList<ActorStatBaseEntry> BaseStats => _baseStats;
         /// <summary>Gets the class focus stats.</summary>
-        public IReadOnlyList<ActorStatDefinition> FocusStats => focusStats;
+        public IReadOnlyList<ActorStatDefinition> FocusStats => _focusStats;
         /// <summary>Gets the class relevant stats.</summary>
-        public IReadOnlyList<ActorStatDefinition> RelevantStats => relevantStats;
+        public IReadOnlyList<ActorStatDefinition> RelevantStats => _relevantStats;
         /// <summary>Gets the weapon types supported by the class.</summary>
-        public IReadOnlyList<ItemWeaponType> WeaponTypes => weaponTypes;
+        public IReadOnlyList<ItemWeaponType> WeaponTypes => _weaponTypes;
         /// <summary>Gets the class specialisations.</summary>
-        public IReadOnlyList<ClassSpecialisation> Specialisations => specialisations;
+        public IReadOnlyList<ClassSpecialisation> Specialisations => _specialisations;
         /// <summary>Gets the class behaviour.</summary>
-        public ClassBehaviour ClassBehaviour => classBehaviour;
+        public ClassBehaviour ClassBehaviour => _classBehaviour;
 
         protected override string AssetPrefix => "Class";
 
         protected override void OnDefinitionValidate()
         {
-            for (int i = 0; i < classSpellList.Count; i++)
+            for (int i = 0; i < _classSpellList.Count; i++)
             {
-                var classSpell = classSpellList[i];
+                var classSpell = _classSpellList[i];
                 if (classSpell.spell == null)
                     continue;
 
@@ -113,9 +114,9 @@ namespace Game.Shared.Data
                 }
             }
 
-            for (int i = 0; i < specialisations.Count; i++)
+            for (int i = 0; i < _specialisations.Count; i++)
             {
-                var spec = specialisations[i];
+                var spec = _specialisations[i];
 
                 if (string.IsNullOrEmpty(spec.name))
                     Debug.LogWarning($"Class {DefinitionId} has a specialisation with an empty name.");

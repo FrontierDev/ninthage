@@ -3,6 +3,7 @@ using PurrNet;
 using PurrNet.Transports;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -10,13 +11,13 @@ namespace Game.Shared
     public class LatencySimulator : MonoBehaviour
     {
         [Header("Latency Simulation (DEBUG builds only)")]
-        [SerializeField] private bool simulateLatency = false;
-        [SerializeField] private int minLatencyMs = 50;
-        [SerializeField] private int maxLatencyMs = 150;
+        [SerializeField, FormerlySerializedAs("simulateLatency")] private bool _simulateLatency = false;
+        [SerializeField, FormerlySerializedAs("minLatencyMs")] private int _minLatencyMS = 50;
+        [SerializeField, FormerlySerializedAs("maxLatencyMs")] private int _maxLatencyMS = 150;
 
         [Header("Packet Loss Simulation (DEBUG builds only)")]
-        [SerializeField] private bool simulatePacketLoss = false;
-        [SerializeField, Range(0, 100)] private int packetLossChance = 5;
+        [SerializeField, FormerlySerializedAs("simulatePacketLoss")] private bool _simulatePacketLoss = false;
+        [SerializeField, Range(0, 100), FormerlySerializedAs("packetLossChance")] private int _packetLossChance = 5;
 
         private void Start()
         {
@@ -38,11 +39,11 @@ namespace Game.Shared
             var field = typeof(UDPTransport).GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
             if (field?.GetValue(transport) is not LiteNetLib.NetManager netManager) return;
 
-            netManager.SimulateLatency = simulateLatency;
-            netManager.SimulationMinLatency = minLatencyMs;
-            netManager.SimulationMaxLatency = maxLatencyMs;
-            netManager.SimulatePacketLoss = simulatePacketLoss;
-            netManager.SimulationPacketLossChance = packetLossChance;
+            netManager.SimulateLatency = _simulateLatency;
+            netManager.SimulationMinLatency = _minLatencyMS;
+            netManager.SimulationMaxLatency = _maxLatencyMS;
+            netManager.SimulatePacketLoss = _simulatePacketLoss;
+            netManager.SimulationPacketLossChance = _packetLossChance;
         }
     }
 }

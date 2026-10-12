@@ -77,36 +77,36 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Stat ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none, GUILayout.Height(64));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none, GUILayout.Height(64));
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Description:", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), GUIContent.none, GUILayout.Height(80));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_description"), GUIContent.none, GUILayout.Height(80));
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("category"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("replicationMode"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_category"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_replicationMode"));
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("tags"), true);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_tags"), true);
 
             EditorGUILayout.Space();
 
@@ -129,31 +129,31 @@ namespace Game.Editor.Windows
         private void DrawBaseValueTab(SerializedObject serializedObject)
         {
             EditorGUILayout.LabelField("Base Value", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("baseValueMode"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseValueMode"));
 
-            var baseValueMode = (ActorStatBaseValueMode)serializedObject.FindProperty("baseValueMode").enumValueIndex;
+            var baseValueMode = (ActorStatBaseValueMode)serializedObject.FindProperty("_baseValueMode").enumValueIndex;
             if (baseValueMode == ActorStatBaseValueMode.Fixed)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("baseValue"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseValue"));
                 EditorGUI.indentLevel--;
             }
             else if (baseValueMode == ActorStatBaseValueMode.Derived)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("sourceStat"));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("multiplier"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_sourceStat"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_multiplier"));
                 EditorGUI.indentLevel--;
             }
             else if (baseValueMode == ActorStatBaseValueMode.Rating)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("sourceStat"));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("multiplier"), new GUIContent("Rating Per Percent"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_sourceStat"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_multiplier"), new GUIContent("Rating Per Percent"));
 
                 if (GUILayout.Button("Preview Scaling"))
                 {
-                    float rpp = serializedObject.FindProperty("multiplier").floatValue;
+                    float rpp = serializedObject.FindProperty("_multiplier").floatValue;
                     RatingScalingPreviewWindow.Show(rpp);
                 }
                 EditorGUI.indentLevel--;
@@ -161,26 +161,26 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("startsAtZero"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_startsAtZero"));
         }
 
         private void DrawRegenerationTab(SerializedObject serializedObject)
         {
             EditorGUILayout.LabelField("Regeneration", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("regenMode"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_regenMode"));
 
-            var regenMode = (ActorStatBaseValueMode)serializedObject.FindProperty("regenMode").enumValueIndex;
+            var regenMode = (ActorStatBaseValueMode)serializedObject.FindProperty("_regenMode").enumValueIndex;
             if (regenMode == ActorStatBaseValueMode.Fixed)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("regenPerSecond"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_regenPerSecond"));
                 EditorGUI.indentLevel--;
             }
             else if (regenMode == ActorStatBaseValueMode.Derived)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("regenSourceStat"));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("regenMultiplier"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_regenSourceStat"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_regenMultiplier"));
                 EditorGUI.indentLevel--;
             }
         }

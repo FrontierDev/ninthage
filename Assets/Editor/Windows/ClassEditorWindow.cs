@@ -94,27 +94,27 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Class ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none, GUILayout.Height(64));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none, GUILayout.Height(64));
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Description:", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), GUIContent.none, GUILayout.Height(80));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_description"), GUIContent.none, GUILayout.Height(80));
 
             EditorGUILayout.Space();
 
@@ -136,7 +136,7 @@ namespace Game.Editor.Windows
 
         private void DrawBaseStatsTab(SerializedObject serializedObject)
         {
-            var arrayProp = serializedObject.FindProperty("baseStats");
+            var arrayProp = serializedObject.FindProperty("_baseStats");
             DrawStatArrayHeader("Base Stats", arrayProp, () => OpenStatExplorer(arrayProp));
 
             if (arrayProp.arraySize == 0)
@@ -215,7 +215,7 @@ namespace Game.Editor.Windows
 
         private void DrawGrowthTab(SerializedObject serializedObject)
         {
-            var arrayProp = serializedObject.FindProperty("statGrowthPerLevel");
+            var arrayProp = serializedObject.FindProperty("_statGrowthPerLevel");
             DrawStatArrayHeader("Stat Growth Per Level", arrayProp, () => OpenGrowthStatExplorer(arrayProp));
 
             if (arrayProp.arraySize == 0)
@@ -294,7 +294,7 @@ namespace Game.Editor.Windows
 
         private void DrawSpellsTab(SerializedObject serializedObject)
         {
-            var arrayProp = serializedObject.FindProperty("classSpellList");
+            var arrayProp = serializedObject.FindProperty("_classSpellList");
             DrawInlineArrayHeader("Class Spells", arrayProp);
 
             if (arrayProp.arraySize == 0)
@@ -303,7 +303,7 @@ namespace Game.Editor.Windows
                 return;
             }
 
-            var specialisationsProp = serializedObject.FindProperty("specialisations");
+            var specialisationsProp = serializedObject.FindProperty("_specialisations");
 
             EditorGUI.indentLevel++;
             var bgRect = EditorGUILayout.BeginVertical();
@@ -400,9 +400,9 @@ namespace Game.Editor.Windows
 
         private void DrawFocusStatsTab(SerializedObject serializedObject)
         {
-            DrawStatsListWithExplorer("Focus Stats", serializedObject.FindProperty("focusStats"));
+            DrawStatsListWithExplorer("Focus Stats", serializedObject.FindProperty("_focusStats"));
             EditorGUILayout.Space(10);
-            DrawStatsListWithExplorer("Relevant Stats", serializedObject.FindProperty("relevantStats"));
+            DrawStatsListWithExplorer("Relevant Stats", serializedObject.FindProperty("_relevantStats"));
         }
 
         private void DrawStatsListWithExplorer(string label, SerializedProperty arrayProp)
@@ -476,12 +476,12 @@ namespace Game.Editor.Windows
 
         private void DrawWeaponTypesTab(SerializedObject serializedObject)
         {
-            DrawInlineList("Weapon Types", serializedObject.FindProperty("weaponTypes"));
+            DrawInlineList("Weapon Types", serializedObject.FindProperty("_weaponTypes"));
         }
 
         private void DrawSpecialisationsTab(SerializedObject serializedObject)
         {
-            var arrayProp = serializedObject.FindProperty("specialisations");
+            var arrayProp = serializedObject.FindProperty("_specialisations");
             DrawInlineArrayHeader("Specialisations", arrayProp);
 
             if (arrayProp.arraySize == 0)

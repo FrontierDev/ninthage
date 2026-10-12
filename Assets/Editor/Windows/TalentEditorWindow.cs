@@ -97,40 +97,40 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Talent ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Description:", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), GUIContent.none, GUILayout.Height(60));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_description"), GUIContent.none, GUILayout.Height(60));
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("maxRank"), true);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_maxRank"), true);
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("tags"), true);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_tags"), true);
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Talent Behaviour", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("talentBehaviour"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_talentBehaviour"), GUIContent.none);
 
             EditorGUILayout.Space();
 
@@ -158,7 +158,7 @@ namespace Game.Editor.Windows
         private void DrawModifiersTab(SerializedObject serializedObject)
         {
             EditorGUILayout.LabelField("Talent Modifiers", EditorStyles.boldLabel);
-            var prop = serializedObject.FindProperty("modifiers");
+            var prop = serializedObject.FindProperty("_modifiers");
             if (prop == null)
             {
                 EditorGUILayout.HelpBox("`modifiers` is not a managed-reference field. Mark the field with [SerializeReference] in TalentDefinition.", MessageType.Warning);
@@ -337,7 +337,7 @@ namespace Game.Editor.Windows
         {
             if (componentList == null)
             {
-                var prop = serializedObject.FindProperty("baseComponents");
+                var prop = serializedObject.FindProperty("_baseComponents");
                 componentList = new ReorderableList(serializedObject, prop, true, false, true, true)
                 {
                     drawElementCallback = (rect, index, isActive, isFocused) =>
@@ -360,7 +360,7 @@ namespace Game.Editor.Windows
         {
             if (modifierList != null) return modifierList;
 
-            var prop = serializedObject.FindProperty("modifiers");
+            var prop = serializedObject.FindProperty("_modifiers");
             modifierList = new ReorderableList(serializedObject, prop, true, true, true, true)
             {
                 drawHeaderCallback = rect => EditorGUI.LabelField(rect, "Modifiers"),

@@ -5,15 +5,16 @@ using PurrNet;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
     /// <summary>Manages a player's learned talents and specialisation points.</summary>
     public sealed class PlayerTalents : NetworkBehaviour
     {
-        [SerializeField] private Dictionary<TalentDefinition, int> talents = new();
+        [SerializeField, FormerlySerializedAs("talents")] private Dictionary<TalentDefinition, int> _talents = new();
         /// <summary>Gets learned talents and their ranks.</summary>
-        public IReadOnlyDictionary<TalentDefinition, int> Talents => talents;
+        public IReadOnlyDictionary<TalentDefinition, int> Talents => _talents;
 
         // Talent points
         private Dictionary<ClassSpecialisation, int> _spentTalentPointsBySpecialisation = new();
@@ -44,13 +45,13 @@ namespace Game.Shared
         /// <summary>Loads talents from persisted character data.</summary>
         public void LoadTalents(CharacterData data)
         {
-            talents.Clear();
+            _talents.Clear();
             foreach (var entry in data.SavedTalents)
             {
                 var def = TalentDefinitionLibrary.Instance.GetDefinition(entry.TalentID);
                 if (def != null)
                 {
-                    talents.Add(def, entry.Rank);
+                    _talents.Add(def, entry.Rank);
 
                     foreach (var mod in def.Modifiers)
                         GetComponent<ActorSpellcaster>().AddModifier($"talent_{def.DefinitionId}", mod, entry.Rank);
@@ -72,11 +73,11 @@ namespace Game.Shared
             var def = TalentDefinitionLibrary.Instance.GetDefinition(talentID);
             if (def == null) return;
 
-            var rankDelta = rank - (talents.ContainsKey(def) ? talents[def] : 0);
-            if (talents.ContainsKey(def))
-                talents[def] = rank; // Update existing talent rank
+            var rankDelta = rank - (_talents.ContainsKey(def) ? _talents[def] : 0);
+            if (_talents.ContainsKey(def))
+                _talents[def] = rank; // Update existing talent rank
             else
-                talents.Add(def, rank); // Add new talent
+                _talents.Add(def, rank); // Add new talent
 
             if (def.AssociatedSpecialisations.Count > 0)
             {
@@ -102,13 +103,13 @@ namespace Game.Shared
             var def = TalentDefinitionLibrary.Instance.GetDefinition(talentID);
             if (def == null) return;
 
-            if (talents.Remove(def))
+            if (_talents.Remove(def))
             {
                 if (def.AssociatedSpecialisations.Count > 0)
                 {
                     var spec = def.AssociatedSpecialisations[0];
                     if (_spentTalentPointsBySpecialisation.ContainsKey(spec))
-                        _spentTalentPointsBySpecialisation[spec] -= talents[def];
+                        _spentTalentPointsBySpecialisation[spec] -= _talents[def];
                 }
                 foreach (var mod in def.Modifiers)
                     GetComponent<ActorSpellcaster>().RemoveModifier($"talent_{def.DefinitionId}", mod);
@@ -145,13 +146,13 @@ namespace Game.Shared
         /// <summary>Applies a talent update on a client.</summary>
         public void Client_UpdateTalents(PlayerID target, List<SavedTalentEntry> updatedTalents, RPCInfo rpcInfo = default)
         {
-            talents.Clear();
+            _talents.Clear();
             foreach (var entry in updatedTalents)
             {
                 var def = TalentDefinitionLibrary.Instance.GetDefinition(entry.TalentID);
                 if (def != null)
                 {
-                    talents.Add(def, entry.Rank);
+                    _talents.Add(def, entry.Rank);
 
                     foreach (var mod in def.Modifiers)
                         GetComponent<ActorSpellcaster>().AddModifier($"talent_{def.DefinitionId}", mod, entry.Rank);

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -84,104 +85,104 @@ namespace Game.Shared.Data
     public class SpellDefinition : DataDefinition
     {
         // Private fields
-        [SerializeField] private string spellName;
-        [SerializeField] private string description;
-        [SerializeField] private Sprite icon;
-        [SerializeField] private List<string> tags = new();
-        [SerializeField] private List<string> internalTags = new();
-        [SerializeField] private float baseCastTime;
+        [SerializeField, FormerlySerializedAs("spellName")] private string _spellName;
+        [SerializeField, FormerlySerializedAs("description")] private string _description;
+        [SerializeField, FormerlySerializedAs("icon")] private Sprite _icon;
+        [SerializeField, FormerlySerializedAs("tags")] private List<string> _tags = new();
+        [SerializeField, FormerlySerializedAs("internalTags")] private List<string> _internalTags = new();
+        [SerializeField, FormerlySerializedAs("baseCastTime")] private float _baseCastTime;
         [Tooltip("The cooldown of the spell in seconds. Global cooldown always takes priority. If the spell uses cooldown charges, this is the cooldown per charge.")]
 
         // Cooldown settings
-        [SerializeField] private float baseCooldown;
-        [SerializeField] private float baseCharges;
-        [SerializeField] private bool useCooldownCharges;
-        [SerializeField] private bool cooldownScalesWithHaste = false;
-        [SerializeField] private bool triggersGCD = true;
-        [SerializeField] private float baseRange;
+        [SerializeField, FormerlySerializedAs("baseCooldown")] private float _baseCooldown;
+        [SerializeField, FormerlySerializedAs("baseCharges")] private float _baseCharges;
+        [SerializeField, FormerlySerializedAs("useCooldownCharges")] private bool _useCooldownCharges;
+        [SerializeField, FormerlySerializedAs("cooldownScalesWithHaste")] private bool _cooldownScalesWithHaste = false;
+        [SerializeField, FormerlySerializedAs("triggersGCD")] private bool _triggersGCD = true;
+        [SerializeField, FormerlySerializedAs("baseRange")] private float _baseRange;
 
-        [SerializeField] private bool isChanneled;
-        [SerializeField] private bool canMoveWhileCasting;
-        [SerializeField] private float baseTotalTicks;
+        [SerializeField, FormerlySerializedAs("isChanneled")] private bool _isChanneled;
+        [SerializeField, FormerlySerializedAs("canMoveWhileCasting")] private bool _canMoveWhileCasting;
+        [SerializeField, FormerlySerializedAs("baseTotalTicks")] private float _baseTotalTicks;
 
-        [SerializeField] private List<SpellResourceCost> baseResourceCosts = new();
-        [SerializeField] private List<SpellComponent> baseComponents = new();
+        [SerializeField, FormerlySerializedAs("baseResourceCosts")] private List<SpellResourceCost> _baseResourceCosts = new();
+        [SerializeField, FormerlySerializedAs("baseComponents")] private List<SpellComponent> _baseComponents = new();
 
-        [SerializeField] private List<SpellNameVariant> racialVariants = new();
+        [SerializeField, FormerlySerializedAs("racialVariants")] private List<SpellNameVariant> _racialVariants = new();
 
-        [SerializeField] private string sfxCastingLoop;
+        [SerializeField, FormerlySerializedAs("sfxCastingLoop")] private string _sfxCastingLoop;
 
         // Public properties
         /// <summary>Gets the spell name.</summary>
-        public string SpellName => spellName;
+        public string SpellName => _spellName;
         /// <summary>Gets the spell description.</summary>
-        public string Description => description;
+        public string Description => _description;
         /// <summary>Gets the spell icon.</summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
         /// <summary>Gets the authored spell tags.</summary>
-        public IReadOnlyList<string> Tags => tags;
+        public IReadOnlyList<string> Tags => _tags;
         /// <summary>Gets the generated internal tags.</summary>
-        public IReadOnlyList<string> InternalTags => internalTags;
+        public IReadOnlyList<string> InternalTags => _internalTags;
 
         /// <summary>Gets whether the spell triggers the global cooldown.</summary>
-        public bool TriggersGCD => triggersGCD;
+        public bool TriggersGCD => _triggersGCD;
         /// <summary>Gets whether the spell uses charges.</summary>
-        public bool UseCooldownCharges => useCooldownCharges;
+        public bool UseCooldownCharges => _useCooldownCharges;
         /// <summary>Gets whether cooldown scales with haste.</summary>
-        public bool CooldownScalesWithHaste => cooldownScalesWithHaste;
+        public bool CooldownScalesWithHaste => _cooldownScalesWithHaste;
         /// <summary>Gets the base charge count.</summary>
-        public float BaseCharges => baseCharges;
+        public float BaseCharges => _baseCharges;
         /// <summary>Gets whether the spell is channeled.</summary>
-        public bool IsChanneled => isChanneled;
+        public bool IsChanneled => _isChanneled;
         /// <summary>Gets whether movement is allowed while casting.</summary>
-        public bool CanMoveWhileCasting => canMoveWhileCasting;
+        public bool CanMoveWhileCasting => _canMoveWhileCasting;
         /// <summary>Gets the total number of channel ticks.</summary>
-        public float BaseTotalTicks => baseTotalTicks;
+        public float BaseTotalTicks => _baseTotalTicks;
         /// <summary>Gets racial spell variants.</summary>
-        public IReadOnlyList<SpellNameVariant> RacialVariants => racialVariants;
+        public IReadOnlyList<SpellNameVariant> RacialVariants => _racialVariants;
 
         /// <summary>Gets the base cast time.</summary>
-        public float BaseCastTime => baseCastTime;
+        public float BaseCastTime => _baseCastTime;
         /// <summary>Gets the base cooldown.</summary>
-        public float BaseCooldown => baseCooldown;
+        public float BaseCooldown => _baseCooldown;
         /// <summary>Gets the base range.</summary>
-        public float BaseRange => baseRange;
+        public float BaseRange => _baseRange;
         /// <summary>Gets the base resource costs.</summary>
-        public IReadOnlyList<SpellResourceCost> BaseResourceCosts => baseResourceCosts;
+        public IReadOnlyList<SpellResourceCost> BaseResourceCosts => _baseResourceCosts;
         /// <summary>Gets the base spell components.</summary>
-        public IReadOnlyList<SpellComponent> BaseComponents => baseComponents;
+        public IReadOnlyList<SpellComponent> BaseComponents => _baseComponents;
 
-        [SerializeField] private List<ClassDefinition> associatedClasses = new();
+        [SerializeField, FormerlySerializedAs("associatedClasses")] private List<ClassDefinition> _associatedClasses = new();
         /// <summary>Gets the classes associated with the spell.</summary>
-        public IReadOnlyList<ClassDefinition> AssociatedClasses => associatedClasses;
+        public IReadOnlyList<ClassDefinition> AssociatedClasses => _associatedClasses;
 
         protected override string AssetPrefix => "Spell";
 
         /// <summary>Adds a class association if it is not already present.</summary>
         public void AddAssociatedClass(ClassDefinition classDef)
         {
-            if (!associatedClasses.Contains(classDef))
-                associatedClasses.Add(classDef);
+            if (!_associatedClasses.Contains(classDef))
+                _associatedClasses.Add(classDef);
         }
 
         protected override void OnDefinitionValidate()
         {
             // Clear existing tags.
-            internalTags = new();
+            _internalTags = new();
 
-            foreach (SpellResourceCost cost in baseResourceCosts)
+            foreach (SpellResourceCost cost in _baseResourceCosts)
             {
                 if (cost.ResourceType != null)
-                    internalTags.Add($"costs_{cost.ResourceType.DefinitionId.ToLower()}");
+                    _internalTags.Add($"costs_{cost.ResourceType.DefinitionId.ToLower()}");
             }
 
-            foreach (SpellComponent component in baseComponents)
+            foreach (SpellComponent component in _baseComponents)
             {
                 if (component.EffectDefinition is SpellEffect_Damage damageEffect)
                 {
                     foreach (DamageSchoolDefinition damageSchool in damageEffect.DamageSchools)
                     {
-                        internalTags.Add($"{damageSchool.DefinitionId.ToLower()}_damage");
+                        _internalTags.Add($"{damageSchool.DefinitionId.ToLower()}_damage");
                     }
                 }
             }

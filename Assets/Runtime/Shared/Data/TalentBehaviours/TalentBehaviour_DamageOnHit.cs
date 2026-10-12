@@ -1,6 +1,7 @@
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -8,8 +9,8 @@ namespace Game.Shared.Data
     [CreateAssetMenu(menuName = "NinthAge/Talent Behaviours/Damage On Hit")]
     public class TalentBehaviour_DamageOnHit : TalentBehaviour
     {
-        [SerializeReference] private SpellEffectDefinition damageEffect;
-        [SerializeField] private int damageTicks = 1;
+        [SerializeReference, FormerlySerializedAs("damageEffect")] private SpellEffectDefinition _damageEffect;
+        [SerializeField, FormerlySerializedAs("damageTicks")] private int _damageTicks = 1;
 
         /// <summary>Activates the auto-attack damage handler.</summary>
         public override void OnActivate(PlayerActor actor)
@@ -25,8 +26,8 @@ namespace Game.Shared.Data
 
         private void OnServerAutoAttackHit(SpellContext ctx, Actor target)
         {
-            for (int i = 0; i < damageTicks; i++)
-                damageEffect.Execute(ctx, target);
+            for (int i = 0; i < _damageTicks; i++)
+                _damageEffect.Execute(ctx, target);
         }
     }
 }

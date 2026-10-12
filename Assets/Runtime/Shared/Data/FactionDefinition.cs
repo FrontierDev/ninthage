@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -38,64 +39,69 @@ namespace Game.Shared.Data
     {
         [SerializeField]
         [TextArea(3, 5)]
-        private string description;
+        [FormerlySerializedAs("description")]
+        private string _description;
 
         [SerializeField]
-        private FactionCategory category;
+        [FormerlySerializedAs("category")]
+        private FactionCategory _category;
 
         [SerializeField]
-        private Sprite icon;
+        [FormerlySerializedAs("icon")]
+        private Sprite _icon;
 
         [SerializeField]
-        private Color color;
+        [FormerlySerializedAs("color")]
+        private Color _color;
 
         [SerializeField]
-        private bool isPlayable;
+        [FormerlySerializedAs("isPlayable")]
+        private bool _isPlayable;
 
-        [SerializeField] private bool canWar = false;
+        [SerializeField, FormerlySerializedAs("canWar")] private bool _canWar = false;
         /// <summary>Gets whether this faction can participate in faction wars.</summary>
-        public bool CanWar => canWar;
+        public bool CanWar => _canWar;
 
-        [SerializeField] private int maxPoints;
+        [SerializeField, FormerlySerializedAs("maxPoints")] private int _maxPoints;
         /// <summary>Gets the maximum reputation points.</summary>
-        public int MaxPoints => maxPoints;
+        public int MaxPoints => _maxPoints;
 
-        [SerializeField] private List<string> alliedFactionIDs = new();
+        [SerializeField, FormerlySerializedAs("alliedFactionIDs")] private List<string> _alliedFactionIDs = new();
         /// <summary>Gets the allied faction identifiers.</summary>
-        public IReadOnlyList<string> AlliedFactionIDs => alliedFactionIDs;
+        public IReadOnlyList<string> AlliedFactionIDs => _alliedFactionIDs;
 
-        [SerializeField] private List<string> enemyFactionIDs = new();
+        [SerializeField, FormerlySerializedAs("enemyFactionIDs")] private List<string> _enemyFactionIDs = new();
         /// <summary>Gets the enemy faction identifiers.</summary>
-        public IReadOnlyList<string> EnemyFactionIDs => enemyFactionIDs;
+        public IReadOnlyList<string> EnemyFactionIDs => _enemyFactionIDs;
 
-        [SerializeField] private List<FactionRewardDescriptionEntry> rewardDescriptions = new();
+        [SerializeField, FormerlySerializedAs("rewardDescriptions")] private List<FactionRewardDescriptionEntry> _rewardDescriptions = new();
         /// <summary>Gets the reputation reward descriptions.</summary>
-        public IReadOnlyList<FactionRewardDescriptionEntry> RewardDescriptions => rewardDescriptions;
+        public IReadOnlyList<FactionRewardDescriptionEntry> RewardDescriptions => _rewardDescriptions;
 
         /// <summary>
         /// Detailed description of this race.
         /// </summary>
-        public string Description => description;
+        public string Description => _description;
 
         /// <summary>
         /// Icon sprite for UI display.
         /// </summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
 
         /// <summary>
         /// Color associated with this faction.
         /// </summary>
-        public Color Color => color;
+        public Color Color => _color;
 
         /// <summary>
         /// Category of this faction.
         /// </summary>
-        public FactionCategory Category => category;
+        public FactionCategory Category => _category;
 
         /// <summary>
         /// Indicates if players can obtain reputation with this faction.
         /// </summary>
-        public bool IsPlayable => isPlayable;
+        public bool IsPlayable => _isPlayable;
 
         protected override string AssetPrefix => "Faction";
 
@@ -122,24 +128,24 @@ namespace Game.Shared.Data
                 if (string.IsNullOrEmpty(otherId))
                     continue;
 
-                bool thisAllied = alliedFactionIDs.Contains(otherId);
-                bool thisEnemy = enemyFactionIDs.Contains(otherId);
+                bool thisAllied = _alliedFactionIDs.Contains(otherId);
+                bool thisEnemy = _enemyFactionIDs.Contains(otherId);
 
-                bool otherAlliedWithThis = other.alliedFactionIDs.Contains(DefinitionId);
-                bool otherEnemyWithThis = other.enemyFactionIDs.Contains(DefinitionId);
+                bool otherAlliedWithThis = other._alliedFactionIDs.Contains(DefinitionId);
+                bool otherEnemyWithThis = other._enemyFactionIDs.Contains(DefinitionId);
 
                 // If this lists other as allied, ensure other lists this as allied and not enemy
                 if (thisAllied)
                 {
                     if (!otherAlliedWithThis)
                     {
-                        other.alliedFactionIDs.Add(DefinitionId);
+                        other._alliedFactionIDs.Add(DefinitionId);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
 
                     if (otherEnemyWithThis)
                     {
-                        other.enemyFactionIDs.Remove(DefinitionId);
+                        other._enemyFactionIDs.Remove(DefinitionId);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
                 }
@@ -148,13 +154,13 @@ namespace Game.Shared.Data
                 {
                     if (!otherEnemyWithThis)
                     {
-                        other.enemyFactionIDs.Add(DefinitionId);
+                        other._enemyFactionIDs.Add(DefinitionId);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
 
                     if (otherAlliedWithThis)
                     {
-                        other.alliedFactionIDs.Remove(DefinitionId);
+                        other._alliedFactionIDs.Remove(DefinitionId);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
                 }
@@ -163,13 +169,13 @@ namespace Game.Shared.Data
                 {
                     if (otherAlliedWithThis)
                     {
-                        other.alliedFactionIDs.Remove(DefinitionId);
+                        other._alliedFactionIDs.Remove(DefinitionId);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
 
                     if (otherEnemyWithThis)
                     {
-                        other.enemyFactionIDs.Remove(DefinitionId);
+                        other._enemyFactionIDs.Remove(DefinitionId);
                         UnityEditor.EditorUtility.SetDirty(other);
                     }
                 }

@@ -4,7 +4,9 @@ using Game.Shared.Networking;
 using PurrNet;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -59,13 +61,13 @@ namespace Game.Shared
         /// <summary>
         /// The base spell IDs known by the actor.
         /// </summary>
-        [SerializeField] private List<string> knownSpellIDs = new();
+        [SerializeField, FormerlySerializedAs("knownSpellIDs")] private List<string> _knownSpellIDs = new();
         /// <summary>Gets the spell identifiers known by the actor.</summary>
-        public IReadOnlyList<string> KnownSpellIDs => knownSpellIDs;
+        public IReadOnlyList<string> KnownSpellIDs => _knownSpellIDs;
 
-        [SerializeField] private Dictionary<string, SpellOverride> spells = new();
+        [SerializeField, FormerlySerializedAs("spells")] private Dictionary<string, SpellOverride> _spells = new();
         /// <summary>Gets the actor's runtime spell overrides.</summary>
-        public IReadOnlyDictionary<string, SpellOverride> Spells => spells;
+        public IReadOnlyDictionary<string, SpellOverride> Spells => _spells;
 
         private readonly Dictionary<string, List<ISpellModifier>> _modifiersBySource = new();
         /// <summary>Gets all modifiers currently applied to the actor.</summary>
@@ -93,17 +95,17 @@ namespace Game.Shared
                 return;
             }
 
-            if (!knownSpellIDs.Contains(spellID))
-                knownSpellIDs.Add(spellID);
+            if (!_knownSpellIDs.Contains(spellID))
+                _knownSpellIDs.Add(spellID);
 
-            if (!spells.ContainsKey(spellID))
-                spells.Add(spellID, new SpellOverride(spellDef));
+            if (!_spells.ContainsKey(spellID))
+                _spells.Add(spellID, new SpellOverride(spellDef));
         }
 
         /// <summary>Loads known spells and their default runtime modifiers.</summary>
         public void LoadKnownSpells(List<string> spellIDs)
         {
-            knownSpellIDs.AddRange(spellIDs);
+            _knownSpellIDs.AddRange(spellIDs);
             foreach (var id in spellIDs)
             {
                 var spellDef = SpellDefinitionLibrary.Instance.GetDefinition(id);
@@ -125,7 +127,7 @@ namespace Game.Shared
         private void RegisterSpellOverride(string spellID, SpellDefinition spellDef)
         {
             // Create the initial override.
-            spells.Add(spellID, new SpellOverride(spellDef));
+            _spells.Add(spellID, new SpellOverride(spellDef));
         }
         #endregion
 
@@ -192,7 +194,8 @@ namespace Game.Shared
                 try
                 {
                     var t = clone.GetType();
-                    var field = t.GetField("source");
+                    var field = t.GetField("_source", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                        ?? t.GetField("source", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                     if (field != null && field.FieldType == typeof(string)) field.SetValue(clone, source);
                     else
                     {
@@ -216,7 +219,7 @@ namespace Game.Shared
             var actor = GetComponent<Actor>();
             var sorted = _modifiersBySource.Values.SelectMany(l => l).OrderBy(m => m.Priority);
 
-            foreach (var spell in spells.Values)
+            foreach (var spell in _spells.Values)
             {
                 // Reset to base
                 spell.Range = spell.BaseDefinition.BaseRange;
@@ -292,14 +295,14 @@ namespace Game.Shared
             spell = null;
 
             // ❓ Does the caster know this spell?
-            if (!knownSpellIDs.Contains(spellID))
+            if (!_knownSpellIDs.Contains(spellID))
             {
                 Debug.Warning($"Actor {name} attempted to cast a spell that they do not know '{spellID}'.");
                 return false;
             }
 
             // ❓ Is the spell in the override cache?
-            if (!spells.TryGetValue(spellID, out var spellOverride))
+            if (!_spells.TryGetValue(spellID, out var spellOverride))
             {
                 Debug.Warning($"Spell '{spellID}' is known but not in override cache for actor {name}.");
                 return false;

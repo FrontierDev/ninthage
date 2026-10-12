@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -13,18 +14,18 @@ namespace Game.Shared
     [RequireComponent(typeof(Actor))]
     public sealed class ActorVFXController : NetworkBehaviour
     {
-        [SerializeField] private Transform spellEffectSpawnPoint;
+        [SerializeField, FormerlySerializedAs("spellEffectSpawnPoint")] private Transform _spellEffectSpawnPoint;
         /// <summary>Gets the spell effect spawn point.</summary>
-        public Transform SpellEffectSpawnPoint => spellEffectSpawnPoint;
+        public Transform SpellEffectSpawnPoint => _spellEffectSpawnPoint;
 
-        [SerializeField] private Dictionary<int, GameObject> activeVFX = new();
+        [SerializeField, FormerlySerializedAs("activeVFX")] private Dictionary<int, GameObject> _activeVFX = new();
         /// <summary>Gets active visual effects by identifier.</summary>
-        public IReadOnlyDictionary<int, GameObject> ActiveEffects => activeVFX;
+        public IReadOnlyDictionary<int, GameObject> ActiveEffects => _activeVFX;
 
         /// <summary>Registers a visual effect by identifier.</summary>
         public void RegisterEffect(int id, GameObject go)
         {
-            activeVFX[id] = go;
+            _activeVFX[id] = go;
         }
 
         /// <summary>

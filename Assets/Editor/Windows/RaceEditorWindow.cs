@@ -86,35 +86,35 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Race ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none, GUILayout.Height(64));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none, GUILayout.Height(64));
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Description:", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), GUIContent.none, GUILayout.Height(80));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_description"), GUIContent.none, GUILayout.Height(80));
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("isPlayable"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_isPlayable"));
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("defaultPVPFaction"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_defaultPVPFaction"));
 
             EditorGUILayout.Space();
 
@@ -136,7 +136,7 @@ namespace Game.Editor.Windows
 
         private void DrawBaseStatsTab(SerializedObject serializedObject)
         {
-            var arrayProp = serializedObject.FindProperty("baseStats");
+            var arrayProp = serializedObject.FindProperty("_baseStats");
             DrawStatArrayHeader("Base Stats", arrayProp, () => OpenStatExplorer(arrayProp));
 
             if (arrayProp.arraySize == 0)

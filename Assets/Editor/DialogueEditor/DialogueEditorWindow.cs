@@ -266,14 +266,14 @@ namespace Game.Editor.Dialogue
                         if (srcIndex >= 0)
                         {
                             serializedDialogue.Update();
-                            var nodesProp = serializedDialogue.FindProperty("nodes");
+                            var nodesProp = serializedDialogue.FindProperty("_nodes");
                             var srcNodeProp = nodesProp.GetArrayElementAtIndex(srcIndex);
-                            var choicesProp = srcNodeProp.FindPropertyRelative("choices");
+                            var choicesProp = srcNodeProp.FindPropertyRelative("_choices");
                             if (dragFromChoiceIndex < choicesProp.arraySize)
                             {
                                 var choiceProp = choicesProp.GetArrayElementAtIndex(dragFromChoiceIndex);
                                 Undo.RecordObject(dialogue, "Connect Dialogue Nodes");
-                                choiceProp.FindPropertyRelative("nextNodeId").intValue = targetId;
+                                choiceProp.FindPropertyRelative("_nextNodeID").intValue = targetId;
                                 serializedDialogue.ApplyModifiedProperties();
                                 EditorUtility.SetDirty(dialogue);
                                 AssetDatabase.SaveAssets();
@@ -527,18 +527,18 @@ namespace Game.Editor.Dialogue
                         if (selNodeIndex >= 0)
                         {
                             serializedDialogue.UpdateIfRequiredOrScript();
-                            var nodesProp = serializedDialogue.FindProperty("nodes");
+                            var nodesProp = serializedDialogue.FindProperty("_nodes");
                             var selNodeProp = nodesProp.GetArrayElementAtIndex(selNodeIndex);
-                            var choicesProp = selNodeProp.FindPropertyRelative("choices");
+                            var choicesProp = selNodeProp.FindPropertyRelative("_choices");
                             var choiceProp = choicesProp.GetArrayElementAtIndex(i);
-                            var conditionsProp = choiceProp.FindPropertyRelative("conditions");
+                            var conditionsProp = choiceProp.FindPropertyRelative("_conditions");
 
                             for (int ci = 0; ci < conditionsProp.arraySize; ci++)
                             {
                                 var condProp = conditionsProp.GetArrayElementAtIndex(ci);
                                 EditorGUILayout.BeginHorizontal();
-                                EditorGUILayout.PropertyField(condProp.FindPropertyRelative("condition"), GUIContent.none);
-                                EditorGUILayout.PropertyField(condProp.FindPropertyRelative("invert"), GUIContent.none, GUILayout.Width(70));
+                                EditorGUILayout.PropertyField(condProp.FindPropertyRelative("_condition"), GUIContent.none);
+                                EditorGUILayout.PropertyField(condProp.FindPropertyRelative("_invert"), GUIContent.none, GUILayout.Width(70));
                                 if (GUILayout.Button("Remove", GUILayout.Width(70)))
                                 {
                                     conditionsProp.DeleteArrayElementAtIndex(ci);
@@ -554,8 +554,8 @@ namespace Game.Editor.Dialogue
                                 conditionsProp.InsertArrayElementAtIndex(conditionsProp.arraySize);
                                 var newCond = conditionsProp.GetArrayElementAtIndex(conditionsProp.arraySize - 1);
                                 // clear fields
-                                newCond.FindPropertyRelative("condition").managedReferenceValue = null;
-                                newCond.FindPropertyRelative("invert").boolValue = false;
+                                newCond.FindPropertyRelative("_condition").managedReferenceValue = null;
+                                newCond.FindPropertyRelative("_invert").boolValue = false;
                                 serializedDialogue.ApplyModifiedProperties();
                                 EditorUtility.SetDirty(dialogue);
                             }
@@ -613,13 +613,13 @@ namespace Game.Editor.Dialogue
             if (dialogue == null) return;
 
             var so = new SerializedObject(dialogue);
-            var nodesProp = so.FindProperty("nodes");
+            var nodesProp = so.FindProperty("_nodes");
             int newIndex = nodesProp.arraySize;
             nodesProp.InsertArrayElementAtIndex(newIndex);
             var newElem = nodesProp.GetArrayElementAtIndex(newIndex);
-            var idProp = newElem.FindPropertyRelative("id");
-            var textProp = newElem.FindPropertyRelative("dialogueText");
-            var choicesProp = newElem.FindPropertyRelative("choices");
+            var idProp = newElem.FindPropertyRelative("_id");
+            var textProp = newElem.FindPropertyRelative("_dialogueText");
+            var choicesProp = newElem.FindPropertyRelative("_choices");
 
             int newId = dialogue.Nodes.Count;
             idProp.intValue = newId;

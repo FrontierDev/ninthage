@@ -3,6 +3,7 @@ using System.Linq;
 using Game.Shared.Data;
 using Debug = Game.Shared.FormattedDebug;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -10,9 +11,9 @@ namespace Game.Shared
     [Serializable]
     public class FireDamageBonus : IScalableModifier
     {
-        [SerializeField] private float bonusDamage;
+        [SerializeField, FormerlySerializedAs("bonusDamage")] private float _bonusDamage;
 
-        public float BonusDamage => bonusDamage;
+        public float BonusDamage => _bonusDamage;
 
         public int Priority => 1;
         public string source;
@@ -22,7 +23,7 @@ namespace Game.Shared
         public FireDamageBonus(string source, float bonusDamage)
         {
             this.source = source;
-            this.bonusDamage = bonusDamage;
+            _bonusDamage = bonusDamage;
         }
 
         public bool AppliesTo(SpellOverride spell)
@@ -33,20 +34,20 @@ namespace Game.Shared
             foreach (var component in spell.Components)
             {
                 if (component.EffectDefinition is SpellEffect_Damage fireEffect)
-                    fireEffect.BaseDamage += bonusDamage;
+                    fireEffect.BaseDamage += _bonusDamage;
             }
         }
 
         public void Scale(int rank)
         {
-            bonusDamage *= rank;
+            _bonusDamage *= rank;
         }
 
         public void Combine(ISpellModifier other)
         {
             if (other is FireDamageBonus otherBonus)
             {
-                bonusDamage += otherBonus.bonusDamage;
+                _bonusDamage += otherBonus._bonusDamage;
             }
         }
     }

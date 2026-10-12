@@ -1,5 +1,6 @@
 using Game.Shared.Persistence;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -7,9 +8,10 @@ namespace Game.Shared.Data
     [System.Serializable]
     public sealed class Condition_PlayerClass : ConditionDefinition
     {
-        [SerializeField] private ClassDefinition requiredClass;
+        [SerializeField, FormerlySerializedAs("requiredClass")] private ClassDefinition _requiredClass;
 
-        private readonly string tooltipFormat = "Requires class: {0}";
+        [FormerlySerializedAs("tooltipFormat")]
+        private readonly string _tooltipFormat = "Requires class: {0}";
 
         /// <summary>Evaluates the player's class requirement.</summary>
         public override bool Evaluate(object context)
@@ -17,7 +19,7 @@ namespace Game.Shared.Data
             if (typeof(PlayerActor).IsAssignableFrom(context.GetType()))
             {
                 CharacterData characterData = ((PlayerActor)context).CharacterData;
-                return characterData.ClassID == requiredClass.DefinitionId;
+                return characterData.ClassID == _requiredClass.DefinitionId;
             }
 
             return false;
@@ -26,7 +28,7 @@ namespace Game.Shared.Data
         /// <summary>Gets the class requirement as tooltip text.</summary>
         public override string GetTooltipLine()
         {
-            return string.Format(tooltipFormat, requiredClass.DisplayName);
+            return string.Format(_tooltipFormat, _requiredClass.DisplayName);
         }
     }
 }

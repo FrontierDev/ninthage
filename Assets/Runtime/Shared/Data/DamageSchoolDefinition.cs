@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -10,23 +11,23 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "DamageSchoolDefinition_", menuName = "NinthAge/Definitions/Damage School Definition")]
     public class DamageSchoolDefinition : DataDefinition
     {
-        [SerializeField] private Sprite icon;
-        [SerializeField] private ActorStatDefinition mitigationRatingStat;
-        [SerializeField] private float ratingPerPercent = 10f;
+        [SerializeField, FormerlySerializedAs("icon")] private Sprite _icon;
+        [SerializeField, FormerlySerializedAs("mitigationRatingStat")] private ActorStatDefinition _mitigationRatingStat;
+        [SerializeField, FormerlySerializedAs("ratingPerPercent")] private float _ratingPerPercent = 10f;
 
         /// <summary>Gets the damage school icon.</summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
         /// <summary>Gets the stat used to calculate mitigation.</summary>
-        public ActorStatDefinition MitigationRatingStat => mitigationRatingStat;
+        public ActorStatDefinition MitigationRatingStat => _mitigationRatingStat;
         /// <summary>Gets the rating required for one percent mitigation.</summary>
-        public float RatingPerPercent => ratingPerPercent;
+        public float RatingPerPercent => _ratingPerPercent;
 
         /// <summary>Calculates mitigation for the supplied actor stats.</summary>
         public float CalculateMitigation(ActorStatContainer targetStats)
         {
-            if (mitigationRatingStat == null) return 0f;
+            if (_mitigationRatingStat == null) return 0f;
 
-            float rating = targetStats.GetStat(mitigationRatingStat.DefinitionId)?.CurrentValue ?? 0f;
+            float rating = targetStats.GetStat(_mitigationRatingStat.DefinitionId)?.CurrentValue ?? 0f;
             if (rating <= 0f) return 0f;
 
             var actor = targetStats.GetComponent<Actor>();
@@ -35,7 +36,7 @@ namespace Game.Shared.Data
                 level = playerActor.GetLevel();
             else if (actor != null && actor.TryGetComponent<NPCActor>(out var npcActor))
                 level = npcActor.GetLevel();
-            float percent = CombatRatingHelper.RatingToPercent(rating, level, ratingPerPercent);
+            float percent = CombatRatingHelper.RatingToPercent(rating, level, _ratingPerPercent);
             return Mathf.Clamp01(percent / 100f);
         }
 

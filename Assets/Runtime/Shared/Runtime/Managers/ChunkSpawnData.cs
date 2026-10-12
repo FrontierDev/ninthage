@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -8,12 +9,12 @@ namespace Game.Shared
     /// </summary>
     public class ChunkSpawnData : MonoBehaviour
     {
-        [SerializeField] private List<Transform> spawnPoints;
-        [SerializeField] private GameObject prefab;
+        [SerializeField, FormerlySerializedAs("spawnPoints")] private List<Transform> _spawnPoints;
+        [SerializeField, FormerlySerializedAs("prefab")] private GameObject _prefab;
         /// <summary>Gets the configured spawn points.</summary>
-        public IReadOnlyList<Transform> SpawnPoints => spawnPoints;
+        public IReadOnlyList<Transform> SpawnPoints => _spawnPoints;
         /// <summary>Gets the prefab spawned by this chunk.</summary>
-        public GameObject Prefab => prefab;
+        public GameObject Prefab => _prefab;
 
     }
 }

@@ -124,7 +124,7 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Item ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             if (GUILayout.Button("Generate", GUILayout.Width(70)))
             {
                 GenerateItemId(serializedObject);
@@ -135,33 +135,33 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Quality:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("quality"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_quality"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Description:", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), GUIContent.none, GUILayout.Height(80));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_description"), GUIContent.none, GUILayout.Height(80));
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Item Set Key:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("itemSetKey"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_itemSetKey"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
@@ -381,13 +381,13 @@ namespace Game.Editor.Windows
             EditorGUILayout.LabelField("Equipment Configuration", EditorStyles.boldLabel);
 
             EditorGUILayout.Space();
-            DrawInlineList("Valid Equipment Slots", serializedObject.FindProperty("validSlots"));
+            DrawInlineList("Valid Equipment Slots", serializedObject.FindProperty("_validSlots"));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Item Type", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("itemType"), new GUIContent("Type"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_itemType"), new GUIContent("Type"));
 
-            var itemTypeProp = serializedObject.FindProperty("itemType");
+            var itemTypeProp = serializedObject.FindProperty("_itemType");
             if (itemTypeProp != null)
             {
                 ItemType itemType = (ItemType)itemTypeProp.enumValueIndex;
@@ -395,61 +395,61 @@ namespace Game.Editor.Windows
                 if (itemType == ItemType.Weapon)
                 {
                     EditorGUI.indentLevel++;
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty("weaponType"), new GUIContent("Weapon Type"));
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty("isTwoHanded"), new GUIContent("Two-Handed"));
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty("damagePerSecond"), new GUIContent("Damage Per Second"));
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty("swingTimer"), new GUIContent("Swing Timer (s)"));
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty("damageSchool"), new GUIContent("Damage School"));
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("_weaponType"), new GUIContent("Weapon Type"));
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("_isTwoHanded"), new GUIContent("Two-Handed"));
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("_damagePerSecond"), new GUIContent("Damage Per Second"));
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("_swingTimer"), new GUIContent("Swing Timer (s)"));
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("_damageSchool"), new GUIContent("Damage School"));
                     EditorGUI.indentLevel--;
                 }
                 else if (itemType == ItemType.Armor)
                 {
                     EditorGUI.indentLevel++;
-                    EditorGUILayout.PropertyField(serializedObject.FindProperty("armorWeight"), new GUIContent("Armor Weight"));
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("_armorWeight"), new GUIContent("Armor Weight"));
                     EditorGUI.indentLevel--;
                 }
             }
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Unique Restrictions", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("uniqueFlag"), new GUIContent("Unique Flag"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_uniqueFlag"), new GUIContent("Unique Flag"));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Item Binding", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("bindingFlag"), new GUIContent("Binding Flag"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_bindingFlag"), new GUIContent("Binding Flag"));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Soulbinding", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("bindingFlag"), new GUIContent("Binding Flag"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_bindingFlag"), new GUIContent("Binding Flag"));
         }
 
         private void DrawTradingTab(SerializedObject serializedObject)
         {
             EditorGUILayout.LabelField("Stacking", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("canStack"), new GUIContent("Can Stack"));
-            if (serializedObject.FindProperty("canStack").boolValue)
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_canStack"), new GUIContent("Can Stack"));
+            if (serializedObject.FindProperty("_canStack").boolValue)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("maxStackSize"), new GUIContent("Max Stack Size"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_maxStackSize"), new GUIContent("Max Stack Size"));
                 EditorGUI.indentLevel--;
             }
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Trading Rules", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("canTrade"), new GUIContent("Can Trade"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("canSell"), new GUIContent("Can Sell"));
-            if (serializedObject.FindProperty("canSell").boolValue)
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_canTrade"), new GUIContent("Can Trade"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_canSell"), new GUIContent("Can Sell"));
+            if (serializedObject.FindProperty("_canSell").boolValue)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("sellPrice"), new GUIContent("Sell Price"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_sellPrice"), new GUIContent("Sell Price"));
                 EditorGUI.indentLevel--;
             }
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Modifications", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("canDisenchant"), new GUIContent("Can Disenchant"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_canDisenchant"), new GUIContent("Can Disenchant"));
         }
 
         private void DrawStatsTab(SerializedObject serializedObject)
@@ -457,11 +457,11 @@ namespace Game.Editor.Windows
             DrawStatTemplatePanel(serializedObject);
 
             EditorGUILayout.Space(10);
-            DrawStatsList("Stats", serializedObject.FindProperty("stats"));
+            DrawStatsList("Stats", serializedObject.FindProperty("_stats"));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Equip Conditions", EditorStyles.boldLabel);
-            DrawConditionsList(serializedObject.FindProperty("conditions"));
+            DrawConditionsList(serializedObject.FindProperty("_conditions"));
 
             EditorGUILayout.Space(10);
             DrawStatPreview(serializedObject);
@@ -507,7 +507,7 @@ namespace Game.Editor.Windows
 
         private void ApplyStatTemplate(SerializedObject serializedObject, ItemStatTemplate template)
         {
-            var statsProp = serializedObject.FindProperty("stats");
+            var statsProp = serializedObject.FindProperty("_stats");
             if (statsProp == null)
                 return;
 
@@ -518,8 +518,8 @@ namespace Game.Editor.Windows
                 var entry = template.Stats[i];
                 var elementProp = statsProp.GetArrayElementAtIndex(i);
 
-                var statFieldProp = elementProp.FindPropertyRelative("stat");
-                var valueFieldProp = elementProp.FindPropertyRelative("value");
+                var statFieldProp = elementProp.FindPropertyRelative("_stat");
+                var valueFieldProp = elementProp.FindPropertyRelative("_value");
 
                 if (statFieldProp != null && valueFieldProp != null)
                 {
@@ -543,7 +543,7 @@ namespace Game.Editor.Windows
 
         private void DrawStatPreview(SerializedObject serializedObject)
         {
-            var statsProp = serializedObject.FindProperty("stats");
+            var statsProp = serializedObject.FindProperty("_stats");
             if (statsProp == null || statsProp.arraySize == 0)
                 return;
 
@@ -568,8 +568,8 @@ namespace Game.Editor.Windows
             for (int i = 0; i < statsProp.arraySize; i++)
             {
                 var element = statsProp.GetArrayElementAtIndex(i);
-                var statRef = element.FindPropertyRelative("stat");
-                var valueProp = element.FindPropertyRelative("value");
+                var statRef = element.FindPropertyRelative("_stat");
+                var valueProp = element.FindPropertyRelative("_value");
 
                 if (statRef == null || statRef.objectReferenceValue == null || valueProp == null)
                     continue;
@@ -783,8 +783,8 @@ namespace Game.Editor.Windows
             for (int i = 0; i < arrayProp.arraySize; i++)
             {
                 var element = arrayProp.GetArrayElementAtIndex(i);
-                var statProp = element.FindPropertyRelative("stat");
-                var valueProp = element.FindPropertyRelative("value");
+                var statProp = element.FindPropertyRelative("_stat");
+                var valueProp = element.FindPropertyRelative("_value");
 
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.PropertyField(statProp, GUIContent.none, GUILayout.MinWidth(150));
@@ -894,7 +894,7 @@ namespace Game.Editor.Windows
 
         private void GenerateItemId(SerializedObject serializedObject)
         {
-            var displayNameProp = serializedObject.FindProperty("displayName");
+            var displayNameProp = serializedObject.FindProperty("_displayName");
             if (displayNameProp == null || string.IsNullOrEmpty(displayNameProp.stringValue))
             {
                 EditorUtility.DisplayDialog("Generate Item ID", "Please enter a Display Name first", "OK");
@@ -905,7 +905,7 @@ namespace Game.Editor.Windows
             string displayName = displayNameProp.stringValue;
             string itemId = ConvertToItemId(displayName);
 
-            var idProp = serializedObject.FindProperty("definitionId");
+            var idProp = serializedObject.FindProperty("_definitionID");
             if (idProp != null)
             {
                 idProp.stringValue = itemId;

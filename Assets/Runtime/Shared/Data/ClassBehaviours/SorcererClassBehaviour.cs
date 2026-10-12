@@ -3,6 +3,7 @@ using Game.Shared.Networking;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -21,7 +22,7 @@ namespace Game.Shared.Data
         private const float CRITICAL_SURGE_RATIO = 3f;
         private const float SURGE_DECAY_PER_SECOND = 0.03f; // 3% of max per second
 
-        [SerializeField] private DamageSchoolDefinition instabilityDamageSchool;
+        [SerializeField, FormerlySerializedAs("instabilityDamageSchool")] private DamageSchoolDefinition _instabilityDamageSchool;
 
         // Per-actor timestamp of the last instability-generating spell cast.
         // ScriptableObject is shared, so we key by actor instance.
@@ -39,9 +40,9 @@ namespace Game.Shared.Data
         }
         private readonly Dictionary<Actor, RiftData> _activeRifts = new();
 
-        [SerializeField] private GameObject resourcePrefab;
+        [SerializeField, FormerlySerializedAs("resourcePrefab")] private GameObject _resourcePrefab;
         /// <summary>Gets the Sorcerer resource prefab.</summary>
-        public override GameObject ResourcePrefab => resourcePrefab;
+        public override GameObject ResourcePrefab => _resourcePrefab;
 
         /// <summary>Activates Sorcerer event handlers and tickers.</summary>
         public override void OnActivate(PlayerActor actor)

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -78,18 +79,18 @@ namespace Game.Shared
         /// </summary>
         public WorldPosition WorldPos { get; set; }
 
-        [SerializeField] private Actor target;
+        [SerializeField, FormerlySerializedAs("target")] private Actor _target;
         /// <summary>Gets the actor's current target.</summary>
-        public Actor Target => target;
+        public Actor Target => _target;
 
-        [SerializeField] private Transform projectileTarget;
+        [SerializeField, FormerlySerializedAs("projectileTarget")] private Transform _projectileTarget;
         /// <summary>Gets the transform used for projectile targeting.</summary>
-        public Transform ProjectileTarget => projectileTarget;
+        public Transform ProjectileTarget => _projectileTarget;
 
         /// <summary>
         /// The auras that are active ON the target (not BY the target).
         /// </summary>
-        [SerializeField] private Dictionary<int, AuraInstance> activeAuras = new();
+        [SerializeField, FormerlySerializedAs("activeAuras")] private Dictionary<int, AuraInstance> _activeAuras = new();
         private List<int> _expiredAurasThisFrame = new();
 
         /// <summary>Initializes the actor identity.</summary>
@@ -114,7 +115,7 @@ namespace Game.Shared
 
         private void Update()
         {
-            foreach (var kvp in activeAuras)
+            foreach (var kvp in _activeAuras)
             {
                 var aura = kvp.Value;
                 aura.Update();
@@ -128,8 +129,8 @@ namespace Game.Shared
 
             foreach (var id in _expiredAurasThisFrame)
             {
-                ActorEndpoint.onClientExpireAura?.Invoke(activeAuras[id], this, id);
-                activeAuras.Remove(id);
+                ActorEndpoint.onClientExpireAura?.Invoke(_activeAuras[id], this, id);
+                _activeAuras.Remove(id);
             }
 
             _expiredAurasThisFrame.Clear();
@@ -213,7 +214,7 @@ namespace Game.Shared
         /// <summary>Requests a target assignment from the server.</summary>
         public void Server_SetTarget(Actor newTarget)
         {
-            target = newTarget;
+            _target = newTarget;
             Observers_SetTarget(newTarget);
         }
 
@@ -222,7 +223,7 @@ namespace Game.Shared
         /// </summary>
         public void SetTargetFromServer(Actor newTarget)
         {
-            target = newTarget;
+            _target = newTarget;
             Observers_SetTarget(newTarget);
         }
 
@@ -230,8 +231,8 @@ namespace Game.Shared
         /// <summary>Replicates an actor target to observers.</summary>
         public void Observers_SetTarget(Actor newTarget)
         {
-            var oldTarget = target;
-            target = newTarget;
+            var oldTarget = _target;
+            _target = newTarget;
 
             // If this is our own actor, also trigger the late targeted actor changed event 
             // for any UI that needs to update based on the new target.
@@ -312,12 +313,12 @@ namespace Game.Shared
             // Get the aura definition.
             AuraDefinition def = AuraDefinitionLibrary.Instance.GetDefinition(auraID);
 
-            if (activeAuras.TryGetValue(instancedID, out var existingAura))
+            if (_activeAuras.TryGetValue(instancedID, out var existingAura))
             {
                 existingAura.SetDuration(duration);
                 existingAura.SetStacks(stacks);
 
-                activeAuras[instancedID] = existingAura; // Update the dictionary entry.
+                _activeAuras[instancedID] = existingAura; // Update the dictionary entry.
 
                 ActorEndpoint.onClientUpdateAura?.Invoke(existingAura, this, instancedID);
             }
@@ -325,7 +326,7 @@ namespace Game.Shared
             {
                 // If it's a new aura, create an instance and add it to the dictionary.
                 var newAura = new AuraInstance(instancedID, def, null, this, duration, stacks);
-                activeAuras.Add(instancedID, newAura);
+                _activeAuras.Add(instancedID, newAura);
 
                 ActorEndpoint.onClientApplyAura?.Invoke(newAura, this, instancedID);
             }
@@ -334,20 +335,20 @@ namespace Game.Shared
         #region Aura RPCs
         public List<AuraInstance> GetActiveAuras()
         {
-            return new List<AuraInstance>(activeAuras.Values);
+            return new List<AuraInstance>(_activeAuras.Values);
         }
 
         public float GetRemainingAuraTime(int id)
         {
-            return activeAuras.TryGetValue(id, out var aura) ? aura.Duration : 0f;
+            return _activeAuras.TryGetValue(id, out var aura) ? aura.Duration : 0f;
         }
 
         [ObserversRpc]
         public void Observers_ExpireAura(int instancedID, RPCInfo info = default)
         {
-            if (activeAuras.TryGetValue(instancedID, out var existingAura))
+            if (_activeAuras.TryGetValue(instancedID, out var existingAura))
             {
-                activeAuras.Remove(instancedID);
+                _activeAuras.Remove(instancedID);
                 ActorEndpoint.onClientExpireAura?.Invoke(existingAura, this, instancedID);
             }
         }
@@ -355,7 +356,7 @@ namespace Game.Shared
         [ObserversRpc]
         public void Observers_TickAura(int instancedID, int stacks, float duration, RPCInfo info = default)
         {
-            if (activeAuras.TryGetValue(instancedID, out var existingAura))
+            if (_activeAuras.TryGetValue(instancedID, out var existingAura))
             {
                 existingAura.SetStacks(stacks);
                 existingAura.SetDuration(duration);
@@ -366,9 +367,9 @@ namespace Game.Shared
         [ObserversRpc]
         public void Observers_DispelAura(int instancedID, RPCInfo info = default)
         {
-            if (activeAuras.TryGetValue(instancedID, out var existingAura))
+            if (_activeAuras.TryGetValue(instancedID, out var existingAura))
             {
-                activeAuras.Remove(instancedID);
+                _activeAuras.Remove(instancedID);
                 ActorEndpoint.onClientDispelAura?.Invoke(existingAura, this, instancedID);
             }
         }

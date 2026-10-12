@@ -87,37 +87,37 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Aura ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Description:", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), GUIContent.none, GUILayout.Height(60));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_description"), GUIContent.none, GUILayout.Height(60));
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("tags"), true);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_tags"), true);
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Stacking", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("stackBehavior"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("maxStacks"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_stackBehavior"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_maxStacks"));
 
             EditorGUILayout.Space();
 
@@ -144,8 +144,8 @@ namespace Game.Editor.Windows
         private void DrawTimingTab(SerializedObject serializedObject)
         {
             EditorGUILayout.LabelField("Aura Timing", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("baseDuration"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("baseTickInterval"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseDuration"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseTickInterval"));
         }
 
         private void DrawComponentsTab(SerializedObject serializedObject)
@@ -301,7 +301,7 @@ namespace Game.Editor.Windows
         {
             if (componentList == null)
             {
-                var prop = serializedObject.FindProperty("components");
+                var prop = serializedObject.FindProperty("_components");
                 componentList = new ReorderableList(serializedObject, prop, true, false, true, true)
                 {
                     drawElementCallback = (rect, index, isActive, isFocused) =>

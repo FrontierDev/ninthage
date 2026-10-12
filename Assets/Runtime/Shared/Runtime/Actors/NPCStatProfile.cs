@@ -1,6 +1,7 @@
 using Game.Shared.Data;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -19,22 +20,23 @@ namespace Game.Shared
     public sealed class NPCStatProfile : MonoBehaviour
     {
         [SerializeField]
-        private List<ActorStatBaseEntry> baseStats = new();
+        [FormerlySerializedAs("baseStats")]
+        private List<ActorStatBaseEntry> _baseStats = new();
         /// <summary>Gets the configured base stats.</summary>
-        public List<ActorStatBaseEntry> BaseStats => baseStats;
+        public List<ActorStatBaseEntry> BaseStats => _baseStats;
 
-        [SerializeField] private float mainHandDPS = 1;
-        [SerializeField] private float offHandDPS = 0;
-        [SerializeField] private float mainHandSwingSpeed = 2.0f;
-        [SerializeField] private float offHandSwingSpeed = 2.0f;
+        [SerializeField, FormerlySerializedAs("mainHandDPS")] private float _mainHandDPS = 1;
+        [SerializeField, FormerlySerializedAs("offHandDPS")] private float _offHandDPS = 0;
+        [SerializeField, FormerlySerializedAs("mainHandSwingSpeed")] private float _mainHandSwingSpeed = 2.0f;
+        [SerializeField, FormerlySerializedAs("offHandSwingSpeed")] private float _offHandSwingSpeed = 2.0f;
 
         /// <summary>Gets the weapon swing timer for an equipment slot.</summary>
         public float GetWeaponSwingTimer(ItemSlot slot)
         {
             return slot switch
             {
-                ItemSlot.MainHand => mainHandSwingSpeed,
-                ItemSlot.OffHand => offHandSwingSpeed,
+                ItemSlot.MainHand => _mainHandSwingSpeed,
+                ItemSlot.OffHand => _offHandSwingSpeed,
                 _ => 2f
             };
         }
@@ -44,8 +46,8 @@ namespace Game.Shared
         {
             damage = slot switch
             {
-                ItemSlot.MainHand => mainHandDPS,
-                ItemSlot.OffHand => offHandDPS,
+                ItemSlot.MainHand => _mainHandDPS,
+                ItemSlot.OffHand => _offHandDPS,
                 _ => 0
             };
 

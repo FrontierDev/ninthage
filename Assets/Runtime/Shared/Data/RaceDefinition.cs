@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -22,43 +23,49 @@ namespace Game.Shared.Data
     {
         [SerializeField]
         [TextArea(3, 5)]
-        private string description;
+        [FormerlySerializedAs("description")]
+        private string _description;
 
         [SerializeField]
-        private Sprite icon;
+        [FormerlySerializedAs("icon")]
+        private Sprite _icon;
 
         [SerializeField]
-        private bool isPlayable;
+        [FormerlySerializedAs("isPlayable")]
+        private bool _isPlayable;
 
         [SerializeField]
-        private FactionDefinition defaultPVPFaction;
+        [FormerlySerializedAs("defaultPVPFaction")]
+        private FactionDefinition _defaultPVPFaction;
         /// <summary>Gets the default player-versus-player faction.</summary>
-        public FactionDefinition DefaultPVPFaction => defaultPVPFaction;
+        public FactionDefinition DefaultPVPFaction => _defaultPVPFaction;
 
         [SerializeField]
-        private List<PlayerStartingReputation> startingReputations = new();
+        [FormerlySerializedAs("startingReputations")]
+        private List<PlayerStartingReputation> _startingReputations = new();
         /// <summary>Gets the starting reputation entries.</summary>
-        public IReadOnlyList<PlayerStartingReputation> StartingReputations => startingReputations;
+        public IReadOnlyList<PlayerStartingReputation> StartingReputations => _startingReputations;
 
         [SerializeField]
-        private List<ActorStatBaseEntry> baseStats = new();
+        [FormerlySerializedAs("baseStats")]
+        private List<ActorStatBaseEntry> _baseStats = new();
         /// <summary>Gets the base stats for the race.</summary>
-        public IReadOnlyList<ActorStatBaseEntry> BaseStats => baseStats;
+        public IReadOnlyList<ActorStatBaseEntry> BaseStats => _baseStats;
 
         /// <summary>
         /// Detailed description of this race.
         /// </summary>
-        public string Description => description;
+        public string Description => _description;
 
         /// <summary>
         /// Icon sprite for UI display.
         /// </summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
 
         /// <summary>
         /// Indicates if this race is playable by the player.
         /// </summary>
-        public bool IsPlayable => isPlayable;
+        public bool IsPlayable => _isPlayable;
 
         protected override string AssetPrefix => "Race";
     }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -8,63 +9,63 @@ namespace Game.Shared.Data
     /// <summary>Defines one selectable dialogue choice.</summary>
     public class DialogueChoice
     {
-        [SerializeField] private string id;
+        [SerializeField, FormerlySerializedAs("id")] private string _id;
         /// <summary>Gets the choice identifier.</summary>
-        public string ID => id;
+        public string ID => _id;
 
-        [SerializeField] private string choiceText;
+        [SerializeField, FormerlySerializedAs("choiceText")] private string _choiceText;
         /// <summary>Gets or sets the choice text.</summary>
         public string ChoiceText
         {
-            get => choiceText;
-            set => choiceText = value;
+            get => _choiceText;
+            set => _choiceText = value;
         }
 
-        [SerializeField] private Sprite icon;
+        [SerializeField, FormerlySerializedAs("icon")] private Sprite _icon;
         /// <summary>Gets the choice icon.</summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
 
-        [SerializeField] private List<DialogueCondition> conditions = new();
+        [SerializeField, FormerlySerializedAs("conditions")] private List<DialogueCondition> _conditions = new();
         /// <summary>Gets the conditions for showing the choice.</summary>
-        public IReadOnlyList<DialogueCondition> Conditions => conditions;
+        public IReadOnlyList<DialogueCondition> Conditions => _conditions;
 
         /// <summary>Adds a condition to the choice.</summary>
         public void AddCondition(DialogueCondition condition)
         {
-            conditions.Add(condition);
+            _conditions.Add(condition);
         }
 
         /// <summary>Removes a condition at the specified index.</summary>
         public void RemoveConditionAt(int index)
         {
-            if (index >= 0 && index < conditions.Count)
-                conditions.RemoveAt(index);
+            if (index >= 0 && index < _conditions.Count)
+                _conditions.RemoveAt(index);
         }
 
-        [SerializeField] private bool showAlways = false;
+        [SerializeField, FormerlySerializedAs("showAlways")] private bool _showAlways = false;
         /// <summary>Gets whether the choice is shown regardless of conditions.</summary>
-        public bool ShowAlways => showAlways;
+        public bool ShowAlways => _showAlways;
 
         // Links are stored by id to avoid nested serialization cycles.
         // The previous object reference `nextNode` caused Unity to inline nested
         // DialogueNode objects which created recursion when nodes referenced
         // each other. We now store only `nextNodeId` and resolve at runtime when
         // a containing DialogueDefinition is available.
-        [SerializeField] private int nextNodeId = -1;
+        [SerializeField, FormerlySerializedAs("nextNodeId")] private int _nextNodeID = -1;
         /// <summary>Gets or sets the next dialogue node identifier.</summary>
         public int NextNodeID
         {
-            get => nextNodeId;
-            set => nextNodeId = value;
+            get => _nextNodeID;
+            set => _nextNodeID = value;
         }
 
         /// <summary>Resolves the next node from the containing dialogue definition.</summary>
         public DialogueNode ResolveNextNode(DialogueDefinition root)
         {
-            if (root == null || nextNodeId == -1) return null;
+            if (root == null || _nextNodeID == -1) return null;
             foreach (var n in root.Nodes)
             {
-                if (n.ID == nextNodeId) return n;
+                if (n.ID == _nextNodeID) return n;
             }
             return null;
         }

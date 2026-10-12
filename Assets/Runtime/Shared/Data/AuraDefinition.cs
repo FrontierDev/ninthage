@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -65,38 +66,38 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "AuraDefinition_", menuName = "NinthAge/Definitions/Aura Definition")]
     public class AuraDefinition : DataDefinition
     {
-        [SerializeField] private string description;
-        [SerializeField] private Sprite icon;
-        [SerializeField] private bool isDebuff;
-        [SerializeField] private float baseDuration;
-        [SerializeField] private float baseTickInterval;
-        [SerializeField] private AuraStackBehavior stackBehavior = AuraStackBehavior.RefreshDuration;
-        [SerializeField] private int maxStacks = 1;
-        [SerializeField] private List<string> tags = new();
-        [SerializeField] private List<AuraComponent> components = new();
+        [SerializeField, FormerlySerializedAs("description")] private string _description;
+        [SerializeField, FormerlySerializedAs("icon")] private Sprite _icon;
+        [SerializeField, FormerlySerializedAs("isDebuff")] private bool _isDebuff;
+        [SerializeField, FormerlySerializedAs("baseDuration")] private float _baseDuration;
+        [SerializeField, FormerlySerializedAs("baseTickInterval")] private float _baseTickInterval;
+        [SerializeField, FormerlySerializedAs("stackBehavior")] private AuraStackBehavior _stackBehavior = AuraStackBehavior.RefreshDuration;
+        [SerializeField, FormerlySerializedAs("maxStacks")] private int _maxStacks = 1;
+        [SerializeField, FormerlySerializedAs("tags")] private List<string> _tags = new();
+        [SerializeField, FormerlySerializedAs("components")] private List<AuraComponent> _components = new();
 
-        [SerializeField] private AuraBehaviour auraBehaviour;
+        [SerializeField, FormerlySerializedAs("auraBehaviour")] private AuraBehaviour _auraBehaviour;
         /// <summary>Gets the behaviour associated with this aura.</summary>
-        public AuraBehaviour AuraBehaviour => auraBehaviour;
+        public AuraBehaviour AuraBehaviour => _auraBehaviour;
 
         /// <summary>Gets the aura description.</summary>
-        public string Description => description;
+        public string Description => _description;
         /// <summary>Gets the aura icon.</summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
         /// <summary>Gets whether the aura is harmful.</summary>
-        public bool IsDebuff => isDebuff;
+        public bool IsDebuff => _isDebuff;
         /// <summary>Gets the base aura duration.</summary>
-        public float BaseDuration => baseDuration;
+        public float BaseDuration => _baseDuration;
         /// <summary>Gets the base interval between ticks.</summary>
-        public float BaseTickInterval => baseTickInterval;
+        public float BaseTickInterval => _baseTickInterval;
         /// <summary>Gets the stack behaviour.</summary>
-        public AuraStackBehavior StackBehavior => stackBehavior;
+        public AuraStackBehavior StackBehavior => _stackBehavior;
         /// <summary>Gets the maximum number of stacks.</summary>
-        public int MaxStacks => maxStacks;
+        public int MaxStacks => _maxStacks;
         /// <summary>Gets the aura tags.</summary>
-        public IReadOnlyList<string> Tags => tags;
+        public IReadOnlyList<string> Tags => _tags;
         /// <summary>Gets the aura components.</summary>
-        public IReadOnlyList<AuraComponent> Components => components;
+        public IReadOnlyList<AuraComponent> Components => _components;
 
         protected override string AssetPrefix => "Aura";
     }

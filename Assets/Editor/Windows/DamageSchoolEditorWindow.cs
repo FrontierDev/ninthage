@@ -72,21 +72,21 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("School ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
@@ -110,14 +110,14 @@ namespace Game.Editor.Windows
         private void DrawMitigationTab(SerializedObject serializedObject)
         {
             EditorGUILayout.LabelField("Mitigation", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("mitigationRatingStat"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("ratingPerPercent"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_mitigationRatingStat"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_ratingPerPercent"));
 
             EditorGUILayout.Space();
 
             if (GUILayout.Button("Preview Scaling"))
             {
-                float rpp = serializedObject.FindProperty("ratingPerPercent").floatValue;
+                float rpp = serializedObject.FindProperty("_ratingPerPercent").floatValue;
                 RatingScalingPreviewWindow.Show(rpp);
             }
         }

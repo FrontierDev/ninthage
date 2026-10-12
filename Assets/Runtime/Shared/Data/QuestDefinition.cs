@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -27,13 +28,13 @@ namespace Game.Shared.Data
     /// <summary>Defines a reputation reward granted by a quest.</summary>
     public class QuestReputationReward
     {
-        [SerializeField] private FactionDefinition faction;
-        [SerializeField] private int reputationPoints;
+        [SerializeField, FormerlySerializedAs("faction")] private FactionDefinition _faction;
+        [SerializeField, FormerlySerializedAs("reputationPoints")] private int _reputationPoints;
 
         /// <summary>Gets the rewarded faction.</summary>
-        public FactionDefinition Faction => faction;
+        public FactionDefinition Faction => _faction;
         /// <summary>Gets the reputation points awarded.</summary>
-        public int ReputationPoints => reputationPoints;
+        public int ReputationPoints => _reputationPoints;
 
         /// <summary>Initializes an empty reputation reward.</summary>
         public QuestReputationReward() { }
@@ -41,8 +42,8 @@ namespace Game.Shared.Data
         /// <summary>Initializes a reputation reward.</summary>
         public QuestReputationReward(FactionDefinition faction, int reputationPoints)
         {
-            this.faction = faction;
-            this.reputationPoints = reputationPoints;
+            _faction = faction;
+            _reputationPoints = reputationPoints;
         }
     }
 
@@ -50,13 +51,13 @@ namespace Game.Shared.Data
     /// <summary>Defines an item reward granted by a quest.</summary>
     public class QuestItemReward
     {
-        [SerializeField] private ItemDefinition item;
-        [SerializeField] private int quantity = 1;
+        [SerializeField, FormerlySerializedAs("item")] private ItemDefinition _item;
+        [SerializeField, FormerlySerializedAs("quantity")] private int _quantity = 1;
 
         /// <summary>Gets the rewarded item.</summary>
-        public ItemDefinition Item => item;
+        public ItemDefinition Item => _item;
         /// <summary>Gets the rewarded quantity.</summary>
-        public int Quantity => quantity;
+        public int Quantity => _quantity;
 
         /// <summary>Initializes an empty item reward.</summary>
         public QuestItemReward() { }
@@ -64,8 +65,8 @@ namespace Game.Shared.Data
         /// <summary>Initializes an item reward.</summary>
         public QuestItemReward(ItemDefinition item, int quantity)
         {
-            this.item = item;
-            this.quantity = quantity;
+            _item = item;
+            _quantity = quantity;
         }
     }
 
@@ -76,62 +77,62 @@ namespace Game.Shared.Data
     public class QuestDefinition : DataDefinition
     {
         /* Quest Categorisation */
-        [SerializeField] private Sprite icon;
-        [SerializeField] private string description;
-        [SerializeField] private int level = 1;
-        [SerializeField] private QuestType type = QuestType.Normal;
-        [SerializeField] private int recommendedPlayers = 1;
-        [SerializeField] private int timerSeconds = 0;
+        [SerializeField, FormerlySerializedAs("icon")] private Sprite _icon;
+        [SerializeField, FormerlySerializedAs("description")] private string _description;
+        [SerializeField, FormerlySerializedAs("level")] private int _level = 1;
+        [SerializeField, FormerlySerializedAs("type")] private QuestType _type = QuestType.Normal;
+        [SerializeField, FormerlySerializedAs("recommendedPlayers")] private int _recommendedPlayers = 1;
+        [SerializeField, FormerlySerializedAs("timerSeconds")] private int _timerSeconds = 0;
 
         /// <summary>Gets the quest icon.</summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
         /// <summary>Gets the quest description.</summary>
-        public string Description => description;
+        public string Description => _description;
         /// <summary>Gets the minimum quest level.</summary>
-        public int Level => level;
+        public int Level => _level;
         /// <summary>Gets the quest type.</summary>
-        public QuestType Type => type;
+        public QuestType Type => _type;
         /// <summary>Gets the recommended player count.</summary>
-        public int RecommendedPlayers => recommendedPlayers;
+        public int RecommendedPlayers => _recommendedPlayers;
         /// <summary>Gets the quest timer in seconds.</summary>
-        public int TimerSeconds => timerSeconds;
+        public int TimerSeconds => _timerSeconds;
 
         /* Quest Rewards */
-        [SerializeField] private int goldReward = 0;
-        [SerializeField] private int experienceReward = 0;
-        [SerializeField] private QuestReputationReward reputationReward = null;
-        [SerializeField] private List<QuestItemReward> itemRewards = new();
+        [SerializeField, FormerlySerializedAs("goldReward")] private int _goldReward = 0;
+        [SerializeField, FormerlySerializedAs("experienceReward")] private int _experienceReward = 0;
+        [SerializeField, FormerlySerializedAs("reputationReward")] private QuestReputationReward _reputationReward = null;
+        [SerializeField, FormerlySerializedAs("itemRewards")] private List<QuestItemReward> _itemRewards = new();
         [SerializeField] bool giveAllItems = false;
 
         /// <summary>Gets the gold reward.</summary>
-        public int GoldReward => goldReward;
+        public int GoldReward => _goldReward;
         /// <summary>Gets the experience reward.</summary>
-        public int ExperienceReward => experienceReward;
+        public int ExperienceReward => _experienceReward;
         /// <summary>Gets the reputation reward.</summary>
-        public QuestReputationReward ReputationReward => reputationReward;
+        public QuestReputationReward ReputationReward => _reputationReward;
         /// <summary>Gets the item rewards.</summary>
-        public IReadOnlyList<QuestItemReward> ItemRewards => itemRewards;
+        public IReadOnlyList<QuestItemReward> ItemRewards => _itemRewards;
         /// <summary>Gets whether all item rewards are granted.</summary>
         public bool GiveAllItems => giveAllItems;
 
         /* Repeatable Quests */
-        [SerializeField] private QuestCooldown cooldown = QuestCooldown.None;
-        [SerializeField] private bool isRepeatable = false;
+        [SerializeField, FormerlySerializedAs("cooldown")] private QuestCooldown _cooldown = QuestCooldown.None;
+        [SerializeField, FormerlySerializedAs("isRepeatable")] private bool _isRepeatable = false;
 
         /// <summary>Gets the quest cooldown.</summary>
-        public QuestCooldown Cooldown => cooldown;
+        public QuestCooldown Cooldown => _cooldown;
         /// <summary>Gets whether the quest can be repeated.</summary>
-        public bool IsRepeatable => isRepeatable;
+        public bool IsRepeatable => _isRepeatable;
 
         /* Quest Objectives */
-        [SerializeReference] private List<QuestObjective> objectives = new();
+        [SerializeReference, FormerlySerializedAs("objectives")] private List<QuestObjective> _objectives = new();
         /// <summary>Gets the quest objectives.</summary>
-        public IReadOnlyList<QuestObjective> Objectives => objectives;
+        public IReadOnlyList<QuestObjective> Objectives => _objectives;
 
         /* Quest Requirements */
-        [SerializeField] private List<ConditionDefinition> requirements = new();
+        [SerializeField, FormerlySerializedAs("requirements")] private List<ConditionDefinition> _requirements = new();
         /// <summary>Gets the quest requirements.</summary>
-        public IReadOnlyList<ConditionDefinition> Requirements => requirements;
+        public IReadOnlyList<ConditionDefinition> Requirements => _requirements;
 
         protected override string AssetPrefix => "Quest";
         protected override void OnDefinitionValidate() { }

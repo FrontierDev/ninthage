@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -13,9 +14,9 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "DialogueDefinition_", menuName = "NinthAge/Definitions/Dialogue Definition")]
     public class DialogueDefinition : DataDefinition
     {
-        [SerializeField] private List<DialogueNode> nodes = new();
+        [SerializeField, FormerlySerializedAs("nodes")] private List<DialogueNode> _nodes = new();
         /// <summary>Gets the dialogue nodes.</summary>
-        public IReadOnlyList<DialogueNode> Nodes => nodes;
+        public IReadOnlyList<DialogueNode> Nodes => _nodes;
 
         protected override string AssetPrefix => "Dialog";
 

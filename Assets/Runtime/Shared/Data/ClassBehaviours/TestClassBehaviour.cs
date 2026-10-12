@@ -1,5 +1,6 @@
 using Debug = Game.Shared.FormattedDebug;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -8,12 +9,12 @@ namespace Game.Shared.Data
     [CreateAssetMenu(menuName = "NinthAge/Class Behaviours/Test")]
     public class TestClassBehaviour : ClassBehaviour
     {
-        [SerializeField] private float manaPerHit = 10f;
-        [SerializeField] private float manaOnDamageTaken = 5f;
+        [SerializeField, FormerlySerializedAs("manaPerHit")] private float _manaPerHit = 10f;
+        [SerializeField, FormerlySerializedAs("manaOnDamageTaken")] private float _manaOnDamageTaken = 5f;
 
-        [SerializeField] private GameObject resourcePrefab;
+        [SerializeField, FormerlySerializedAs("resourcePrefab")] private GameObject _resourcePrefab;
         /// <summary>Gets the test class resource prefab.</summary>
-        public override GameObject ResourcePrefab => resourcePrefab;
+        public override GameObject ResourcePrefab => _resourcePrefab;
 
         /// <summary>Activates the test class event handlers.</summary>
         public override void OnActivate(PlayerActor actor)
@@ -30,7 +31,7 @@ namespace Game.Shared.Data
         private void OnServerAutoAttackHit(SpellContext ctx, Actor target)
         {
             if (ctx.Caster is PlayerActor player)
-                GenerateMana(player, manaPerHit);
+                GenerateMana(player, _manaPerHit);
         }
 
         private void GenerateMana(PlayerActor actor, float amount)

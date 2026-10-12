@@ -81,24 +81,24 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Faction ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Description:", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), GUIContent.none, GUILayout.Height(80));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_description"), GUIContent.none, GUILayout.Height(80));
 
             EditorGUILayout.Space();
 
-            var isPlayableProp = serializedObject.FindProperty("isPlayable");
+            var isPlayableProp = serializedObject.FindProperty("_isPlayable");
             if (isPlayableProp != null)
                 EditorGUILayout.PropertyField(isPlayableProp);
 
@@ -108,11 +108,11 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.Space();
 
-            var canWarProp = serializedObject.FindProperty("canWar");
+            var canWarProp = serializedObject.FindProperty("_canWar");
             if (canWarProp != null)
                 EditorGUILayout.PropertyField(canWarProp, new GUIContent("Can War"));
 
-            var maxPointsProp = serializedObject.FindProperty("maxPoints");
+            var maxPointsProp = serializedObject.FindProperty("_maxPoints");
             if (maxPointsProp != null)
                 EditorGUILayout.PropertyField(maxPointsProp, new GUIContent("Max Points"));
 
@@ -149,7 +149,7 @@ namespace Game.Editor.Windows
             EditorGUILayout.LabelField("Reward Tiers", EditorStyles.boldLabel);
             EditorGUILayout.Space();
 
-            var rewardsProp = serializedObject.FindProperty("rewardDescriptions");
+            var rewardsProp = serializedObject.FindProperty("_rewardDescriptions");
             if (rewardsProp != null && rewardsProp.arraySize > 0)
             {
                 DrawThresholdVisualization(rewardsProp);
@@ -162,21 +162,21 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none, GUILayout.Height(64));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none, GUILayout.Height(64));
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Color:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("color"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_color"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Category:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("category"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_category"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
         }
 
@@ -196,7 +196,7 @@ namespace Game.Editor.Windows
         {
             if (alliedList == null)
             {
-                var prop = serializedObject.FindProperty("alliedFactionIDs");
+                var prop = serializedObject.FindProperty("_alliedFactionIDs");
                 alliedList = new ReorderableList(serializedObject, prop, true, true, true, true)
                 {
                     drawHeaderCallback = (rect) => EditorGUI.LabelField(rect, "Allied Factions"),
@@ -233,7 +233,7 @@ namespace Game.Editor.Windows
         {
             if (enemyList == null)
             {
-                var prop = serializedObject.FindProperty("enemyFactionIDs");
+                var prop = serializedObject.FindProperty("_enemyFactionIDs");
                 enemyList = new ReorderableList(serializedObject, prop, true, true, true, true)
                 {
                     drawHeaderCallback = (rect) => EditorGUI.LabelField(rect, "Enemy Factions"),

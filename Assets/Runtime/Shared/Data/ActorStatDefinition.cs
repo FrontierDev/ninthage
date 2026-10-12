@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -19,101 +20,115 @@ namespace Game.Shared.Data
     {
         [SerializeField]
         [TextArea(3, 5)]
-        private string description;
+        [FormerlySerializedAs("description")]
+        private string _description;
 
         [SerializeField]
-        private Sprite icon;
+        [FormerlySerializedAs("icon")]
+        private Sprite _icon;
         /// <summary>Gets the stat icon.</summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
 
         [SerializeField]
-        private ActorStatCategory category;
+        [FormerlySerializedAs("category")]
+        private ActorStatCategory _category;
 
         [SerializeField]
-        private ActorStatBaseValueMode baseValueMode;
+        [FormerlySerializedAs("baseValueMode")]
+        private ActorStatBaseValueMode _baseValueMode;
 
         [SerializeField]
-        private float baseValue;
+        [FormerlySerializedAs("baseValue")]
+        private float _baseValue;
 
         [SerializeField]
-        private ActorStatDefinition sourceStat;
+        [FormerlySerializedAs("sourceStat")]
+        private ActorStatDefinition _sourceStat;
 
         [SerializeField]
-        private float multiplier = 0f;
+        [FormerlySerializedAs("multiplier")]
+        private float _multiplier = 0f;
 
         [SerializeField]
-        private bool startsAtZero;
+        [FormerlySerializedAs("startsAtZero")]
+        private bool _startsAtZero;
 
         [SerializeField]
-        private ActorStatBaseValueMode regenMode;
+        [FormerlySerializedAs("regenMode")]
+        private ActorStatBaseValueMode _regenMode;
 
         [SerializeField]
-        private float regenPerSecond;
+        [FormerlySerializedAs("regenPerSecond")]
+        private float _regenPerSecond;
 
         [SerializeField]
-        private ActorStatDefinition regenSourceStat;
+        [FormerlySerializedAs("regenSourceStat")]
+        private ActorStatDefinition _regenSourceStat;
 
         [SerializeField]
-        private float regenMultiplier = 0f;
+        [FormerlySerializedAs("regenMultiplier")]
+        private float _regenMultiplier = 0f;
 
         [SerializeField]
-        private ActorStatReplicationMode replicationMode = ActorStatReplicationMode.Owner;
+        [FormerlySerializedAs("replicationMode")]
+        private ActorStatReplicationMode _replicationMode = ActorStatReplicationMode.Owner;
         /// <summary>Gets the stat replication mode.</summary>
-        public ActorStatReplicationMode ReplicationMode => replicationMode;
+        public ActorStatReplicationMode ReplicationMode => _replicationMode;
 
         [SerializeField]
-        private List<string> tags = new();
+        [FormerlySerializedAs("tags")]
+        private List<string> _tags = new();
         /// <summary>Gets the tags assigned to this stat.</summary>
-        public List<string> Tags => tags;
+        public List<string> Tags => _tags;
 
         /// <summary>
         /// Detailed description of this stat. This may appear in the character sheet.
         /// </summary>
-        public string Description => description;
+        public string Description => _description;
 
         /// <summary>
         /// Category of this stat (e.g. Attribute, Resource). This can be used for UI grouping and logic.
         /// </summary>
-        public ActorStatCategory Category => category;
+        public ActorStatCategory Category => _category;
 
         /// <summary>
         /// Determines how the base value of this stat is calculated (e.g. fixed value, derived from other stats).
         /// This can be used to control how the stat is initialized and updated.
         /// </summary>
-        public ActorStatBaseValueMode BaseValueMode => baseValueMode;
+        public ActorStatBaseValueMode BaseValueMode => _baseValueMode;
 
         /// <summary>
         /// The base value of this stat. Its meaning depends on the BaseValueMode (e.g. fixed value, multiplier, etc.).
         /// This can be used as the starting point for calculating the current value of the stat.
         /// </summary>
-        public float BaseValue => baseValue;
+        public float BaseValue => _baseValue;
 
         /// <summary>
         /// For derived stats, this is the source stat that this stat is based on. For example, a "Health" stat might be derived from a "Constitution" stat.
         /// This can be used to establish dependencies between stats and control how derived stats are calculated.
         /// </summary>
-        public ActorStatDefinition SourceStat => sourceStat;
+        public ActorStatDefinition SourceStat => _sourceStat;
 
         /// <summary>
         /// Multiplier applied to the source stat to calculate the derived stat's value.
         /// This can be used to scale the effect of the source stat on the derived stat.
         /// </summary>
-        public float Multiplier => multiplier;
+        public float Multiplier => _multiplier;
 
         /// <summary>
         /// If true, this stat starts at 0 instead of the base value. This can be used for stats that should be empty at the start (e.g. Experience).
         /// </summary>
         /// <returns></returns>
-        public bool StartsAtZero => startsAtZero;
+        public bool StartsAtZero => _startsAtZero;
 
         /// <summary>Gets how regeneration is calculated.</summary>
-        public ActorStatBaseValueMode RegenMode => regenMode;
+        public ActorStatBaseValueMode RegenMode => _regenMode;
         /// <summary>Gets the regeneration rate per second.</summary>
-        public float RegenPerSecond => regenPerSecond;
+        public float RegenPerSecond => _regenPerSecond;
         /// <summary>Gets the stat used as the regeneration source.</summary>
-        public ActorStatDefinition RegenSourceStat => regenSourceStat;
+        public ActorStatDefinition RegenSourceStat => _regenSourceStat;
         /// <summary>Gets the regeneration multiplier.</summary>
-        public float RegenMultiplier => regenMultiplier;
+        public float RegenMultiplier => _regenMultiplier;
 
         protected override string AssetPrefix => "ActorStat";
     }

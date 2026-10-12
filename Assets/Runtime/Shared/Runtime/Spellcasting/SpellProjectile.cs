@@ -1,6 +1,7 @@
 using Debug = Game.Shared.FormattedDebug;
 using Game.Shared.Networking;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -14,7 +15,7 @@ namespace Game.Shared
         private float _elapsedTime;
         private float _totalDistance;
 
-        [SerializeField] private GameObject impactEffectPrefab;
+        [SerializeField, FormerlySerializedAs("impactEffectPrefab")] private GameObject _impactEffectPrefab;
 
         /// <summary>Gets or sets the sound played when the projectile is created.</summary>
         [SerializeField] public string onCreateSFX;
@@ -26,11 +27,11 @@ namespace Game.Shared
         [Header("Trajectory")]
         [SerializeField]
         [Tooltip("Height of parabolic arc trajectory (0 = straight line)")]
-        private float arcHeight = 0f;
+        [FormerlySerializedAs("arcHeight")] private float _arcHeight = 0f;
 
         [SerializeField]
         [Tooltip("Amount of horizontal deviation perpendicular to travel direction")]
-        private float horizontalDeviationAmount = 0f;
+        [FormerlySerializedAs("horizontalDeviationAmount")] private float _horizontalDeviationAmount = 0f;
 
         /// <summary>
         /// Initialize the projectile with target transform and speed.
@@ -70,16 +71,16 @@ namespace Game.Shared
 
             // Parabolic arc: peaks at 0.5 progress
             float arcOffset = 0f;
-            if (arcHeight != 0f)
+            if (_arcHeight != 0f)
             {
-                arcOffset = arcHeight * 4f * progress * (1f - progress);
+                arcOffset = _arcHeight * 4f * progress * (1f - progress);
             }
 
             // Calculate horizontal deviation: smooth parabolic curve to the right
             float deviationOffset = 0f;
-            if (horizontalDeviationAmount > 0f)
+            if (_horizontalDeviationAmount > 0f)
             {
-                deviationOffset = horizontalDeviationAmount * 4f * progress * (1f - progress);
+                deviationOffset = _horizontalDeviationAmount * 4f * progress * (1f - progress);
             }
 
             // Build orthonormal basis for arc and deviation directions (fixed to initial direction)
@@ -112,9 +113,9 @@ namespace Game.Shared
             // Check for collision with the target
             if (progress >= 1.0f || Vector3.Distance(transform.position, _target.position) < 0.5f)
             {
-                if (impactEffectPrefab != null)
+                if (_impactEffectPrefab != null)
                 {
-                    Instantiate(impactEffectPrefab, transform.position, Quaternion.identity);
+                    Instantiate(_impactEffectPrefab, transform.position, Quaternion.identity);
                 }
 
                 // Play impact sound on the target actor

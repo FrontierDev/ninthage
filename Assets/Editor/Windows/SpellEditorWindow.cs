@@ -91,31 +91,31 @@ namespace Game.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Spell ID:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("definitionId"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_displayName"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Description:", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), GUIContent.none, GUILayout.Height(60));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_description"), GUIContent.none, GUILayout.Height(60));
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Icon:", GUILayout.Width(120));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"), GUIContent.none);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_icon"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("tags"), true);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_tags"), true);
 
             EditorGUILayout.Space();
 
@@ -143,37 +143,37 @@ namespace Game.Editor.Windows
         private void DrawCastingTab(SerializedObject serializedObject)
         {
             EditorGUILayout.LabelField("Cast Settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("baseCastTime"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("baseRange"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("canMoveWhileCasting"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseCastTime"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseRange"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_canMoveWhileCasting"));
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Cooldown Settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("baseCooldown"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("cooldownScalesWithHaste"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("useCooldownCharges"));
-            if (serializedObject.FindProperty("useCooldownCharges").boolValue)
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseCooldown"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_cooldownScalesWithHaste"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_useCooldownCharges"));
+            if (serializedObject.FindProperty("_useCooldownCharges").boolValue)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("baseCharges"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseCharges"));
                 EditorGUI.indentLevel--;
             }
 
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Channeling", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("isChanneled"));
-            if (serializedObject.FindProperty("isChanneled").boolValue)
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_isChanneled"));
+            if (serializedObject.FindProperty("_isChanneled").boolValue)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("baseTotalTicks"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseTotalTicks"));
                 EditorGUI.indentLevel--;
             }
 
             EditorGUILayout.Space();
 
-            DrawResourceCostList(serializedObject.FindProperty("baseResourceCosts"));
+            DrawResourceCostList(serializedObject.FindProperty("_baseResourceCosts"));
         }
 
         private void DrawComponentsTab(SerializedObject serializedObject)
@@ -185,7 +185,7 @@ namespace Game.Editor.Windows
 
         private void DrawRacialVariantsTab(SerializedObject serializedObject)
         {
-            DrawRacialVariantList(serializedObject.FindProperty("racialVariants"));
+            DrawRacialVariantList(serializedObject.FindProperty("_racialVariants"));
         }
 
         // --- Inline array drawing (layout-based, matching SpellComponentDrawer style) ---
@@ -464,7 +464,7 @@ namespace Game.Editor.Windows
         {
             if (componentList == null)
             {
-                var prop = serializedObject.FindProperty("baseComponents");
+                var prop = serializedObject.FindProperty("_baseComponents");
                 componentList = new ReorderableList(serializedObject, prop, true, false, true, true)
                 {
                     drawElementCallback = (rect, index, isActive, isFocused) =>

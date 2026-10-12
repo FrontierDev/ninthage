@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -9,20 +10,22 @@ namespace Game.Shared.Data
     public abstract class DataDefinition : ScriptableObject
     {
         [SerializeField]
-        private string definitionId;
+        [FormerlySerializedAs("definitionId")]
+        private string _definitionID;
 
         [SerializeField]
-        private string displayName;
+        [FormerlySerializedAs("displayName")]
+        private string _displayName;
 
         /// <summary>
         /// Unique identifier for this definition.
         /// </summary>
-        public string DefinitionId => definitionId;
+        public string DefinitionId => _definitionID;
 
         /// <summary>
         /// Human-readable name displayed in UI.
         /// </summary>
-        public string DisplayName => displayName;
+        public string DisplayName => _displayName;
 
         /// <summary>
         /// Prefix used when auto-renaming the asset file (e.g. "Class" produces "Class_warrior.asset").
@@ -34,15 +37,15 @@ namespace Game.Shared.Data
         /// </summary>
         public virtual bool IsValid()
         {
-            if (string.IsNullOrEmpty(definitionId))
+            if (string.IsNullOrEmpty(_definitionID))
             {
                 Debug.LogError($"[{GetType().Name}] Definition '{name}' has empty ID");
                 return false;
             }
 
-            if (string.IsNullOrEmpty(displayName))
+            if (string.IsNullOrEmpty(_displayName))
             {
-                Debug.LogError($"[{GetType().Name}] Definition '{definitionId}' has empty display name");
+                Debug.LogError($"[{GetType().Name}] Definition '{_definitionID}' has empty display name");
                 return false;
             }
 
@@ -52,17 +55,17 @@ namespace Game.Shared.Data
         private void OnValidate()
         {
 #if UNITY_EDITOR
-            if (string.IsNullOrEmpty(definitionId) && !string.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(_definitionID) && !string.IsNullOrEmpty(name))
             {
-                definitionId = name.ToLower().Replace(" ", "_");
+                _definitionID = name.ToLower().Replace(" ", "_");
             }
 
-            if (!string.IsNullOrEmpty(definitionId) && !string.IsNullOrEmpty(AssetPrefix))
+            if (!string.IsNullOrEmpty(_definitionID) && !string.IsNullOrEmpty(AssetPrefix))
             {
                 string currentPath = UnityEditor.AssetDatabase.GetAssetPath(this);
                 if (!string.IsNullOrEmpty(currentPath))
                 {
-                    string expectedFileName = $"{AssetPrefix}_{definitionId}.asset";
+                    string expectedFileName = $"{AssetPrefix}_{_definitionID}.asset";
                     string directory = System.IO.Path.GetDirectoryName(currentPath);
                     string expectedPath = System.IO.Path.Combine(directory, expectedFileName).Replace("\\", "/");
 

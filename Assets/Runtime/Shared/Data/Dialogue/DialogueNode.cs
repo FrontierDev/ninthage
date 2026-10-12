@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -8,46 +9,46 @@ namespace Game.Shared.Data
     /// <summary>Defines one node in a dialogue.</summary>
     public class DialogueNode
     {
-        [SerializeField] private int id;
+        [SerializeField, FormerlySerializedAs("id")] private int _id;
         /// <summary>Gets or sets the node identifier.</summary>
         public int ID
         {
-            get => id;
-            set => id = value;
+            get => _id;
+            set => _id = value;
         }
 
-        [SerializeField] private string title;
+        [SerializeField, FormerlySerializedAs("title")] private string _title;
         /// <summary>Gets or sets the node title.</summary>
         public string Title
         {
-            get => title;
-            set => title = value;
+            get => _title;
+            set => _title = value;
         }
 
-        [SerializeField] private string dialogueText;
+        [SerializeField, FormerlySerializedAs("dialogueText")] private string _dialogueText;
         /// <summary>Gets or sets the node dialogue text.</summary>
         public string DialogueText
         {
-            get => dialogueText;
-            set => dialogueText = value;
+            get => _dialogueText;
+            set => _dialogueText = value;
         }
 
-        [SerializeField] private List<DialogueChoice> choices = new();
+        [SerializeField, FormerlySerializedAs("choices")] private List<DialogueChoice> _choices = new();
         /// <summary>Gets the choices available at this node.</summary>
-        public IReadOnlyList<DialogueChoice> Choices => choices;
+        public IReadOnlyList<DialogueChoice> Choices => _choices;
 
         /// <summary>Adds a choice to the node.</summary>
         public void AddChoice(DialogueChoice choice)
         {
-            choices.Add(choice);
+            _choices.Add(choice);
         }
 
         /// <summary>Removes a choice at the specified index.</summary>
         public void RemoveChoiceAt(int index)
         {
-            if (index >= 0 && index < choices.Count)
+            if (index >= 0 && index < _choices.Count)
             {
-                choices.RemoveAt(index);
+                _choices.RemoveAt(index);
             }
         }
     }

@@ -2,6 +2,7 @@ using Debug = Game.Shared.FormattedDebug;
 using Game.Shared.Networking;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -28,13 +29,13 @@ namespace Game.Shared.Data
         /// <summary>Gets or sets the aura stack count.</summary>
         public int AuraStacks = 1;
 
-        [SerializeField] private List<SpellActorEvent> casterEvents = new();
+        [SerializeField, FormerlySerializedAs("casterEvents")] private List<SpellActorEvent> _casterEvents = new();
         /// <summary>Gets the caster events raised by this effect.</summary>
-        public override List<SpellActorEvent> CasterEvents => casterEvents;
+        public override List<SpellActorEvent> CasterEvents => _casterEvents;
 
-        [SerializeField] private List<SpellActorEvent> targetEvents = new();
+        [SerializeField, FormerlySerializedAs("targetEvents")] private List<SpellActorEvent> _targetEvents = new();
         /// <summary>Gets the target events raised by this effect.</summary>
-        public override List<SpellActorEvent> TargetEvents => targetEvents;
+        public override List<SpellActorEvent> TargetEvents => _targetEvents;
 
         /// <summary>Creates a copy of this effect.</summary>
         public override SpellEffectDefinition Clone()
@@ -49,8 +50,8 @@ namespace Game.Shared.Data
             clone.ApplyAura = this.ApplyAura;
             clone.Aura = this.Aura;
             clone.AuraStacks = this.AuraStacks;
-            clone.casterEvents = new(this.casterEvents);
-            clone.targetEvents = new(this.targetEvents);
+            clone._casterEvents = new(this._casterEvents);
+            clone._targetEvents = new(this._targetEvents);
 
             return clone;
         }

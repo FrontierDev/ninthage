@@ -3,6 +3,7 @@ using Game.Shared.Persistence;
 using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -45,25 +46,25 @@ namespace Game.Shared
     public sealed class PlayerInventory : NetworkBehaviour
     {
         // Dictionary of int (slot index) to ItemInstance, representing the player's inventory slots
-        [SerializeField] private readonly Dictionary<int, ItemInstance> inventory = new();
+        [SerializeField, FormerlySerializedAs("inventory")] private readonly Dictionary<int, ItemInstance> _inventory = new();
         /// <summary>Gets the inventory items by slot index.</summary>
-        public IReadOnlyDictionary<int, ItemInstance> Inventory => inventory;
+        public IReadOnlyDictionary<int, ItemInstance> Inventory => _inventory;
 
-        private int maxSlots = 20; // Default max slots, can be modified by player progression or items
+        [FormerlySerializedAs("maxSlots")] private int _maxSlots = 20; // Default max slots, can be modified by player progression or items
         /// <summary>Gets the maximum number of inventory slots.</summary>
-        public int MaxSlots => maxSlots;
+        public int MaxSlots => _maxSlots;
 
         /// <summary>Loads inventory from persisted character data.</summary>
         public void LoadInventory(CharacterData data)
         {
-            inventory.Clear();
+            _inventory.Clear();
             foreach (var entry in data.SavedInventory)
             {
                 var itemInstance = new ItemInstance(entry.ItemGuid,
                     entry.ItemId,
                     entry.Modifications,
                     entry.Durability, entry.StackSize);
-                inventory[entry.SlotIndex] = itemInstance;
+                _inventory[entry.SlotIndex] = itemInstance;
             }
 
             if (!Game.Shared.Runtime.IsServer())
@@ -73,13 +74,13 @@ namespace Game.Shared
         /// <summary>Gets the number of unused inventory slots.</summary>
         public int GetRemainingSlots()
         {
-            return maxSlots - inventory.Count;
+            return _maxSlots - _inventory.Count;
         }
 
         /// <summary>Gets the item at a slot, if present.</summary>
         public ItemInstance GetItemAtSlot(int slotIndex)
         {
-            inventory.TryGetValue(slotIndex, out var item);
+            _inventory.TryGetValue(slotIndex, out var item);
             return item;
         }
 
@@ -104,7 +105,7 @@ namespace Game.Shared
             // First pass: stack onto existing slots with the same item
             if (canStack)
             {
-                foreach (var kvp in inventory)
+                foreach (var kvp in _inventory)
                 {
                     if (remaining <= 0) break;
                     var existing = kvp.Value;
@@ -121,13 +122,13 @@ namespace Game.Shared
             }
 
             // Second pass: place into empty slots
-            for (int i = 0; i < maxSlots && remaining > 0; i++)
+            for (int i = 0; i < _maxSlots && remaining > 0; i++)
             {
-                if (inventory.ContainsKey(i)) continue;
+                if (_inventory.ContainsKey(i)) continue;
 
                 int stackAmount = canStack ? (remaining < maxStack ? remaining : maxStack) : 1;
                 var newInstance = new ItemInstance(System.Guid.NewGuid().ToString("N"), definition.DefinitionId, new List<string>(item.Modifications), item.Durability, stackAmount);
-                inventory[i] = newInstance;
+                _inventory[i] = newInstance;
                 remaining -= stackAmount;
                 changes.Add(new InventorySlotChange(i, InventorySlotChangeType.Set, newInstance));
             }
@@ -152,7 +153,7 @@ namespace Game.Shared
             var slotsToRemove = new List<int>();
             var changes = new List<InventorySlotChange>();
 
-            foreach (var kvp in inventory)
+            foreach (var kvp in _inventory)
             {
                 if (remaining <= 0) break;
                 var existing = kvp.Value;
@@ -173,7 +174,7 @@ namespace Game.Shared
             }
 
             foreach (int slot in slotsToRemove)
-                inventory.Remove(slot);
+                _inventory.Remove(slot);
 
             if (changes.Count > 0)
                 SendDelta(changes);
@@ -190,14 +191,14 @@ namespace Game.Shared
             if (!Game.Shared.Runtime.IsServer() || amount <= 0)
                 return false;
 
-            if (!inventory.TryGetValue(slotIndex, out var existing))
+            if (!_inventory.TryGetValue(slotIndex, out var existing))
                 return false;
 
             var changes = new List<InventorySlotChange>();
 
             if (existing.CurrentStackSize <= amount)
             {
-                inventory.Remove(slotIndex);
+                _inventory.Remove(slotIndex);
                 changes.Add(new InventorySlotChange(slotIndex, InventorySlotChangeType.Removed));
             }
             else
@@ -219,12 +220,12 @@ namespace Game.Shared
         {
             if (!Game.Shared.Runtime.IsServer()) return false;
             if (fromSlot == toSlot) return false;
-            if (toSlot < 0 || toSlot >= maxSlots) return false;
-            if (!inventory.TryGetValue(fromSlot, out var fromItem)) return false;
+            if (toSlot < 0 || toSlot >= _maxSlots) return false;
+            if (!_inventory.TryGetValue(fromSlot, out var fromItem)) return false;
 
             var changes = new List<InventorySlotChange>();
 
-            if (inventory.TryGetValue(toSlot, out var toItem))
+            if (_inventory.TryGetValue(toSlot, out var toItem))
             {
                 // If same stackable item, merge into target
                 var fromDef = fromItem.BaseItem;
@@ -239,7 +240,7 @@ namespace Game.Shared
 
                     if (fromItem.CurrentStackSize - toMove <= 0)
                     {
-                        inventory.Remove(fromSlot);
+                        _inventory.Remove(fromSlot);
                         changes.Add(new InventorySlotChange(fromSlot, InventorySlotChangeType.Removed));
                     }
                     else
@@ -251,8 +252,8 @@ namespace Game.Shared
                 else
                 {
                     // Swap
-                    inventory[fromSlot] = toItem;
-                    inventory[toSlot] = fromItem;
+                    _inventory[fromSlot] = toItem;
+                    _inventory[toSlot] = fromItem;
                     changes.Add(new InventorySlotChange(fromSlot, InventorySlotChangeType.Set, toItem));
                     changes.Add(new InventorySlotChange(toSlot, InventorySlotChangeType.Set, fromItem));
                 }
@@ -260,8 +261,8 @@ namespace Game.Shared
             else
             {
                 // Target slot is empty — just move
-                inventory.Remove(fromSlot);
-                inventory[toSlot] = fromItem;
+                _inventory.Remove(fromSlot);
+                _inventory[toSlot] = fromItem;
                 changes.Add(new InventorySlotChange(fromSlot, InventorySlotChangeType.Removed));
                 changes.Add(new InventorySlotChange(toSlot, InventorySlotChangeType.Set, fromItem));
             }
@@ -278,9 +279,9 @@ namespace Game.Shared
         {
             if (!Game.Shared.Runtime.IsServer()) return false;
             if (fromSlot == toSlot || amount <= 0) return false;
-            if (toSlot < 0 || toSlot >= maxSlots) return false;
-            if (!inventory.TryGetValue(fromSlot, out var fromItem)) return false;
-            if (inventory.ContainsKey(toSlot)) return false; // Target must be empty
+            if (toSlot < 0 || toSlot >= _maxSlots) return false;
+            if (!_inventory.TryGetValue(fromSlot, out var fromItem)) return false;
+            if (_inventory.ContainsKey(toSlot)) return false; // Target must be empty
             if (fromItem.CurrentStackSize <= amount) return false; // Must leave at least 1 in source
 
             var definition = fromItem.BaseItem;
@@ -294,7 +295,7 @@ namespace Game.Shared
                 new List<string>(fromItem.Modifications),
                 fromItem.Durability,
                 amount);
-            inventory[toSlot] = newInstance;
+            _inventory[toSlot] = newInstance;
 
             var changes = new List<InventorySlotChange>
             {
@@ -314,8 +315,8 @@ namespace Game.Shared
         {
             if (!Game.Shared.Runtime.IsServer()) return false;
             if (fromSlot == toSlot) return false;
-            if (!inventory.TryGetValue(fromSlot, out var fromItem)) return false;
-            if (!inventory.TryGetValue(toSlot, out var toItem)) return false;
+            if (!_inventory.TryGetValue(fromSlot, out var fromItem)) return false;
+            if (!_inventory.TryGetValue(toSlot, out var toItem)) return false;
 
             var definition = fromItem.BaseItem;
             if (definition == null || !definition.CanStack) return false;
@@ -331,7 +332,7 @@ namespace Game.Shared
 
             if (fromItem.CurrentStackSize - toMove <= 0)
             {
-                inventory.Remove(fromSlot);
+                _inventory.Remove(fromSlot);
                 changes.Add(new InventorySlotChange(fromSlot, InventorySlotChangeType.Removed));
             }
             else
@@ -379,10 +380,10 @@ namespace Game.Shared
                 switch (change.ChangeType)
                 {
                     case InventorySlotChangeType.Set:
-                        inventory[change.SlotIndex] = change.Item;
+                        _inventory[change.SlotIndex] = change.Item;
                         break;
                     case InventorySlotChangeType.Removed:
-                        inventory.Remove(change.SlotIndex);
+                        _inventory.Remove(change.SlotIndex);
                         break;
                 }
             }

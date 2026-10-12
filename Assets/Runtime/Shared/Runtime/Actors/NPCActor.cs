@@ -1,5 +1,6 @@
 using PurrNet;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -10,7 +11,7 @@ namespace Game.Shared
         public override bool IsPlayer => false;
         /// <summary>Gets or sets the NPC definition identifier.</summary>
         public string NpcID = null;
-        [SerializeField] private string DisplayName = "";
+        [SerializeField, FormerlySerializedAs("DisplayName")] private string _displayName = "";
         [SerializeField, Range(1, 100)] public (int, int) levelRange = (1, 1);
 
         [SerializeField] public readonly SyncVar<int> level = new();
@@ -26,7 +27,7 @@ namespace Game.Shared
         /// <summary>Gets the NPC's display name.</summary>
         public override string GetName()
         {
-            return string.IsNullOrEmpty(DisplayName) ? base.GetName() : DisplayName;
+            return string.IsNullOrEmpty(_displayName) ? base.GetName() : _displayName;
         }
 
         /// <summary>Gets the NPC's current level.</summary>

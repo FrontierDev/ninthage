@@ -1,5 +1,6 @@
 using Game.Shared.Networking;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -7,8 +8,8 @@ namespace Game.Shared.Data
     [CreateAssetMenu(menuName = "NinthAge/Talent Behaviours/Apply Aura On Hit")]
     public class TalentBehaviour_ApplyAuraOnHit : TalentBehaviour
     {
-        [SerializeField] private AuraDefinition aura;
-        [SerializeField] private int stacks = 1;
+        [SerializeField, FormerlySerializedAs("aura")] private AuraDefinition _aura;
+        [SerializeField, FormerlySerializedAs("stacks")] private int _stacks = 1;
 
         /// <summary>Activates the auto-attack aura handler.</summary>
         public override void OnActivate(PlayerActor actor)
@@ -24,7 +25,7 @@ namespace Game.Shared.Data
 
         private void OnServerAutoAttackHit(SpellContext ctx, Actor target)
         {
-            ActorEndpoint.onServerApplyAura?.Invoke(aura, ctx.Caster, target, stacks);
+            ActorEndpoint.onServerApplyAura?.Invoke(_aura, ctx.Caster, target, _stacks);
         }
     }
 }

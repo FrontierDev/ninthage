@@ -5,6 +5,7 @@ using Game.Shared.Persistence;
 using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -46,30 +47,30 @@ namespace Game.Shared
     /// <summary>Manages a player's equipped items.</summary>
     public sealed class PlayerEquipment : NetworkBehaviour
     {
-        [SerializeField] private readonly Dictionary<ItemSlot, ItemInstance> equipment = new();
+        [SerializeField, FormerlySerializedAs("equipment")] private readonly Dictionary<ItemSlot, ItemInstance> _equipment = new();
         /// <summary>Gets the equipped items by slot.</summary>
-        public IReadOnlyDictionary<ItemSlot, ItemInstance> Equipment => equipment;
+        public IReadOnlyDictionary<ItemSlot, ItemInstance> Equipment => _equipment;
 
-        private PlayerInventory playerInventory;
+        [FormerlySerializedAs("playerInventory")] private PlayerInventory _playerInventory;
         private ActorStatContainer _statContainer;
 
         private void Awake()
         {
-            playerInventory = GetComponent<PlayerInventory>();
+            _playerInventory = GetComponent<PlayerInventory>();
             _statContainer = GetComponent<ActorStatContainer>();
 
             foreach (var slot in System.Enum.GetValues(typeof(ItemSlot)))
             {
-                equipment.Add((ItemSlot)slot, null);
+                _equipment.Add((ItemSlot)slot, null);
             }
         }
 
         /// <summary>Gets an equipped item for a slot, if present.</summary>
         public bool TryGetItem(ItemSlot slot, out ItemInstance item)
         {
-            if (equipment.ContainsKey(slot))
+            if (_equipment.ContainsKey(slot))
             {
-                item = equipment[slot];
+                item = _equipment[slot];
                 return item != null;
             }
 
@@ -80,10 +81,10 @@ namespace Game.Shared
         /// <summary>Loads equipment from persisted character data.</summary>
         public void LoadEquipment(CharacterData data)
         {
-            equipment.Clear();
+            _equipment.Clear();
             foreach (var slot in System.Enum.GetValues(typeof(ItemSlot)))
             {
-                equipment.Add((ItemSlot)slot, null);
+                _equipment.Add((ItemSlot)slot, null);
             }
 
             foreach (var entry in data.SavedEquipment)
@@ -93,7 +94,7 @@ namespace Game.Shared
                     entry.Modifications,
                     entry.Durability,
                     entry.StackSize);
-                equipment[(ItemSlot)entry.SlotIndex] = itemInstance;
+                _equipment[(ItemSlot)entry.SlotIndex] = itemInstance;
             }
 
             if (!Game.Shared.Runtime.IsServer())
@@ -108,23 +109,23 @@ namespace Game.Shared
             // Check if the player can equip the item (TO DO)
 
             // Is there an item in that slot already?
-            bool hasExistingItem = equipment[slot] != null;
+            bool hasExistingItem = _equipment[slot] != null;
             if (hasExistingItem)
             {
                 // The player must have an inventory slot, so we can just add the 
                 // existing item back to the inventory. Remove the new item from the inventory,
                 // and update the equipment slot with the new item.
-                var existingItem = equipment[slot];
-                equipment[slot] = itemInstance;
-                playerInventory.RemoveItemAtSlot(inventorySlot.Value, 1);
-                playerInventory.AddItem(existingItem, out var remainder, 1);
+                var existingItem = _equipment[slot];
+                _equipment[slot] = itemInstance;
+                _playerInventory.RemoveItemAtSlot(inventorySlot.Value, 1);
+                _playerInventory.AddItem(existingItem, out var remainder, 1);
 
             }
             else
             {
                 // No existing item, so just equip the new item and remove it from the inventory.
-                equipment[slot] = itemInstance;
-                playerInventory.RemoveItemAtSlot(inventorySlot.Value, 1);
+                _equipment[slot] = itemInstance;
+                _playerInventory.RemoveItemAtSlot(inventorySlot.Value, 1);
             }
 
             var delta = new EquipmentDelta(new List<EquipmentSlotChange>
@@ -144,13 +145,13 @@ namespace Game.Shared
         /// <summary>Unequips an item into the inventory.</summary>
         public void UnequipItem(ItemSlot slot)
         {
-            if (equipment.ContainsKey(slot))
+            if (_equipment.ContainsKey(slot))
             {
-                if (playerInventory.GetRemainingSlots() > 0)
+                if (_playerInventory.GetRemainingSlots() > 0)
                 {
-                    var existingItem = equipment[slot];
-                    equipment[slot] = null;
-                    playerInventory.AddItem(existingItem, out var remainder, 1);
+                    var existingItem = _equipment[slot];
+                    _equipment[slot] = null;
+                    _playerInventory.AddItem(existingItem, out var remainder, 1);
 
                     var delta = new EquipmentDelta(new List<EquipmentSlotChange>
                     {
@@ -183,7 +184,7 @@ namespace Game.Shared
             if (clientId != owner.Value)
                 return;
 
-            var itemInstance = playerInventory.GetItemAtSlot(inventorySlot);
+            var itemInstance = _playerInventory.GetItemAtSlot(inventorySlot);
             if (itemInstance != null)
             {
                 EquipItem(slot, itemInstance, inventorySlot);
@@ -210,10 +211,10 @@ namespace Game.Shared
                 switch (change.ChangeType)
                 {
                     case EquipmentSlotChangeType.Set:
-                        equipment[change.Slot] = change.Item;
+                        _equipment[change.Slot] = change.Item;
                         break;
                     case EquipmentSlotChangeType.Removed:
-                        equipment[change.Slot] = null;
+                        _equipment[change.Slot] = null;
                         break;
                 }
             }

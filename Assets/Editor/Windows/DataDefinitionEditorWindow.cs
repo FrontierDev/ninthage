@@ -412,14 +412,14 @@ namespace Game.Editor.Windows
                 // Base fields
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField($"{DefinitionTypeName} ID:", GUILayout.Width(120));
-                EditorGUILayout.PropertyField(serializedDef.FindProperty("definitionId"), GUIContent.none);
+                EditorGUILayout.PropertyField(serializedDef.FindProperty("_definitionID"), GUIContent.none);
                 EditorGUILayout.EndHorizontal();
 
                 EditorGUILayout.Space();
 
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField("Display Name:", GUILayout.Width(120));
-                EditorGUILayout.PropertyField(serializedDef.FindProperty("displayName"), GUIContent.none);
+                EditorGUILayout.PropertyField(serializedDef.FindProperty("_displayName"), GUIContent.none);
                 EditorGUILayout.EndHorizontal();
 
                 EditorGUILayout.Space();
@@ -503,8 +503,8 @@ namespace Game.Editor.Windows
             var newDef = ScriptableObject.CreateInstance<TDefinition>();
 
             var serializedNew = new SerializedObject(newDef);
-            serializedNew.FindProperty("definitionId").stringValue = fileName.ToLower();
-            serializedNew.FindProperty("displayName").stringValue = fileName.Replace("_", " ");
+            serializedNew.FindProperty("_definitionID").stringValue = fileName.ToLower();
+            serializedNew.FindProperty("_displayName").stringValue = fileName.Replace("_", " ");
             serializedNew.ApplyModifiedProperties();
 
             AssetDatabase.CreateAsset(newDef, assetPath);
@@ -512,7 +512,7 @@ namespace Game.Editor.Windows
             AssetDatabase.Refresh();
 
             var serializedLibrary = new SerializedObject(library);
-            var definitionsProperty = serializedLibrary.FindProperty("definitions");
+                var definitionsProperty = serializedLibrary.FindProperty("_definitions");
 
             definitionsProperty.arraySize++;
             var newElement = definitionsProperty.GetArrayElementAtIndex(definitionsProperty.arraySize - 1);

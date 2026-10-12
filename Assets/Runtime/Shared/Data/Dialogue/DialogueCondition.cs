@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -11,20 +12,21 @@ namespace Game.Shared.Data
     {
         // Polymorphic condition instance — use SerializeReference to preserve derived types.
         [SerializeReference]
-        private ConditionDefinition condition;
+        [FormerlySerializedAs("condition")]
+        private ConditionDefinition _condition;
         /// <summary>Gets or sets the polymorphic condition.</summary>
         public ConditionDefinition Condition
         {
-            get => condition;
-            set => condition = value;
+            get => _condition;
+            set => _condition = value;
         }
 
-        [SerializeField] private bool invert = false;
+        [SerializeField, FormerlySerializedAs("invert")] private bool _invert = false;
         /// <summary>Gets or sets whether the condition result is inverted.</summary>
         public bool Invert
         {
-            get => invert;
-            set => invert = value;
+            get => _invert;
+            set => _invert = value;
         }
     }
 }

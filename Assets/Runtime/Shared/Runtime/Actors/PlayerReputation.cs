@@ -5,6 +5,7 @@ using PurrNet;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared
 {
@@ -19,13 +20,13 @@ namespace Game.Shared
     /// <summary>Manages player faction reputation.</summary>
     public sealed class PlayerReputation : NetworkBehaviour
     {
-        [SerializeField] private FactionDefinition pvpFaction;
+        [SerializeField, FormerlySerializedAs("pvpFaction")] private FactionDefinition _pvpFaction;
         /// <summary>Gets the player's PvP faction.</summary>
-        public FactionDefinition PvPFaction => pvpFaction;
+        public FactionDefinition PvPFaction => _pvpFaction;
 
-        [SerializeField] private Dictionary<string, int> reputations = new();
+        [SerializeField, FormerlySerializedAs("reputations")] private Dictionary<string, int> _reputations = new();
         /// <summary>Gets reputation values by faction identifier.</summary>
-        public IReadOnlyDictionary<string, int> Reputations => reputations;
+        public IReadOnlyDictionary<string, int> Reputations => _reputations;
 
         void Awake()
         {
@@ -35,7 +36,7 @@ namespace Game.Shared
         /// <summary>Applies a client reputation update.</summary>
         public void OnClientReputationUpdated(string factionID, int reputation, int delta)
         {
-            reputations[factionID] = reputation;
+            _reputations[factionID] = reputation;
         }
 
         /// <summary>
@@ -44,21 +45,21 @@ namespace Game.Shared
         /// <param name="data"></param>
         public void LoadReputations(CharacterData data)
         {
-            reputations.Clear();
+            _reputations.Clear();
             foreach (var entry in data.SavedReputations)
             {
-                reputations[entry.FactionID] = entry.Reputation;
+                _reputations[entry.FactionID] = entry.Reputation;
                 Debug.Log($"Loaded reputation for faction {entry.FactionID} with value {entry.Reputation}");
             }
 
-            pvpFaction = data.PvPFactionID != null ? Game.Shared.Data.FactionDefinitionLibrary.Instance.GetDefinition(data.PvPFactionID) : null;
-            CharacterEndpoint.onClientReputationUpdated?.Invoke(pvpFaction?.DefinitionId, reputations.TryGetValue(pvpFaction?.DefinitionId ?? "", out int rep) ? rep : 0, 0);
+            _pvpFaction = data.PvPFactionID != null ? Game.Shared.Data.FactionDefinitionLibrary.Instance.GetDefinition(data.PvPFactionID) : null;
+            CharacterEndpoint.onClientReputationUpdated?.Invoke(_pvpFaction?.DefinitionId, _reputations.TryGetValue(_pvpFaction?.DefinitionId ?? "", out int rep) ? rep : 0, 0);
         }
 
         /// <summary>Sets reputation for a faction.</summary>
         public void SetReputation(FactionDefinition def, int reputation)
         {
-            reputations[def.DefinitionId] = reputation;
+            _reputations[def.DefinitionId] = reputation;
 
             // NYI: Trigger any necessary updates based on reputation changes (e.g. unlocking content, updating NPC interactions, etc.)
         }
@@ -66,7 +67,7 @@ namespace Game.Shared
         /// <summary>Gets reputation for a faction if known.</summary>
         public bool TryGetReputation(string factionID, out int reputation)
         {
-            return reputations.TryGetValue(factionID, out reputation);
+            return _reputations.TryGetValue(factionID, out reputation);
         }
     }
 }

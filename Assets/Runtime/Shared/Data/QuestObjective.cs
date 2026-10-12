@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -6,13 +7,13 @@ namespace Game.Shared.Data
     /// <summary>Defines a measurable quest objective.</summary>
     public abstract class QuestObjective
     {
-        [SerializeField] private string description = "Objective";
-        [SerializeField] private int requiredAmount = 1;
+        [SerializeField, FormerlySerializedAs("description")] private string _description = "Objective";
+        [SerializeField, FormerlySerializedAs("requiredAmount")] private int _requiredAmount = 1;
 
         /// <summary>Gets the objective description.</summary>
-        public string Description => description;
+        public string Description => _description;
         /// <summary>Gets the amount required to complete the objective.</summary>
-        public int RequiredAmount => requiredAmount;
+        public int RequiredAmount => _requiredAmount;
 
         /// <summary>Initializes an empty objective.</summary>
         public QuestObjective() { }
@@ -20,8 +21,8 @@ namespace Game.Shared.Data
         /// <summary>Initializes an objective with its description and required amount.</summary>
         public QuestObjective(string description, int requiredAmount)
         {
-            this.description = description;
-            this.requiredAmount = requiredAmount;
+            _description = description;
+            _requiredAmount = requiredAmount;
         }
     }
 }

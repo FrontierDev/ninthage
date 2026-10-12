@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Shared.Data
 {
@@ -105,13 +106,13 @@ namespace Game.Shared.Data
     /// <summary>Defines a stat value granted by an item.</summary>
     public class ItemStat
     {
-        [SerializeField] private ActorStatDefinition stat;
-        [SerializeField] private float value;
+        [SerializeField, FormerlySerializedAs("stat")] private ActorStatDefinition _stat;
+        [SerializeField, FormerlySerializedAs("value")] private float _value;
 
         /// <summary>Gets the stat affected by this entry.</summary>
-        public ActorStatDefinition Stat => stat;
+        public ActorStatDefinition Stat => _stat;
         /// <summary>Gets the stat value granted by this entry.</summary>
-        public float Value => value;
+        public float Value => _value;
     }
 
     /// <summary>
@@ -120,84 +121,84 @@ namespace Game.Shared.Data
     [CreateAssetMenu(fileName = "ItemDefinition_", menuName = "NinthAge/Definitions/Item Definition")]
     public class ItemDefinition : DataDefinition
     {
-        [SerializeField] private ItemQuality quality;
-        [SerializeField] private Sprite icon;
-        [SerializeField] private string description;
-        [SerializeField] private string itemSetKey;
+        [SerializeField, FormerlySerializedAs("quality")] private ItemQuality _quality;
+        [SerializeField, FormerlySerializedAs("icon")] private Sprite _icon;
+        [SerializeField, FormerlySerializedAs("description")] private string _description;
+        [SerializeField, FormerlySerializedAs("itemSetKey")] private string _itemSetKey;
 
-        [SerializeField] private ItemUniqueFlag uniqueFlag = ItemUniqueFlag.None;
-        [SerializeField] private ItemBindingFlag bindingFlag = ItemBindingFlag.None;
-        [SerializeField] private bool canStack = true;
-        [SerializeField] private int maxStackSize = 99;
-        [SerializeField] private bool canTrade = true;
-        [SerializeField] private bool canSell = true;
-        [SerializeField] private int sellPrice = 0;
-        [SerializeField] private bool canDisenchant = true;
+        [SerializeField, FormerlySerializedAs("uniqueFlag")] private ItemUniqueFlag _uniqueFlag = ItemUniqueFlag.None;
+        [SerializeField, FormerlySerializedAs("bindingFlag")] private ItemBindingFlag _bindingFlag = ItemBindingFlag.None;
+        [SerializeField, FormerlySerializedAs("canStack")] private bool _canStack = true;
+        [SerializeField, FormerlySerializedAs("maxStackSize")] private int _maxStackSize = 99;
+        [SerializeField, FormerlySerializedAs("canTrade")] private bool _canTrade = true;
+        [SerializeField, FormerlySerializedAs("canSell")] private bool _canSell = true;
+        [SerializeField, FormerlySerializedAs("sellPrice")] private int _sellPrice = 0;
+        [SerializeField, FormerlySerializedAs("canDisenchant")] private bool _canDisenchant = true;
 
-        [SerializeField] private ItemType itemType = ItemType.None;
-        [SerializeField] private ItemWeaponType weaponType = ItemWeaponType.None;
-        [SerializeField] private ItemArmorWeightClass armorWeight = ItemArmorWeightClass.Cosmetic;
+        [SerializeField, FormerlySerializedAs("itemType")] private ItemType _itemType = ItemType.None;
+        [SerializeField, FormerlySerializedAs("weaponType")] private ItemWeaponType _weaponType = ItemWeaponType.None;
+        [SerializeField, FormerlySerializedAs("armorWeight")] private ItemArmorWeightClass _armorWeight = ItemArmorWeightClass.Cosmetic;
 
-        [SerializeField] private bool isTwoHanded = false; // For weapons, indicates if it requires two hands to equip
-        [SerializeField] private float damagePerSecond = 0; // For weapons, the average damage it deals (used for stat calculations) 
-        [SerializeField] private float swingTimer = 1.0f; // For weapons, the time in seconds between attacks (used for stat calculations)
-        [SerializeField] private DamageSchoolDefinition damageSchool; // For weapons, the damage school it belongs to (used for stat calculations)
+        [SerializeField, FormerlySerializedAs("isTwoHanded")] private bool _isTwoHanded = false; // For weapons, indicates if it requires two hands to equip
+        [SerializeField, FormerlySerializedAs("damagePerSecond")] private float _damagePerSecond = 0; // For weapons, the average damage it deals (used for stat calculations)
+        [SerializeField, FormerlySerializedAs("swingTimer")] private float _swingTimer = 1.0f; // For weapons, the time in seconds between attacks (used for stat calculations)
+        [SerializeField, FormerlySerializedAs("damageSchool")] private DamageSchoolDefinition _damageSchool; // For weapons, the damage school it belongs to (used for stat calculations)
 
-        [SerializeField] private List<ItemSlot> validSlots = new();
-        [SerializeField] private List<ItemStat> stats = new();
-        [SerializeReference] private List<ConditionDefinition> conditions = new();
+        [SerializeField, FormerlySerializedAs("validSlots")] private List<ItemSlot> _validSlots = new();
+        [SerializeField, FormerlySerializedAs("stats")] private List<ItemStat> _stats = new();
+        [SerializeReference, FormerlySerializedAs("conditions")] private List<ConditionDefinition> _conditions = new();
 
-        [SerializeField] private Action onEquipAction;
-        [SerializeField] private Action onUnequipAction;
+        [SerializeField, FormerlySerializedAs("onEquipAction")] private Action _onEquipAction;
+        [SerializeField, FormerlySerializedAs("onUnequipAction")] private Action _onUnequipAction;
 
         /// <summary>Gets the item's quality.</summary>
-        public ItemQuality Quality => quality;
+        public ItemQuality Quality => _quality;
         /// <summary>Gets the item's quality using the legacy rarity name.</summary>
-        public ItemQuality Rarity => quality;
+        public ItemQuality Rarity => _quality;
         /// <summary>Gets the item's icon.</summary>
-        public Sprite Icon => icon;
+        public Sprite Icon => _icon;
         /// <summary>Gets the item's description.</summary>
-        public string Description => description;
+        public string Description => _description;
         /// <summary>Gets the item set key.</summary>
-        public string ItemSetKey => itemSetKey;
+        public string ItemSetKey => _itemSetKey;
 
         /// <summary>Gets the item's category.</summary>
-        public ItemType ItemType => itemType;
+        public ItemType ItemType => _itemType;
         /// <summary>Gets the item's weapon type.</summary>
-        public ItemWeaponType WeaponType => weaponType;
+        public ItemWeaponType WeaponType => _weaponType;
         /// <summary>Gets the item's armor weight class.</summary>
-        public ItemArmorWeightClass ArmorWeight => armorWeight;
+        public ItemArmorWeightClass ArmorWeight => _armorWeight;
 
         /// <summary>Gets whether the item requires two hands.</summary>
-        public bool IsTwoHanded => isTwoHanded;
+        public bool IsTwoHanded => _isTwoHanded;
         /// <summary>Gets the weapon's damage per second.</summary>
-        public float DamagePerSecond => damagePerSecond;
+        public float DamagePerSecond => _damagePerSecond;
         /// <summary>Gets the weapon's swing timer in seconds.</summary>
-        public float SwingTimer => swingTimer;
+        public float SwingTimer => _swingTimer;
         /// <summary>Gets the weapon's damage school.</summary>
-        public DamageSchoolDefinition DamageSchool => damageSchool;
+        public DamageSchoolDefinition DamageSchool => _damageSchool;
 
         /// <summary>Gets the item's uniqueness rules.</summary>
-        public ItemUniqueFlag UniqueFlag => uniqueFlag;
+        public ItemUniqueFlag UniqueFlag => _uniqueFlag;
         /// <summary>Gets whether the item can stack.</summary>
-        public bool CanStack => canStack;
+        public bool CanStack => _canStack;
         /// <summary>Gets the maximum stack size.</summary>
-        public int MaxStackSize => maxStackSize;
+        public int MaxStackSize => _maxStackSize;
         /// <summary>Gets whether the item can be traded.</summary>
-        public bool CanTrade => canTrade;
+        public bool CanTrade => _canTrade;
         /// <summary>Gets whether the item can be sold.</summary>
-        public bool CanSell => canSell;
+        public bool CanSell => _canSell;
         /// <summary>Gets the item's sell price.</summary>
-        public int SellPrice => sellPrice;
+        public int SellPrice => _sellPrice;
         /// <summary>Gets whether the item can be disenchanted.</summary>
-        public bool CanDisenchant => canDisenchant;
+        public bool CanDisenchant => _canDisenchant;
 
         /// <summary>Gets the valid equipment slots.</summary>
-        public IReadOnlyList<ItemSlot> ValidSlots => validSlots;
+        public IReadOnlyList<ItemSlot> ValidSlots => _validSlots;
         /// <summary>Gets the item's stat entries.</summary>
-        public IReadOnlyList<ItemStat> Stats => stats;
+        public IReadOnlyList<ItemStat> Stats => _stats;
         /// <summary>Gets the conditions required to use the item.</summary>
-        public IReadOnlyList<ConditionDefinition> Conditions => conditions;
+        public IReadOnlyList<ConditionDefinition> Conditions => _conditions;
 
         protected override string AssetPrefix => "Item";
 
@@ -211,60 +212,60 @@ namespace Game.Shared.Data
             if (string.IsNullOrEmpty(DisplayName))
                 return false;
 
-            if (icon == null)
+            if (_icon == null)
                 return false;
 
-            if (validSlots == null || validSlots.Count == 0)
+            if (_validSlots == null || _validSlots.Count == 0)
                 return false;
 
             // Weapon validations
-            if (itemType == ItemType.Weapon)
+            if (_itemType == ItemType.Weapon)
             {
-                if (weaponType == ItemWeaponType.None)
+                if (_weaponType == ItemWeaponType.None)
                     return false;
 
-                if (damagePerSecond <= 0)
+                if (_damagePerSecond <= 0)
                     return false;
 
-                if (swingTimer <= 0)
+                if (_swingTimer <= 0)
                     return false;
 
-                if (damageSchool == null)
+                if (_damageSchool == null)
                     return false;
 
                 // Weapons shouldn't be stackable
-                if (canStack)
+                if (_canStack)
                     return false;
             }
 
             // Armor validations
-            if (itemType == ItemType.Armor)
+            if (_itemType == ItemType.Armor)
             {
-                if (armorWeight == ItemArmorWeightClass.Cosmetic)
+                if (_armorWeight == ItemArmorWeightClass.Cosmetic)
                     return false;
 
                 // Armor shouldn't be stackable
-                if (canStack)
+                if (_canStack)
                     return false;
 
                 // Armor can't be two-handed
-                if (isTwoHanded)
+                if (_isTwoHanded)
                     return false;
             }
 
             // Consumable/Material validations
-            if (itemType == ItemType.Consumable || itemType == ItemType.Material)
+            if (_itemType == ItemType.Consumable || _itemType == ItemType.Material)
             {
                 // These should be stackable
-                if (!canStack)
+                if (!_canStack)
                     return false;
 
                 // Non-weapons shouldn't have damage
-                if (damagePerSecond > 0)
+                if (_damagePerSecond > 0)
                     return false;
 
                 // Can't be two-handed
-                if (isTwoHanded)
+                if (_isTwoHanded)
                     return false;
             }
 
