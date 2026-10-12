@@ -4,6 +4,9 @@
 *.csproj
 *.log
 
+task.md
+AGENTS.md
+
 /Builds/
 /ProfilerCaptures/
 /Library/

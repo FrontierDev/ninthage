@@ -1,0 +1,21 @@
+{
+    "name": "Game.Shared.Tests",
+    "rootNamespace": "",
+    "references": [
+        "GUID:59f8dc0912e4f8743b9d94199c53f968"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
