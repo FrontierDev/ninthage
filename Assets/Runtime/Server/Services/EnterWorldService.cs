@@ -18,16 +18,14 @@ namespace Game.Server.Services
             playerId = _playerId;
             characterGuid = _characterGuid;
 
-            var accountData = ServerConnectionManager.Instance.GetAccountData(playerId);
-            var characterData = accountData.Characters.Find(c => c.Guid == characterGuid);
+            if (!ValidateCharacterGUID())
+                return;
 
-            if (ValidateCharacterGUID())
-            {
-                // For simplicity, we'll just send the player to a hardcoded scene. 
-                // In a real implementation, this could be based on the character's location or other factors.
-                ServerConnectionManager.Instance.SetSessionData(playerId, new PlayerSessionData(playerId, accountData.Username, characterGuid));
-                ServerSpawnManager.Instance.SpawnPlayer(playerId);
-            }
+            var accountData = ServerConnectionManager.Instance.GetAccountData(playerId);
+            // For simplicity, we'll just send the player to a hardcoded scene.
+            // In a real implementation, this could be based on the character's location or other factors.
+            ServerConnectionManager.Instance.SetSessionData(playerId, new PlayerSessionData(playerId, accountData.Username, characterGuid));
+            ServerSpawnManager.Instance.SpawnPlayer(playerId);
         }
 
         private bool ValidateCharacterGUID()

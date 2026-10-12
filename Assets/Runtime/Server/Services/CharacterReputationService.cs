@@ -18,12 +18,6 @@ namespace Game.Server.Services
             this.faction = faction;
 
             AddReputation(reputationGained);
-
-            // Update the player's reputation on the PlayerReputation component
-            playerReputation.SetReputation(faction, reputationGained);
-
-            // Notify clients about the reputation update
-            CharacterService.Client_ReputationUpdated(playerActor.owner.Value, faction.DefinitionId, reputationGained, reputationGained);
         }
 
         public void AddReputation(int amount)

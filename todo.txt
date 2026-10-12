@@ -1,5 +1,5 @@
 TODO REPORT
-Generated: 2026-10-12 19:01:24
+Generated: 2026-10-12 19:07:35
 
 [METHOD] Game.Client.ClientAudioManager.Awake()
   - Implement a more robust caching strategy if needed, e.g. separate pools for UI vs world SFX, or reference counting for shared clips.
