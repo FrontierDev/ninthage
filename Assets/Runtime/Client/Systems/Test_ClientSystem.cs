@@ -4,10 +4,10 @@ using Unity.Entities;
 namespace Game.Client
 {
     /// <summary>
-    /// Represents the client-side <c>TestClientSystem</c> value.
+    /// Represents the client-side <c>Test_ClientSystem</c> value.
     /// </summary>
     [DisableAutoCreation]
-    public partial struct TestClientSystem : ISystem
+    public partial struct Test_ClientSystem : ISystem
     {
         /// <summary>
         /// Handles the <c>OnCreate</c> callback.

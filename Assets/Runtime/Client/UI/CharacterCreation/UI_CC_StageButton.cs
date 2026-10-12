@@ -4,9 +4,9 @@ using UnityEngine.Serialization;
 namespace Game.Client.UI
 {
     /// <summary>
-    /// Provides the client-side <c>StageButton</c> implementation.
+    /// Provides the client-side <c>UI_CC_StageButton</c> implementation.
     /// </summary>
-    public class StageButton : UI_Button
+    public class UI_CC_StageButton : UI_Button
     {
         [FormerlySerializedAs("openPanels")]
         [SerializeField] private string[] _openPanels;

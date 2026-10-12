@@ -27,7 +27,7 @@ namespace Game.Client
             var systemGroup = defaultWorld.GetOrCreateSystemManaged<SimulationSystemGroup>();
 
             // Create and add systems to the world.
-            var testSystem = defaultWorld.GetOrCreateSystem<TestClientSystem>();
+            var testSystem = defaultWorld.GetOrCreateSystem<Test_ClientSystem>();
             systemGroup.AddSystemToUpdateList(testSystem);
 
             _initialized = true;
