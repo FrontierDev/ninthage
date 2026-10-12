@@ -44,6 +44,18 @@ namespace Game.Server
             _initialized = true;
         }
 
+        private void OnDestroy()
+        {
+            Game.Shared.Networking.MovementEndpoint.onInterestRequest -= OnInterestRequest;
+
+            if (networkManager != null)
+                networkManager.onPlayerLeft -= OnPlayerLeft;
+
+            _actorChunks.Clear();
+            _instance = null;
+            _initialized = false;
+        }
+
         private void OnPlayerLeft(PlayerID playerId, bool asServer)
         {
             // Find the actor for this player from our own tracking, since session

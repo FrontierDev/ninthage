@@ -31,21 +31,25 @@ namespace Game.Server
             _instance = this;
 
             // Subscribe to character service events for stat updates
-            Game.Shared.Networking.CharacterEndpoint.onUpdateStatsRequest += (container) =>
-            {
-                Recalculate(container);
-                FillAttributesToMax(container);
-                SendSnapshot(container.GetComponent<Actor>());
-            };
+            Game.Shared.Networking.CharacterEndpoint.onUpdateStatsRequest += OnUpdateStatsRequest;
 
             _initialized = true;
         }
 
         private void OnDestroy()
         {
+            Game.Shared.Networking.CharacterEndpoint.onUpdateStatsRequest -= OnUpdateStatsRequest;
+
             trackedActors.Clear();
             _instance = null;
             _initialized = false;
+        }
+
+        private void OnUpdateStatsRequest(ActorStatContainer container)
+        {
+            Recalculate(container);
+            FillAttributesToMax(container);
+            SendSnapshot(container.GetComponent<Actor>());
         }
 
         private void Update()

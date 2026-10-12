@@ -47,6 +47,7 @@ namespace Game.Server
 
         private void OnDestroy()
         {
+            ActorEndpoint.onServerApplyAura -= OnApplyAuraRequest;
             ActorEndpoint.onServerAuraTick -= OnAuraTick;
             ActorEndpoint.onServerAuraExpired -= OnAuraExpired;
             ActorEndpoint.onServerAuraDispelled -= OnAuraDispelled;

@@ -46,7 +46,7 @@ namespace Game.Server
             ActorEndpoint.onServerSpellCastCompleted += OnSpellCastCompleted;
             ActorEndpoint.onServerSpellCastDelayedAction += OnSpellCastDelayedAction;
             ActorEndpoint.onServerSpellCastInterrupted += OnSpellCastInterrupted;
-            ActorEndpoint.onServerRequestSpellCastCancel += (actor) => TryInterruptCast(actor.Id);
+            ActorEndpoint.onServerRequestSpellCastCancel += OnSpellCastCancelRequested;
 
             _initialized = true;
         }
@@ -78,10 +78,15 @@ namespace Game.Server
             ActorEndpoint.onServerSpellCastCompleted -= OnSpellCastCompleted;
             ActorEndpoint.onServerSpellCastInterrupted -= OnSpellCastInterrupted;
             ActorEndpoint.onServerSpellCastDelayedAction -= OnSpellCastDelayedAction;
-            ActorEndpoint.onServerRequestSpellCastCancel -= (actor) => TryInterruptCast(actor.Id);
+            ActorEndpoint.onServerRequestSpellCastCancel -= OnSpellCastCancelRequested;
 
             _instance = null;
             _initialized = false;
+        }
+
+        private void OnSpellCastCancelRequested(Actor actor)
+        {
+            TryInterruptCast(actor.Id);
         }
 
         #region Spell Cast Lifecycle

@@ -20,6 +20,8 @@ namespace Game.Client.UI
         [Header("Runtime")]
         [SerializeField] protected Queue<UI_Window> openedWindows = new Queue<UI_Window>();
 
+        private bool _initialized;
+
         private void Awake()
         {
             if (Game.Shared.Runtime.IsServer())
@@ -47,7 +49,23 @@ namespace Game.Client.UI
 
         public void Initialize()
         {
-            ClientInputController.Instance.onInterfaceHotkeyInput += (hotkey) => ToggleWindow(hotkey);
+            if (_initialized)
+                return;
+
+            ClientInputController.Instance.onInterfaceHotkeyInput += OnInterfaceHotkeyInput;
+            _initialized = true;
+        }
+
+        private void OnDestroy()
+        {
+            var inputController = ClientInputController.Instance;
+            if (inputController != null)
+                inputController.onInterfaceHotkeyInput -= OnInterfaceHotkeyInput;
+        }
+
+        private void OnInterfaceHotkeyInput(string hotkey)
+        {
+            ToggleWindow(hotkey);
         }
 
         #region Window Management

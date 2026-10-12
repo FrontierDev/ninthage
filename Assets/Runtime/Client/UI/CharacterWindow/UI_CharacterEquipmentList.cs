@@ -23,7 +23,7 @@ namespace Game.Client.UI
                 currentEntries.Add(slot);
             }
 
-            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += (actor) => Refresh();
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
             CharacterEndpoint.onClientEquipmentUpdated += Refresh;
 
             base.Awake();
@@ -31,8 +31,13 @@ namespace Game.Client.UI
 
         private void OnDestroy()
         {
-            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned -= (actor) => Refresh();
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssigned;
             CharacterEndpoint.onClientEquipmentUpdated -= Refresh;
+        }
+
+        private void OnPlayerActorAssigned(Actor actor)
+        {
+            Refresh();
         }
 
         public override void Refresh()

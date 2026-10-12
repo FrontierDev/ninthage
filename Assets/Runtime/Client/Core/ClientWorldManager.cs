@@ -31,8 +31,34 @@ namespace Game.Client
         {
             _instance = this;
 
-            Game.Shared.Networking.AccountEndpoint.onEnteringWorld += (characterData, sceneName) => StartCoroutine(OnEnteringWorld(sceneName));
+            Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorldRequested;
             _initialized = true;
+        }
+
+        private void OnDestroy()
+        {
+            Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnteringWorldRequested;
+
+            if (NetworkManager.main != null)
+            {
+                NetworkManager.main.sceneModule.onSceneLoaded -= OnSceneLoaded;
+                NetworkManager.main.sceneModule.onSceneUnloaded -= OnSceneUnloaded;
+            }
+
+            Game.Shared.Networking.MovementEndpoint.onClientInterestRequest -= OnClientInterestRequest;
+
+            _instance = null;
+            _initialized = false;
+        }
+
+        private void OnEnteringWorldRequested(Game.Shared.Persistence.CharacterData characterData, string sceneName)
+        {
+            StartCoroutine(OnEnteringWorld(sceneName));
+        }
+
+        private void OnClientInterestRequest(Vector2Int chunk)
+        {
+            ClientPositionManager.Instance.SetOriginChunk(chunk);
         }
 
         public void OnSceneLoaded(SceneID sceneId, bool asServer)
@@ -64,7 +90,7 @@ namespace Game.Client
             // Subscribe BEFORE loading global_world to avoid missing scene callbacks
             NetworkManager.main.sceneModule.onSceneLoaded += OnSceneLoaded;
             NetworkManager.main.sceneModule.onSceneUnloaded += OnSceneUnloaded;
-            Game.Shared.Networking.MovementEndpoint.onClientInterestRequest += ClientPositionManager.Instance.SetOriginChunk;
+            Game.Shared.Networking.MovementEndpoint.onClientInterestRequest += OnClientInterestRequest;
 
             var loadOp = SceneManager.LoadSceneAsync("global_world", LoadSceneMode.Additive);
             yield return new WaitUntil(() => loadOp.isDone);

@@ -77,14 +77,27 @@ namespace Game.Client
             _interfaceMap.Disable();
 
             // Start in disabled mode until the player enters the world.
-            ActorEndpoint.onPlayerActorAssigned += (playerActor) => SetInputMode(InputMode.GameplayMovement);
-            ActorEndpoint.onPlayerActorAssigned += (playerActor) => UI_Manager.Instance.Initialize();
+            ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssignedForGameplay;
+            ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssignedForUI;
         }
 
         private void OnDestroy()
         {
+            ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssignedForGameplay;
+            ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssignedForUI;
+
             _gameplayMap?.Disable();
             _uiNavMap?.Disable();
+        }
+
+        private void OnPlayerActorAssignedForGameplay(Actor playerActor)
+        {
+            SetInputMode(InputMode.GameplayMovement);
+        }
+
+        private void OnPlayerActorAssignedForUI(Actor playerActor)
+        {
+            UI_Manager.Instance.Initialize();
         }
 
         public void SetInputMode(InputMode mode)

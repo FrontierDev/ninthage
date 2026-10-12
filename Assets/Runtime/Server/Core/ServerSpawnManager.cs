@@ -58,6 +58,17 @@ namespace Game.Server
             _initialized = true;
         }
 
+        private void OnDestroy()
+        {
+            if (networkManager != null && networkManager.sceneModule != null)
+                networkManager.sceneModule.onPostSceneLoaded -= OnPostSceneLoaded;
+
+            Game.Shared.Networking.ActorEndpoint.onServerActorDespawned -= OnServerActorDespawned;
+
+            _instance = null;
+            _initialized = false;
+        }
+
         private void OnPostSceneLoaded(SceneID sceneID, bool asServer)
         {
             if (!asServer) return;

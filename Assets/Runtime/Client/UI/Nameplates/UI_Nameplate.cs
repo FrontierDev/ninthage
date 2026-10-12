@@ -31,16 +31,23 @@ namespace Game.Client.UI
 
         private void Awake()
         {
-            ActorEndpoint.onPlayerActorAssigned += (playerActor) =>
+            ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
+        }
+
+        private void OnDestroy()
+        {
+            ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssigned;
+        }
+
+        private void OnPlayerActorAssigned(Actor playerActor)
+        {
+            if (!initialized)
             {
-                if (!initialized)
-                {
-                    var relation = actor.GetFactionRelation(playerActor.GetComponent<PlayerReputation>());
-                    healthBar.SetRelation(relation);
-                    OnStatsUpdated(actor, actor.GetComponent<ActorStatContainer>());
-                    initialized = true;
-                }
-            };
+                var relation = actor.GetFactionRelation(playerActor.GetComponent<PlayerReputation>());
+                healthBar.SetRelation(relation);
+                OnStatsUpdated(actor, actor.GetComponent<ActorStatContainer>());
+                initialized = true;
+            }
         }
 
         public void Initialize(Actor target, Canvas worldCanvas)

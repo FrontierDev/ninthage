@@ -25,9 +25,23 @@ namespace Game.Client.UI
             _instance = this;
 
             Game.Shared.Networking.CharacterEndpoint.onClientInventoryUpdated += Refresh;
-            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += (actor) => Refresh();
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
 
             base.Awake();
+        }
+
+        private void OnDestroy()
+        {
+            Game.Shared.Networking.CharacterEndpoint.onClientInventoryUpdated -= Refresh;
+            Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssigned;
+
+            if (_instance == this)
+                _instance = null;
+        }
+
+        private void OnPlayerActorAssigned(Game.Shared.Actor actor)
+        {
+            Refresh();
         }
 
         public override void Refresh()
