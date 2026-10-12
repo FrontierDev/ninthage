@@ -182,79 +182,21 @@ namespace Game.Server
                 }
             }
 
-            characterData.Level = UnityEngine.Random.Range(11, 60);
             characterData.PvPFactionID = RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID)?.DefaultPVPFaction?.DefinitionId;
 
-            characterData.SavedInventory.Clear();
-            characterData.SavedEquipment.Clear();
-            characterData.SavedTalents.Clear();
-            characterData.SavedWeaponSkills.Clear();
-            characterData.SavedReputations.Clear();
-            characterData.SavedQuests.Clear();
-
-            // Add test quests.
-            characterData.SavedQuests = new List<Shared.Persistence.SavedQuestEntry>
+            for (int i = characterData.SavedInventory.Count - 1; i >= 0; i--)
             {
-                new() { QuestID = "test", Progress = new int[] { 0 }, IsCompleted = false },
-            };
-
-            // Add the test talents.
-            characterData.SavedTalents = new List<Shared.Persistence.SavedTalentEntry>
-            {
-                new() { TalentID = "test", Rank = 3 },
-            };
-
-            Debug.Log($"Talents for player {playerId}: {string.Join(", ", characterData.SavedTalents.Select(t => $"{t.TalentID} (Rank {t.Rank})"))}");
-
-            // If the player's inventory is null (can happen if they had an old save without inventory data), initialize it with an empty inventory.
-            bool alwaysRefresh = true;
-            if (characterData.SavedInventory.Count < 5 || alwaysRefresh)
-            {
-                Debug.Log($"Initializing empty inventory for player {playerId} character.");
-                characterData.SavedInventory = new List<Shared.Persistence.SavedInventoryEntry>
+                var entry = characterData.SavedInventory[i];
+                if (Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemId) == null)
                 {
-                    new() {
-                        SlotIndex = 0,
-                        ItemId = "test_item",
-                        StackSize = 1,
-                        Modifications = new List<string>()
-                    },
-                    new() {
-                        SlotIndex = 1,
-                        ItemId = "6nGzh6jdMl",
-                        StackSize = 1,
-                        Modifications = new List<string>()
-                    },
-                    new() {
-                        SlotIndex = 2,
-                        ItemId = "IF76hX6mCs",
-                        StackSize = 1,
-                        Modifications = new List<string>()
-                    },
-                    new() {
-                        SlotIndex = 3,
-                        ItemId = "test_2h",
-                        StackSize = 1,
-                        Modifications = new List<string>()
-                    },
-                };
-            }
-            else
-            {
-                for (int i = characterData.SavedInventory.Count - 1; i >= 0; i--)
+                    Debug.Warning($"Removing invalid inventory entry at slot {entry.SlotIndex} with unknown item '{entry.ItemId}' for player {playerId}.");
+                    characterData.SavedInventory.RemoveAt(i);
+                }
+                else if (string.IsNullOrEmpty(entry.ItemGuid))
                 {
-                    var entry = characterData.SavedInventory[i];
-                    if (Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemId) == null)
-                    {
-                        Debug.Warning($"Removing invalid inventory entry at slot {entry.SlotIndex} with unknown item '{entry.ItemId}' for player {playerId}.");
-                        characterData.SavedInventory.RemoveAt(i);
-                    }
-                    else if (string.IsNullOrEmpty(entry.ItemGuid))
-                    {
-                        entry.ItemGuid = System.Guid.NewGuid().ToString("N");
-                        characterData.SavedInventory[i] = entry;
-                        Debug.Log($"Assigned GUID to inventory entry at slot {entry.SlotIndex} for player {playerId}.");
-                    }
+                    entry.ItemGuid = System.Guid.NewGuid().ToString("N");
+                    characterData.SavedInventory[i] = entry;
+                    Debug.Log($"Assigned GUID to inventory entry at slot {entry.SlotIndex} for player {playerId}.");
                 }
             }
 
@@ -300,9 +242,11 @@ namespace Game.Server
                 return isInvalid;
             });
 
-            // For now, just set all the reputations to their default values for the player's race.
             foreach (var startingRep in RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID).StartingReputations)
             {
+                if (characterData.SavedReputations.Any(rep => rep.FactionID == startingRep.Faction.DefinitionId))
+                    continue;
+
                 characterData.SavedReputations.Add(new Shared.Persistence.SavedReputationEntry
                 {
                     FactionID = startingRep.Faction.DefinitionId,
