@@ -6,9 +6,10 @@
 **Phase 0 candidate snapshot:** `f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f` — [Issue 39, 40 commit](https://github.com/FrontierDev/ninthage/commit/f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f), 2026-10-13
 **Last examined `dev` head:** `1677098d27967f9ef4a965e1421737fad3bd892d` — later Phase 1 documentation-only commits; not a substitute for the Phase 0 snapshot
 **Source review date:** 2026-10-13
+**Additional evidence:** User-supplied local Unity Test Runner XML for EditMode (2026-10-13 16:10:45–16:10:46 UTC) and PlayMode (2026-10-13 16:11:46 UTC); their exact Git commit is **not embedded in the reports**.
 **Issue:** [#40 — Record the Stable Foundation baseline and close Phase 0](https://github.com/FrontierDev/ninthage/issues/40)
 
-> **Validation qualification:** Issue #40 is closed in GitHub but retains the `needs-validation` label. The accessible GitHub Actions runs have **not executed Unity tests successfully**; the required integrated manual game validation and pre-restyle persistence migration demonstration have not been independently verified. This file records the **actual candidate codebase** and the outstanding acceptance evidence. It is **not** a declaration that the Phase 0 milestone has passed its exit gate.
+> **Validation qualification:** Issue #40 is closed in GitHub but retains the `needs-validation` label. The accessible GitHub Actions runs have **not executed Unity tests successfully**. Separately, user-supplied local Unity Test Runner XML shows **one failed EditMode and one failed PlayMode test**. Required integrated manual game validation and production pre-restyle persistence migration have not been independently verified. This file records the actual candidate codebase and the outstanding acceptance evidence; it does **not** certify Phase 0.
 
 ## 1. Purpose, evidence and scope
 
@@ -98,7 +99,7 @@ At the candidate snapshot, the following test methods are declared in the reposi
 | **PlayMode total** | **Three test files** | **3** |
 | **Total** | **Nine test files** | **28** |
 
-**Execution result:** **Not established.** The test source and assemblies exist, but no successful EditMode or PlayMode execution report was available during this reconstruction. Do not interpret 25/3 as passed counts, and do not assert that the listed PlayMode tests cover full headless/client gameplay.
+**Execution result (updated):** The local Unity Test Runner **did execute** these suites, but **both suites failed**; see Section 5.2. The source inventory remains 25 project EditMode and 3 project PlayMode test methods. The uploaded XML does not independently establish the exact Git SHA under test or demonstrate a fully passing baseline.
 
 ### 5.1 GitHub Actions
 
@@ -114,6 +115,41 @@ Accessible run outcomes as of the review:
 
 **Successful workflow run reference required by Issue #40: none verified.** This is a **missing acceptance artifact**, not a passed CI test. The licensing/check configuration must be addressed in GitHub repository Actions settings and/or project-owned workflow configuration, then both modes must run and pass with a durable run URL and test artifacts. Do not embed secrets in this file or claim they have been configured.
 
+### 5.2 Local Unity Test Runner evidence — 13 October 2026
+
+The user provided two original NUnit-style Unity XML reports. These are **local Editor Test Runner results**, not GitHub Actions executions. The recorded times are UTC; the XML identifies the test assemblies, individual outcomes and failures, but does **not** identify the Git commit or confirm that its compiled assemblies exactly match `f3c16ffc`.
+
+| Report (user-provided) | UTC test interval | Results across all discovered assemblies | Ninth Age project assembly only |
+| --- | --- | --- | --- |
+| `TestResults_20261013_171050(1).xml` — EditMode | 16:10:45–16:10:46 | **26 total, 25 passed, 1 failed, 0 skipped** | `Game.Shared.Tests.dll`: **25 total, 24 passed, 1 failed** |
+| `TestResults_20261013_171336.xml` — PlayMode | 16:11:46 | **3 total, 2 passed, 1 failed, 0 skipped** | `Game.Runtime.Tests.dll`: **3 total, 2 passed, 1 failed** |
+| **Combined** | — | **29 total, 27 passed, 2 failed** | **28 project tests, 26 passed, 2 failed** |
+
+The additional passing EditMode case comes from the **third-party** `Unity.Addressables.DocExampleCode.Editor.Tests.dll` assembly (`TestStub.RequiredTest`). It does not count toward Ninth Age's 25 project-owned EditMode tests; neither the vendor test nor its code should be modified as part of a project regression correction.
+
+**Failure A — incorrect expected Y at a world-position chunk boundary**
+
+- Test: `Game.Shared.Tests.Shared.WorldPositionTests.ExactChunkBoundariesResolveToExpectedChunks`.
+- Source: `Assets/Tests/EditMode/Shared/WorldPositionTests.cs:64`.
+- Observed: expected `(0, 0, 0)`, actual `(0, 4, 0)`.
+- Current test constructs `WorldPosition(chunkSize, 4d, -chunkSize)` and `WorldPosition(-chunkSize, 4d, -chunkSize)` and asserts the entire `LocalPosition` equals `Vector3.zero`. Current `WorldPosition.LocalPosition` computes local X/Z from the chunk boundary while deliberately retaining `y`. Other tests in the same fixture explicitly verify height preservation.
+- **Assessment:** On reviewed source, this is a **test expectation mismatch**: the correct position at the horizontal chunk boundary retains Y = 4. Update only the relevant project-owned test assertion to validate X = 0, Y = 4, Z = 0 (or X/Z individually), unless a conflicting authoritative position design is demonstrated. **Do not change `WorldPosition` semantics to force the test to pass.**
+- Actual outcome: **failed**. Correction and a passing rerun are required.
+
+**Failure B — legacy player-data names bypass migration in the round-trip test**
+
+- Test: `Game.Runtime.Tests.Persistence.CharacterPersistenceRoundTripTests.CurrentPlayerDataFixtureRoundTripsWithoutLosingCharacterState`.
+- Source: `Assets/Tests/PlayMode/Persistence/CharacterPersistenceRoundTripTests.cs:40`.
+- Observed: expected `"character-phase0-baseline-0001"`, actual `null` for `CharacterData.GUID`.
+- The tracked JSON fixture uses legacy keys `Guid`, `PvPFactionID`, `ItemGuid`, `ItemId` and `StatId`, whereas the current DTOs contain `GUID`, `PVPFactionID`, `ItemGUID`, `ItemID` and `StatID`. The test directly calls `JsonUtility.FromJson<PlayerDataWrapper>` where `PlayerDataWrapper.Characters` ultimately use **current** `CharacterData`; this does not call `PlayerDatabase.MigrateLegacyData` / `MigrateLegacyCharacter`.
+- `PlayerDatabase.LoadFromDisk` has a separate version-0 legacy path, and the fixture has no explicit `DataVersion` field; thus the production migration route must be tested **as a distinct behavior**, not assumed to be disproved or proven by direct deserialization into current DTOs.
+- **Assessment:** The current regression test's loading strategy does not faithfully exercise the migration it purports to protect. Correct test coverage should preserve the legacy fixture and check that the **real versioned migration path**, followed by current-version save/load, retains all identity, inventory/equipment, progression and resource fields. If that exposes a genuine data-loss bug, raise a separate targeted persistence-code fix. Do not rename the legacy fixture keys merely to make a current-DTO test pass.
+- Actual outcome: **failed**. End-to-end legacy migration and round trip remain **unverified**.
+
+**Runner observation:** Repeated EditMode tests emit `GameConfigurationManager` already-initialized warnings; they do not constitute the reported failing assertion. Address this separately only if reproducible state pollution affects tests or lifecycle behavior.
+
+**Gate consequence:** These XML files materially improve evidence (the Unity suites *did* run locally) but do **not** satisfy Issue #40's full regression gate. Rerun both suites after focused corrections, preserve passing XML evidence and record the exact tested Git SHA/build. The GitHub-hosted workflow still lacks a successful run.
+
 ## 6. Pre-restyle persistence compatibility
 
 ### Evidence present
@@ -125,7 +161,7 @@ Accessible run outcomes as of the review:
 
 ### Evidence missing
 
-- **No execution result** proves the PlayMode fixture round-trip test passed at `f3c16ffc`.
+- A **local execution result exists and explicitly failed**: `CharacterData.GUID` was `null` after direct deserialization of the legacy fixture into the current DTO. The failed test did not invoke the version-0 production migration, so a successful migration is **not established**, nor is a migration defect conclusively proved.
 - The round-trip test exercises the fixture through a test wrapper and Unity JSON serialization; it does **not** by itself prove production `PlayerDatabase.LoadFromDisk` migrated actual pre-restyle saved data end-to-end and persisted it correctly afterward.
 - No verified manual restore/migration of a real pre-restyle `player_data.json` save was supplied with Issue #40.
 
@@ -181,7 +217,7 @@ Other production-wide issues intentionally remain outside Phase 0: persistence t
 | Unity version recorded | **Recorded:** `6000.3.10f1` |
 | Shared/Client/Server/Core/Editor assembly layout recorded | **Recorded:** Section 3 |
 | Endpoint/Binding/Service/Manager terminology recorded | **Recorded:** Section 4 |
-| EditMode/PlayMode test counts and actual outcomes recorded | **Source counts recorded:** 25 / 3; **execution pending** |
+| EditMode/PlayMode test counts and actual outcomes recorded | **Source:** 25 project EditMode / 3 project PlayMode. **Local execution:** 24/25 project EditMode passed, 2/3 project PlayMode passed; both suites failed. Third-party EditMode: 1/1 passed. Exact tested commit unknown. |
 | Successful GitHub Actions workflow link | **Missing:** all accessible runs failed before tests |
 | Pre-restyle persistence load and round-trip confirmed | **Missing:** test and fixture present, successful execution/migration not demonstrated |
 | Open design/prototype gap audit linked | **Recorded:** Section 8; audit's own manual-validation status remains open |
@@ -192,11 +228,12 @@ Other production-wide issues intentionally remain outside Phase 0: persistence t
 
 ### To certify Phase 0
 
-1. Resolve or document access to the Unity Actions licensing configuration without exposing secrets; execute both jobs and retain the passing run URL, test counts and output artifacts.
-2. Perform Issue #40's 14 integrated manual checks on a build identified by the candidate commit and Unity version; record exact outcomes and any corrective commits.
-3. Execute and validate legacy persistence migration and its round trip using preserved pre-restyle data without changing or exposing private player saves.
-4. Review the open-gap audit and ensure earlier Phase 0 manual-validation gates are genuinely satisfied, rather than relying solely on issue closure.
-5. If validation requires new source changes, identify a new candidate commit and repeat relevant checks. The **accepted baseline SHA must match the tested revision**.
-6. After independent user approval, update this document with evidence, add the completion-status note to [C# Restyling Plan](Plans/CSharp-Restyling-Plan.md), mark only Phase 0 completed in the [Project Roadmap](Plans/Project-Roadmap.md), and clear the `needs-validation` label through the repository workflow.
+1. Correct and rerun the two failed project-owned regression tests described in Section 5.2. Verify Y-coordinate boundary semantics and validate the actual legacy persistence migration rather than bypassing it. Preserve complete successful XML results and the exact tested commit.
+2. Resolve or document access to the Unity Actions licensing configuration without exposing secrets; execute both jobs and retain the passing run URL, test counts and output artifacts.
+3. Perform Issue #40's 14 integrated manual checks on a build identified by the candidate commit and Unity version; record exact outcomes and any corrective commits.
+4. Execute and validate legacy persistence migration and its round trip using preserved pre-restyle data without changing or exposing private player saves.
+5. Review the open-gap audit and ensure earlier Phase 0 manual-validation gates are genuinely satisfied, rather than relying solely on issue closure.
+6. If validation requires new source changes, identify a new candidate commit and repeat relevant checks. The **accepted baseline SHA must match the tested revision**.
+7. After independent user approval, update this document with evidence, add the completion-status note to [C# Restyling Plan](Plans/CSharp-Restyling-Plan.md), mark only Phase 0 completed in the [Project Roadmap](Plans/Project-Roadmap.md), and clear the `needs-validation` label through the repository workflow.
 
-**No Unity Editor access, build, PlayMode execution, successful CI test, manual gameplay test or persistence migration was performed as part of preparing this documentation.** This reconstruction is intentionally factual about what the source and available GitHub records do—and do not—establish.
+**The newly supplied local Unity tests were performed by the user, not by this documentation update.** No Unity Editor access, build, new test execution, successful CI test, manual gameplay test or persistence migration was performed by the assistant. The reported local tests failed and do not certify Phase 0.
