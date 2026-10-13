@@ -9,7 +9,7 @@
 **Project:** Ninth Age  
 **Branch:** `dev`  
 **Scope:** Dependency-ordered delivery plan from the current working prototype through production readiness  
-**Last updated:** 2026-10-07
+**Last updated:** 2026-10-13
 
 ---
 
@@ -119,70 +119,76 @@ A client can connect to the headless server, create/select a character, enter th
 
 ---
 
-# Phase 1 — Production Technical Foundations
+# Phase 1 — Core Runtime and Production Infrastructure
 
 ## Goal
 
-Replace prototype-only infrastructure that would become expensive to change after more gameplay systems depend on it.
+Establish **the scalable runtime architecture and durable production infrastructure** required before broad gameplay/world implementation makes foundational changes expensive. Phase 1 must anticipate high-stress MMORPG workloads and implement the reusable performance mechanisms they will depend on; it must **not** defer identifiable architectural needs until they become bottlenecks.
+
+Retain and productionise existing hybrid ECS/GameObject, PurrNet, headless-server, double-precision world-position, additive streaming and Addressables foundations rather than replacing them by default. Profile, validate and improve the existing implementation. Distinguish **architecture for scale**, **measured performance under a documented workload**, and **production-supported capacity**; the phase does not promise an arbitrary concurrency limit.
+
+**Detailed chronological plan:** [Phase 1 Implementation Plan](Phase-1-Implementation-Plan.md). This document is the implementation sequence and validation authority for Phase 1; the roadmap is the summary.
 
 ## Work
 
-### Persistence
+### Performance measurement and workload contracts
 
-Implement the Account, Character and Persistence PDD production direction:
+- Establish reproducible client/headless-server profiling, instrumentation, performance budgets and automated benchmark/regression workflows **at the start of the phase**.
+- Design around dense cities, large-scale open-world PvP, heavy NPC/AI populations, world-boss and AoE combat, rapid world traversal, dense vegetation/settlements, login/reconnect bursts and extended server operation.
+- Record representative hardware, workload sizes, CPU/tick and GPU frame-time, bandwidth, memory/GC, streaming and persistence metrics. Choose/configure budget thresholds from evidence rather than inventing capacity claims.
 
-- immutable AccountID and CharacterID;
-- relational server persistence;
-- explicit schema and migrations;
-- transactional ownership/progression changes;
-- character roster persistence;
-- inventory/equipment persistence;
-- progression persistence;
-- quest/reputation/profession persistence as those systems come online;
-- persistent world position;
-- disconnect/reconnect continuity;
-- deletion/restoration foundations;
-- migration away from whole-file JSON persistence.
+### Simulation, spatial and actor-runtime foundations
 
-### Session and authentication architecture
+- Establish a coherent **authoritative fixed-step simulation clock**, tick ordering, high-/low-frequency scheduling, event/deadline processing, catch-up rules and overload visibility.
+- Implement **instance-aware authoritative spatial indexing and range queries**, retaining world/map/instance identity, double-precision coordinates, visibility hysteresis and separation of environment streaming from actor replication.
+- Clarify **ECS-versus-GameObject data ownership**, batched synchronisation and main-thread boundaries; implement Jobs/Burst for suitable proven workloads rather than requiring a wholesale ECS rewrite.
+- Establish actor activity states, simulation LOD, sleep/wake semantics and relevance-based NPC perception/AI decision scheduling; preserve combat, timer, persistence and network authority across state transitions.
+- Remove unnecessarily expensive recurring full-actor scans, allocations and per-NPC physics candidate searches in hot paths where the shared systems can provide equivalent correctness.
 
-- Enforce one authoritative session per account.
-- Implement reconnect/disconnect-grace behaviour.
-- Separate account creation policy from authentication where required by the PDD.
-- Harden server-side validation of ownership and character selection.
+### Network replication and client rendering/resources
 
-### Release and compatibility identity
+- Extend the existing PurrNet integration with measurable **instance/range-aware replication**, priority/update-frequency policies, change/batching strategies where supported, and per-connection bandwidth/backlog telemetry.
+- Define client streaming/resource ownership, pooling/release lifecycle, loading/activation budgets, terrain/object/vegetation LOD, animation/VFX relevance, culling and rendering-density contracts compatible with **URP Forward+**.
+- Validate seamless tile transitions, floating-origin behaviour and memory stability under repeated load/unload; choose instancing, batching and other rendering optimisations from profiling results.
 
-Implement the first production versioning baseline from the Live Content and Versioning PDD:
+### Persistence, sessions and authentication
 
-- client build version;
-- server build version;
-- network protocol version;
-- gameplay-content revision;
-- Addressables catalog revision;
-- database-schema version;
-- release manifest;
-- compatibility handshake before world entry;
-- fail-closed behaviour for incompatible authoritative state.
+Implement the Account, Character and Persistence PDD's production direction:
 
-### Addressables and live-content foundation
+- immutable AccountID and CharacterID; relational server persistence, constraints, explicit schema and migrations; migration away from whole-file JSON;
+- transactional item/ownership/progression changes; character roster, inventory/equipment, progression, persistent position and timed-state continuity;
+- quest/reputation/profession persistence foundations as those systems come online; deletion/restoration and backup/restore foundations;
+- one authoritative session per account, ownership/character-selection validation, reconnect/disconnect grace, server restart and world/instance restoration;
+- non-blocking persistence integration with the simulation loop and measurable burst/concurrency behaviour.
 
-- Enable the intended remote catalog/content-update workflow.
-- Define remote content ownership and bundle-grouping rules.
-- Remove `Resources.Load`/direct-reference authority from content intended for live hotfixing.
-- Establish immutable content revision output.
-- Validate content update size and dependency behaviour.
+### Release, content and operational foundations
 
-### Operational foundations
+Implement the Live Content and Versioning PDD's production direction:
 
-- Structured server logging.
-- Clear environment configuration for development/production.
-- Persistent-data backup/restore workflow.
-- Server startup validation for required content/schema versions.
+- client and server build versions, network protocol version, gameplay-content revision, Addressables catalog revision, database-schema version and immutable release manifest;
+- compatibility handshake **before world entry** with fail-closed behaviour for incompatible authoritative state;
+- existing Addressables remote catalog/content-update pipeline, immutable content revisions, release content-state retention, remote bundle grouping and dependency/update-size validation;
+- hotfixable definition registries and removal of `Resources.Load`/direct-reference authority from content that is intended to be hotfixable;
+- structured server logging, clear development/production configuration, runtime health/load telemetry, schema/content startup checks and recovery operations.
 
-## Exit milestone — Durable Character
+### Integrated scalability validation
 
-A character can be created, saved to the production-style persistence layer, enter the world, change meaningful state, disconnect/reconnect and survive a server restart without losing or exploiting state. Incompatible client/content/schema combinations are rejected explicitly.
+- Run combined multiplayer workloads on headless server and graphical client, including dense player/AI combat, rapid streaming, mass actor activation, reconnect bursts and soak tests.
+- Validate correctness under latency/loss, instance isolation, server authority, persistence interruptions and overload.
+- Set measurable stage-exit gates; do not accept major new systems that bypass the shared scheduling, spatial, lifecycle, replication or resource-management contracts.
+- Ensure that subsequent phases primarily **consume and extend** these foundations rather than implementing competing ones.
+
+## Implementation order
+
+Follow the [dedicated Phase 1 plan](Phase-1-Implementation-Plan.md): **(1.0)** architecture contracts and profiling baseline → **(1.1)** simulation clock/scheduler → **(1.2)** spatial indexing/interest → **(1.3)** ECS ownership and efficient hot paths → **(1.4)** simulation LOD/AI activation → **(1.5)** replication scalability → **(1.6)** client rendering/resource lifetime → **(1.7)** relational persistence → **(1.8)** sessions/reconnect → **(1.9)** versioning/Addressables → **(1.10)** operations/CI → **(1.11)** integrated stress verification.
+
+Independent persistence schema, client fixtures and operational scaffolding may begin in parallel once their contracts are established; final integration follows the plan's prerequisite gates.
+
+## Exit milestone — Scalable, Durable Runtime Foundation
+
+A character can be created and saved in production-style persistence, enter a seamless streamed multiplayer world, change authoritative state, reconnect and survive server restart without lost or exploited state. Incompatible client/content/schema combinations are explicitly rejected. The hybrid server/client runtime has demonstrated its agreed simulation, spatial, networking, rendering, memory and streaming characteristics under **documented representative high-stress workloads**, with repeatable benchmarks and automated regression coverage.
+
+Phase 1 does **not** require full production-scale content or maximum player-capacity certification; it **does** require that foundational bottlenecks and correctness gaps identified by the exit tests are resolved or subject to an explicit architectural decision, not silently postponed as later optimisation.
 
 ---
 
@@ -340,7 +346,7 @@ Productionise the World Editor and associated tooling:
 
 ### Performance budgets
 
-Define and enforce budgets for:
+Expand, tune and enforce the Phase 1 budgets against authored-zone density for:
 
 - loaded world tiles;
 - visible actors;
@@ -598,6 +604,8 @@ Turn the feature-complete game architecture into a robust service.
 ## Work
 
 ### Scale and performance
+
+Extend Phase 1 benchmarking and hardening to production-representative scale:
 
 - multi-client load testing;
 - actor-density testing;
