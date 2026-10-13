@@ -11,6 +11,58 @@ using UnityEngine.Profiling;
 
 namespace Game.Tests.Performance.Harness
 {
+    internal enum Test_PerformanceActivityPhase
+    {
+        Warmup,
+        Measurement,
+    }
+
+    internal enum Test_PerformanceActivityEvent
+    {
+        None,
+        Despawn,
+        Respawn,
+    }
+
+    internal sealed class Test_PerformanceActivitySnapshot
+    {
+        public Test_PerformanceActivitySnapshot(
+            int idleCount,
+            int patrollingCount,
+            int combatCount,
+            int wakeSurgeCount,
+            int spawnEventCount,
+            int despawnEventCount,
+            int totalSpawnEventCount,
+            int totalDespawnEventCount)
+        {
+            IdleCount = idleCount;
+            PatrollingCount = patrollingCount;
+            CombatCount = combatCount;
+            WakeSurgeCount = wakeSurgeCount;
+            SpawnEventCount = spawnEventCount;
+            DespawnEventCount = despawnEventCount;
+            TotalSpawnEventCount = totalSpawnEventCount;
+            TotalDespawnEventCount = totalDespawnEventCount;
+        }
+
+        public int IdleCount { get; }
+
+        public int PatrollingCount { get; }
+
+        public int CombatCount { get; }
+
+        public int WakeSurgeCount { get; }
+
+        public int SpawnEventCount { get; }
+
+        public int DespawnEventCount { get; }
+
+        public int TotalSpawnEventCount { get; }
+
+        public int TotalDespawnEventCount { get; }
+    }
+
     /// <summary>Records bounded samples produced by the test-only workload controller.</summary>
     internal static class Test_PerformanceHarnessMetrics
     {
@@ -75,12 +127,20 @@ namespace Game.Tests.Performance.Harness
     /// </summary>
     internal sealed class Test_PerformanceActivityController
     {
+        private const int CHURN_COUNT = 5;
+        private const float CHURN_DESPAWN_FRACTION = 0.25f;
+        private const float CHURN_RESPAWN_FRACTION = 0.4f;
+
         private readonly Test_ActorFixtureRuntime _fixture;
         private readonly bool _activityEnabled;
         private readonly HashSet<Entity> _wakeSurgeEntities = new();
         private int _lastRampTarget;
+        private int _idleCount;
+        private bool _measurementStarted;
         private bool _churnStarted;
         private bool _churnRespawned;
+        private int _measurementSpawnEventCount;
+        private int _measurementDespawnEventCount;
 
         public Test_PerformanceActivityController(Test_ActorFixtureRuntime fixture, bool activityEnabled)
         {
@@ -100,7 +160,7 @@ namespace Game.Tests.Performance.Harness
 
         public int WakeSurgeCount => _wakeSurgeEntities.Count;
 
-        public int IdleCount => math.max(0, _fixture.DataOnlyEntityCount - PatrollingCount - CombatCount);
+        public int IdleCount => _idleCount;
 
         public void AdvanceRamp(float elapsedSeconds, float durationSeconds)
         {
@@ -116,25 +176,59 @@ namespace Game.Tests.Performance.Harness
             if (count > 0)
             {
                 _fixture.SpawnDataOnly(count);
-                SpawnEventCount += count;
+                RecordSpawnEvent(count);
             }
 
             _lastRampTarget = target;
         }
 
-        public void AdvanceActivity(float elapsedSeconds, float measurementDurationSeconds)
+        public void BeginMeasurement()
         {
+            _measurementStarted = true;
+            _measurementSpawnEventCount = 0;
+            _measurementDespawnEventCount = 0;
+            _churnStarted = false;
+            _churnRespawned = false;
+            _wakeSurgeEntities.Clear();
+            RecountActivity();
+        }
+
+        public Test_PerformanceActivitySnapshot CaptureSnapshot()
+        {
+            RecountActivity();
+            return new Test_PerformanceActivitySnapshot(
+                IdleCount,
+                PatrollingCount,
+                CombatCount,
+                WakeSurgeCount,
+                _measurementSpawnEventCount,
+                _measurementDespawnEventCount,
+                SpawnEventCount,
+                DespawnEventCount);
+        }
+
+        public void AdvanceActivity(float elapsedSeconds, float phaseDurationSeconds, Test_PerformanceActivityPhase phase)
+        {
+            if (elapsedSeconds < 0f)
+                throw new ArgumentOutOfRangeException(nameof(elapsedSeconds));
+            if (phaseDurationSeconds <= 0f)
+                throw new ArgumentOutOfRangeException(nameof(phaseDurationSeconds));
+
             if (!_activityEnabled)
             {
                 PatrollingCount = 0;
                 CombatCount = 0;
+                RecountActivity();
                 return;
             }
 
             UpdatePatrolPositions(elapsedSeconds);
-            ActivateWakeSurge(elapsedSeconds, measurementDurationSeconds);
             UpdateCombatCasts(elapsedSeconds);
-            ApplySpawnDespawnChurn(elapsedSeconds, measurementDurationSeconds);
+            if (phase == Test_PerformanceActivityPhase.Measurement)
+            {
+                ActivateWakeSurge(elapsedSeconds, phaseDurationSeconds);
+                ApplySpawnDespawnChurn(elapsedSeconds, phaseDurationSeconds, phase);
+            }
             RecountActivity();
         }
 
@@ -232,22 +326,65 @@ namespace Game.Tests.Performance.Harness
             }
         }
 
-        private void ApplySpawnDespawnChurn(float elapsedSeconds, float measurementDurationSeconds)
+        internal static Test_PerformanceActivityEvent ResolveChurnEvent(
+            Test_PerformanceActivityPhase phase,
+            float elapsedSeconds,
+            float measurementDurationSeconds,
+            bool churnStarted,
+            bool churnRespawned)
         {
-            if (!_churnStarted && elapsedSeconds >= measurementDurationSeconds * 0.25f)
+            if (phase != Test_PerformanceActivityPhase.Measurement)
+                return Test_PerformanceActivityEvent.None;
+            if (elapsedSeconds < 0f)
+                throw new ArgumentOutOfRangeException(nameof(elapsedSeconds));
+            if (measurementDurationSeconds <= 0f)
+                throw new ArgumentOutOfRangeException(nameof(measurementDurationSeconds));
+
+            if (!churnStarted && elapsedSeconds >= measurementDurationSeconds * CHURN_DESPAWN_FRACTION)
+                return Test_PerformanceActivityEvent.Despawn;
+            if (churnStarted && !churnRespawned && elapsedSeconds >= measurementDurationSeconds * CHURN_RESPAWN_FRACTION)
+                return Test_PerformanceActivityEvent.Respawn;
+            return Test_PerformanceActivityEvent.None;
+        }
+
+        private void ApplySpawnDespawnChurn(float elapsedSeconds, float measurementDurationSeconds, Test_PerformanceActivityPhase phase)
+        {
+            var activityEvent = ResolveChurnEvent(phase, elapsedSeconds, measurementDurationSeconds, _churnStarted, _churnRespawned);
+            if (activityEvent == Test_PerformanceActivityEvent.Despawn)
             {
-                _fixture.DespawnDataOnly(5);
-                DespawnEventCount += 5;
+                var entityCountBeforeDespawn = _fixture.DataOnlyEntityCount;
+                _fixture.DespawnDataOnly(CHURN_COUNT);
+                if (_fixture.DataOnlyEntityCount != entityCountBeforeDespawn - CHURN_COUNT)
+                {
+                    throw new InvalidOperationException(
+                        $"Activity churn despawn changed the fixture population from {entityCountBeforeDespawn} to {_fixture.DataOnlyEntityCount}; expected {entityCountBeforeDespawn - CHURN_COUNT}.");
+                }
+                DespawnEventCount += CHURN_COUNT;
+                if (_measurementStarted)
+                    _measurementDespawnEventCount += CHURN_COUNT;
                 _churnStarted = true;
                 return;
             }
 
-            if (_churnStarted && !_churnRespawned && elapsedSeconds >= measurementDurationSeconds * 0.4f)
+            if (activityEvent == Test_PerformanceActivityEvent.Respawn)
             {
-                _fixture.SpawnDataOnly(5);
-                SpawnEventCount += 5;
+                var entityCountBeforeRespawn = _fixture.DataOnlyEntityCount;
+                _fixture.SpawnDataOnly(CHURN_COUNT);
+                if (_fixture.DataOnlyEntityCount != entityCountBeforeRespawn + CHURN_COUNT)
+                {
+                    throw new InvalidOperationException(
+                        $"Activity churn respawn changed the fixture population from {entityCountBeforeRespawn} to {_fixture.DataOnlyEntityCount}; expected {entityCountBeforeRespawn + CHURN_COUNT}.");
+                }
+                RecordSpawnEvent(CHURN_COUNT);
                 _churnRespawned = true;
             }
+        }
+
+        private void RecordSpawnEvent(int count)
+        {
+            SpawnEventCount += count;
+            if (_measurementStarted)
+                _measurementSpawnEventCount += count;
         }
 
         private void RecountActivity()
@@ -265,6 +402,7 @@ namespace Game.Tests.Performance.Harness
                 if (_activityEnabled && (_fixture.DataOnlyPlacements[index].group_id == "npc-engaged" || _wakeSurgeEntities.Contains(entity)))
                     CombatCount++;
             }
+            _idleCount = math.max(0, _fixture.DataOnlyEntityCount - PatrollingCount - CombatCount);
         }
     }
 

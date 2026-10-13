@@ -4,6 +4,12 @@ namespace Game.Shared.Performance
 {
     internal sealed class PerformanceSampleBuffer
     {
+        // Keep later recovery/context samples from consuming the measurement retention budget.
+        private const int NON_MEASUREMENT_SAMPLE_RESERVE = 128;
+        // Export a bounded audit trace; summary statistics use the larger phase-aware retention set.
+        private const int RAW_TRACE_SAMPLE_BUDGET = 256;
+        private const int RAW_TRACE_CONTEXT_BUDGET = 64;
+
         private readonly double[] _values;
         private readonly long[] _monotonicElapsedNanoseconds;
         private readonly long[] _frameOrTick;
@@ -12,14 +18,29 @@ namespace Game.Shared.Performance
         private readonly bool[] _hasFrameOrTick;
         private readonly bool[] _hasInterval;
         private readonly double[] _sortedValues;
-        private int _count;
-        private int _nextIndex;
+        private readonly int _measurementCapacity;
+        private readonly int _contextCapacity;
+        private int _measurementCount;
+        private int _measurementNextIndex;
+        private int _contextCount;
+        private int _contextNextIndex;
+        private long _attemptedCount;
+        private long _measurementAttemptedCount;
+        private long _measurementDroppedCount;
+        private ulong _measurementRandomState = 0x9E3779B97F4A7C15UL;
+        private bool _hasMeasurementExtrema;
+        private double _measurementMinimum;
+        private double _measurementMaximum;
 
         public PerformanceSampleBuffer(int capacity)
         {
             if (capacity < 1 || capacity > PerformanceTelemetry.MAX_SAMPLES_PER_METRIC)
                 throw new ArgumentOutOfRangeException(nameof(capacity), "Metric sample capacity is outside the supported bound.");
 
+            _measurementCapacity = capacity == 1
+                ? 1
+                : capacity - Math.Min(NON_MEASUREMENT_SAMPLE_RESERVE, capacity - 1);
+            _contextCapacity = capacity - _measurementCapacity;
             _values = new double[capacity];
             _monotonicElapsedNanoseconds = new long[capacity];
             _frameOrTick = new long[capacity];
@@ -27,12 +48,22 @@ namespace Game.Shared.Performance
             _phases = new PerformanceMeasurementPhase[capacity];
             _hasFrameOrTick = new bool[capacity];
             _hasInterval = new bool[capacity];
-            _sortedValues = new double[capacity];
+            _sortedValues = new double[_measurementCapacity];
         }
 
-        public int Count => _count;
+        public int Count => _measurementCount + _contextCount;
+
+        public long AttemptedCount => _attemptedCount;
 
         public long DroppedCount { get; private set; }
+
+        public long MeasurementAttemptedCount => _measurementAttemptedCount;
+
+        public int MeasurementRetainedCount => _measurementCount;
+
+        public long MeasurementDroppedCount => _measurementDroppedCount;
+
+        public int RawTraceSampleCount => GetRawTraceSampleCount();
 
         public bool Add(
             double value,
@@ -41,55 +72,57 @@ namespace Game.Shared.Performance
             double intervalSeconds,
             PerformanceMeasurementPhase phase)
         {
+            _attemptedCount++;
+            if (phase == PerformanceMeasurementPhase.Measurement)
+                _measurementAttemptedCount++;
+
             if (double.IsNaN(value) || double.IsInfinity(value) || monotonicElapsedNanoseconds < 0)
+            {
+                DropSample(phase);
                 return false;
+            }
             if (intervalSeconds != -1
                 && (intervalSeconds < 0 || double.IsNaN(intervalSeconds) || double.IsInfinity(intervalSeconds)))
+            {
+                DropSample(phase);
                 return false;
+            }
 
-            int index = _nextIndex;
-            _values[index] = value;
-            _monotonicElapsedNanoseconds[index] = monotonicElapsedNanoseconds;
-            _frameOrTick[index] = frameOrTick;
-            _intervalSeconds[index] = intervalSeconds;
-            _phases[index] = phase;
-            _hasFrameOrTick[index] = frameOrTick >= 0;
-            _hasInterval[index] = intervalSeconds >= 0;
+            if (phase == PerformanceMeasurementPhase.Measurement)
+                return AddMeasurementSample(value, monotonicElapsedNanoseconds, frameOrTick, intervalSeconds, phase);
 
-            _nextIndex = (_nextIndex + 1) % _values.Length;
-            if (_count < _values.Length)
-                _count++;
-            else
-                DroppedCount++;
-
+            AddContextSample(value, monotonicElapsedNanoseconds, frameOrTick, intervalSeconds, phase);
             return true;
         }
 
         public PerformanceMetricSnapshot CreateSnapshot()
         {
-            if (_count == 0)
-                return PerformanceMetricSnapshot.Empty(DroppedCount);
+            if (_measurementCount == 0)
+                return PerformanceMetricSnapshot.Empty(
+                    _measurementAttemptedCount,
+                    _measurementDroppedCount,
+                    GetRawTraceSampleCount());
 
-            for (int i = 0; i < _count; i++)
-                _sortedValues[i] = _values[GetIndex(i)];
+            for (int i = 0; i < _measurementCount; i++)
+                _sortedValues[i] = _values[GetMeasurementIndex(i)];
 
-            Array.Sort(_sortedValues, 0, _count);
+            Array.Sort(_sortedValues, 0, _measurementCount);
 
             double sum = 0;
-            double minimum = _sortedValues[0];
-            double maximum = _sortedValues[_count - 1];
-            for (int i = 0; i < _count; i++)
+            for (int i = 0; i < _measurementCount; i++)
                 sum += _sortedValues[i];
 
             return new PerformanceMetricSnapshot(
-                _count,
-                minimum,
-                maximum,
-                sum / _count,
+                _measurementCount,
+                _hasMeasurementExtrema ? _measurementMinimum : _sortedValues[0],
+                _hasMeasurementExtrema ? _measurementMaximum : _sortedValues[_measurementCount - 1],
+                sum / _measurementCount,
                 Percentile(50),
                 Percentile(95),
-                _count >= 100 ? Percentile(99) : null,
-                DroppedCount);
+                _measurementCount >= 100 ? Percentile(99) : null,
+                _measurementAttemptedCount,
+                _measurementDroppedCount,
+                GetRawTraceSampleCount());
         }
 
         public void WriteRawSamples(
@@ -98,9 +131,153 @@ namespace Game.Shared.Performance
             PerformanceSessionContext context,
             DateTime startedUtc)
         {
-            for (int i = 0; i < _count; i++)
+            int measurementBudget = Math.Min(_measurementCount, RAW_TRACE_SAMPLE_BUDGET);
+            int remainingBudget = RAW_TRACE_SAMPLE_BUDGET - measurementBudget;
+            int contextBudget = _measurementCount == 0
+                ? Math.Min(_contextCount, RAW_TRACE_SAMPLE_BUDGET)
+                : Math.Min(_contextCount, Math.Min(RAW_TRACE_CONTEXT_BUDGET, remainingBudget));
+
+            WriteRawSegment(
+                writer,
+                definition,
+                context,
+                startedUtc,
+                false,
+                contextBudget);
+            WriteRawSegment(
+                writer,
+                definition,
+                context,
+                startedUtc,
+                true,
+                measurementBudget);
+        }
+
+        private bool AddMeasurementSample(
+            double value,
+            long monotonicElapsedNanoseconds,
+            long frameOrTick,
+            double intervalSeconds,
+            PerformanceMeasurementPhase phase)
+        {
+            int index;
+            if (_measurementCount < _measurementCapacity)
             {
-                int index = GetIndex(i);
+                index = _measurementNextIndex;
+                _measurementNextIndex = (_measurementNextIndex + 1) % _measurementCapacity;
+                _measurementCount++;
+            }
+            else
+            {
+                // Reservoir replacement keeps the retained measurement population unbiased instead of
+                // retaining only an arbitrary recent window when the measurement budget is exceeded.
+                _measurementDroppedCount++;
+                DroppedCount++;
+                int reservoirIndex = NextReservoirIndex(_measurementAttemptedCount);
+                if (reservoirIndex >= _measurementCapacity)
+                    return true;
+
+                index = reservoirIndex;
+            }
+
+            StoreSample(index, value, monotonicElapsedNanoseconds, frameOrTick, intervalSeconds, phase);
+            if (!_hasMeasurementExtrema)
+            {
+                _measurementMinimum = value;
+                _measurementMaximum = value;
+                _hasMeasurementExtrema = true;
+            }
+            else
+            {
+                _measurementMinimum = Math.Min(_measurementMinimum, value);
+                _measurementMaximum = Math.Max(_measurementMaximum, value);
+            }
+
+            return true;
+        }
+
+        private void AddContextSample(
+            double value,
+            long monotonicElapsedNanoseconds,
+            long frameOrTick,
+            double intervalSeconds,
+            PerformanceMeasurementPhase phase)
+        {
+            if (_contextCapacity == 0)
+            {
+                DroppedCount++;
+                return;
+            }
+
+            if (_contextCount == _contextCapacity)
+                DroppedCount++;
+            else
+                _contextCount++;
+
+            int index = _measurementCapacity + _contextNextIndex;
+            _contextNextIndex = (_contextNextIndex + 1) % _contextCapacity;
+            StoreSample(index, value, monotonicElapsedNanoseconds, frameOrTick, intervalSeconds, phase);
+        }
+
+        private void DropSample(PerformanceMeasurementPhase phase)
+        {
+            DroppedCount++;
+            if (phase == PerformanceMeasurementPhase.Measurement)
+                _measurementDroppedCount++;
+        }
+
+        private void StoreSample(
+            int index,
+            double value,
+            long monotonicElapsedNanoseconds,
+            long frameOrTick,
+            double intervalSeconds,
+            PerformanceMeasurementPhase phase)
+        {
+            _values[index] = value;
+            _monotonicElapsedNanoseconds[index] = monotonicElapsedNanoseconds;
+            _frameOrTick[index] = frameOrTick;
+            _intervalSeconds[index] = intervalSeconds;
+            _phases[index] = phase;
+            _hasFrameOrTick[index] = frameOrTick >= 0;
+            _hasInterval[index] = intervalSeconds >= 0;
+        }
+
+        private int GetMeasurementIndex(int orderedIndex)
+        {
+            int firstIndex = _measurementCount == _measurementCapacity ? _measurementNextIndex : 0;
+            return (firstIndex + orderedIndex) % _measurementCapacity;
+        }
+
+        private int GetContextIndex(int orderedIndex)
+        {
+            int firstIndex = _contextCount == _contextCapacity ? _contextNextIndex : 0;
+            return _measurementCapacity + (firstIndex + orderedIndex) % _contextCapacity;
+        }
+
+        private int GetRawTraceSampleCount()
+        {
+            int measurementCount = Math.Min(_measurementCount, RAW_TRACE_SAMPLE_BUDGET);
+            if (_measurementCount == 0)
+                return Math.Min(_contextCount, RAW_TRACE_SAMPLE_BUDGET);
+
+            int remainingBudget = RAW_TRACE_SAMPLE_BUDGET - measurementCount;
+            return measurementCount + Math.Min(_contextCount, Math.Min(RAW_TRACE_CONTEXT_BUDGET, remainingBudget));
+        }
+
+        private void WriteRawSegment(
+            System.IO.StreamWriter writer,
+            PerformanceMetricDefinition definition,
+            PerformanceSessionContext context,
+            DateTime startedUtc,
+            bool measurement,
+            int budget)
+        {
+            int count = measurement ? _measurementCount : _contextCount;
+            for (int outputIndex = 0; outputIndex < budget; outputIndex++)
+            {
+                int orderedIndex = SelectOrderedIndex(outputIndex, count, budget);
+                int index = measurement ? GetMeasurementIndex(orderedIndex) : GetContextIndex(orderedIndex);
                 writer.Write('{');
                 PerformanceJson.WriteProperty(writer, "schema_version", "benchmark-sample/v1", true);
                 PerformanceJson.WriteProperty(writer, "run_id", context.RunId, true);
@@ -126,15 +303,25 @@ namespace Game.Shared.Performance
             }
         }
 
-        private int GetIndex(int orderedIndex)
+        private int SelectOrderedIndex(int outputIndex, int count, int budget)
         {
-            int firstIndex = _count == _values.Length ? _nextIndex : 0;
-            return (firstIndex + orderedIndex) % _values.Length;
+            if (count <= budget || budget <= 1)
+                return outputIndex;
+
+            return (int)((long)outputIndex * (count - 1) / (budget - 1));
+        }
+
+        private int NextReservoirIndex(long upperBound)
+        {
+            _measurementRandomState ^= _measurementRandomState << 7;
+            _measurementRandomState ^= _measurementRandomState >> 9;
+            _measurementRandomState ^= _measurementRandomState << 8;
+            return (int)(_measurementRandomState % (ulong)upperBound);
         }
 
         private double Percentile(int percentile)
         {
-            int rank = (int)Math.Ceiling(percentile / 100d * _count);
+            int rank = (int)Math.Ceiling(percentile / 100d * _measurementCount);
             return _sortedValues[Math.Max(0, rank - 1)];
         }
     }
@@ -149,7 +336,9 @@ namespace Game.Shared.Performance
             double? p50,
             double? p95,
             double? p99,
-            long droppedSampleCount)
+            long attemptedSampleCount,
+            long droppedSampleCount,
+            int rawTraceSampleCount)
         {
             SampleCount = sampleCount;
             Minimum = minimum;
@@ -158,7 +347,9 @@ namespace Game.Shared.Performance
             P50 = p50;
             P95 = p95;
             P99 = p99;
+            AttemptedSampleCount = attemptedSampleCount;
             DroppedSampleCount = droppedSampleCount;
+            RawTraceSampleCount = rawTraceSampleCount;
         }
 
         public int SampleCount { get; }
@@ -175,11 +366,34 @@ namespace Game.Shared.Performance
 
         public double? P99 { get; }
 
+        public long AttemptedSampleCount { get; }
+
         public long DroppedSampleCount { get; }
 
-        public static PerformanceMetricSnapshot Empty(long droppedSampleCount)
+        public int RawTraceSampleCount { get; }
+
+        public double? CoverageRatio => AttemptedSampleCount > 0
+            ? SampleCount / (double)AttemptedSampleCount
+            : (double?)null;
+
+        public bool IsReservoirSampled => DroppedSampleCount > 0;
+
+        public static PerformanceMetricSnapshot Empty(
+            long attemptedSampleCount,
+            long droppedSampleCount,
+            int rawTraceSampleCount)
         {
-            return new PerformanceMetricSnapshot(0, null, null, null, null, null, null, droppedSampleCount);
+            return new PerformanceMetricSnapshot(
+                0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                attemptedSampleCount,
+                droppedSampleCount,
+                rawTraceSampleCount);
         }
     }
 }

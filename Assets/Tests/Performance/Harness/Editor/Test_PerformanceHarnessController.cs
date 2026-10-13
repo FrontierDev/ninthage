@@ -47,6 +47,15 @@ namespace Game.Tests.Performance.Harness
         public bool postCleanupObserved;
         public int postCleanupFixtureEntityCount;
         public int postCleanupActorEntityCount;
+        public bool activitySnapshotCaptured;
+        public int activityIdleCount;
+        public int activityPatrollingCount;
+        public int activityCombatCount;
+        public int activityWakeSurgeCount;
+        public int activitySpawnEventCount;
+        public int activityDespawnEventCount;
+        public int activityTotalSpawnEventCount;
+        public int activityTotalDespawnEventCount;
 
         public SceneSetup[] RestoreSceneSetup()
         {
@@ -742,7 +751,10 @@ namespace Game.Tests.Performance.Harness
             {
                 ThrowIfStopRequested();
                 var elapsed = Time.realtimeSinceStartup - start;
-                _run.ActivityController.AdvanceActivity(elapsed, Test_PerformanceRun.MEASUREMENT_SECONDS);
+                _run.ActivityController.AdvanceActivity(
+                    elapsed,
+                    Test_PerformanceRun.WARMUP_SECONDS,
+                    Test_PerformanceActivityPhase.Warmup);
                 _run.ObserveEntityCount(_fixture.DataOnlyEntityCount);
                 if (elapsed >= nextSample)
                 {
@@ -762,7 +774,10 @@ namespace Game.Tests.Performance.Harness
             {
                 ThrowIfStopRequested();
                 var elapsed = Time.realtimeSinceStartup - start;
-                _run.ActivityController.AdvanceActivity(elapsed, Test_PerformanceRun.MEASUREMENT_SECONDS);
+                _run.ActivityController.AdvanceActivity(
+                    elapsed,
+                    Test_PerformanceRun.MEASUREMENT_SECONDS,
+                    Test_PerformanceActivityPhase.Measurement);
                 _run.ObserveEntityCount(_fixture.DataOnlyEntityCount);
                 if (elapsed >= nextSample)
                 {
@@ -772,6 +787,8 @@ namespace Game.Tests.Performance.Harness
                 _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_TOTAL_ALLOCATED_BYTES);
                 yield return null;
             }
+
+            _run.CaptureActivitySnapshot("measurement_end_pre_cleanup");
         }
 
         private IEnumerator RunRecovery()
@@ -797,6 +814,7 @@ namespace Game.Tests.Performance.Harness
             if (_fixture == null)
                 yield break;
 
+            _run.CaptureActivitySnapshot("measurement_interrupted_pre_cleanup");
             _fixture.Cleanup();
             _run.CaptureCleanupReport(_fixture.LastCleanupReport);
             yield return _fixture.WaitForCleanup(Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS);
@@ -836,6 +854,7 @@ namespace Game.Tests.Performance.Harness
             {
                 if (_fixture != null && !_cleanupCompleted)
                 {
+                    _run.CaptureActivitySnapshot("measurement_interrupted_pre_cleanup");
                     _fixture.Cleanup();
                     _run.CaptureCleanupReport(_fixture.LastCleanupReport);
                     _fixture.AssertCleanupComplete();

@@ -125,6 +125,8 @@ namespace Game.Shared.Performance
     {
         internal const int MAX_SAMPLES_PER_METRIC = 10000;
         internal const int MAX_REGISTERED_METRICS = 256;
+        // A result with more than this measurement loss cannot advertise representative statistics.
+        internal const double MAX_MEASUREMENT_DROP_RATIO = 0.05d;
         private static PerformanceSession _session;
 
         /// <summary>Raised after a telemetry session becomes active.</summary>
@@ -371,8 +373,6 @@ namespace Game.Shared.Performance
                 || registration.Buffer == null)
                 return false;
 
-            if (registration.FirstSamplePhase == null)
-                registration.FirstSamplePhase = _currentPhase;
             return registration.Buffer.Add(
                 value,
                 monotonicElapsedNanoseconds,
@@ -391,6 +391,18 @@ namespace Game.Shared.Performance
                 return false;
 
             ValidateStop(reasonCode, message);
+            if (status == PerformanceRunStatus.CompleteMeasured
+                && TryGetMeasurementCoverageFailure(out string coverageFailureMetricID, out double coverageRatio))
+            {
+                status = PerformanceRunStatus.FailInstrumentation;
+                reasonCode = "MEASUREMENT_SAMPLE_COVERAGE";
+                message = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Metric '{0}' retained only {1:P2} of its measurement samples; the configured minimum coverage is {2:P0}.",
+                    coverageFailureMetricID,
+                    coverageRatio,
+                    1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO);
+            }
             Directory.CreateDirectory(Context.ResultsDirectory);
 
             string rawTracePath = WriteRawTrace();
@@ -521,7 +533,7 @@ namespace Game.Shared.Performance
         private static void AppendMetric(StringBuilder builder, PerformanceMetricRegistration registration)
         {
             PerformanceMetricSnapshot snapshot = registration.Buffer == null
-                ? PerformanceMetricSnapshot.Empty(0)
+                ? PerformanceMetricSnapshot.Empty(0, 0, 0)
                 : registration.Buffer.CreateSnapshot();
             PerformanceMetricObservation observation = registration.Observation;
             string reason = registration.Reason;
@@ -530,11 +542,29 @@ namespace Game.Shared.Performance
                 && snapshot.SampleCount == 0)
             {
                 observation = PerformanceMetricObservation.Unavailable;
-                reason = "no_samples_captured";
+                reason = "no_measurement_samples";
+            }
+            else if (snapshot.CoverageRatio.HasValue
+                && snapshot.CoverageRatio.Value < 1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO)
+            {
+                observation = PerformanceMetricObservation.Unavailable;
+                reason = "measurement_sample_coverage_below_policy";
             }
             else if (snapshot.SampleCount > 0 && snapshot.P99 == null && string.IsNullOrEmpty(reason))
             {
                 reason = "insufficient_samples";
+            }
+
+            int retainedSampleCount = snapshot.SampleCount;
+            double? measurementCoverage = snapshot.CoverageRatio;
+            bool publishesStatistics = observation == PerformanceMetricObservation.Measured
+                || observation == PerformanceMetricObservation.Estimated;
+            if (!publishesStatistics)
+            {
+                snapshot = PerformanceMetricSnapshot.Empty(
+                    snapshot.AttemptedSampleCount,
+                    snapshot.DroppedSampleCount,
+                    snapshot.RawTraceSampleCount);
             }
 
             builder.Append('{');
@@ -542,19 +572,30 @@ namespace Game.Shared.Performance
             PerformanceJson.AppendStringProperty(builder, "source", PerformanceMetricText.ToText(registration.Definition.Side), true);
             PerformanceJson.AppendStringProperty(builder, "subsystem", registration.Definition.Subsystem, true);
             PerformanceJson.AppendStringProperty(builder, "scope", registration.Definition.Scope, true);
-            PerformanceJson.AppendStringProperty(builder, "phase", PerformanceMetricText.ToText(registration.FirstSamplePhase ?? PerformanceMeasurementPhase.Measurement), true);
+            PerformanceJson.AppendStringProperty(builder, "phase", PerformanceMetricText.ToText(PerformanceMeasurementPhase.Measurement), true);
             PerformanceJson.AppendStringProperty(builder, "unit", PerformanceMetricText.ToText(registration.Definition.Unit), true);
             PerformanceJson.AppendStringProperty(builder, "observation", PerformanceMetricText.ToText(observation), true);
             PerformanceJson.AppendNumberProperty(builder, "sample_count", snapshot.SampleCount, true);
+            PerformanceJson.AppendNumberProperty(builder, "attempted_sample_count", snapshot.AttemptedSampleCount, true);
+            PerformanceJson.AppendNumberProperty(builder, "retained_sample_count", retainedSampleCount, true);
             PerformanceJson.AppendNullableProperty(builder, "min", snapshot.Minimum, true);
             PerformanceJson.AppendNullableProperty(builder, "max", snapshot.Maximum, true);
             PerformanceJson.AppendNullableProperty(builder, "mean", snapshot.Mean, true);
             PerformanceJson.AppendNullableProperty(builder, "p50", snapshot.P50, true);
             PerformanceJson.AppendNullableProperty(builder, "p95", snapshot.P95, true);
             PerformanceJson.AppendNullableProperty(builder, "p99", snapshot.P99, true);
-            PerformanceJson.AppendNullableProperty(builder, "raw_trace", snapshot.SampleCount > 0 ? "samples.ndjson" : null, true);
+            PerformanceJson.AppendNullableProperty(builder, "raw_trace", registration.Buffer != null && registration.Buffer.Count > 0 ? "samples.ndjson" : null, true);
             PerformanceJson.AppendNullableProperty(builder, "reason", reason, true);
-            PerformanceJson.AppendNumberProperty(builder, "dropped_sample_count", snapshot.DroppedSampleCount, false);
+            PerformanceJson.AppendNumberProperty(builder, "dropped_sample_count", snapshot.DroppedSampleCount, true);
+            PerformanceJson.AppendNumberProperty(builder, "raw_trace_sample_count", snapshot.RawTraceSampleCount, true);
+            PerformanceJson.AppendNullableProperty(builder, "measurement_coverage", measurementCoverage, true);
+            PerformanceJson.AppendStringProperty(
+                builder,
+                "retention_policy",
+                registration.Buffer == null
+                    ? "not_collected"
+                    : snapshot.IsReservoirSampled ? "phase_reserved_reservoir" : "phase_reserved_exact",
+                false);
             builder.Append('}');
         }
 
@@ -565,16 +606,62 @@ namespace Game.Shared.Performance
             bool first = true;
             foreach (PerformanceMetricRegistration registration in _registrations.Values)
             {
-                if (registration.Buffer == null || registration.Buffer.DroppedCount == 0)
+                if (registration.Buffer == null
+                    || (registration.Buffer.DroppedCount == 0
+                        && registration.Buffer.RawTraceSampleCount == registration.Buffer.Count))
                     continue;
                 if (!first)
                     builder.Append(',');
                 first = false;
-                PerformanceJson.AppendQuoted(builder, registration.Definition.MetricId + ": bounded sample buffer dropped samples.");
+                string warning = registration.Definition.MetricId + ": ";
+                if (registration.Buffer.DroppedCount > 0)
+                {
+                    warning += "bounded sample retention dropped samples";
+                    if (registration.Buffer.MeasurementAttemptedCount > 0)
+                    {
+                        warning += string.Format(
+                            CultureInfo.InvariantCulture,
+                            "; measurement retained {0} of {1} attempts ({2:P2} coverage)",
+                            registration.Buffer.MeasurementRetainedCount,
+                            registration.Buffer.MeasurementAttemptedCount,
+                            registration.Buffer.MeasurementRetainedCount / (double)registration.Buffer.MeasurementAttemptedCount);
+                    }
+                }
+                if (registration.Buffer.RawTraceSampleCount < registration.Buffer.Count)
+                {
+                    if (registration.Buffer.DroppedCount > 0)
+                        warning += "; ";
+                    warning += "raw trace was deliberately phase-budgeted";
+                }
+                warning += ".";
+                PerformanceJson.AppendQuoted(builder, warning);
             }
 
             builder.Append(']');
             return builder.ToString();
+        }
+
+        private bool TryGetMeasurementCoverageFailure(out string metricID, out double coverageRatio)
+        {
+            foreach (PerformanceMetricRegistration registration in _registrations.Values)
+            {
+                if (registration.Buffer == null
+                    || (registration.Observation != PerformanceMetricObservation.Measured
+                        && registration.Observation != PerformanceMetricObservation.Estimated))
+                    continue;
+
+                coverageRatio = registration.Buffer.MeasurementRetainedCount
+                    / (double)registration.Buffer.MeasurementAttemptedCount;
+                if (coverageRatio < 1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO)
+                {
+                    metricID = registration.Definition.MetricId;
+                    return true;
+                }
+            }
+
+            metricID = null;
+            coverageRatio = 1d;
+            return false;
         }
 
         private static void ValidateStop(string reasonCode, string message)
@@ -634,8 +721,6 @@ namespace Game.Shared.Performance
         public string Reason { get; }
 
         public PerformanceSampleBuffer Buffer { get; }
-
-        public PerformanceMeasurementPhase? FirstSamplePhase { get; set; }
 
         public bool Matches(
             PerformanceMetricDefinition definition,

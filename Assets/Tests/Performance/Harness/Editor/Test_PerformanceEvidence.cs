@@ -157,6 +157,8 @@ namespace Game.Tests.Performance.Harness
         private bool _telemetryStarted;
         private bool _measurementSamplesAvailable;
         private PerformanceMeasurementPhase _currentPhase = PerformanceMeasurementPhase.Preflight;
+        private Test_PerformanceActivitySnapshot _activitySnapshot;
+        private string _activitySnapshotPhase;
 
         private Test_PerformanceRun(
             Test_PerformanceHarnessOptions options,
@@ -241,6 +243,8 @@ namespace Game.Tests.Performance.Harness
         public bool PostCleanupObserved { get; private set; }
 
         public bool MeasurementSamplesAvailable => _measurementSamplesAvailable;
+
+        public bool ActivitySnapshotCaptured => _activitySnapshot != null;
 
         public string RuntimeDiagnostic { get; private set; }
 
@@ -470,6 +474,15 @@ namespace Game.Tests.Performance.Harness
                 postCleanupObserved = PostCleanupObserved,
                 postCleanupFixtureEntityCount = PostCleanupFixtureEntityCount,
                 postCleanupActorEntityCount = PostCleanupActorEntityCount,
+                activitySnapshotCaptured = ActivitySnapshotCaptured,
+                activityIdleCount = _activitySnapshot == null ? 0 : _activitySnapshot.IdleCount,
+                activityPatrollingCount = _activitySnapshot == null ? 0 : _activitySnapshot.PatrollingCount,
+                activityCombatCount = _activitySnapshot == null ? 0 : _activitySnapshot.CombatCount,
+                activityWakeSurgeCount = _activitySnapshot == null ? 0 : _activitySnapshot.WakeSurgeCount,
+                activitySpawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.SpawnEventCount,
+                activityDespawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.DespawnEventCount,
+                activityTotalSpawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.TotalSpawnEventCount,
+                activityTotalDespawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.TotalDespawnEventCount,
             };
         }
 
@@ -497,6 +510,19 @@ namespace Game.Tests.Performance.Harness
             PostCleanupObserved = state.postCleanupObserved;
             PostCleanupFixtureEntityCount = state.postCleanupFixtureEntityCount;
             PostCleanupActorEntityCount = state.postCleanupActorEntityCount;
+            if (state.activitySnapshotCaptured)
+            {
+                _activitySnapshot = new Test_PerformanceActivitySnapshot(
+                    state.activityIdleCount,
+                    state.activityPatrollingCount,
+                    state.activityCombatCount,
+                    state.activityWakeSurgeCount,
+                    state.activitySpawnEventCount,
+                    state.activityDespawnEventCount,
+                    state.activityTotalSpawnEventCount,
+                    state.activityTotalDespawnEventCount);
+                _activitySnapshotPhase = "restored_pre_cleanup";
+            }
             if (telemetrySessionWasActive)
                 AppendLog("Telemetry session restarted after restoring the pending Editor run.");
         }
@@ -516,15 +542,40 @@ namespace Game.Tests.Performance.Harness
 
         public void BeginPhase(PerformanceMeasurementPhase phase)
         {
+            if (phase == PerformanceMeasurementPhase.Measurement)
+            {
+                if (FixtureRuntime == null || ActivityController == null)
+                    throw new InvalidOperationException("The data-only fixture must exist before measurement begins.");
+                if (FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
+                {
+                    throw new InvalidOperationException(
+                        $"Measurement cannot begin with {FixtureRuntime.DataOnlyEntityCount} ECS entities; expected {RequestedActorCount}.");
+                }
+            }
+
             if (!PerformanceTelemetry.BeginPhase(phase))
                 throw new InvalidOperationException("Telemetry rejected phase transition to " + phase + ".");
             _currentPhase = phase;
             if (phase == PerformanceMeasurementPhase.Measurement)
             {
+                ActivityController.BeginMeasurement();
                 MeasurementStarted = true;
                 MeasurementStartEntityCount = FixtureRuntime == null ? 0 : FixtureRuntime.DataOnlyEntityCount;
                 ObserveEntityCount(MeasurementStartEntityCount);
             }
+        }
+
+        public void CaptureActivitySnapshot(string observationPhase)
+        {
+            if (_activitySnapshot != null || !MeasurementStarted || ActivityController == null)
+                return;
+            if (string.IsNullOrEmpty(observationPhase))
+                throw new ArgumentException("An activity snapshot observation phase is required.", nameof(observationPhase));
+
+            _activitySnapshot = ActivityController.CaptureSnapshot();
+            _activitySnapshotPhase = observationPhase;
+            AppendLog(
+                $"Activity snapshot captured ({observationPhase}): idle={_activitySnapshot.IdleCount}, patrolling={_activitySnapshot.PatrollingCount}, combat={_activitySnapshot.CombatCount}, wakeSurge={_activitySnapshot.WakeSurgeCount}, measurementSpawnEvents={_activitySnapshot.SpawnEventCount}, measurementDespawnEvents={_activitySnapshot.DespawnEventCount}.");
         }
 
         public void MarkPhaseComplete(PerformanceMeasurementPhase phase)
@@ -617,11 +668,12 @@ namespace Game.Tests.Performance.Harness
                     || MeasurementEndEntityCount != RequestedActorCount
                     || PeakEntityCount < RequestedActorCount
                     || !MeasurementStarted
+                    || !ActivitySnapshotCaptured
                     || !CleanupComplete))
             {
                 status = PerformanceRunStatus.FailCorrectness;
                 finalReason = "INCOMPLETE_LIFECYCLE";
-                finalMessage = "The run did not complete workload, population, measurement and cleanup invariants.";
+                finalMessage = "The run did not complete workload, population, measurement, activity evidence and cleanup invariants.";
             }
             if (status == PerformanceRunStatus.CompleteMeasured && !telemetryFinalized)
             {
@@ -745,7 +797,25 @@ namespace Game.Tests.Performance.Harness
                 : RampCompletedEntityCount;
             var postCleanupFixtureEntities = PostCleanupObserved ? PostCleanupFixtureEntityCount.ToString(CultureInfo.InvariantCulture) : "null";
             var postCleanupActorEntities = PostCleanupObserved ? PostCleanupActorEntityCount.ToString(CultureInfo.InvariantCulture) : "null";
-            return $"{{\"connected_players\":{GetRealPlayerCount()},\"authenticated_players\":0,\"in_world_players\":0,\"npc_actors\":0,\"ecs_entities\":{measuredEntityCount},\"network_identities\":0,\"gameobjects\":0,\"scene_tiles_loaded\":{(WorldFixtureLoaded ? 1 : 0)},\"renders_visible\":null,\"accepted_abilities\":0,\"population\":{{\"requested_ecs_entities\":{RequestedActorCount},\"ramp_completed_ecs_entities\":{RampCompletedEntityCount},\"measurement_start_ecs_entities\":{MeasurementStartEntityCount},\"measurement_end_ecs_entities\":{MeasurementEndEntityCount},\"peak_ecs_entities\":{PeakEntityCount},\"post_cleanup_fixture_entities\":{postCleanupFixtureEntities},\"post_cleanup_total_actor_entities\":{postCleanupActorEntities}}},\"activity\":{{\"idle\":{GetIdleCount()},\"patrolling\":{GetPatrollingCount()},\"combat\":{GetCombatCount()},\"wake_surge\":{GetWakeSurgeCount()},\"spawn_events\":{GetSpawnEventCount()},\"despawn_events\":{GetDespawnEventCount()}}}}}";
+            return $"{{\"connected_players\":{GetRealPlayerCount()},\"authenticated_players\":0,\"in_world_players\":0,\"npc_actors\":0,\"ecs_entities\":{measuredEntityCount},\"network_identities\":0,\"gameobjects\":0,\"scene_tiles_loaded\":{(WorldFixtureLoaded ? 1 : 0)},\"renders_visible\":null,\"accepted_abilities\":0,\"population\":{{\"requested_ecs_entities\":{RequestedActorCount},\"ramp_completed_ecs_entities\":{RampCompletedEntityCount},\"measurement_start_ecs_entities\":{MeasurementStartEntityCount},\"measurement_end_ecs_entities\":{MeasurementEndEntityCount},\"peak_ecs_entities\":{PeakEntityCount},\"post_cleanup_fixture_entities\":{postCleanupFixtureEntities},\"post_cleanup_total_actor_entities\":{postCleanupActorEntities}}},\"activity\":{BuildActivityJson()}}}";
+        }
+
+        internal static string BuildActivityJson(Test_PerformanceActivitySnapshot snapshot, string observationPhase)
+        {
+            if (snapshot == null)
+            {
+                var observation = Quote("unverified");
+                return $"{{\"snapshot_captured\":false,\"observation\":{observation},\"idle\":0,\"patrolling\":0,\"combat\":0,\"wake_surge\":0,\"spawn_events\":0,\"despawn_events\":0,\"spawn_events_total\":0,\"despawn_events_total\":0,\"wake_surge_is_subset_of_combat\":true}}";
+            }
+            if (string.IsNullOrEmpty(observationPhase))
+                throw new ArgumentException("An activity snapshot observation phase is required.", nameof(observationPhase));
+
+            return $"{{\"snapshot_captured\":true,\"observation\":{Quote(observationPhase)},\"idle\":{snapshot.IdleCount},\"patrolling\":{snapshot.PatrollingCount},\"combat\":{snapshot.CombatCount},\"wake_surge\":{snapshot.WakeSurgeCount},\"spawn_events\":{snapshot.SpawnEventCount},\"despawn_events\":{snapshot.DespawnEventCount},\"spawn_events_total\":{snapshot.TotalSpawnEventCount},\"despawn_events_total\":{snapshot.TotalDespawnEventCount},\"wake_surge_is_subset_of_combat\":true}}";
+        }
+
+        private string BuildActivityJson()
+        {
+            return BuildActivityJson(_activitySnapshot, _activitySnapshotPhase);
         }
 
         private static string BuildRawFileEntry(string relativePath, string path)
@@ -777,6 +847,17 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine("- Peak ECS entities observed: `" + PeakEntityCount + "`");
             builder.AppendLine("- Post-cleanup fixture entities: `" + (PostCleanupObserved ? PostCleanupFixtureEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
             builder.AppendLine("- Post-cleanup total actor entities: `" + (PostCleanupObserved ? PostCleanupActorEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
+            if (_activitySnapshot != null)
+            {
+                builder.AppendLine("- Measured activity snapshot (`" + _activitySnapshotPhase + "`, before teardown): idle=`" + _activitySnapshot.IdleCount + "`, patrolling=`" + _activitySnapshot.PatrollingCount + "`, combat=`" + _activitySnapshot.CombatCount + "`, wake surge=`" + _activitySnapshot.WakeSurgeCount + "`");
+                builder.AppendLine("- Measured activity events: spawn=`" + _activitySnapshot.SpawnEventCount + "`, despawn=`" + _activitySnapshot.DespawnEventCount + "`");
+                builder.AppendLine("- Total spawn events including ramp: `" + _activitySnapshot.TotalSpawnEventCount + "`");
+                builder.AppendLine("- Wake surge is included in combat and is not added as a disjoint population.");
+            }
+            else
+            {
+                builder.AppendLine("- Measured activity snapshot: `unverified` (measurement did not start or no pre-cleanup snapshot was captured)");
+            }
             builder.AppendLine("- Report directory: `" + ResultsDirectory + "`");
             builder.AppendLine();
             builder.AppendLine("## Result");
@@ -820,36 +901,6 @@ namespace Game.Tests.Performance.Harness
                 case ".log": return "text/plain";
                 default: return "application/octet-stream";
             }
-        }
-
-        private int GetCombatCount()
-        {
-            return ActivityController == null ? 0 : ActivityController.CombatCount;
-        }
-
-        private int GetIdleCount()
-        {
-            return ActivityController == null ? 0 : ActivityController.IdleCount;
-        }
-
-        private int GetPatrollingCount()
-        {
-            return ActivityController == null ? 0 : ActivityController.PatrollingCount;
-        }
-
-        private int GetWakeSurgeCount()
-        {
-            return ActivityController == null ? 0 : ActivityController.WakeSurgeCount;
-        }
-
-        private int GetSpawnEventCount()
-        {
-            return ActivityController == null ? 0 : ActivityController.SpawnEventCount;
-        }
-
-        private int GetDespawnEventCount()
-        {
-            return ActivityController == null ? 0 : ActivityController.DespawnEventCount;
         }
 
         private int GetRealPlayerCount()

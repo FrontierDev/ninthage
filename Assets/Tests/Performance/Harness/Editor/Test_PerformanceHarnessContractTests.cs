@@ -1,6 +1,8 @@
 using NUnit.Framework;
+using Game.Shared.Performance;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
+using System;
 using System.IO;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -31,6 +33,184 @@ namespace Game.Tests.Performance.Harness
 
             Assert.That(options.ActorVariantID, Is.EqualTo("S04-I-DATA"));
             Assert.That(options.IsServerOnlyDataMode, Is.True);
+        }
+
+        [Test]
+        public void ActivityChurnIsMeasurementRelativeAndDeterministic()
+        {
+            var duration = Test_PerformanceRun.MEASUREMENT_SECONDS;
+
+            Assert.That(
+                Test_PerformanceActivityController.ResolveChurnEvent(
+                    Test_PerformanceActivityPhase.Warmup,
+                    duration * 0.25f,
+                    duration,
+                    false,
+                    false),
+                Is.EqualTo(Test_PerformanceActivityEvent.None));
+            Assert.That(
+                Test_PerformanceActivityController.ResolveChurnEvent(
+                    Test_PerformanceActivityPhase.Measurement,
+                    duration * 0.25f,
+                    duration,
+                    false,
+                    false),
+                Is.EqualTo(Test_PerformanceActivityEvent.Despawn));
+            Assert.That(
+                Test_PerformanceActivityController.ResolveChurnEvent(
+                    Test_PerformanceActivityPhase.Measurement,
+                    duration * 0.4f,
+                    duration,
+                    true,
+                    false),
+                Is.EqualTo(Test_PerformanceActivityEvent.Respawn));
+            Assert.That(
+                Test_PerformanceActivityController.ResolveChurnEvent(
+                    Test_PerformanceActivityPhase.Measurement,
+                    duration,
+                    duration,
+                    true,
+                    true),
+                Is.EqualTo(Test_PerformanceActivityEvent.None));
+        }
+
+        [Test]
+        public void ActivityEvidenceKeepsMeasuredSnapshotSeparateFromCumulativeEvents()
+        {
+            var snapshot = new Test_PerformanceActivitySnapshot(85, 4, 11, 10, 5, 5, 105, 5);
+            var json = Test_PerformanceRun.BuildActivityJson(snapshot, "measurement_end_pre_cleanup");
+
+            Assert.That(json, Does.Contain("\"snapshot_captured\":true"));
+            Assert.That(json, Does.Contain("\"observation\":\"measurement_end_pre_cleanup\""));
+            Assert.That(json, Does.Contain("\"idle\":85"));
+            Assert.That(json, Does.Contain("\"combat\":11"));
+            Assert.That(json, Does.Contain("\"wake_surge\":10"));
+            Assert.That(json, Does.Contain("\"spawn_events\":5"));
+            Assert.That(json, Does.Contain("\"spawn_events_total\":105"));
+            Assert.That(json, Does.Contain("\"wake_surge_is_subset_of_combat\":true"));
+        }
+
+        [Test]
+        public void InterruptedActivityEvidenceRemainsUnverified()
+        {
+            var json = Test_PerformanceRun.BuildActivityJson(null, null);
+
+            Assert.That(json, Does.Contain("\"snapshot_captured\":false"));
+            Assert.That(json, Does.Contain("\"observation\":\"unverified\""));
+        }
+
+        [Test]
+        public void PerformanceSummaryUsesMeasurementSamplesOnly()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("phase-filter");
+            var summary = CaptureTelemetrySummary(
+                "performance-phase-filter",
+                resultsDirectory,
+                4096,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Ramp);
+                    PerformanceTelemetry.TryRecord(metric, 1000);
+                    PerformanceTelemetry.TryRecord(metric, 2000);
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                    for (var value = 1; value <= 100; value++)
+                        PerformanceTelemetry.TryRecord(metric, value);
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Recovery);
+                    PerformanceTelemetry.TryRecord(metric, 5000);
+                });
+            var metricJson = ExtractMetricJson(summary, "test.performance.phase-filter");
+
+            Assert.That(metricJson, Does.Contain("\"phase\":\"measurement\""));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":100"));
+            Assert.That(metricJson, Does.Contain("\"attempted_sample_count\":100"));
+            Assert.That(metricJson, Does.Contain("\"min\":1"));
+            Assert.That(metricJson, Does.Contain("\"max\":100"));
+            Assert.That(metricJson, Does.Contain("\"mean\":50.5"));
+            Assert.That(metricJson, Does.Contain("\"p50\":50"));
+            Assert.That(metricJson, Does.Contain("\"p95\":95"));
+            Assert.That(metricJson, Does.Contain("\"p99\":99"));
+            Assert.That(metricJson, Does.Contain("\"retention_policy\":\"phase_reserved_exact\""));
+        }
+
+        [Test]
+        public void ZeroMeasurementSamplesAreUnavailableForMeasurementPhase()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("no-measurement");
+            var summary = CaptureTelemetrySummary(
+                "performance-no-measurement",
+                resultsDirectory,
+                4096,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Ramp);
+                    PerformanceTelemetry.TryRecord(metric, 1000);
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                });
+            var metricJson = ExtractMetricJson(summary, "test.performance.no-measurement");
+
+            Assert.That(metricJson, Does.Contain("\"phase\":\"measurement\""));
+            Assert.That(metricJson, Does.Contain("\"observation\":\"unavailable\""));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":0"));
+            Assert.That(metricJson, Does.Contain("\"min\":null"));
+            Assert.That(metricJson, Does.Contain("\"reason\":\"no_measurement_samples\""));
+            Assert.That(metricJson, Does.Contain("\"raw_trace\":\"samples.ndjson\""));
+        }
+
+        [Test]
+        public void RepeatedTelemetrySessionsDoNotReusePreviousMeasurementSamples()
+        {
+            var firstDirectory = CreateTelemetryTestDirectory("repeated-first");
+            var firstSummary = CaptureTelemetrySummary(
+                "performance-repeated-first",
+                firstDirectory,
+                4096,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                    for (var value = 1; value <= 100; value++)
+                        PerformanceTelemetry.TryRecord(metric, value);
+                });
+
+            var secondDirectory = CreateTelemetryTestDirectory("repeated-second");
+            var secondSummary = CaptureTelemetrySummary(
+                "performance-repeated-second",
+                secondDirectory,
+                4096,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                    PerformanceTelemetry.TryRecord(metric, 7);
+                });
+
+            Assert.That(ExtractMetricJson(firstSummary, "test.performance.repeated-first"), Does.Contain("\"sample_count\":100"));
+            Assert.That(ExtractMetricJson(secondSummary, "test.performance.repeated-second"), Does.Contain("\"sample_count\":1"));
+        }
+
+        [Test]
+        public void MeasurementRetentionAndRawTraceBudgetsAreExplicitlyQualified()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("retention-budget");
+            var summary = CaptureTelemetrySummary(
+                "performance-retention-budget",
+                resultsDirectory,
+                512,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                    for (var value = 1; value <= 1000; value++)
+                        PerformanceTelemetry.TryRecord(metric, value);
+                });
+            var metricJson = ExtractMetricJson(summary, "test.performance.retention-budget");
+
+            Assert.That(summary, Does.Contain("\"status\":\"FAIL-INSTRUMENTATION\""));
+            Assert.That(metricJson, Does.Contain("\"observation\":\"unavailable\""));
+            Assert.That(metricJson, Does.Contain("\"reason\":\"measurement_sample_coverage_below_policy\""));
+            Assert.That(metricJson, Does.Contain("\"attempted_sample_count\":1000"));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":0"));
+            Assert.That(metricJson, Does.Contain("\"retained_sample_count\":384"));
+            Assert.That(metricJson, Does.Contain("\"dropped_sample_count\":616"));
+            Assert.That(metricJson, Does.Contain("\"raw_trace_sample_count\":256"));
+            Assert.That(metricJson, Does.Contain("\"retention_policy\":\"phase_reserved_reservoir\""));
         }
 
         [Test]
@@ -103,6 +283,72 @@ namespace Game.Tests.Performance.Harness
             Assert.That(restored.isLoaded, Is.EqualTo(original[0].isLoaded));
             Assert.That(restored.isActive, Is.EqualTo(original[0].isActive));
             Assert.That(restored.isSubScene, Is.EqualTo(original[0].isSubScene));
+        }
+
+        private static string CaptureTelemetrySummary(
+            string runID,
+            string resultsDirectory,
+            int capacity,
+            Action<PerformanceMetricDefinition> recordSamples)
+        {
+            var metricID = "test.performance." + runID.Substring("performance-".Length);
+            var metric = new PerformanceMetricDefinition(
+                metricID,
+                PerformanceMetricUnit.Milliseconds,
+                PerformanceMetricSide.Server,
+                "test",
+                "test_run");
+            try
+            {
+                PerformanceTelemetry.StartSession(
+                    new PerformanceSessionContext(runID, resultsDirectory)
+                    {
+                        HostId = "test-host",
+                        ProcessId = "test-process",
+                    });
+                PerformanceTelemetry.RegisterMetric(metric, capacity);
+                PerformanceTelemetry.MarkWorkloadApplied();
+                recordSamples(metric);
+                Assert.That(
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.CompleteMeasured,
+                        "TEST_COMPLETE",
+                        "Telemetry contract test completed."),
+                    Is.True);
+                return File.ReadAllText(Path.Combine(resultsDirectory, "summary.json"));
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(resultsDirectory))
+                    Directory.Delete(resultsDirectory, true);
+            }
+        }
+
+        private static string CreateTelemetryTestDirectory(string name)
+        {
+            var directory = Path.Combine(
+                Path.GetTempPath(),
+                "NinthAgePerformanceTests",
+                name + "-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            return directory;
+        }
+
+        private static string ExtractMetricJson(string summary, string metricID)
+        {
+            var marker = "\"metric_id\":\"" + metricID + "\"";
+            var start = summary.IndexOf(marker, StringComparison.Ordinal);
+            Assert.That(start, Is.GreaterThanOrEqualTo(0), "Metric was not present in summary.json.");
+            var end = summary.IndexOf('}', start);
+            Assert.That(end, Is.GreaterThan(start), "Metric JSON was not terminated.");
+            return summary.Substring(start, end - start + 1);
         }
     }
 }
