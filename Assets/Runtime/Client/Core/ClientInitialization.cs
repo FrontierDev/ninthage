@@ -1,5 +1,4 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
-using Game.Shared.Benchmark;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Utility;
@@ -23,66 +22,37 @@ namespace Game.Client
         /// </summary>
         public static void Begin(MonoBehaviour host)
         {
-            Begin(host, null);
+            host.StartCoroutine(InitializationProcess());
         }
 
-        /// <summary>Begins client initialization for an explicit benchmark launch.</summary>
-        /// <param name="host">The component that owns the initialization coroutine.</param>
-        /// <param name="benchmarkOptions">Validated benchmark inputs, or null for ordinary startup.</param>
-        public static void Begin(MonoBehaviour host, BenchmarkLaunchOptions benchmarkOptions)
-        {
-            host.StartCoroutine(InitializationProcess(benchmarkOptions));
-        }
-
-        private static IEnumerator InitializationProcess(BenchmarkLaunchOptions benchmarkOptions)
+        private static IEnumerator InitializationProcess()
         {
             Debug.Log("Client Initialization started.");
-            var isBenchmark = benchmarkOptions != null;
-            if (isBenchmark)
-                Debug.Log($"Benchmark client selected: profile={benchmarkOptions.Profile}, fixture={benchmarkOptions.Fixture}, seed={benchmarkOptions.Seed}, run={benchmarkOptions.RunId}.");
 
-            if (!isBenchmark)
-            {
-                yield return new WaitUntil(() => LoadingScreen.Instance != null);
-                LoadingScreen.Instance.Show(5);
-            }
+            yield return new WaitUntil(() => LoadingScreen.Instance != null);
+            LoadingScreen.Instance.Show(5);
 
             // Step 1: Initialize addressables.
             yield return InitializeAddressables();
-            if (!isBenchmark) LoadingScreen.Instance.Tick();
+            LoadingScreen.Instance.Tick();
 
             // Step 2: Load game configuration.
             yield return LoadGameConfiguration();
-            if (!isBenchmark) LoadingScreen.Instance.Tick();
+            LoadingScreen.Instance.Tick();
 
             // Step 3: Initialize networking as CLIENT.
             yield return ClientInitializeNetworking();
-            if (!isBenchmark) LoadingScreen.Instance.Tick();
+            LoadingScreen.Instance.Tick();
 
             // Step 4: ECS Worlds after network initialized.
             yield return ClientInitializeECSWorlds();
-            if (!isBenchmark) LoadingScreen.Instance.Tick();
+            LoadingScreen.Instance.Tick();
 
             yield return ClientInitializeWorldManager();
-            if (!isBenchmark) LoadingScreen.Instance.Tick();
+            LoadingScreen.Instance.Tick();
 
-            if (isBenchmark)
-            {
-                var connectionManager = Object.FindFirstObjectByType<ClientConnectionManager>();
-                if (connectionManager == null)
-                {
-                    Debug.Error("Benchmark client connection manager was not created.");
-                    Application.Quit();
-                    yield break;
-                }
-
-                connectionManager.ConnectForBenchmark(benchmarkOptions);
-            }
-            else
-            {
-                // Step 5: Unload the initialisation scene.
-                yield return UnloadInitializationScene();
-            }
+            // Step 5: Unload the initialisation scene.
+            yield return UnloadInitializationScene();
         }
 
         /// <summary>

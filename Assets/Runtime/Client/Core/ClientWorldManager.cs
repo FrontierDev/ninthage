@@ -94,8 +94,7 @@ namespace Game.Client
 
         private IEnumerator OnEnteringWorld(string sceneName)
         {
-            if (!Game.Shared.Runtime.Runtime.IsBenchmarkClient)
-                LoadingScreenController.Instance.Show(2);
+            LoadingScreenController.Instance.Show(2);
 
             var spawnChunk = ParseChunkCoordinate(sceneName);
             ClientPositionManager.Instance.SetOriginChunk(spawnChunk);
@@ -112,8 +111,7 @@ namespace Game.Client
             yield return new WaitUntil(() => _loadedScenes.Count >= 9);
 
             Game.Shared.Networking.AccountEndpoint.onEnteredWorld?.Invoke();
-            if (!Game.Shared.Runtime.Runtime.IsBenchmarkClient)
-                LoadingScreenController.Instance.Finish();
+            LoadingScreenController.Instance.Finish();
         }
         #endregion
 

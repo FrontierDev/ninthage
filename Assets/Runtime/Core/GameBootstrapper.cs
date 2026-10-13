@@ -1,5 +1,5 @@
-using Game.Shared.Benchmark;
-using System;
+using System.Collections;
+using Unity.Entities;
 using UnityEngine;
 
 namespace Game.Core
@@ -25,36 +25,7 @@ namespace Game.Core
             _instance = this;
             DontDestroyOnLoad(gameObject);
 
-            if (!BenchmarkLaunchOptions.TryParseCurrentProcess(out var benchmarkOptions, out var benchmarkError))
-            {
-                Debug.LogError($"Invalid benchmark launch configuration: {benchmarkError}");
-                Application.Quit();
-                return;
-            }
-
-            if (benchmarkOptions != null)
-            {
-                try
-                {
-                    benchmarkOptions.WriteRunMetadata();
-                    Game.Shared.Runtime.Runtime.SetBenchmarkRole(benchmarkOptions.Role == BenchmarkRole.Server);
-                }
-                catch (Exception exception)
-                {
-                    Debug.LogError($"Failed to initialize benchmark launch: {exception.Message}");
-                    Application.Quit();
-                    return;
-                }
-
-                if (benchmarkOptions.Role == BenchmarkRole.Server)
-                    Game.Server.Core.ServerInitialization.Begin(this, benchmarkOptions);
-                else
-                    Game.Client.ClientInitialization.Begin(this, benchmarkOptions);
-
-                return;
-            }
-
-            // Detect execution context and route accordingly. This is unchanged for ordinary launches.
+            // Detect execution context and route accordingly
             if (IsHeadlessServer() || forceServerMode)
             {
                 // Server mode: no rendering, no input—pure simulation

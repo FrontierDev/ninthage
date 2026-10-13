@@ -1,6 +1,5 @@
 using Authentication = Game.Shared.Networking.LoginAuthenticator;
 using Debug = Game.Shared.Utility.FormattedDebug;
-using Game.Shared.Benchmark;
 using Game.Shared;
 using LoadingScreen = Game.Client.UI.LoadingScreenController;
 using MainMenu = Game.Client.UI.UI_MainMenuWindow;
@@ -49,7 +48,6 @@ namespace Game.Client
         public static bool Initialized => _initialized;
 
         private static ConnectionState _connectionState = ConnectionState.Disconnected;
-        private static bool _benchmarkConnection;
         /// <summary>
         /// Gets the <c>CurrentConnectionState</c> value.
         /// </summary>
@@ -87,13 +85,6 @@ namespace Game.Client
                     if (wasConnecting) Debug.Warning("Connection failed (authentication rejected or server unreachable).");
                     else Debug.Warning("Disconnected from server.");
 
-                    if (_benchmarkConnection)
-                    {
-                        Debug.Error("Benchmark client disconnected before completing its authenticated startup.");
-                        Application.Quit();
-                        return;
-                    }
-
                     // Dismiss the loading screen and return to the main menu.
                     // Destroy the client account manager to clear any character data, etc. that may have been loaded.
                     LoadingScreen.Instance.Finish();
@@ -122,67 +113,6 @@ namespace Game.Client
 
             _connectionState = ConnectionState.Connecting;
             StartCoroutine(ConnectionProcess(usernameInput, passwordInput));
-        }
-
-        /// <summary>
-        /// Starts the benchmark-only automated client path. Authentication, character selection and world entry
-        /// still use the normal public runtime APIs and server validation.
-        /// </summary>
-        public void ConnectForBenchmark(BenchmarkLaunchOptions options)
-        {
-            if (options == null || options.Role != BenchmarkRole.Client)
-                throw new ArgumentException("A validated benchmark client configuration is required.", nameof(options));
-
-            if (_connectionState != ConnectionState.Disconnected)
-                throw new InvalidOperationException("Benchmark client connection was requested more than once.");
-
-            _benchmarkConnection = true;
-            _connectionState = ConnectionState.Connecting;
-            StartCoroutine(BenchmarkConnectionProcess(options));
-        }
-
-        private IEnumerator BenchmarkConnectionProcess(BenchmarkLaunchOptions options)
-        {
-            var networkManager = GetComponent<NetworkManager>();
-            var transport = networkManager.GetComponentInChildren<PurrNet.Transports.UDPTransport>();
-            if (transport == null)
-            {
-                Debug.Error("Benchmark client could not find UDPTransport.");
-                Application.Quit();
-                yield break;
-            }
-
-            Authentication.SetCredentials(options.ClientUsername, options.ClientPassword);
-            transport.address = GameConfigurationManager.Config.ServerAddress;
-            transport.serverPort = GameConfigurationManager.Config.ServerPort;
-            networkManager.StartClient();
-
-            var connectionDeadline = Time.realtimeSinceStartup + 60f;
-            while (_connectionState == ConnectionState.Connecting && Time.realtimeSinceStartup < connectionDeadline)
-                yield return null;
-
-            if (_connectionState != ConnectionState.Connected)
-            {
-                Debug.Error("Benchmark client did not establish an authenticated connection within 60 seconds.");
-                Application.Quit();
-                yield break;
-            }
-
-            var characterDeadline = Time.realtimeSinceStartup + 60f;
-            while (!ClientAccountManager.HasReceivedCharacters() && Time.realtimeSinceStartup < characterDeadline)
-                yield return null;
-
-            if (!ClientAccountManager.HasReceivedCharacters() ||
-                !ClientAccountManager.TryGetCharacterList(out var characterList) ||
-                characterList == null || characterList.Count == 0)
-            {
-                Debug.Error("Benchmark client received no character to select; character creation is not bypassed by benchmark mode.");
-                Application.Quit();
-                yield break;
-            }
-
-            Game.Shared.Networking.AccountEndpoint.Server_RequestEnterWorld(characterList[0].GUID);
-            Debug.Log($"Benchmark client requested authenticated world entry for character '{characterList[0].GUID}'.");
         }
 
         private IEnumerator ConnectionProcess(string username, string password)
