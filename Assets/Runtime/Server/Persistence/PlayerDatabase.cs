@@ -10,18 +10,14 @@ namespace Game.Server.Persistence
     public static class PlayerDatabase
     {
         private const int CURRENT_DATA_VERSION = 1;
-        private static readonly string FILE_PATH;
+        private static string FILE_PATH;
+        private static bool _diskLoaded;
         private static Dictionary<string, PlayerAccountData> _playerAccounts = new();
-
-        static PlayerDatabase()
-        {
-            FILE_PATH = Path.Combine(Application.persistentDataPath, Game.Shared.GameConfigurationManager.Config.PlayerDataFilePath);
-            LoadFromDisk();
-        }
 
         /// <summary>Clears all accounts and writes an empty database to disk.</summary>
         public static void CleanDatabase()
         {
+            EnsureLoaded();
             _playerAccounts.Clear();
             SaveToDisk();
             Debug.Warning("Player database has been cleared. This should only be used for testing purposes.");
@@ -33,6 +29,7 @@ namespace Game.Server.Persistence
         /// <returns><see langword="true"/> when an account exists for the username.</returns>
         public static bool TryGetPlayerAccount(string username, out PlayerAccountData accountData)
         {
+            EnsureLoaded();
             return _playerAccounts.TryGetValue(username, out accountData);
         }
 
@@ -40,8 +37,59 @@ namespace Game.Server.Persistence
         /// <param name="accountData">The account data to save.</param>
         public static void SavePlayerAccount(PlayerAccountData accountData)
         {
+            EnsureLoaded();
             _playerAccounts[accountData.Username] = accountData;
             SaveToDisk();
+        }
+
+        /// <summary>Deserializes versioned player data and applies legacy migration without filesystem access.</summary>
+        /// <param name="json">The versioned player database JSON.</param>
+        /// <param name="accounts">Receives the deserialized accounts when the version is supported.</param>
+        /// <returns><see langword="true"/> when the JSON uses a supported persistence version.</returns>
+        public static bool TryDeserialize(string json, out List<PlayerAccountData> accounts)
+        {
+            accounts = null;
+
+            var version = JsonUtility.FromJson<PersistenceFileVersion>(json);
+            if (version == null || version.DataVersion < 0)
+                return false;
+
+            PlayerDatabaseWrapper wrapper;
+            if (version.DataVersion == 0)
+                wrapper = MigrateLegacyData(JsonUtility.FromJson<LegacyPlayerDatabaseWrapper>(json));
+            else if (version.DataVersion == CURRENT_DATA_VERSION)
+                wrapper = JsonUtility.FromJson<PlayerDatabaseWrapper>(json);
+            else
+                return false;
+
+            if (wrapper != null)
+                accounts = wrapper.Accounts;
+
+            return true;
+        }
+
+        /// <summary>Serializes player accounts using the current persistence version without filesystem access.</summary>
+        /// <param name="accounts">The player accounts to serialize.</param>
+        /// <returns>Current-version player database JSON.</returns>
+        public static string Serialize(IEnumerable<PlayerAccountData> accounts)
+        {
+            var wrapper = new PlayerDatabaseWrapper
+            {
+                DataVersion = CURRENT_DATA_VERSION,
+                Accounts = new List<PlayerAccountData>(accounts)
+            };
+
+            return JsonUtility.ToJson(wrapper, true);
+        }
+
+        private static void EnsureLoaded()
+        {
+            if (_diskLoaded)
+                return;
+
+            FILE_PATH = Path.Combine(Application.persistentDataPath, Game.Shared.GameConfigurationManager.Config.PlayerDataFilePath);
+            LoadFromDisk();
+            _diskLoaded = true;
         }
 
         private static void LoadFromDisk()
@@ -53,32 +101,23 @@ namespace Game.Server.Persistence
             }
 
             var json = File.ReadAllText(FILE_PATH);
-            var version = JsonUtility.FromJson<PersistenceFileVersion>(json);
-            if (version == null || version.DataVersion < 0)
+            if (!TryDeserialize(json, out var accounts))
             {
-                Debug.Error($" - Player data file at {FILE_PATH} has an invalid persistence version.");
-                return;
-            }
+                var version = JsonUtility.FromJson<PersistenceFileVersion>(json);
+                if (version == null || version.DataVersion < 0)
+                {
+                    Debug.Error($" - Player data file at {FILE_PATH} has an invalid persistence version.");
+                    return;
+                }
 
-            PlayerDatabaseWrapper wrapper;
-            if (version.DataVersion == 0)
-            {
-                wrapper = MigrateLegacyData(JsonUtility.FromJson<LegacyPlayerDatabaseWrapper>(json));
-            }
-            else if (version.DataVersion == CURRENT_DATA_VERSION)
-            {
-                wrapper = JsonUtility.FromJson<PlayerDatabaseWrapper>(json);
-            }
-            else
-            {
                 Debug.Error($" - Player data file at {FILE_PATH} uses unsupported version {version.DataVersion}; expected {CURRENT_DATA_VERSION}.");
                 return;
             }
 
-            if (wrapper?.Accounts != null)
+            if (accounts != null)
             {
                 _playerAccounts.Clear();
-                foreach (var account in wrapper.Accounts)
+                foreach (var account in accounts)
                     _playerAccounts[account.Username] = account;
             }
 
@@ -87,10 +126,7 @@ namespace Game.Server.Persistence
 
         private static void SaveToDisk()
         {
-            var wrapper = new PlayerDatabaseWrapper();
-            wrapper.DataVersion = CURRENT_DATA_VERSION;
-            wrapper.Accounts = new List<PlayerAccountData>(_playerAccounts.Values);
-            var json = JsonUtility.ToJson(wrapper, true);
+            var json = Serialize(_playerAccounts.Values);
             File.WriteAllText(FILE_PATH, json);
         }
 

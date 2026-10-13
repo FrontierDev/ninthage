@@ -61,9 +61,9 @@ namespace Game.Shared.Tests.Shared
             var negativeBoundary = new WorldPosition(-chunkSize, 4d, -chunkSize);
 
             Assert.That(positiveBoundary.Chunk, Is.EqualTo(new Vector2Int(1, -1)));
-            Assert.That(positiveBoundary.LocalPosition, Is.EqualTo(Vector3.zero));
+            Assert.That(positiveBoundary.LocalPosition, Is.EqualTo(new Vector3(0f, 4f, 0f)));
             Assert.That(negativeBoundary.Chunk, Is.EqualTo(new Vector2Int(-1, -1)));
-            Assert.That(negativeBoundary.LocalPosition, Is.EqualTo(Vector3.zero));
+            Assert.That(negativeBoundary.LocalPosition, Is.EqualTo(new Vector3(0f, 4f, 0f)));
         }
 
         [Test]

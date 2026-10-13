@@ -11,21 +11,16 @@ namespace Game.Runtime.Tests.Persistence
     public sealed class CharacterPersistenceRoundTripTests
     {
         private const string FIXTURE_RELATIVE_PATH = "Tests/Fixtures/player_data_phase0_baseline.json";
+        private const string CURRENT_FIXTURE_RELATIVE_PATH = "Tests/Fixtures/player_data_phase0_current.json";
 
         [Test]
-        public void CurrentPlayerDataFixtureRoundTripsWithoutLosingCharacterState()
+        public void LegacyPlayerDataFixtureMigratesWithoutLosingCharacterState()
         {
-            var fixturePath = Path.Combine(Application.dataPath, FIXTURE_RELATIVE_PATH);
-            Assert.That(File.Exists(fixturePath), Is.True, $"Persistence fixture was not found at {fixturePath}.");
+            var accounts = LoadLegacyFixture();
+            Assert.That(accounts, Is.Not.Null);
+            Assert.That(accounts, Has.Count.EqualTo(1));
 
-            var fixtureJson = File.ReadAllText(fixturePath);
-            var loadedData = JsonUtility.FromJson<PlayerDataWrapper>(fixtureJson);
-
-            Assert.That(loadedData, Is.Not.Null);
-            Assert.That(loadedData.Accounts, Is.Not.Null);
-            Assert.That(loadedData.Accounts, Has.Count.EqualTo(1));
-
-            var account = loadedData.Accounts[0];
+            var account = accounts[0];
             Assert.That(account, Is.Not.Null);
             Assert.That(account.Username, Is.EqualTo("phase0_baseline_user"));
             Assert.That(account.PasswordHash, Is.EqualTo("phase0-baseline-password-hash"));
@@ -86,14 +81,54 @@ namespace Game.Runtime.Tests.Persistence
             Assert.That(character.SavedResources, Has.Count.EqualTo(1));
             Assert.That(character.SavedResources[0].StatID, Is.EqualTo("health"));
             Assert.That(character.SavedResources[0].Current, Is.EqualTo(87.5f));
+        }
 
-            var serializedJson = JsonUtility.ToJson(loadedData);
-            var roundTrippedData = JsonUtility.FromJson<PlayerDataWrapper>(serializedJson);
+        [Test]
+        public void CurrentVersionSerializationRoundTripsMigratedCharacterState()
+        {
+            var legacyAccounts = LoadLegacyFixture();
+            var currentAccounts = LoadCurrentFixture();
+            AssertAccountEquivalent(legacyAccounts[0], currentAccounts[0]);
 
-            Assert.That(roundTrippedData, Is.Not.Null);
-            Assert.That(roundTrippedData.Accounts, Is.Not.Null);
-            Assert.That(roundTrippedData.Accounts, Has.Count.EqualTo(1));
-            AssertAccountEquivalent(account, roundTrippedData.Accounts[0]);
+            var serializedJson = PlayerDatabase.Serialize(currentAccounts);
+            var version = JsonUtility.FromJson<PersistenceVersionProbe>(serializedJson);
+
+            Assert.That(version, Is.Not.Null);
+            Assert.That(version.DataVersion, Is.EqualTo(1));
+            Assert.That(PlayerDatabase.TryDeserialize(serializedJson, out var roundTrippedAccounts), Is.True);
+            Assert.That(roundTrippedAccounts, Has.Count.EqualTo(currentAccounts.Count));
+            AssertAccountEquivalent(currentAccounts[0], roundTrippedAccounts[0]);
+        }
+
+        private static List<PlayerAccountData> LoadLegacyFixture()
+        {
+            var fixturePath = Path.Combine(Application.dataPath, FIXTURE_RELATIVE_PATH);
+            Assert.That(File.Exists(fixturePath), Is.True, $"Persistence fixture was not found at {fixturePath}.");
+
+            var fixtureJson = File.ReadAllText(fixturePath);
+            var version = JsonUtility.FromJson<PersistenceVersionProbe>(fixtureJson);
+
+            Assert.That(fixtureJson, Does.Not.Contain("\"DataVersion\""));
+            Assert.That(version, Is.Not.Null);
+            Assert.That(version.DataVersion, Is.EqualTo(0));
+            Assert.That(PlayerDatabase.TryDeserialize(fixtureJson, out var accounts), Is.True);
+
+            return accounts;
+        }
+
+        private static List<PlayerAccountData> LoadCurrentFixture()
+        {
+            var fixturePath = Path.Combine(Application.dataPath, CURRENT_FIXTURE_RELATIVE_PATH);
+            Assert.That(File.Exists(fixturePath), Is.True, $"Persistence fixture was not found at {fixturePath}.");
+
+            var fixtureJson = File.ReadAllText(fixturePath);
+            var version = JsonUtility.FromJson<PersistenceVersionProbe>(fixtureJson);
+
+            Assert.That(version, Is.Not.Null);
+            Assert.That(version.DataVersion, Is.EqualTo(1));
+            Assert.That(PlayerDatabase.TryDeserialize(fixtureJson, out var accounts), Is.True);
+
+            return accounts;
         }
 
         private static void AssertAccountEquivalent(PlayerAccountData expected, PlayerAccountData actual)
@@ -233,10 +268,14 @@ namespace Game.Runtime.Tests.Persistence
                 expected.Modifications);
         }
 
+        #pragma warning disable 0649
+
         [Serializable]
-        private sealed class PlayerDataWrapper
+        private sealed class PersistenceVersionProbe
         {
-            public List<PlayerAccountData> Accounts = new();
+            public int DataVersion;
         }
+
+        #pragma warning restore 0649
     }
 }
