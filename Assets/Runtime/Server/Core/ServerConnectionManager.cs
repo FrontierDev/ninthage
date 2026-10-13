@@ -1,12 +1,13 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking;
+using Game.Server.Persistence;
 using Game.Shared.Runtime.Actors;
 using PurrNet;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>Maintains authoritative connection, account, and session state.</summary>
     public class ServerConnectionManager : PurrMonoBehaviour

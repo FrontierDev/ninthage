@@ -2,7 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Utility;
 using UnityEngine;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>
     /// Server-side position authority. Converts between double-precision

@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>
     /// Manages player interest (chunk subscriptions). Coordinates with

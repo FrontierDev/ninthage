@@ -29,7 +29,7 @@ namespace Game.Core
             if (IsHeadlessServer() || forceServerMode)
             {
                 // Server mode: no rendering, no input—pure simulation
-                Game.Server.ServerInitialization.Begin(this);
+                Game.Server.Core.ServerInitialization.Begin(this);
             }
             else
             {

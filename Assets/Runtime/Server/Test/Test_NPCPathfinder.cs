@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 
-namespace Game.Server
+namespace Game.Server.Test
 {
     /// <summary>Prototype component that moves a test NPC toward the test destination.</summary>
     public class Test_NPCPathfinder : MonoBehaviour

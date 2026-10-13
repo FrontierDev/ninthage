@@ -1,11 +1,12 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Persistence;
 using Game.Shared.Networking;
 using PlayerDatabase = Game.Server.Persistence.PlayerDatabase;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 
-namespace Game.Server.Persistence
+namespace Game.Server.Services
 {
     /// <summary>
     /// Server-side implementation of IPlayerAuthService.

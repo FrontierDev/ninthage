@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>Coordinates server-authoritative auto-attacks.</summary>
     public sealed class ServerAutoAttackManager : MonoBehaviour

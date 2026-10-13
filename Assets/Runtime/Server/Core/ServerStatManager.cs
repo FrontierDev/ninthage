@@ -8,7 +8,7 @@ using Game.Shared.Utility;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>Maintains server-authoritative actor statistics.</summary>
     public sealed class ServerStatManager : MonoBehaviour

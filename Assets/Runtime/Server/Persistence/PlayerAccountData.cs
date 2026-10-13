@@ -1,7 +1,7 @@
 using CharacterData = Game.Shared.Persistence.CharacterData;
 using System.Collections.Generic;
 
-namespace Game.Server
+namespace Game.Server.Persistence
 {
     /// <summary>Serializable account data used by the server persistence layer.</summary>
     [System.Serializable]

@@ -19,7 +19,7 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>Coordinates authoritative actor spawning and scene placement.</summary>
     public sealed class ServerSpawnManager : MonoBehaviour
@@ -58,7 +58,7 @@ namespace Game.Server
 
             Game.Shared.Networking.ActorEndpoint.onServerActorDespawned += OnServerActorDespawned;
 
-            var world = Core.ServerECSManager.DefaultWorld;
+            var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
             _spawnCommandQuery = _entityManager.CreateEntityQuery(typeof(Systems.SpawnCommand));
 

@@ -1,6 +1,6 @@
 using Game.Server.Networking;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>
     /// Registers server bindings for shared endpoint callbacks.

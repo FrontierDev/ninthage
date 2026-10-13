@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>
     /// Server authority for world chunk scene loading and unloading.

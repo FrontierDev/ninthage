@@ -13,7 +13,7 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.AI;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>
     /// The server actor manager handles all server-side actors, whether they are NPCs or PCs.
@@ -78,7 +78,7 @@ namespace Game.Server
             ActorEndpoint.onServerActorOwnerChanged += OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
 
-            var world = Core.ServerECSManager.DefaultWorld;
+            var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
             _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 

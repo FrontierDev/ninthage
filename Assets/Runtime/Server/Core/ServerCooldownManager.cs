@@ -6,7 +6,7 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>Maintains server-authoritative actor cooldowns.</summary>
     public sealed class ServerCooldownManager : MonoBehaviour
@@ -34,7 +34,7 @@ namespace Game.Server
             }
             _instance = this;
 
-            var world = Core.ServerECSManager.DefaultWorld;
+            var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
             _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 

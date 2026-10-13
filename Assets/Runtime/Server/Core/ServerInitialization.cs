@@ -1,12 +1,13 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Persistence;
+using Game.Server.Services;
 using PurrNet;
 using PurrNet.Transports;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
-namespace Game.Server
+namespace Game.Server.Core
 {
     /// <summary>Coordinates startup of the dedicated server runtime.</summary>
     public static class ServerInitialization
@@ -139,9 +140,9 @@ namespace Game.Server
         {
             Debug.Log(" - Step 4: Initializing server ECS worlds and systems...");
 
-            Core.ServerECSManager.ServerInitializeECSWorlds();
+            ServerECSManager.ServerInitializeECSWorlds();
 
-            yield return new WaitUntil(() => Core.ServerECSManager.Initialized == true);
+            yield return new WaitUntil(() => ServerECSManager.Initialized == true);
             Debug.Log(" ✓ Step 4: Server ECS worlds and systems initialized successfully.");
         }
 

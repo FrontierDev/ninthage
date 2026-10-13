@@ -1,4 +1,4 @@
-using Game.Server;
+using Game.Server.Persistence;
 using Game.Shared.Persistence;
 using NUnit.Framework;
 using System;
