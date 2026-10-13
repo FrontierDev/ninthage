@@ -105,8 +105,9 @@ namespace Game.Client
             actor.GetComponent<PlayerQuests>().LoadQuests(_activeCharacter);
             actor.GetComponent<ActorEvents>().LoadClassEvents(_activeCharacter);
 
-            // Intialize the special resource UI if applicable.
-            UI_SpecialResourcePanel.Instance.OnPlayerActorAssigned(actor);
+            // The automated benchmark client has no UI scene; ordinary clients retain the existing UI path.
+            if (!Game.Shared.Runtime.Runtime.IsBenchmarkClient)
+                UI_SpecialResourcePanel.Instance.OnPlayerActorAssigned(actor);
 
             Debug.Log($"Player actor assigned: {actor.Name} (ID: {actor.ID})");
         }

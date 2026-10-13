@@ -1,4 +1,5 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Benchmark;
 using Game.Server.Persistence;
 using Game.Server.Services;
 using PurrNet;
@@ -19,13 +20,23 @@ namespace Game.Server.Core
         /// <param name="host">The component that owns the initialization coroutine.</param>
         public static void Begin(MonoBehaviour host)
         {
-            _host = host;
-            _host.StartCoroutine(InitializationProcess());
+            Begin(host, null);
         }
 
-        private static IEnumerator InitializationProcess()
+        /// <summary>Begins server initialization for an explicit benchmark launch.</summary>
+        /// <param name="host">The component that owns the initialization coroutine.</param>
+        /// <param name="benchmarkOptions">Validated benchmark inputs, or null for ordinary startup.</param>
+        public static void Begin(MonoBehaviour host, BenchmarkLaunchOptions benchmarkOptions)
+        {
+            _host = host;
+            _host.StartCoroutine(InitializationProcess(benchmarkOptions));
+        }
+
+        private static IEnumerator InitializationProcess(BenchmarkLaunchOptions benchmarkOptions)
         {
             Debug.Log("Server Initialization started.");
+            if (benchmarkOptions != null)
+                Debug.Log($"Benchmark server selected: profile={benchmarkOptions.Profile}, fixture={benchmarkOptions.Fixture}, seed={benchmarkOptions.Seed}, run={benchmarkOptions.RunId}.");
             yield return null;
 
             // Step 1: Initialize addressables.
