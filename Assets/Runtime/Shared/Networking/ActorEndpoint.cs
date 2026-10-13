@@ -14,9 +14,9 @@ namespace Game.Shared.Networking
     /// </summary>
     public static class ActorEndpoint
     {
-        internal static void RecordRpc(PerformanceMetricDefinition category, int recipientCount = -1)
+        internal static void RecordRpcHandlerInvocation(PerformanceMetricDefinition category)
         {
-            NetworkingPerformanceMetrics.RecordRpc(category, recipientCount);
+            NetworkingPerformanceMetrics.RecordRpcHandlerInvocation(category);
         }
 
         /// <summary>Raised when an actor dies.</summary>

@@ -16,6 +16,12 @@ namespace Game.Server.Systems
             "ecs.actor_update",
             "server_update");
         private static readonly PerformanceMarker ACTOR_UPDATE_MARKER = new(ACTOR_UPDATE_METRIC, "Server.ECS.ActorUpdate");
+
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(ACTOR_UPDATE_METRIC, 4096);
+        }
+
         private EntityQuery _motionQuery;
 
         /// <summary>Creates the query used by the actor movement system.</summary>

@@ -134,6 +134,16 @@ namespace Game.Client.UI
             StatEndpoint.onStatsUpdated -= OnStatsUpdated;
             ClientSettingsManager.onSettingChanged -= OnSettingChanged;
             ClientSettingsManager.onSettingsLoaded -= OnSettingsLoaded;
+
+            foreach (UI_Nameplate nameplate in activeNameplates.Values)
+            {
+                if (nameplate != null)
+                    nameplate.Released -= OnNameplateReleased;
+            }
+            activeNameplates.Clear();
+
+            if (_instance == this)
+                _instance = null;
         }
 
         private void LateUpdate()
@@ -471,8 +481,28 @@ namespace Game.Client.UI
 
         private void OnNameplateReleased(UI_Nameplate nameplate)
         {
-            if (nameplate != null && nameplate.Actor != null)
-                activeNameplates.Remove(nameplate.Actor);
+            if (nameplate != null)
+            {
+                if (nameplate.Actor != null)
+                {
+                    activeNameplates.Remove(nameplate.Actor);
+                }
+                else
+                {
+                    Actor releasedActor = null;
+                    foreach (var pair in activeNameplates)
+                    {
+                        if (pair.Value == nameplate)
+                        {
+                            releasedActor = pair.Key;
+                            break;
+                        }
+                    }
+
+                    if (releasedActor != null)
+                        activeNameplates.Remove(releasedActor);
+                }
+            }
 
             if (!PerformanceTelemetry.IsEnabled)
                 return;

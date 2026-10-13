@@ -1,11 +1,15 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Client.Performance;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Utility;
 using LoadingScreen = Game.Client.UI.LoadingScreenController;
 using PurrNet;
 using PurrNet.Transports;
 using System.Collections;
+using System;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.SceneManagement;
@@ -17,6 +21,19 @@ namespace Game.Client
     /// </summary>
     public static class ClientInitialization
     {
+        /// <summary>
+        /// Registers project-owned client metrics for an already active telemetry session.
+        /// The benchmark runner owns session startup and invokes this entrypoint afterwards.
+        /// </summary>
+        public static void RegisterPerformanceMetrics()
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                throw new InvalidOperationException("Start a performance telemetry session before registering client metrics.");
+
+            ClientPerformanceMetrics.RegisterMetrics();
+            NetworkingPerformanceMetrics.RegisterClientMetrics();
+        }
+
         /// <summary>
         /// Executes the client-side <c>Begin</c> operation.
         /// </summary>

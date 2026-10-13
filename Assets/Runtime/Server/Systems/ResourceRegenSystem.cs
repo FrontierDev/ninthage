@@ -16,6 +16,11 @@ namespace Game.Server.Systems
             "server_update");
         private static readonly PerformanceMarker RESOURCE_REGEN_MARKER = new(RESOURCE_REGEN_DURATION_METRIC, "Server.ECS.ResourceRegen");
 
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(RESOURCE_REGEN_DURATION_METRIC, 4096);
+        }
+
         /// <summary>Initializes resource-regeneration system state.</summary>
         public readonly void OnCreate(ref SystemState state)
         {

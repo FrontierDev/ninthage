@@ -49,43 +49,43 @@ namespace Game.Server.Core
         /// </summary>
         public override void Subscribe(NetworkManager manager, bool asServer)
         {
-            if (asServer)
+            if (!asServer || _initialized)
+                return;
+
+            _networkManager = manager;
+            _transport = manager.rawTransport;
+            if (_transport != null)
             {
-                _networkManager = manager;
-                _transport = manager.rawTransport;
-                if (_transport != null)
-                {
-                    _transport.onConnected += OnTransportConnected;
-                    _transport.onDisconnected += OnTransportDisconnected;
-                    _transport.onDataReceived += OnTransportDataReceived;
-                    _transport.onDataSent += OnTransportDataSent;
-                }
-                manager.onPlayerJoined += OnPlayerJoined;
-                manager.onPlayerLeft += OnPlayerLeft;
-                _initialized = true;
+                _transport.onConnected += OnTransportConnected;
+                _transport.onDisconnected += OnTransportDisconnected;
+                _transport.onDataReceived += OnTransportDataReceived;
+                _transport.onDataSent += OnTransportDataSent;
             }
+            manager.onPlayerJoined += OnPlayerJoined;
+            manager.onPlayerLeft += OnPlayerLeft;
+            _initialized = true;
         }
 
         /// <summary>Unsubscribes the manager from NetworkManager events.</summary>
         public override void Unsubscribe(NetworkManager manager, bool asServer)
         {
-            if (asServer)
+            if (!asServer)
+                return;
+
+            if (_transport != null)
             {
-                if (_transport != null)
-                {
-                    _transport.onConnected -= OnTransportConnected;
-                    _transport.onDisconnected -= OnTransportDisconnected;
-                    _transport.onDataReceived -= OnTransportDataReceived;
-                    _transport.onDataSent -= OnTransportDataSent;
-                    _transport = null;
-                }
-                manager.onPlayerJoined -= OnPlayerJoined;
-                manager.onPlayerLeft -= OnPlayerLeft;
-                _networkManager = null;
-                _connectedPlayers.Clear();
-                _sessionData.Clear();
-                _initialized = false;
+                _transport.onConnected -= OnTransportConnected;
+                _transport.onDisconnected -= OnTransportDisconnected;
+                _transport.onDataReceived -= OnTransportDataReceived;
+                _transport.onDataSent -= OnTransportDataSent;
+                _transport = null;
             }
+            manager.onPlayerJoined -= OnPlayerJoined;
+            manager.onPlayerLeft -= OnPlayerLeft;
+            _networkManager = null;
+            _connectedPlayers.Clear();
+            _sessionData.Clear();
+            _initialized = false;
         }
         #endregion
 
@@ -123,16 +123,19 @@ namespace Game.Server.Core
 
         private void RecordLiveConnectionCount()
         {
-            if (!PerformanceTelemetry.IsEnabled || _networkManager == null || _networkManager.rawTransport == null)
+            if (!PerformanceTelemetry.IsEnabled || _transport == null)
                 return;
 
             PerformanceTelemetry.TryRecord(
                 NetworkingPerformanceMetrics.SERVER_LIVE_CONNECTION_COUNT,
-                _networkManager.rawTransport.connections.Count);
+                _transport.connections.Count);
         }
 
         private void OnPlayerJoined(PlayerID playerID, bool isReconnect, bool asServer)
         {
+            if (!asServer)
+                return;
+
             RecordLiveConnectionCount();
             var username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
 
@@ -162,6 +165,9 @@ namespace Game.Server.Core
 
         private void OnPlayerLeft(PlayerID playerID, bool asServer)
         {
+            if (!asServer)
+                return;
+
             Debug.Log($"Player left: {playerID}");
 
             // Persist resource state (health, mana, etc.) before cleanup.
@@ -169,7 +175,7 @@ namespace Game.Server.Core
                 _connectedPlayers.TryGetValue(playerID, out var account) &&
                 session.PlayerActor != null)
             {
-            var charData = account.Characters.Find(c => c.GUID == session.CharacterID);
+                var charData = account.Characters.Find(c => c.GUID == session.CharacterID);
                 if (charData != null)
                 {
                     Persistence.PlayerDatabase.SavePlayerAccount(account);

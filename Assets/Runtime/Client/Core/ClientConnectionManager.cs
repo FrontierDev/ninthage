@@ -58,6 +58,8 @@ namespace Game.Client
 
         private NetworkManager _networkManager;
         private ITransport _transport;
+        private bool _authenticatedForCurrentConnection;
+        private bool _inWorldForCurrentConnection;
 
         #region Lifecycle
         private void Awake()
@@ -69,6 +71,11 @@ namespace Game.Client
         private void ClientInitializeManager()
         {
             _networkManager = GetComponent<NetworkManager>();
+            _connectionState = _networkManager.clientState == PurrNet.Transports.ConnectionState.Connected
+                ? ConnectionState.Connected
+                : ConnectionState.Disconnected;
+            _authenticatedForCurrentConnection = false;
+            _inWorldForCurrentConnection = false;
             _networkManager.onClientConnectionState += OnClientConnectionStateChanged;
             AccountEndpoint.onCharacterListReceived += OnCharacterListReceived;
             AccountEndpoint.onEnteringWorld += OnEnteringWorld;
@@ -98,6 +105,9 @@ namespace Game.Client
 
             if (_instance == this)
                 _instance = null;
+            _connectionState = ConnectionState.Disconnected;
+            _authenticatedForCurrentConnection = false;
+            _inWorldForCurrentConnection = false;
             _initialized = false;
         }
 
@@ -119,23 +129,33 @@ namespace Game.Client
             switch (state)
             {
                 case PurrNet.Transports.ConnectionState.Connected:
+                    if (_connectionState == ConnectionState.Connected)
+                        break;
+
                     _connectionState = ConnectionState.Connected;
+                    _authenticatedForCurrentConnection = false;
+                    _inWorldForCurrentConnection = false;
                     if (PerformanceTelemetry.IsEnabled)
                     {
                         PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_CONNECTED_COUNT, 1);
-                        PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_LIVE_CONNECTION_COUNT, 1);
+                        RecordClientLiveConnectionCount();
                     }
                     Debug.Log(" ✓ Connected to the server.");
-                    this.gameObject.AddComponent<ClientAccountManager>();
+                    if (!TryGetComponent<ClientAccountManager>(out _))
+                        this.gameObject.AddComponent<ClientAccountManager>();
                     break;
 
                 case PurrNet.Transports.ConnectionState.Disconnected:
                     var wasConnecting = _connectionState == ConnectionState.Connecting;
+                    var wasActive = _connectionState != ConnectionState.Disconnected;
                     _connectionState = ConnectionState.Disconnected;
+                    _authenticatedForCurrentConnection = false;
+                    _inWorldForCurrentConnection = false;
                     if (PerformanceTelemetry.IsEnabled)
                     {
-                        PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_DISCONNECTED_COUNT, 1);
-                        PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_LIVE_CONNECTION_COUNT, 0);
+                        if (wasActive)
+                            PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_DISCONNECTED_COUNT, 1);
+                        RecordClientLiveConnectionCount();
                     }
 
                     if (wasConnecting) Debug.Warning("Connection failed (authentication rejected or server unreachable).");
@@ -175,14 +195,32 @@ namespace Game.Client
 
         private void OnCharacterListReceived(System.Collections.Generic.List<Game.Shared.Persistence.CharacterData> characterList)
         {
+            if (_authenticatedForCurrentConnection)
+                return;
+
+            _authenticatedForCurrentConnection = true;
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_AUTHENTICATED_COUNT, 1);
         }
 
         private void OnEnteringWorld(Game.Shared.Persistence.CharacterData characterData, string sceneName)
         {
+            if (_inWorldForCurrentConnection)
+                return;
+
+            _inWorldForCurrentConnection = true;
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_IN_WORLD_COUNT, 1);
+        }
+
+        private void RecordClientLiveConnectionCount()
+        {
+            if (!PerformanceTelemetry.IsEnabled || _networkManager == null)
+                return;
+
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.CLIENT_LIVE_CONNECTION_COUNT,
+                _networkManager.clientState == PurrNet.Transports.ConnectionState.Connected ? 1 : 0);
         }
 
         private IEnumerator ConnectionProcess(string username, string password)

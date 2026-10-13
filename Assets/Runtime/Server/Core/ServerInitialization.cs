@@ -1,8 +1,12 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Persistence;
 using Game.Server.Services;
+using Game.Server.Systems;
+using Game.Shared.Networking;
+using Game.Shared.Performance;
 using PurrNet;
 using PurrNet.Transports;
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -14,6 +18,30 @@ namespace Game.Server.Core
     {
         private static MonoBehaviour _host;
         private static bool _forceCleanServer;
+
+        /// <summary>
+        /// Registers project-owned server metrics for an already active telemetry session.
+        /// The benchmark runner owns session startup and invokes this entrypoint afterwards.
+        /// </summary>
+        public static void RegisterPerformanceMetrics()
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                throw new InvalidOperationException("Start a performance telemetry session before registering server metrics.");
+
+            NetworkingPerformanceMetrics.RegisterServerMetrics();
+            ServerECSManager.RegisterPerformanceMetrics();
+            WorldSpawnSystem.RegisterPerformanceMetrics();
+            ActorUpdateSystem.RegisterPerformanceMetrics();
+            ResourceRegenSystem.RegisterPerformanceMetrics();
+            SpellCastSystem.RegisterPerformanceMetrics();
+            CooldownTickSystem.RegisterPerformanceMetrics();
+            AuraTickSystem.RegisterPerformanceMetrics();
+            ActorTickerSystem.RegisterPerformanceMetrics();
+            ServerActorManager.RegisterPerformanceMetrics();
+            ServerAutoAttackManager.RegisterPerformanceMetrics();
+            ServerSpawnManager.RegisterPerformanceMetrics();
+            ServerWorldManager.RegisterPerformanceMetrics();
+        }
 
         /// <summary>Begins the server initialization coroutine on the supplied host.</summary>
         /// <param name="host">The component that owns the initialization coroutine.</param>

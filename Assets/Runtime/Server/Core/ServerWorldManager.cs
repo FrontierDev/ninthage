@@ -65,6 +65,13 @@ namespace Game.Server.Core
         /// <summary>Gets whether the global actor scene has loaded.</summary>
         public bool IsGlobalActorsSceneLoaded => _globalActorsSceneID != default;
 
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(SCENE_LOAD_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SCENE_UNLOAD_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(PENDING_SCENE_OPERATION_COUNT_METRIC, 4096);
+        }
+
         private void Awake()
         {
             if (_instance != null)

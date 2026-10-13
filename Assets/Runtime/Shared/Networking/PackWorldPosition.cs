@@ -22,7 +22,7 @@ namespace Game.Shared.Networking
         {
             using var markerScope = WRITE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int startPosition = telemetryEnabled ? packer.positionInBytes : 0;
+            int startPosition = telemetryEnabled ? packer.positionInBits : 0;
             Vector2Int chunk = value.Chunk;
             Vector3 local = value.LocalPosition;
             packer.Write(chunk.x);
@@ -36,7 +36,7 @@ namespace Game.Shared.Networking
                 NetworkingPerformanceMetrics.RecordSerializer(
                     NetworkingPerformanceMetrics.SERIALIZER_WORLD_POSITION_WRITE_BYTES,
                     NetworkingPerformanceMetrics.EstimateWorldPositionPayloadBytes(),
-                    packer.positionInBytes - startPosition);
+                    NetworkingPerformanceMetrics.GetEncodedByteCount(startPosition, packer.positionInBits));
             }
         }
 
@@ -46,7 +46,7 @@ namespace Game.Shared.Networking
         {
             using var markerScope = READ_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int startPosition = telemetryEnabled ? packer.positionInBytes : 0;
+            int startPosition = telemetryEnabled ? packer.positionInBits : 0;
             int cx = default;
             int cy = default;
             float lx = default;
@@ -65,7 +65,7 @@ namespace Game.Shared.Networking
             if (telemetryEnabled)
                 NetworkingPerformanceMetrics.RecordEncodedSerializer(
                     NetworkingPerformanceMetrics.SERIALIZER_WORLD_POSITION_READ_BYTES,
-                    packer.positionInBytes - startPosition);
+                    NetworkingPerformanceMetrics.GetEncodedByteCount(startPosition, packer.positionInBits));
         }
     }
 }

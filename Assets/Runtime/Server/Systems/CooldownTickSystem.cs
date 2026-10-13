@@ -21,6 +21,12 @@ namespace Game.Server.Systems
             "server_update");
         private static readonly PerformanceMarker COOLDOWN_TICK_MARKER = new(COOLDOWN_TICK_DURATION_METRIC, "Server.ECS.CooldownTick");
 
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(COOLDOWN_TICK_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(COOLDOWN_ENTRY_COUNT_METRIC, 4096);
+        }
+
         /// <summary>Updates active cooldown durations for all server actors.</summary>
         public void OnUpdate(ref SystemState state)
         {

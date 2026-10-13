@@ -11,11 +11,10 @@ namespace Game.Shared.Networking
     /// </summary>
     public static class StatEndpoint
     {
-        internal static void RecordSnapshotRpc(int recipientCount = -1)
+        internal static void RecordSnapshotHandlerInvocation()
         {
-            NetworkingPerformanceMetrics.RecordRpc(
-                NetworkingPerformanceMetrics.RPC_STAT_SNAPSHOT_COUNT,
-                recipientCount);
+            NetworkingPerformanceMetrics.RecordRpcHandlerInvocation(
+                NetworkingPerformanceMetrics.RPC_STAT_CLIENT_SNAPSHOT_HANDLER_INVOCATION_COUNT);
         }
 
         /// <summary>Raised when an actor's stat container is updated.</summary>

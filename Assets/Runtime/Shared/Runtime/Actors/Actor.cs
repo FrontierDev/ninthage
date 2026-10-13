@@ -233,7 +233,7 @@ namespace Game.Shared.Runtime.Actors
         /// <summary>Replicates an actor target to observers.</summary>
         public void Observers_SetTarget(Actor newTarget)
         {
-            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_TARGET_COUNT);
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_TARGET_HANDLER_INVOCATION_COUNT);
             var oldTarget = _target;
             _target = newTarget;
 
@@ -301,21 +301,21 @@ namespace Game.Shared.Runtime.Actors
         /// This is called on the CASTER of the spell.
         public void Observers_ReceivedCombatLogEntry(CombatLogEntry entry, RPCInfo info = default)
         {
-            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_COMBAT_LOG_COUNT);
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_COMBAT_LOG_HANDLER_INVOCATION_COUNT);
             ActorEndpoint.onCombatLogEntryReceived?.Invoke(entry);
         }
 
         [TargetRpc]
         public void Client_ReceiveCombatLogEntry(PlayerID player, CombatLogEntry entry, RPCInfo info = default)
         {
-            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_COMBAT_LOG_COUNT, 1);
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_COMBAT_LOG_HANDLER_INVOCATION_COUNT);
             ActorEndpoint.onCombatLogEntryReceived?.Invoke(entry);
         }
 
         [ObserversRpc]
         public void Observers_ApplyAura(string auraID, int instancedID, float duration, int stacks, RPCInfo info = default)
         {
-            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_AURA_COUNT);
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT);
             // Get the aura definition.
             AuraDefinition def = AuraDefinitionLibrary.Instance.GetDefinition(auraID);
 
@@ -352,7 +352,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_ExpireAura(int instancedID, RPCInfo info = default)
         {
-            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_AURA_COUNT);
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT);
             if (_activeAuras.TryGetValue(instancedID, out var existingAura))
             {
                 _activeAuras.Remove(instancedID);
@@ -363,7 +363,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_TickAura(int instancedID, int stacks, float duration, RPCInfo info = default)
         {
-            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_AURA_COUNT);
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT);
             if (_activeAuras.TryGetValue(instancedID, out var existingAura))
             {
                 existingAura.SetStacks(stacks);
@@ -375,7 +375,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_DispelAura(int instancedID, RPCInfo info = default)
         {
-            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_AURA_COUNT);
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT);
             if (_activeAuras.TryGetValue(instancedID, out var existingAura))
             {
                 _activeAuras.Remove(instancedID);

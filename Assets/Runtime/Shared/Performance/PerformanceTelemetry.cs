@@ -127,6 +127,12 @@ namespace Game.Shared.Performance
         internal const int MAX_REGISTERED_METRICS = 256;
         private static PerformanceSession _session;
 
+        /// <summary>Raised after a telemetry session becomes active.</summary>
+        public static event Action SessionStarted;
+
+        /// <summary>Raised after a telemetry session has been stopped and cleared.</summary>
+        public static event Action SessionEnded;
+
         /// <summary>Gets whether a real, explicitly started measurement session is active.</summary>
         public static bool IsEnabled => _session != null;
 
@@ -141,6 +147,7 @@ namespace Game.Shared.Performance
             context.Validate();
             _session = new PerformanceSession(context);
             Application.quitting += HandleApplicationQuitting;
+            SessionStarted?.Invoke();
         }
 
         /// <summary>Registers bounded storage and the declared observation state for one metric.</summary>
@@ -241,6 +248,7 @@ namespace Game.Shared.Performance
 
             Application.quitting -= HandleApplicationQuitting;
             _session = null;
+            SessionEnded?.Invoke();
         }
 
         private static PerformanceSession RequireSession()
@@ -291,10 +299,6 @@ namespace Game.Shared.Performance
         {
             if (definition == null)
                 throw new ArgumentNullException(nameof(definition));
-            if (_registrations.Count >= PerformanceTelemetry.MAX_REGISTERED_METRICS)
-                throw new InvalidOperationException("The maximum number of registered metrics has been reached.");
-            if (_registrations.ContainsKey(definition.MetricId))
-                throw new InvalidOperationException("A metric with this ID is already registered: " + definition.MetricId);
             if (observation != PerformanceMetricObservation.Measured
                 && observation != PerformanceMetricObservation.Estimated
                 && string.IsNullOrWhiteSpace(reason))
@@ -302,10 +306,21 @@ namespace Game.Shared.Performance
             if (reason != null && reason.Length > 512)
                 throw new ArgumentException("Metric reason exceeds its bounded length.", nameof(reason));
 
+            if (_registrations.TryGetValue(definition.MetricId, out PerformanceMetricRegistration existing))
+            {
+                if (existing.Matches(definition, capacity, observation, reason))
+                    return;
+
+                throw new InvalidOperationException("A metric with this ID was registered with different dimensions: " + definition.MetricId);
+            }
+            if (_registrations.Count >= PerformanceTelemetry.MAX_REGISTERED_METRICS)
+                throw new InvalidOperationException("The maximum number of registered metrics has been reached.");
+
             _registrations.Add(
                 definition.MetricId,
                 new PerformanceMetricRegistration(
                     definition,
+                    capacity,
                     observation,
                     reason,
                     observation == PerformanceMetricObservation.Measured
@@ -598,17 +613,21 @@ namespace Game.Shared.Performance
     {
         public PerformanceMetricRegistration(
             PerformanceMetricDefinition definition,
+            int capacity,
             PerformanceMetricObservation observation,
             string reason,
             PerformanceSampleBuffer buffer)
         {
             Definition = definition;
+            Capacity = capacity;
             Observation = observation;
             Reason = reason;
             Buffer = buffer;
         }
 
         public PerformanceMetricDefinition Definition { get; }
+
+        public int Capacity { get; }
 
         public PerformanceMetricObservation Observation { get; }
 
@@ -617,6 +636,21 @@ namespace Game.Shared.Performance
         public PerformanceSampleBuffer Buffer { get; }
 
         public PerformanceMeasurementPhase? FirstSamplePhase { get; set; }
+
+        public bool Matches(
+            PerformanceMetricDefinition definition,
+            int capacity,
+            PerformanceMetricObservation observation,
+            string reason)
+        {
+            return Capacity == capacity
+                && Observation == observation
+                && string.Equals(Reason, reason, StringComparison.Ordinal)
+                && Definition.Unit == definition.Unit
+                && Definition.Side == definition.Side
+                && string.Equals(Definition.Subsystem, definition.Subsystem, StringComparison.Ordinal)
+                && string.Equals(Definition.Scope, definition.Scope, StringComparison.Ordinal);
+        }
     }
 
     internal static class PerformanceRunText

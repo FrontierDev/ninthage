@@ -28,7 +28,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_PlaySFX(string addressablePath)
         {
-            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_SFX_COUNT);
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_SFX_HANDLER_INVOCATION_COUNT);
             PlaySFX(addressablePath);
         }
 

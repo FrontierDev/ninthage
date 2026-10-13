@@ -60,12 +60,14 @@ namespace Game.Client
             _instance = this;
 
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorldRequested;
+            PerformanceTelemetry.SessionEnded += OnTelemetrySessionEnded;
             _initialized = true;
         }
 
         private void OnDestroy()
         {
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnteringWorldRequested;
+            PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
 
             if (NetworkManager.main != null)
             {
@@ -75,14 +77,7 @@ namespace Game.Client
 
             Game.Shared.Networking.MovementEndpoint.onClientInterestRequest -= OnClientInterestRequest;
 
-            if (_drawCallsRecorder.Valid)
-                _drawCallsRecorder.Dispose();
-            if (_batchCountRecorder.Valid)
-                _batchCountRecorder.Dispose();
-            if (_triangleCountRecorder.Valid)
-                _triangleCountRecorder.Dispose();
-            if (_gcAllocatedRecorder.Valid)
-                _gcAllocatedRecorder.Dispose();
+            StopProfilers();
 
             _instance = null;
             _initialized = false;
@@ -91,7 +86,10 @@ namespace Game.Client
         private void Update()
         {
             if (!PerformanceTelemetry.IsEnabled)
+            {
+                StopProfilers();
                 return;
+            }
 
             PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.TRACKED_SCENE_COUNT, _loadedScenes.Count);
             PerformanceTelemetry.TryRecord(
@@ -156,6 +154,31 @@ namespace Game.Client
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.BATCH_COUNT, _batchCountRecorder.LastValue);
             if (_triangleCountRecorder.Valid)
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.TRIANGLE_COUNT, _triangleCountRecorder.LastValue);
+        }
+
+        private void OnTelemetrySessionEnded()
+        {
+            StopProfilers();
+        }
+
+        private void StopProfilers()
+        {
+            if (_drawCallsRecorder.Valid)
+                _drawCallsRecorder.Dispose();
+            if (_batchCountRecorder.Valid)
+                _batchCountRecorder.Dispose();
+            if (_triangleCountRecorder.Valid)
+                _triangleCountRecorder.Dispose();
+            if (_gcAllocatedRecorder.Valid)
+                _gcAllocatedRecorder.Dispose();
+
+            _drawCallsRecorder = default;
+            _batchCountRecorder = default;
+            _triangleCountRecorder = default;
+            _gcAllocatedRecorder = default;
+            _frameTimings = null;
+            _globalWorldLoadTimestamp = 0;
+            _recordersStarted = false;
         }
 
         private void OnEnteringWorldRequested(Game.Shared.Persistence.CharacterData characterData, string sceneName)

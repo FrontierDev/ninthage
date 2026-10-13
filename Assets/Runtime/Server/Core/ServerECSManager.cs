@@ -15,6 +15,18 @@ namespace Game.Server.Core
             PerformanceMetricSide.Server,
             "ecs.initialization",
             "server_update");
+        private static readonly PerformanceMetricDefinition SIMULATION_TICK_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_SIMULATION_TICK_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "simulation",
+            "fixed_tick");
+        private static readonly PerformanceMetricDefinition SIMULATION_TICK_BACKLOG_METRIC = new(
+            PerformanceMetricIds.SERVER_SIMULATION_TICK_BACKLOG,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "simulation",
+            "fixed_tick");
         private static readonly PerformanceMarker ECS_INITIALIZATION_MARKER = new(ECS_INITIALIZATION_DURATION_METRIC, "Server.ECS.Initialization");
         private static bool _initialized = false;
         /// <summary>Gets whether the server ECS world has been initialized.</summary>
@@ -22,6 +34,21 @@ namespace Game.Server.Core
 
         /// <summary>Gets the server's default ECS world.</summary>
         public static World DefaultWorld { get; private set; }
+
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(ECS_INITIALIZATION_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(
+                SIMULATION_TICK_DURATION_METRIC,
+                0,
+                PerformanceMetricObservation.Unavailable,
+                "The server has no project-owned fixed simulation tick timing probe.");
+            PerformanceTelemetry.RegisterMetric(
+                SIMULATION_TICK_BACKLOG_METRIC,
+                0,
+                PerformanceMetricObservation.Unavailable,
+                "The server has no project-owned fixed simulation tick backlog probe.");
+        }
 
         /// <summary>Creates the server ECS world and registers its systems.</summary>
         public static void ServerInitializeECSWorlds()

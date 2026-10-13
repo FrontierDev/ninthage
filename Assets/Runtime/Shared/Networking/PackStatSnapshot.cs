@@ -26,7 +26,7 @@ namespace Game.Shared.Networking
         {
             using var markerScope = ENTRY_WRITE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int startPosition = telemetryEnabled ? packer.positionInBytes : 0;
+            int startPosition = telemetryEnabled ? packer.positionInBits : 0;
             packer.Write(value.StatID);
             packer.Write(value.EffectiveMax);
             packer.Write(value.Current);
@@ -35,7 +35,7 @@ namespace Game.Shared.Networking
                 NetworkingPerformanceMetrics.RecordSerializer(
                     NetworkingPerformanceMetrics.SERIALIZER_STAT_ENTRY_WRITE_BYTES,
                     NetworkingPerformanceMetrics.EstimateStatEntryPayloadBytes(value),
-                    packer.positionInBytes - startPosition);
+                    NetworkingPerformanceMetrics.GetEncodedByteCount(startPosition, packer.positionInBits));
         }
 
         [UsedByIL]
@@ -44,7 +44,7 @@ namespace Game.Shared.Networking
         {
             using var markerScope = ENTRY_READ_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int startPosition = telemetryEnabled ? packer.positionInBytes : 0;
+            int startPosition = telemetryEnabled ? packer.positionInBits : 0;
             string statID = default;
             float effectiveMax = default;
             float current = default;
@@ -61,7 +61,7 @@ namespace Game.Shared.Networking
             if (telemetryEnabled)
                 NetworkingPerformanceMetrics.RecordEncodedSerializer(
                     NetworkingPerformanceMetrics.SERIALIZER_STAT_ENTRY_READ_BYTES,
-                    packer.positionInBytes - startPosition);
+                    NetworkingPerformanceMetrics.GetEncodedByteCount(startPosition, packer.positionInBits));
         }
 
         [UsedByIL]
@@ -70,7 +70,7 @@ namespace Game.Shared.Networking
         {
             using var markerScope = SNAPSHOT_WRITE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int startPosition = telemetryEnabled ? packer.positionInBytes : 0;
+            int startPosition = telemetryEnabled ? packer.positionInBits : 0;
             int length = value.Stats?.Length ?? 0;
             packer.Write(length);
             for (int i = 0; i < length; i++)
@@ -80,7 +80,7 @@ namespace Game.Shared.Networking
                 NetworkingPerformanceMetrics.RecordSerializer(
                     NetworkingPerformanceMetrics.SERIALIZER_STAT_SNAPSHOT_WRITE_BYTES,
                     NetworkingPerformanceMetrics.EstimateStatSnapshotPayloadBytes(value),
-                    packer.positionInBytes - startPosition);
+                    NetworkingPerformanceMetrics.GetEncodedByteCount(startPosition, packer.positionInBits));
         }
 
         [UsedByIL]
@@ -89,7 +89,7 @@ namespace Game.Shared.Networking
         {
             using var markerScope = SNAPSHOT_READ_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int startPosition = telemetryEnabled ? packer.positionInBytes : 0;
+            int startPosition = telemetryEnabled ? packer.positionInBits : 0;
             int length = default;
             packer.Read(ref length);
             var stats = new StatSnapshotEntry[length];
@@ -100,7 +100,7 @@ namespace Game.Shared.Networking
             if (telemetryEnabled)
                 NetworkingPerformanceMetrics.RecordEncodedSerializer(
                     NetworkingPerformanceMetrics.SERIALIZER_STAT_SNAPSHOT_READ_BYTES,
-                    packer.positionInBytes - startPosition);
+                    NetworkingPerformanceMetrics.GetEncodedByteCount(startPosition, packer.positionInBits));
         }
     }
 }

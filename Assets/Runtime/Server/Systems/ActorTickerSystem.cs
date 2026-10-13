@@ -22,6 +22,12 @@ namespace Game.Server.Systems
             "server_update");
         private static readonly PerformanceMarker ACTOR_TICKER_MARKER = new(ACTOR_TICKER_DURATION_METRIC, "Server.ECS.ActorTicker");
 
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(ACTOR_TICKER_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(TICKER_ENTRY_COUNT_METRIC, 4096);
+        }
+
         /// <summary>Advances active actor tickers and invokes their callbacks.</summary>
         public void OnUpdate(ref SystemState state)
         {

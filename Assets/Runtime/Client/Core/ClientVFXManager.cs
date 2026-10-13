@@ -7,7 +7,6 @@ using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Runtime.VFX;
 using PurrNet;
-using System;
 using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -20,18 +19,6 @@ namespace Game.Client
     /// </summary>
     public sealed class ClientVFXManager : MonoBehaviour
     {
-        private sealed class LifetimeTracker : MonoBehaviour
-        {
-            internal Action Released;
-
-            private void OnDestroy()
-            {
-                Action released = Released;
-                Released = null;
-                released?.Invoke();
-            }
-        }
-
         private static ClientVFXManager _instance;
         /// <summary>
         /// Gets the shared client-side instance.
@@ -43,8 +30,8 @@ namespace Game.Client
         /// </summary>
         public static bool Initialized => _initialized;
 
-        private int _activeVFXCount;
         private int _pendingAddressableLoads;
+        private int _telemetrySessionId;
 
         private void Awake()
         {
@@ -53,6 +40,10 @@ namespace Game.Client
             ActorEndpoint.onClientSpawnVFXAtPosition += OnClientSpawnVFXAtPosition;
             ActorEndpoint.onClientSpawnProjectile += OnClientSpawnProjectile;
             ActorEndpoint.onClientTriggerEffect += OnClientTriggerEffect;
+            PerformanceTelemetry.SessionStarted += OnTelemetrySessionStarted;
+            PerformanceTelemetry.SessionEnded += OnTelemetrySessionEnded;
+            if (PerformanceTelemetry.IsEnabled)
+                OnTelemetrySessionStarted();
 
             _initialized = true;
         }
@@ -62,6 +53,8 @@ namespace Game.Client
             ActorEndpoint.onClientSpawnVFXAtPosition -= OnClientSpawnVFXAtPosition;
             ActorEndpoint.onClientSpawnProjectile -= OnClientSpawnProjectile;
             ActorEndpoint.onClientTriggerEffect -= OnClientTriggerEffect;
+            PerformanceTelemetry.SessionStarted -= OnTelemetrySessionStarted;
+            PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
 
             _instance = null;
             _initialized = false;
@@ -71,6 +64,7 @@ namespace Game.Client
         {
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             long startedTimestamp = telemetryEnabled ? Stopwatch.GetTimestamp() : 0;
+            int telemetrySessionId = telemetryEnabled ? _telemetrySessionId : 0;
             if (telemetryEnabled)
             {
                 _pendingAddressableLoads++;
@@ -79,10 +73,13 @@ namespace Game.Client
 
             Addressables.LoadAssetAsync<GameObject>(addressablePath).Completed += handle =>
             {
-                if (_pendingAddressableLoads > 0)
-                    _pendingAddressableLoads--;
-                if (PerformanceTelemetry.IsEnabled)
+                bool sameTelemetrySession = telemetrySessionId != 0
+                    && PerformanceTelemetry.IsEnabled
+                    && telemetrySessionId == _telemetrySessionId;
+                if (sameTelemetrySession)
                 {
+                    if (_pendingAddressableLoads > 0)
+                        _pendingAddressableLoads--;
                     ClientPerformanceMetrics.TryRecordDuration(ClientPerformanceMetrics.ADDRESSABLE_LOAD_DURATION, startedTimestamp);
                     PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_PENDING_COUNT, _pendingAddressableLoads);
                 }
@@ -109,6 +106,7 @@ namespace Game.Client
         {
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             long startedTimestamp = telemetryEnabled ? Stopwatch.GetTimestamp() : 0;
+            int telemetrySessionId = telemetryEnabled ? _telemetrySessionId : 0;
             if (telemetryEnabled)
             {
                 _pendingAddressableLoads++;
@@ -117,10 +115,13 @@ namespace Game.Client
 
             Addressables.LoadAssetAsync<GameObject>(addressablePath).Completed += handle =>
             {
-                if (_pendingAddressableLoads > 0)
-                    _pendingAddressableLoads--;
-                if (PerformanceTelemetry.IsEnabled)
+                bool sameTelemetrySession = telemetrySessionId != 0
+                    && PerformanceTelemetry.IsEnabled
+                    && telemetrySessionId == _telemetrySessionId;
+                if (sameTelemetrySession)
                 {
+                    if (_pendingAddressableLoads > 0)
+                        _pendingAddressableLoads--;
                     ClientPerformanceMetrics.TryRecordDuration(ClientPerformanceMetrics.ADDRESSABLE_LOAD_DURATION, startedTimestamp);
                     PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_PENDING_COUNT, _pendingAddressableLoads);
                 }
@@ -163,24 +164,19 @@ namespace Game.Client
             if (!PerformanceTelemetry.IsEnabled || effect == null)
                 return;
 
-            var tracker = effect.GetComponent<LifetimeTracker>()
-                ?? effect.AddComponent<LifetimeTracker>();
-            tracker.Released += OnVFXReleased;
-            _activeVFXCount++;
             PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.VFX_SPAWN_COUNT, 1);
-            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.VFX_ACTIVE_COUNT, _activeVFXCount);
         }
 
-        private void OnVFXReleased()
+        private void OnTelemetrySessionStarted()
         {
-            if (_activeVFXCount > 0)
-                _activeVFXCount--;
+            _telemetrySessionId++;
+            _pendingAddressableLoads = 0;
+        }
 
-            if (!PerformanceTelemetry.IsEnabled)
-                return;
-
-            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.VFX_RELEASE_COUNT, 1);
-            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.VFX_ACTIVE_COUNT, _activeVFXCount);
+        private void OnTelemetrySessionEnded()
+        {
+            _telemetrySessionId++;
+            _pendingAddressableLoads = 0;
         }
     }
 }

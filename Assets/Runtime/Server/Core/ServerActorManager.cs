@@ -137,6 +137,18 @@ namespace Game.Server.Core
             PerformanceMetricSide.Server,
             "actor_manager",
             "lifetime");
+        private static readonly PerformanceMetricDefinition DORMANT_ACTOR_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTORS_DORMANT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition SPATIAL_CANDIDATE_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_SPATIAL_CANDIDATE_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_aggro",
+            "server_update");
         private static readonly PerformanceMarker UPDATE_MARKER = new(UPDATE_DURATION_METRIC, "Server.ActorManager.Update");
         private static readonly PerformanceMarker LATE_UPDATE_MARKER = new(LATE_UPDATE_DURATION_METRIC, "Server.ActorManager.LateUpdate");
         private static readonly PerformanceMarker NPC_AGGRO_MARKER = new(NPC_AGGRO_DURATION_METRIC, "Server.ActorManager.UpdateNPCAggro");
@@ -149,6 +161,39 @@ namespace Game.Server.Core
         private static bool _initialized = false;
         /// <summary>Gets whether the actor manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
+
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(LATE_UPDATE_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(NPC_AGGRO_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(POSITION_VALIDATION_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(PLAYER_ECS_SYNC_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(ECS_ACTOR_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(NETWORK_GAMEOBJECT_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(TOTAL_ALLOCATED_MEMORY_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(MONO_USED_MEMORY_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(MONO_HEAP_MEMORY_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(GC_GEN0_COLLECTION_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(GC_GEN1_COLLECTION_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(GC_GEN2_COLLECTION_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(OVERLAP_SEARCH_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(COLLIDER_CANDIDATE_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(FULL_ENTITY_SCAN_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(GAMEOBJECT_SYNC_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(ALLOC_HEAVY_OPERATION_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SPAWN_EVENT_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(
+                DORMANT_ACTOR_COUNT_METRIC,
+                0,
+                PerformanceMetricObservation.Unavailable,
+                "The server has no project-owned dormant actor state probe.");
+            PerformanceTelemetry.RegisterMetric(
+                SPATIAL_CANDIDATE_COUNT_METRIC,
+                0,
+                PerformanceMetricObservation.Unavailable,
+                "The server has no project-owned spatial candidate probe; NPC overlap candidates are recorded separately.");
+        }
 
         // ECS Management.
         private EntityManager _entityManager;

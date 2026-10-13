@@ -22,6 +22,12 @@ namespace Game.Server.Systems
             "server_update");
         private static readonly PerformanceMarker AURA_TICK_MARKER = new(AURA_TICK_DURATION_METRIC, "Server.ECS.AuraTick");
 
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(AURA_TICK_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(AURA_ENTRY_COUNT_METRIC, 4096);
+        }
+
         /// <summary>Processes aura ticks and expirations for server actors.</summary>
         public void OnUpdate(ref SystemState state)
         {

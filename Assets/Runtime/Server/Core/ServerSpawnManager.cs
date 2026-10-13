@@ -69,6 +69,17 @@ namespace Game.Server.Core
         private static bool _initialized;
         /// <summary>Gets whether the spawn manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
+
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SPAWN_COMMAND_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SPAWN_SUCCESS_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SPAWN_FAILURE_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SCENE_LOAD_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(DESPAWN_EVENT_COUNT_METRIC, 4096);
+        }
+
         private NetworkManager _networkManager;
 
         // Managed prefab list indexed by SpawnPointComponent.PrefabIndex
@@ -398,16 +409,14 @@ namespace Game.Server.Core
             for (int i = 0; i < commands.Length; i++)
             {
                 var cmd = commands[i];
+                var prefab = _prefabRegistry[cmd.PrefabIndex];
+                var scene = _sceneRegistry[cmd.SceneIndex];
                 var sceneName = cmd.SceneName.ToString();
                 var spawnPointGUID = cmd.SpawnPointGUID;
-                GameObject prefab = null;
                 bool spawnSucceeded = false;
 
                 try
                 {
-                    prefab = _prefabRegistry[cmd.PrefabIndex];
-                    var scene = _sceneRegistry[cmd.SceneIndex];
-
                     // Use PurrNet's Instantiate proxy — handles scene placement,
                     // hierarchy registration, spawn, and replication in one call.
                     var go = PurrNet.UnityProxy.Instantiate(prefab, cmd.Position, Quaternion.identity, scene);
@@ -417,6 +426,7 @@ namespace Game.Server.Core
                     if (actor == null)
                     {
                         Debug.Error($"Prefab '{prefab.name}' is missing an Actor component. Add it to the prefab in the editor.");
+                        continue;
                     }
                     else
                     {
@@ -478,8 +488,7 @@ namespace Game.Server.Core
                 }
                 catch (System.Exception ex)
                 {
-                    string prefabName = prefab != null ? prefab.name : "<unresolved>";
-                    Debug.Error($"Failed to spawn prefab '{prefabName}': {ex.Message}\n{ex.StackTrace}");
+                    Debug.Error($"Failed to spawn prefab '{prefab.name}': {ex.Message}\n{ex.StackTrace}");
                 }
                 finally
                 {

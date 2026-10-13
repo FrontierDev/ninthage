@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 
 using Game.Shared.Performance;
@@ -141,12 +142,12 @@ namespace Game.Shared.Networking
             PerformanceMetricSide.Server,
             "interest",
             "server_update");
-        public static readonly PerformanceMetricDefinition RELEVANT_RECIPIENT_COUNT = Metric(
-            PerformanceMetricIds.NETWORK_RELEVANT_RECIPIENT_COUNT,
+        public static readonly PerformanceMetricDefinition VISIBILITY_CANDIDATE_COUNT = Metric(
+            PerformanceMetricIds.NETWORK_INTEREST_VISIBILITY_CANDIDATE_COUNT,
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "interest",
-            "server_update");
+            "visibility_evaluation");
         public static readonly PerformanceMetricDefinition VISIBILITY_EVALUATION_DURATION = Metric(
             PerformanceMetricIds.NETWORK_VISIBILITY_EVALUATION_DURATION,
             PerformanceMetricUnit.Milliseconds,
@@ -172,34 +173,70 @@ namespace Game.Shared.Networking
             "interest",
             "server_update");
 
-        public static readonly PerformanceMetricDefinition RPC_EMISSION_COUNT = Metric(
-            PerformanceMetricIds.NETWORK_RPC_EMISSION_COUNT,
-            PerformanceMetricUnit.Count,
-            PerformanceMetricSide.Shared,
-            "rpc",
-            "network_message");
-        public static readonly PerformanceMetricDefinition RPC_RECIPIENT_COUNT = Metric(
-            PerformanceMetricIds.NETWORK_RPC_RECIPIENT_COUNT,
-            PerformanceMetricUnit.Count,
-            PerformanceMetricSide.Shared,
-            "rpc",
-            "network_message");
-        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_CLIENT_UPDATE_CHARACTER_LIST_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACCOUNT_CLIENT_UPDATE_CHARACTER_LIST_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_SERVER_TRY_CREATE_CHARACTER_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACCOUNT_SERVER_TRY_CREATE_CHARACTER_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_CLIENT_NOTIFY_CHARACTER_CREATION_RESULT_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACCOUNT_CLIENT_NOTIFY_CHARACTER_CREATION_RESULT_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_SERVER_REQUEST_ENTER_WORLD_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACCOUNT_SERVER_REQUEST_ENTER_WORLD_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_CLIENT_ENTER_WORLD_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACCOUNT_CLIENT_ENTER_WORLD_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_MOVEMENT_SERVER_REQUEST_CHUNK_INTEREST_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_MOVEMENT_SERVER_REQUEST_CHUNK_INTEREST_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_MOVEMENT_CLIENT_UPDATE_INTEREST_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_MOVEMENT_CLIENT_UPDATE_INTEREST_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_MOVEMENT_CLIENT_SERVER_CORRECTION_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_MOVEMENT_CLIENT_SERVER_CORRECTION_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACTOR_TARGET_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACTOR_TARGET_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACTOR_COMBAT_LOG_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACTOR_COMBAT_LOG_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACTOR_AURA_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACTOR_AURA_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACTOR_SPELL_CAST_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACTOR_SPELL_CAST_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACTOR_COOLDOWN_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACTOR_COOLDOWN_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACTOR_VFX_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACTOR_VFX_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_ACTOR_SFX_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_ACTOR_SFX_COUNT);
-        public static readonly PerformanceMetricDefinition RPC_STAT_SNAPSHOT_COUNT = RpcCategory(PerformanceMetricIds.NETWORK_RPC_STAT_SNAPSHOT_COUNT);
+        public static readonly PerformanceMetricDefinition RPC_SERVER_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_SERVER_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Server);
+        public static readonly PerformanceMetricDefinition RPC_CLIENT_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_CLIENT_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_CLIENT_UPDATE_CHARACTER_LIST_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACCOUNT_CLIENT_UPDATE_CHARACTER_LIST_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_SERVER_TRY_CREATE_CHARACTER_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACCOUNT_SERVER_TRY_CREATE_CHARACTER_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Server);
+        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_CLIENT_NOTIFY_CHARACTER_CREATION_RESULT_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACCOUNT_CLIENT_NOTIFY_CHARACTER_CREATION_RESULT_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_SERVER_REQUEST_ENTER_WORLD_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACCOUNT_SERVER_REQUEST_ENTER_WORLD_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Server);
+        public static readonly PerformanceMetricDefinition RPC_ACCOUNT_CLIENT_ENTER_WORLD_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACCOUNT_CLIENT_ENTER_WORLD_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_MOVEMENT_SERVER_REQUEST_CHUNK_INTEREST_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_MOVEMENT_SERVER_REQUEST_CHUNK_INTEREST_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Server);
+        public static readonly PerformanceMetricDefinition RPC_MOVEMENT_CLIENT_UPDATE_INTEREST_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_MOVEMENT_CLIENT_UPDATE_INTEREST_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_MOVEMENT_CLIENT_SERVER_CORRECTION_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_MOVEMENT_CLIENT_SERVER_CORRECTION_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACTOR_CLIENT_TARGET_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACTOR_CLIENT_TARGET_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACTOR_CLIENT_COMBAT_LOG_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACTOR_CLIENT_COMBAT_LOG_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACTOR_SERVER_SPELL_CAST_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACTOR_SERVER_SPELL_CAST_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Server);
+        public static readonly PerformanceMetricDefinition RPC_ACTOR_CLIENT_SPELL_CAST_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACTOR_CLIENT_SPELL_CAST_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACTOR_CLIENT_COOLDOWN_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACTOR_CLIENT_COOLDOWN_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACTOR_CLIENT_VFX_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACTOR_CLIENT_VFX_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_ACTOR_CLIENT_SFX_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_ACTOR_CLIENT_SFX_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+        public static readonly PerformanceMetricDefinition RPC_STAT_CLIENT_SNAPSHOT_HANDLER_INVOCATION_COUNT = RpcHandlerMetric(
+            PerformanceMetricIds.NETWORK_RPC_STAT_CLIENT_SNAPSHOT_HANDLER_INVOCATION_COUNT,
+            PerformanceMetricSide.Client);
+
+        public static readonly PerformanceMetricDefinition SERVER_NETWORK_PAYLOAD_BYTES = Metric(
+            PerformanceMetricIds.SERVER_NETWORK_PAYLOAD_BYTES,
+            PerformanceMetricUnit.Bytes,
+            PerformanceMetricSide.Server,
+            "transport_payload",
+            "aggregate");
 
         public static readonly PerformanceMetricDefinition SERIALIZER_OPERATION_COUNT = Metric(
             PerformanceMetricIds.NETWORK_SERIALIZER_OPERATION_COUNT,
@@ -249,6 +286,102 @@ namespace Game.Shared.Networking
         /// <summary>Unsupported without public latency samples; use <see cref="TRANSPORT_LATENCY_UNAVAILABLE_REASON"/>.</summary>
         public static readonly PerformanceMetricDefinition TRANSPORT_LATENCY = Unsupported(PerformanceMetricIds.NETWORK_TRANSPORT_LATENCY, PerformanceMetricUnit.Milliseconds);
 
+        /// <summary>
+        /// Registers the networking metrics that can be observed on the server.
+        /// The benchmark runner calls this after starting its telemetry session.
+        /// </summary>
+        public static void RegisterServerMetrics()
+        {
+            RegisterUnavailable(
+                SERVER_CONNECTION_ATTEMPT_COUNT,
+                SERVER_CONNECTION_ATTEMPT_UNAVAILABLE_REASON);
+            RegisterUnavailable(
+                SERVER_NETWORK_PAYLOAD_BYTES,
+                "The server exposes directional transport payload bytes, not a separate aggregate payload producer.");
+            RegisterMeasured(SERVER_TRANSPORT_CONNECTED_COUNT);
+            RegisterMeasured(SERVER_AUTHENTICATED_CLIENT_COUNT);
+            RegisterMeasured(SERVER_IN_WORLD_CLIENT_COUNT);
+            RegisterMeasured(SERVER_DISCONNECTED_COUNT);
+            RegisterMeasured(SERVER_LIVE_CONNECTION_COUNT);
+            RegisterMeasured(SERVER_TRANSPORT_PAYLOAD_BYTES_SENT);
+            RegisterMeasured(SERVER_TRANSPORT_PAYLOAD_BYTES_RECEIVED);
+
+            RegisterMeasured(VISIBILITY_EVALUATION_COUNT);
+            RegisterMeasured(VISIBILITY_ACCEPTED_COUNT);
+            RegisterMeasured(VISIBILITY_REJECTED_COUNT);
+            RegisterMeasured(CHUNK_SUBSCRIPTION_CHANGE_COUNT);
+            RegisterMeasured(VISIBILITY_CANDIDATE_COUNT);
+            RegisterMeasured(VISIBILITY_EVALUATION_DURATION);
+            RegisterMeasured(INTEREST_REQUEST_DURATION);
+            RegisterMeasured(INTEREST_VISIBILITY_EVALUATION_COUNT);
+            RegisterMeasured(INTEREST_CHANGED_SUBSCRIPTION_COUNT);
+
+            RegisterMeasured(RPC_SERVER_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACCOUNT_SERVER_TRY_CREATE_CHARACTER_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACCOUNT_SERVER_REQUEST_ENTER_WORLD_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_MOVEMENT_SERVER_REQUEST_CHUNK_INTEREST_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACTOR_SERVER_SPELL_CAST_HANDLER_INVOCATION_COUNT);
+
+            RegisterSharedMetrics();
+        }
+
+        /// <summary>
+        /// Registers the networking metrics that can be observed on the client.
+        /// The benchmark runner calls this after starting its telemetry session.
+        /// </summary>
+        public static void RegisterClientMetrics()
+        {
+            RegisterMeasured(CLIENT_CONNECTION_ATTEMPT_COUNT);
+            RegisterMeasured(CLIENT_CONNECTED_COUNT);
+            RegisterMeasured(CLIENT_AUTHENTICATED_COUNT);
+            RegisterMeasured(CLIENT_IN_WORLD_COUNT);
+            RegisterMeasured(CLIENT_DISCONNECTED_COUNT);
+            RegisterMeasured(CLIENT_LIVE_CONNECTION_COUNT);
+            RegisterMeasured(CLIENT_TRANSPORT_PAYLOAD_BYTES_SENT);
+            RegisterMeasured(CLIENT_TRANSPORT_PAYLOAD_BYTES_RECEIVED);
+
+            RegisterMeasured(RPC_CLIENT_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACCOUNT_CLIENT_UPDATE_CHARACTER_LIST_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACCOUNT_CLIENT_NOTIFY_CHARACTER_CREATION_RESULT_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACCOUNT_CLIENT_ENTER_WORLD_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_MOVEMENT_CLIENT_UPDATE_INTEREST_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_MOVEMENT_CLIENT_SERVER_CORRECTION_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACTOR_CLIENT_TARGET_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACTOR_CLIENT_COMBAT_LOG_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACTOR_CLIENT_SPELL_CAST_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACTOR_CLIENT_COOLDOWN_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACTOR_CLIENT_VFX_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_ACTOR_CLIENT_SFX_HANDLER_INVOCATION_COUNT);
+            RegisterMeasured(RPC_STAT_CLIENT_SNAPSHOT_HANDLER_INVOCATION_COUNT);
+
+            RegisterSharedMetrics();
+        }
+
+        private static void RegisterSharedMetrics()
+        {
+            RegisterMeasured(SERIALIZER_OPERATION_COUNT);
+            RegisterEstimated(SERIALIZER_APPLICATION_PAYLOAD_ESTIMATED_BYTES);
+            RegisterMeasured(SERIALIZER_WORLD_POSITION_WRITE_DURATION);
+            RegisterMeasured(SERIALIZER_WORLD_POSITION_READ_DURATION);
+            RegisterMeasured(SERIALIZER_STAT_ENTRY_WRITE_DURATION);
+            RegisterMeasured(SERIALIZER_STAT_ENTRY_READ_DURATION);
+            RegisterMeasured(SERIALIZER_STAT_SNAPSHOT_WRITE_DURATION);
+            RegisterMeasured(SERIALIZER_STAT_SNAPSHOT_READ_DURATION);
+            RegisterMeasured(SERIALIZER_WORLD_POSITION_WRITE_BYTES);
+            RegisterMeasured(SERIALIZER_WORLD_POSITION_READ_BYTES);
+            RegisterMeasured(SERIALIZER_STAT_ENTRY_WRITE_BYTES);
+            RegisterMeasured(SERIALIZER_STAT_ENTRY_READ_BYTES);
+            RegisterMeasured(SERIALIZER_STAT_SNAPSHOT_WRITE_BYTES);
+            RegisterMeasured(SERIALIZER_STAT_SNAPSHOT_READ_BYTES);
+
+            RegisterUnavailable(TRANSPORT_ON_WIRE_BYTES, TRANSPORT_ON_WIRE_BYTES_UNAVAILABLE_REASON);
+            RegisterUnavailable(TRANSPORT_RETRANSMISSION_COUNT, TRANSPORT_RETRANSMISSION_UNAVAILABLE_REASON);
+            RegisterUnavailable(TRANSPORT_PACKET_LOSS_RATIO, TRANSPORT_PACKET_LOSS_UNAVAILABLE_REASON);
+            RegisterUnavailable(TRANSPORT_BACKLOG_COUNT, TRANSPORT_BACKLOG_UNAVAILABLE_REASON);
+            RegisterUnavailable(TRANSPORT_LATENCY, TRANSPORT_LATENCY_UNAVAILABLE_REASON);
+        }
+
         public static void RecordVisibility(bool accepted)
         {
             if (!PerformanceTelemetry.IsEnabled)
@@ -264,21 +397,29 @@ namespace Game.Shared.Networking
                 PerformanceTelemetry.TryRecord(CHUNK_SUBSCRIPTION_CHANGE_COUNT, 1);
         }
 
-        public static void RecordRelevantRecipient(int recipientCount = 1)
+        public static void RecordVisibilityCandidates(int candidateCount)
         {
             if (PerformanceTelemetry.IsEnabled)
-                PerformanceTelemetry.TryRecord(RELEVANT_RECIPIENT_COUNT, recipientCount);
+                PerformanceTelemetry.TryRecord(VISIBILITY_CANDIDATE_COUNT, candidateCount);
         }
 
-        public static void RecordRpc(PerformanceMetricDefinition category, int recipientCount = -1)
+        /// <summary>
+        /// Records execution of an RPC handler on the side that ran its body.
+        /// This is not an outbound emission or a recipient-fan-out measurement.
+        /// </summary>
+        public static void RecordRpcHandlerInvocation(PerformanceMetricDefinition category)
         {
             if (!PerformanceTelemetry.IsEnabled)
                 return;
 
-            PerformanceTelemetry.TryRecord(RPC_EMISSION_COUNT, 1);
             PerformanceTelemetry.TryRecord(category, 1);
-            if (recipientCount >= 0)
-                PerformanceTelemetry.TryRecord(RPC_RECIPIENT_COUNT, recipientCount);
+            PerformanceMetricDefinition sideMetric = category.Side switch
+            {
+                PerformanceMetricSide.Server => RPC_SERVER_HANDLER_INVOCATION_COUNT,
+                PerformanceMetricSide.Client => RPC_CLIENT_HANDLER_INVOCATION_COUNT,
+                _ => throw new ArgumentException("RPC handler metrics must identify a server or client execution side.", nameof(category))
+            };
+            PerformanceTelemetry.TryRecord(sideMetric, 1);
         }
 
         public static void RecordSerializer(
@@ -327,19 +468,28 @@ namespace Game.Shared.Networking
             return result;
         }
 
-        private static PerformanceMetricDefinition RpcCategory(string metricId)
+        /// <summary>Converts a serializer bit-position delta to encoded payload bytes without touching the packer.</summary>
+        public static int GetEncodedByteCount(int startPositionInBits, int endPositionInBits)
         {
-            return Metric(metricId, PerformanceMetricUnit.Count, PerformanceMetricSide.Shared, "rpc", "network_message");
+            if (startPositionInBits < 0 || endPositionInBits < startPositionInBits)
+                throw new ArgumentOutOfRangeException(nameof(endPositionInBits), "Serializer positions must be monotonic.");
+
+            return (endPositionInBits - startPositionInBits + 7) / 8;
+        }
+
+        private static PerformanceMetricDefinition RpcHandlerMetric(string metricId, PerformanceMetricSide side)
+        {
+            return Metric(metricId, PerformanceMetricUnit.Count, side, "rpc_handler", "local_invocation");
         }
 
         private static PerformanceMetricDefinition SerializerBytes(string metricId)
         {
-            return Metric(metricId, PerformanceMetricUnit.Bytes, PerformanceMetricSide.Shared, "purrnet_serializer", "network_message");
+            return Metric(metricId, PerformanceMetricUnit.Bytes, PerformanceMetricSide.Shared, "purrnet_serializer", "encoded_payload");
         }
 
         private static PerformanceMetricDefinition Unsupported(string metricId, PerformanceMetricUnit unit)
         {
-            return Metric(metricId, unit, PerformanceMetricSide.Shared, "transport_on_wire", "network_interval");
+            return Metric(metricId, unit, PerformanceMetricSide.Shared, "transport", "network_interval");
         }
 
         private static PerformanceMetricDefinition Metric(
@@ -351,5 +501,29 @@ namespace Game.Shared.Networking
         {
             return new PerformanceMetricDefinition(metricId, unit, side, subsystem, scope);
         }
+
+        private static void RegisterMeasured(PerformanceMetricDefinition definition)
+        {
+            PerformanceTelemetry.RegisterMetric(definition, 4096);
+        }
+
+        private static void RegisterEstimated(PerformanceMetricDefinition definition)
+        {
+            PerformanceTelemetry.RegisterMetric(
+                definition,
+                4096,
+                PerformanceMetricObservation.Estimated,
+                "Application payload size is estimated from serialized values and excludes PurrNet framing and transport overhead.");
+        }
+
+        private static void RegisterUnavailable(PerformanceMetricDefinition definition, string reason)
+        {
+            PerformanceTelemetry.RegisterMetric(
+                definition,
+                0,
+                PerformanceMetricObservation.Unavailable,
+                reason);
+        }
+
     }
 }

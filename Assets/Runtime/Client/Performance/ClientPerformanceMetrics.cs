@@ -6,6 +6,13 @@ namespace Game.Client.Performance
     /// <summary>Bounded client presentation metrics shared by the existing client managers.</summary>
     internal static class ClientPerformanceMetrics
     {
+        private const string STREAMED_SCENE_UNLOAD_UNAVAILABLE_REASON =
+            "PurrNet does not expose streamed scene request timestamps; only the unload callback duration is observable.";
+        private const string VISIBLE_ACTOR_UNAVAILABLE_REASON =
+            "The current client actor endpoint does not expose a matching despawn lifecycle for a complete visible-actor count.";
+        private const string VFX_LIFETIME_UNAVAILABLE_REASON =
+            "The project-owned VFX path exposes spawn events but no reliable destruction callback; active and release coverage is partial.";
+
         internal static readonly PerformanceMetricDefinition RENDERED_FRAME_TIME = Metric(
             PerformanceMetricIds.CLIENT_RENDERED_FRAME_TIME,
             PerformanceMetricUnit.Milliseconds,
@@ -219,6 +226,56 @@ namespace Game.Client.Performance
             "audio",
             "client_process");
 
+        internal static void RegisterMetrics()
+        {
+            RegisterMeasured(RENDERED_FRAME_TIME);
+            RegisterMeasured(FRAME_INTERVAL);
+            RegisterMeasured(MAIN_THREAD_FRAME_TIME);
+            RegisterMeasured(RENDER_THREAD_FRAME_TIME);
+            RegisterMeasured(GPU_FRAME_TIME);
+
+            RegisterMeasured(SCENE_LOAD_DURATION);
+            RegisterMeasured(SCENE_ACTIVATION_DURATION);
+            RegisterUnavailable(SCENE_UNLOAD_DURATION, STREAMED_SCENE_UNLOAD_UNAVAILABLE_REASON);
+            RegisterMeasured(SCENE_UNLOAD_CALLBACK_DURATION);
+            RegisterMeasured(SCENE_LOAD_COUNT);
+            RegisterMeasured(SCENE_ACTIVATION_COUNT);
+            RegisterMeasured(SCENE_UNLOAD_COUNT);
+            RegisterMeasured(TRACKED_SCENE_COUNT);
+            RegisterMeasured(STREAMED_SCENE_LOAD_COUNT);
+            RegisterMeasured(STREAMED_SCENE_UNLOAD_COUNT);
+            RegisterMeasured(PENDING_SCENE_OPERATION_COUNT);
+
+            RegisterMeasured(ORIGIN_SHIFT_DURATION);
+            RegisterMeasured(ORIGIN_SHIFT_COUNT);
+            RegisterMeasured(ORIGIN_SHIFT_ROOT_COUNT);
+            RegisterMeasured(FRAME_SPIKE_COUNT);
+
+            RegisterUnavailable(VISIBLE_ACTOR_COUNT, VISIBLE_ACTOR_UNAVAILABLE_REASON);
+            RegisterMeasured(NAMEPLATE_COUNT);
+            RegisterMeasured(NAMEPLATE_SPAWN_COUNT);
+            RegisterMeasured(NAMEPLATE_RELEASE_COUNT);
+            RegisterMeasured(NAMEPLATE_UPDATE_DURATION);
+            RegisterUnavailable(VFX_ACTIVE_COUNT, VFX_LIFETIME_UNAVAILABLE_REASON);
+            RegisterMeasured(VFX_SPAWN_COUNT);
+            RegisterUnavailable(VFX_RELEASE_COUNT, VFX_LIFETIME_UNAVAILABLE_REASON);
+            RegisterMeasured(UI_TRANSIENT_COUNT);
+            RegisterMeasured(UI_TRANSIENT_SPAWN_COUNT);
+            RegisterMeasured(UI_TRANSIENT_RELEASE_COUNT);
+
+            RegisterMeasured(DRAW_CALL_COUNT);
+            RegisterMeasured(BATCH_COUNT);
+            RegisterMeasured(TRIANGLE_COUNT);
+            RegisterMeasured(TOTAL_ALLOCATED_MEMORY);
+            RegisterMeasured(MONO_USED_MEMORY);
+            RegisterMeasured(MONO_HEAP_MEMORY);
+            RegisterMeasured(GC_ALLOCATED_MEMORY);
+            RegisterMeasured(ADDRESSABLE_LOAD_DURATION);
+            RegisterMeasured(ADDRESSABLE_RELEASE_COUNT);
+            RegisterMeasured(ADDRESSABLE_PENDING_COUNT);
+            RegisterMeasured(AUDIO_CACHE_COUNT);
+        }
+
         internal static bool TryRecordDuration(PerformanceMetricDefinition metric, long startedTimestamp)
         {
             if (!PerformanceTelemetry.IsEnabled || startedTimestamp <= 0)
@@ -245,6 +302,20 @@ namespace Game.Client.Performance
                 PerformanceMetricSide.Client,
                 subsystem,
                 scope);
+        }
+
+        private static void RegisterMeasured(PerformanceMetricDefinition definition)
+        {
+            PerformanceTelemetry.RegisterMetric(definition, 4096);
+        }
+
+        private static void RegisterUnavailable(PerformanceMetricDefinition definition, string reason)
+        {
+            PerformanceTelemetry.RegisterMetric(
+                definition,
+                0,
+                PerformanceMetricObservation.Unavailable,
+                reason);
         }
     }
 }

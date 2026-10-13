@@ -197,7 +197,7 @@ namespace Game.Server.Core
                 PerformanceTelemetry.TryRecord(
                     NetworkingPerformanceMetrics.INTEREST_VISIBILITY_EVALUATION_COUNT,
                     visibilityEvaluationCount);
-                NetworkingPerformanceMetrics.RecordRelevantRecipient(visibilityEvaluationCount);
+                NetworkingPerformanceMetrics.RecordVisibilityCandidates(visibilityEvaluationCount);
             }
         }
 
@@ -227,7 +227,6 @@ namespace Game.Server.Core
                 {
                     PlayerID playerID = actor.Owner.Value;
                     _networkManager.scenePlayersModule.AddPlayerToScene(playerID, sceneID);
-                    NetworkingPerformanceMetrics.RecordRelevantRecipient();
                     Debug.Log($"Subscribed player {actor} to chunk {chunkCoord}.");
                 }
 
@@ -247,7 +246,6 @@ namespace Game.Server.Core
             {
                 PlayerID playerID = actor.Owner.Value;
                 _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
-                NetworkingPerformanceMetrics.RecordRelevantRecipient();
                 Debug.Log($"Unsubscribed player {actor} from chunk {chunkCoord}.");
             }
 

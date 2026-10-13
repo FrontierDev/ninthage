@@ -6,6 +6,7 @@ using Game.Shared.Networking;
 using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -21,6 +22,8 @@ namespace Game.Client.UI
         /// Gets the shared client-side instance.
         /// </summary>
         public static UI_FCTManager Instance => _instance;
+
+        private readonly HashSet<UI_FloatingCombatText> _trackedTransients = new();
 
         [Header("Prefab")]
         [FormerlySerializedAs("fctPrefab")]
@@ -52,6 +55,10 @@ namespace Game.Client.UI
         {
             if (_instance != null) return;
             _instance = this;
+
+            PerformanceTelemetry.SessionStarted += OnTelemetrySessionStarted;
+            if (PerformanceTelemetry.IsEnabled)
+                ReconcileTransientTracking();
         }
 
         private void Start()
@@ -60,10 +67,24 @@ namespace Game.Client.UI
             CharacterEndpoint.onClientExperienceUpdated += OnExperienceUpdated;
         }
 
+        private void LateUpdate()
+        {
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_COUNT, _activeTransientCount);
+        }
+
         private void OnDestroy()
         {
             ActorEndpoint.onCombatLogEntryReceived -= OnCombatLogEntryReceived;
             CharacterEndpoint.onClientExperienceUpdated -= OnExperienceUpdated;
+            PerformanceTelemetry.SessionStarted -= OnTelemetrySessionStarted;
+
+            foreach (UI_FloatingCombatText transient in _trackedTransients)
+            {
+                if (transient != null)
+                    transient.Released -= OnTransientReleased;
+            }
+            _trackedTransients.Clear();
 
             if (_instance == this)
                 _instance = null;
@@ -170,6 +191,9 @@ namespace Game.Client.UI
             if (!PerformanceTelemetry.IsEnabled || transient == null)
                 return;
 
+            if (!_trackedTransients.Add(transient))
+                return;
+
             transient.Released += OnTransientReleased;
             PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_SPAWN_COUNT, 1);
             RecordTransientCount(1);
@@ -177,17 +201,54 @@ namespace Game.Client.UI
 
         private void OnTransientReleased(UI_FloatingCombatText transient)
         {
-            if (!PerformanceTelemetry.IsEnabled)
+            if (!_trackedTransients.Remove(transient))
                 return;
 
-            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_RELEASE_COUNT, 1);
+            if (transient != null)
+                transient.Released -= OnTransientReleased;
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_RELEASE_COUNT, 1);
             RecordTransientCount(-1);
         }
 
         private void RecordTransientCount(int delta)
         {
             _activeTransientCount = Mathf.Max(0, _activeTransientCount + delta);
-            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_COUNT, _activeTransientCount);
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_COUNT, _activeTransientCount);
+        }
+
+        private void OnTelemetrySessionStarted()
+        {
+            ReconcileTransientTracking();
+        }
+
+        private void ReconcileTransientTracking()
+        {
+            _trackedTransients.RemoveWhere(transient => transient == null);
+
+            Transform container = UI_WorldSpace.Instance != null
+                ? UI_WorldSpace.Instance.fctContainer
+                : null;
+            if (container != null)
+            {
+                UI_FloatingCombatText[] existingTransients = container.GetComponentsInChildren<UI_FloatingCombatText>(true);
+                for (int i = 0; i < existingTransients.Length; i++)
+                {
+                    UI_FloatingCombatText transient = existingTransients[i];
+                    if (transient == null || !_trackedTransients.Add(transient))
+                        continue;
+
+                    transient.Released += OnTransientReleased;
+                }
+            }
+
+            _activeTransientCount = 0;
+            foreach (UI_FloatingCombatText transient in _trackedTransients)
+            {
+                if (transient != null)
+                    _activeTransientCount++;
+            }
         }
 
         private int _activeTransientCount;

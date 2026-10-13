@@ -34,6 +34,12 @@ namespace Game.Server.Core
         /// <summary>Gets whether the server auto-attack manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(ATTACKER_COUNT_METRIC, 4096);
+        }
+
         private SpellDefinition _autoAttackSpell;
 
         private struct AutoAttackState

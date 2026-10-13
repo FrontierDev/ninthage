@@ -22,6 +22,12 @@ namespace Game.Server.Systems
             "server_update");
         private static readonly PerformanceMarker WORLD_SPAWN_MARKER = new(WORLD_SPAWN_DURATION_METRIC, "Server.ECS.WorldSpawn");
 
+        internal static void RegisterPerformanceMetrics()
+        {
+            PerformanceTelemetry.RegisterMetric(WORLD_SPAWN_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SPAWN_COMMAND_COUNT_METRIC, 4096);
+        }
+
         /// <summary>Initializes world-spawn system state.</summary>
         public void OnCreate(ref SystemState state)
         {

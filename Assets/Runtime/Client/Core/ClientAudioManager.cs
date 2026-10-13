@@ -67,6 +67,7 @@ namespace Game.Client
             // Set up callbacks
             ActorEndpoint.onClientPlaySFX += PlaySFX;
             ActorEndpoint.onClientPlaySFXOnAudioSource += PlaySFXOnAudioSource;
+            PerformanceTelemetry.SessionEnded += OnTelemetrySessionEnded;
         }
 
         private void OnDestroy()
@@ -74,6 +75,7 @@ namespace Game.Client
             // Unsubscribe from events
             ActorEndpoint.onClientPlaySFX -= PlaySFX;
             ActorEndpoint.onClientPlaySFXOnAudioSource -= PlaySFXOnAudioSource;
+            PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
 
             // Release pending async operations
             foreach (var handle in _pendingLoads.Values)
@@ -273,17 +275,24 @@ namespace Game.Client
 
         private void TrackAddressableLoadCompleted(string addressablePath)
         {
+            bool trackedForTelemetry = false;
             if (_pendingLoadTimestamps != null
                 && _pendingLoadTimestamps.TryGetValue(addressablePath, out long startedTimestamp))
             {
+                trackedForTelemetry = true;
                 _pendingLoadTimestamps.Remove(addressablePath);
                 ClientPerformanceMetrics.TryRecordDuration(ClientPerformanceMetrics.ADDRESSABLE_LOAD_DURATION, startedTimestamp);
             }
 
-            if (PerformanceTelemetry.IsEnabled)
+            if (trackedForTelemetry && PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(
                     ClientPerformanceMetrics.ADDRESSABLE_PENDING_COUNT,
                     _pendingLoads.Count);
+        }
+
+        private void OnTelemetrySessionEnded()
+        {
+            _pendingLoadTimestamps?.Clear();
         }
 
         private void RecordCacheCount()
