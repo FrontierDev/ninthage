@@ -10,12 +10,14 @@ using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Game.Tests.Performance.Harness
 {
     /// <summary>Captures source and machine identity required by benchmark evidence.</summary>
+    [Serializable]
     internal sealed class Test_PerformanceRunMetadata
     {
         public string Repository;
@@ -154,6 +156,8 @@ namespace Game.Tests.Performance.Harness
         private readonly DateTime _startedUtc;
         private string _telemetrySummary;
         private bool _telemetryStarted;
+        private bool _measurementSamplesAvailable;
+        private PerformanceMeasurementPhase _currentPhase = PerformanceMeasurementPhase.Preflight;
 
         private Test_PerformanceRun(
             Test_PerformanceHarnessOptions options,
@@ -162,7 +166,8 @@ namespace Game.Tests.Performance.Harness
             Test_WorldFixturePlan worldPlan,
             Test_PerformanceRunMetadata metadata,
             string runID,
-            string resultsDirectory)
+            string resultsDirectory,
+            DateTime startedUtc)
         {
             Options = options;
             ActorProfile = actorProfile;
@@ -175,7 +180,7 @@ namespace Game.Tests.Performance.Harness
             RunPath = Path.Combine(resultsDirectory, "run.json");
             SummaryPath = Path.Combine(resultsDirectory, "summary.json");
             ReportPath = Path.Combine(resultsDirectory, "report.md");
-            _startedUtc = DateTime.UtcNow;
+            _startedUtc = startedUtc.ToUniversalTime();
         }
 
         public Test_PerformanceHarnessOptions Options { get; }
@@ -212,7 +217,31 @@ namespace Game.Tests.Performance.Harness
 
         public bool MeasurementStarted { get; private set; }
 
+        public bool RampCompleted { get; private set; }
+
+        public bool WarmupCompleted { get; private set; }
+
+        public bool MeasurementCompleted { get; private set; }
+
+        public bool RecoveryCompleted { get; private set; }
+
         public bool CleanupComplete { get; private set; }
+
+        public int RampCompletedEntityCount { get; private set; }
+
+        public int MeasurementStartEntityCount { get; private set; }
+
+        public int MeasurementEndEntityCount { get; private set; }
+
+        public int PeakEntityCount { get; private set; }
+
+        public int PostCleanupFixtureEntityCount { get; private set; }
+
+        public int PostCleanupActorEntityCount { get; private set; }
+
+        public bool PostCleanupObserved { get; private set; }
+
+        public bool MeasurementSamplesAvailable => _measurementSamplesAvailable;
 
         public string RuntimeDiagnostic { get; private set; }
 
@@ -233,25 +262,86 @@ namespace Game.Tests.Performance.Harness
 
             var projectRoot = Directory.GetParent(Application.dataPath).FullName;
             var metadata = Test_PerformanceRunMetadata.Capture(projectRoot);
+            ResolveInputs(options, out var actorProfile, out var scenario, out var worldPlan);
+            var resultRoot = Path.Combine(projectRoot, RESULT_ROOT);
+            Directory.CreateDirectory(resultRoot);
+            var runID = CreateUniqueRunID(resultRoot);
+            var resultsDirectory = Path.Combine(resultRoot, runID);
+            Directory.CreateDirectory(resultsDirectory);
+            var run = new Test_PerformanceRun(options, actorProfile, scenario, worldPlan, metadata, runID, resultsDirectory, DateTime.UtcNow);
+            run.WriteFixtureAndRun(projectRoot);
+            return run;
+        }
+
+        public static Test_PerformanceRun Restore(Test_PerformancePendingRunState state)
+        {
+            if (state == null)
+                throw new ArgumentNullException(nameof(state));
+            if (state.options == null || state.metadata == null)
+                throw new InvalidOperationException("The pending performance run does not contain validated options and metadata.");
+            if (state.startedUtcTicks <= 0)
+                throw new InvalidOperationException("The pending performance run does not contain a valid start timestamp.");
+
+            var options = state.options.ToOptions();
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var expectedResultsDirectory = Path.GetFullPath(Path.Combine(projectRoot, RESULT_ROOT, state.runID));
+            var resultsDirectory = Path.GetFullPath(state.resultsDirectory ?? string.Empty);
+            if (!string.Equals(resultsDirectory, expectedResultsDirectory, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The pending performance run evidence directory does not match its run identity.");
+            if (!Directory.Exists(resultsDirectory))
+                throw new DirectoryNotFoundException("The pending performance run evidence directory is missing: " + resultsDirectory);
+
+            var fixturePath = Path.GetFullPath(state.fixturePath ?? string.Empty);
+            var runPath = Path.GetFullPath(state.runPath ?? string.Empty);
+            var summaryPath = Path.GetFullPath(state.summaryPath ?? string.Empty);
+            var reportPath = Path.GetFullPath(state.reportPath ?? string.Empty);
+            var expectedFixturePath = Path.Combine(resultsDirectory, "fixture.json");
+            var expectedRunPath = Path.Combine(resultsDirectory, "run.json");
+            var expectedSummaryPath = Path.Combine(resultsDirectory, "summary.json");
+            var expectedReportPath = Path.Combine(resultsDirectory, "report.md");
+            if (!string.Equals(fixturePath, expectedFixturePath, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(runPath, expectedRunPath, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(summaryPath, expectedSummaryPath, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(reportPath, expectedReportPath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The pending performance run evidence paths do not match its result directory.");
+            }
+            if (!File.Exists(fixturePath) || !File.Exists(runPath))
+                throw new FileNotFoundException("The pending performance run evidence files are missing.", fixturePath);
+            if (!string.Equals(Test_PerformanceRunMetadata.HashFile(fixturePath), state.fixtureSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The pending performance run fixture digest changed during Editor reload.");
+
+            ResolveInputs(options, out var actorProfile, out var scenario, out var worldPlan);
+            var run = new Test_PerformanceRun(
+                options,
+                actorProfile,
+                scenario,
+                worldPlan,
+                state.metadata,
+                state.runID,
+                resultsDirectory,
+                new DateTime(state.startedUtcTicks, DateTimeKind.Utc));
+            run.RestoreLifecycle(state);
+            return run;
+        }
+
+        private static void ResolveInputs(
+            Test_PerformanceHarnessOptions options,
+            out Test_ActorFixtureProfile actorProfile,
+            out Test_ActorScenarioProfile scenario,
+            out Test_WorldFixturePlan worldPlan)
+        {
             var catalog = Test_ActorFixtureLayout.BuildCatalog(options.Seed);
             var scenarioCatalog = Test_ActorFixtureLayout.BuildScenarioCatalog(options.Seed);
-            var actorProfile = FindActorProfile(catalog, options.ActorVariantID);
-            var scenario = FindScenario(scenarioCatalog, options.ActorVariantID);
+            actorProfile = FindActorProfile(catalog, options.ActorVariantID);
+            scenario = FindScenario(scenarioCatalog, options.ActorVariantID);
             var worldManifest = Test_WorldFixtureLayout.BuildManifest(new Test_WorldFixtureOptions
             {
                 Seed = options.Seed,
                 DensityTier = options.DensityTier,
                 FixtureVersion = Test_WorldFixtureLayout.FIXTURE_VERSION,
             });
-            var worldPlan = FindWorldPlan(worldManifest, options.WorldFixture.ToString());
-            var resultRoot = Path.Combine(projectRoot, RESULT_ROOT);
-            Directory.CreateDirectory(resultRoot);
-            var runID = CreateUniqueRunID(resultRoot);
-            var resultsDirectory = Path.Combine(resultRoot, runID);
-            Directory.CreateDirectory(resultsDirectory);
-            var run = new Test_PerformanceRun(options, actorProfile, scenario, worldPlan, metadata, runID, resultsDirectory);
-            run.WriteFixtureAndRun(projectRoot);
-            return run;
+            worldPlan = FindWorldPlan(worldManifest, options.WorldFixture.ToString());
         }
 
         public void Validate()
@@ -317,12 +407,81 @@ namespace Game.Tests.Performance.Harness
             AppendLog("Data-only ECS fixture prepared with zero entities for incremental ramp.");
         }
 
+        public Test_PerformancePendingRunState CreatePendingRunState(SceneSetup[] previousSceneSetup, string lifecycle)
+        {
+            return new Test_PerformancePendingRunState
+            {
+                runID = RunID,
+                resultsDirectory = ResultsDirectory,
+                fixturePath = FixturePath,
+                runPath = RunPath,
+                summaryPath = SummaryPath,
+                reportPath = ReportPath,
+                fixtureSha256 = FixtureHash,
+                startedUtcTicks = _startedUtc.Ticks,
+                options = Test_PerformancePendingRunOptions.Capture(Options),
+                metadata = _metadata,
+                previousSceneSetup = Test_PerformanceSceneSetupState.Capture(previousSceneSetup),
+                lifecycle = lifecycle,
+                stopRequested = StopRequested,
+                telemetryStarted = _telemetryStarted,
+                finalized = Finalized,
+                worldFixtureLoaded = WorldFixtureLoaded,
+                preflightCompleted = PreflightCompleted,
+                workloadApplied = WorkloadApplied,
+                measurementStarted = MeasurementStarted,
+                rampCompleted = RampCompleted,
+                warmupCompleted = WarmupCompleted,
+                measurementCompleted = MeasurementCompleted,
+                recoveryCompleted = RecoveryCompleted,
+                cleanupComplete = CleanupComplete,
+                currentPhase = (int)_currentPhase,
+                rampCompletedEntityCount = RampCompletedEntityCount,
+                measurementStartEntityCount = MeasurementStartEntityCount,
+                measurementEndEntityCount = MeasurementEndEntityCount,
+                peakEntityCount = PeakEntityCount,
+                postCleanupObserved = PostCleanupObserved,
+                postCleanupFixtureEntityCount = PostCleanupFixtureEntityCount,
+                postCleanupActorEntityCount = PostCleanupActorEntityCount,
+            };
+        }
+
+        private void RestoreLifecycle(Test_PerformancePendingRunState state)
+        {
+            ValidationDiagnostic = null;
+            StopRequested = state.stopRequested;
+            var telemetrySessionWasActive = state.telemetryStarted;
+            _telemetryStarted = false;
+            Finalized = state.finalized;
+            WorldFixtureLoaded = state.worldFixtureLoaded;
+            PreflightCompleted = state.preflightCompleted;
+            WorkloadApplied = state.workloadApplied;
+            MeasurementStarted = state.measurementStarted;
+            RampCompleted = state.rampCompleted;
+            WarmupCompleted = state.warmupCompleted;
+            MeasurementCompleted = state.measurementCompleted;
+            RecoveryCompleted = state.recoveryCompleted;
+            CleanupComplete = state.cleanupComplete;
+            _currentPhase = (PerformanceMeasurementPhase)state.currentPhase;
+            RampCompletedEntityCount = state.rampCompletedEntityCount;
+            MeasurementStartEntityCount = state.measurementStartEntityCount;
+            MeasurementEndEntityCount = state.measurementEndEntityCount;
+            PeakEntityCount = state.peakEntityCount;
+            PostCleanupObserved = state.postCleanupObserved;
+            PostCleanupFixtureEntityCount = state.postCleanupFixtureEntityCount;
+            PostCleanupActorEntityCount = state.postCleanupActorEntityCount;
+            if (telemetrySessionWasActive)
+                AppendLog("Telemetry session restarted after restoring the pending Editor run.");
+        }
+
         public void MarkWorkloadApplied()
         {
             if (!WorldFixtureLoaded || FixtureRuntime == null || ActivityController == null)
                 throw new InvalidOperationException("The selected world and workload must be applied before marking the workload active.");
             if (FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
                 throw new InvalidOperationException($"Workload applied with {FixtureRuntime.DataOnlyEntityCount} ECS entities; expected {RequestedActorCount}.");
+            RampCompletedEntityCount = FixtureRuntime.DataOnlyEntityCount;
+            ObserveEntityCount(RampCompletedEntityCount);
             PerformanceTelemetry.MarkWorkloadApplied();
             WorkloadApplied = true;
             AppendLog("Requested data-only population applied: " + FixtureRuntime.DataOnlyEntityCount.ToString(CultureInfo.InvariantCulture));
@@ -332,8 +491,34 @@ namespace Game.Tests.Performance.Harness
         {
             if (!PerformanceTelemetry.BeginPhase(phase))
                 throw new InvalidOperationException("Telemetry rejected phase transition to " + phase + ".");
+            _currentPhase = phase;
             if (phase == PerformanceMeasurementPhase.Measurement)
+            {
                 MeasurementStarted = true;
+                MeasurementStartEntityCount = FixtureRuntime == null ? 0 : FixtureRuntime.DataOnlyEntityCount;
+                ObserveEntityCount(MeasurementStartEntityCount);
+            }
+        }
+
+        public void MarkPhaseComplete(PerformanceMeasurementPhase phase)
+        {
+            switch (phase)
+            {
+                case PerformanceMeasurementPhase.Ramp:
+                    RampCompleted = true;
+                    break;
+                case PerformanceMeasurementPhase.Warmup:
+                    WarmupCompleted = true;
+                    break;
+                case PerformanceMeasurementPhase.Measurement:
+                    MeasurementCompleted = true;
+                    break;
+                case PerformanceMeasurementPhase.Recovery:
+                    RecoveryCompleted = true;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(phase), phase, null);
+            }
         }
 
         public void MarkCleanupComplete()
@@ -341,8 +526,31 @@ namespace Game.Tests.Performance.Harness
             if (FixtureRuntime == null)
                 throw new InvalidOperationException("No actor fixture exists to clean up.");
             FixtureRuntime.AssertCleanupComplete();
+            var cleanupReport = FixtureRuntime.LastCleanupReport;
+            if (cleanupReport == null)
+                throw new InvalidOperationException("Actor fixture cleanup did not produce a cleanup report.");
+            CaptureCleanupReport(cleanupReport);
             CleanupComplete = true;
             AppendLog("Fixture cleanup returned to its captured baseline.");
+        }
+
+        public void CaptureCleanupReport(Test_ActorFixtureCleanupReport cleanupReport)
+        {
+            if (cleanupReport == null)
+                return;
+            PostCleanupObserved = true;
+            PostCleanupFixtureEntityCount = cleanupReport.remainingFixtureEntities;
+            PostCleanupActorEntityCount = cleanupReport.currentActorEntities;
+        }
+
+        public void ObserveEntityCount(int entityCount)
+        {
+            if (entityCount < 0)
+                throw new ArgumentOutOfRangeException(nameof(entityCount));
+            if (entityCount > PeakEntityCount)
+                PeakEntityCount = entityCount;
+            if (MeasurementStarted)
+                MeasurementEndEntityCount = entityCount;
         }
 
         public void Complete(PerformanceRunStatus requestedStatus, string reasonCode, string message)
@@ -353,11 +561,12 @@ namespace Game.Tests.Performance.Harness
             var status = requestedStatus;
             var finalReason = reasonCode;
             var finalMessage = message;
+            var telemetryFinalized = !_telemetryStarted;
             try
             {
                 if (_telemetryStarted && PerformanceTelemetry.IsEnabled)
                 {
-                    PerformanceTelemetry.StopSession(status, reasonCode, message);
+                    telemetryFinalized = PerformanceTelemetry.StopSession(status, reasonCode, message);
                     _telemetrySummary = File.Exists(SummaryPath) ? File.ReadAllText(SummaryPath) : null;
                 }
             }
@@ -369,17 +578,35 @@ namespace Game.Tests.Performance.Harness
                 RuntimeDiagnostic = AppendDiagnostic(RuntimeDiagnostic, exception.Message);
             }
 
-            if (status == PerformanceRunStatus.CompleteMeasured && (!WorkloadApplied || !MeasurementStarted || !CleanupComplete))
+            _measurementSamplesAvailable = HasMeasurementSamples();
+            if (status == PerformanceRunStatus.CompleteMeasured
+                && (!WorkloadApplied
+                    || !RampCompleted
+                    || !WarmupCompleted
+                    || !MeasurementCompleted
+                    || !RecoveryCompleted
+                    || RampCompletedEntityCount != RequestedActorCount
+                    || MeasurementStartEntityCount != RequestedActorCount
+                    || MeasurementEndEntityCount != RequestedActorCount
+                    || PeakEntityCount < RequestedActorCount
+                    || !MeasurementStarted
+                    || !CleanupComplete))
             {
                 status = PerformanceRunStatus.FailCorrectness;
                 finalReason = "INCOMPLETE_LIFECYCLE";
-                finalMessage = "The run did not complete workload, measurement and cleanup invariants.";
+                finalMessage = "The run did not complete workload, population, measurement and cleanup invariants.";
             }
-            if (status == PerformanceRunStatus.CompleteMeasured && !File.Exists(Path.Combine(ResultsDirectory, "samples.ndjson")))
+            if (status == PerformanceRunStatus.CompleteMeasured && !telemetryFinalized)
+            {
+                status = PerformanceRunStatus.FailInstrumentation;
+                finalReason = "TELEMETRY_FINALIZATION_FAILED";
+                finalMessage = "The telemetry session did not produce a finalized result.";
+            }
+            if (status == PerformanceRunStatus.CompleteMeasured && !_measurementSamplesAvailable)
             {
                 status = PerformanceRunStatus.FailInstrumentation;
                 finalReason = "NO_MEASUREMENT_SAMPLES";
-                finalMessage = "Measurement entered but no bounded telemetry samples were written.";
+                finalMessage = "Measurement entered but no bounded telemetry samples were written for the measurement phase.";
             }
 
             WriteSummary(status, finalReason, finalMessage);
@@ -410,6 +637,20 @@ namespace Game.Tests.Performance.Harness
             if (Finalized)
                 return;
             Complete(PerformanceRunStatus.FailInstrumentation, "EDITOR_PLAYMODE_EXITED", "Editor Play Mode exited before the runner finalized the workload.");
+        }
+
+        private bool HasMeasurementSamples()
+        {
+            var samplePath = Path.Combine(ResultsDirectory, "samples.ndjson");
+            if (!File.Exists(samplePath))
+                return false;
+
+            foreach (var line in File.ReadLines(samplePath))
+            {
+                if (line.IndexOf("\"phase\":\"measurement\"", StringComparison.Ordinal) >= 0)
+                    return true;
+            }
+            return false;
         }
 
         public void AppendLog(string message)
@@ -448,8 +689,8 @@ namespace Game.Tests.Performance.Harness
             Property(builder, "status", StatusText(status), true);
             RawProperty(builder, "started_utc", blockedPreflight ? "null" : Quote(_startedUtc.ToString("o", CultureInfo.InvariantCulture)), true);
             RawProperty(builder, "finished_utc", blockedPreflight ? "null" : Quote(finishedUtc.ToString("o", CultureInfo.InvariantCulture)), true);
-            RawProperty(builder, "phase_completion", $"{{\"preflight\":{(!blockedPreflight && PreflightCompleted).ToString().ToLowerInvariant()},\"ramp\":{WorkloadApplied.ToString().ToLowerInvariant()},\"warmup\":{WorkloadApplied.ToString().ToLowerInvariant()},\"measurement\":{MeasurementStarted.ToString().ToLowerInvariant()},\"recovery\":{CleanupComplete.ToString().ToLowerInvariant()}}}", true);
-            RawProperty(builder, "achieved", $"{{\"connected_players\":{GetRealPlayerCount()},\"authenticated_players\":0,\"in_world_players\":0,\"npc_actors\":0,\"ecs_entities\":{GetECSCount()},\"network_identities\":0,\"gameobjects\":0,\"scene_tiles_loaded\":{(WorldFixtureLoaded ? 1 : 0)},\"renders_visible\":null,\"accepted_abilities\":0,\"activity\":{{\"idle\":{GetIdleCount()},\"patrolling\":{GetPatrollingCount()},\"combat\":{GetCombatCount()},\"wake_surge\":{GetWakeSurgeCount()},\"spawn_events\":{GetSpawnEventCount()},\"despawn_events\":{GetDespawnEventCount()}}}}}", true);
+            RawProperty(builder, "phase_completion", $"{{\"preflight\":{(!blockedPreflight && PreflightCompleted).ToString().ToLowerInvariant()},\"ramp\":{RampCompleted.ToString().ToLowerInvariant()},\"warmup\":{WarmupCompleted.ToString().ToLowerInvariant()},\"measurement\":{MeasurementCompleted.ToString().ToLowerInvariant()},\"recovery\":{RecoveryCompleted.ToString().ToLowerInvariant()}}}", true);
+            RawProperty(builder, "achieved", BuildAchievedJson(), true);
             RawProperty(builder, "resources", $"{{\"total_allocated_bytes\":{UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong()},\"ceiling_bytes\":{MAX_TOTAL_ALLOCATED_BYTES},\"ceiling_status\":{Quote(status == PerformanceRunStatus.FailResource ? "exceeded" : "not_exceeded")}}}", true);
             RawProperty(builder, "stop", $"{{\"phase\":{Quote(CurrentPhaseText())},\"reason_code\":{Quote(reasonCode)},\"message\":{Quote(message)}}}", true);
             RawProperty(builder, "correctness", $"{{\"status\":{Quote(correctnessStatus)},\"checked\":{(WorkloadApplied ? 4 : 0)},\"failed\":{failedAssertions},\"unverified\":[\"standalone_headless\",\"networked_clients\"]}}", true);
@@ -470,6 +711,16 @@ namespace Game.Tests.Performance.Harness
             return "[" + string.Join(",", files) + "]";
         }
 
+        private string BuildAchievedJson()
+        {
+            var measuredEntityCount = MeasurementStarted
+                ? MeasurementEndEntityCount
+                : RampCompletedEntityCount;
+            var postCleanupFixtureEntities = PostCleanupObserved ? PostCleanupFixtureEntityCount.ToString(CultureInfo.InvariantCulture) : "null";
+            var postCleanupActorEntities = PostCleanupObserved ? PostCleanupActorEntityCount.ToString(CultureInfo.InvariantCulture) : "null";
+            return $"{{\"connected_players\":{GetRealPlayerCount()},\"authenticated_players\":0,\"in_world_players\":0,\"npc_actors\":0,\"ecs_entities\":{measuredEntityCount},\"network_identities\":0,\"gameobjects\":0,\"scene_tiles_loaded\":{(WorldFixtureLoaded ? 1 : 0)},\"renders_visible\":null,\"accepted_abilities\":0,\"population\":{{\"requested_ecs_entities\":{RequestedActorCount},\"ramp_completed_ecs_entities\":{RampCompletedEntityCount},\"measurement_start_ecs_entities\":{MeasurementStartEntityCount},\"measurement_end_ecs_entities\":{MeasurementEndEntityCount},\"peak_ecs_entities\":{PeakEntityCount},\"post_cleanup_fixture_entities\":{postCleanupFixtureEntities},\"post_cleanup_total_actor_entities\":{postCleanupActorEntities}}},\"activity\":{{\"idle\":{GetIdleCount()},\"patrolling\":{GetPatrollingCount()},\"combat\":{GetCombatCount()},\"wake_surge\":{GetWakeSurgeCount()},\"spawn_events\":{GetSpawnEventCount()},\"despawn_events\":{GetDespawnEventCount()}}}}}";
+        }
+
         private static string BuildRawFileEntry(string relativePath, string path)
         {
             return $"{{\"path\":{Quote(relativePath)},\"bytes\":{new FileInfo(path).Length.ToString(CultureInfo.InvariantCulture)},\"sha256\":{Quote(Test_PerformanceRunMetadata.HashFile(path))}}}";
@@ -477,15 +728,7 @@ namespace Game.Tests.Performance.Harness
 
         private string CurrentPhaseText()
         {
-            if (CleanupComplete)
-                return "recovery";
-            if (MeasurementStarted)
-                return "measurement";
-            if (WorkloadApplied)
-                return "warmup";
-            if (PreflightCompleted)
-                return "ramp";
-            return "preflight";
+            return _currentPhase.ToString().ToLowerInvariant();
         }
 
         private void WriteReport(PerformanceRunStatus status, string reasonCode, string message)
@@ -501,7 +744,12 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine("- Seed: `" + Options.Seed.ToString(CultureInfo.InvariantCulture) + "`");
             builder.AppendLine("- Git commit: `" + _metadata.Commit + "` (dirty: `" + _metadata.Dirty.ToString().ToLowerInvariant() + "`)");
             builder.AppendLine("- Requested ECS entities: `" + RequestedActorCount + "`");
-            builder.AppendLine("- Achieved ECS entities at report time: `" + GetECSCount() + "`");
+            builder.AppendLine("- Ramp-completed ECS entities: `" + RampCompletedEntityCount + "`");
+            builder.AppendLine("- Measurement-start ECS entities: `" + MeasurementStartEntityCount + "`");
+            builder.AppendLine("- Measurement-end ECS entities: `" + MeasurementEndEntityCount + "`");
+            builder.AppendLine("- Peak ECS entities observed: `" + PeakEntityCount + "`");
+            builder.AppendLine("- Post-cleanup fixture entities: `" + (PostCleanupObserved ? PostCleanupFixtureEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
+            builder.AppendLine("- Post-cleanup total actor entities: `" + (PostCleanupObserved ? PostCleanupActorEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
             builder.AppendLine("- Report directory: `" + ResultsDirectory + "`");
             builder.AppendLine();
             builder.AppendLine("## Result");
@@ -545,11 +793,6 @@ namespace Game.Tests.Performance.Harness
                 case ".log": return "text/plain";
                 default: return "application/octet-stream";
             }
-        }
-
-        private int GetECSCount()
-        {
-            return FixtureRuntime == null ? 0 : FixtureRuntime.DataOnlyEntityCount;
         }
 
         private int GetCombatCount()

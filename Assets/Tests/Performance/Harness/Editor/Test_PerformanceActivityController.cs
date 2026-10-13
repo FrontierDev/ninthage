@@ -276,4 +276,13 @@ namespace Game.Tests.Performance.Harness
         {
         }
     }
+
+    /// <summary>Signals a deliberate user cancellation so it is not reported as a timeout.</summary>
+    internal sealed class Test_PerformanceUserStopException : OperationCanceledException
+    {
+        public Test_PerformanceUserStopException(string message)
+            : base(message)
+        {
+        }
+    }
 }

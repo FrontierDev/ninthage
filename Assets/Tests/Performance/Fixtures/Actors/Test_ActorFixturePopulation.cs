@@ -62,6 +62,9 @@ namespace Game.Tests.Performance.Fixtures.Actors
         /// <summary>Gets the actors whose server lifecycle completed.</summary>
         public IReadOnlyList<Actor> FullActors => _fullActors;
 
+        /// <summary>Gets the most recent cleanup report produced by this fixture.</summary>
+        public Test_ActorFixtureCleanupReport LastCleanupReport { get; private set; }
+
         /// <summary>Creates data-only ECS state with no network identity or player owner.</summary>
         public void StartDataOnly()
         {
@@ -170,7 +173,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
             while (_pendingFullPlacements.Count > 0)
             {
                 if (Time.realtimeSinceStartup >= deadline)
-                    throw new Test_ActorFixturePreconditionException(
+                    throw new TimeoutException(
                         $"Timed out waiting for full actor spawn events: {SpawnedFullActorCount}/{Test_ActorFixtureLayout.NPC_COUNT} observed.");
                 yield return null;
             }
@@ -236,7 +239,10 @@ namespace Game.Tests.Performance.Fixtures.Actors
         public Test_ActorFixtureCleanupReport Cleanup()
         {
             if (_disposed)
-                return BuildCleanupReport();
+            {
+                LastCleanupReport = BuildCleanupReport();
+                return LastCleanupReport;
+            }
 
             foreach (var actor in _fullActors.ToArray())
             {
@@ -254,7 +260,8 @@ namespace Game.Tests.Performance.Fixtures.Actors
             if (_fullActors.Count == 0)
                 UnsubscribeFromLifecycle();
             _disposed = true;
-            return BuildCleanupReport();
+            LastCleanupReport = BuildCleanupReport();
+            return LastCleanupReport;
         }
 
         /// <summary>Waits for deferred network destruction before asserting teardown state.</summary>
@@ -269,7 +276,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
             while (_fullActors.Count > 0)
             {
                 if (Time.realtimeSinceStartup >= deadline)
-                    throw new Test_ActorFixturePreconditionException(
+                    throw new TimeoutException(
                         $"Timed out waiting for full actor despawn events: {DespawnedFullActorCount}/{Test_ActorFixtureLayout.NPC_COUNT} observed.");
                 yield return null;
             }
@@ -288,6 +295,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
         public void AssertCleanupComplete()
         {
             var report = BuildCleanupReport();
+            LastCleanupReport = report;
             if (report.remainingTrackedActors != 0
                 || report.remainingFixtureEntities != 0
                 || report.currentActorEntities != report.baselineActorEntities

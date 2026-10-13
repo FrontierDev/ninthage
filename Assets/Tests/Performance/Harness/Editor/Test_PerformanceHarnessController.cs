@@ -1,8 +1,10 @@
 using Game.Server.Core;
 using Game.Shared.Performance;
+using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -10,16 +12,151 @@ using UnityEngine.SceneManagement;
 
 namespace Game.Tests.Performance.Harness
 {
+    [Serializable]
+    internal sealed class Test_PerformancePendingRunState
+    {
+        public string runID;
+        public string resultsDirectory;
+        public string fixturePath;
+        public string runPath;
+        public string summaryPath;
+        public string reportPath;
+        public string fixtureSha256;
+        public long startedUtcTicks;
+        public Test_PerformancePendingRunOptions options;
+        public Test_PerformanceRunMetadata metadata;
+        public Test_PerformanceSceneSetupState[] previousSceneSetup;
+        public string lifecycle;
+        public bool stopRequested;
+        public bool telemetryStarted;
+        public bool finalized;
+        public bool worldFixtureLoaded;
+        public bool preflightCompleted;
+        public bool workloadApplied;
+        public bool measurementStarted;
+        public bool rampCompleted;
+        public bool warmupCompleted;
+        public bool measurementCompleted;
+        public bool recoveryCompleted;
+        public bool cleanupComplete;
+        public int currentPhase;
+        public int rampCompletedEntityCount;
+        public int measurementStartEntityCount;
+        public int measurementEndEntityCount;
+        public int peakEntityCount;
+        public bool postCleanupObserved;
+        public int postCleanupFixtureEntityCount;
+        public int postCleanupActorEntityCount;
+
+        public SceneSetup[] RestoreSceneSetup()
+        {
+            if (previousSceneSetup == null)
+                return Array.Empty<SceneSetup>();
+
+            var sceneSetup = new SceneSetup[previousSceneSetup.Length];
+            for (var index = 0; index < previousSceneSetup.Length; index++)
+                sceneSetup[index] = previousSceneSetup[index].ToSceneSetup();
+            return sceneSetup;
+        }
+    }
+
+    [Serializable]
+    internal sealed class Test_PerformancePendingRunOptions
+    {
+        public string profileID;
+        public int worldFixture;
+        public int densityTier;
+        public int workloadMode;
+        public int actorCount;
+        public int seed;
+
+        public static Test_PerformancePendingRunOptions Capture(Test_PerformanceHarnessOptions options)
+        {
+            return new Test_PerformancePendingRunOptions
+            {
+                profileID = options.ProfileID,
+                worldFixture = (int)options.WorldFixture,
+                densityTier = (int)options.DensityTier,
+                workloadMode = (int)options.WorkloadMode,
+                actorCount = options.ActorCount,
+                seed = options.Seed,
+            };
+        }
+
+        public Test_PerformanceHarnessOptions ToOptions()
+        {
+            return new Test_PerformanceHarnessOptions
+            {
+                ProfileID = profileID,
+                WorldFixture = (Test_WorldFixtureVariant)worldFixture,
+                DensityTier = (Test_WorldFixtureDensityTier)densityTier,
+                WorkloadMode = (Test_PerformanceWorkloadMode)workloadMode,
+                ActorCount = actorCount,
+                Seed = seed,
+            };
+        }
+    }
+
+    [Serializable]
+    internal sealed class Test_PerformanceSceneSetupState
+    {
+        public string path;
+        public bool isLoaded;
+        public bool isActive;
+        public bool isSubScene;
+
+        public static Test_PerformanceSceneSetupState[] Capture(SceneSetup[] sceneSetup)
+        {
+            if (sceneSetup == null)
+                return Array.Empty<Test_PerformanceSceneSetupState>();
+
+            var result = new Test_PerformanceSceneSetupState[sceneSetup.Length];
+            for (var index = 0; index < sceneSetup.Length; index++)
+            {
+                result[index] = new Test_PerformanceSceneSetupState
+                {
+                    path = sceneSetup[index].path,
+                    isLoaded = sceneSetup[index].isLoaded,
+                    isActive = sceneSetup[index].isActive,
+                    isSubScene = sceneSetup[index].isSubScene,
+                };
+            }
+            return result;
+        }
+
+        public SceneSetup ToSceneSetup()
+        {
+            return new SceneSetup
+            {
+                path = path,
+                isLoaded = isLoaded,
+                isActive = isActive,
+                isSubScene = isSubScene,
+            };
+        }
+    }
+
     /// <summary>Coordinates the Editor-only scene and Play Mode lifecycle for one run.</summary>
     [InitializeOnLoad]
     internal static class Test_PerformanceHarnessController
     {
+        private const string PENDING_RUN_SESSION_KEY = "Game.Tests.Performance.Harness.PendingRun";
+        private const string STARTING_LIFECYCLE = "starting";
+        private const string RUNNING_LIFECYCLE = "running";
+        private const string FINALIZED_LIFECYCLE = "finalized";
+
         private static SceneSetup[] _previousSceneSetup;
         private static Test_PerformanceRun _activeRun;
 
         static Test_PerformanceHarnessController()
         {
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            AssemblyReloadEvents.beforeAssemblyReload -= OnBeforeAssemblyReload;
+            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
+            RestorePendingRun();
+            if (EditorApplication.isPlaying && IsRunning)
+                EditorApplication.delayCall += ResumeRuntimeAfterReload;
         }
 
         public static event Action StateChanged;
@@ -30,8 +167,18 @@ namespace Game.Tests.Performance.Harness
 
         public static string LastReportPath { get; private set; }
 
+        internal static void PersistActiveRun(string lifecycle)
+        {
+            if (_activeRun == null)
+                return;
+
+            var state = _activeRun.CreatePendingRunState(_previousSceneSetup, lifecycle);
+            SessionState.SetString(PENDING_RUN_SESSION_KEY, JsonUtility.ToJson(state));
+        }
+
         public static void Start(Test_PerformanceHarnessOptions options)
         {
+            RestorePendingRun();
             if (IsRunning)
             {
                 Status = "A performance run is already active.";
@@ -45,9 +192,10 @@ namespace Game.Tests.Performance.Harness
                 return;
             }
 
+            Test_PerformanceRun run = null;
             try
             {
-                var run = Test_PerformanceRun.Create(options);
+                run = Test_PerformanceRun.Create(options);
                 run.Validate();
                 if (!string.IsNullOrEmpty(run.ValidationDiagnostic))
                 {
@@ -78,11 +226,12 @@ namespace Game.Tests.Performance.Harness
                 }
 
                 _previousSceneSetup = EditorSceneManager.GetSceneManagerSetup();
+                _activeRun = run;
+                PersistActiveRun(STARTING_LIFECYCLE);
                 var opened = EditorSceneManager.OpenScene(Test_PerformanceRun.HARNESS_SCENE_PATH, OpenSceneMode.Single);
                 if (!opened.IsValid())
                     throw new InvalidOperationException("Unity could not open the test-owned performance harness scene.");
 
-                _activeRun = run;
                 Status = "Starting ordinary server Play Mode...";
                 LastReportPath = run.ReportPath;
                 StateChanged?.Invoke();
@@ -90,6 +239,21 @@ namespace Game.Tests.Performance.Harness
             }
             catch (Exception exception)
             {
+                if (run != null && !run.Finalized)
+                {
+                    try
+                    {
+                        run.Fail(exception, "RUNNER_START_FAILED", PerformanceRunStatus.FailProvision);
+                    }
+                    catch (Exception finalizationException)
+                    {
+                        UnityEngine.Debug.LogException(finalizationException);
+                    }
+                }
+                RestorePreviousSceneSetup();
+                _activeRun = null;
+                _previousSceneSetup = null;
+                ClearPendingRun();
                 Status = "Could not start: " + exception.Message;
                 StateChanged?.Invoke();
                 UnityEngine.Debug.LogException(exception);
@@ -101,6 +265,7 @@ namespace Game.Tests.Performance.Harness
             if (_activeRun == null)
                 return;
             _activeRun.StopRequested = true;
+            PersistActiveRun(RUNNING_LIFECYCLE);
             Status = "Stop requested; waiting for fixture cleanup...";
             StateChanged?.Invoke();
         }
@@ -111,16 +276,21 @@ namespace Game.Tests.Performance.Harness
                 return;
             LastReportPath = run.ReportPath;
             Status = "Finished: " + run.ReportPath;
+            PersistActiveRun(FINALIZED_LIFECYCLE);
             StateChanged?.Invoke();
             EditorApplication.isPlaying = false;
         }
 
         private static void OnPlayModeStateChanged(PlayModeStateChange state)
         {
-            if (state == PlayModeStateChange.EnteredPlayMode && _activeRun != null)
+            if (state == PlayModeStateChange.EnteredPlayMode)
             {
-                var runnerObject = new GameObject("Test_PerformanceHarnessRuntime");
-                runnerObject.AddComponent<Test_PerformanceHarnessBehaviour>().Initialize(_activeRun);
+                RestorePendingRun();
+                if (_activeRun == null || _activeRun.Finalized)
+                    return;
+
+                PersistActiveRun(RUNNING_LIFECYCLE);
+                StartRuntimeRunner();
                 return;
             }
 
@@ -129,22 +299,131 @@ namespace Game.Tests.Performance.Harness
                 if (_activeRun != null && !_activeRun.Finalized)
                     _activeRun.AbortFromPlayModeExit();
 
-                if (_previousSceneSetup != null && _previousSceneSetup.Length > 0)
-                {
-                    try
-                    {
-                        EditorSceneManager.RestoreSceneManagerSetup(_previousSceneSetup);
-                    }
-                    catch (Exception exception)
-                    {
-                        Status = "Run finished, but the previous Editor scene setup could not be restored: " + exception.Message;
-                    }
-                }
-
+                RestorePreviousSceneSetup();
+                ClearPendingRun();
                 _previousSceneSetup = null;
                 _activeRun = null;
                 StateChanged?.Invoke();
             }
+        }
+
+        private static void OnBeforeAssemblyReload()
+        {
+            if (_activeRun == null)
+                return;
+
+            try
+            {
+                PersistActiveRun(_activeRun.Finalized ? FINALIZED_LIFECYCLE : RUNNING_LIFECYCLE);
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogException(exception);
+            }
+        }
+
+        private static void RestorePendingRun()
+        {
+            var stateJson = SessionState.GetString(PENDING_RUN_SESSION_KEY, null);
+            if (string.IsNullOrEmpty(stateJson))
+                return;
+
+            Test_PerformancePendingRunState state;
+            try
+            {
+                state = JsonUtility.FromJson<Test_PerformancePendingRunState>(stateJson);
+                if (state == null || string.IsNullOrEmpty(state.runID) || state.options == null || state.metadata == null)
+                    throw new InvalidOperationException("The pending performance run state is incomplete.");
+
+                _previousSceneSetup = state.RestoreSceneSetup();
+                LastReportPath = state.reportPath;
+                if (state.finalized || state.lifecycle == FINALIZED_LIFECYCLE)
+                {
+                    Status = "Finished: " + state.reportPath;
+                    if (!EditorApplication.isPlayingOrWillChangePlaymode)
+                    {
+                        RestorePreviousSceneSetup();
+                        _previousSceneSetup = null;
+                        ClearPendingRun();
+                    }
+                    return;
+                }
+
+                var shouldResumePlayTransition = EditorApplication.isPlayingOrWillChangePlaymode
+                    && state.lifecycle != FINALIZED_LIFECYCLE;
+                if (!shouldResumePlayTransition)
+                {
+                    var staleRun = Test_PerformanceRun.Restore(state);
+                    staleRun.Fail(
+                        new InvalidOperationException("The Editor domain reloaded after the performance run had started, so the run was finalized as incomplete."),
+                        "EDITOR_RELOAD_INTERRUPTED",
+                        PerformanceRunStatus.FailInstrumentation);
+                    _activeRun = staleRun;
+                    RestorePreviousSceneSetup();
+                    _previousSceneSetup = null;
+                    ClearPendingRun();
+                    Status = "Run interrupted by Editor reload: " + staleRun.ReportPath;
+                    return;
+                }
+
+                _activeRun = Test_PerformanceRun.Restore(state);
+                Status = "Restored pending performance run for Play Mode.";
+            }
+            catch (Exception exception)
+            {
+                RestorePreviousSceneSetup();
+                ClearPendingRun();
+                _previousSceneSetup = null;
+                _activeRun = null;
+                Status = "Pending performance run could not be restored: " + exception.Message;
+                UnityEngine.Debug.LogException(exception);
+            }
+            StateChanged?.Invoke();
+        }
+
+        private static void RestorePreviousSceneSetup()
+        {
+            if (_previousSceneSetup == null || _previousSceneSetup.Length == 0)
+                return;
+
+            try
+            {
+                EditorSceneManager.RestoreSceneManagerSetup(_previousSceneSetup);
+            }
+            catch (Exception exception)
+            {
+                Status = "Run finished, but the previous Editor scene setup could not be restored: " + exception.Message;
+                UnityEngine.Debug.LogException(exception);
+            }
+        }
+
+        private static void ClearPendingRun()
+        {
+            SessionState.EraseString(PENDING_RUN_SESSION_KEY);
+        }
+
+        private static void ResumeRuntimeAfterReload()
+        {
+            EditorApplication.delayCall -= ResumeRuntimeAfterReload;
+            if (!EditorApplication.isPlaying || !IsRunning)
+                return;
+
+            StartRuntimeRunner();
+        }
+
+        private static void StartRuntimeRunner()
+        {
+            var existingRunner = UnityEngine.Object.FindAnyObjectByType<Test_PerformanceHarnessBehaviour>();
+            if (existingRunner != null)
+            {
+                if (existingRunner.IsInitialized)
+                    return;
+
+                UnityEngine.Object.Destroy(existingRunner.gameObject);
+            }
+
+            var runnerObject = new GameObject("Test_PerformanceHarnessRuntime");
+            runnerObject.AddComponent<Test_PerformanceHarnessBehaviour>().Initialize(_activeRun);
         }
 
         private static bool CanChangeScenes(out string diagnostic)
@@ -172,10 +451,16 @@ namespace Game.Tests.Performance.Harness
         private Test_PerformanceRun _run;
         private Test_ActorFixtureRuntime _fixture;
         private Scene _selectedWorldScene;
-        private bool _cleanupAttempted;
+        private bool _cleanupCompleted;
+        private bool _sceneUnloadAttempted;
         private Exception _pendingFailure;
         private string _pendingFailureReason;
         private PerformanceRunStatus _pendingFailureStatus;
+        private PerformanceRunStatus? _requestedStatus;
+        private string _requestedReason;
+        private string _requestedMessage;
+
+        public bool IsInitialized => _run != null;
 
         public void Initialize(Test_PerformanceRun run)
         {
@@ -185,119 +470,200 @@ namespace Game.Tests.Performance.Harness
 
         private IEnumerator Execute()
         {
-            var execution = ExecuteCore();
-            while (true)
-            {
-                object current;
-                try
-                {
-                    if (!execution.MoveNext())
-                        break;
-                    current = execution.Current;
-                }
-                catch (Test_ActorFixturePreconditionException exception)
-                {
-                    SetPendingFailure(exception, "FIXTURE_PRECONDITION_FAILED", PerformanceRunStatus.FailProvision);
-                    break;
-                }
-                catch (TimeoutException exception)
-                {
-                    SetPendingFailure(exception, "RUN_TIMEOUT", PerformanceRunStatus.FailTimeout);
-                    break;
-                }
-                catch (Test_PerformanceResourceCeilingException exception)
-                {
-                    SetPendingFailure(exception, "RESOURCE_CEILING_EXCEEDED", PerformanceRunStatus.FailResource);
-                    break;
-                }
-                catch (Exception exception)
-                {
-                    SetPendingFailure(exception, "RUNNER_EXCEPTION", PerformanceRunStatus.FailCorrectness);
-                    break;
-                }
+            yield return DriveNested(ExecuteCore(), RecordExecutionFailure);
+            if (_fixture != null && !_cleanupCompleted)
+                yield return DriveNested(CleanupFixture(), RecordCleanupFailure);
+            if (_selectedWorldScene.IsValid() && _selectedWorldScene.isLoaded && !_sceneUnloadAttempted)
+                yield return DriveNested(UnloadSelectedWorldFixture(), RecordSceneCleanupFailure);
 
-                yield return current;
-            }
-
-            if (!_cleanupAttempted && _fixture != null)
-            {
-                try
-                {
-                    _fixture.Cleanup();
-                }
-                catch (Exception exception)
-                {
-                    SetPendingFailure(exception, "CLEANUP_FAILED", PerformanceRunStatus.FailCorrectness);
-                }
-            }
-
-            if (!_run.Finalized)
-            {
-                if (_pendingFailure != null)
-                    _run.Fail(_pendingFailure, _pendingFailureReason, _pendingFailureStatus);
-                else
-                    _run.Fail(new InvalidOperationException("The runner exited before finalizing a result."), "RUNNER_INCOMPLETE", PerformanceRunStatus.FailInstrumentation);
-            }
-
-            if (_selectedWorldScene.IsValid() && _selectedWorldScene.isLoaded)
-                SceneManager.UnloadSceneAsync(_selectedWorldScene);
+            FinalizeRun();
 
             Test_PerformanceHarnessController.Complete(_run);
             Destroy(gameObject);
         }
 
+        private void FinalizeRun()
+        {
+            if (_run.Finalized)
+                return;
+
+            try
+            {
+                if (_pendingFailure != null)
+                    _run.Fail(_pendingFailure, _pendingFailureReason, _pendingFailureStatus);
+                else if (_requestedStatus.HasValue)
+                    _run.Complete(_requestedStatus.Value, _requestedReason, _requestedMessage);
+                else
+                    _run.Fail(new InvalidOperationException("The runner exited before finalizing a result."), "RUNNER_INCOMPLETE", PerformanceRunStatus.FailInstrumentation);
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogException(exception);
+                if (_run.Finalized)
+                    return;
+
+                try
+                {
+                    _run.Fail(exception, "FINALIZATION_FAILED", PerformanceRunStatus.FailInstrumentation);
+                }
+                catch (Exception finalizationException)
+                {
+                    UnityEngine.Debug.LogException(finalizationException);
+                }
+            }
+        }
+
         private IEnumerator ExecuteCore()
         {
             _run.StartTelemetry();
+            Test_PerformanceHarnessController.PersistActiveRun("running");
             yield return WaitForServerReady();
             _run.RegisterServerMetrics();
             yield return LoadSelectedWorldFixture();
             _run.CreateDataOnlyRuntime(_run.Options.WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity);
             _fixture = _run.FixtureRuntime;
+            Test_PerformanceHarnessController.PersistActiveRun("running");
 
             _run.BeginPhase(PerformanceMeasurementPhase.Ramp);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
             yield return RunRamp();
             if (_run.StopRequested)
             {
-                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailTimeout, "The user requested the run to stop during the population ramp.");
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the run during the population ramp; this is not a timeout.");
                 yield break;
             }
 
             _run.MarkWorkloadApplied();
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Ramp);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
             _run.BeginPhase(PerformanceMeasurementPhase.Warmup);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
             yield return RunWarmup();
             if (_run.StopRequested)
             {
-                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailTimeout, "The user requested the run to stop during warmup.");
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the run during warmup; this is not a timeout.");
                 yield break;
             }
 
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Warmup);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
             _run.BeginPhase(PerformanceMeasurementPhase.Measurement);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
             yield return RunMeasurement();
             if (_run.StopRequested)
             {
-                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailTimeout, "The user requested the run to stop during measurement.");
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the run during measurement; this is not a timeout.");
                 yield break;
             }
 
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Measurement);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
             _run.BeginPhase(PerformanceMeasurementPhase.Recovery);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
             yield return RunRecovery();
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Recovery);
             yield return CleanupFixture();
-            _run.Complete(PerformanceRunStatus.CompleteMeasured, "MEASUREMENT_COMPLETE", "The requested data-only population was measured and cleaned up successfully.");
+            SetRequestedResult(
+                PerformanceRunStatus.CompleteMeasured,
+                "MEASUREMENT_COMPLETE",
+                "The requested data-only population was measured and cleaned up successfully.");
         }
 
-        private void SetPendingFailure(Exception exception, string reasonCode, PerformanceRunStatus status)
+        private IEnumerator DriveNested(IEnumerator root, Action<Exception> onException)
+        {
+            var stack = new Stack<IEnumerator>();
+            stack.Push(root);
+            while (stack.Count > 0)
+            {
+                var currentEnumerator = stack.Peek();
+                object current;
+                try
+                {
+                    if (!currentEnumerator.MoveNext())
+                    {
+                        stack.Pop();
+                        continue;
+                    }
+                    current = currentEnumerator.Current;
+                }
+                catch (Exception exception)
+                {
+                    onException(exception);
+                    yield break;
+                }
+
+                if (current is IEnumerator nested)
+                    stack.Push(nested);
+                else
+                    yield return current;
+            }
+        }
+
+        private void RecordExecutionFailure(Exception exception)
+        {
+            SetPendingFailure(exception, ClassifyFailure(exception));
+        }
+
+        private void RecordCleanupFailure(Exception exception)
+        {
+            SetPendingFailure(exception, new Test_PerformanceFailureClassification("CLEANUP_FAILED", PerformanceRunStatus.FailCorrectness));
+        }
+
+        private void RecordSceneCleanupFailure(Exception exception)
+        {
+            SetPendingFailure(exception, new Test_PerformanceFailureClassification("SCENE_CLEANUP_FAILED", PerformanceRunStatus.FailCorrectness));
+        }
+
+        private void SetPendingFailure(Exception exception, Test_PerformanceFailureClassification classification)
         {
             if (_pendingFailure == null)
             {
                 _pendingFailure = exception;
-                _pendingFailureReason = reasonCode;
-                _pendingFailureStatus = status;
+                _pendingFailureReason = classification.ReasonCode;
+                _pendingFailureStatus = classification.Status;
+                return;
             }
+
+            _pendingFailure = new AggregateException("The performance run and its teardown both failed.", _pendingFailure, exception);
+            _pendingFailureReason = "CLEANUP_FAILED";
+        }
+
+        private void SetRequestedResult(PerformanceRunStatus status, string reasonCode, string message)
+        {
+            _requestedStatus = status;
+            _requestedReason = reasonCode;
+            _requestedMessage = message;
+        }
+
+        private static Test_PerformanceFailureClassification ClassifyFailure(Exception exception)
+        {
+            if (exception is Test_PerformanceUserStopException)
+                return new Test_PerformanceFailureClassification("USER_STOPPED", PerformanceRunStatus.FailCorrectness);
+            if (exception is Test_ActorFixturePreconditionException)
+                return new Test_PerformanceFailureClassification("FIXTURE_PRECONDITION_FAILED", PerformanceRunStatus.FailProvision);
+            if (exception is TimeoutException)
+                return new Test_PerformanceFailureClassification("TIMEOUT", PerformanceRunStatus.FailTimeout);
+            if (exception is Test_PerformanceResourceCeilingException)
+                return new Test_PerformanceFailureClassification("RESOURCE_CEILING", PerformanceRunStatus.FailResource);
+            return new Test_PerformanceFailureClassification("RUNNER_EXCEPTION", PerformanceRunStatus.FailCorrectness);
+        }
+
+        private readonly struct Test_PerformanceFailureClassification
+        {
+            public Test_PerformanceFailureClassification(string reasonCode, PerformanceRunStatus status)
+            {
+                ReasonCode = reasonCode;
+                Status = status;
+            }
+
+            public string ReasonCode { get; }
+
+            public PerformanceRunStatus Status { get; }
         }
 
         private IEnumerator WaitForServerReady()
         {
+            ThrowIfStopRequested();
             var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
             while (!Game.Shared.GameConfigurationManager.IsInitialized
                 || !ServerECSManager.Initialized
@@ -316,10 +682,12 @@ namespace Game.Tests.Performance.Harness
                 || !ServerAutoAttackManager.IsInitialized
                 || PurrNet.NetworkManager.main == null)
             {
+                ThrowIfStopRequested();
                 if (Time.realtimeSinceStartup >= deadline)
                     throw new TimeoutException("Timed out waiting for ordinary server initialization (configuration, ECS, world manager and network manager).");
                 yield return null;
             }
+            ThrowIfStopRequested();
         }
 
         private IEnumerator LoadSelectedWorldFixture()
@@ -333,10 +701,12 @@ namespace Game.Tests.Performance.Harness
             var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
             while (!operation.isDone)
             {
+                ThrowIfStopRequested();
                 if (Time.realtimeSinceStartup >= deadline)
                     throw new TimeoutException("Timed out loading the selected world fixture scene: " + _run.WorldPlan.AssetPath);
                 yield return null;
             }
+            ThrowIfStopRequested();
 
             _selectedWorldScene = SceneManager.GetSceneByPath(_run.WorldPlan.AssetPath);
             _run.SetLoadedWorld(_selectedWorldScene);
@@ -348,8 +718,10 @@ namespace Game.Tests.Performance.Harness
             var nextSample = 0f;
             while (Time.realtimeSinceStartup - start < Test_PerformanceRun.RAMP_SECONDS)
             {
+                ThrowIfStopRequested();
                 var elapsed = Time.realtimeSinceStartup - start;
                 _run.ActivityController.AdvanceRamp(elapsed, Test_PerformanceRun.RAMP_SECONDS);
+                _run.ObserveEntityCount(_fixture.DataOnlyEntityCount);
                 if (elapsed >= nextSample)
                 {
                     _run.ActivityController.RecordSample(Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS);
@@ -359,6 +731,7 @@ namespace Game.Tests.Performance.Harness
                 yield return null;
             }
             _run.ActivityController.AdvanceRamp(Test_PerformanceRun.RAMP_SECONDS, Test_PerformanceRun.RAMP_SECONDS);
+            _run.ObserveEntityCount(_fixture.DataOnlyEntityCount);
         }
 
         private IEnumerator RunWarmup()
@@ -367,8 +740,10 @@ namespace Game.Tests.Performance.Harness
             var nextSample = 0f;
             while (Time.realtimeSinceStartup - start < Test_PerformanceRun.WARMUP_SECONDS)
             {
+                ThrowIfStopRequested();
                 var elapsed = Time.realtimeSinceStartup - start;
                 _run.ActivityController.AdvanceActivity(elapsed, Test_PerformanceRun.MEASUREMENT_SECONDS);
+                _run.ObserveEntityCount(_fixture.DataOnlyEntityCount);
                 if (elapsed >= nextSample)
                 {
                     _run.ActivityController.RecordSample(Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS);
@@ -385,8 +760,10 @@ namespace Game.Tests.Performance.Harness
             var nextSample = 0f;
             while (Time.realtimeSinceStartup - start < Test_PerformanceRun.MEASUREMENT_SECONDS)
             {
+                ThrowIfStopRequested();
                 var elapsed = Time.realtimeSinceStartup - start;
                 _run.ActivityController.AdvanceActivity(elapsed, Test_PerformanceRun.MEASUREMENT_SECONDS);
+                _run.ObserveEntityCount(_fixture.DataOnlyEntityCount);
                 if (elapsed >= nextSample)
                 {
                     _run.ActivityController.RecordSample(Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS);
@@ -401,32 +778,87 @@ namespace Game.Tests.Performance.Harness
         {
             var start = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - start < Test_PerformanceRun.RECOVERY_SECONDS)
+            {
+                ThrowIfStopRequested();
                 yield return null;
+            }
         }
 
         private IEnumerator StopAndClean(string reasonCode, PerformanceRunStatus status, string message)
         {
             yield return CleanupFixture();
-            _run.Complete(status, reasonCode, message);
+            SetRequestedResult(status, reasonCode, message);
         }
 
         private IEnumerator CleanupFixture()
         {
-            if (_cleanupAttempted)
+            if (_cleanupCompleted)
                 yield break;
-            _cleanupAttempted = true;
             if (_fixture == null)
                 yield break;
 
             _fixture.Cleanup();
+            _run.CaptureCleanupReport(_fixture.LastCleanupReport);
             yield return _fixture.WaitForCleanup(Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS);
             _run.MarkCleanupComplete();
+            _cleanupCompleted = true;
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+        }
+
+        private IEnumerator UnloadSelectedWorldFixture()
+        {
+            _sceneUnloadAttempted = true;
+            var operation = SceneManager.UnloadSceneAsync(_selectedWorldScene);
+            if (operation == null)
+                throw new InvalidOperationException("Unity did not create a scene unload operation for the selected world fixture.");
+
+            var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
+            while (!operation.isDone)
+            {
+                if (Time.realtimeSinceStartup >= deadline)
+                    throw new TimeoutException("Timed out unloading the selected world fixture scene: " + _run.WorldPlan.AssetPath);
+                yield return null;
+            }
+        }
+
+        private void ThrowIfStopRequested()
+        {
+            if (_run.StopRequested)
+                throw new Test_PerformanceUserStopException("The user requested the performance run to stop.");
         }
 
         private void OnDestroy()
         {
-            if (_run != null && !_run.Finalized)
-                _run.AbortFromPlayModeExit();
+            if (_run == null || _run.Finalized)
+                return;
+
+            try
+            {
+                if (_fixture != null && !_cleanupCompleted)
+                {
+                    _fixture.Cleanup();
+                    _run.CaptureCleanupReport(_fixture.LastCleanupReport);
+                    _fixture.AssertCleanupComplete();
+                    _run.MarkCleanupComplete();
+                    _cleanupCompleted = true;
+                }
+            }
+            catch (Exception exception)
+            {
+                RecordCleanupFailure(exception);
+            }
+
+            try
+            {
+                if (_pendingFailure != null)
+                    _run.Fail(_pendingFailure, _pendingFailureReason, _pendingFailureStatus);
+                else
+                    _run.AbortFromPlayModeExit();
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogException(exception);
+            }
         }
     }
 }
