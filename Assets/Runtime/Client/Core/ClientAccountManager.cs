@@ -14,13 +14,16 @@ namespace Game.Client
     public sealed class ClientAccountManager : MonoBehaviour
     {
         private static ClientAccountManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static ClientAccountManager Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    _instance = new ClientAccountManager();
+                    _instance = new();
                 }
                 return _instance;
             }

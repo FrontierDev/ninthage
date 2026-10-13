@@ -21,9 +21,10 @@ namespace Game.Client.UI
         /// </summary>
         public ItemInstance item;
         /// <summary>
-        /// Stores the <c>slotId</c> value.
+        /// Stores the <c>slotID</c> value.
         /// </summary>
-        public ItemSlot slotId;
+        [FormerlySerializedAs("slotId")]
+        public ItemSlot slotID;
         [FormerlySerializedAs("graphics")]
         [SerializeField] private Image _graphics;
 
@@ -39,7 +40,7 @@ namespace Game.Client.UI
         /// <inheritdoc/>
         public override void Initialize(ItemInstance _item, int _slotID)
         {
-            slotId = (ItemSlot)_slotID;
+            slotID = (ItemSlot)_slotID;
             SetItem(_item);
         }
 
@@ -76,8 +77,8 @@ namespace Game.Client.UI
             if (eventData.button == PointerEventData.InputButton.Right)
             {
                 // Attempt to unequip the item when right-clicking on an equipped item.
-                ClientAccountManager.PlayerActor.GetComponent<PlayerEquipment>().Server_RequestUnequipItem(slotId);
-                Debug.Log($"Requested unequip item from slot {slotId}");
+                ClientAccountManager.PlayerActor.GetComponent<PlayerEquipment>().Server_RequestUnequipItem(slotID);
+                Debug.Log($"Requested unequip item from slot {slotID}");
             }
 
             base.OnClick(eventData); // Play SFX if assigned in the inspector.

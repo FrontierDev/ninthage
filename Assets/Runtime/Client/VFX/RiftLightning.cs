@@ -73,10 +73,10 @@ namespace Game.Client.VFX
         // All colliders that live on the rift's own GameObject or any of its
         // children/descendants — rebuilt whenever the rift regenerates.
         private readonly System.Collections.Generic.HashSet<Collider> _selfColliders
-            = new System.Collections.Generic.HashSet<Collider>();
+            = new();
         // Tracks every live bolt GO so we can destroy them if the component is disabled mid-flash.
         private readonly System.Collections.Generic.HashSet<GameObject> _activeBoltObjects
-            = new System.Collections.Generic.HashSet<GameObject>();
+            = new();
 
         // ── Unity lifecycle ───────────────────────────────────────────────────
 

@@ -10,6 +10,9 @@ namespace Game.Client.UI
     {
         private static UI_DragGhost _instance;
 
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static UI_DragGhost Instance
         {
             get

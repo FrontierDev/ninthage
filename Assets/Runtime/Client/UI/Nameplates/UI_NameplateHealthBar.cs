@@ -19,12 +19,15 @@ namespace Game.Client.UI
         [FormerlySerializedAs("levelText")]
         [SerializeField] private TMP_Text _levelText;
 
+        [FormerlySerializedAs("hostileColor")]
         [SerializeField]
-        private Color hostileColor = new(0.878f, 0.749f, 0.447f);
+        private Color _hostileColor = new(0.878f, 0.749f, 0.447f);
+        [FormerlySerializedAs("alliedColor")]
         [SerializeField]
-        private Color alliedColor = new(0.878f, 0.749f, 0.447f);
+        private Color _alliedColor = new(0.878f, 0.749f, 0.447f);
+        [FormerlySerializedAs("neutralColor")]
         [SerializeField]
-        private Color neutralColor = new(0.118f, 0.133f, 0.165f);
+        private Color _neutralColor = new(0.118f, 0.133f, 0.165f);
 
         private void Awake()
         {
@@ -41,18 +44,18 @@ namespace Game.Client.UI
             {
                 case FactionRelationState.Hostile:
                     UIShaderProperties.SetColor(graphics, "_MainColor", Color.red);
-                    _nameText.color = hostileColor;
-                    _percentText.color = hostileColor;
+                    _nameText.color = _hostileColor;
+                    _percentText.color = _hostileColor;
                     break;
                 case FactionRelationState.Allied:
                     UIShaderProperties.SetColor(graphics, "_MainColor", Color.green);
-                    _nameText.color = alliedColor;
-                    _percentText.color = alliedColor;
+                    _nameText.color = _alliedColor;
+                    _percentText.color = _alliedColor;
                     break;
                 case FactionRelationState.Neutral:
                     UIShaderProperties.SetColor(graphics, "_MainColor", Color.softYellow);
-                    _nameText.color = neutralColor;
-                    _percentText.color = neutralColor;
+                    _nameText.color = _neutralColor;
+                    _percentText.color = _neutralColor;
                     break;
             }
         }

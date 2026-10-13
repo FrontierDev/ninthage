@@ -27,13 +27,16 @@ namespace Game.Client
     public class ClientConnectionManager : MonoBehaviour
     {
         private static ClientConnectionManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static ClientConnectionManager Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    _instance = new ClientConnectionManager();
+                    _instance = new();
                 }
                 return _instance;
             }

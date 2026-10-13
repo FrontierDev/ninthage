@@ -90,7 +90,7 @@ namespace Game.Client.UI
                 foreach (var _slot in currentEntries)
                 {
                     var equipmentSlot = _slot as UI_CharacterEquipmentEntry;
-                    var slot = equipmentSlot.slotId;
+                    var slot = equipmentSlot.slotID;
                     if (ClientAccountManager.PlayerActor.GetComponent<PlayerEquipment>().TryGetItem(slot, out ItemInstance item))
                     {
                         equipmentSlot.SetItem(item);

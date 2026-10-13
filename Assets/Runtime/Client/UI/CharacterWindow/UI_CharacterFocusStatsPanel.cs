@@ -30,7 +30,7 @@ namespace Game.Client.UI
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        private List<ActorStatDefinition> focusStatDefinitions = new();
+        private List<ActorStatDefinition> _focusStatDefinitions = new();
         private ActorStatContainer _currentStats;
 
         protected override void Awake()
@@ -50,7 +50,7 @@ namespace Game.Client.UI
             var charClassID = ClientAccountManager.GetCharacterData()?.ClassID;
             var def = ClassDefinitionLibrary.Instance.GetDefinition(charClassID);
 
-            focusStatDefinitions = def.FocusStats as List<ActorStatDefinition> ?? new List<ActorStatDefinition>();
+            _focusStatDefinitions = def.FocusStats as List<ActorStatDefinition> ?? new();
             PopulateList(forceClear: true);
 
             if (ClientAccountManager.PlayerActor != null)
@@ -111,7 +111,7 @@ namespace Game.Client.UI
             }
 
             int index = 0;
-            foreach (var statDef in focusStatDefinitions)
+            foreach (var statDef in _focusStatDefinitions)
             {
                 var entryObj = Instantiate(_statEntryPrefab.gameObject, _container.transform);
                 var entry = entryObj.GetComponent<UI_CharacterStatEntry>();

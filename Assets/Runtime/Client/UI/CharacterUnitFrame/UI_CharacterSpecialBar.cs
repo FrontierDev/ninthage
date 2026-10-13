@@ -58,8 +58,8 @@ namespace Game.Client.UI
             _playerStatContainer = playerActor.GetComponent<ActorStatContainer>();
 
             // Get the tracked stat from the class definition.
-            var classId = ClientAccountManager.ActiveCharacter.ClassID;
-            var def = ClassDefinitionLibrary.Instance.GetDefinition(classId);
+            var classID = ClientAccountManager.ActiveCharacter.ClassID;
+            var def = ClassDefinitionLibrary.Instance.GetDefinition(classID);
             _trackedStat = def.BaseStats.FirstOrDefault(x => x.definition.Tags.Any(tag => tag == "special"))?.definition;
 
             if (_trackedStat == null)

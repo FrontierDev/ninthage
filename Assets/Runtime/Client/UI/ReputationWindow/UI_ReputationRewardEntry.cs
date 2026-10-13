@@ -70,7 +70,7 @@ namespace Game.Client.UI
             if (_graphics != null)
             {
                 // Use hex colors: 38B986 for positive (green), E88A52 for negative (orange)
-                Color borderColor = isPositive
+                var borderColor = isPositive
                     ? new Color(0x38 / 255f, 0xB9 / 255f, 0x86 / 255f)  // #38B986
                     : new Color(0xE8 / 255f, 0x8A / 255f, 0x52 / 255f); // #E88A52
 

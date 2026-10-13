@@ -54,8 +54,8 @@ namespace Game.Client.UI
             var charClassID = ClientAccountManager.GetCharacterData()?.ClassID;
             var def = ClassDefinitionLibrary.Instance.GetDefinition(charClassID);
 
-            _focusStatDefinitions = def.FocusStats as List<ActorStatDefinition> ?? new List<ActorStatDefinition>();
-            _relevantStatDefinitions = def.RelevantStats as List<ActorStatDefinition> ?? new List<ActorStatDefinition>();
+            _focusStatDefinitions = def.FocusStats as List<ActorStatDefinition> ?? new();
+            _relevantStatDefinitions = def.RelevantStats as List<ActorStatDefinition> ?? new();
             PopulateList(forceClear: true);
 
             if (ClientAccountManager.PlayerActor != null)

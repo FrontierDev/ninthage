@@ -13,6 +13,9 @@ namespace Game.Client
     public sealed class ClientWorldManager : MonoBehaviour
     {
         private static ClientWorldManager _instance;
+        /// <summary>
+        /// Gets the shared client-side instance.
+        /// </summary>
         public static ClientWorldManager Instance
         {
             get

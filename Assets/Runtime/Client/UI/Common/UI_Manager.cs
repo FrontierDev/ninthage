@@ -121,7 +121,7 @@ namespace Game.Client.UI
         /// <summary>
         /// Handles the <c>OnHideWindow</c> callback.
         /// </summary>
-        public virtual void OnHideWindow(UI_Window window) => openedWindows = new Queue<UI_Window>(openedWindows.Where(w => w != window));
+        public virtual void OnHideWindow(UI_Window window) => openedWindows = new(openedWindows.Where(w => w != window));
         /// <summary>
         /// Executes the client-side <c>CloseLastWindow</c> operation.
         /// </summary>

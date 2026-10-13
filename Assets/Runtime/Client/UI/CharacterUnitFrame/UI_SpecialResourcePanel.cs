@@ -42,8 +42,8 @@ namespace Game.Client.UI
         {
             if (Game.Shared.Runtime.Runtime.IsServer()) return; // This UI should not be active on the server.
 
-            var classId = ClientAccountManager.ActiveCharacter.ClassID;
-            var def = ClassDefinitionLibrary.Instance.GetDefinition(classId);
+            var classID = ClientAccountManager.ActiveCharacter.ClassID;
+            var def = ClassDefinitionLibrary.Instance.GetDefinition(classID);
             var trackedStat = def.BaseStats.FirstOrDefault(x => x.definition.Tags.Any(tag => tag == "special"))?.definition;
             var resourcePrefab = def.ClassBehaviour != null ? def.ClassBehaviour.ResourcePrefab : null;
 

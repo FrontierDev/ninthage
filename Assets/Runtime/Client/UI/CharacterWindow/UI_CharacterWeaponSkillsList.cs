@@ -49,10 +49,10 @@ namespace Game.Client.UI
             if (actor == null) return;
 
             // Get the player's class.
-            var classId = ClientAccountManager.ActiveCharacter.ClassID;
-            var classDef = ClassDefinitionLibrary.Instance.GetDefinition(classId);
+            var classID = ClientAccountManager.ActiveCharacter.ClassID;
+            var classDef = ClassDefinitionLibrary.Instance.GetDefinition(classID);
 
-            _trackedWeaponTypes = new List<ItemWeaponType>(classDef.WeaponTypes);
+            _trackedWeaponTypes = new(classDef.WeaponTypes);
             _playerExperience = actor.GetComponent<PlayerExperience>();
 
             PopulateList(true);
