@@ -1,8 +1,11 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Client.Performance;
 using Game.Shared;
 using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Runtime;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -28,12 +31,14 @@ namespace Game.Client
         public static bool Initialized => _initialized;
 
         private const int MAX_CACHE_SIZE = 50; // Prevent unbounded memory growth
+        private const int MAX_TRACKED_ADDRESSABLE_OPERATIONS = 256;
 
         [FormerlySerializedAs("sfxSource")]
         [SerializeField] private AudioSource _sfxSource;
 
         private readonly Dictionary<string, AudioClip> _cache = new();
         private readonly Dictionary<string, AsyncOperationHandle<AudioClip>> _pendingLoads = new();
+        private Dictionary<string, long> _pendingLoadTimestamps;
         private readonly List<string> _cacheAccessOrder = new(); // Track LRU for eviction
 
         [ToDo("Implement a more robust caching strategy if needed, e.g. separate pools for UI vs world SFX, or reference counting for shared clips.")]
@@ -76,9 +81,12 @@ namespace Game.Client
                 if (handle.IsValid())
                 {
                     Addressables.Release(handle);
+                    if (PerformanceTelemetry.IsEnabled)
+                        PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
                 }
             }
             _pendingLoads.Clear();
+            _pendingLoadTimestamps?.Clear();
 
             // Clear instance
             if (_instance == this)
@@ -98,6 +106,7 @@ namespace Game.Client
                     string lruKey = _cacheAccessOrder[0];
                     _cache.Remove(lruKey);
                     _cacheAccessOrder.RemoveAt(0);
+                    RecordCacheCount();
                 }
             }
         }
@@ -128,10 +137,12 @@ namespace Game.Client
 
             var handle = Addressables.LoadAssetAsync<AudioClip>(addressablePath);
             _pendingLoads[addressablePath] = handle;
+            TrackAddressableLoadStarted(addressablePath);
 
             handle.Completed += loadHandle =>
             {
                 _pendingLoads.Remove(addressablePath);
+                TrackAddressableLoadCompleted(addressablePath);
 
                 if (loadHandle.Status != AsyncOperationStatus.Succeeded)
                 {
@@ -142,6 +153,7 @@ namespace Game.Client
                 EvictCacheIfNeeded();
                 _cache[addressablePath] = loadHandle.Result;
                 UpdateCacheAccessOrder(addressablePath);
+                RecordCacheCount();
                 _sfxSource.PlayOneShot(loadHandle.Result);
             };
         }
@@ -157,10 +169,12 @@ namespace Game.Client
 
             var handle = Addressables.LoadAssetAsync<AudioClip>(addressablePath);
             _pendingLoads[addressablePath] = handle;
+            TrackAddressableLoadStarted(addressablePath);
 
             handle.Completed += loadHandle =>
             {
                 _pendingLoads.Remove(addressablePath);
+                TrackAddressableLoadCompleted(addressablePath);
 
                 if (loadHandle.Status != AsyncOperationStatus.Succeeded)
                 {
@@ -171,6 +185,7 @@ namespace Game.Client
                 EvictCacheIfNeeded();
                 _cache[addressablePath] = loadHandle.Result;
                 UpdateCacheAccessOrder(addressablePath);
+                RecordCacheCount();
             };
         }
 
@@ -214,10 +229,12 @@ namespace Game.Client
 
             var handle = Addressables.LoadAssetAsync<AudioClip>(addressablePath);
             _pendingLoads[addressablePath] = handle;
+            TrackAddressableLoadStarted(addressablePath);
 
             handle.Completed += loadHandle =>
             {
                 _pendingLoads.Remove(addressablePath);
+                TrackAddressableLoadCompleted(addressablePath);
 
                 if (loadHandle.Status != AsyncOperationStatus.Succeeded)
                 {
@@ -230,14 +247,49 @@ namespace Game.Client
                 {
                     Debug.Warning($"AudioSource was destroyed before clip loaded: {addressablePath}");
                     Addressables.Release(loadHandle);
+                    if (PerformanceTelemetry.IsEnabled)
+                        PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
                     return;
                 }
 
                 EvictCacheIfNeeded();
                 _cache[addressablePath] = loadHandle.Result;
                 UpdateCacheAccessOrder(addressablePath);
+                RecordCacheCount();
                 audioSource.PlayOneShot(loadHandle.Result);
             };
+        }
+
+        private void TrackAddressableLoadStarted(string addressablePath)
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
+
+            _pendingLoadTimestamps ??= new Dictionary<string, long>();
+            if (_pendingLoadTimestamps.Count < MAX_TRACKED_ADDRESSABLE_OPERATIONS)
+                _pendingLoadTimestamps[addressablePath] = Stopwatch.GetTimestamp();
+            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_PENDING_COUNT, _pendingLoads.Count);
+        }
+
+        private void TrackAddressableLoadCompleted(string addressablePath)
+        {
+            if (_pendingLoadTimestamps != null
+                && _pendingLoadTimestamps.TryGetValue(addressablePath, out long startedTimestamp))
+            {
+                _pendingLoadTimestamps.Remove(addressablePath);
+                ClientPerformanceMetrics.TryRecordDuration(ClientPerformanceMetrics.ADDRESSABLE_LOAD_DURATION, startedTimestamp);
+            }
+
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(
+                    ClientPerformanceMetrics.ADDRESSABLE_PENDING_COUNT,
+                    _pendingLoads.Count);
+        }
+
+        private void RecordCacheCount()
+        {
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.AUDIO_CACHE_COUNT, _cache.Count);
         }
     }
 }

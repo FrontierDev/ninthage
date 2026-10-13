@@ -256,6 +256,7 @@ namespace Game.Shared.Runtime.Actors
         [ServerRpc(requireOwnership: true)]
         public void Server_RequestSpellCast(string spellID, RPCInfo rpcInfo = default)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_SPELL_CAST_COUNT);
             if (!CanCastSpell(spellID, out var spellDef)) return;
 
             Debug.Log($"Actor {name} is casting spell '{spellID}'");
@@ -265,6 +266,7 @@ namespace Game.Shared.Runtime.Actors
         [ServerRpc(requireOwnership: true)]
         public void Server_RequestGroundSpellCast(string spellID, Vector3 groundPosition, RPCInfo rpcInfo = default)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_SPELL_CAST_COUNT);
             if (!CanCastSpell(spellID, out var spellDef)) return;
 
             Debug.Log($"Actor {name} is casting ground spell '{spellID}' at {groundPosition}");
@@ -287,6 +289,7 @@ namespace Game.Shared.Runtime.Actors
         [ServerRpc(requireOwnership: true)]
         public void Server_CancelSpellCast(RPCInfo rpcInfo = default)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_SPELL_CAST_COUNT);
             var actor = GetComponent<Actor>();
             ActorEndpoint.onServerRequestSpellCastCancel?.Invoke(actor);
         }
@@ -377,6 +380,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_StartSpellCast(string spellID, float finalCastTime, RPCInfo rpcInfo = default)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_SPELL_CAST_COUNT);
             _isCasting = true;
             ActorEndpoint.onSpellCastStarted?.Invoke(GetComponent<Actor>(), spellID, finalCastTime);
         }
@@ -386,12 +390,14 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_TickSpellCast(string spellID)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_SPELL_CAST_COUNT);
             // TO DO...
         }
 
         [ObserversRpc]
         public void Observers_InterruptSpellCast(string spellID)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_SPELL_CAST_COUNT);
             _isCasting = false;
             ActorEndpoint.onSpellCastInterrupted?.Invoke(GetComponent<Actor>());
         }
@@ -399,6 +405,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_FinishSpellCast(string spellID)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_SPELL_CAST_COUNT);
             _isCasting = false;
             ActorEndpoint.onSpellCastCompleted?.Invoke(GetComponent<Actor>());
         }
@@ -406,6 +413,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_ReceiveCombatLog(Actor target, int damageAmount, List<DamageSchoolDefinition> damageTypes)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_COMBAT_LOG_COUNT);
             // This method is called on the caster's client to show a damage popup when a spell hits a target. 
             // The damage amount and types are passed in so that the client can display the appropriate visuals (e.g. different colors or icons for different damage types). 
             // The actual implementation of the popup is up to the client - this could involve instantiating a prefab, updating a UI element, etc.
@@ -414,12 +422,14 @@ namespace Game.Shared.Runtime.Actors
         [TargetRpc]
         public void Client_StartGlobalCooldown(PlayerID playerID, float duration, RPCInfo info = default)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_COOLDOWN_COUNT, 1);
             ActorEndpoint.onStartGlobalCooldown?.Invoke();
         }
 
         [TargetRpc]
         public void Client_StartSpellCooldown(PlayerID playerID, string spellID, float duration, RPCInfo info = default)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_COOLDOWN_COUNT, 1);
             ActorEndpoint.onStartCooldown?.Invoke(spellID, duration);
         }
         #endregion

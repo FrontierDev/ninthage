@@ -1,7 +1,9 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Client.Performance;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,6 +56,9 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_NameplateManager : UI_WorldSpaceUIManager
     {
+        private static readonly PerformanceMarker LATE_UPDATE_MARKER = new(
+            ClientPerformanceMetrics.NAMEPLATE_UPDATE_DURATION,
+            "Client.NameplateManager.LateUpdate");
         private static UI_NameplateManager _instance;
         /// <summary>
         /// Gets the shared client-side instance.
@@ -135,6 +140,7 @@ namespace Game.Client.UI
         {
             Camera cam = Camera.main;
             if (cam == null) return;
+            using var markerScope = LATE_UPDATE_MARKER.Begin();
 
             Vector3 camPos = cam.transform.position;
 
@@ -190,6 +196,8 @@ namespace Game.Client.UI
                         kvp.Value.StackOffset = 0f;
                 }
             }
+
+            RecordPresentationCounts();
         }
 
         private readonly List<UI_Nameplate> _sortedForStacking = new();
@@ -308,7 +316,11 @@ namespace Game.Client.UI
             if (nameplateView != null)
             {
                 nameplateView.Initialize(actor, UI_WorldSpace.Instance.root);
+                nameplateView.Released += OnNameplateReleased;
                 activeNameplates[actor] = nameplateView;
+                if (PerformanceTelemetry.IsEnabled)
+                    PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.NAMEPLATE_SPAWN_COUNT, 1);
+                RecordPresentationCounts();
             }
         }
 
@@ -367,6 +379,7 @@ namespace Game.Client.UI
                         {
                             Destroy(ownNameplate.gameObject);
                             activeNameplates.Remove(ClientAccountManager.PlayerActor);
+                            RecordPresentationCounts();
                         }
                     }
                 }
@@ -445,6 +458,27 @@ namespace Game.Client.UI
         {
             if (!activeNameplates.TryGetValue(actor, out var nameplate)) return;
             nameplate.FinishCast();
+        }
+
+        private void RecordPresentationCounts()
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
+
+            int nameplateCount = activeNameplates.Count;
+            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.NAMEPLATE_COUNT, nameplateCount);
+        }
+
+        private void OnNameplateReleased(UI_Nameplate nameplate)
+        {
+            if (nameplate != null && nameplate.Actor != null)
+                activeNameplates.Remove(nameplate.Actor);
+
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
+
+            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.NAMEPLATE_RELEASE_COUNT, 1);
+            RecordPresentationCounts();
         }
     }
 }

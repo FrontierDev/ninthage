@@ -2,6 +2,7 @@ using Actor = Game.Shared.Runtime.Actors.Actor;
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
@@ -22,6 +23,126 @@ namespace Game.Server.Core
     /// </summary>
     public sealed class ServerActorManager : MonoBehaviour
     {
+        private static readonly PerformanceMetricDefinition UPDATE_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_MANAGER_UPDATE_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition LATE_UPDATE_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_MANAGER_LATE_UPDATE_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition NPC_AGGRO_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_AGGRO_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition POSITION_VALIDATION_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_MANAGER_POSITION_VALIDATION_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition PLAYER_ECS_SYNC_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_MANAGER_PLAYER_ECS_SYNC_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition ECS_ACTOR_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_ECS_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition NETWORK_GAMEOBJECT_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NETWORK_GAMEOBJECT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition TOTAL_ALLOCATED_MEMORY_METRIC = new(
+            PerformanceMetricIds.SERVER_MEMORY_TOTAL_ALLOCATED_BYTES,
+            PerformanceMetricUnit.Bytes,
+            PerformanceMetricSide.Server,
+            "memory",
+            "server_update");
+        private static readonly PerformanceMetricDefinition MONO_USED_MEMORY_METRIC = new(
+            PerformanceMetricIds.SERVER_MEMORY_MONO_USED_BYTES,
+            PerformanceMetricUnit.Bytes,
+            PerformanceMetricSide.Server,
+            "memory",
+            "server_update");
+        private static readonly PerformanceMetricDefinition MONO_HEAP_MEMORY_METRIC = new(
+            PerformanceMetricIds.SERVER_MEMORY_MONO_HEAP_BYTES,
+            PerformanceMetricUnit.Bytes,
+            PerformanceMetricSide.Server,
+            "memory",
+            "server_update");
+        private static readonly PerformanceMetricDefinition GC_GEN0_COLLECTION_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_MEMORY_GC_GEN0_COLLECTION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "memory",
+            "server_update");
+        private static readonly PerformanceMetricDefinition GC_GEN1_COLLECTION_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_MEMORY_GC_GEN1_COLLECTION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "memory",
+            "server_update");
+        private static readonly PerformanceMetricDefinition GC_GEN2_COLLECTION_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_MEMORY_GC_GEN2_COLLECTION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "memory",
+            "server_update");
+        private static readonly PerformanceMetricDefinition OVERLAP_SEARCH_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_OVERLAP_SEARCH_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_aggro",
+            "server_update");
+        private static readonly PerformanceMetricDefinition COLLIDER_CANDIDATE_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_COLLIDER_CANDIDATE_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_aggro",
+            "server_update");
+        private static readonly PerformanceMetricDefinition FULL_ENTITY_SCAN_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_FULL_ENTITY_SCAN_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition GAMEOBJECT_SYNC_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_ECS_GAMEOBJECT_SYNC_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition ALLOC_HEAVY_OPERATION_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_ALLOC_HEAVY_OPERATION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_aggro",
+            "server_update");
+        private static readonly PerformanceMetricDefinition SPAWN_EVENT_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_SPAWN_EVENT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "lifetime");
+        private static readonly PerformanceMarker UPDATE_MARKER = new(UPDATE_DURATION_METRIC, "Server.ActorManager.Update");
+        private static readonly PerformanceMarker LATE_UPDATE_MARKER = new(LATE_UPDATE_DURATION_METRIC, "Server.ActorManager.LateUpdate");
+        private static readonly PerformanceMarker NPC_AGGRO_MARKER = new(NPC_AGGRO_DURATION_METRIC, "Server.ActorManager.UpdateNPCAggro");
+        private static readonly PerformanceMarker POSITION_VALIDATION_MARKER = new(POSITION_VALIDATION_DURATION_METRIC, "Server.ActorManager.ValidatePlayerPositions");
+        private static readonly PerformanceMarker PLAYER_ECS_SYNC_MARKER = new(PLAYER_ECS_SYNC_DURATION_METRIC, "Server.ActorManager.SyncPlayerECS");
+
         private static ServerActorManager _instance;
         /// <summary>Gets the active server actor manager.</summary>
         public static ServerActorManager Instance => _instance;
@@ -75,6 +196,7 @@ namespace Game.Server.Core
             _instance = this;
 
             ActorEndpoint.onServerActorSpawned += OnActorSpawned;
+            ActorEndpoint.onServerActorDespawned += OnActorDespawned;
             ActorEndpoint.onServerActorOwnerChanged += OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
 
@@ -88,6 +210,7 @@ namespace Game.Server.Core
         private void OnDestroy()
         {
             ActorEndpoint.onServerActorSpawned -= OnActorSpawned;
+            ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
             ActorEndpoint.onServerActorOwnerChanged -= OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged -= OnActorInterestChanged;
 
@@ -104,16 +227,45 @@ namespace Game.Server.Core
         private void Update()
         {
             if (!_initialized) return;
+            using var markerScope = UPDATE_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             UpdateNPCAggro();
             ValidatePlayerPositions();
             SyncPlayerECS();
+            if (telemetryEnabled)
+            {
+                PerformanceTelemetry.TryRecord(ECS_ACTOR_COUNT_METRIC, _actorComponentQuery.CalculateEntityCount());
+                PerformanceTelemetry.TryRecord(NETWORK_GAMEOBJECT_COUNT_METRIC, _actorObjects.Count);
+                PerformanceTelemetry.TryRecord(
+                    TOTAL_ALLOCATED_MEMORY_METRIC,
+                    UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong());
+                PerformanceTelemetry.TryRecord(
+                    MONO_USED_MEMORY_METRIC,
+                    UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong());
+                PerformanceTelemetry.TryRecord(
+                    MONO_HEAP_MEMORY_METRIC,
+                    UnityEngine.Profiling.Profiler.GetMonoHeapSizeLong());
+                PerformanceTelemetry.TryRecord(
+                    GC_GEN0_COLLECTION_COUNT_METRIC,
+                    GC.CollectionCount(0));
+                PerformanceTelemetry.TryRecord(
+                    GC_GEN1_COLLECTION_COUNT_METRIC,
+                    GC.CollectionCount(1));
+                PerformanceTelemetry.TryRecord(
+                    GC_GEN2_COLLECTION_COUNT_METRIC,
+                    GC.CollectionCount(2));
+            }
         }
 
         private void LateUpdate()
         {
             if (!_initialized) return;
+            using var markerScope = LATE_UPDATE_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int syncCount = 0;
 
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
+            int fullScanCount = entities.Length;
             foreach (var entity in entities)
             {
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
@@ -128,6 +280,8 @@ namespace Game.Server.Core
                         var pos = actorObj.transform.position;
                         component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
                         _entityManager.SetComponentData(entity, component);
+                        if (telemetryEnabled)
+                            syncCount++;
                     }
                     else
                     {
@@ -137,10 +291,17 @@ namespace Game.Server.Core
                             (float)component.WorldPositionD.y,
                             (float)component.WorldPositionD.z
                         );
+                        if (telemetryEnabled)
+                            syncCount++;
                     }
                 }
             }
             entities.Dispose();
+            if (telemetryEnabled)
+            {
+                PerformanceTelemetry.TryRecord(FULL_ENTITY_SCAN_COUNT_METRIC, fullScanCount);
+                PerformanceTelemetry.TryRecord(GAMEOBJECT_SYNC_COUNT_METRIC, syncCount);
+            }
         }
 
         private void OnActorSpawned(Actor actor)
@@ -216,7 +377,17 @@ namespace Game.Server.Core
                 }
             }
 
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(SPAWN_EVENT_COUNT_METRIC, 1);
             Debug.Log("Actor spawned on server: " + actor.Name + " (ID: " + actor.ID + ")");
+        }
+
+        private void OnActorDespawned(Actor actor)
+        {
+            if (actor == null)
+                return;
+
+            _actorObjects.Remove(actor.ID);
         }
 
         private void OnActorOwnerChanged(Actor actor)
@@ -243,6 +414,8 @@ namespace Game.Server.Core
                     break;
                 }
             }
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(FULL_ENTITY_SCAN_COUNT_METRIC, entities.Length);
             entities.Dispose();
         }
 
@@ -265,6 +438,8 @@ namespace Game.Server.Core
                     break;
                 }
             }
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(FULL_ENTITY_SCAN_COUNT_METRIC, entities.Length);
             entities.Dispose();
         }
 
@@ -275,6 +450,11 @@ namespace Game.Server.Core
         [ToDo("NPC aggro should be checked from the player, not the NPC, to avoid iterating over all NPCs every frame. This is a temporary implementation.")]
         private void UpdateNPCAggro()
         {
+            using var markerScope = NPC_AGGRO_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int overlapSearchCount = 0;
+            int colliderCandidateCount = 0;
+            int allocHeavyOperationCount = telemetryEnabled ? 1 : 0;
             float dt = Time.deltaTime;
             var keys = new List<Guid>(_npcAggroStates.Keys);
 
@@ -294,6 +474,12 @@ namespace Game.Server.Core
                 float closestDistSqr = float.MaxValue;
 
                 var colliders = Physics.OverlapSphere(npcPos, aggroRange);
+                if (telemetryEnabled)
+                {
+                    overlapSearchCount++;
+                    colliderCandidateCount += colliders.Length;
+                    allocHeavyOperationCount++;
+                }
                 foreach (var col in colliders)
                 {
                     var player = col.GetComponentInParent<PlayerActor>();
@@ -339,6 +525,12 @@ namespace Game.Server.Core
 
                 _npcAggroStates[id] = state;
             }
+            if (telemetryEnabled)
+            {
+                PerformanceTelemetry.TryRecord(OVERLAP_SEARCH_COUNT_METRIC, overlapSearchCount);
+                PerformanceTelemetry.TryRecord(COLLIDER_CANDIDATE_COUNT_METRIC, colliderCandidateCount);
+                PerformanceTelemetry.TryRecord(ALLOC_HEAVY_OPERATION_COUNT_METRIC, allocHeavyOperationCount);
+            }
         }
 
         /// <summary>
@@ -348,6 +540,7 @@ namespace Game.Server.Core
         /// </summary>
         private void ValidatePlayerPositions()
         {
+            using var markerScope = POSITION_VALIDATION_MARKER.Begin();
             foreach (var kvp in _playerActors)
             {
                 var playerID = kvp.Key;
@@ -401,7 +594,11 @@ namespace Game.Server.Core
         /// </summary>
         private void SyncPlayerECS()
         {
+            using var markerScope = PLAYER_ECS_SYNC_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int syncCount = 0;
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
+            int fullScanCount = entities.Length;
             foreach (var entity in entities)
             {
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
@@ -412,9 +609,16 @@ namespace Game.Server.Core
                     var pos = actor.transform.position;
                     component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
                     _entityManager.SetComponentData(entity, component);
+                    if (telemetryEnabled)
+                        syncCount++;
                 }
             }
             entities.Dispose();
+            if (telemetryEnabled)
+            {
+                PerformanceTelemetry.TryRecord(FULL_ENTITY_SCAN_COUNT_METRIC, fullScanCount);
+                PerformanceTelemetry.TryRecord(GAMEOBJECT_SYNC_COUNT_METRIC, syncCount);
+            }
         }
     }
 }

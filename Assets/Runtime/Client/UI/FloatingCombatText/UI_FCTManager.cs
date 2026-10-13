@@ -1,7 +1,9 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Client.Performance;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using UnityEngine;
@@ -62,6 +64,9 @@ namespace Game.Client.UI
         {
             ActorEndpoint.onCombatLogEntryReceived -= OnCombatLogEntryReceived;
             CharacterEndpoint.onClientExperienceUpdated -= OnExperienceUpdated;
+
+            if (_instance == this)
+                _instance = null;
         }
 
         private void OnExperienceUpdated(int level, int experience, int delta)
@@ -76,6 +81,7 @@ namespace Game.Client.UI
             GameObject fctObj = Instantiate(_fctPrefab, spawnPos, Quaternion.identity, UI_WorldSpace.Instance.fctContainer);
             var fct = fctObj.GetComponent<UI_FloatingCombatText>();
             fct.Initialize(content, color, direction, 1, 3);
+            TrackTransient(fct);
         }
 
         private void OnCombatLogEntryReceived(CombatLogEntry entry)
@@ -156,7 +162,35 @@ namespace Game.Client.UI
             GameObject fctObj = Instantiate(_fctPrefab, spawnPos, Quaternion.identity, UI_WorldSpace.Instance.fctContainer);
             var fct = fctObj.GetComponent<UI_FloatingCombatText>();
             fct.Initialize(content, color, direction, sizeMultiplier, durationMultiplier);
+            TrackTransient(fct);
         }
+
+        private void TrackTransient(UI_FloatingCombatText transient)
+        {
+            if (!PerformanceTelemetry.IsEnabled || transient == null)
+                return;
+
+            transient.Released += OnTransientReleased;
+            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_SPAWN_COUNT, 1);
+            RecordTransientCount(1);
+        }
+
+        private void OnTransientReleased(UI_FloatingCombatText transient)
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
+
+            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_RELEASE_COUNT, 1);
+            RecordTransientCount(-1);
+        }
+
+        private void RecordTransientCount(int delta)
+        {
+            _activeTransientCount = Mathf.Max(0, _activeTransientCount + delta);
+            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_COUNT, _activeTransientCount);
+        }
+
+        private int _activeTransientCount;
 
         private Color GetHitTypeColor(SpellHitType hitType)
         {

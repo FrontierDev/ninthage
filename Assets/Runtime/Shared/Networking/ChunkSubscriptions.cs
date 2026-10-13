@@ -22,7 +22,8 @@ namespace Game.Shared.Networking
                 set = new();
                 SCENE_ACTORS[sceneName] = set;
             }
-            set.Add(actor);
+            if (set.Add(actor))
+                NetworkingPerformanceMetrics.RecordChunkSubscriptionChange();
         }
 
         /// <summary>Removes an actor from a scene chunk.</summary>
@@ -30,7 +31,8 @@ namespace Game.Shared.Networking
         {
             if (SCENE_ACTORS.TryGetValue(sceneName, out var set))
             {
-                set.Remove(actor);
+                if (set.Remove(actor))
+                    NetworkingPerformanceMetrics.RecordChunkSubscriptionChange();
                 if (set.Count == 0)
                     SCENE_ACTORS.Remove(sceneName);
             }

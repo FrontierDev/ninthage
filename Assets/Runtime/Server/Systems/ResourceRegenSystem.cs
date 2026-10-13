@@ -1,4 +1,5 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Performance;
 using Unity.Entities;
 
 namespace Game.Server.Systems
@@ -7,6 +8,14 @@ namespace Game.Server.Systems
     [DisableAutoCreation]
     public partial struct ResourceRegenSystem : ISystem
     {
+        private static readonly PerformanceMetricDefinition RESOURCE_REGEN_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_RESOURCE_REGEN_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "ecs.resource_regen",
+            "server_update");
+        private static readonly PerformanceMarker RESOURCE_REGEN_MARKER = new(RESOURCE_REGEN_DURATION_METRIC, "Server.ECS.ResourceRegen");
+
         /// <summary>Initializes resource-regeneration system state.</summary>
         public readonly void OnCreate(ref SystemState state)
         {
@@ -16,6 +25,7 @@ namespace Game.Server.Systems
         /// <summary>Updates resource regeneration for the current server tick.</summary>
         public readonly void OnUpdate(ref SystemState state)
         {
+            using var markerScope = RESOURCE_REGEN_MARKER.Begin();
             // Main update logic for the system.
         }
 

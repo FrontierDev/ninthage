@@ -35,6 +35,7 @@ namespace Game.Shared.Networking
         /// <summary>Sends the character list to a client.</summary>
         public static void Client_UpdateCharacterList(PlayerID target, List<CharacterData> characterList, RPCInfo rpcInfo = default)
         {
+            NetworkingPerformanceMetrics.RecordRpc(NetworkingPerformanceMetrics.RPC_ACCOUNT_CLIENT_UPDATE_CHARACTER_LIST_COUNT, 1);
             Debug.Log($"Received character list with {characterList.Count} characters.");
             onCharacterListReceived?.Invoke(characterList);
         }
@@ -43,6 +44,7 @@ namespace Game.Shared.Networking
         /// <summary>Requests character creation on the server.</summary>
         public static void Server_TryCreateCharacter(Game.Shared.Persistence.NewCharacterData newCharacterData, RPCInfo rpcInfo = default)
         {
+            NetworkingPerformanceMetrics.RecordRpc(NetworkingPerformanceMetrics.RPC_ACCOUNT_SERVER_TRY_CREATE_CHARACTER_COUNT, 1);
             Debug.Log($"Received request to create character '{newCharacterData.Name}' from player {rpcInfo.sender}.");
             onCharacterCreationRequest?.Invoke(rpcInfo.sender, newCharacterData);
         }
@@ -51,6 +53,7 @@ namespace Game.Shared.Networking
         /// <summary>Notifies a client of the character creation result.</summary>
         public static void Client_NotifyCharacterCreationResult(PlayerID target, bool success, string message, RPCInfo rpcInfo = default)
         {
+            NetworkingPerformanceMetrics.RecordRpc(NetworkingPerformanceMetrics.RPC_ACCOUNT_CLIENT_NOTIFY_CHARACTER_CREATION_RESULT_COUNT, 1);
             if (success)
             {
                 Debug.Log($"Character creation successful: {message}");
@@ -66,6 +69,7 @@ namespace Game.Shared.Networking
         /// <summary>Requests entry into the world for a character.</summary>
         public static void Server_RequestEnterWorld(string characterGUID, RPCInfo rpcInfo = default)
         {
+            NetworkingPerformanceMetrics.RecordRpc(NetworkingPerformanceMetrics.RPC_ACCOUNT_SERVER_REQUEST_ENTER_WORLD_COUNT, 1);
             Debug.Log($"Received request to enter world with character ID {characterGUID} from player {rpcInfo.sender}.");
             onEnterWorldRequest?.Invoke(rpcInfo.sender, characterGUID);
         }
@@ -74,6 +78,7 @@ namespace Game.Shared.Networking
         /// <summary>Instructs a client to enter the world scene.</summary>
         public static void Client_EnterWorld(PlayerID target, CharacterData characterData, string sceneName, RPCInfo rpcInfo = default)
         {
+            NetworkingPerformanceMetrics.RecordRpc(NetworkingPerformanceMetrics.RPC_ACCOUNT_CLIENT_ENTER_WORLD_COUNT, 1);
             Debug.Log($"Received command to enter world with scene '{sceneName}'.");
             onEnteringWorld?.Invoke(characterData, sceneName);
         }

@@ -1,6 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Performance;
 using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
@@ -24,6 +25,44 @@ namespace Game.Server.Core
     /// <summary>Coordinates authoritative actor spawning and scene placement.</summary>
     public sealed class ServerSpawnManager : MonoBehaviour
     {
+        private static readonly PerformanceMetricDefinition UPDATE_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_SPAWN_UPDATE_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "spawn_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition SPAWN_COMMAND_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_SPAWN_COMMAND_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "spawn_manager",
+            "server_update");
+        private static readonly PerformanceMetricDefinition SPAWN_SUCCESS_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_SPAWN_SUCCESS_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "spawn_manager",
+            "lifetime");
+        private static readonly PerformanceMetricDefinition SPAWN_FAILURE_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_SPAWN_FAILURE_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "spawn_manager",
+            "lifetime");
+        private static readonly PerformanceMetricDefinition SCENE_LOAD_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_SPAWN_SCENE_LOAD_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "spawn_manager",
+            "scene_operation");
+        private static readonly PerformanceMetricDefinition DESPAWN_EVENT_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_DESPAWN_EVENT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "spawn_manager",
+            "lifetime");
+        private static readonly PerformanceMarker UPDATE_MARKER = new(UPDATE_DURATION_METRIC, "Server.SpawnManager.Update");
+        private static readonly PerformanceMarker SCENE_LOAD_MARKER = new(SCENE_LOAD_DURATION_METRIC, "Server.SpawnManager.OnPostSceneLoaded");
         private static ServerSpawnManager _instance;
         /// <summary>Gets the active server spawn manager.</summary>
         public static ServerSpawnManager Instance => _instance;
@@ -80,6 +119,7 @@ namespace Game.Server.Core
         {
             if (!asServer) return;
             if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
+            using var markerScope = SCENE_LOAD_MARKER.Begin();
 
             var globalSceneID = ServerWorldManager.Instance.GlobalActorsSceneID;
             if (!_networkManager.sceneModule.TryGetSceneState(globalSceneID, out var globalState))
@@ -125,6 +165,8 @@ namespace Game.Server.Core
             // If this actor was spawned from a spawn point, mark that spawn point as pending again so it can respawn.
             if (actor.SpawnPointGUID != default && _spawnPointActorMap.ContainsKey(actor.SpawnPointGUID))
                 _spawnPointActorMap.Remove(actor.SpawnPointGUID);
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(DESPAWN_EVENT_COUNT_METRIC, 1);
         }
 
         /// <summary>Starts spawning the actor associated with a connected player.</summary>
@@ -338,21 +380,34 @@ namespace Game.Server.Core
         private void Update()
         {
             // Drain spawn commands from ECS
-            if (_spawnCommandQuery.IsEmpty) return;
+            using var markerScope = UPDATE_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            if (_spawnCommandQuery.IsEmpty)
+            {
+                if (telemetryEnabled)
+                    PerformanceTelemetry.TryRecord(SPAWN_COMMAND_COUNT_METRIC, 0);
+                return;
+            }
 
             var entities = _spawnCommandQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
             var commands = _spawnCommandQuery.ToComponentDataArray<Systems.SpawnCommand>(Unity.Collections.Allocator.Temp);
 
+            if (telemetryEnabled)
+                PerformanceTelemetry.TryRecord(SPAWN_COMMAND_COUNT_METRIC, commands.Length);
+
             for (int i = 0; i < commands.Length; i++)
             {
                 var cmd = commands[i];
-                var prefab = _prefabRegistry[cmd.PrefabIndex];
-                var scene = _sceneRegistry[cmd.SceneIndex];
                 var sceneName = cmd.SceneName.ToString();
                 var spawnPointGUID = cmd.SpawnPointGUID;
+                GameObject prefab = null;
+                bool spawnSucceeded = false;
 
                 try
                 {
+                    prefab = _prefabRegistry[cmd.PrefabIndex];
+                    var scene = _sceneRegistry[cmd.SceneIndex];
+
                     // Use PurrNet's Instantiate proxy — handles scene placement,
                     // hierarchy registration, spawn, and replication in one call.
                     var go = PurrNet.UnityProxy.Instantiate(prefab, cmd.Position, Quaternion.identity, scene);
@@ -362,68 +417,79 @@ namespace Game.Server.Core
                     if (actor == null)
                     {
                         Debug.Error($"Prefab '{prefab.name}' is missing an Actor component. Add it to the prefab in the editor.");
-                        continue;
                     }
-
-                    actor.CurrentChunk = sceneName;
-                    actor.WorldPos = Game.Shared.Utility.WorldPosition.FromChunkLocal(
-                        new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y),
-                        new Vector3(cmd.Position.x, cmd.Position.y, cmd.Position.z));
-                    actor.Initialize(actor.ID, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefab.name);
-                    actor.SetSpawnPointGUID(spawnPointGUID);
-
-                    // Register the root identity for targeted visibility re-evaluation.
-                    NetworkIdentity identity = go.GetComponent<NetworkIdentity>();
-                    if (identity != null)
-                        Game.Shared.Networking.ChunkSubscriptions.RegisterIdentity(sceneName, identity);
-
-                    // Set ownership and register player actor cache.
-                    if (identity != null && cmd.Owner != default)
+                    else
                     {
-                        identity.GiveOwnership(cmd.Owner);
-                        actor.SetOwner(cmd.Owner);
-                        Game.Shared.Networking.ChunkSubscriptions.RegisterPlayerActor(cmd.Owner, actor);
-                        go.name = $"Player{cmd.Owner}";
+                        actor.CurrentChunk = sceneName;
+                        actor.WorldPos = Game.Shared.Utility.WorldPosition.FromChunkLocal(
+                            new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y),
+                            new Vector3(cmd.Position.x, cmd.Position.y, cmd.Position.z));
+                        actor.Initialize(actor.ID, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefab.name);
+                        actor.SetSpawnPointGUID(spawnPointGUID);
 
-                        // Add a disabled NavMeshAgent for server-driven movement (charge spells, etc.).
-                        if (go.GetComponent<UnityEngine.AI.NavMeshAgent>() == null)
+                        // Register the root identity for targeted visibility re-evaluation.
+                        NetworkIdentity identity = go.GetComponent<NetworkIdentity>();
+                        if (identity != null)
+                            Game.Shared.Networking.ChunkSubscriptions.RegisterIdentity(sceneName, identity);
+
+                        // Set ownership and register player actor cache.
+                        if (identity != null && cmd.Owner != default)
                         {
-                            var playerAgent = go.AddComponent<UnityEngine.AI.NavMeshAgent>();
-                            playerAgent.radius = 0.25f;
-                            playerAgent.height = 2f;
-                            playerAgent.enabled = false;
+                            identity.GiveOwnership(cmd.Owner);
+                            actor.SetOwner(cmd.Owner);
+                            Game.Shared.Networking.ChunkSubscriptions.RegisterPlayerActor(cmd.Owner, actor);
+                            go.name = $"Player{cmd.Owner}";
+
+                            // Add a disabled NavMeshAgent for server-driven movement (charge spells, etc.).
+                            if (go.GetComponent<UnityEngine.AI.NavMeshAgent>() == null)
+                            {
+                                var playerAgent = go.AddComponent<UnityEngine.AI.NavMeshAgent>();
+                                playerAgent.radius = 0.25f;
+                                playerAgent.height = 2f;
+                                playerAgent.enabled = false;
+                            }
                         }
-                    }
 
-                    // Initialize NPC stats (NPCs have no owner, so this must be outside the owner block).
-                    if (!actor.IsPlayer)
-                    {
-                        ServerStatManager.Instance.InitializeNPCStats(actor);
-                        ServerStatManager.Instance.RegisterActor(actor);
+                        // Initialize NPC stats (NPCs have no owner, so this must be outside the owner block).
+                        if (!actor.IsPlayer)
+                        {
+                            ServerStatManager.Instance.InitializeNPCStats(actor);
+                            ServerStatManager.Instance.RegisterActor(actor);
 
-                        // Teach NPCs the auto-attack spell so they can swing.
-                        var autoAttack = GameConfigurationManager.Config.AutoAttackSpell;
-                        if (autoAttack != null)
-                            go.GetComponent<ActorSpellcaster>()?.LearnSpell(autoAttack.DefinitionID);
-                    }
+                            // Teach NPCs the auto-attack spell so they can swing.
+                            var autoAttack = GameConfigurationManager.Config.AutoAttackSpell;
+                            if (autoAttack != null)
+                                go.GetComponent<ActorSpellcaster>()?.LearnSpell(autoAttack.DefinitionID);
+                        }
 
-                    // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
-                    Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
+                        // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
+                        Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
 
-                    // Link the actor to the player's session data for disconnect cleanup.
-                    if (cmd.Owner != default)
-                    {
-                        var session = ServerConnectionManager.Instance.GetSessionData(cmd.Owner);
-                        if (session != null)
-                            session.SetPlayerActor(actor);
+                        // Link the actor to the player's session data for disconnect cleanup.
+                        if (cmd.Owner != default)
+                        {
+                            var session = ServerConnectionManager.Instance.GetSessionData(cmd.Owner);
+                            if (session != null)
+                                session.SetPlayerActor(actor);
+                        }
+
+                        spawnSucceeded = true;
                     }
                 }
                 catch (System.Exception ex)
                 {
-                    Debug.Error($"Failed to spawn prefab '{prefab.name}': {ex.Message}\n{ex.StackTrace}");
+                    string prefabName = prefab != null ? prefab.name : "<unresolved>";
+                    Debug.Error($"Failed to spawn prefab '{prefabName}': {ex.Message}\n{ex.StackTrace}");
                 }
                 finally
                 {
+                    if (telemetryEnabled)
+                    {
+                        PerformanceTelemetry.TryRecord(
+                            spawnSucceeded ? SPAWN_SUCCESS_COUNT_METRIC : SPAWN_FAILURE_COUNT_METRIC,
+                            1);
+                    }
+
                     // Always destroy the entity so it doesn't retry
                     _entityManager.DestroyEntity(entities[i]);
                 }

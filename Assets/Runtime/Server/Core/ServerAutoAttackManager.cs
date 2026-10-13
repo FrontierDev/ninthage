@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,19 @@ namespace Game.Server.Core
     /// <summary>Coordinates server-authoritative auto-attacks.</summary>
     public sealed class ServerAutoAttackManager : MonoBehaviour
     {
+        private static readonly PerformanceMetricDefinition UPDATE_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_AUTO_ATTACK_UPDATE_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "auto_attack",
+            "server_update");
+        private static readonly PerformanceMetricDefinition ATTACKER_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_AUTO_ATTACKER_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "auto_attack",
+            "server_update");
+        private static readonly PerformanceMarker UPDATE_MARKER = new(UPDATE_DURATION_METRIC, "Server.AutoAttack.Update");
         private static ServerAutoAttackManager _instance;
         /// <summary>Gets the active server auto-attack manager.</summary>
         public static ServerAutoAttackManager Instance => _instance;
@@ -81,7 +95,14 @@ namespace Game.Server.Core
 
         private void Update()
         {
-            if (_autoAttackSpell == null) return;
+            using var markerScope = UPDATE_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            if (_autoAttackSpell == null)
+            {
+                if (telemetryEnabled)
+                    PerformanceTelemetry.TryRecord(ATTACKER_COUNT_METRIC, _activeAutoAttackers.Count);
+                return;
+            }
 
             _toRemove.Clear();
 
@@ -129,6 +150,8 @@ namespace Game.Server.Core
 
             for (int i = 0; i < _toRemove.Count; i++)
                 _activeAutoAttackers.Remove(_toRemove[i]);
+            if (telemetryEnabled)
+                PerformanceTelemetry.TryRecord(ATTACKER_COUNT_METRIC, _activeAutoAttackers.Count);
         }
     }
 }

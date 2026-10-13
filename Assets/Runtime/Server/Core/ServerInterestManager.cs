@@ -1,6 +1,8 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking;
 using Game.Shared;
+using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using PurrNet;
 using PurrNet.Modules;
@@ -17,6 +19,9 @@ namespace Game.Server.Core
     /// </summary>
     public sealed class ServerInterestManager : MonoBehaviour
     {
+        private static readonly PerformanceMarker REQUEST_MARKER = new(
+            NetworkingPerformanceMetrics.INTEREST_REQUEST_DURATION,
+            "Server.InterestManager.OnInterestRequest");
         private static ServerInterestManager _instance;
         /// <summary>Gets the active server interest manager.</summary>
         public static ServerInterestManager Instance => _instance;
@@ -96,6 +101,9 @@ namespace Game.Server.Core
         {
             var session = ServerConnectionManager.Instance.GetSessionData(playerID);
             if (session?.PlayerActor == null) return;
+            using var markerScope = REQUEST_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int visibilityEvaluationCount = 0;
             var actor = session.PlayerActor;
 
             var newSet = GetSceneGrid(centerChunk);
@@ -147,6 +155,10 @@ namespace Game.Server.Core
 
             // Subscribe/unsubscribe chunk scenes for terrain loading
             ProcessInterestChange(actor, toSubscribe, toUnsubscribe);
+            if (telemetryEnabled)
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.INTEREST_CHANGED_SUBSCRIPTION_COUNT,
+                    toSubscribe.Count + toUnsubscribe.Count);
 
             // Targeted re-evaluation: only evaluate identities in chunks that changed,
             // rather than scanning every identity in every scene.
@@ -166,7 +178,11 @@ namespace Game.Server.Core
                     foreach (var id in identities)
                     {
                         if (id != null)
+                        {
+                            if (telemetryEnabled)
+                                visibilityEvaluationCount++;
                             hierarchy.EvaluateVisibility(playerID, id.transform);
+                        }
                     }
                 }
             }
@@ -175,6 +191,13 @@ namespace Game.Server.Core
             if (ServerWorldManager.Instance.TryGetChunkSceneID(centerChunk, out var _centerSceneID))
             {
                 Game.Shared.Networking.ActorEndpoint.onServerActorInterestChanged?.Invoke(actor, _centerSceneID);
+            }
+            if (telemetryEnabled)
+            {
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.INTEREST_VISIBILITY_EVALUATION_COUNT,
+                    visibilityEvaluationCount);
+                NetworkingPerformanceMetrics.RecordRelevantRecipient(visibilityEvaluationCount);
             }
         }
 
@@ -204,6 +227,7 @@ namespace Game.Server.Core
                 {
                     PlayerID playerID = actor.Owner.Value;
                     _networkManager.scenePlayersModule.AddPlayerToScene(playerID, sceneID);
+                    NetworkingPerformanceMetrics.RecordRelevantRecipient();
                     Debug.Log($"Subscribed player {actor} to chunk {chunkCoord}.");
                 }
 
@@ -223,6 +247,7 @@ namespace Game.Server.Core
             {
                 PlayerID playerID = actor.Owner.Value;
                 _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
+                NetworkingPerformanceMetrics.RecordRelevantRecipient();
                 Debug.Log($"Unsubscribed player {actor} from chunk {chunkCoord}.");
             }
 

@@ -1,3 +1,4 @@
+using System;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
@@ -12,6 +13,9 @@ namespace Game.Client.UI
     /// </summary>
     public class UI_Nameplate : MonoBehaviour
     {
+        /// <summary>Raised when this nameplate is released by Unity.</summary>
+        internal Action<UI_Nameplate> Released;
+
         private bool _initialized = false;
 
         [FormerlySerializedAs("heightOffset")]
@@ -63,6 +67,9 @@ namespace Game.Client.UI
         private void OnDestroy()
         {
             ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssigned;
+            Action<UI_Nameplate> released = Released;
+            Released = null;
+            released?.Invoke(this);
         }
 
         private void OnPlayerActorAssigned(Actor playerActor)

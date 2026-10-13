@@ -1,5 +1,6 @@
 using System;
 
+using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Networking
 {
@@ -10,6 +11,13 @@ namespace Game.Shared.Networking
     /// </summary>
     public static class StatEndpoint
     {
+        internal static void RecordSnapshotRpc(int recipientCount = -1)
+        {
+            NetworkingPerformanceMetrics.RecordRpc(
+                NetworkingPerformanceMetrics.RPC_STAT_SNAPSHOT_COUNT,
+                recipientCount);
+        }
+
         /// <summary>Raised when an actor's stat container is updated.</summary>
         public static Action<Actor, ActorStatContainer> onStatsUpdated;
     }

@@ -1,4 +1,5 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Performance;
 using Unity.Entities;
 using UnityEngine;
 
@@ -8,6 +9,13 @@ namespace Game.Server.Systems
     [DisableAutoCreation]
     public partial struct ActorUpdateSystem : ISystem
     {
+        private static readonly PerformanceMetricDefinition ACTOR_UPDATE_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_ACTOR_UPDATE_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "ecs.actor_update",
+            "server_update");
+        private static readonly PerformanceMarker ACTOR_UPDATE_MARKER = new(ACTOR_UPDATE_METRIC, "Server.ECS.ActorUpdate");
         private EntityQuery _motionQuery;
 
         /// <summary>Creates the query used by the actor movement system.</summary>
@@ -29,6 +37,7 @@ namespace Game.Server.Systems
         /// <summary>Applies server-side movement and gravity to eligible actors.</summary>
         public void OnUpdate(ref SystemState state)
         {
+            using var markerScope = ACTOR_UPDATE_MARKER.Begin();
             var gravity = Game.Shared.GameConfigurationManager.Config.Gravity;
             var maxFallSpeed = Game.Shared.GameConfigurationManager.Config.MaxFallSpeed;
             var groundDetectionRadius = Game.Shared.GameConfigurationManager.Config.GroundDetectionRadius;

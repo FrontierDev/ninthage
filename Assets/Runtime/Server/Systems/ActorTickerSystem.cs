@@ -1,4 +1,5 @@
 using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Unity.Entities;
 
 namespace Game.Server.Systems
@@ -7,9 +8,26 @@ namespace Game.Server.Systems
     [DisableAutoCreation]
     public partial struct ActorTickerSystem : ISystem
     {
+        private static readonly PerformanceMetricDefinition ACTOR_TICKER_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_ACTOR_TICKER_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "ecs.actor_ticker",
+            "server_update");
+        private static readonly PerformanceMetricDefinition TICKER_ENTRY_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_TICKER_ENTRY_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "ecs.actor_ticker",
+            "server_update");
+        private static readonly PerformanceMarker ACTOR_TICKER_MARKER = new(ACTOR_TICKER_DURATION_METRIC, "Server.ECS.ActorTicker");
+
         /// <summary>Advances active actor tickers and invokes their callbacks.</summary>
         public void OnUpdate(ref SystemState state)
         {
+            using var markerScope = ACTOR_TICKER_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int tickerEntryCount = 0;
             float dt = UnityEngine.Time.deltaTime;
 
             foreach (var (actor, entity) in
@@ -47,7 +65,11 @@ namespace Game.Server.Systems
                         buffer[i] = entry;
                     }
                 }
+                if (telemetryEnabled)
+                    tickerEntryCount += buffer.Length;
             }
+            if (telemetryEnabled)
+                PerformanceTelemetry.TryRecord(TICKER_ENTRY_COUNT_METRIC, tickerEntryCount);
         }
     }
 }

@@ -25,6 +25,7 @@ namespace Game.Shared.Networking
         [ServerRpc]
         public static void Server_RequestChunkInterest(Vector2Int centerChunk, RPCInfo rpcInfo = default)
         {
+            NetworkingPerformanceMetrics.RecordRpc(NetworkingPerformanceMetrics.RPC_MOVEMENT_SERVER_REQUEST_CHUNK_INTEREST_COUNT, 1);
             onInterestRequest?.Invoke(rpcInfo.sender, centerChunk);
         }
 
@@ -32,6 +33,7 @@ namespace Game.Shared.Networking
         [TargetRpc]
         public static void Client_UpdateInterest(PlayerID target, Vector2Int[] newInterest, RPCInfo rpcInfo = default)
         {
+            NetworkingPerformanceMetrics.RecordRpc(NetworkingPerformanceMetrics.RPC_MOVEMENT_CLIENT_UPDATE_INTEREST_COUNT, 1);
             onInterestUpdated?.Invoke(newInterest);
         }
 
@@ -42,6 +44,7 @@ namespace Game.Shared.Networking
         [TargetRpc]
         public static void Client_ServerCorrection(PlayerID target, Vector2Int chunk, Vector3 localPosition, RPCInfo rpcInfo = default)
         {
+            NetworkingPerformanceMetrics.RecordRpc(NetworkingPerformanceMetrics.RPC_MOVEMENT_CLIENT_SERVER_CORRECTION_COUNT, 1);
             onServerCorrection?.Invoke(chunk, localPosition);
         }
     }

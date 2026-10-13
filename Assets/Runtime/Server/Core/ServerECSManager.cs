@@ -1,4 +1,5 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Performance;
 using Game.Server.Systems;
 using Unity.Entities;
 using UnityEngine;
@@ -8,6 +9,13 @@ namespace Game.Server.Core
     /// <summary>Creates and owns the dedicated server ECS world.</summary>
     public static class ServerECSManager
     {
+        private static readonly PerformanceMetricDefinition ECS_INITIALIZATION_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_INITIALIZATION_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "ecs.initialization",
+            "server_update");
+        private static readonly PerformanceMarker ECS_INITIALIZATION_MARKER = new(ECS_INITIALIZATION_DURATION_METRIC, "Server.ECS.Initialization");
         private static bool _initialized = false;
         /// <summary>Gets whether the server ECS world has been initialized.</summary>
         public static bool Initialized => _initialized;
@@ -18,6 +26,7 @@ namespace Game.Server.Core
         /// <summary>Creates the server ECS world and registers its systems.</summary>
         public static void ServerInitializeECSWorlds()
         {
+            using var markerScope = ECS_INITIALIZATION_MARKER.Begin();
             // Create the world.
             DefaultWorld = new World("Default");
 

@@ -38,6 +38,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_SpawnEffectAtPosition(int id, string addressablePath, Vector3 position, float lifetime)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_VFX_COUNT);
             ActorEndpoint.onClientSpawnVFXAtPosition?.Invoke(this, id, addressablePath, position, lifetime);
         }
 
@@ -50,6 +51,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_SpawnProjectile(Actor target, string addressablePath, float speed)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_VFX_COUNT);
             ActorEndpoint.onClientSpawnProjectile?.Invoke(this, target, addressablePath, speed);
         }
 
@@ -60,6 +62,7 @@ namespace Game.Shared.Runtime.Actors
         [ObserversRpc]
         public void Observers_TriggerEffect(int id)
         {
+            ActorEndpoint.RecordRpc(NetworkingPerformanceMetrics.RPC_ACTOR_VFX_COUNT);
             ActorEndpoint.onClientTriggerEffect?.Invoke(this, id);
         }
     }

@@ -1,8 +1,11 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking;
 using Game.Server.Persistence;
+using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using PurrNet;
+using PurrNet.Transports;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -30,6 +33,7 @@ namespace Game.Server.Core
         public static bool Initialized => _initialized;
 
         private NetworkManager _networkManager;
+        private ITransport _transport;
 
         private Dictionary<PlayerID, PlayerAccountData> _connectedPlayers = new();
         private Dictionary<PlayerID, PlayerSessionData> _sessionData = new();
@@ -47,6 +51,15 @@ namespace Game.Server.Core
         {
             if (asServer)
             {
+                _networkManager = manager;
+                _transport = manager.rawTransport;
+                if (_transport != null)
+                {
+                    _transport.onConnected += OnTransportConnected;
+                    _transport.onDisconnected += OnTransportDisconnected;
+                    _transport.onDataReceived += OnTransportDataReceived;
+                    _transport.onDataSent += OnTransportDataSent;
+                }
                 manager.onPlayerJoined += OnPlayerJoined;
                 manager.onPlayerLeft += OnPlayerLeft;
                 _initialized = true;
@@ -58,15 +71,69 @@ namespace Game.Server.Core
         {
             if (asServer)
             {
+                if (_transport != null)
+                {
+                    _transport.onConnected -= OnTransportConnected;
+                    _transport.onDisconnected -= OnTransportDisconnected;
+                    _transport.onDataReceived -= OnTransportDataReceived;
+                    _transport.onDataSent -= OnTransportDataSent;
+                    _transport = null;
+                }
                 manager.onPlayerJoined -= OnPlayerJoined;
                 manager.onPlayerLeft -= OnPlayerLeft;
+                _networkManager = null;
+                _connectedPlayers.Clear();
+                _sessionData.Clear();
                 _initialized = false;
             }
         }
         #endregion
 
+        private void OnTransportConnected(Connection connection, bool asServer)
+        {
+            if (!asServer)
+                return;
+
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTED_COUNT, 1);
+            RecordLiveConnectionCount();
+        }
+
+        private void OnTransportDisconnected(Connection connection, DisconnectReason reason, bool asServer)
+        {
+            if (asServer)
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                    PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_DISCONNECTED_COUNT, 1);
+                RecordLiveConnectionCount();
+            }
+        }
+
+        private void OnTransportDataReceived(Connection connection, ByteData data, bool asServer)
+        {
+            if (asServer && PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_TRANSPORT_PAYLOAD_BYTES_RECEIVED, data.length);
+        }
+
+        private void OnTransportDataSent(Connection connection, ByteData data, bool asServer)
+        {
+            if (asServer && PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_TRANSPORT_PAYLOAD_BYTES_SENT, data.length);
+        }
+
+        private void RecordLiveConnectionCount()
+        {
+            if (!PerformanceTelemetry.IsEnabled || _networkManager == null || _networkManager.rawTransport == null)
+                return;
+
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_LIVE_CONNECTION_COUNT,
+                _networkManager.rawTransport.connections.Count);
+        }
+
         private void OnPlayerJoined(PlayerID playerID, bool isReconnect, bool asServer)
         {
+            RecordLiveConnectionCount();
             var username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
 
             if (Game.Server.Persistence.PlayerDatabase.TryGetPlayerAccount(username, out var accountData))
@@ -84,6 +151,12 @@ namespace Game.Server.Core
             }
 
             _connectedPlayers[playerID] = accountData;
+            if (PerformanceTelemetry.IsEnabled)
+            {
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_AUTHENTICATED_CLIENT_COUNT,
+                    _connectedPlayers.Count);
+            }
             Debug.Log($"Player joined: {playerID} ({username})");
         }
 
@@ -113,6 +186,16 @@ namespace Game.Server.Core
 
             _connectedPlayers.Remove(playerID);
             _sessionData.Remove(playerID);
+            if (PerformanceTelemetry.IsEnabled)
+            {
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_AUTHENTICATED_CLIENT_COUNT,
+                    _connectedPlayers.Count);
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_IN_WORLD_CLIENT_COUNT,
+                    _sessionData.Count);
+            }
+            RecordLiveConnectionCount();
         }
 
         /// <summary>Stores session data for a connected player.</summary>
@@ -121,6 +204,10 @@ namespace Game.Server.Core
         public void SetSessionData(PlayerID playerID, PlayerSessionData data)
         {
             _sessionData[playerID] = data;
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_IN_WORLD_CLIENT_COUNT,
+                    _sessionData.Count);
             Debug.Log($"Set session data for player {playerID}: Character GUID {data.CharacterID}");
         }
 

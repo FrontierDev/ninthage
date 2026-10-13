@@ -1,3 +1,5 @@
+using Game.Client.Performance;
+using Game.Shared.Performance;
 using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,6 +14,9 @@ namespace Game.Client
     /// </summary>
     public class ClientPositionManager : MonoBehaviour
     {
+        private static readonly PerformanceMarker ORIGIN_SHIFT_MARKER = new(
+            ClientPerformanceMetrics.ORIGIN_SHIFT_DURATION,
+            "Client.PositionManager.OriginShift");
         private static ClientPositionManager _instance;
         /// <summary>
         /// Gets the shared client-side instance.
@@ -42,10 +47,18 @@ namespace Game.Client
         /// </summary>
         public void ApplyOriginToScene(Scene scene)
         {
+            using var markerScope = ORIGIN_SHIFT_MARKER.Begin();
             var originOffset = new Vector3(OriginChunk.x * _chunkSize, 0f, OriginChunk.y * _chunkSize);
+            int rootCount = 0;
 
             foreach (var root in scene.GetRootGameObjects())
+            {
                 root.transform.position -= originOffset;
+                rootCount++;
+            }
+
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ORIGIN_SHIFT_ROOT_COUNT, rootCount);
         }
 
         /// <summary>
@@ -59,7 +72,10 @@ namespace Game.Client
             if (delta == Vector2Int.zero)
                 return;
 
+            using var markerScope = ORIGIN_SHIFT_MARKER.Begin();
+
             var shift = new Vector3(delta.x * _chunkSize, 0f, delta.y * _chunkSize);
+            int rootCount = 0;
 
             // Shift world chunk scenes.
             var worldScenes = new List<Scene>();
@@ -68,21 +84,33 @@ namespace Game.Client
             foreach (var scene in worldScenes)
             {
                 if (!scene.isLoaded) continue;
-                ShiftSceneRoots(scene, shift);
+                rootCount += ShiftSceneRoots(scene, shift);
             }
 
             // Shift the global_actors scene so networked actors stay aligned.
             var globalActors = SceneManager.GetSceneByName("global_actors");
             if (globalActors.isLoaded)
-                ShiftSceneRoots(globalActors, shift);
+                rootCount += ShiftSceneRoots(globalActors, shift);
 
             OriginChunk = newChunk;
+
+            if (PerformanceTelemetry.IsEnabled)
+            {
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ORIGIN_SHIFT_COUNT, 1);
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ORIGIN_SHIFT_ROOT_COUNT, rootCount);
+            }
         }
 
-        private static void ShiftSceneRoots(Scene scene, Vector3 shift)
+        private static int ShiftSceneRoots(Scene scene, Vector3 shift)
         {
+            int rootCount = 0;
             foreach (var root in scene.GetRootGameObjects())
+            {
                 root.transform.position -= shift;
+                rootCount++;
+            }
+
+            return rootCount;
         }
 
         /// <summary>

@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -9,6 +10,9 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_FloatingCombatText : MonoBehaviour
     {
+        /// <summary>Raised when this transient is released by Unity.</summary>
+        internal Action<UI_FloatingCombatText> Released;
+
         [FormerlySerializedAs("text")]
         [SerializeField] private TextMeshProUGUI _text;
         [FormerlySerializedAs("floatSpeed")]
@@ -63,6 +67,13 @@ namespace Game.Client.UI
 
             if (_elapsedTime >= totalDuration)
                 Destroy(gameObject);
+        }
+
+        private void OnDestroy()
+        {
+            Action<UI_FloatingCombatText> released = Released;
+            Released = null;
+            released?.Invoke(this);
         }
     }
 }

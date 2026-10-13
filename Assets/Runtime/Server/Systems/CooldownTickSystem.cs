@@ -1,3 +1,4 @@
+using Game.Shared.Performance;
 using Unity.Entities;
 
 namespace Game.Server.Systems
@@ -6,9 +7,26 @@ namespace Game.Server.Systems
     [DisableAutoCreation]
     public partial struct CooldownTickSystem : ISystem
     {
+        private static readonly PerformanceMetricDefinition COOLDOWN_TICK_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_COOLDOWN_TICK_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "ecs.cooldown_tick",
+            "server_update");
+        private static readonly PerformanceMetricDefinition COOLDOWN_ENTRY_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_COOLDOWN_ENTRY_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "ecs.cooldown_tick",
+            "server_update");
+        private static readonly PerformanceMarker COOLDOWN_TICK_MARKER = new(COOLDOWN_TICK_DURATION_METRIC, "Server.ECS.CooldownTick");
+
         /// <summary>Updates active cooldown durations for all server actors.</summary>
         public void OnUpdate(ref SystemState state)
         {
+            using var markerScope = COOLDOWN_TICK_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int cooldownEntryCount = 0;
             float dt = UnityEngine.Time.deltaTime;
 
             foreach (var (_, entity) in
@@ -26,7 +44,11 @@ namespace Game.Server.Systems
                     else
                         buffer[i] = entry;
                 }
+                if (telemetryEnabled)
+                    cooldownEntryCount += buffer.Length;
             }
+            if (telemetryEnabled)
+                PerformanceTelemetry.TryRecord(COOLDOWN_ENTRY_COUNT_METRIC, cooldownEntryCount);
         }
     }
 }

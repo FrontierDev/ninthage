@@ -168,12 +168,14 @@ namespace Game.Shared.Runtime.Actors
         [TargetRpc]
         public void Client_ReceiveSnapshot(PlayerID playerID, StatSnapshot snapshot, RPCInfo info = default)
         {
+            StatEndpoint.RecordSnapshotRpc(1);
             ApplySnapshot(snapshot);
         }
 
         [ObserversRpc]
         public void Observers_ReceiveSnapshot(StatSnapshot snapshot, RPCInfo info = default)
         {
+            StatEndpoint.RecordSnapshotRpc();
             ApplySnapshot(snapshot);
         }
 

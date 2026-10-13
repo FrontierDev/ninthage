@@ -2,6 +2,7 @@ using Game.Shared.Data;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using PurrNet;
+using Game.Shared.Performance;
 using System;
 using UnityEngine;
 
@@ -13,6 +14,11 @@ namespace Game.Shared.Networking
     /// </summary>
     public static class ActorEndpoint
     {
+        internal static void RecordRpc(PerformanceMetricDefinition category, int recipientCount = -1)
+        {
+            NetworkingPerformanceMetrics.RecordRpc(category, recipientCount);
+        }
+
         /// <summary>Raised when an actor dies.</summary>
         public static Action<Actor> onActorDeath;
 

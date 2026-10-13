@@ -1,4 +1,5 @@
 using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Unity.Entities;
 
 namespace Game.Server.Systems
@@ -7,9 +8,26 @@ namespace Game.Server.Systems
     [DisableAutoCreation]
     public partial struct AuraTickSystem : ISystem
     {
+        private static readonly PerformanceMetricDefinition AURA_TICK_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_AURA_TICK_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "ecs.aura_tick",
+            "server_update");
+        private static readonly PerformanceMetricDefinition AURA_ENTRY_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ECS_AURA_ENTRY_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "ecs.aura_tick",
+            "server_update");
+        private static readonly PerformanceMarker AURA_TICK_MARKER = new(AURA_TICK_DURATION_METRIC, "Server.ECS.AuraTick");
+
         /// <summary>Processes aura ticks and expirations for server actors.</summary>
         public void OnUpdate(ref SystemState state)
         {
+            using var markerScope = AURA_TICK_MARKER.Begin();
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int auraEntryCount = 0;
             float dt = UnityEngine.Time.deltaTime;
 
             foreach (var (_, actor, entity) in
@@ -48,7 +66,11 @@ namespace Game.Server.Systems
                         buffer[i] = entry;
                     }
                 }
+                if (telemetryEnabled)
+                    auraEntryCount += buffer.Length;
             }
+            if (telemetryEnabled)
+                PerformanceTelemetry.TryRecord(AURA_ENTRY_COUNT_METRIC, auraEntryCount);
         }
     }
 }

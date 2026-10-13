@@ -1,9 +1,12 @@
 using Authentication = Game.Shared.Networking.LoginAuthenticator;
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
+using Game.Shared.Networking;
+using Game.Shared.Performance;
 using LoadingScreen = Game.Client.UI.LoadingScreenController;
 using MainMenu = Game.Client.UI.UI_MainMenuWindow;
 using PurrNet;
+using PurrNet.Transports;
 using System;
 using System.Collections;
 using UnityEngine;
@@ -53,6 +56,9 @@ namespace Game.Client
         /// </summary>
         public static ConnectionState CurrentConnectionState => _connectionState;
 
+        private NetworkManager _networkManager;
+        private ITransport _transport;
+
         #region Lifecycle
         private void Awake()
         {
@@ -62,9 +68,49 @@ namespace Game.Client
 
         private void ClientInitializeManager()
         {
-            var networkManager = GetComponent<NetworkManager>();
-            networkManager.onClientConnectionState += OnClientConnectionStateChanged;
+            _networkManager = GetComponent<NetworkManager>();
+            _networkManager.onClientConnectionState += OnClientConnectionStateChanged;
+            AccountEndpoint.onCharacterListReceived += OnCharacterListReceived;
+            AccountEndpoint.onEnteringWorld += OnEnteringWorld;
+            _transport = _networkManager.rawTransport;
+            if (_transport != null)
+            {
+                _transport.onDataReceived += OnTransportDataReceived;
+                _transport.onDataSent += OnTransportDataSent;
+            }
             _initialized = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (_networkManager != null)
+                _networkManager.onClientConnectionState -= OnClientConnectionStateChanged;
+
+            AccountEndpoint.onCharacterListReceived -= OnCharacterListReceived;
+            AccountEndpoint.onEnteringWorld -= OnEnteringWorld;
+
+            if (_transport != null)
+            {
+                _transport.onDataReceived -= OnTransportDataReceived;
+                _transport.onDataSent -= OnTransportDataSent;
+                _transport = null;
+            }
+
+            if (_instance == this)
+                _instance = null;
+            _initialized = false;
+        }
+
+        private void OnTransportDataReceived(Connection connection, ByteData data, bool asServer)
+        {
+            if (!asServer && PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_TRANSPORT_PAYLOAD_BYTES_RECEIVED, data.length);
+        }
+
+        private void OnTransportDataSent(Connection connection, ByteData data, bool asServer)
+        {
+            if (!asServer && PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_TRANSPORT_PAYLOAD_BYTES_SENT, data.length);
         }
         #endregion
 
@@ -74,6 +120,11 @@ namespace Game.Client
             {
                 case PurrNet.Transports.ConnectionState.Connected:
                     _connectionState = ConnectionState.Connected;
+                    if (PerformanceTelemetry.IsEnabled)
+                    {
+                        PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_CONNECTED_COUNT, 1);
+                        PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_LIVE_CONNECTION_COUNT, 1);
+                    }
                     Debug.Log(" ✓ Connected to the server.");
                     this.gameObject.AddComponent<ClientAccountManager>();
                     break;
@@ -81,6 +132,11 @@ namespace Game.Client
                 case PurrNet.Transports.ConnectionState.Disconnected:
                     var wasConnecting = _connectionState == ConnectionState.Connecting;
                     _connectionState = ConnectionState.Disconnected;
+                    if (PerformanceTelemetry.IsEnabled)
+                    {
+                        PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_DISCONNECTED_COUNT, 1);
+                        PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_LIVE_CONNECTION_COUNT, 0);
+                    }
 
                     if (wasConnecting) Debug.Warning("Connection failed (authentication rejected or server unreachable).");
                     else Debug.Warning("Disconnected from server.");
@@ -112,7 +168,21 @@ namespace Game.Client
             }
 
             _connectionState = ConnectionState.Connecting;
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_CONNECTION_ATTEMPT_COUNT, 1);
             StartCoroutine(ConnectionProcess(usernameInput, passwordInput));
+        }
+
+        private void OnCharacterListReceived(System.Collections.Generic.List<Game.Shared.Persistence.CharacterData> characterList)
+        {
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_AUTHENTICATED_COUNT, 1);
+        }
+
+        private void OnEnteringWorld(Game.Shared.Persistence.CharacterData characterData, string sceneName)
+        {
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_IN_WORLD_COUNT, 1);
         }
 
         private IEnumerator ConnectionProcess(string username, string password)
