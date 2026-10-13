@@ -1,9 +1,9 @@
 # Ninth Age — Performance and Simulation Architecture
 
-**Status:** Proposed architecture contract — requires manual validation of [Issue #41](https://github.com/FrontierDev/ninthage/issues/41)  
-**Scope:** Phase 1.0 runtime ownership and integration boundaries; **documentation only**  
-**Code baseline reviewed:** `dev` at `f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f`  
-**Review date:** 2026-10-13  
+**Status:** Proposed architecture contract — requires manual validation of [Issue #41](https://github.com/FrontierDev/ninthage/issues/41)
+**Scope:** Phase 1.0 runtime ownership and integration boundaries; **documentation only**
+**Code baseline reviewed:** `dev` at `f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f`
+**Review date:** 2026-10-13
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose, authority and interpretation
