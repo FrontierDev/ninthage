@@ -2,7 +2,9 @@ using Game.Tests.Performance.Fixtures;
 using NUnit.Framework;
 using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Game.Tests.Performance.Fixtures.Editor
 {
@@ -154,6 +156,75 @@ namespace Game.Tests.Performance.Fixtures.Editor
                 Assert.That(importedGUID, Is.EqualTo(scene.MetaGUID), scene.AssetPath);
                 Assert.That(importedGUID, Does.Match("^[0-9a-f]{32}$"), scene.AssetPath);
             }
+        }
+
+        [Test]
+        public void TrackedScenesExposeRuntimeFixtureMetadataOnTheirRoot()
+        {
+            Assert.That(typeof(Test_WorldFixtureMetadata).Assembly.GetName().Name, Is.EqualTo("Game.WorldFixtures.Runtime"));
+
+            var expectedManifest = Test_WorldFixtureLayout.BuildManifest(new Test_WorldFixtureOptions
+            {
+                Seed = Test_WorldFixtureLayout.DEFAULT_SEED,
+                DensityTier = Test_WorldFixtureDensityTier.D1_Default,
+                FixtureVersion = Test_WorldFixtureLayout.FIXTURE_VERSION,
+            });
+
+            foreach (var expectedPlan in expectedManifest.Scenes)
+            {
+                Assert.That(File.Exists(expectedPlan.AssetPath), Is.True, expectedPlan.AssetPath);
+                var existingScene = SceneManager.GetSceneByPath(expectedPlan.AssetPath);
+                var openedByTest = !(existingScene.IsValid() && existingScene.isLoaded);
+                var scene = openedByTest
+                    ? EditorSceneManager.OpenScene(expectedPlan.AssetPath, OpenSceneMode.Additive)
+                    : existingScene;
+                try
+                {
+                    Assert.That(scene.IsValid() && scene.isLoaded, Is.True, expectedPlan.AssetPath);
+                    var fixtureRoot = FindRoot(scene, "FixtureRoot");
+                    Assert.That(fixtureRoot, Is.Not.Null, expectedPlan.AssetPath);
+                    AssertNoMissingScripts(scene, expectedPlan.AssetPath);
+
+                    var metadata = fixtureRoot.GetComponent<Test_WorldFixtureMetadata>();
+                    Assert.That(metadata, Is.Not.Null, expectedPlan.AssetPath);
+                    Assert.That(metadata.FixtureVersion, Is.EqualTo(Test_WorldFixtureLayout.FIXTURE_VERSION), expectedPlan.AssetPath);
+                    Assert.That(metadata.FixtureID, Is.EqualTo(expectedPlan.FixtureID), expectedPlan.AssetPath);
+                    Assert.That(metadata.Variant, Is.EqualTo(expectedPlan.Variant), expectedPlan.AssetPath);
+                    Assert.That(metadata.Status, Is.EqualTo(expectedPlan.Status), expectedPlan.AssetPath);
+                    Assert.That(metadata.Seed, Is.EqualTo(Test_WorldFixtureLayout.DEFAULT_SEED), expectedPlan.AssetPath);
+                }
+                finally
+                {
+                    if (openedByTest && scene.IsValid() && scene.isLoaded)
+                        EditorSceneManager.CloseScene(scene, true);
+                }
+            }
+        }
+
+        private static GameObject FindRoot(Scene scene, string rootName)
+        {
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                if (root.name == rootName)
+                    return root;
+            }
+
+            return null;
+        }
+
+        private static void AssertNoMissingScripts(Scene scene, string scenePath)
+        {
+            foreach (var root in scene.GetRootGameObjects())
+                AssertNoMissingScripts(root, scenePath);
+        }
+
+        private static void AssertNoMissingScripts(GameObject root, string scenePath)
+        {
+            foreach (var component in root.GetComponents<Component>())
+                Assert.That(component, Is.Not.Null, $"Scene '{scenePath}' contains a missing root component script.");
+
+            for (var index = 0; index < root.transform.childCount; index++)
+                AssertNoMissingScripts(root.transform.GetChild(index).gameObject, scenePath);
         }
 
         private static Test_WorldFixturePlan FindScene(Test_WorldFixtureManifest manifest, string variant)

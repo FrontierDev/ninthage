@@ -2,6 +2,7 @@
     "name": "Game.WorldFixtures.Editor",
     "rootNamespace": "Game.Tests.Performance.Fixtures",
     "references": [
+        "GUID:8d1e6a3b5c7f4a29b0e2d6f8c4a1b735",
         "Unity.AI.Navigation"
     ],
     "optionalUnityReferences": [

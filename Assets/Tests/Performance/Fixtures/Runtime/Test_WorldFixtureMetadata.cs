@@ -1,7 +1,6 @@
-using Game.Tests.Performance.Fixtures;
 using UnityEngine;
 
-namespace Game.Tests.Performance.Fixtures.Editor
+namespace Game.Tests.Performance.Fixtures
 {
     /// <summary>Stores the deterministic fixture contract on each generated scene root.</summary>
     public sealed class Test_WorldFixtureMetadata : MonoBehaviour
@@ -17,6 +16,28 @@ namespace Game.Tests.Performance.Fixtures.Editor
         [SerializeField] private int _worldTileZ;
         [SerializeField] private int _objectCount;
         [SerializeField] private bool _isNavigable;
+
+        public string FixtureVersion => _fixtureVersion;
+
+        public string FixtureID => _fixtureID;
+
+        public string Variant => _variant;
+
+        public string Status => _status;
+
+        public int Seed => _seed;
+
+        public int OriginCellSizeMeters => _originCellSizeMeters;
+
+        public int WorldTileSizeMeters => _worldTileSizeMeters;
+
+        public int WorldTileX => _worldTileX;
+
+        public int WorldTileZ => _worldTileZ;
+
+        public int ObjectCount => _objectCount;
+
+        public bool IsNavigable => _isNavigable;
 
         /// <summary>Copies manifest identity and coordinate-contract data to the scene root.</summary>
         public void Set(Test_WorldFixturePlan plan, int seed, string fixtureVersion)
@@ -51,6 +72,32 @@ namespace Game.Tests.Performance.Fixtures.Editor
         [SerializeField] private int _materialVariant;
         [SerializeField] private int _lodLevels;
         [SerializeField] private bool _hasCollision;
+
+        public string SpawnID => _spawnID;
+
+        public string Kind => _kind;
+
+        public string Primitive => _primitive;
+
+        public double WorldX => _worldX;
+
+        public double WorldY => _worldY;
+
+        public double WorldZ => _worldZ;
+
+        public int OriginCellX => _originCellX;
+
+        public int OriginCellZ => _originCellZ;
+
+        public int WorldTileX => _worldTileX;
+
+        public int WorldTileZ => _worldTileZ;
+
+        public int MaterialVariant => _materialVariant;
+
+        public int LODLevels => _lodLevels;
+
+        public bool HasCollision => _hasCollision;
 
         /// <summary>Copies canonical spawn metadata to a generated geometry root.</summary>
         public void Set(Test_WorldFixtureSpawn spawn)

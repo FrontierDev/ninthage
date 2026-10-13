@@ -2,7 +2,6 @@ using Game.Server.Core;
 using Game.Shared.Performance;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
-using Game.Tests.Performance.Fixtures.Editor;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -392,9 +391,37 @@ namespace Game.Tests.Performance.Harness
             WorldFixtureLoaded = scene.IsValid() && scene.isLoaded && string.Equals(scene.path, WorldPlan.AssetPath, StringComparison.Ordinal);
             if (!WorldFixtureLoaded)
                 throw new InvalidOperationException($"Loaded scene identity did not match the selected fixture: expected {WorldPlan.AssetPath}, found {scene.path}.");
-            var metadata = FindMetadata(scene);
+            var metadata = FindMetadata(scene, out var hasMissingScript);
+            if (hasMissingScript)
+            {
+                throw new InvalidOperationException(
+                    $"Selected fixture scene '{scene.path}' contains an unresolved script reference, so its fixture metadata cannot be trusted. Check the test runtime assembly and imported script GUIDs.");
+            }
+
             if (metadata == null)
-                throw new InvalidOperationException($"Selected fixture scene '{scene.path}' has no Test_WorldFixtureMetadata component.");
+            {
+                throw new InvalidOperationException(
+                    $"Selected fixture scene '{scene.path}' is missing its required Test_WorldFixtureMetadata component on a root GameObject.");
+            }
+
+            var metadataMismatches = new List<string>();
+            AddMetadataMismatch(metadataMismatches, "fixture version", Test_WorldFixtureLayout.FIXTURE_VERSION, metadata.FixtureVersion);
+            AddMetadataMismatch(metadataMismatches, "fixture ID", WorldPlan.FixtureID, metadata.FixtureID);
+            AddMetadataMismatch(metadataMismatches, "variant", WorldPlan.Variant, metadata.Variant);
+            AddMetadataMismatch(metadataMismatches, "status", WorldPlan.Status, metadata.Status);
+            AddMetadataMismatch(metadataMismatches, "seed", Options.Seed, metadata.Seed);
+            AddMetadataMismatch(metadataMismatches, "origin cell size", Test_WorldFixtureLayout.ORIGIN_CELL_SIZE_METERS, metadata.OriginCellSizeMeters);
+            AddMetadataMismatch(metadataMismatches, "world tile size", Test_WorldFixtureLayout.WORLD_TILE_SIZE_METERS, metadata.WorldTileSizeMeters);
+            AddMetadataMismatch(metadataMismatches, "world tile X", WorldPlan.WorldTileX, metadata.WorldTileX);
+            AddMetadataMismatch(metadataMismatches, "world tile Z", WorldPlan.WorldTileZ, metadata.WorldTileZ);
+            AddMetadataMismatch(metadataMismatches, "object count", WorldPlan.ObjectCount, metadata.ObjectCount);
+            AddMetadataMismatch(metadataMismatches, "navigable flag", WorldPlan.IsNavigable, metadata.IsNavigable);
+            if (metadataMismatches.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Selected fixture scene '{scene.path}' metadata identity does not match the committed fixture contract: {string.Join("; ", metadataMismatches)}.");
+            }
+
             AppendLog("Selected world fixture loaded: " + scene.path);
         }
 
@@ -921,15 +948,40 @@ namespace Game.Tests.Performance.Harness
             throw new IOException("Could not allocate a unique benchmark result directory.");
         }
 
-        private static Test_WorldFixtureMetadata FindMetadata(Scene scene)
+        private static Test_WorldFixtureMetadata FindMetadata(Scene scene, out bool hasMissingScript)
         {
+            hasMissingScript = false;
+            Test_WorldFixtureMetadata metadata = null;
             foreach (var root in scene.GetRootGameObjects())
             {
-                var metadata = root.GetComponent<Test_WorldFixtureMetadata>();
-                if (metadata != null)
-                    return metadata;
+                if (ContainsMissingScript(root))
+                    hasMissingScript = true;
+                metadata = metadata ?? root.GetComponent<Test_WorldFixtureMetadata>();
             }
-            return null;
+            return metadata;
+        }
+
+        private static bool ContainsMissingScript(GameObject root)
+        {
+            foreach (var component in root.GetComponents<Component>())
+            {
+                if (component == null)
+                    return true;
+            }
+
+            for (var index = 0; index < root.transform.childCount; index++)
+            {
+                if (ContainsMissingScript(root.transform.GetChild(index).gameObject))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static void AddMetadataMismatch<T>(ICollection<string> mismatches, string fieldName, T expected, T actual)
+        {
+            if (!EqualityComparer<T>.Default.Equals(expected, actual))
+                mismatches.Add($"{fieldName} expected '{expected}' but found '{actual}'");
         }
 
         private static string AppendDiagnostic(string existing, string addition)
