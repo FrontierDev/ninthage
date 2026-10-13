@@ -29,7 +29,7 @@ namespace Game.Server.Core
 
         // Store active spell casts by actor ID for quick access during ticks and completion.
         private readonly Dictionary<Guid, SpellContext> _activeSpellCasts = new();
-        private readonly List<(float RemainingTime, Action Callback)> _pendingActions = new();
+        private readonly List<(float RemainingTime, Action onCallback)> _pendingActions = new();
 
 
         private void Awake()

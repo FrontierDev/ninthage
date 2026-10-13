@@ -154,7 +154,7 @@ namespace Game.Server.Core
                 return;
             }
 
-            _pendingLoads[chunkCoord] = new List<Action<SceneID>> { onReady };
+            _pendingLoads[chunkCoord] = new() { onReady };
 
             var address = $"World_{chunkCoord.x}_{chunkCoord.y}";
             _networkManager.sceneModule.LoadAddressableSceneAsync(address, _worldSceneSettings);

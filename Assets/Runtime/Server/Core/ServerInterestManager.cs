@@ -242,7 +242,7 @@ namespace Game.Server.Core
         /// </summary>
         public void GetChunksByActor(Actor actor, out List<Vector2Int> subscribedChunks)
         {
-            subscribedChunks = new List<Vector2Int>();
+            subscribedChunks = new();
 
             foreach (var kvp in ServerWorldManager.Instance.LoadedChunks)
             {

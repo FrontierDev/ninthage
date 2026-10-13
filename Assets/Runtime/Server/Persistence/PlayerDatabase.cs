@@ -9,7 +9,7 @@ namespace Game.Server.Persistence
     /// <summary>Loads, migrates, and persists server player account data.</summary>
     public static class PlayerDatabase
     {
-        private const int CurrentDataVersion = 1;
+        private const int CURRENT_DATA_VERSION = 1;
         private static readonly string FILE_PATH;
         private static Dictionary<string, PlayerAccountData> _playerAccounts = new();
 
@@ -65,13 +65,13 @@ namespace Game.Server.Persistence
             {
                 wrapper = MigrateLegacyData(JsonUtility.FromJson<LegacyPlayerDatabaseWrapper>(json));
             }
-            else if (version.DataVersion == CurrentDataVersion)
+            else if (version.DataVersion == CURRENT_DATA_VERSION)
             {
                 wrapper = JsonUtility.FromJson<PlayerDatabaseWrapper>(json);
             }
             else
             {
-                Debug.Error($" - Player data file at {FILE_PATH} uses unsupported version {version.DataVersion}; expected {CurrentDataVersion}.");
+                Debug.Error($" - Player data file at {FILE_PATH} uses unsupported version {version.DataVersion}; expected {CURRENT_DATA_VERSION}.");
                 return;
             }
 
@@ -88,7 +88,7 @@ namespace Game.Server.Persistence
         private static void SaveToDisk()
         {
             var wrapper = new PlayerDatabaseWrapper();
-            wrapper.DataVersion = CurrentDataVersion;
+            wrapper.DataVersion = CURRENT_DATA_VERSION;
             wrapper.Accounts = new List<PlayerAccountData>(_playerAccounts.Values);
             var json = JsonUtility.ToJson(wrapper, true);
             File.WriteAllText(FILE_PATH, json);
@@ -116,7 +116,7 @@ namespace Game.Server.Persistence
 
             var migratedWrapper = new PlayerDatabaseWrapper
             {
-                DataVersion = CurrentDataVersion,
+                DataVersion = CURRENT_DATA_VERSION,
                 Accounts = new()
             };
 
