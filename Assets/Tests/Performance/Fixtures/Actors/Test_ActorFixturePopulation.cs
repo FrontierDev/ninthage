@@ -24,6 +24,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
     {
         private readonly Test_ActorFixtureProfile _profile;
         private readonly List<Entity> _dataOnlyEntities = new();
+        private readonly List<Test_ActorFixturePlacement> _dataOnlyPlacements = new();
         private readonly List<Actor> _fullActors = new();
         private readonly Queue<Test_ActorFixturePlacement> _pendingFullPlacements = new();
         private readonly Dictionary<Actor, Test_ActorFixturePlacement> _fullActorPlacements = new();
@@ -46,6 +47,12 @@ namespace Game.Tests.Performance.Fixtures.Actors
         /// <summary>Gets the number of data-only ECS entities created by this fixture.</summary>
         public int DataOnlyEntityCount => _dataOnlyEntities.Count;
 
+        /// <summary>Gets the tracked data-only ECS entities in deterministic placement order.</summary>
+        public IReadOnlyList<Entity> DataOnlyEntities => _dataOnlyEntities;
+
+        /// <summary>Gets the placements corresponding to <see cref="DataOnlyEntities"/>.</summary>
+        public IReadOnlyList<Test_ActorFixturePlacement> DataOnlyPlacements => _dataOnlyPlacements;
+
         /// <summary>Gets the number of full actors observed through the server spawn event.</summary>
         public int SpawnedFullActorCount => _fullActors.Count;
 
@@ -58,17 +65,66 @@ namespace Game.Tests.Performance.Fixtures.Actors
         /// <summary>Creates data-only ECS state with no network identity or player owner.</summary>
         public void StartDataOnly()
         {
+            StartDataOnly(Test_ActorFixtureLayout.NPC_COUNT);
+            if (_dataOnlyEntities.Count != _profile.population.accounting.ecs_data_only_npcs)
+                throw new InvalidOperationException(
+                    $"Data-only fixture created {_dataOnlyEntities.Count} ECS entities; expected {_profile.population.accounting.ecs_data_only_npcs}.");
+        }
+
+        /// <summary>Prepares and creates an exact initial data-only population for an incremental ramp.</summary>
+        public void StartDataOnly(int initialCount)
+        {
             ThrowIfDisposed();
             Test_ActorFixturePreflight.ValidateDataOnly(_profile);
             RequireRepresentation(Test_ActorFixtureRepresentation.ecs_data_only);
             CaptureBaselineEntityCount();
 
-            foreach (var placement in Test_ActorFixtureLayout.BuildPlacements(_profile))
-                _dataOnlyEntities.Add(CreateDataOnlyEntity(placement));
+            if (initialCount < 0 || initialCount > Test_ActorFixtureLayout.NPC_COUNT)
+                throw new ArgumentOutOfRangeException(nameof(initialCount));
 
-            if (_dataOnlyEntities.Count != _profile.population.accounting.ecs_data_only_npcs)
+            SpawnDataOnly(initialCount);
+        }
+
+        /// <summary>Spawns additional data-only entities from the canonical placement list.</summary>
+        public void SpawnDataOnly(int count)
+        {
+            ThrowIfDisposed();
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
+            var placements = Test_ActorFixtureLayout.BuildPlacements(_profile);
+            if (_dataOnlyPlacements.Count + count > placements.Count)
                 throw new InvalidOperationException(
-                    $"Data-only fixture created {_dataOnlyEntities.Count} ECS entities; expected {_profile.population.accounting.ecs_data_only_npcs}.");
+                    $"Data-only fixture cannot spawn {_dataOnlyPlacements.Count + count} entities; expected at most {placements.Count}.");
+
+            for (var index = 0; index < count; index++)
+            {
+                var placement = placements[_dataOnlyPlacements.Count];
+                _dataOnlyPlacements.Add(placement);
+                _dataOnlyEntities.Add(CreateDataOnlyEntity(placement));
+            }
+        }
+
+        /// <summary>Despawns the newest tracked data-only entities through the ECS world.</summary>
+        public void DespawnDataOnly(int count)
+        {
+            ThrowIfDisposed();
+            if (count < 0 || count > _dataOnlyEntities.Count)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
+            var entityManager = ServerECSManager.DefaultWorld.EntityManager;
+            for (var index = 0; index < count; index++)
+            {
+                var lastIndex = _dataOnlyEntities.Count - 1;
+                var entity = _dataOnlyEntities[lastIndex];
+                if (entityManager.Exists(entity))
+                    entityManager.DestroyEntity(entity);
+                _dataOnlyEntities.RemoveAt(lastIndex);
+                _dataOnlyPlacements.RemoveAt(lastIndex);
+            }
+
+            if (_dataOnlyEntities.Count != _dataOnlyPlacements.Count)
+                throw new InvalidOperationException("Data-only fixture entity and placement ledgers diverged.");
         }
 
         /// <summary>
@@ -232,10 +288,13 @@ namespace Game.Tests.Performance.Fixtures.Actors
         public void AssertCleanupComplete()
         {
             var report = BuildCleanupReport();
-            if (report.remainingTrackedActors != 0 || report.remainingFixtureEntities != 0 || report.despawnEvents != report.expectedFullActors)
+            if (report.remainingTrackedActors != 0
+                || report.remainingFixtureEntities != 0
+                || report.currentActorEntities != report.baselineActorEntities
+                || report.despawnEvents != report.expectedFullActors)
             {
                 throw new InvalidOperationException(
-                    $"Actor fixture cleanup incomplete: trackedActors={report.remainingTrackedActors}, fixtureEntities={report.remainingFixtureEntities}, despawnEvents={report.despawnEvents}/{report.expectedFullActors}.");
+                    $"Actor fixture cleanup incomplete: trackedActors={report.remainingTrackedActors}, fixtureEntities={report.remainingFixtureEntities}, actorEntities={report.currentActorEntities}/{report.baselineActorEntities}, despawnEvents={report.despawnEvents}/{report.expectedFullActors}.");
             }
         }
 
@@ -336,6 +395,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
                     entityManager.DestroyEntity(entity);
             }
             _dataOnlyEntities.Clear();
+            _dataOnlyPlacements.Clear();
         }
 
         private void DestroyTrackedFullActorEntities()
@@ -356,10 +416,12 @@ namespace Game.Tests.Performance.Fixtures.Actors
         private Test_ActorFixtureCleanupReport BuildCleanupReport()
         {
             var remainingFixtureEntities = 0;
+            var currentActorEntities = _baselineActorEntityCount;
             if (ServerECSManager.DefaultWorld != null && ServerECSManager.DefaultWorld.IsCreated)
             {
                 var entityManager = ServerECSManager.DefaultWorld.EntityManager;
                 var query = entityManager.CreateEntityQuery(typeof(ActorComponent));
+                currentActorEntities = query.CalculateEntityCount();
                 var entities = query.ToEntityArray(Allocator.Temp);
                 foreach (var entity in entities)
                 {
@@ -376,6 +438,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 despawnEvents = DespawnedFullActorCount,
                 remainingTrackedActors = _fullActors.Count,
                 remainingFixtureEntities = remainingFixtureEntities,
+                currentActorEntities = currentActorEntities,
                 baselineActorEntities = _baselineActorEntityCount,
             };
         }
@@ -419,6 +482,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
         public int despawnEvents;
         public int remainingTrackedActors;
         public int remainingFixtureEntities;
+        public int currentActorEntities;
         public int baselineActorEntities;
     }
 }
