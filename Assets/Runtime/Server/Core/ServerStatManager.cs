@@ -1,20 +1,23 @@
-using System.Collections.Generic;
-using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 using Actor = Game.Shared.Runtime.Actors.Actor;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Persistence;
-
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
+using System.Collections.Generic;
+using UnityEngine;
+
 namespace Game.Server
 {
+    /// <summary>Maintains server-authoritative actor statistics.</summary>
     public sealed class ServerStatManager : MonoBehaviour
     {
         private static ServerStatManager _instance;
+        /// <summary>Gets the active server stat manager.</summary>
         public static ServerStatManager Instance => _instance;
         private static bool _initialized;
+        /// <summary>Gets whether the stat manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
         private const float RegenTickInterval = 1f;
@@ -64,11 +67,15 @@ namespace Game.Server
             }
         }
 
+        /// <summary>Registers an actor for server stat updates.</summary>
+        /// <param name="actor">The actor to register.</param>
         public void RegisterActor(Actor actor)
         {
             trackedActors.Add(actor);
         }
 
+        /// <summary>Unregisters an actor from server stat updates.</summary>
+        /// <param name="actor">The actor to unregister.</param>
         public void UnregisterActor(Actor actor)
         {
             trackedActors.Remove(actor);
@@ -76,6 +83,8 @@ namespace Game.Server
 
         #region Initialization
 
+        /// <summary>Initializes statistics for an NPC actor.</summary>
+        /// <param name="actor">The NPC actor to initialize.</param>
         public void InitializeNpcStats(Actor actor)
         {
             var container = actor.GetComponent<ActorStatContainer>();
@@ -183,6 +192,8 @@ namespace Game.Server
 
         #region Recalculation
 
+        /// <summary>Recalculates the effective statistics in a container.</summary>
+        /// <param name="container">The stat container to recalculate.</param>
         public void Recalculate(ActorStatContainer container)
         {
             UpdateEquipmentModifiers(container);
@@ -313,6 +324,11 @@ namespace Game.Server
             }
         }
 
+        /// <summary>Adds a flat and percentage modifier to an actor statistic.</summary>
+        /// <param name="actor">The actor whose statistic changes.</param>
+        /// <param name="statId">The statistic identifier.</param>
+        /// <param name="flat">The flat modifier.</param>
+        /// <param name="percent">The percentage modifier.</param>
         public void AddModifier(Actor actor, string statId, float flat, float percent)
         {
             var container = actor.GetComponent<ActorStatContainer>();
@@ -323,6 +339,11 @@ namespace Game.Server
             SendSnapshot(actor);
         }
 
+        /// <summary>Removes a flat and percentage modifier from an actor statistic.</summary>
+        /// <param name="actor">The actor whose statistic changes.</param>
+        /// <param name="statId">The statistic identifier.</param>
+        /// <param name="flat">The flat modifier.</param>
+        /// <param name="percent">The percentage modifier.</param>
         public void RemoveModifier(Actor actor, string statId, float flat, float percent)
         {
             var container = actor.GetComponent<ActorStatContainer>();
@@ -333,6 +354,10 @@ namespace Game.Server
             SendSnapshot(actor);
         }
 
+        /// <summary>Sets the current value of an actor statistic.</summary>
+        /// <param name="actor">The actor whose statistic changes.</param>
+        /// <param name="statId">The statistic identifier.</param>
+        /// <param name="value">The new current value.</param>
         public void SetCurrent(Actor actor, string statId, float value)
         {
             var container = actor.GetComponent<ActorStatContainer>();
@@ -422,6 +447,8 @@ namespace Game.Server
             return 1;
         }
 
+        /// <summary>Sends the actor's current stat snapshot to its client.</summary>
+        /// <param name="actor">The actor whose stats are sent.</param>
         public void SendSnapshot(Actor actor)
         {
             var container = actor.GetComponent<ActorStatContainer>();

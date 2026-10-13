@@ -1,13 +1,13 @@
+using Actor = Game.Shared.Runtime.Actors.Actor;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Runtime.Actors;
 using PurrNet;
-using UnityEngine;
-using UnityEngine.SceneManagement;
+using PurrNet.Modules;
 using System;
 using System.Collections.Generic;
-using Actor = Game.Shared.Runtime.Actors.Actor;
-using PurrNet.Modules;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
     /// <summary>
@@ -17,15 +17,18 @@ namespace Game.Server
     public sealed class ServerWorldManager : MonoBehaviour
     {
         private static ServerWorldManager _instance;
+        /// <summary>Gets the active server world manager.</summary>
         public static ServerWorldManager Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>Gets whether the world manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
         private NetworkManager networkManager;
         private PurrSceneSettings worldSceneSettings;
 
         // Chunk coord → PurrNet SceneID
-        private readonly Dictionary<Vector2Int, SceneID> loadedChunks = new Dictionary<Vector2Int, SceneID>();
+        private readonly Dictionary<Vector2Int, SceneID> loadedChunks = new();
+        /// <summary>Gets the currently loaded world chunks.</summary>
         public IReadOnlyDictionary<Vector2Int, SceneID> LoadedChunks => loadedChunks;
 
         // Chunks currently being loaded asynchronously.
@@ -33,7 +36,9 @@ namespace Game.Server
 
         // Persistent scene where all actor GameObjects live.
         private SceneID _globalActorsSceneId;
+        /// <summary>Gets the networked scene containing global actors.</summary>
         public SceneID GlobalActorsSceneId => _globalActorsSceneId;
+        /// <summary>Gets whether the global actor scene has loaded.</summary>
         public bool IsGlobalActorsSceneLoaded => _globalActorsSceneId != default;
 
         private void Awake()
@@ -93,6 +98,9 @@ namespace Game.Server
             networkManager.sceneModule.LoadSceneAsync("global_actors", settings);
         }
 
+        /// <summary>Parses a chunk coordinate from a world scene name.</summary>
+        /// <param name="sceneName">The world scene name.</param>
+        /// <returns>The parsed chunk coordinate.</returns>
         public Vector2Int ParseChunkCoordinate(string sceneName)
         {
             string[] parts = sceneName.Split('_');
@@ -101,16 +109,26 @@ namespace Game.Server
             return new Vector2Int(x, y);
         }
 
+        /// <summary>Determines whether a chunk scene is loaded.</summary>
+        /// <param name="chunkCoord">The chunk coordinate.</param>
+        /// <returns><see langword="true"/> when the chunk is loaded.</returns>
         public bool IsChunkLoaded(Vector2Int chunkCoord)
         {
             return loadedChunks.ContainsKey(chunkCoord);
         }
 
+        /// <summary>Determines whether a chunk scene is currently loading.</summary>
+        /// <param name="chunkCoord">The chunk coordinate.</param>
+        /// <returns><see langword="true"/> when a load is pending.</returns>
         public bool IsChunkLoadPending(Vector2Int chunkCoord)
         {
             return _pendingLoads.ContainsKey(chunkCoord);
         }
 
+        /// <summary>Attempts to get the networked scene identifier for a loaded chunk.</summary>
+        /// <param name="chunkCoord">The chunk coordinate.</param>
+        /// <param name="sceneId">Receives the scene identifier when found.</param>
+        /// <returns><see langword="true"/> when the chunk is loaded.</returns>
         public bool TryGetChunkSceneId(Vector2Int chunkCoord, out SceneID sceneId)
         {
             return loadedChunks.TryGetValue(chunkCoord, out sceneId);

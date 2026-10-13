@@ -3,9 +3,11 @@ using Unity.Entities;
 
 namespace Game.Server.ECS
 {
+    /// <summary>Processes time-based actor ticker callbacks.</summary>
     [DisableAutoCreation]
     public partial struct ActorTickerSystem : ISystem
     {
+        /// <summary>Advances active actor tickers and invokes their callbacks.</summary>
         public void OnUpdate(ref SystemState state)
         {
             float dt = UnityEngine.Time.deltaTime;

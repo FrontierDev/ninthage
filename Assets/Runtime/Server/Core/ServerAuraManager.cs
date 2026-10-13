@@ -1,22 +1,25 @@
-using System;
-using System.Collections.Generic;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
+using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Runtime.Spellcasting;
 namespace Game.Server
 {
+    /// <summary>Maintains server-authoritative actor auras and aura effects.</summary>
     public sealed class ServerAuraManager : MonoBehaviour
     {
         private static ServerAuraManager _instance;
+        /// <summary>Gets the active server aura manager.</summary>
         public static ServerAuraManager Instance => _instance;
         private static bool _initialized;
+        /// <summary>Gets whether the aura manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
         private EntityManager entityManager;
@@ -65,6 +68,12 @@ namespace Game.Server
             ApplyAura(definition, caster, target, stacks);
         }
 
+        /// <summary>Applies an aura definition to a target actor.</summary>
+        /// <param name="definition">The aura definition to apply.</param>
+        /// <param name="caster">The actor applying the aura.</param>
+        /// <param name="target">The actor receiving the aura.</param>
+        /// <param name="stacks">The number of stacks to apply.</param>
+        /// <returns><see langword="true"/> when the aura was applied.</returns>
         public bool ApplyAura(AuraDefinition definition, Actor caster, Actor target, int stacks = 1)
         {
             var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
@@ -325,6 +334,10 @@ namespace Game.Server
                 auraComponent.EffectDefinition.Execute(ctx, target);
         }
 
+        /// <summary>Dispels one aura instance from a target actor.</summary>
+        /// <param name="target">The actor whose aura is dispelled.</param>
+        /// <param name="instanceId">The aura instance identifier.</param>
+        /// <returns><see langword="true"/> when the aura was dispelled.</returns>
         public bool DispelAura(Actor target, int instanceId)
         {
             var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
@@ -357,6 +370,8 @@ namespace Game.Server
             return false;
         }
 
+        /// <summary>Removes all active auras from an actor.</summary>
+        /// <param name="actorId">The actor identifier.</param>
         public void RemoveAllAuras(Guid actorId)
         {
             var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
@@ -394,6 +409,10 @@ namespace Game.Server
             }
         }
 
+        /// <summary>Determines whether an actor has an aura definition active.</summary>
+        /// <param name="actorId">The actor identifier.</param>
+        /// <param name="auraDefinitionId">The aura definition identifier.</param>
+        /// <returns><see langword="true"/> when the aura is active.</returns>
         public bool HasAura(Guid actorId, string auraDefinitionId)
         {
             var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
@@ -420,6 +439,10 @@ namespace Game.Server
             return false;
         }
 
+        /// <summary>Gets the active stack count for an actor's aura.</summary>
+        /// <param name="actorId">The actor identifier.</param>
+        /// <param name="auraDefinitionId">The aura definition identifier.</param>
+        /// <returns>The active stack count, or zero when the aura is absent.</returns>
         public int GetAuraStackCount(Guid actorId, string auraDefinitionId)
         {
             var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);

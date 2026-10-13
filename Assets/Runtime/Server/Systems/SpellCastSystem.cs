@@ -3,9 +3,11 @@ using Unity.Entities;
 
 namespace Game.Server.ECS
 {
+    /// <summary>Advances active spell casts and invokes spell callbacks.</summary>
     [DisableAutoCreation]
     public partial struct SpellCastSystem : ISystem
     {
+        /// <summary>Updates active spell casts for the current server tick.</summary>
         public void OnUpdate(ref SystemState state)
         {
             float dt = UnityEngine.Time.deltaTime;

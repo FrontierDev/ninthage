@@ -3,9 +3,11 @@ using Unity.Entities;
 
 namespace Game.Server.ECS
 {
+    /// <summary>Advances active aura durations and invokes aura callbacks.</summary>
     [DisableAutoCreation]
     public partial struct AuraTickSystem : ISystem
     {
+        /// <summary>Processes aura ticks and expirations for server actors.</summary>
         public void OnUpdate(ref SystemState state)
         {
             float dt = UnityEngine.Time.deltaTime;

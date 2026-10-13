@@ -1,18 +1,21 @@
-using UnityEngine;
-using UnityEngine.AddressableAssets;
-using System.Collections;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Persistence;
 using PurrNet;
 using PurrNet.Transports;
-using Game.Server.Persistence;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace Game.Server
 {
+    /// <summary>Coordinates startup of the dedicated server runtime.</summary>
     public static class ServerInitialization
     {
         private static MonoBehaviour host;
         private static bool forceCleanServer;
 
+        /// <summary>Begins the server initialization coroutine on the supplied host.</summary>
+        /// <param name="_host">The component that owns the initialization coroutine.</param>
         public static void Begin(MonoBehaviour _host)
         {
             host = _host;

@@ -1,14 +1,16 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Unity.Entities;
 using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Server.ECS
 {
+    /// <summary>Updates authoritative server actor movement and gravity.</summary>
     [DisableAutoCreation]
     public partial struct ActorUpdateSystem : ISystem
     {
         private EntityQuery motionQuery;
 
+        /// <summary>Creates the query used by the actor movement system.</summary>
         public void OnCreate(ref SystemState state)
         {
             Debug.Log(" - Created ActorUpdateSystem.");
@@ -24,6 +26,7 @@ namespace Game.Server.ECS
                 });
         }
 
+        /// <summary>Applies server-side movement and gravity to eligible actors.</summary>
         public void OnUpdate(ref SystemState state)
         {
             var gravity = Game.Shared.GameConfigurationManager.Config.Gravity;
@@ -82,6 +85,7 @@ namespace Game.Server.ECS
             }
         }
 
+        /// <summary>Releases system state when the actor movement system is destroyed.</summary>
         public void OnDestroy(ref SystemState state)
         {
             Debug.Log(" - Destroyed ActorUpdateSystem.");

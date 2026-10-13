@@ -1,16 +1,20 @@
-using UnityEngine;
-using Unity.Entities;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Unity.Entities;
+using UnityEngine;
 
 namespace Game.Server.ECS
 {
+    /// <summary>Creates and owns the dedicated server ECS world.</summary>
     public static class ServerECSManager
     {
         private static bool _initialized = false;
+        /// <summary>Gets whether the server ECS world has been initialized.</summary>
         public static bool Initialized => _initialized;
 
+        /// <summary>Gets the server's default ECS world.</summary>
         public static World DefaultWorld { get; private set; }
 
+        /// <summary>Creates the server ECS world and registers its systems.</summary>
         public static void ServerInitializeECSWorlds()
         {
             // Create the world.

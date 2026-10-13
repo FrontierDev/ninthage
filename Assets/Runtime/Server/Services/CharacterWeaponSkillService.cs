@@ -1,12 +1,13 @@
-using System.Linq;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using Game.Shared.Utility;
-
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
+using System.Linq;
+
 namespace Game.Server.Services
 {
+    /// <summary>Applies weapon-skill experience to a server-side player character.</summary>
     public sealed class CharacterWeaponSkillService
     {
         private PlayerExperience playerExperience;
@@ -14,6 +15,10 @@ namespace Game.Server.Services
         private int level;
         private int experience;
 
+        /// <summary>Initializes the service and applies the supplied weapon-skill experience.</summary>
+        /// <param name="playerActor">The player character receiving experience.</param>
+        /// <param name="weaponType">The weapon skill to update.</param>
+        /// <param name="experienceGained">The amount of experience to add.</param>
         public CharacterWeaponSkillService(PlayerActor playerActor, ItemWeaponType weaponType, int experienceGained)
         {
             this.playerExperience = playerActor.GetComponent<PlayerExperience>();
@@ -33,6 +38,8 @@ namespace Game.Server.Services
             CharacterEndpoint.Client_WeaponSkillUpdated(playerActor.owner.Value, (int)weaponType, level, experience, experienceGained);
         }
 
+        /// <summary>Adds experience to the configured weapon skill.</summary>
+        /// <param name="amount">The amount of experience to add.</param>
         public void AddWeaponSkillExperience(int amount)
         {
             if (level >= ExperienceCalculator.MAX_LEVEL)

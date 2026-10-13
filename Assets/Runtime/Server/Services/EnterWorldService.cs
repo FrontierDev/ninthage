@@ -1,18 +1,21 @@
-using PurrNet;
-using Debug = Game.Shared.Utility.FormattedDebug;
 using CharacterData = Game.Shared.Persistence.CharacterData;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking;
-using UnityEngine;
+using PurrNet;
 using System.IO.Compression;
-
+using UnityEngine;
 
 namespace Game.Server.Services
 {
+    /// <summary>Validates character ownership and enters the player into the world.</summary>
     public sealed class EnterWorldService
     {
         private PlayerID playerId;
         private string characterGuid;
 
+        /// <summary>Validates the selected character and starts player spawning.</summary>
+        /// <param name="_playerId">The requesting player's network identifier.</param>
+        /// <param name="_characterGuid">The selected character identifier.</param>
         public EnterWorldService(PlayerID _playerId, string _characterGuid)
         {
             playerId = _playerId;

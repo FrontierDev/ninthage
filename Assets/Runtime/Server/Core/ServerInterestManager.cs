@@ -1,14 +1,14 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking;
+using Game.Shared;
+using Game.Shared.Runtime.Actors;
 using PurrNet;
-using UnityEngine;
+using PurrNet.Modules;
 using System;
 using System.Collections.Generic;
-using PurrNet.Modules;
 using Unity.Entities.UniversalDelegates;
-using Game.Shared;
-using Game.Server.Networking;
+using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
     /// <summary>
@@ -18,8 +18,10 @@ namespace Game.Server
     public sealed class ServerInterestManager : MonoBehaviour
     {
         private static ServerInterestManager _instance;
+        /// <summary>Gets the active server interest manager.</summary>
         public static ServerInterestManager Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>Gets whether the interest manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
         private NetworkManager networkManager;
@@ -185,6 +187,10 @@ namespace Game.Server
                 UnsubscribePlayerFromChunk(actor, chunk);
         }
 
+        /// <summary>Subscribes a player's actor to a world chunk.</summary>
+        /// <param name="actor">The actor to subscribe.</param>
+        /// <param name="chunkCoord">The chunk coordinate.</param>
+        /// <param name="onSubscribed">An optional callback invoked after subscription.</param>
         public void SubscribePlayerToChunk(Actor actor, Vector2Int chunkCoord, Action onSubscribed = null)
         {
             ServerWorldManager.Instance.EnsureChunkLoaded(actor, chunkCoord, (sceneId) =>
@@ -205,6 +211,9 @@ namespace Game.Server
             });
         }
 
+        /// <summary>Unsubscribes a player's actor from a world chunk.</summary>
+        /// <param name="actor">The actor to unsubscribe.</param>
+        /// <param name="chunkCoord">The chunk coordinate.</param>
         public void UnsubscribePlayerFromChunk(Actor actor, Vector2Int chunkCoord)
         {
             if (!ServerWorldManager.Instance.TryGetChunkSceneId(chunkCoord, out SceneID sceneId))

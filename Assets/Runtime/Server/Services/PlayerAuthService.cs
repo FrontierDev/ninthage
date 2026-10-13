@@ -1,9 +1,9 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Networking;
+using PlayerDatabase = Game.Server.Persistence.PlayerDatabase;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
-using Game.Shared.Networking;
-using Debug = Game.Shared.Utility.FormattedDebug;
-using PlayerDatabase = Game.Server.Persistence.PlayerDatabase;
 
 namespace Game.Server.Persistence
 {
@@ -15,9 +15,9 @@ namespace Game.Server.Persistence
     /// </summary>
     public class PlayerAuthService : IPlayerAuthService
     {
-        private readonly Queue<string> _validatedUsernamesQueue = new Queue<string>();
-        private readonly Queue<bool> _newPlayerQueue = new Queue<bool>();
-        private readonly Dictionary<object, string> _pendingConnections = new Dictionary<object, string>();
+        private readonly Queue<string> _validatedUsernamesQueue = new();
+        private readonly Queue<bool> _newPlayerQueue = new();
+        private readonly Dictionary<object, string> _pendingConnections = new();
 
         /// <summary>
         /// Validates the supplied credentials against the player database using PBKDF2-SHA256.
@@ -58,12 +58,19 @@ namespace Game.Server.Persistence
             }
         }
 
+        /// <summary>Associates a pending connection with the username being authenticated.</summary>
+        /// <param name="connection">The pending connection handle.</param>
+        /// <param name="username">The username being authenticated.</param>
         public void TrackPendingConnection(object connection, string username)
         {
             _pendingConnections[connection] = username;
             _validatedUsernamesQueue.Enqueue(username);
         }
 
+        /// <summary>Removes and returns the username associated with a pending connection.</summary>
+        /// <param name="connection">The pending connection handle.</param>
+        /// <param name="username">Receives the associated username when found.</param>
+        /// <returns><see langword="true"/> when a pending connection was removed.</returns>
         public bool TryRemovePendingConnection(object connection, out string username)
         {
             if (_pendingConnections.TryGetValue(connection, out username))
@@ -74,16 +81,22 @@ namespace Game.Server.Persistence
             return false;
         }
 
+        /// <summary>Dequeues the next username that passed authentication.</summary>
+        /// <returns>The next validated username, or <c>Unknown</c> when the queue is empty.</returns>
         public string GetNextValidatedUsername()
         {
             return _validatedUsernamesQueue.Count > 0 ? _validatedUsernamesQueue.Dequeue() : "Unknown";
         }
 
+        /// <summary>Dequeues the new-player flag associated with the next validated login.</summary>
+        /// <returns>The queued flag, or <see langword="false"/> when the queue is empty.</returns>
         public bool GetNextPlayerIsNew()
         {
             return _newPlayerQueue.Count > 0 && _newPlayerQueue.Dequeue();
         }
 
+        /// <summary>Queues whether the next validated login belongs to a new player.</summary>
+        /// <param name="isNewPlayer">Whether the authenticated player is new.</param>
         public void EnqueueNewPlayerFlag(bool isNewPlayer)
         {
             _newPlayerQueue.Enqueue(isNewPlayer);

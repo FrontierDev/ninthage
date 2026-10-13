@@ -1,16 +1,18 @@
-using UnityEngine;
-using PurrNet;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking;
+using Game.Shared.Runtime.Actors;
+using PurrNet;
 using System.Collections;
 using System.Collections.Generic;
-using Game.Server.Networking;
+using UnityEngine;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
+    /// <summary>Maintains authoritative connection, account, and session state.</summary>
     public class ServerConnectionManager : PurrMonoBehaviour
     {
         private static ServerConnectionManager _instance;
+        /// <summary>Gets the active server connection manager.</summary>
         public static ServerConnectionManager Instance
         {
             get
@@ -23,12 +25,13 @@ namespace Game.Server
             }
         }
         private static bool _initialized = false;
+        /// <summary>Gets whether the connection manager is initialized.</summary>
         public static bool Initialized => _initialized;
 
         private NetworkManager networkManager;
 
-        private Dictionary<PlayerID, PlayerAccountData> connectedPlayers = new Dictionary<PlayerID, PlayerAccountData>();
-        private Dictionary<PlayerID, PlayerSessionData> sessionData = new Dictionary<PlayerID, PlayerSessionData>();
+        private Dictionary<PlayerID, PlayerAccountData> connectedPlayers = new();
+        private Dictionary<PlayerID, PlayerSessionData> sessionData = new();
 
         #region Lifecycle
         private void Awake()
@@ -49,6 +52,7 @@ namespace Game.Server
             }
         }
 
+        /// <summary>Unsubscribes the manager from NetworkManager events.</summary>
         public override void Unsubscribe(NetworkManager manager, bool asServer)
         {
             if (asServer)
@@ -110,12 +114,18 @@ namespace Game.Server
             sessionData.Remove(playerId);
         }
 
+        /// <summary>Stores session data for a connected player.</summary>
+        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <param name="data">The session data to store.</param>
         public void SetSessionData(PlayerID playerId, PlayerSessionData data)
         {
             sessionData[playerId] = data;
             Debug.Log($"Set session data for player {playerId}: Character GUID {data.CharacterId}");
         }
 
+        /// <summary>Stores account data for a connected player.</summary>
+        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <param name="accountData">The account data to store.</param>
         public void SetAccountData(PlayerID playerId, PlayerAccountData accountData)
         {
             if (connectedPlayers.ContainsKey(playerId))
@@ -129,6 +139,9 @@ namespace Game.Server
             Debug.Log($"Set account data for player {playerId}: {accountData.Username}");
         }
 
+        /// <summary>Gets session data for a connected player.</summary>
+        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <returns>The player's session data, or <see langword="null"/> when absent.</returns>
         public PlayerSessionData GetSessionData(PlayerID playerId)
         {
             if (sessionData.TryGetValue(playerId, out var data))
@@ -142,6 +155,9 @@ namespace Game.Server
             }
         }
 
+        /// <summary>Gets account data for a connected player.</summary>
+        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <returns>The player's account data, or <see langword="null"/> when absent.</returns>
         public PlayerAccountData GetAccountData(PlayerID playerId)
         {
             if (connectedPlayers.TryGetValue(playerId, out var accountData))

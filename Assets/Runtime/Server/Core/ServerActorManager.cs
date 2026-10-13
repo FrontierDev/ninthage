@@ -1,18 +1,18 @@
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 using Actor = Game.Shared.Runtime.Actors.Actor;
-using Unity.Entities;
-using Unity.Collections;
-using PurrNet;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Networking;
+using Game.Shared.Runtime;
+using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
+using PurrNet;
+using System;
+using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Entities;
+using UnityEngine;
 using UnityEngine.AI;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Runtime;
 namespace Game.Server
 {
     /// <summary>
@@ -23,8 +23,10 @@ namespace Game.Server
     public sealed class ServerActorManager : MonoBehaviour
     {
         private static ServerActorManager _instance;
+        /// <summary>Gets the active server actor manager.</summary>
         public static ServerActorManager Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>Gets whether the actor manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
         // ECS Management.
@@ -34,6 +36,10 @@ namespace Game.Server
         // Maps actor ID -> Actor MonoBehaviour so LateUpdate can push ECS WorldPositionD -> transform.
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
 
+        /// <summary>Finds the server actor associated with an actor identifier.</summary>
+        /// <param name="actorId">The actor identifier to find.</param>
+        /// <param name="actor">Receives the actor when found.</param>
+        /// <returns><see langword="true"/> when an actor was found.</returns>
         public bool TryGetActor(Guid actorId, out Actor actor) => _actorObjects.TryGetValue(actorId, out actor);
 
         // Player tracking for validation.

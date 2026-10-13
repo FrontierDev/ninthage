@@ -1,24 +1,27 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Services;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Spellcasting;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Runtime.Spellcasting;
 namespace Game.Server
 {
+    /// <summary>Maintains server-authoritative spell casts and effects.</summary>
     public sealed class ServerSpellCastManager : MonoBehaviour
     {
         private static ServerSpellCastManager _instance;
+        /// <summary>Gets the active server spell-cast manager.</summary>
         public static ServerSpellCastManager Instance => _instance;
         private static bool _initialized;
+        /// <summary>Gets whether the spell-cast manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
         private EntityManager entityManager;
@@ -397,11 +400,17 @@ namespace Game.Server
                 component.EffectDefinition.Execute(ctx, target);
         }
 
+        /// <summary>Determines whether an actor currently has an active spell cast.</summary>
+        /// <param name="actorId">The actor identifier.</param>
+        /// <returns><see langword="true"/> when the actor is casting.</returns>
         public bool IsCasting(Guid actorId)
         {
             return _activeSpellCasts.ContainsKey(actorId);
         }
 
+        /// <summary>Attempts to interrupt an actor's active spell cast.</summary>
+        /// <param name="actorId">The actor identifier.</param>
+        /// <returns><see langword="true"/> when an active cast was interrupted.</returns>
         public bool TryInterruptCast(Guid actorId)
         {
             if (!_activeSpellCasts.TryGetValue(actorId, out var ctx))

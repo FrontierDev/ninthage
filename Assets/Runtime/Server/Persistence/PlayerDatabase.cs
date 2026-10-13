@@ -1,16 +1,17 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Persistence;
 using System.Collections.Generic;
 using System.IO;
-using Game.Shared.Persistence;
 using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Server.Persistence
 {
+    /// <summary>Loads, migrates, and persists server player account data.</summary>
     public static class PlayerDatabase
     {
         private const int CurrentDataVersion = 1;
         private static readonly string _filePath;
-        private static Dictionary<string, PlayerAccountData> playerAccounts = new Dictionary<string, PlayerAccountData>();
+        private static Dictionary<string, PlayerAccountData> playerAccounts = new();
 
         static PlayerDatabase()
         {
@@ -18,6 +19,7 @@ namespace Game.Server.Persistence
             LoadFromDisk();
         }
 
+        /// <summary>Clears all accounts and writes an empty database to disk.</summary>
         public static void CleanDatabase()
         {
             playerAccounts.Clear();
@@ -25,11 +27,17 @@ namespace Game.Server.Persistence
             Debug.Warning("Player database has been cleared. This should only be used for testing purposes.");
         }
 
+        /// <summary>Attempts to find an account by username.</summary>
+        /// <param name="username">The account username.</param>
+        /// <param name="accountData">Receives the account when found.</param>
+        /// <returns><see langword="true"/> when an account exists for the username.</returns>
         public static bool TryGetPlayerAccount(string username, out PlayerAccountData accountData)
         {
             return playerAccounts.TryGetValue(username, out accountData);
         }
 
+        /// <summary>Saves an account to the player database.</summary>
+        /// <param name="accountData">The account data to save.</param>
         public static void SavePlayerAccount(PlayerAccountData accountData)
         {
             playerAccounts[accountData.Username] = accountData;
@@ -90,7 +98,7 @@ namespace Game.Server.Persistence
         private class PlayerDatabaseWrapper
         {
             public int DataVersion;
-            public List<PlayerAccountData> Accounts = new List<PlayerAccountData>();
+            public List<PlayerAccountData> Accounts = new();
         }
 
         #pragma warning disable 0649
@@ -109,7 +117,7 @@ namespace Game.Server.Persistence
             var migratedWrapper = new PlayerDatabaseWrapper
             {
                 DataVersion = CurrentDataVersion,
-                Accounts = new List<PlayerAccountData>()
+                Accounts = new()
             };
 
             if (legacyWrapper.Accounts == null)
@@ -128,7 +136,7 @@ namespace Game.Server.Persistence
                     Username = legacyAccount.Username,
                     PasswordHash = legacyAccount.PasswordHash,
                     PasswordSalt = legacyAccount.PasswordSalt,
-                    Characters = new List<CharacterData>()
+                    Characters = new()
                 };
 
                 if (legacyAccount.Characters != null)

@@ -2,9 +2,11 @@ using Unity.Entities;
 
 namespace Game.Server.ECS
 {
+    /// <summary>Advances and removes server actor cooldown entries.</summary>
     [DisableAutoCreation]
     public partial struct CooldownTickSystem : ISystem
     {
+        /// <summary>Updates active cooldown durations for all server actors.</summary>
         public void OnUpdate(ref SystemState state)
         {
             float dt = UnityEngine.Time.deltaTime;

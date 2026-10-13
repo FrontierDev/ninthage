@@ -1,20 +1,23 @@
-using System;
-using System.Collections.Generic;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
-using Game.Shared.Runtime.Actors;
 namespace Game.Server
 {
+    /// <summary>Coordinates server-authoritative auto-attacks.</summary>
     public sealed class ServerAutoAttackManager : MonoBehaviour
     {
         private static ServerAutoAttackManager _instance;
+        /// <summary>Gets the active server auto-attack manager.</summary>
         public static ServerAutoAttackManager Instance => _instance;
         private static bool _initialized;
+        /// <summary>Gets whether the server auto-attack manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
         private SpellDefinition _autoAttackSpell;

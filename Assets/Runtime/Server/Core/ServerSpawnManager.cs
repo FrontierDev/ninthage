@@ -1,31 +1,34 @@
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.Collections.Generic;
-using Unity.Entities;
-using Unity.Mathematics;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared;
+using Game.Shared.Data;
+using Game.Shared.Runtime;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using PurrNet;
 using PurrNet.Modules;
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Entities.UniversalDelegates;
+using Unity.Mathematics;
+using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using Game.Shared;
-using System;
-using Unity.Collections;
-using Unity.Entities.UniversalDelegates;
-using System.Linq;
-using Game.Shared.Data;
+using UnityEngine.SceneManagement;
 
-using Game.Shared.Runtime.Actors;
-using Game.Shared.Runtime;
-using Game.Shared.Utility;
 namespace Game.Server
 {
+    /// <summary>Coordinates authoritative actor spawning and scene placement.</summary>
     public sealed class ServerSpawnManager : MonoBehaviour
     {
         private static ServerSpawnManager _instance;
+        /// <summary>Gets the active server spawn manager.</summary>
         public static ServerSpawnManager Instance => _instance;
         private static bool _initialized;
+        /// <summary>Gets whether the spawn manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
         private NetworkManager networkManager;
 
@@ -35,11 +38,12 @@ namespace Game.Server
         private readonly Dictionary<int, Scene> sceneRegistry = new();
         private int nextSceneIndex;
 
-        private Dictionary<Guid, Actor> spawnPointActorMap = new Dictionary<Guid, Actor>();
+        private Dictionary<Guid, Actor> spawnPointActorMap = new();
 
         private EntityManager entityManager;
         private EntityQuery spawnCommandQuery;
 
+        /// <summary>Initializes server spawn manager state and subscriptions.</summary>
         public void Awake()
         {
             if (_instance != null)
@@ -123,6 +127,8 @@ namespace Game.Server
                 spawnPointActorMap.Remove(actor.SpawnPointGUID);
         }
 
+        /// <summary>Starts spawning the actor associated with a connected player.</summary>
+        /// <param name="playerId">The player to spawn.</param>
         public void SpawnPlayer(PlayerID playerId)
         {
             StartCoroutine(SpawnPlayerCoroutine(playerId));
@@ -131,7 +137,7 @@ namespace Game.Server
         [ToDo("Implement proper spawn point selection logic rather than hardcoding to a specific scene and position.Lots of placeholder code in this method that not be in production.")]
         private IEnumerator SpawnPlayerCoroutine(PlayerID playerId)
         {
-            Vector2Int spawnScene = new Vector2Int(0, 0);
+            var spawnScene = new Vector2Int(0, 0);
 
             // Actively request the spawn chunk to load instead of passively waiting.
             bool chunkReady = false;
@@ -148,7 +154,7 @@ namespace Game.Server
                 yield break;
             }
 
-            Vector3 spawnPosition = new Vector3(0, 5, 0);
+            var spawnPosition = new Vector3(0, 5, 0);
             GameObject prefab = handle.Result;
 
             // Spawn the actor into the persistent global_actors scene, not the chunk scene.
@@ -303,6 +309,12 @@ namespace Game.Server
             networkManager.scenePlayersModule.AddPlayerToScene(playerId, globalSceneId);
         }
 
+        /// <summary>Spawns an actor prefab at a position in a networked scene.</summary>
+        /// <param name="sceneName">The scene name used for the spawn.</param>
+        /// <param name="position">The world position for the spawned actor.</param>
+        /// <param name="prefab">The prefab to spawn.</param>
+        /// <param name="sceneID">The networked scene identifier.</param>
+        /// <param name="owner">The player that owns the spawned actor.</param>
         public void SpawnAt(string sceneName, Vector3 position, GameObject prefab, SceneID sceneID, PlayerID owner)
         {
             if (!networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;

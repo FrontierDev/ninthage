@@ -1,20 +1,24 @@
-using System;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Networking;
+using System;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
-using Debug = Game.Shared.Utility.FormattedDebug;
 
 namespace Game.Server
 {
+    /// <summary>Maintains server-authoritative actor cooldowns.</summary>
     public sealed class ServerCooldownManager : MonoBehaviour
     {
         private static ServerCooldownManager _instance;
+        /// <summary>Gets the active server cooldown manager.</summary>
         public static ServerCooldownManager Instance => _instance;
         private static bool _initialized;
+        /// <summary>Gets whether the cooldown manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
+        /// <summary>The identifier used for the global cooldown.</summary>
         public const string GCD_ID = "GCD";
 
         private EntityManager entityManager;
@@ -47,6 +51,10 @@ namespace Game.Server
             _initialized = false;
         }
 
+        /// <summary>Starts or refreshes a cooldown for an actor.</summary>
+        /// <param name="actorId">The actor receiving the cooldown.</param>
+        /// <param name="spellId">The spell or cooldown identifier.</param>
+        /// <param name="duration">The cooldown duration in seconds.</param>
         public void StartCooldown(Guid actorId, string spellId, float duration)
         {
             var fixedSpellId = new FixedString64Bytes(spellId);
@@ -95,11 +103,19 @@ namespace Game.Server
             }
         }
 
+        /// <summary>Determines whether an actor currently has a cooldown.</summary>
+        /// <param name="actorId">The actor to query.</param>
+        /// <param name="spellId">The spell or cooldown identifier.</param>
+        /// <returns><see langword="true"/> when the cooldown is active.</returns>
         public bool IsOnCooldown(Guid actorId, string spellId)
         {
             return GetRemainingCooldown(actorId, spellId) > 0f;
         }
 
+        /// <summary>Gets the remaining duration of an actor's cooldown.</summary>
+        /// <param name="actorId">The actor to query.</param>
+        /// <param name="spellId">The spell or cooldown identifier.</param>
+        /// <returns>The remaining duration in seconds, or zero when inactive.</returns>
         public float GetRemainingCooldown(Guid actorId, string spellId)
         {
             var fixedSpellId = new FixedString64Bytes(spellId);

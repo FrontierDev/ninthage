@@ -1,32 +1,37 @@
-using System.Collections.Generic;
-using System.Diagnostics;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using Game.Shared.Utility;
-using Debug = Game.Shared.Utility.FormattedDebug;
-
-using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime;
+using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Items;
+using Game.Shared.Utility;
+using System.Collections.Generic;
+using System.Diagnostics;
+
 namespace Game.Server.Services
 {
     /// <summary>
     /// Each instance of the party loot service tracks a pool of loot for a party on the server.
     /// The server compiles the loot and distributes it to each player.
     /// </summary>
+    /// <summary>Collects and distributes loot for a server-side party.</summary>
     [ToDo("This is a very basic implementation that just gives all loot to each player. This will need to be reworked once the party system is implemented.")]
     public sealed class PartyLootService
     {
         // For now, we're only handling single players.
         private PlayerInventory playerInventory;
-        private List<ItemInstance> lootPool = new List<ItemInstance>();
+        private List<ItemInstance> lootPool = new();
 
+        /// <summary>Initializes a loot service for the supplied player.</summary>
+        /// <param name="playerActor">The player whose inventory receives loot.</param>
         public PartyLootService(PlayerActor playerActor)
         {
             this.playerInventory = playerActor.GetComponent<PlayerInventory>();
         }
 
+        /// <summary>Adds rolled loot from an NPC loot table to the pool.</summary>
+        /// <param name="source">The loot table entries to roll.</param>
         public void AddLootFromSource(IReadOnlyList<NPCLootTableEntry> source)
         {
             foreach (var entry in source)
@@ -54,6 +59,8 @@ namespace Game.Server.Services
             }
         }
 
+        /// <summary>Adds an item definition directly to the loot pool.</summary>
+        /// <param name="item">The item definition to add.</param>
         public void AddToPool(ItemDefinition item)
         {
             if (item == null) return;
@@ -94,6 +101,7 @@ namespace Game.Server.Services
             }
         }
 
+        /// <summary>Distributes the current loot pool to the configured player.</summary>
         public void DistributeLoot()
         {
             var leftovers = new List<ItemInstance>();

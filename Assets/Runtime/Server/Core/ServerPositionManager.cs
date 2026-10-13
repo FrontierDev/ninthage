@@ -1,6 +1,6 @@
-using UnityEngine;
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Utility;
+using UnityEngine;
 
 namespace Game.Server
 {
@@ -12,8 +12,10 @@ namespace Game.Server
     public sealed class ServerPositionManager : MonoBehaviour
     {
         private static ServerPositionManager _instance;
+        /// <summary>Gets the active server position manager.</summary>
         public static ServerPositionManager Instance => _instance;
         private static bool _initialized = false;
+        /// <summary>Gets whether the position manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
         private int chunkSize;
