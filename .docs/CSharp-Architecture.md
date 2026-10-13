@@ -2,9 +2,9 @@
 
 **Status:** Current architecture reference  
 **Repository:** `FrontierDev/ninthage`  
-**Branch:** `main`  
-**Source revision:** `a793ded37d152783d29b71a7849fda083a33086d`  
-**Snapshot date:** 2026-10-04  
+**Branch:** `dev`
+**Source revision:** `3232b1cfc1a889d1f8be7665714bf145e8329a4b`
+**Snapshot date:** 2026-10-13
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose and Scope
@@ -126,8 +126,8 @@ Assets/
 
 Its role is to determine the execution context and transfer control to the appropriate runtime side. The bootstrapper persists across scene changes and chooses between:
 
-- `Game.Client.ClientInitialization.Begin(...)`; or
-- `Game.Server.ServerInitialization.Begin(...)`.
+- `Game.Client.Core.ClientInitialization.Begin(...)`; or
+- `Game.Server.Core.ServerInitialization.Begin(...)`.
 
 The server path is selected when Unity is running in batch mode or when no graphics device is present. The bootstrapper also exposes an editor-oriented `forceServerMode` switch for server testing.
 
@@ -141,16 +141,18 @@ The server path is selected when Unity is running in batch mode or when no graph
 - runtime actor and item state;
 - spell and aura runtime contexts;
 - common persistence DTOs;
-- network services and RPC contracts;
+- endpoint/callback surfaces and RPC contracts;
 - world-position and chunk-related types;
 - shared movement mathematics;
 - common calculations and utilities.
+
+The `Shared` source tree uses folder-derived namespaces under `Game.Shared`, including `Game.Shared.Data`, `Game.Shared.Networking`, `Game.Shared.Persistence`, `Game.Shared.Runtime.*`, `Game.Shared.Terrain` and `Game.Shared.Utility`.
 
 Both `Game.Client` and `Game.Server` build on the types in this assembly.
 
 ### 4.3 `Game.Client`
 
-`Game.Client` contains code that only participates in the graphical client runtime. It owns:
+`Game.Client` contains code that only participates in the graphical client runtime. Its folder-derived namespaces include `Game.Client.Core`, `Game.Client.UI.<Feature>`, `Game.Client.Systems`, `Game.Client.Utility`, `Game.Client.VFX` and `Game.Client.Shaders`. It owns:
 
 - client networking setup;
 - client world and scene handling;
@@ -165,7 +167,7 @@ Both `Game.Client` and `Game.Server` build on the types in this assembly.
 
 ### 4.4 `Game.Server`
 
-`Game.Server` contains authoritative runtime responsibilities, including:
+`Game.Server` contains authoritative runtime responsibilities, with folder-derived namespaces such as `Game.Server.Core`, `Game.Server.Networking`, `Game.Server.Systems`, `Game.Server.Persistence`, `Game.Server.Services` and `Game.Server.Test`, including:
 
 - connection/session handling;
 - authoritative actor tracking;
@@ -218,7 +220,7 @@ The two runtime modes then follow separate initialisation pipelines.
 
 ### 6.2 Client initialisation
 
-`Game.Client.ClientInitialization` performs client startup as a coroutine. The current sequence is:
+`Game.Client.Core.ClientInitialization` performs client startup as a coroutine. The current sequence is:
 
 ```text
 GameBootstrapper
@@ -256,7 +258,7 @@ During the manager stage, the client creates a persistent world-manager object a
 
 ### 6.3 Server initialisation
 
-`Game.Server.ServerInitialization` performs server startup as a coroutine. The current sequence is:
+`Game.Server.Core.ServerInitialization` performs server startup as a coroutine. The current sequence is:
 
 ```text
 GameBootstrapper
@@ -273,7 +275,7 @@ Start PurrNet server
     ↓
 Create server ECS World and systems
     ↓
-Initialise server RPC/event hooks
+Initialise server bindings
     ↓
 Initialise player database/auth service
     ↓
@@ -388,7 +390,7 @@ Client / Server systems
 
 ### 9.1 Actor hierarchy
 
-`Game.Shared.Actor` is the central runtime actor type. It derives from PurrNet `NetworkBehaviour` and represents a network-visible gameplay actor.
+`Game.Shared.Runtime.Actors.Actor` is the central runtime actor type. It derives from PurrNet `NetworkBehaviour` and represents a network-visible gameplay actor.
 
 Its state and responsibilities include:
 
@@ -453,35 +455,36 @@ This permits authored spell definitions to act as the base data while runtime sy
 
 Networking-facing types used by both runtime sides are grouped under `Game.Shared.Networking`.
 
-This area includes:
+The shared RPC and callback surfaces are the following endpoint types:
 
-- account service;
-- actor service;
-- character service;
-- movement service;
-- stat service;
-- login/authentication payloads;
-- player-auth interface;
-- chunk subscriptions and visibility rules;
-- latency simulation;
-- network packing structures.
+- `AccountEndpoint`;
+- `ActorEndpoint`;
+- `CharacterEndpoint`;
+- `MovementEndpoint`;
+- `StatEndpoint`.
 
-### 10.1 Service/event pattern
+These are Shared Networking endpoint/callback surfaces, not channels. `Channel` remains PurrNet transport/RPC-delivery terminology and is not used as the name of these project endpoint types.
 
-Several shared networking services act as cross-assembly event hubs. `ActorService` is the clearest example. It exposes callbacks for client and server actor lifecycle, targeting, combat state, spell casting, aura state, VFX/SFX, cooldowns, tickers and auto-attacks.
+The same namespace also contains login/authentication payloads, the `IPlayerAuthService` abstraction, chunk subscriptions and visibility rules, latency simulation and network-packing structures. `IPlayerAuthService` remains a genuine service interface because it abstracts the server authentication/persistence implementation; `PlayerAuthService` remains its server-side implementation in `Game.Server.Services`.
+
+### 10.1 Endpoint/callback pattern
+
+The endpoint types act as cross-assembly RPC and event surfaces. `ActorEndpoint` is the broadest example. It exposes callbacks for client and server actor lifecycle, targeting, combat state, spell casting, aura state, VFX/SFX, cooldowns, tickers and auto-attacks.
 
 This pattern allows:
 
-- shared/network code to expose a common event surface;
+- shared/network code to expose a common endpoint and callback surface;
 - server managers to subscribe to authoritative events;
 - client managers/UI to subscribe to presentation events;
 - server ECS systems to publish events back toward MonoBehaviour-based gameplay managers without directly depending on `Game.Server` types from `Game.Shared`.
 
-### 10.2 RPC-facing services
+Managers may subscribe directly to the endpoint for the subsystem they own. Server bindings are used for cross-layer registration that needs a named binding lifecycle; a `*Bindings` type is not required around every endpoint subscription.
 
-Shared service classes also contain PurrNet RPC methods where a network operation belongs to both sides of the contract.
+### 10.2 RPC-facing endpoints
 
-For example, `MovementService` includes:
+Shared endpoint classes also contain PurrNet RPC methods where a network operation belongs to both sides of the contract.
+
+For example, `MovementEndpoint` includes:
 
 - a server RPC for requesting chunk interest;
 - a targeted client RPC for updated interest;
@@ -511,7 +514,7 @@ Server/Systems       ECS simulation systems/components
 Server/Persistence   server-owned persisted data
 ```
 
-Small networking hook/session types are kept under `Server/Networking`.
+Small networking binding/session support types are kept under `Server/Networking`.
 
 ### 11.1 Server managers
 
@@ -531,7 +534,7 @@ The main server managers are MonoBehaviour-based, process-wide components create
 
 `ServerStatManager`, `ServerSpellCastManager`, `ServerAuraManager`, `ServerTickerManager`, `ServerCooldownManager`, and `ServerAutoAttackManager` own authoritative gameplay subsystems of the same names.
 
-`ServerBindings` initialises server-side bindings used to connect shared network/RPC surfaces to server implementations.
+`ServerBindings` performs the one-time server binding registration. It registers `AccountBindings` for account endpoint requests and `ActorDeathBindings` for the actor-death callback. Other managers subscribe directly to the endpoint they own; bindings are not required around every subscription.
 
 ### 11.2 Server service layer
 
@@ -555,7 +558,9 @@ These services operate on shared data contracts while remaining server-owned imp
 - `ActorDeathBindings`;
 - `PlayerSessionData`.
 
-These types connect shared networking services and actor events to server state.
+`AccountBindings` connects `AccountEndpoint` requests to the character-creation and enter-world services. `ActorDeathBindings` connects `ActorEndpoint.onActorDeath` to server-side experience, loot and quest handling. These are explicit binding responsibilities, not generic `*Hooks` managers.
+
+These types connect shared endpoint callbacks and session state to server state.
 
 ## 12. Server ECS Architecture
 
@@ -577,7 +582,7 @@ The server code also defines chunk-spawn component types used by the world-spawn
 
 ### 12.2 Actor ECS state
 
-`ActorComponents.cs` defines the core ECS state used for server simulation.
+`ActorComponent.cs` defines the core ECS state used for server simulation.
 
 `ActorComponent` contains:
 
@@ -609,7 +614,7 @@ Depending on actor type and movement ownership, state can move in either directi
 - non-player actors without NavMesh ownership can have vertical motion simulated in ECS and applied back to their GameObject transform;
 - NPCs using `NavMeshAgent` keep NavMesh movement on the GameObject side and update ECS position from the transform.
 
-ECS systems also communicate completion/tick events back to the MonoBehaviour/domain layer through shared service events. `SpellCastSystem`, for example, decrements cast state in ECS and raises `ActorService` events for cast ticks and cast completion.
+ECS systems also communicate completion/tick events back to the MonoBehaviour/domain layer through shared endpoint callbacks. `SpellCastSystem`, for example, decrements cast state in ECS and raises `ActorEndpoint` callbacks for cast ticks and cast completion.
 
 ## 13. Client Architecture
 
@@ -624,6 +629,8 @@ Client/
 ├── Utility/    client-only utility types
 └── Shaders/    shader-facing C# property helpers
 ```
+
+These folders use folder-derived namespaces: `Core/` maps to `Game.Client.Core`, its `Controllers/`, `Managers/` and `Collections/` subfolders map to `Game.Client.Core.Controllers`, `Game.Client.Core.Managers` and `Game.Client.Core.Collections`, UI feature folders map to `Game.Client.UI.<Feature>`, and the remaining folders map to `Game.Client.Systems`, `Game.Client.VFX`, `Game.Client.Utility` and `Game.Client.Shaders`.
 
 ### 13.1 Client managers and controllers
 
@@ -751,7 +758,7 @@ This creates a distinction between:
 
 ### 15.3 Interest management
 
-`ServerInterestManager` receives chunk-interest requests from the shared `MovementService`.
+`ServerInterestManager` receives chunk-interest requests from the shared `MovementEndpoint`.
 
 For a player actor it computes a grid of required chunk scenes, compares that set with the actor's previous subscription set, and coordinates:
 
@@ -806,7 +813,7 @@ The current actor/server architecture treats player movement differently from NP
 
 - player movement is owner/client-driven at the network-transform level;
 - the server tracks and periodically validates player positions;
-- server correction is available through `MovementService` when validation detects an illegal position;
+- server correction is available through `MovementEndpoint` when validation detects an illegal position;
 - NPC movement may be driven by `NavMeshAgent` or server ECS gravity depending on the actor setup.
 
 Chunk transitions are coupled to movement through interest requests rather than by directly making the movement simulation responsible for scene loading.
@@ -844,7 +851,7 @@ Time-dependent state that benefits from system iteration is represented in serve
 - generic ticker timing;
 - resource regeneration.
 
-Corresponding systems tick this state each update. When a timed operation reaches a gameplay boundary, the ECS system raises shared service events so the authoritative manager/runtime layer can resolve the associated game action.
+Corresponding systems tick this state each update. When a timed operation reaches a gameplay boundary, the ECS system raises shared endpoint callbacks so the authoritative manager/runtime layer can resolve the associated game action.
 
 ## 19. Persistence Architecture
 
@@ -865,11 +872,15 @@ Persistence data contracts that are meaningful across the codebase live in `Shar
 
 Supporting saved-entry structs represent the individual persisted records.
 
+The Phase 0 compatibility requirement is that pre-restyle `CharacterData` JSON names remain readable. The current loader therefore keeps the public DTO names stable and `PlayerDatabase` migrates the legacy version-0 names used by existing files (for example `Guid`, `PvPFactionID`, `ItemGuid`, `ItemId` and `StatId`) into the current `CharacterData` and saved-entry fields. A C# naming/restyling change must not rely on Unity `FormerlySerializedAs` alone for these `JsonUtility` fields.
+
 ### 19.2 Server storage
 
-`PlayerDatabase` is the current server storage implementation. It maintains player account data in memory and serializes the database to a JSON file beneath `Application.persistentDataPath`.
+`PlayerDatabase` is the current prototype server storage implementation. It maintains player account data in an in-memory dictionary and serializes the database to a versioned JSON file beneath `Application.persistentDataPath`, including a legacy version-0 loader/migration.
 
 The configured filename comes from `GameConfiguration.PlayerDataFilePath`.
+
+Relational persistence is not implemented by this architecture revision. The current boundary is the shared `CharacterData`/saved-entry DTOs plus the server-local `PlayerDatabase`; database-backed relational character, item and session storage remains future infrastructure rather than an existing implementation claim.
 
 Server authentication is exposed to the shared login authenticator through `PlayerAuthService`, keeping the concrete account/database implementation inside the server assembly.
 
@@ -937,16 +948,29 @@ The main namespaces mirror the assembly and responsibility boundaries:
 
 ```text
 Game.Core
-Game.Client
-Game.Client.UI
-Game.Server
-Game.Server.ECS
+Game.Client.Core
+Game.Client.Core.Collections
+Game.Client.Core.Controllers
+Game.Client.Core.Managers
+Game.Client.Systems
+Game.Client.UI.<Feature>
+Game.Client.Shaders
+Game.Client.Utility
+Game.Client.VFX
+Game.Server.Core
 Game.Server.Persistence
+Game.Server.Services
+Game.Server.Systems
+Game.Server.Test
 Game.Server.Networking
 Game.Shared
+Game.Shared.Components
 Game.Shared.Data
+Game.Shared.Movement
 Game.Shared.Networking
 Game.Shared.Persistence
+Game.Shared.Runtime.*
+Game.Shared.Terrain
 Game.Shared.Utility
 Game.Editor
 Game.Editor.Windows
@@ -971,7 +995,7 @@ A typical cross-layer gameplay flow follows this shape:
 ```text
 Client input / UI
       ↓
-Shared network service or networked Actor component
+Shared endpoint/callback surface or networked Actor component
       ↓ PurrNet RPC / replicated state
 Server manager or service
       ↓
@@ -979,7 +1003,7 @@ Shared runtime definitions/state
       ↓
 Server ECS timer/system when applicable
       ↓
-Shared service event
+Shared endpoint callback
       ↓
 Authoritative server resolution
       ↓ PurrNet replication / target RPC / observers RPC
@@ -999,19 +1023,20 @@ Not every feature uses every stage, but this captures the principal direction of
 | Process/client-server selection | `Game.Core` |
 | Game configuration | `Game.Shared` |
 | Gameplay definitions | `Game.Shared.Data` |
-| Actor runtime model | `Game.Shared.Runtime/Actors` |
-| Spell/aura runtime contexts | `Game.Shared.Runtime/Spellcasting` |
-| Common network contracts/RPC services | `Game.Shared.Networking` || Shared persistence DTOs | `Game.Shared.Persistence` |
-| Authoritative world loading | `Game.Server.ServerWorldManager` |
-| Player chunk interest | `Game.Server.ServerInterestManager` |
-| Server actor/GameObject-ECS bridge | `Game.Server.ServerActorManager` |
-| Server time-based simulation | `Game.Server.ECS` systems |
+| Actor runtime model | `Game.Shared.Runtime.Actors` |
+| Spell/aura runtime contexts | `Game.Shared.Runtime.Spellcasting` |
+| Common network endpoint/callback contracts | `Game.Shared.Networking` |
+| Shared persistence DTOs | `Game.Shared.Persistence` |
+| Authoritative world loading | `Game.Server.Core.ServerWorldManager` |
+| Player chunk interest | `Game.Server.Core.ServerInterestManager` |
+| Server actor/GameObject-ECS bridge | `Game.Server.Core.ServerActorManager` |
+| Server time-based simulation | `Game.Server.Systems` systems |
 | Authentication/account implementation | `Game.Server.Services` / `Game.Server.Persistence` |
-| Client world scene tracking | `Game.Client.ClientWorldManager` |
-| Client floating origin | `Game.Client.ClientPositionManager` |
+| Client world scene tracking | `Game.Client.Core.ClientWorldManager` |
+| Client floating origin | `Game.Client.Core.ClientPositionManager` |
 | Client input/camera | `Game.Client.Core` controllers/managers |
-| Client combat presentation | `ClientCombatManager`, UI/VFX/audio layers |
-| Game UI | `Game.Client.UI` |
+| Client combat presentation | `Game.Client.Core.ClientCombatManager`, UI/VFX/audio layers |
+| Game UI | `Game.Client.UI.<Feature>` |
 | Definition authoring | `Game.Editor.Windows`, drawers, inspectors |
 | World/terrain authoring | `Game.Editor.WorldEditor` |
 
@@ -1025,7 +1050,7 @@ The current Ninth Age C# architecture is centred on five responsibility domains:
 4. **Client code** owns input, cameras, scene presentation, floating-origin behaviour, VFX/audio and the full UI layer.
 5. **Editor code** provides authoring environments for gameplay definitions and the large-world terrain pipeline.
 
-The server runtime combines networked GameObject actors with a Unity Entities simulation layer. Shared actor objects provide the network-visible gameplay identity, while server ECS entities and dynamic buffers hold selected simulation state such as positions, movement state, spell casts, cooldowns, auras, tickers and regeneration. `ServerActorManager` and shared service events bridge these two representations.
+The server runtime combines networked GameObject actors with a Unity Entities simulation layer. Shared actor objects provide the network-visible gameplay identity, while server ECS entities and dynamic buffers hold selected simulation state such as positions, movement state, spell casts, cooldowns, auras, tickers and regeneration. `Game.Server.Core.ServerActorManager` and `Game.Shared.Networking.ActorEndpoint` callbacks bridge these two representations.
 
 The world layer uses addressable additive chunk scenes, server-controlled scene interest, a persistent global actor scene, double-precision shared world coordinates and a client-side floating origin. This allows the world-management architecture, actor architecture and networking architecture to share the same chunk-coordinate model.
 
