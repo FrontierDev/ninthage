@@ -1,8 +1,9 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Systems;
 using Unity.Entities;
 using UnityEngine;
 
-namespace Game.Server.ECS
+namespace Game.Server.Core
 {
     /// <summary>Creates and owns the dedicated server ECS world.</summary>
     public static class ServerECSManager

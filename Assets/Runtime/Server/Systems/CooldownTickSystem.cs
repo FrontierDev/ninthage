@@ -1,6 +1,6 @@
 using Unity.Entities;
 
-namespace Game.Server.ECS
+namespace Game.Server.Systems
 {
     /// <summary>Advances and removes server actor cooldown entries.</summary>
     [DisableAutoCreation]

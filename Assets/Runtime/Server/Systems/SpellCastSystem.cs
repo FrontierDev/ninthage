@@ -1,7 +1,7 @@
 using Game.Shared.Networking;
 using Unity.Entities;
 
-namespace Game.Server.ECS
+namespace Game.Server.Systems
 {
     /// <summary>Advances active spell casts and invokes spell callbacks.</summary>
     [DisableAutoCreation]

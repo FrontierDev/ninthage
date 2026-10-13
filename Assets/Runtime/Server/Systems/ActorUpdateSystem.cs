@@ -2,7 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Unity.Entities;
 using UnityEngine;
 
-namespace Game.Server.ECS
+namespace Game.Server.Systems
 {
     /// <summary>Updates authoritative server actor movement and gravity.</summary>
     [DisableAutoCreation]

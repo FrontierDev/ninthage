@@ -6,7 +6,7 @@ using Unity.Entities;
 using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
 
-namespace Game.Server.ECS
+namespace Game.Server.Systems
 {
     /// <summary>Stores authoritative actor state in the server ECS world.</summary>
     public struct ActorComponent : IComponentData

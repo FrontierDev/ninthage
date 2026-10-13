@@ -139,9 +139,9 @@ namespace Game.Server
         {
             Debug.Log(" - Step 4: Initializing server ECS worlds and systems...");
 
-            ECS.ServerECSManager.ServerInitializeECSWorlds();
+            Core.ServerECSManager.ServerInitializeECSWorlds();
 
-            yield return new WaitUntil(() => ECS.ServerECSManager.Initialized == true);
+            yield return new WaitUntil(() => Core.ServerECSManager.Initialized == true);
             Debug.Log(" ✓ Step 4: Server ECS worlds and systems initialized successfully.");
         }
 

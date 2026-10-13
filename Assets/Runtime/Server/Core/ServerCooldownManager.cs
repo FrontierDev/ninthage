@@ -34,9 +34,9 @@ namespace Game.Server
             }
             _instance = this;
 
-            var world = ECS.ServerECSManager.DefaultWorld;
+            var world = Core.ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             ActorEndpoint.onServerStartCooldown += StartCooldown;
 
@@ -64,10 +64,10 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != actorID) continue;
 
-                    var buffer = _entityManager.GetBuffer<ECS.CooldownElement>(entity);
+                    var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity);
 
                     // Update existing entry or append a new one.
                     bool found = false;
@@ -75,7 +75,7 @@ namespace Game.Server
                     {
                         if (buffer[i].SpellID == fixedSpellID)
                         {
-                            buffer[i] = new ECS.CooldownElement
+                            buffer[i] = new Systems.CooldownElement
                             {
                                 SpellID = fixedSpellID,
                                 RemainingCooldown = duration
@@ -87,7 +87,7 @@ namespace Game.Server
 
                     if (!found)
                     {
-                        buffer.Add(new ECS.CooldownElement
+                        buffer.Add(new Systems.CooldownElement
                         {
                             SpellID = fixedSpellID,
                             RemainingCooldown = duration
@@ -125,10 +125,10 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != actorID) continue;
 
-                    var buffer = _entityManager.GetBuffer<ECS.CooldownElement>(entity, true);
+                    var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity, true);
                     for (int i = 0; i < buffer.Length; i++)
                     {
                         if (buffer[i].SpellID == fixedSpellID)

@@ -58,9 +58,9 @@ namespace Game.Server
 
             Game.Shared.Networking.ActorEndpoint.onServerActorDespawned += OnServerActorDespawned;
 
-            var world = ECS.ServerECSManager.DefaultWorld;
+            var world = Core.ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _spawnCommandQuery = _entityManager.CreateEntityQuery(typeof(ECS.SpawnCommand));
+            _spawnCommandQuery = _entityManager.CreateEntityQuery(typeof(Systems.SpawnCommand));
 
             _initialized = true;
         }
@@ -105,7 +105,7 @@ namespace Game.Server
                 int prefabIndex = RegisterPrefab(spawnPoint.Actor.gameObject);
 
                 var entity = _entityManager.CreateEntity();
-                _entityManager.AddComponentData(entity, new ECS.SpawnPointComponent
+                _entityManager.AddComponentData(entity, new Systems.SpawnPointComponent
                 {
                     SpawnPointGUID = spawnPointGUID,
                     SceneName = state.scene.name,
@@ -324,7 +324,7 @@ namespace Game.Server
 
             var chunkCoord = ServerWorldManager.Instance.ParseChunkCoordinate(sceneName);
             var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(entity, new ECS.SpawnCommand
+            _entityManager.AddComponentData(entity, new Systems.SpawnCommand
             {
                 Position = position,
                 PrefabIndex = prefabIndex,
@@ -341,7 +341,7 @@ namespace Game.Server
             if (_spawnCommandQuery.IsEmpty) return;
 
             var entities = _spawnCommandQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
-            var commands = _spawnCommandQuery.ToComponentDataArray<ECS.SpawnCommand>(Unity.Collections.Allocator.Temp);
+            var commands = _spawnCommandQuery.ToComponentDataArray<Systems.SpawnCommand>(Unity.Collections.Allocator.Temp);
 
             for (int i = 0; i < commands.Length; i++)
             {

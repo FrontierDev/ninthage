@@ -1,7 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Unity.Entities;
 
-namespace Game.Server.ECS
+namespace Game.Server.Systems
 {
     /// <summary>Converts pending spawn points into server spawn commands.</summary>
     [DisableAutoCreation]

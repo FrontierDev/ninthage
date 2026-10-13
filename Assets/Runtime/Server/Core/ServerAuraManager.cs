@@ -38,9 +38,9 @@ namespace Game.Server
             }
             _instance = this;
 
-            var world = ECS.ServerECSManager.DefaultWorld;
+            var world = Core.ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             ActorEndpoint.onServerApplyAura += OnApplyAuraRequest;
             ActorEndpoint.onServerAuraTick += OnAuraTick;
@@ -81,7 +81,7 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != target.ID) continue;
 
                     int instanceID;
@@ -119,7 +119,7 @@ namespace Game.Server
 
         private bool TryResolveStacking(AuraDefinition definition, Actor caster, Actor target, Entity entity, int stacksToApply, out int instanceID)
         {
-            var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
+            var buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
             instanceID = -1;
 
             switch (definition.StackBehavior)
@@ -200,14 +200,14 @@ namespace Game.Server
             }
         }
 
-        private int CreateAuraInstance(AuraDefinition definition, Actor caster, Actor target, DynamicBuffer<ECS.AuraElement> buffer)
+        private int CreateAuraInstance(AuraDefinition definition, Actor caster, Actor target, DynamicBuffer<Systems.AuraElement> buffer)
         {
             int instanceID = _nextInstanceID++;
 
             var ctx = new AuraContext(definition, caster, target);
             _activeAuras[instanceID] = ctx;
 
-            buffer.Add(new ECS.AuraElement
+            buffer.Add(new Systems.AuraElement
             {
                 InstanceID = instanceID,
                 AuraDefinitionID = definition.DefinitionID,
@@ -219,7 +219,7 @@ namespace Game.Server
             return instanceID;
         }
 
-        private int CreateConditionAuraInstance(AuraDefinition definition, Actor caster, Actor target, DynamicBuffer<ECS.AuraElement> buffer, int stackCount = 1)
+        private int CreateConditionAuraInstance(AuraDefinition definition, Actor caster, Actor target, DynamicBuffer<Systems.AuraElement> buffer, int stackCount = 1)
         {
             int instanceID = _nextInstanceID++;
 
@@ -238,7 +238,7 @@ namespace Game.Server
             };
             _activeAuras[instanceID] = ctx;
 
-            buffer.Add(new ECS.AuraElement
+            buffer.Add(new Systems.AuraElement
             {
                 InstanceID = instanceID,
                 AuraDefinitionID = definition.DefinitionID,
@@ -345,10 +345,10 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != target.ID) continue;
 
-                    var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
+                    var buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
                     for (int i = 0; i < buffer.Length; i++)
                     {
                         if (buffer[i].InstanceID != instanceID) continue;
@@ -379,10 +379,10 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != actorID) continue;
 
-                    var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
+                    var buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
                     for (int i = buffer.Length - 1; i >= 0; i--)
                     {
                         var entry = buffer[i];
@@ -420,10 +420,10 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != actorID) continue;
 
-                    var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
+                    var buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
                     for (int i = 0; i < buffer.Length; i++)
                     {
                         if (buffer[i].AuraDefinitionID.ToString() == auraDefinitionID)
@@ -450,10 +450,10 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != actorID) continue;
 
-                    var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
+                    var buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
                     int count = 0;
                     for (int i = 0; i < buffer.Length; i++)
                     {

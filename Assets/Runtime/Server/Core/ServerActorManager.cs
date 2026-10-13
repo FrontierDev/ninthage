@@ -78,9 +78,9 @@ namespace Game.Server
             ActorEndpoint.onServerActorOwnerChanged += OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
 
-            var world = ECS.ServerECSManager.DefaultWorld;
+            var world = Core.ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             _initialized = true;
         }
@@ -116,7 +116,7 @@ namespace Game.Server
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
-                var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                 if (component.Owner != default) continue;
 
                 if (_actorObjects.TryGetValue(component.ActorID, out var actorObj) && actorObj != null)
@@ -147,7 +147,7 @@ namespace Game.Server
         {
             var wp = actor.WorldPos;
             var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(entity, new ECS.ActorComponent
+            _entityManager.AddComponentData(entity, new Systems.ActorComponent
             {
                 ActorID = actor.ID,
                 ActorName = actor.Name,
@@ -159,14 +159,14 @@ namespace Game.Server
             if (actor.Owner == null)
             {
                 bool hasAgent = actor.GetComponent<NavMeshAgent>() != null;
-                _entityManager.AddComponentData(entity, new ECS.MotionStateComponent
+                _entityManager.AddComponentData(entity, new Systems.MotionStateComponent
                 {
                     VerticalVelocity = 0f,
                     IsGrounded = true,
                     TimeSinceLastGround = 0f,
                     UsesNavMeshAgent = hasAgent
                 });
-                _entityManager.AddComponentData(entity, new ECS.GroundDetectionComponent
+                _entityManager.AddComponentData(entity, new Systems.GroundDetectionComponent
                 {
                     groundDetectionRadius = GameConfigurationManager.Config.GroundDetectionRadius,
                     lastGroundCheck = new Unity.Mathematics.float3(0, -1, 0)
@@ -184,17 +184,17 @@ namespace Game.Server
             }
 
             // Add the spellcasting component on the actor.
-            _entityManager.AddComponentData(entity, new ECS.SpellCastComponent());
-            _entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, false);
+            _entityManager.AddComponentData(entity, new Systems.SpellCastComponent());
+            _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
 
             // Add cooldown buffer for per-spell cooldown tracking.
-            _entityManager.AddBuffer<ECS.CooldownElement>(entity);
+            _entityManager.AddBuffer<Systems.CooldownElement>(entity);
 
             // Add aura buffer for active aura tracking.
-            _entityManager.AddBuffer<ECS.AuraElement>(entity);
+            _entityManager.AddBuffer<Systems.AuraElement>(entity);
 
             // Add ticker buffer for generic time-based callbacks.
-            _entityManager.AddBuffer<ECS.TickerElement>(entity);
+            _entityManager.AddBuffer<Systems.TickerElement>(entity);
 
             // Track NPCs with aggro behavior for proximity-based targeting.
             if (actor.Owner == null && actor.isDead == false)
@@ -224,7 +224,7 @@ namespace Game.Server
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
-                var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                 if (component.ActorID == actor.ID)
                 {
                     var previousOwner = component.Owner;
@@ -251,7 +251,7 @@ namespace Game.Server
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
-                var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                 if (component.ActorID == actor.ID)
                 {
                     component.CurrentScene = sceneID;
@@ -404,7 +404,7 @@ namespace Game.Server
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
-                var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                 if (component.Owner == default) continue;
 
                 if (_playerActors.TryGetValue(component.Owner, out var actor) && actor != null)

@@ -42,9 +42,9 @@ namespace Game.Server
             }
             _instance = this;
 
-            var world = ECS.ServerECSManager.DefaultWorld;
+            var world = Core.ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             ActorEndpoint.onServerSpellCastStarted += OnSpellCastStarted;
             ActorEndpoint.onServerSpellCastTick += OnSpellCastTick;
@@ -133,7 +133,7 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != caster.ID) continue;
 
                     // Create the spell context here.
@@ -155,7 +155,7 @@ namespace Game.Server
                     }
                     else
                     {
-                        _entityManager.SetComponentData(entity, new ECS.SpellCastComponent
+                        _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
                         {
                             SpellID = spell.BaseDefinition.DefinitionID,
                             RemainingCastTime = spell.CastTime,
@@ -164,7 +164,7 @@ namespace Game.Server
                             TimeSinceLastTick = 0f
 
                         });
-                        _entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, true);
+                        _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, true);
 
                         caster.GetComponent<ActorSpellcaster>()
                               ?.Observers_StartSpellCast(spell.BaseDefinition.DefinitionID, spell.CastTime);
@@ -292,9 +292,9 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != actorID) continue;
-                    _entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, false);
+                    _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
                     break;
                 }
             }

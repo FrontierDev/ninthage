@@ -7,7 +7,7 @@ using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace Game.Server.ECS
+namespace Game.Server.Systems
 {
     /// <summary>Describes a spawn point available to the server world-spawn system.</summary>
     public struct SpawnPointComponent : IComponentData

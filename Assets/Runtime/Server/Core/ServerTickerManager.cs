@@ -46,9 +46,9 @@ namespace Game.Server
             }
             _instance = this;
 
-            var world = ECS.ServerECSManager.DefaultWorld;
+            var world = Core.ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             ActorEndpoint.onServerActorTick += OnActorTick;
             ActorEndpoint.onServerActorTickerExpired += OnActorTickerExpired;
@@ -92,7 +92,7 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != actor.ID) continue;
 
                     // If a tag is supplied and a ticker with that tag already exists, skip (idempotent).
@@ -101,7 +101,7 @@ namespace Game.Server
 
                     int tickerID = _nextTickerID++;
 
-                    _entityManager.GetBuffer<ECS.TickerElement>(entity).Add(new ECS.TickerElement
+                    _entityManager.GetBuffer<Systems.TickerElement>(entity).Add(new Systems.TickerElement
                     {
                         TickerID = tickerID,
                         RemainingDuration = duration,
@@ -146,10 +146,10 @@ namespace Game.Server
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                     if (component.ActorID != actor.ID) continue;
 
-                    var buffer = _entityManager.GetBuffer<ECS.TickerElement>(entity);
+                    var buffer = _entityManager.GetBuffer<Systems.TickerElement>(entity);
                     for (int i = buffer.Length - 1; i >= 0; i--)
                     {
                         if (buffer[i].TickerID == tickerID)

@@ -1,7 +1,7 @@
 using Game.Shared.Networking;
 using Unity.Entities;
 
-namespace Game.Server.ECS
+namespace Game.Server.Systems
 {
     /// <summary>Processes time-based actor ticker callbacks.</summary>
     [DisableAutoCreation]
