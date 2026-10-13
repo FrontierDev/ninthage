@@ -102,7 +102,7 @@ namespace Game.Runtime.Tests.Persistence
 
         private static List<PlayerAccountData> LoadLegacyFixture()
         {
-            var fixturePath = Path.Combine(Application.dataPath, FIXTURE_RELATIVE_PATH);
+            var fixturePath = GetFixturePath(FIXTURE_RELATIVE_PATH);
             Assert.That(File.Exists(fixturePath), Is.True, $"Persistence fixture was not found at {fixturePath}.");
 
             var fixtureJson = File.ReadAllText(fixturePath);
@@ -118,7 +118,7 @@ namespace Game.Runtime.Tests.Persistence
 
         private static List<PlayerAccountData> LoadCurrentFixture()
         {
-            var fixturePath = Path.Combine(Application.dataPath, CURRENT_FIXTURE_RELATIVE_PATH);
+            var fixturePath = GetFixturePath(CURRENT_FIXTURE_RELATIVE_PATH);
             Assert.That(File.Exists(fixturePath), Is.True, $"Persistence fixture was not found at {fixturePath}.");
 
             var fixtureJson = File.ReadAllText(fixturePath);
@@ -129,6 +129,11 @@ namespace Game.Runtime.Tests.Persistence
             Assert.That(PlayerDatabase.TryDeserialize(fixtureJson, out var accounts), Is.True);
 
             return accounts;
+        }
+
+        private static string GetFixturePath(string relativePath)
+        {
+            return Path.Combine(Application.streamingAssetsPath, relativePath);
         }
 
         private static void AssertAccountEquivalent(PlayerAccountData expected, PlayerAccountData actual)
