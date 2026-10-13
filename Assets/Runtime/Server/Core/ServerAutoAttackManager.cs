@@ -87,18 +87,18 @@ namespace Game.Server
 
             foreach (var kvp in new List<KeyValuePair<Guid, AutoAttackState>>(_activeAutoAttackers))
             {
-                var actorId = kvp.Key;
+                var actorID = kvp.Key;
                 var state = kvp.Value;
 
                 if (state.Actor == null)
                 {
-                    _toRemove.Add(actorId);
+                    _toRemove.Add(actorID);
                     continue;
                 }
 
                 if (state.Actor.Target == null)
                 {
-                    _toRemove.Add(actorId);
+                    _toRemove.Add(actorID);
                     continue;
                 }
 
@@ -111,7 +111,7 @@ namespace Game.Server
                 }
 
                 // Pause auto-attack while casting an ability.
-                if (ServerSpellCastManager.Instance.IsCasting(actorId))
+                if (ServerSpellCastManager.Instance.IsCasting(actorID))
                     continue;
 
                 // Check range — skip swing but don't remove (player may walk back).
@@ -120,7 +120,7 @@ namespace Game.Server
                     continue;
 
                 // Wait for the auto-attack cooldown to expire before swinging again.
-                if (ServerCooldownManager.Instance.IsOnCooldown(actorId, _autoAttackSpell.DefinitionID))
+                if (ServerCooldownManager.Instance.IsOnCooldown(actorID, _autoAttackSpell.DefinitionID))
                     continue;
 
                 state.Actor.GetComponent<ActorSpellcaster>()

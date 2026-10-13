@@ -11,23 +11,23 @@ namespace Game.Server.Networking
     public class PlayerSessionData
     {
         /// <summary>Gets or sets the connected player's network identifier.</summary>
-        public PlayerID PlayerId;
+        public PlayerID PlayerID;
         /// <summary>Gets or sets the authenticated username.</summary>
         public string Username;
         /// <summary>Gets or sets the selected character identifier.</summary>
-        public string CharacterId;
+        public string CharacterID;
         /// <summary>Gets or sets the actor spawned for the selected character.</summary>
         public Actor PlayerActor;
 
         /// <summary>Initializes a player session with the authenticated player and character details.</summary>
-        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <param name="playerID">The connected player's network identifier.</param>
         /// <param name="username">The authenticated username.</param>
-        /// <param name="characterId">The selected character identifier.</param>
-        public PlayerSessionData(PlayerID playerId, string username, string characterId)
+        /// <param name="characterID">The selected character identifier.</param>
+        public PlayerSessionData(PlayerID playerID, string username, string characterID)
         {
-            PlayerId = playerId;
+            PlayerID = playerID;
             Username = username;
-            CharacterId = characterId;
+            CharacterID = characterID;
         }
 
         /// <summary>Associates the spawned actor with this session.</summary>

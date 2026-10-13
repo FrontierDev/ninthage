@@ -28,10 +28,10 @@ namespace Game.Server
         /// <summary>Gets whether the connection manager is initialized.</summary>
         public static bool Initialized => _initialized;
 
-        private NetworkManager networkManager;
+        private NetworkManager _networkManager;
 
-        private Dictionary<PlayerID, PlayerAccountData> connectedPlayers = new();
-        private Dictionary<PlayerID, PlayerSessionData> sessionData = new();
+        private Dictionary<PlayerID, PlayerAccountData> _connectedPlayers = new();
+        private Dictionary<PlayerID, PlayerSessionData> _sessionData = new();
 
         #region Lifecycle
         private void Awake()
@@ -64,7 +64,7 @@ namespace Game.Server
         }
         #endregion
 
-        private void OnPlayerJoined(PlayerID playerId, bool isReconnect, bool asServer)
+        private void OnPlayerJoined(PlayerID playerID, bool isReconnect, bool asServer)
         {
             var username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
 
@@ -74,7 +74,7 @@ namespace Game.Server
                 Debug.Log($" - # of Characters: {accountData.Characters.Count}");
 
                 // Send character list to client
-                Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(playerId, accountData.Characters);
+                Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(playerID, accountData.Characters);
             }
             else
             {
@@ -82,20 +82,20 @@ namespace Game.Server
                 return;
             }
 
-            connectedPlayers[playerId] = accountData;
-            Debug.Log($"Player joined: {playerId} ({username})");
+            _connectedPlayers[playerID] = accountData;
+            Debug.Log($"Player joined: {playerID} ({username})");
         }
 
-        private void OnPlayerLeft(PlayerID playerId, bool asServer)
+        private void OnPlayerLeft(PlayerID playerID, bool asServer)
         {
-            Debug.Log($"Player left: {playerId}");
+            Debug.Log($"Player left: {playerID}");
 
             // Persist resource state (health, mana, etc.) before cleanup.
-            if (sessionData.TryGetValue(playerId, out var session) &&
-                connectedPlayers.TryGetValue(playerId, out var account) &&
+            if (_sessionData.TryGetValue(playerID, out var session) &&
+                _connectedPlayers.TryGetValue(playerID, out var account) &&
                 session.PlayerActor != null)
             {
-            var charData = account.Characters.Find(c => c.GUID == session.CharacterId);
+            var charData = account.Characters.Find(c => c.GUID == session.CharacterID);
                 if (charData != null)
                 {
                     Persistence.PlayerDatabase.SavePlayerAccount(account);
@@ -110,63 +110,63 @@ namespace Game.Server
                     identity.Despawn();
             }
 
-            connectedPlayers.Remove(playerId);
-            sessionData.Remove(playerId);
+            _connectedPlayers.Remove(playerID);
+            _sessionData.Remove(playerID);
         }
 
         /// <summary>Stores session data for a connected player.</summary>
-        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <param name="playerID">The connected player's network identifier.</param>
         /// <param name="data">The session data to store.</param>
-        public void SetSessionData(PlayerID playerId, PlayerSessionData data)
+        public void SetSessionData(PlayerID playerID, PlayerSessionData data)
         {
-            sessionData[playerId] = data;
-            Debug.Log($"Set session data for player {playerId}: Character GUID {data.CharacterId}");
+            _sessionData[playerID] = data;
+            Debug.Log($"Set session data for player {playerID}: Character GUID {data.CharacterID}");
         }
 
         /// <summary>Stores account data for a connected player.</summary>
-        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <param name="playerID">The connected player's network identifier.</param>
         /// <param name="accountData">The account data to store.</param>
-        public void SetAccountData(PlayerID playerId, PlayerAccountData accountData)
+        public void SetAccountData(PlayerID playerID, PlayerAccountData accountData)
         {
-            if (connectedPlayers.ContainsKey(playerId))
+            if (_connectedPlayers.ContainsKey(playerID))
             {
-                connectedPlayers[playerId] = accountData;
+                _connectedPlayers[playerID] = accountData;
             }
             else
             {
-                connectedPlayers.Add(playerId, accountData);
+                _connectedPlayers.Add(playerID, accountData);
             }
-            Debug.Log($"Set account data for player {playerId}: {accountData.Username}");
+            Debug.Log($"Set account data for player {playerID}: {accountData.Username}");
         }
 
         /// <summary>Gets session data for a connected player.</summary>
-        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <param name="playerID">The connected player's network identifier.</param>
         /// <returns>The player's session data, or <see langword="null"/> when absent.</returns>
-        public PlayerSessionData GetSessionData(PlayerID playerId)
+        public PlayerSessionData GetSessionData(PlayerID playerID)
         {
-            if (sessionData.TryGetValue(playerId, out var data))
+            if (_sessionData.TryGetValue(playerID, out var data))
             {
                 return data;
             }
             else
             {
-                Debug.Error($"Attempted to get session data for player {playerId}, but no session data found.");
+                Debug.Error($"Attempted to get session data for player {playerID}, but no session data found.");
                 return null;
             }
         }
 
         /// <summary>Gets account data for a connected player.</summary>
-        /// <param name="playerId">The connected player's network identifier.</param>
+        /// <param name="playerID">The connected player's network identifier.</param>
         /// <returns>The player's account data, or <see langword="null"/> when absent.</returns>
-        public PlayerAccountData GetAccountData(PlayerID playerId)
+        public PlayerAccountData GetAccountData(PlayerID playerID)
         {
-            if (connectedPlayers.TryGetValue(playerId, out var accountData))
+            if (_connectedPlayers.TryGetValue(playerID, out var accountData))
             {
                 return accountData;
             }
             else
             {
-                Debug.Error($"Attempted to get account data for player {playerId}, but they are not in the connected players list.");
+                Debug.Error($"Attempted to get account data for player {playerID}, but they are not in the connected players list.");
                 return null;
             }
         }

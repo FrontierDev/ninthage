@@ -20,20 +20,20 @@ namespace Game.Server
         /// <summary>Gets whether the ticker manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
-        private EntityManager entityManager;
-        private EntityQuery actorComponentQuery;
+        private EntityManager _entityManager;
+        private EntityQuery _actorComponentQuery;
 
         private readonly Dictionary<int, TickerRegistration> _tickers = new();
         private readonly Dictionary<(Guid, string), int> _tagIndex = new();
-        private readonly Dictionary<Guid, List<int>> _actorTickerIds = new();
-        private int _nextTickerId;
+        private readonly Dictionary<Guid, List<int>> _actorTickerIDs = new();
+        private int _nextTickerID;
 
         private struct TickerRegistration
         {
-            public Guid ActorId;
+            public Guid ActorID;
             public string Tag;
-            public Action<Actor> OnTick;
-            public Action<Actor> OnExpire;
+            public Action<Actor> onTick;
+            public Action<Actor> onExpire;
         }
 
         private void Awake()
@@ -47,8 +47,8 @@ namespace Game.Server
             _instance = this;
 
             var world = ECS.ServerECSManager.DefaultWorld;
-            entityManager = world.EntityManager;
-            actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _entityManager = world.EntityManager;
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
             ActorEndpoint.onServerActorTick += OnActorTick;
             ActorEndpoint.onServerActorTickerExpired += OnActorTickerExpired;
@@ -69,7 +69,7 @@ namespace Game.Server
 
             _tickers.Clear();
             _tagIndex.Clear();
-            _actorTickerIds.Clear();
+            _actorTickerIDs.Clear();
             _instance = null;
             _initialized = false;
         }
@@ -87,44 +87,44 @@ namespace Game.Server
         public int AddTicker(Actor actor, float tickInterval, float duration = float.MaxValue,
             Action<Actor> onTick = null, Action<Actor> onExpire = null, string tag = null)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actor.ID) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != actor.ID) continue;
 
                     // If a tag is supplied and a ticker with that tag already exists, skip (idempotent).
                     if (tag != null && _tagIndex.ContainsKey((actor.ID, tag)))
                         return -1;
 
-                    int tickerId = _nextTickerId++;
+                    int tickerID = _nextTickerID++;
 
-                    entityManager.GetBuffer<ECS.TickerElement>(entity).Add(new ECS.TickerElement
+                    _entityManager.GetBuffer<ECS.TickerElement>(entity).Add(new ECS.TickerElement
                     {
-                        TickerId = tickerId,
+                        TickerID = tickerID,
                         RemainingDuration = duration,
                         TickInterval = tickInterval,
                         TimeSinceLastTick = 0f
                     });
 
-                    _tickers[tickerId] = new TickerRegistration
+                    _tickers[tickerID] = new TickerRegistration
                     {
-                        ActorId = actor.ID,
+                        ActorID = actor.ID,
                         Tag = tag,
-                        OnTick = onTick,
-                        OnExpire = onExpire
+                        onTick = onTick,
+                        onExpire = onExpire
                     };
 
                     if (tag != null)
-                        _tagIndex[(actor.ID, tag)] = tickerId;
+                        _tagIndex[(actor.ID, tag)] = tickerID;
 
-                    if (!_actorTickerIds.TryGetValue(actor.ID, out var list))
-                        _actorTickerIds[actor.ID] = list = new List<int>();
-                    list.Add(tickerId);
+                    if (!_actorTickerIDs.TryGetValue(actor.ID, out var list))
+                        _actorTickerIDs[actor.ID] = list = new List<int>();
+                    list.Add(tickerID);
 
-                    return tickerId;
+                    return tickerID;
                 }
             }
             finally
@@ -138,29 +138,29 @@ namespace Game.Server
 
         /// <summary>Removes a ticker from an actor.</summary>
         /// <param name="actor">The actor owning the ticker.</param>
-        /// <param name="tickerId">The ticker identifier.</param>
-        public void RemoveTicker(Actor actor, int tickerId)
+        /// <param name="tickerID">The ticker identifier.</param>
+        public void RemoveTicker(Actor actor, int tickerID)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actor.ID) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != actor.ID) continue;
 
-                    var buffer = entityManager.GetBuffer<ECS.TickerElement>(entity);
+                    var buffer = _entityManager.GetBuffer<ECS.TickerElement>(entity);
                     for (int i = buffer.Length - 1; i >= 0; i--)
                     {
-                        if (buffer[i].TickerId == tickerId)
+                        if (buffer[i].TickerID == tickerID)
                             buffer.RemoveAt(i);
                     }
 
-                    if (_tickers.TryGetValue(tickerId, out var reg))
+                    if (_tickers.TryGetValue(tickerID, out var reg))
                     {
                         if (reg.Tag != null)
                             _tagIndex.Remove((actor.ID, reg.Tag));
-                        _tickers.Remove(tickerId);
+                        _tickers.Remove(tickerID);
                     }
                     return;
                 }
@@ -176,60 +176,60 @@ namespace Game.Server
         /// <param name="tag">The ticker tag.</param>
         public void RemoveTickerByTag(Actor actor, string tag)
         {
-            if (_tagIndex.TryGetValue((actor.ID, tag), out int tickerId))
-                RemoveTicker(actor, tickerId);
+            if (_tagIndex.TryGetValue((actor.ID, tag), out int tickerID))
+                RemoveTicker(actor, tickerID);
         }
 
         /// <summary>Determines whether an actor has a ticker with a tag.</summary>
-        /// <param name="actorId">The actor identifier.</param>
+        /// <param name="actorID">The actor identifier.</param>
         /// <param name="tag">The ticker tag.</param>
         /// <returns><see langword="true"/> when a matching ticker exists.</returns>
-        public bool HasTicker(Guid actorId, string tag)
+        public bool HasTicker(Guid actorID, string tag)
         {
-            return _tagIndex.ContainsKey((actorId, tag));
+            return _tagIndex.ContainsKey((actorID, tag));
         }
 
         // ── ECS event handlers ───────────────────────────────────────────────────────
 
-        private void OnActorTick(Guid actorId, int tickerId)
+        private void OnActorTick(Guid actorID, int tickerID)
         {
-            if (!_tickers.TryGetValue(tickerId, out var reg)) return;
-            if (reg.OnTick == null) return;
-            if (!ServerActorManager.Instance.TryGetActor(actorId, out var actor)) return;
+            if (!_tickers.TryGetValue(tickerID, out var reg)) return;
+            if (reg.onTick == null) return;
+            if (!ServerActorManager.Instance.TryGetActor(actorID, out var actor)) return;
 
-            reg.OnTick(actor);
+            reg.onTick(actor);
         }
 
-        private void OnActorTickerExpired(Guid actorId, int tickerId)
+        private void OnActorTickerExpired(Guid actorID, int tickerID)
         {
-            if (!_tickers.TryGetValue(tickerId, out var reg)) return;
+            if (!_tickers.TryGetValue(tickerID, out var reg)) return;
 
-            if (reg.OnExpire != null && ServerActorManager.Instance.TryGetActor(actorId, out var actor))
-                reg.OnExpire(actor);
+            if (reg.onExpire != null && ServerActorManager.Instance.TryGetActor(actorID, out var actor))
+                reg.onExpire(actor);
 
             if (reg.Tag != null)
-                _tagIndex.Remove((actorId, reg.Tag));
-            if (_actorTickerIds.TryGetValue(actorId, out var list))
-                list.Remove(tickerId);
-            _tickers.Remove(tickerId);
+                _tagIndex.Remove((actorID, reg.Tag));
+            if (_actorTickerIDs.TryGetValue(actorID, out var list))
+                list.Remove(tickerID);
+            _tickers.Remove(tickerID);
         }
 
         private void OnActorDespawned(Actor actor)
         {
-            if (!_actorTickerIds.TryGetValue(actor.ID, out var list)) return;
+            if (!_actorTickerIDs.TryGetValue(actor.ID, out var list)) return;
 
             // Copy to avoid modifying the list while iterating.
             var ids = new List<int>(list);
-            foreach (var tickerId in ids)
+            foreach (var tickerID in ids)
             {
-                if (_tickers.TryGetValue(tickerId, out var reg))
+                if (_tickers.TryGetValue(tickerID, out var reg))
                 {
                     if (reg.Tag != null)
                         _tagIndex.Remove((actor.ID, reg.Tag));
-                    _tickers.Remove(tickerId);
+                    _tickers.Remove(tickerID);
                 }
             }
-            _actorTickerIds.Remove(actor.ID);
+            _actorTickerIDs.Remove(actor.ID);
         }
 
         // ── Cross-assembly bridge (Game.Shared callers via ActorEndpoint events) ──────

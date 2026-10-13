@@ -12,7 +12,7 @@ namespace Game.Server.ECS
     public struct ActorComponent : IComponentData
     {
         /// <summary>The actor's unique identifier.</summary>
-        public Guid ActorId;
+        public Guid ActorID;
         /// <summary>The actor's display name.</summary>
         public FixedString128Bytes ActorName;
         /// <summary>The owning player, when the actor is player-controlled.</summary>
@@ -27,7 +27,7 @@ namespace Game.Server.ECS
     public struct ResourceRegenElement : IBufferElementData
     {
         /// <summary>The resource identifier.</summary>
-        public FixedString64Bytes ResourceId;
+        public FixedString64Bytes ResourceID;
         /// <summary>The amount regenerated per update.</summary>
         public float RegenAmount;
     }
@@ -82,9 +82,9 @@ namespace Game.Server.ECS
     public struct AuraElement : IBufferElementData
     {
         /// <summary>The aura instance identifier.</summary>
-        public int InstanceId;
+        public int InstanceID;
         /// <summary>The aura definition identifier.</summary>
-        public FixedString64Bytes AuraDefinitionId;
+        public FixedString64Bytes AuraDefinitionID;
         /// <summary>The remaining aura duration.</summary>
         public float RemainingDuration;
         /// <summary>The aura's tick interval.</summary>
@@ -97,7 +97,7 @@ namespace Game.Server.ECS
     public struct TickerElement : IBufferElementData
     {
         /// <summary>The ticker identifier.</summary>
-        public int TickerId;
+        public int TickerID;
         /// <summary>The remaining ticker duration.</summary>
         public float RemainingDuration; // float.MaxValue = indefinite
         /// <summary>The ticker interval.</summary>

@@ -102,13 +102,13 @@ namespace Game.Server.Persistence
             _newPlayerQueue.Enqueue(isNewPlayer);
         }
 
-        private const int SaltSize = 16;
-        private const int HashSize = 32;
-        private const int Iterations = 100000;
+        private const int SALT_SIZE = 16;
+        private const int HASH_SIZE = 32;
+        private const int ITERATIONS = 100000;
 
         private static string GenerateSalt()
         {
-            var salt = new byte[SaltSize];
+            var salt = new byte[SALT_SIZE];
             using (var rng = RandomNumberGenerator.Create())
                 rng.GetBytes(salt);
             return Convert.ToBase64String(salt);
@@ -117,8 +117,8 @@ namespace Game.Server.Persistence
         private static string HashPassword(string password, string salt)
         {
             var saltBytes = Convert.FromBase64String(salt);
-            using (var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, Iterations, HashAlgorithmName.SHA256))
-                return Convert.ToBase64String(pbkdf2.GetBytes(HashSize));
+            using (var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, ITERATIONS, HashAlgorithmName.SHA256))
+                return Convert.ToBase64String(pbkdf2.GetBytes(HASH_SIZE));
         }
 
         private static bool VerifyPassword(string password, string storedHash, string storedSalt)

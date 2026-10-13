@@ -10,19 +10,19 @@ namespace Game.Server.Persistence
     public static class PlayerDatabase
     {
         private const int CurrentDataVersion = 1;
-        private static readonly string _filePath;
-        private static Dictionary<string, PlayerAccountData> playerAccounts = new();
+        private static readonly string FILE_PATH;
+        private static Dictionary<string, PlayerAccountData> _playerAccounts = new();
 
         static PlayerDatabase()
         {
-            _filePath = Path.Combine(Application.persistentDataPath, Game.Shared.GameConfigurationManager.Config.PlayerDataFilePath);
+            FILE_PATH = Path.Combine(Application.persistentDataPath, Game.Shared.GameConfigurationManager.Config.PlayerDataFilePath);
             LoadFromDisk();
         }
 
         /// <summary>Clears all accounts and writes an empty database to disk.</summary>
         public static void CleanDatabase()
         {
-            playerAccounts.Clear();
+            _playerAccounts.Clear();
             SaveToDisk();
             Debug.Warning("Player database has been cleared. This should only be used for testing purposes.");
         }
@@ -33,30 +33,30 @@ namespace Game.Server.Persistence
         /// <returns><see langword="true"/> when an account exists for the username.</returns>
         public static bool TryGetPlayerAccount(string username, out PlayerAccountData accountData)
         {
-            return playerAccounts.TryGetValue(username, out accountData);
+            return _playerAccounts.TryGetValue(username, out accountData);
         }
 
         /// <summary>Saves an account to the player database.</summary>
         /// <param name="accountData">The account data to save.</param>
         public static void SavePlayerAccount(PlayerAccountData accountData)
         {
-            playerAccounts[accountData.Username] = accountData;
+            _playerAccounts[accountData.Username] = accountData;
             SaveToDisk();
         }
 
         private static void LoadFromDisk()
         {
-            if (!File.Exists(_filePath))
+            if (!File.Exists(FILE_PATH))
             {
-                Debug.Warning($" - No player data file found at {_filePath}. Starting fresh.");
+                Debug.Warning($" - No player data file found at {FILE_PATH}. Starting fresh.");
                 return;
             }
 
-            var json = File.ReadAllText(_filePath);
+            var json = File.ReadAllText(FILE_PATH);
             var version = JsonUtility.FromJson<PersistenceFileVersion>(json);
             if (version == null || version.DataVersion < 0)
             {
-                Debug.Error($" - Player data file at {_filePath} has an invalid persistence version.");
+                Debug.Error($" - Player data file at {FILE_PATH} has an invalid persistence version.");
                 return;
             }
 
@@ -71,27 +71,27 @@ namespace Game.Server.Persistence
             }
             else
             {
-                Debug.Error($" - Player data file at {_filePath} uses unsupported version {version.DataVersion}; expected {CurrentDataVersion}.");
+                Debug.Error($" - Player data file at {FILE_PATH} uses unsupported version {version.DataVersion}; expected {CurrentDataVersion}.");
                 return;
             }
 
             if (wrapper?.Accounts != null)
             {
-                playerAccounts.Clear();
+                _playerAccounts.Clear();
                 foreach (var account in wrapper.Accounts)
-                    playerAccounts[account.Username] = account;
+                    _playerAccounts[account.Username] = account;
             }
 
-            Debug.Log($" - Loaded {playerAccounts.Count} player accounts from {_filePath}.");
+            Debug.Log($" - Loaded {_playerAccounts.Count} player accounts from {FILE_PATH}.");
         }
 
         private static void SaveToDisk()
         {
             var wrapper = new PlayerDatabaseWrapper();
             wrapper.DataVersion = CurrentDataVersion;
-            wrapper.Accounts = new List<PlayerAccountData>(playerAccounts.Values);
+            wrapper.Accounts = new List<PlayerAccountData>(_playerAccounts.Values);
             var json = JsonUtility.ToJson(wrapper, true);
-            File.WriteAllText(_filePath, json);
+            File.WriteAllText(FILE_PATH, json);
         }
 
         [System.Serializable]

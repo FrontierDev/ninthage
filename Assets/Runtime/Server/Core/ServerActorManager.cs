@@ -30,17 +30,17 @@ namespace Game.Server
         public static bool IsInitialized => _initialized;
 
         // ECS Management.
-        private EntityManager entityManager;
-        private EntityQuery actorComponentQuery;
+        private EntityManager _entityManager;
+        private EntityQuery _actorComponentQuery;
 
         // Maps actor ID -> Actor MonoBehaviour so LateUpdate can push ECS WorldPositionD -> transform.
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
 
         /// <summary>Finds the server actor associated with an actor identifier.</summary>
-        /// <param name="actorId">The actor identifier to find.</param>
+        /// <param name="actorID">The actor identifier to find.</param>
         /// <param name="actor">Receives the actor when found.</param>
         /// <returns><see langword="true"/> when an actor was found.</returns>
-        public bool TryGetActor(Guid actorId, out Actor actor) => _actorObjects.TryGetValue(actorId, out actor);
+        public bool TryGetActor(Guid actorID, out Actor actor) => _actorObjects.TryGetValue(actorID, out actor);
 
         // Player tracking for validation.
         private readonly Dictionary<PlayerID, Actor> _playerActors = new();
@@ -60,10 +60,10 @@ namespace Game.Server
         private readonly Dictionary<Guid, NPCAggroState> _npcAggroStates = new();
 
         // Generous speed cap: moveSpeed(5) * sqrt(2) diagonal * 2 headroom for latency bursts.
-        private const float MaxAllowedSpeed = 15f;
+        private const float MAX_ALLOWED_SPEED = 15f;
         // Require sustained violations before correcting to tolerate network jitter.
-        private const int ViolationThreshold = 3;
-        private const float ValidationInterval = 0.5f;
+        private const int VIOLATION_THRESHOLD = 3;
+        private const float VALIDATION_INTERVAL = 0.5f;
 
         private void Awake()
         {
@@ -79,8 +79,8 @@ namespace Game.Server
             ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
 
             var world = ECS.ServerECSManager.DefaultWorld;
-            entityManager = world.EntityManager;
-            actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _entityManager = world.EntityManager;
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
             _initialized = true;
         }
@@ -113,13 +113,13 @@ namespace Game.Server
         {
             if (!_initialized) return;
 
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
-                var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
                 if (component.Owner != default) continue;
 
-                if (_actorObjects.TryGetValue(component.ActorId, out var actorObj) && actorObj != null)
+                if (_actorObjects.TryGetValue(component.ActorID, out var actorObj) && actorObj != null)
                 {
                     var agent = actorObj.GetComponent<NavMeshAgent>();
                     if (agent != null && agent.enabled)
@@ -127,7 +127,7 @@ namespace Game.Server
                         // NavMeshAgent owns movement — read transform into ECS.
                         var pos = actorObj.transform.position;
                         component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
-                        entityManager.SetComponentData(entity, component);
+                        _entityManager.SetComponentData(entity, component);
                     }
                     else
                     {
@@ -146,10 +146,10 @@ namespace Game.Server
         private void OnActorSpawned(Actor actor)
         {
             var wp = actor.WorldPos;
-            var entity = entityManager.CreateEntity();
-            entityManager.AddComponentData(entity, new ECS.ActorComponent
+            var entity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(entity, new ECS.ActorComponent
             {
-                ActorId = actor.ID,
+                ActorID = actor.ID,
                 ActorName = actor.Name,
                 Owner = actor.Owner ?? default,
                 CurrentScene = default,
@@ -159,14 +159,14 @@ namespace Game.Server
             if (actor.Owner == null)
             {
                 bool hasAgent = actor.GetComponent<NavMeshAgent>() != null;
-                entityManager.AddComponentData(entity, new ECS.MotionStateComponent
+                _entityManager.AddComponentData(entity, new ECS.MotionStateComponent
                 {
                     VerticalVelocity = 0f,
                     IsGrounded = true,
                     TimeSinceLastGround = 0f,
                     UsesNavMeshAgent = hasAgent
                 });
-                entityManager.AddComponentData(entity, new ECS.GroundDetectionComponent
+                _entityManager.AddComponentData(entity, new ECS.GroundDetectionComponent
                 {
                     groundDetectionRadius = GameConfigurationManager.Config.GroundDetectionRadius,
                     lastGroundCheck = new Unity.Mathematics.float3(0, -1, 0)
@@ -184,17 +184,17 @@ namespace Game.Server
             }
 
             // Add the spellcasting component on the actor.
-            entityManager.AddComponentData(entity, new ECS.SpellCastComponent());
-            entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, false);
+            _entityManager.AddComponentData(entity, new ECS.SpellCastComponent());
+            _entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, false);
 
             // Add cooldown buffer for per-spell cooldown tracking.
-            entityManager.AddBuffer<ECS.CooldownElement>(entity);
+            _entityManager.AddBuffer<ECS.CooldownElement>(entity);
 
             // Add aura buffer for active aura tracking.
-            entityManager.AddBuffer<ECS.AuraElement>(entity);
+            _entityManager.AddBuffer<ECS.AuraElement>(entity);
 
             // Add ticker buffer for generic time-based callbacks.
-            entityManager.AddBuffer<ECS.TickerElement>(entity);
+            _entityManager.AddBuffer<ECS.TickerElement>(entity);
 
             // Track NPCs with aggro behavior for proximity-based targeting.
             if (actor.Owner == null && actor.isDead == false)
@@ -221,15 +221,15 @@ namespace Game.Server
 
         private void OnActorOwnerChanged(Actor actor)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
-                var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                if (component.ActorId == actor.ID)
+                var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                if (component.ActorID == actor.ID)
                 {
                     var previousOwner = component.Owner;
                     component.Owner = actor.Owner ?? default;
-                    entityManager.SetComponentData(entity, component);
+                    _entityManager.SetComponentData(entity, component);
 
                     if (actor.Owner == null && previousOwner != default)
                     {
@@ -248,14 +248,14 @@ namespace Game.Server
 
         private void OnActorInterestChanged(Actor actor, SceneID sceneID)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
-                var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                if (component.ActorId == actor.ID)
+                var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                if (component.ActorID == actor.ID)
                 {
                     component.CurrentScene = sceneID;
-                    entityManager.SetComponentData(entity, component);
+                    _entityManager.SetComponentData(entity, component);
 
                     string sceneName = "unknown";
                     if (NetworkManager.main.sceneModule.TryGetSceneState(sceneID, out var state))
@@ -350,19 +350,19 @@ namespace Game.Server
         {
             foreach (var kvp in _playerActors)
             {
-                var playerId = kvp.Key;
+                var playerID = kvp.Key;
                 var actor = kvp.Value;
                 if (actor == null) continue;
 
-                if (!_validationTimers.ContainsKey(playerId)) continue;
-                _validationTimers[playerId] += Time.deltaTime;
-                if (_validationTimers[playerId] < ValidationInterval) continue;
+                if (!_validationTimers.ContainsKey(playerID)) continue;
+                _validationTimers[playerID] += Time.deltaTime;
+                if (_validationTimers[playerID] < VALIDATION_INTERVAL) continue;
 
-                float elapsed = _validationTimers[playerId];
-                _validationTimers[playerId] = 0f;
+                float elapsed = _validationTimers[playerID];
+                _validationTimers[playerID] = 0f;
 
                 var currentPos = actor.transform.position;
-                var lastPos = _lastValidatedPositions[playerId];
+                var lastPos = _lastValidatedPositions[playerID];
 
                 // Speed check: horizontal distance / elapsed time.
                 var horizontalDelta = new Vector3(currentPos.x - lastPos.x, 0f, currentPos.z - lastPos.z);
@@ -370,27 +370,27 @@ namespace Game.Server
 
                 // Always advance the last-known position to prevent cascading
                 // false positives when network updates arrive in bursts.
-                _lastValidatedPositions[playerId] = currentPos;
+                _lastValidatedPositions[playerID] = currentPos;
 
-                if (speed > MaxAllowedSpeed)
+                if (speed > MAX_ALLOWED_SPEED)
                 {
-                    _violationCounters[playerId] = _violationCounters.GetValueOrDefault(playerId) + 1;
+                    _violationCounters[playerID] = _violationCounters.GetValueOrDefault(playerID) + 1;
 
-                    if (_violationCounters[playerId] >= ViolationThreshold)
+                    if (_violationCounters[playerID] >= VIOLATION_THRESHOLD)
                     {
-                        Debug.Warning("Player " + playerId + " exceeded max speed (" + speed.ToString("F1") + " m/s) " + _violationCounters[playerId] + " times. Correcting.");
+                        Debug.Warning("Player " + playerID + " exceeded max speed (" + speed.ToString("F1") + " m/s) " + _violationCounters[playerID] + " times. Correcting.");
                         var worldPos = new WorldPosition(lastPos.x, lastPos.y, lastPos.z);
                         var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(worldPos);
-                        MovementEndpoint.Client_ServerCorrection(playerId, chunk, localPos);
+                        MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
 
                         // Reset after correction — give the snap time to take effect.
-                        _lastValidatedPositions[playerId] = lastPos;
-                        _violationCounters[playerId] = 0;
+                        _lastValidatedPositions[playerID] = lastPos;
+                        _violationCounters[playerID] = 0;
                     }
                 }
                 else
                 {
-                    _violationCounters[playerId] = 0;
+                    _violationCounters[playerID] = 0;
                 }
             }
         }
@@ -401,17 +401,17 @@ namespace Game.Server
         /// </summary>
         private void SyncPlayerECS()
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             foreach (var entity in entities)
             {
-                var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
                 if (component.Owner == default) continue;
 
                 if (_playerActors.TryGetValue(component.Owner, out var actor) && actor != null)
                 {
                     var pos = actor.transform.position;
                     component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
-                    entityManager.SetComponentData(entity, component);
+                    _entityManager.SetComponentData(entity, component);
                 }
             }
             entities.Dispose();

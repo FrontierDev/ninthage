@@ -20,14 +20,14 @@ namespace Game.Server.Services
     public sealed class PartyLootService
     {
         // For now, we're only handling single players.
-        private PlayerInventory playerInventory;
-        private List<ItemInstance> lootPool = new();
+        private PlayerInventory _playerInventory;
+        private List<ItemInstance> _lootPool = new();
 
         /// <summary>Initializes a loot service for the supplied player.</summary>
         /// <param name="playerActor">The player whose inventory receives loot.</param>
         public PartyLootService(PlayerActor playerActor)
         {
-            this.playerInventory = playerActor.GetComponent<PlayerInventory>();
+            this._playerInventory = playerActor.GetComponent<PlayerInventory>();
         }
 
         /// <summary>Adds rolled loot from an NPC loot table to the pool.</summary>
@@ -68,7 +68,7 @@ namespace Game.Server.Services
             // If item can stack, try to merge into an existing loot stack
             if (item.CanStack)
             {
-                var existing = lootPool.Find(x => x.BaseItem != null &&
+                var existing = _lootPool.Find(x => x.BaseItem != null &&
                                                   x.BaseItem.DefinitionID == item.DefinitionID &&
                                                   x.CurrentStackSize < item.MaxStackSize);
                 if (existing != null)
@@ -84,7 +84,7 @@ namespace Game.Server.Services
                                 new List<string>(),
                                 100,
                                 1);
-                    lootPool.Add(newInstance);
+                    _lootPool.Add(newInstance);
                     FormattedDebug.Log($"Adding {item.DisplayName} to loot pool.");
 
                 }
@@ -96,7 +96,7 @@ namespace Game.Server.Services
                                 new List<string>(),
                                 100,
                                 1);
-                lootPool.Add(newInstance);
+                _lootPool.Add(newInstance);
                 FormattedDebug.Log($"Adding {item.DisplayName} to loot pool.");
             }
         }
@@ -106,14 +106,14 @@ namespace Game.Server.Services
         {
             var leftovers = new List<ItemInstance>();
 
-            foreach (var template in lootPool)
+            foreach (var template in _lootPool)
             {
                 if (template == null || template.BaseItem == null) continue;
 
                 int amountToGive = template.CurrentStackSize;
                 if (amountToGive <= 0) continue;
 
-                playerInventory.AddItem(template, out int remainder, amountToGive);
+                _playerInventory.AddItem(template, out int remainder, amountToGive);
 
                 if (remainder > 0)
                 {
@@ -126,7 +126,7 @@ namespace Game.Server.Services
                 }
             }
 
-            lootPool = leftovers;
+            _lootPool = leftovers;
         }
     }
 }

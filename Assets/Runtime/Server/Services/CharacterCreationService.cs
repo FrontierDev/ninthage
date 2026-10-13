@@ -16,13 +16,13 @@ namespace Game.Server.Services
         public static RaceDefinitionLibrary raceDefinitions;
         private static bool _initialized = false;
 
-        private NewCharacterData characterData;
-        private PlayerID playerId;
+        private NewCharacterData _characterData;
+        private PlayerID _playerID;
 
         /// <summary>Validates and processes a new character request.</summary>
-        /// <param name="_playerId">The requesting player's network identifier.</param>
-        /// <param name="_characterData">The requested character data.</param>
-        public CharacterCreationService(PlayerID _playerId, NewCharacterData _characterData)
+        /// <param name="playerID">The requesting player's network identifier.</param>
+        /// <param name="characterData">The requested character data.</param>
+        public CharacterCreationService(PlayerID playerID, NewCharacterData characterData)
         {
             // Load the definition libraries. In a real implementation, you might want to handle errors here.
             if (!_initialized)
@@ -32,8 +32,8 @@ namespace Game.Server.Services
                 _initialized = true;
             }
 
-            playerId = _playerId;
-            characterData = _characterData;
+            _playerID = playerID;
+            _characterData = characterData;
 
             ValidateCharacterData();
         }
@@ -45,35 +45,35 @@ namespace Game.Server.Services
             bool validClass = false;
             bool validName = false;
 
-            if (string.IsNullOrEmpty(characterData.RaceID) || raceDefinitions.GetDefinition(characterData.RaceID) == null || !raceDefinitions.GetDefinition(characterData.RaceID).IsPlayable)
+            if (string.IsNullOrEmpty(_characterData.RaceID) || raceDefinitions.GetDefinition(_characterData.RaceID) == null || !raceDefinitions.GetDefinition(_characterData.RaceID).IsPlayable)
                 validRace = false;
             else validRace = true;
 
             // Check that the player selected a valid class.
-            if (string.IsNullOrEmpty(characterData.ClassID) || classDefinitions.GetDefinition(characterData.ClassID) == null || !classDefinitions.GetDefinition(characterData.ClassID))
+            if (string.IsNullOrEmpty(_characterData.ClassID) || classDefinitions.GetDefinition(_characterData.ClassID) == null || !classDefinitions.GetDefinition(_characterData.ClassID))
                 validClass = false;
             else validClass = true;
 
             // Check that the player's chosen name is valid (not empty, not too long, etc.)
-            if (string.IsNullOrEmpty(characterData.Name) || characterData.Name.Length > 20)
+            if (string.IsNullOrEmpty(_characterData.Name) || _characterData.Name.Length > 20)
                 validName = false;
             else validName = true;
 
             if (!validRace || !validClass || !validName)
             {
-                Debug.Log($"Character creation validation failed for player {playerId}. ValidRace: {validRace}, ValidClass: {validClass}, ValidName: {validName}");
-                Game.Shared.Networking.AccountEndpoint.Client_NotifyCharacterCreationResult(playerId, false, "Character creation failed. Please check your selected options.");
+                Debug.Log($"Character creation validation failed for player {_playerID}. ValidRace: {validRace}, ValidClass: {validClass}, ValidName: {validName}");
+                Game.Shared.Networking.AccountEndpoint.Client_NotifyCharacterCreationResult(_playerID, false, "Character creation failed. Please check your selected options.");
                 return;
             }
             else
             {
-                var defaultPVPFaction = raceDefinitions.GetDefinition(characterData.RaceID).DefaultPVPFaction;
+                var defaultPVPFaction = raceDefinitions.GetDefinition(_characterData.RaceID).DefaultPVPFaction;
 
                 var validatedCharacter = new CharacterData(
-                    characterData.Name,
+                    _characterData.Name,
                     1,
-                    characterData.ClassID,
-                    characterData.RaceID,
+                    _characterData.ClassID,
+                    _characterData.RaceID,
                     defaultPVPFaction.DefinitionID
                 );
 
@@ -83,12 +83,12 @@ namespace Game.Server.Services
 
         private void AddCharacter(CharacterData character)
         {
-            PlayerAccountData accountData = ServerConnectionManager.Instance.GetAccountData(playerId);
+            PlayerAccountData accountData = ServerConnectionManager.Instance.GetAccountData(_playerID);
             accountData.Characters.Add(character);
             PlayerDatabase.SavePlayerAccount(accountData);
-            Debug.Log($"Character '{character.Name}' created for player {playerId}. Account '{accountData.Username} has {accountData.Characters.Count} characters.");
-            Game.Shared.Networking.AccountEndpoint.Client_NotifyCharacterCreationResult(playerId, true, $"Character '{character.Name}' created successfully.");
-            Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(playerId, accountData.Characters);
+            Debug.Log($"Character '{character.Name}' created for player {_playerID}. Account '{accountData.Username} has {accountData.Characters.Count} characters.");
+            Game.Shared.Networking.AccountEndpoint.Client_NotifyCharacterCreationResult(_playerID, true, $"Character '{character.Name}' created successfully.");
+            Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(_playerID, accountData.Characters);
         }
     }
 }

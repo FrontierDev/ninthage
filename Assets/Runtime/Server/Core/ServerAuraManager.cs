@@ -22,11 +22,11 @@ namespace Game.Server
         /// <summary>Gets whether the aura manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
-        private EntityManager entityManager;
-        private EntityQuery actorComponentQuery;
+        private EntityManager _entityManager;
+        private EntityQuery _actorComponentQuery;
 
         private readonly Dictionary<int, AuraContext> _activeAuras = new();
-        private int _nextInstanceId;
+        private int _nextInstanceID;
 
         private void Awake()
         {
@@ -39,8 +39,8 @@ namespace Game.Server
             _instance = this;
 
             var world = ECS.ServerECSManager.DefaultWorld;
-            entityManager = world.EntityManager;
-            actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _entityManager = world.EntityManager;
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
             ActorEndpoint.onServerApplyAura += OnApplyAuraRequest;
             ActorEndpoint.onServerAuraTick += OnAuraTick;
@@ -76,19 +76,19 @@ namespace Game.Server
         /// <returns><see langword="true"/> when the aura was applied.</returns>
         public bool ApplyAura(AuraDefinition definition, Actor caster, Actor target, int stacks = 1)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != target.ID) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != target.ID) continue;
 
-                    int instanceId;
-                    if (!TryResolveStacking(definition, caster, target, entity, stacks, out instanceId))
+                    int instanceID;
+                    if (!TryResolveStacking(definition, caster, target, entity, stacks, out instanceID))
                         return false;
 
-                    var ctx = _activeAuras[instanceId];
+                    var ctx = _activeAuras[instanceID];
 
                     // Execute OnApply phase components.
                     ctx.Phase = AuraPhase.OnApply;
@@ -98,12 +98,12 @@ namespace Game.Server
                             ExecuteAuraComponent(ctx, auraComponent);
                     }
 
-                    ActorEndpoint.onServerAuraApplied?.Invoke(target.ID, definition.DefinitionID, instanceId);
+                    ActorEndpoint.onServerAuraApplied?.Invoke(target.ID, definition.DefinitionID, instanceID);
                     definition.AuraBehaviour.OnApplied(caster, target, stacks);
 
-                    Debug.Log($"Aura '{definition.DisplayName}' applied to {target.Name} by {caster.Name} (instance {instanceId})");
+                    Debug.Log($"Aura '{definition.DisplayName}' applied to {target.Name} by {caster.Name} (instance {instanceID})");
 
-                    target.Observers_ApplyAura(definition.DefinitionID, instanceId, ctx.Duration, ctx.Stacks);
+                    target.Observers_ApplyAura(definition.DefinitionID, instanceID, ctx.Duration, ctx.Stacks);
 
                     return true;
                 }
@@ -117,10 +117,10 @@ namespace Game.Server
             return false;
         }
 
-        private bool TryResolveStacking(AuraDefinition definition, Actor caster, Actor target, Entity entity, int stacksToApply, out int instanceId)
+        private bool TryResolveStacking(AuraDefinition definition, Actor caster, Actor target, Entity entity, int stacksToApply, out int instanceID)
         {
-            var buffer = entityManager.GetBuffer<ECS.AuraElement>(entity);
-            instanceId = -1;
+            var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
+            instanceID = -1;
 
             switch (definition.StackBehavior)
             {
@@ -131,8 +131,8 @@ namespace Game.Server
                         for (int i = 0; i < buffer.Length; i++)
                         {
                             var entry = buffer[i];
-                            if (entry.AuraDefinitionId.ToString() != definition.DefinitionID) continue;
-                            if (!_activeAuras.TryGetValue(entry.InstanceId, out var existing)) continue;
+                            if (entry.AuraDefinitionID.ToString() != definition.DefinitionID) continue;
+                            if (!_activeAuras.TryGetValue(entry.InstanceID, out var existing)) continue;
 
                             // Extend duration for entire aura.
                             entry.RemainingDuration = definition.BaseDuration;
@@ -150,12 +150,12 @@ namespace Game.Server
                                 stacksAdded++;
                             }
 
-                            instanceId = entry.InstanceId;
+                            instanceID = entry.InstanceID;
                             return true;
                         }
 
                         // First application — create new instance with condition tracking.
-                        instanceId = CreateConditionAuraInstance(definition, caster, target, buffer, stacksToApply);
+                        instanceID = CreateConditionAuraInstance(definition, caster, target, buffer, stacksToApply);
                         return true;
                     }
 
@@ -166,8 +166,8 @@ namespace Game.Server
                         for (int i = 0; i < buffer.Length; i++)
                         {
                             var entry = buffer[i];
-                            if (entry.AuraDefinitionId.ToString() != definition.DefinitionID) continue;
-                            if (!_activeAuras.TryGetValue(entry.InstanceId, out var existing)) continue;
+                            if (entry.AuraDefinitionID.ToString() != definition.DefinitionID) continue;
+                            if (!_activeAuras.TryGetValue(entry.InstanceID, out var existing)) continue;
 
                             // Add multiple stacks
                             for (int s = 0; s < stacksToApply && existing.Stacks < definition.MaxStacks; s++)
@@ -186,12 +186,12 @@ namespace Game.Server
                             entry.TimeSinceLastTick = 0f;
                             buffer[i] = entry;
 
-                            instanceId = entry.InstanceId;
+                            instanceID = entry.InstanceID;
                             return true;
                         }
 
                         // First application.
-                        instanceId = CreateConditionAuraInstance(definition, caster, target, buffer, stacksToApply);
+                        instanceID = CreateConditionAuraInstance(definition, caster, target, buffer, stacksToApply);
                         return true;
                     }
 
@@ -202,26 +202,26 @@ namespace Game.Server
 
         private int CreateAuraInstance(AuraDefinition definition, Actor caster, Actor target, DynamicBuffer<ECS.AuraElement> buffer)
         {
-            int instanceId = _nextInstanceId++;
+            int instanceID = _nextInstanceID++;
 
             var ctx = new AuraContext(definition, caster, target);
-            _activeAuras[instanceId] = ctx;
+            _activeAuras[instanceID] = ctx;
 
             buffer.Add(new ECS.AuraElement
             {
-                InstanceId = instanceId,
-                AuraDefinitionId = definition.DefinitionID,
+                InstanceID = instanceID,
+                AuraDefinitionID = definition.DefinitionID,
                 RemainingDuration = definition.BaseDuration,
                 TickInterval = definition.BaseTickInterval,
                 TimeSinceLastTick = 0f
             });
 
-            return instanceId;
+            return instanceID;
         }
 
         private int CreateConditionAuraInstance(AuraDefinition definition, Actor caster, Actor target, DynamicBuffer<ECS.AuraElement> buffer, int stackCount = 1)
         {
-            int instanceId = _nextInstanceId++;
+            int instanceID = _nextInstanceID++;
 
             int stacksToCreate = Mathf.Min(stackCount, definition.MaxStacks);
             var conditionStacks = new List<ConditionStack>();
@@ -236,26 +236,26 @@ namespace Game.Server
                 Stacks = stacksToCreate,
                 Duration = definition.BaseDuration
             };
-            _activeAuras[instanceId] = ctx;
+            _activeAuras[instanceID] = ctx;
 
             buffer.Add(new ECS.AuraElement
             {
-                InstanceId = instanceId,
-                AuraDefinitionId = definition.DefinitionID,
+                InstanceID = instanceID,
+                AuraDefinitionID = definition.DefinitionID,
                 RemainingDuration = definition.BaseDuration,
                 TickInterval = definition.BaseTickInterval,
                 TimeSinceLastTick = 0f
             });
 
-            return instanceId;
+            return instanceID;
         }
 
-        private void OnAuraTick(Guid targetActorId, string auraDefId, int instanceId)
+        private void OnAuraTick(Guid targetActorID, string auraDefID, int instanceID)
         {
-            if (!_activeAuras.TryGetValue(instanceId, out var ctx))
+            if (!_activeAuras.TryGetValue(instanceID, out var ctx))
                 return;
 
-            if (!ServerActorManager.Instance.TryGetActor(targetActorId, out var target))
+            if (!ServerActorManager.Instance.TryGetActor(targetActorID, out var target))
                 return;
 
             // For Condition auras, tick down individual stack durations and remove expired stacks.
@@ -279,15 +279,15 @@ namespace Game.Server
                     ExecuteAuraComponent(ctx, component);
             }
 
-            target.Observers_TickAura(instanceId, ctx.Stacks, ctx.Duration);
+            target.Observers_TickAura(instanceID, ctx.Stacks, ctx.Duration);
         }
 
-        private void OnAuraExpired(Guid targetActorId, string auraDefId, int instanceId)
+        private void OnAuraExpired(Guid targetActorID, string auraDefID, int instanceID)
         {
-            if (!_activeAuras.Remove(instanceId, out var ctx))
+            if (!_activeAuras.Remove(instanceID, out var ctx))
                 return;
 
-            if (!ServerActorManager.Instance.TryGetActor(targetActorId, out var target))
+            if (!ServerActorManager.Instance.TryGetActor(targetActorID, out var target))
                 return;
 
             ctx.Phase = AuraPhase.OnExpire;
@@ -299,16 +299,16 @@ namespace Game.Server
 
             ctx.Definition.AuraBehaviour?.OnRemoved(ctx.Caster, target);
 
-            target.Observers_ExpireAura(instanceId);
-            Debug.Log($"Aura '{ctx.Definition.DisplayName}' expired on {target.Name} (instance {instanceId})");
+            target.Observers_ExpireAura(instanceID);
+            Debug.Log($"Aura '{ctx.Definition.DisplayName}' expired on {target.Name} (instance {instanceID})");
         }
 
-        private void OnAuraDispelled(Guid targetActorId, string auraDefId, int instanceId)
+        private void OnAuraDispelled(Guid targetActorID, string auraDefID, int instanceID)
         {
-            if (!_activeAuras.Remove(instanceId, out var ctx))
+            if (!_activeAuras.Remove(instanceID, out var ctx))
                 return;
 
-            if (!ServerActorManager.Instance.TryGetActor(targetActorId, out var target))
+            if (!ServerActorManager.Instance.TryGetActor(targetActorID, out var target))
                 return;
 
             ctx.Phase = AuraPhase.OnDispel;
@@ -320,8 +320,8 @@ namespace Game.Server
 
             ctx.Definition.AuraBehaviour?.OnRemoved(ctx.Caster, target);
 
-            target.Observers_DispelAura(instanceId);
-            Debug.Log($"Aura '{ctx.Definition.DisplayName}' dispelled from {target.Name} (instance {instanceId})");
+            target.Observers_DispelAura(instanceID);
+            Debug.Log($"Aura '{ctx.Definition.DisplayName}' dispelled from {target.Name} (instance {instanceID})");
         }
 
         private void ExecuteAuraComponent(AuraContext ctx, AuraComponent auraComponent)
@@ -336,27 +336,27 @@ namespace Game.Server
 
         /// <summary>Dispels one aura instance from a target actor.</summary>
         /// <param name="target">The actor whose aura is dispelled.</param>
-        /// <param name="instanceId">The aura instance identifier.</param>
+        /// <param name="instanceID">The aura instance identifier.</param>
         /// <returns><see langword="true"/> when the aura was dispelled.</returns>
-        public bool DispelAura(Actor target, int instanceId)
+        public bool DispelAura(Actor target, int instanceID)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != target.ID) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != target.ID) continue;
 
-                    var buffer = entityManager.GetBuffer<ECS.AuraElement>(entity);
+                    var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
                     for (int i = 0; i < buffer.Length; i++)
                     {
-                        if (buffer[i].InstanceId != instanceId) continue;
+                        if (buffer[i].InstanceID != instanceID) continue;
 
-                        string auraDefId = buffer[i].AuraDefinitionId.ToString();
+                        string auraDefID = buffer[i].AuraDefinitionID.ToString();
                         buffer.RemoveAt(i);
 
-                        ActorEndpoint.onServerAuraDispelled?.Invoke(target.ID, auraDefId, instanceId);
+                        ActorEndpoint.onServerAuraDispelled?.Invoke(target.ID, auraDefID, instanceID);
 
                         return true;
                     }
@@ -371,24 +371,24 @@ namespace Game.Server
         }
 
         /// <summary>Removes all active auras from an actor.</summary>
-        /// <param name="actorId">The actor identifier.</param>
-        public void RemoveAllAuras(Guid actorId)
+        /// <param name="actorID">The actor identifier.</param>
+        public void RemoveAllAuras(Guid actorID)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actorId) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != actorID) continue;
 
-                    var buffer = entityManager.GetBuffer<ECS.AuraElement>(entity);
+                    var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
                     for (int i = buffer.Length - 1; i >= 0; i--)
                     {
                         var entry = buffer[i];
-                        if (_activeAuras.Remove(entry.InstanceId, out var ctx))
+                        if (_activeAuras.Remove(entry.InstanceID, out var ctx))
                         {
-                            if (ServerActorManager.Instance.TryGetActor(actorId, out var target))
+                            if (ServerActorManager.Instance.TryGetActor(actorID, out var target))
                             {
                                 ctx.Phase = AuraPhase.OnExpire;
                                 foreach (var auraComponent in ctx.Definition.Components)
@@ -410,23 +410,23 @@ namespace Game.Server
         }
 
         /// <summary>Determines whether an actor has an aura definition active.</summary>
-        /// <param name="actorId">The actor identifier.</param>
-        /// <param name="auraDefinitionId">The aura definition identifier.</param>
+        /// <param name="actorID">The actor identifier.</param>
+        /// <param name="auraDefinitionID">The aura definition identifier.</param>
         /// <returns><see langword="true"/> when the aura is active.</returns>
-        public bool HasAura(Guid actorId, string auraDefinitionId)
+        public bool HasAura(Guid actorID, string auraDefinitionID)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actorId) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != actorID) continue;
 
-                    var buffer = entityManager.GetBuffer<ECS.AuraElement>(entity);
+                    var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
                     for (int i = 0; i < buffer.Length; i++)
                     {
-                        if (buffer[i].AuraDefinitionId.ToString() == auraDefinitionId)
+                        if (buffer[i].AuraDefinitionID.ToString() == auraDefinitionID)
                             return true;
                     }
                     return false;
@@ -440,24 +440,24 @@ namespace Game.Server
         }
 
         /// <summary>Gets the active stack count for an actor's aura.</summary>
-        /// <param name="actorId">The actor identifier.</param>
-        /// <param name="auraDefinitionId">The aura definition identifier.</param>
+        /// <param name="actorID">The actor identifier.</param>
+        /// <param name="auraDefinitionID">The aura definition identifier.</param>
         /// <returns>The active stack count, or zero when the aura is absent.</returns>
-        public int GetAuraStackCount(Guid actorId, string auraDefinitionId)
+        public int GetAuraStackCount(Guid actorID, string auraDefinitionID)
         {
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actorId) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != actorID) continue;
 
-                    var buffer = entityManager.GetBuffer<ECS.AuraElement>(entity);
+                    var buffer = _entityManager.GetBuffer<ECS.AuraElement>(entity);
                     int count = 0;
                     for (int i = 0; i < buffer.Length; i++)
                     {
-                        if (buffer[i].AuraDefinitionId.ToString() == auraDefinitionId)
+                        if (buffer[i].AuraDefinitionID.ToString() == auraDefinitionID)
                             count++;
                     }
                     return count;

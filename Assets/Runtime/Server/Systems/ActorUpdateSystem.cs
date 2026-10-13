@@ -8,7 +8,7 @@ namespace Game.Server.ECS
     [DisableAutoCreation]
     public partial struct ActorUpdateSystem : ISystem
     {
-        private EntityQuery motionQuery;
+        private EntityQuery _motionQuery;
 
         /// <summary>Creates the query used by the actor movement system.</summary>
         public void OnCreate(ref SystemState state)
@@ -16,7 +16,7 @@ namespace Game.Server.ECS
             Debug.Log(" - Created ActorUpdateSystem.");
 
             // Create query for all entities with ActorComponent and MotionStateComponent
-            motionQuery = state.GetEntityQuery(
+            _motionQuery = state.GetEntityQuery(
                 new EntityQueryDesc
                 {
                     All = new[] {

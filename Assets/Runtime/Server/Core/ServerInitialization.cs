@@ -11,15 +11,15 @@ namespace Game.Server
     /// <summary>Coordinates startup of the dedicated server runtime.</summary>
     public static class ServerInitialization
     {
-        private static MonoBehaviour host;
-        private static bool forceCleanServer;
+        private static MonoBehaviour _host;
+        private static bool _forceCleanServer;
 
         /// <summary>Begins the server initialization coroutine on the supplied host.</summary>
-        /// <param name="_host">The component that owns the initialization coroutine.</param>
-        public static void Begin(MonoBehaviour _host)
+        /// <param name="host">The component that owns the initialization coroutine.</param>
+        public static void Begin(MonoBehaviour host)
         {
-            host = _host;
-            host.StartCoroutine(InitializationProcess());
+            _host = host;
+            _host.StartCoroutine(InitializationProcess());
         }
 
         private static IEnumerator InitializationProcess()
@@ -81,9 +81,9 @@ namespace Game.Server
 
             // Check to see if the server should clear player data on start,
             // which is useful for testing character creation, etc.
-            forceCleanServer = Game.Shared.GameConfigurationManager.Config.ClearPlayerDataOnStart;
+            _forceCleanServer = Game.Shared.GameConfigurationManager.Config.ClearPlayerDataOnStart;
 
-            if (forceCleanServer)
+            if (_forceCleanServer)
                 Debug.Warning(" - Server is configured to clear player data on start. All existing player data will be deleted.");
 
             Debug.Log(" ✓ Step 2: Game configuration loaded successfully.");
@@ -169,7 +169,7 @@ namespace Game.Server
         {
             Debug.Log(" - Step 7: Initializing player database...");
 
-            if (forceCleanServer)
+            if (_forceCleanServer)
             {
                 PlayerDatabase.CleanDatabase();
             }

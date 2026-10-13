@@ -24,8 +24,8 @@ namespace Game.Server
         /// <summary>Gets whether the spell-cast manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
-        private EntityManager entityManager;
-        private EntityQuery actorComponentQuery;
+        private EntityManager _entityManager;
+        private EntityQuery _actorComponentQuery;
 
         // Store active spell casts by actor ID for quick access during ticks and completion.
         private readonly Dictionary<Guid, SpellContext> _activeSpellCasts = new();
@@ -43,8 +43,8 @@ namespace Game.Server
             _instance = this;
 
             var world = ECS.ServerECSManager.DefaultWorld;
-            entityManager = world.EntityManager;
-            actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _entityManager = world.EntityManager;
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
             ActorEndpoint.onServerSpellCastStarted += OnSpellCastStarted;
             ActorEndpoint.onServerSpellCastTick += OnSpellCastTick;
@@ -128,13 +128,13 @@ namespace Game.Server
         {
             if (!IsValidated(caster, spell)) return;
 
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != caster.ID) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != caster.ID) continue;
 
                     // Create the spell context here.
                     SpellContext ctx = new(spell, caster, caster.Target);
@@ -155,7 +155,7 @@ namespace Game.Server
                     }
                     else
                     {
-                        entityManager.SetComponentData(entity, new ECS.SpellCastComponent
+                        _entityManager.SetComponentData(entity, new ECS.SpellCastComponent
                         {
                             SpellID = spell.BaseDefinition.DefinitionID,
                             RemainingCastTime = spell.CastTime,
@@ -164,7 +164,7 @@ namespace Game.Server
                             TimeSinceLastTick = 0f
 
                         });
-                        entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, true);
+                        _entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, true);
 
                         caster.GetComponent<ActorSpellcaster>()
                               ?.Observers_StartSpellCast(spell.BaseDefinition.DefinitionID, spell.CastTime);
@@ -223,11 +223,11 @@ namespace Game.Server
         /// Handles spell cast ticks for channelled spells. 
         /// This is where we apply the tick effects and deduct tick-based resource costs.
         /// </summary>
-        /// <param name="actorId"></param>
+        /// <param name="actorID"></param>
         /// <param name="spellID"></param>
-        private void OnSpellCastTick(Guid actorId, string spellID)
+        private void OnSpellCastTick(Guid actorID, string spellID)
         {
-            if (!_activeSpellCasts.TryGetValue(actorId, out var ctx))
+            if (!_activeSpellCasts.TryGetValue(actorID, out var ctx))
                 return;
 
             ctx.Phase = SpellCastPhase.OnChannelTick;
@@ -238,7 +238,7 @@ namespace Game.Server
                 {
                     ApplySpellEffect(ctx, component);
                     // Cast may have been interrupted by target evaluation
-                    if (!_activeSpellCasts.ContainsKey(actorId)) return;
+                    if (!_activeSpellCasts.ContainsKey(actorID)) return;
                 }
             }
 
@@ -279,22 +279,22 @@ namespace Game.Server
         /// Handles spell cast interruption. This can be triggered by the caster (e.g. by moving or using another action that interrupts casting)
         /// or by external factors (e.g. being hit by an interrupting attack). This method is responsible for cleaning up the active spell cast context, disabling the ECS components, refunding resources if applicable, and notifying clients of the interruption.
         /// </summary>
-        /// <param name="actorId"></param>
+        /// <param name="actorID"></param>
         /// <param name="spellID"></param>
-        private void OnSpellCastInterrupted(Guid actorId, string spellID)
+        private void OnSpellCastInterrupted(Guid actorID, string spellID)
         {
-            if (!_activeSpellCasts.Remove(actorId, out var ctx))
+            if (!_activeSpellCasts.Remove(actorID, out var ctx))
                 return;
 
             // Disable the ECS timer
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actorId) continue;
-                    entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, false);
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != actorID) continue;
+                    _entityManager.SetComponentEnabled<ECS.SpellCastComponent>(entity, false);
                     break;
                 }
             }
@@ -316,13 +316,13 @@ namespace Game.Server
         /// <summary>
         /// Handles the completion of a spell cast. This is where we apply the OnCastEnd effects, start cooldowns, and notify clients that the cast has completed so they can resolve the spell effects and targets.
         /// </summary>
-        /// <param name="actorId"></param>
+        /// <param name="actorID"></param>
         /// <param name="spellID"></param>
-        private void OnSpellCastCompleted(Guid actorId, string spellID)
+        private void OnSpellCastCompleted(Guid actorID, string spellID)
         {
-            if (!_activeSpellCasts.Remove(actorId, out var ctx))
+            if (!_activeSpellCasts.Remove(actorID, out var ctx))
             {
-                Debug.Warning($"Spell cast completed but no active context found (ID: {actorId})");
+                Debug.Warning($"Spell cast completed but no active context found (ID: {actorID})");
                 return;
             }
 
@@ -340,13 +340,13 @@ namespace Game.Server
             // Start individual spell cooldown if defined (channelled spells already started theirs at cast start).
             if (ctx.Spell.Cooldown > 0f && !ctx.Spell.BaseDefinition.IsChanneled)
             {
-                ActorEndpoint.onServerStartCooldown?.Invoke(actorId, spellID, ctx.Spell.Cooldown);
+                ActorEndpoint.onServerStartCooldown?.Invoke(actorID, spellID, ctx.Spell.Cooldown);
 
                 if (ctx.Caster.Owner != null)
                 {
                     var owner = ctx.Caster.Owner.Value;
                     ctx.Caster.GetComponent<ActorSpellcaster>()?.Client_StartSpellCooldown(owner, spellID, ctx.Spell.Cooldown);
-                    Debug.Log($"Started cooldown for spell '{spellID}' on actor {ctx.Caster.Name} (ID: {actorId}) with duration {ctx.Spell.Cooldown}s");
+                    Debug.Log($"Started cooldown for spell '{spellID}' on actor {ctx.Caster.Name} (ID: {actorID}) with duration {ctx.Spell.Cooldown}s");
                 }
             }
 
@@ -401,22 +401,22 @@ namespace Game.Server
         }
 
         /// <summary>Determines whether an actor currently has an active spell cast.</summary>
-        /// <param name="actorId">The actor identifier.</param>
+        /// <param name="actorID">The actor identifier.</param>
         /// <returns><see langword="true"/> when the actor is casting.</returns>
-        public bool IsCasting(Guid actorId)
+        public bool IsCasting(Guid actorID)
         {
-            return _activeSpellCasts.ContainsKey(actorId);
+            return _activeSpellCasts.ContainsKey(actorID);
         }
 
         /// <summary>Attempts to interrupt an actor's active spell cast.</summary>
-        /// <param name="actorId">The actor identifier.</param>
+        /// <param name="actorID">The actor identifier.</param>
         /// <returns><see langword="true"/> when an active cast was interrupted.</returns>
-        public bool TryInterruptCast(Guid actorId)
+        public bool TryInterruptCast(Guid actorID)
         {
-            if (!_activeSpellCasts.TryGetValue(actorId, out var ctx))
+            if (!_activeSpellCasts.TryGetValue(actorID, out var ctx))
                 return false;
 
-            ActorEndpoint.onServerSpellCastInterrupted?.Invoke(actorId, ctx.Spell.BaseDefinition.DefinitionID);
+            ActorEndpoint.onServerSpellCastInterrupted?.Invoke(actorID, ctx.Spell.BaseDefinition.DefinitionID);
             return true;
         }
     }

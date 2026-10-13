@@ -20,11 +20,11 @@ namespace Game.Server
         /// <summary>Gets whether the stat manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
-        private const float RegenTickInterval = 1f;
-        private float regenTimer;
+        private const float REGEN_TICK_INTERVAL = 1f;
+        private float _regenTimer;
 
-        private readonly List<Actor> trackedActors = new();
-        private readonly Dictionary<Actor, Dictionary<string, float>> currentEquipmentModifiers = new();
+        private readonly List<Actor> _trackedActors = new();
+        private readonly Dictionary<Actor, Dictionary<string, float>> _currentEquipmentModifiers = new();
 
         private void Awake()
         {
@@ -45,7 +45,7 @@ namespace Game.Server
         {
             Game.Shared.Networking.CharacterEndpoint.onUpdateStatsRequest -= OnUpdateStatsRequest;
 
-            trackedActors.Clear();
+            _trackedActors.Clear();
             _instance = null;
             _initialized = false;
         }
@@ -59,11 +59,11 @@ namespace Game.Server
 
         private void Update()
         {
-            regenTimer += Time.deltaTime;
-            if (regenTimer >= RegenTickInterval)
+            _regenTimer += Time.deltaTime;
+            if (_regenTimer >= REGEN_TICK_INTERVAL)
             {
-                TickRegen(regenTimer);
-                regenTimer = 0f;
+                TickRegen(_regenTimer);
+                _regenTimer = 0f;
             }
         }
 
@@ -71,21 +71,21 @@ namespace Game.Server
         /// <param name="actor">The actor to register.</param>
         public void RegisterActor(Actor actor)
         {
-            trackedActors.Add(actor);
+            _trackedActors.Add(actor);
         }
 
         /// <summary>Unregisters an actor from server stat updates.</summary>
         /// <param name="actor">The actor to unregister.</param>
         public void UnregisterActor(Actor actor)
         {
-            trackedActors.Remove(actor);
+            _trackedActors.Remove(actor);
         }
 
         #region Initialization
 
         /// <summary>Initializes statistics for an NPC actor.</summary>
         /// <param name="actor">The NPC actor to initialize.</param>
-        public void InitializeNpcStats(Actor actor)
+        public void InitializeNPCStats(Actor actor)
         {
             var container = actor.GetComponent<ActorStatContainer>();
             if (container == null) return;
@@ -248,7 +248,7 @@ namespace Game.Server
             if (equipment == null) return;
 
             // Remove previous equipment modifiers
-            if (currentEquipmentModifiers.TryGetValue(actor, out var previous))
+            if (_currentEquipmentModifiers.TryGetValue(actor, out var previous))
             {
                 foreach (var kvp in previous)
                 {
@@ -283,7 +283,7 @@ namespace Game.Server
             }
 
             // Cache for next update
-            currentEquipmentModifiers[actor] = newModifiers;
+            _currentEquipmentModifiers[actor] = newModifiers;
         }
 
         #endregion
@@ -326,13 +326,13 @@ namespace Game.Server
 
         /// <summary>Adds a flat and percentage modifier to an actor statistic.</summary>
         /// <param name="actor">The actor whose statistic changes.</param>
-        /// <param name="statId">The statistic identifier.</param>
+        /// <param name="statID">The statistic identifier.</param>
         /// <param name="flat">The flat modifier.</param>
         /// <param name="percent">The percentage modifier.</param>
-        public void AddModifier(Actor actor, string statId, float flat, float percent)
+        public void AddModifier(Actor actor, string statID, float flat, float percent)
         {
             var container = actor.GetComponent<ActorStatContainer>();
-            if (container == null || !container.TryGetStat(statId, out var stat)) return;
+            if (container == null || !container.TryGetStat(statID, out var stat)) return;
             stat.SetFlatModifier(stat.FlatModifier + flat);
             stat.SetPercentModifier(stat.PercentModifier + percent);
             Recalculate(container);
@@ -341,13 +341,13 @@ namespace Game.Server
 
         /// <summary>Removes a flat and percentage modifier from an actor statistic.</summary>
         /// <param name="actor">The actor whose statistic changes.</param>
-        /// <param name="statId">The statistic identifier.</param>
+        /// <param name="statID">The statistic identifier.</param>
         /// <param name="flat">The flat modifier.</param>
         /// <param name="percent">The percentage modifier.</param>
-        public void RemoveModifier(Actor actor, string statId, float flat, float percent)
+        public void RemoveModifier(Actor actor, string statID, float flat, float percent)
         {
             var container = actor.GetComponent<ActorStatContainer>();
-            if (container == null || !container.TryGetStat(statId, out var stat)) return;
+            if (container == null || !container.TryGetStat(statID, out var stat)) return;
             stat.SetFlatModifier(stat.FlatModifier - flat);
             stat.SetPercentModifier(stat.PercentModifier - percent);
             Recalculate(container);
@@ -356,13 +356,13 @@ namespace Game.Server
 
         /// <summary>Sets the current value of an actor statistic.</summary>
         /// <param name="actor">The actor whose statistic changes.</param>
-        /// <param name="statId">The statistic identifier.</param>
+        /// <param name="statID">The statistic identifier.</param>
         /// <param name="value">The new current value.</param>
-        public void SetCurrent(Actor actor, string statId, float value)
+        public void SetCurrent(Actor actor, string statID, float value)
         {
             var container = actor.GetComponent<ActorStatContainer>();
-            if (container == null || !container.TryGetStat(statId, out var stat)) return;
-            container.SetStat(statId, new StatInstance(
+            if (container == null || !container.TryGetStat(statID, out var stat)) return;
+            container.SetStat(statID, new StatInstance(
                 stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                 stat.EffectiveMaximum, value));
             SendSnapshot(actor);
@@ -377,10 +377,10 @@ namespace Game.Server
             var library = ActorStatDefinitionLibrary.Instance;
             var allDefs = library.GetAllDefinitions();
 
-            for (int a = trackedActors.Count - 1; a >= 0; a--)
+            for (int a = _trackedActors.Count - 1; a >= 0; a--)
             {
-                var actor = trackedActors[a];
-                if (actor == null) { trackedActors.RemoveAt(a); continue; }
+                var actor = _trackedActors[a];
+                if (actor == null) { _trackedActors.RemoveAt(a); continue; }
 
                 var container = actor.GetComponent<ActorStatContainer>();
                 if (container == null) continue;

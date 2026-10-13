@@ -13,7 +13,7 @@ namespace Game.Server.ECS
     public struct SpawnPointComponent : IComponentData
     {
         /// <summary>The unique spawn-point identifier.</summary>
-        public Guid SpawnPointGuid;
+        public Guid SpawnPointGUID;
         /// <summary>The scene containing the spawn point.</summary>
         public FixedString128Bytes SceneName;
         /// <summary>The spawn position.</summary>
@@ -30,7 +30,7 @@ namespace Game.Server.ECS
     public struct SpawnCommand : IComponentData
     {
         /// <summary>The source spawn-point identifier.</summary>
-        public Guid SpawnPointGuid;
+        public Guid SpawnPointGUID;
         /// <summary>The scene containing the spawn point.</summary>
         public FixedString128Bytes SceneName;
         /// <summary>The spawn position.</summary>

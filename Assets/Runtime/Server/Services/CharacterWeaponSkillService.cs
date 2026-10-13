@@ -10,10 +10,10 @@ namespace Game.Server.Services
     /// <summary>Applies weapon-skill experience to a server-side player character.</summary>
     public sealed class CharacterWeaponSkillService
     {
-        private PlayerExperience playerExperience;
-        private ItemWeaponType weaponType;
-        private int level;
-        private int experience;
+        private PlayerExperience _playerExperience;
+        private ItemWeaponType _weaponType;
+        private int _level;
+        private int _experience;
 
         /// <summary>Initializes the service and applies the supplied weapon-skill experience.</summary>
         /// <param name="playerActor">The player character receiving experience.</param>
@@ -21,38 +21,38 @@ namespace Game.Server.Services
         /// <param name="experienceGained">The amount of experience to add.</param>
         public CharacterWeaponSkillService(PlayerActor playerActor, ItemWeaponType weaponType, int experienceGained)
         {
-            this.playerExperience = playerActor.GetComponent<PlayerExperience>();
-            this.weaponType = weaponType;
+            _playerExperience = playerActor.GetComponent<PlayerExperience>();
+            _weaponType = weaponType;
 
             // Read the WEAPON SKILL's current level/exp, not the player's overall level/exp.
-            var existing = playerExperience.WeaponSkills.FirstOrDefault(ws => ws.WeaponType == weaponType);
-            this.level = existing?.Level ?? 1;
-            this.experience = existing?.Experience ?? 0;
+            var existing = _playerExperience.WeaponSkills.FirstOrDefault(ws => ws.WeaponType == weaponType);
+            _level = existing?.Level ?? 1;
+            _experience = existing?.Experience ?? 0;
 
             AddWeaponSkillExperience(experienceGained);
 
             // Update the player's experience and level on the PlayerExperience component
-            playerExperience.SetWeaponSkill(weaponType, level, experience, experienceGained);
+            _playerExperience.SetWeaponSkill(weaponType, _level, _experience, experienceGained);
 
             // Notify clients about the experience update
-            CharacterEndpoint.Client_WeaponSkillUpdated(playerActor.owner.Value, (int)weaponType, level, experience, experienceGained);
+            CharacterEndpoint.Client_WeaponSkillUpdated(playerActor.owner.Value, (int)weaponType, _level, _experience, experienceGained);
         }
 
         /// <summary>Adds experience to the configured weapon skill.</summary>
         /// <param name="amount">The amount of experience to add.</param>
         public void AddWeaponSkillExperience(int amount)
         {
-            if (level >= ExperienceCalculator.MAX_LEVEL)
+            if (_level >= ExperienceCalculator.MAX_LEVEL)
                 return;
 
-            experience += amount;
+            _experience += amount;
 
-            int required = ExperienceCalculator.GetExpForLevel(level);
-            while (experience >= required && level < playerExperience.Level)
+            int required = ExperienceCalculator.GetExpForLevel(_level);
+            while (_experience >= required && _level < _playerExperience.Level)
             {
-                experience -= required;
-                level++;
-                required = ExperienceCalculator.GetExpForLevel(level);
+                _experience -= required;
+                _level++;
+                required = ExperienceCalculator.GetExpForLevel(_level);
             }
         }
     }

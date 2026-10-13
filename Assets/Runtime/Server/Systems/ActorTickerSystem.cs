@@ -30,15 +30,15 @@ namespace Game.Server.ECS
                         entry.TimeSinceLastTick -= entry.TickInterval;
 
                         ActorEndpoint.onServerActorTick?.Invoke(
-                            actor.ValueRO.ActorId,
-                            entry.TickerId);
+                            actor.ValueRO.ActorID,
+                            entry.TickerID);
                     }
 
                     if (entry.RemainingDuration != float.MaxValue && entry.RemainingDuration <= 0f)
                     {
                         ActorEndpoint.onServerActorTickerExpired?.Invoke(
-                            actor.ValueRO.ActorId,
-                            entry.TickerId);
+                            actor.ValueRO.ActorID,
+                            entry.TickerID);
 
                         buffer.RemoveAt(i);
                     }

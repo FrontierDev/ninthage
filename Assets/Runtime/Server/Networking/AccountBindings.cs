@@ -26,10 +26,10 @@ namespace Game.Server.Networking
             var characterCreationService = new CharacterCreationService(sender, newCharacterData);
         }
 
-        private static void OnEnterWorldRequest(PlayerID sender, string characterGuid)
+        private static void OnEnterWorldRequest(PlayerID sender, string characterGUID)
         {
-            Debug.Log($"Received enter world request from player {sender} for character ID '{characterGuid}'");
-            var enterWorldService = new EnterWorldService(sender, characterGuid);
+            Debug.Log($"Received enter world request from player {sender} for character ID '{characterGUID}'");
+            var enterWorldService = new EnterWorldService(sender, characterGUID);
         }
     }
 }

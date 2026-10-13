@@ -21,8 +21,8 @@ namespace Game.Server
         /// <summary>The identifier used for the global cooldown.</summary>
         public const string GCD_ID = "GCD";
 
-        private EntityManager entityManager;
-        private EntityQuery actorComponentQuery;
+        private EntityManager _entityManager;
+        private EntityQuery _actorComponentQuery;
 
         private void Awake()
         {
@@ -35,8 +35,8 @@ namespace Game.Server
             _instance = this;
 
             var world = ECS.ServerECSManager.DefaultWorld;
-            entityManager = world.EntityManager;
-            actorComponentQuery = entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
+            _entityManager = world.EntityManager;
+            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(ECS.ActorComponent));
 
             ActorEndpoint.onServerStartCooldown += StartCooldown;
 
@@ -52,32 +52,32 @@ namespace Game.Server
         }
 
         /// <summary>Starts or refreshes a cooldown for an actor.</summary>
-        /// <param name="actorId">The actor receiving the cooldown.</param>
-        /// <param name="spellId">The spell or cooldown identifier.</param>
+        /// <param name="actorID">The actor receiving the cooldown.</param>
+        /// <param name="spellID">The spell or cooldown identifier.</param>
         /// <param name="duration">The cooldown duration in seconds.</param>
-        public void StartCooldown(Guid actorId, string spellId, float duration)
+        public void StartCooldown(Guid actorID, string spellID, float duration)
         {
-            var fixedSpellId = new FixedString64Bytes(spellId);
+            var fixedSpellID = new FixedString64Bytes(spellID);
 
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actorId) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != actorID) continue;
 
-                    var buffer = entityManager.GetBuffer<ECS.CooldownElement>(entity);
+                    var buffer = _entityManager.GetBuffer<ECS.CooldownElement>(entity);
 
                     // Update existing entry or append a new one.
                     bool found = false;
                     for (int i = 0; i < buffer.Length; i++)
                     {
-                        if (buffer[i].SpellID == fixedSpellId)
+                        if (buffer[i].SpellID == fixedSpellID)
                         {
                             buffer[i] = new ECS.CooldownElement
                             {
-                                SpellID = fixedSpellId,
+                                SpellID = fixedSpellID,
                                 RemainingCooldown = duration
                             };
                             found = true;
@@ -89,7 +89,7 @@ namespace Game.Server
                     {
                         buffer.Add(new ECS.CooldownElement
                         {
-                            SpellID = fixedSpellId,
+                            SpellID = fixedSpellID,
                             RemainingCooldown = duration
                         });
                     }
@@ -104,34 +104,34 @@ namespace Game.Server
         }
 
         /// <summary>Determines whether an actor currently has a cooldown.</summary>
-        /// <param name="actorId">The actor to query.</param>
-        /// <param name="spellId">The spell or cooldown identifier.</param>
+        /// <param name="actorID">The actor to query.</param>
+        /// <param name="spellID">The spell or cooldown identifier.</param>
         /// <returns><see langword="true"/> when the cooldown is active.</returns>
-        public bool IsOnCooldown(Guid actorId, string spellId)
+        public bool IsOnCooldown(Guid actorID, string spellID)
         {
-            return GetRemainingCooldown(actorId, spellId) > 0f;
+            return GetRemainingCooldown(actorID, spellID) > 0f;
         }
 
         /// <summary>Gets the remaining duration of an actor's cooldown.</summary>
-        /// <param name="actorId">The actor to query.</param>
-        /// <param name="spellId">The spell or cooldown identifier.</param>
+        /// <param name="actorID">The actor to query.</param>
+        /// <param name="spellID">The spell or cooldown identifier.</param>
         /// <returns>The remaining duration in seconds, or zero when inactive.</returns>
-        public float GetRemainingCooldown(Guid actorId, string spellId)
+        public float GetRemainingCooldown(Guid actorID, string spellID)
         {
-            var fixedSpellId = new FixedString64Bytes(spellId);
+            var fixedSpellID = new FixedString64Bytes(spellID);
 
-            var entities = actorComponentQuery.ToEntityArray(Allocator.Temp);
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = entityManager.GetComponentData<ECS.ActorComponent>(entity);
-                    if (component.ActorId != actorId) continue;
+                    var component = _entityManager.GetComponentData<ECS.ActorComponent>(entity);
+                    if (component.ActorID != actorID) continue;
 
-                    var buffer = entityManager.GetBuffer<ECS.CooldownElement>(entity, true);
+                    var buffer = _entityManager.GetBuffer<ECS.CooldownElement>(entity, true);
                     for (int i = 0; i < buffer.Length; i++)
                     {
-                        if (buffer[i].SpellID == fixedSpellId)
+                        if (buffer[i].SpellID == fixedSpellID)
                             return buffer[i].RemainingCooldown;
                     }
 

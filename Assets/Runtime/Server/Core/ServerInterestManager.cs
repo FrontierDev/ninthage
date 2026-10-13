@@ -24,7 +24,7 @@ namespace Game.Server
         /// <summary>Gets whether the interest manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
-        private NetworkManager networkManager;
+        private NetworkManager _networkManager;
 
         private readonly Dictionary<Actor, HashSet<string>> _actorChunks = new();
 
@@ -38,11 +38,11 @@ namespace Game.Server
             _instance = this;
 
             // cache a reference to the network manager.
-            networkManager = NetworkManager.main;
+            _networkManager = NetworkManager.main;
 
             // Listen for interest requests from the movement service.
             Game.Shared.Networking.MovementEndpoint.onInterestRequest += OnInterestRequest;
-            networkManager.onPlayerLeft += OnPlayerLeft;
+            _networkManager.onPlayerLeft += OnPlayerLeft;
 
             _initialized = true;
         }
@@ -51,22 +51,22 @@ namespace Game.Server
         {
             Game.Shared.Networking.MovementEndpoint.onInterestRequest -= OnInterestRequest;
 
-            if (networkManager != null)
-                networkManager.onPlayerLeft -= OnPlayerLeft;
+            if (_networkManager != null)
+                _networkManager.onPlayerLeft -= OnPlayerLeft;
 
             _actorChunks.Clear();
             _instance = null;
             _initialized = false;
         }
 
-        private void OnPlayerLeft(PlayerID playerId, bool asServer)
+        private void OnPlayerLeft(PlayerID playerID, bool asServer)
         {
             // Find the actor for this player from our own tracking, since session
             // data may already be removed by ServerConnectionManager.OnPlayerLeft.
             Actor playerActor = null;
             foreach (var kvp in _actorChunks)
             {
-                if (kvp.Key.Owner == playerId)
+                if (kvp.Key.Owner == playerID)
                 {
                     playerActor = kvp.Key;
                     break;
@@ -83,7 +83,7 @@ namespace Game.Server
                     Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(sceneName, playerActor);
             }
 
-            Game.Shared.Networking.ChunkSubscriptions.UnregisterPlayerActor(playerId);
+            Game.Shared.Networking.ChunkSubscriptions.UnregisterPlayerActor(playerID);
 
             GetChunksByActor(playerActor, out var subscribedChunks);
             foreach (var chunk in subscribedChunks)
@@ -92,9 +92,9 @@ namespace Game.Server
             _actorChunks.Remove(playerActor);
         }
 
-        private void OnInterestRequest(PlayerID playerId, Vector2Int centerChunk)
+        private void OnInterestRequest(PlayerID playerID, Vector2Int centerChunk)
         {
-            var session = ServerConnectionManager.Instance.GetSessionData(playerId);
+            var session = ServerConnectionManager.Instance.GetSessionData(playerID);
             if (session?.PlayerActor == null) return;
             var actor = session.PlayerActor;
 
@@ -150,9 +150,9 @@ namespace Game.Server
 
             // Targeted re-evaluation: only evaluate identities in chunks that changed,
             // rather than scanning every identity in every scene.
-            var globalSceneId = ServerWorldManager.Instance.GlobalActorsSceneId;
+            var globalSceneID = ServerWorldManager.Instance.GlobalActorsSceneID;
             if (NetworkManager.main.TryGetModule<HierarchyFactory>(true, out var factory)
-                && factory.TryGetHierarchy(globalSceneId, out var hierarchy))
+                && factory.TryGetHierarchy(globalSceneID, out var hierarchy))
             {
                 // Symmetric difference: chunks that were added or removed
                 var changedChunks = new HashSet<string>(newSet);
@@ -166,15 +166,15 @@ namespace Game.Server
                     foreach (var id in identities)
                     {
                         if (id != null)
-                            hierarchy.EvaluateVisibility(playerId, id.transform);
+                            hierarchy.EvaluateVisibility(playerID, id.transform);
                     }
                 }
             }
 
             // Notify that the actor's scene (center chunk) changed.
-            if (ServerWorldManager.Instance.TryGetChunkSceneId(centerChunk, out var _centerSceneId))
+            if (ServerWorldManager.Instance.TryGetChunkSceneID(centerChunk, out var _centerSceneID))
             {
-                Game.Shared.Networking.ActorEndpoint.onServerActorInterestChanged?.Invoke(actor, _centerSceneId);
+                Game.Shared.Networking.ActorEndpoint.onServerActorInterestChanged?.Invoke(actor, _centerSceneID);
             }
         }
 
@@ -193,7 +193,7 @@ namespace Game.Server
         /// <param name="onSubscribed">An optional callback invoked after subscription.</param>
         public void SubscribePlayerToChunk(Actor actor, Vector2Int chunkCoord, Action onSubscribed = null)
         {
-            ServerWorldManager.Instance.EnsureChunkLoaded(actor, chunkCoord, (sceneId) =>
+            ServerWorldManager.Instance.EnsureChunkLoaded(actor, chunkCoord, (sceneID) =>
             {
                 // Guard: if the actor's interest changed while the chunk was loading, skip.
                 var chunkScene = $"World_{chunkCoord.x}_{chunkCoord.y}";
@@ -203,7 +203,7 @@ namespace Game.Server
                 if (actor.Owner != null)
                 {
                     PlayerID playerID = actor.Owner.Value;
-                    networkManager.scenePlayersModule.AddPlayerToScene(playerID, sceneId);
+                    _networkManager.scenePlayersModule.AddPlayerToScene(playerID, sceneID);
                     Debug.Log($"Subscribed player {actor} to chunk {chunkCoord}.");
                 }
 
@@ -216,13 +216,13 @@ namespace Game.Server
         /// <param name="chunkCoord">The chunk coordinate.</param>
         public void UnsubscribePlayerFromChunk(Actor actor, Vector2Int chunkCoord)
         {
-            if (!ServerWorldManager.Instance.TryGetChunkSceneId(chunkCoord, out SceneID sceneId))
+            if (!ServerWorldManager.Instance.TryGetChunkSceneID(chunkCoord, out SceneID sceneID))
                 return;
 
             if (actor.Owner != null)
             {
                 PlayerID playerID = actor.Owner.Value;
-                networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneId);
+                _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
                 Debug.Log($"Unsubscribed player {actor} from chunk {chunkCoord}.");
             }
 
@@ -230,7 +230,7 @@ namespace Game.Server
             if (ServerWorldManager.Instance.IsChunkLoadPending(chunkCoord))
                 return;
 
-            if (!networkManager.scenePlayersModule.TryGetPlayersInScene(sceneId, out var players) || players.Count == 0)
+            if (!_networkManager.scenePlayersModule.TryGetPlayersInScene(sceneID, out var players) || players.Count == 0)
             {
                 ServerWorldManager.Instance.UnloadChunk(chunkCoord);
             }
@@ -247,12 +247,12 @@ namespace Game.Server
             foreach (var kvp in ServerWorldManager.Instance.LoadedChunks)
             {
                 Vector2Int chunkCoord = kvp.Key;
-                SceneID sceneId = kvp.Value;
+                SceneID sceneID = kvp.Value;
 
                 if (actor.Owner != null)
                 {
                     PlayerID playerID = actor.Owner.Value;
-                    if (networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneId))
+                    if (_networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
                         subscribedChunks.Add(chunkCoord);
                 }
             }

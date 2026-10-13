@@ -30,18 +30,18 @@ namespace Game.Server
         private static bool _initialized;
         /// <summary>Gets whether the spawn manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
-        private NetworkManager networkManager;
+        private NetworkManager _networkManager;
 
         // Managed prefab list indexed by SpawnPointComponent.PrefabIndex
-        private readonly List<GameObject> prefabRegistry = new();
+        private readonly List<GameObject> _prefabRegistry = new();
         // SceneIndex → Scene for PurrNet Instantiate
-        private readonly Dictionary<int, Scene> sceneRegistry = new();
-        private int nextSceneIndex;
+        private readonly Dictionary<int, Scene> _sceneRegistry = new();
+        private int _nextSceneIndex;
 
-        private Dictionary<Guid, Actor> spawnPointActorMap = new();
+        private Dictionary<Guid, Actor> _spawnPointActorMap = new();
 
-        private EntityManager entityManager;
-        private EntityQuery spawnCommandQuery;
+        private EntityManager _entityManager;
+        private EntityQuery _spawnCommandQuery;
 
         /// <summary>Initializes server spawn manager state and subscriptions.</summary>
         public void Awake()
@@ -53,22 +53,22 @@ namespace Game.Server
             }
             _instance = this;
 
-            networkManager = NetworkManager.main;
-            networkManager.sceneModule.onPostSceneLoaded += OnPostSceneLoaded;
+            _networkManager = NetworkManager.main;
+            _networkManager.sceneModule.onPostSceneLoaded += OnPostSceneLoaded;
 
             Game.Shared.Networking.ActorEndpoint.onServerActorDespawned += OnServerActorDespawned;
 
             var world = ECS.ServerECSManager.DefaultWorld;
-            entityManager = world.EntityManager;
-            spawnCommandQuery = entityManager.CreateEntityQuery(typeof(ECS.SpawnCommand));
+            _entityManager = world.EntityManager;
+            _spawnCommandQuery = _entityManager.CreateEntityQuery(typeof(ECS.SpawnCommand));
 
             _initialized = true;
         }
 
         private void OnDestroy()
         {
-            if (networkManager != null && networkManager.sceneModule != null)
-                networkManager.sceneModule.onPostSceneLoaded -= OnPostSceneLoaded;
+            if (_networkManager != null && _networkManager.sceneModule != null)
+                _networkManager.sceneModule.onPostSceneLoaded -= OnPostSceneLoaded;
 
             Game.Shared.Networking.ActorEndpoint.onServerActorDespawned -= OnServerActorDespawned;
 
@@ -79,10 +79,10 @@ namespace Game.Server
         private void OnPostSceneLoaded(SceneID sceneID, bool asServer)
         {
             if (!asServer) return;
-            if (!networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
+            if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
 
-            var globalSceneId = ServerWorldManager.Instance.GlobalActorsSceneId;
-            if (!networkManager.sceneModule.TryGetSceneState(globalSceneId, out var globalState))
+            var globalSceneID = ServerWorldManager.Instance.GlobalActorsSceneID;
+            if (!_networkManager.sceneModule.TryGetSceneState(globalSceneID, out var globalState))
                 return;
             int sceneIndex = RegisterScene(globalState.scene);
 
@@ -96,7 +96,7 @@ namespace Game.Server
             foreach (ActorSpawnPoint spawnPoint in actorSpawnPoints)
             {
                 Guid spawnPointGUID = spawnPoint.GUID;
-                if (spawnPointActorMap.ContainsKey(spawnPointGUID))
+                if (_spawnPointActorMap.ContainsKey(spawnPointGUID))
                 {
                     Debug.Warning($"Spawn point '{spawnPoint.name}' with GUID {spawnPointGUID} already has an actor spawned. Skipping duplicate.");
                     continue;
@@ -104,10 +104,10 @@ namespace Game.Server
 
                 int prefabIndex = RegisterPrefab(spawnPoint.Actor.gameObject);
 
-                var entity = entityManager.CreateEntity();
-                entityManager.AddComponentData(entity, new ECS.SpawnPointComponent
+                var entity = _entityManager.CreateEntity();
+                _entityManager.AddComponentData(entity, new ECS.SpawnPointComponent
                 {
-                    SpawnPointGuid = spawnPointGUID,
+                    SpawnPointGUID = spawnPointGUID,
                     SceneName = state.scene.name,
                     Position = spawnPoint.transform.position,
                     PrefabIndex = prefabIndex,
@@ -116,26 +116,26 @@ namespace Game.Server
                 });
 
                 // Tell the spawn system that this spawn point has an actor associated with it.
-                spawnPointActorMap[spawnPointGUID] = spawnPoint.Actor;
+                _spawnPointActorMap[spawnPointGUID] = spawnPoint.Actor;
             }
         }
 
         private void OnServerActorDespawned(Actor actor)
         {
             // If this actor was spawned from a spawn point, mark that spawn point as pending again so it can respawn.
-            if (actor.SpawnPointGUID != default && spawnPointActorMap.ContainsKey(actor.SpawnPointGUID))
-                spawnPointActorMap.Remove(actor.SpawnPointGUID);
+            if (actor.SpawnPointGUID != default && _spawnPointActorMap.ContainsKey(actor.SpawnPointGUID))
+                _spawnPointActorMap.Remove(actor.SpawnPointGUID);
         }
 
         /// <summary>Starts spawning the actor associated with a connected player.</summary>
-        /// <param name="playerId">The player to spawn.</param>
-        public void SpawnPlayer(PlayerID playerId)
+        /// <param name="playerID">The player to spawn.</param>
+        public void SpawnPlayer(PlayerID playerID)
         {
-            StartCoroutine(SpawnPlayerCoroutine(playerId));
+            StartCoroutine(SpawnPlayerCoroutine(playerID));
         }
 
         [ToDo("Implement proper spawn point selection logic rather than hardcoding to a specific scene and position.Lots of placeholder code in this method that not be in production.")]
-        private IEnumerator SpawnPlayerCoroutine(PlayerID playerId)
+        private IEnumerator SpawnPlayerCoroutine(PlayerID playerID)
         {
             var spawnScene = new Vector2Int(0, 0);
 
@@ -158,20 +158,20 @@ namespace Game.Server
             GameObject prefab = handle.Result;
 
             // Spawn the actor into the persistent global_actors scene, not the chunk scene.
-            var globalSceneId = ServerWorldManager.Instance.GlobalActorsSceneId;
-            SpawnAt("World_0_0", spawnPosition, prefab, globalSceneId, playerId);
+            var globalSceneID = ServerWorldManager.Instance.GlobalActorsSceneID;
+            SpawnAt("World_0_0", spawnPosition, prefab, globalSceneID, playerID);
 
             // Wait for the actor to be spawned and linked to the session (happens on next Update tick).
-            var session = ServerConnectionManager.Instance.GetSessionData(playerId);
+            var session = ServerConnectionManager.Instance.GetSessionData(playerID);
             if (session == null) yield break;
             yield return new WaitUntil(() => session.PlayerActor != null);
 
             // Look up the character data from the account and assign it to the PlayerActor.
-            var accountData = ServerConnectionManager.Instance.GetAccountData(playerId);
-            var characterData = accountData?.Characters.Find(c => c.GUID == session.CharacterId);
+            var accountData = ServerConnectionManager.Instance.GetAccountData(playerID);
+            var characterData = accountData?.Characters.Find(c => c.GUID == session.CharacterID);
             if (characterData == null)
             {
-                Debug.Error($"Character data not found for player {playerId}, character GUID {session.CharacterId}.");
+                Debug.Error($"Character data not found for player {playerID}, character GUID {session.CharacterID}.");
                 yield break;
             }
 
@@ -187,7 +187,7 @@ namespace Game.Server
             var classDef = Shared.Data.ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID);
             if (classDef == null)
             {
-                Debug.Error($"Class definition '{characterData.ClassID}' not found for player {playerId}.");
+                Debug.Error($"Class definition '{characterData.ClassID}' not found for player {playerID}.");
                 yield break;
             }
             else
@@ -196,7 +196,7 @@ namespace Game.Server
                 {
                     if (!characterData.KnownSpellIDs.Contains(classSpell.spell.DefinitionID))
                     {
-                        Debug.Log($"Adding missing spell '{classSpell.spell.DisplayName}' to player {playerId} character data.");
+                        Debug.Log($"Adding missing spell '{classSpell.spell.DisplayName}' to player {playerID} character data.");
                         characterData.KnownSpellIDs.Add(classSpell.spell.DefinitionID);
                     }
                 }
@@ -209,14 +209,14 @@ namespace Game.Server
                 var entry = characterData.SavedInventory[i];
                 if (Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemID) == null)
                 {
-                    Debug.Warning($"Removing invalid inventory entry at slot {entry.SlotIndex} with unknown item '{entry.ItemID}' for player {playerId}.");
+                    Debug.Warning($"Removing invalid inventory entry at slot {entry.SlotIndex} with unknown item '{entry.ItemID}' for player {playerID}.");
                     characterData.SavedInventory.RemoveAt(i);
                 }
                 else if (string.IsNullOrEmpty(entry.ItemGUID))
                 {
                     entry.ItemGUID = System.Guid.NewGuid().ToString("N");
                     characterData.SavedInventory[i] = entry;
-                    Debug.Log($"Assigned GUID to inventory entry at slot {entry.SlotIndex} for player {playerId}.");
+                    Debug.Log($"Assigned GUID to inventory entry at slot {entry.SlotIndex} for player {playerID}.");
                 }
             }
 
@@ -226,14 +226,14 @@ namespace Game.Server
                 var def = Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemID);
                 if (def == null || (def.ItemType != Shared.Data.ItemType.Weapon && def.ItemType != Shared.Data.ItemType.Armor))
                 {
-                    Debug.Warning($"Removing invalid equipment entry at slot {entry.SlotIndex} with unknown item '{entry.ItemID}' for player {playerId}.");
+                    Debug.Warning($"Removing invalid equipment entry at slot {entry.SlotIndex} with unknown item '{entry.ItemID}' for player {playerID}.");
                     characterData.SavedEquipment.RemoveAt(i);
                 }
                 else if (string.IsNullOrEmpty(entry.ItemGUID))
                 {
                     entry.ItemGUID = System.Guid.NewGuid().ToString("N");
                     characterData.SavedEquipment[i] = entry;
-                    Debug.Log($"Assigned GUID to equipment entry at slot {entry.SlotIndex} for player {playerId}.");
+                    Debug.Log($"Assigned GUID to equipment entry at slot {entry.SlotIndex} for player {playerID}.");
                 }
             }
 
@@ -248,7 +248,7 @@ namespace Game.Server
                         Level = 1,
                         Experience = 0
                     });
-                    Debug.Log($"Added weapon skill for {weaponType} to player {playerId}.");
+                    Debug.Log($"Added weapon skill for {weaponType} to player {playerID}.");
                 }
             }
 
@@ -258,7 +258,7 @@ namespace Game.Server
                 var weaponType = (Shared.Data.ItemWeaponType)ws.WeaponType;
                 bool isInvalid = !classDef.WeaponTypes.Contains(weaponType);
                 if (isInvalid)
-                    Debug.Warning($"Removing invalid weapon skill {weaponType} from player {playerId}.");
+                    Debug.Warning($"Removing invalid weapon skill {weaponType} from player {playerID}.");
                 return isInvalid;
             });
 
@@ -272,7 +272,7 @@ namespace Game.Server
                     FactionID = startingRep.Faction.DefinitionID,
                     Reputation = startingRep.Reputation
                 });
-                Debug.Log($"Set initial reputation with faction '{startingRep.Faction.DisplayName}' to {startingRep.Reputation} for player {playerId}.");
+                Debug.Log($"Set initial reputation with faction '{startingRep.Faction.DisplayName}' to {startingRep.Reputation} for player {playerID}.");
             }
 
             try
@@ -281,7 +281,7 @@ namespace Game.Server
             }
             catch (Exception e)
             {
-                Debug.Error($"Error setting character data for player {playerId}: {e}");
+                Debug.Error($"Error setting character data for player {playerID}: {e}");
             }
 
 
@@ -296,17 +296,17 @@ namespace Game.Server
             playerActor.isDead = false;
 
             // Trigger initial 3x3 chunk interest around the spawn location.
-            Game.Shared.Networking.MovementEndpoint.onInterestRequest?.Invoke(playerId, spawnScene);
+            Game.Shared.Networking.MovementEndpoint.onInterestRequest?.Invoke(playerID, spawnScene);
 
             // Send the finalized character data to the client now, after all server-side
             // modifications are complete. This must happen before AddPlayerToScene so
             // the client has _activeCharacter set before actor ownership is replicated.
-            Game.Shared.Networking.AccountEndpoint.Client_EnterWorld(playerId, characterData, $"World_{spawnScene.x}_{spawnScene.y}");
+            Game.Shared.Networking.AccountEndpoint.Client_EnterWorld(playerID, characterData, $"World_{spawnScene.x}_{spawnScene.y}");
 
             // Add the player to global_actors AFTER ChunkSubscriptions is populated.
             // This avoids a race where PurrNet's Spawn() and OnPlayerLoadedScene both
             // send spawn packets before the visibility rule has data to work with.
-            networkManager.scenePlayersModule.AddPlayerToScene(playerId, globalSceneId);
+            _networkManager.scenePlayersModule.AddPlayerToScene(playerID, globalSceneID);
         }
 
         /// <summary>Spawns an actor prefab at a position in a networked scene.</summary>
@@ -317,14 +317,14 @@ namespace Game.Server
         /// <param name="owner">The player that owns the spawned actor.</param>
         public void SpawnAt(string sceneName, Vector3 position, GameObject prefab, SceneID sceneID, PlayerID owner)
         {
-            if (!networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
+            if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
 
             int prefabIndex = RegisterPrefab(prefab);
             int sceneIndex = RegisterScene(state.scene);
 
             var chunkCoord = ServerWorldManager.Instance.ParseChunkCoordinate(sceneName);
-            var entity = entityManager.CreateEntity();
-            entityManager.AddComponentData(entity, new ECS.SpawnCommand
+            var entity = _entityManager.CreateEntity();
+            _entityManager.AddComponentData(entity, new ECS.SpawnCommand
             {
                 Position = position,
                 PrefabIndex = prefabIndex,
@@ -338,18 +338,18 @@ namespace Game.Server
         private void Update()
         {
             // Drain spawn commands from ECS
-            if (spawnCommandQuery.IsEmpty) return;
+            if (_spawnCommandQuery.IsEmpty) return;
 
-            var entities = spawnCommandQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
-            var commands = spawnCommandQuery.ToComponentDataArray<ECS.SpawnCommand>(Unity.Collections.Allocator.Temp);
+            var entities = _spawnCommandQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            var commands = _spawnCommandQuery.ToComponentDataArray<ECS.SpawnCommand>(Unity.Collections.Allocator.Temp);
 
             for (int i = 0; i < commands.Length; i++)
             {
                 var cmd = commands[i];
-                var prefab = prefabRegistry[cmd.PrefabIndex];
-                var scene = sceneRegistry[cmd.SceneIndex];
+                var prefab = _prefabRegistry[cmd.PrefabIndex];
+                var scene = _sceneRegistry[cmd.SceneIndex];
                 var sceneName = cmd.SceneName.ToString();
-                var spawnPointGuid = cmd.SpawnPointGuid;
+                var spawnPointGUID = cmd.SpawnPointGUID;
 
                 try
                 {
@@ -370,7 +370,7 @@ namespace Game.Server
                         new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y),
                         new Vector3(cmd.Position.x, cmd.Position.y, cmd.Position.z));
                     actor.Initialize(actor.ID, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefab.name);
-                    actor.SetSpawnPointGUID(spawnPointGuid);
+                    actor.SetSpawnPointGUID(spawnPointGUID);
 
                     // Register the root identity for targeted visibility re-evaluation.
                     NetworkIdentity identity = go.GetComponent<NetworkIdentity>();
@@ -398,7 +398,7 @@ namespace Game.Server
                     // Initialize NPC stats (NPCs have no owner, so this must be outside the owner block).
                     if (!actor.IsPlayer)
                     {
-                        ServerStatManager.Instance.InitializeNpcStats(actor);
+                        ServerStatManager.Instance.InitializeNPCStats(actor);
                         ServerStatManager.Instance.RegisterActor(actor);
 
                         // Teach NPCs the auto-attack spell so they can swing.
@@ -425,7 +425,7 @@ namespace Game.Server
                 finally
                 {
                     // Always destroy the entity so it doesn't retry
-                    entityManager.DestroyEntity(entities[i]);
+                    _entityManager.DestroyEntity(entities[i]);
                 }
             }
 
@@ -437,28 +437,28 @@ namespace Game.Server
             // Resolve to PurrNet's own reference so Spawn() identity check passes.
             // Addressable scenes deserialize a different object instance than what
             // NetworkPrefabs holds, so we match by name.
-            foreach (var data in networkManager.prefabProvider.allPrefabs)
+            foreach (var data in _networkManager.prefabProvider.allPrefabs)
             {
                 if (data.prefab != null && data.prefab.name == scenePrefab.name)
                 {
-                    int idx = prefabRegistry.IndexOf(data.prefab);
+                    int idx = _prefabRegistry.IndexOf(data.prefab);
                     if (idx >= 0) return idx;
-                    prefabRegistry.Add(data.prefab);
-                    return prefabRegistry.Count - 1;
+                    _prefabRegistry.Add(data.prefab);
+                    return _prefabRegistry.Count - 1;
                 }
             }
 
             Debug.Error($"Prefab '{scenePrefab.name}' not found in PurrNet's NetworkPrefabs!");
-            prefabRegistry.Add(scenePrefab);
-            return prefabRegistry.Count - 1;
+            _prefabRegistry.Add(scenePrefab);
+            return _prefabRegistry.Count - 1;
         }
 
         private int RegisterScene(Scene scene)
         {
-            foreach (var kvp in sceneRegistry)
+            foreach (var kvp in _sceneRegistry)
                 if (kvp.Value == scene) return kvp.Key;
-            int idx = nextSceneIndex++;
-            sceneRegistry[idx] = scene;
+            int idx = _nextSceneIndex++;
+            _sceneRegistry[idx] = scene;
             return idx;
         }
     }

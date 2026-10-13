@@ -18,7 +18,7 @@ namespace Game.Server
         /// <summary>Gets whether the position manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
-        private int chunkSize;
+        private int _chunkSize;
 
         /// <summary>
         /// The chunk the server currently considers as the physics origin.
@@ -34,7 +34,7 @@ namespace Game.Server
                 return;
             }
             _instance = this;
-            chunkSize = Game.Shared.GameConfigurationManager.Config.ChunkSize;
+            _chunkSize = Game.Shared.GameConfigurationManager.Config.ChunkSize;
             ServerOriginChunk = Vector2Int.zero;
             _initialized = true;
         }

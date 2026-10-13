@@ -29,17 +29,17 @@ namespace Game.Server.ECS
                         entry.TimeSinceLastTick -= entry.TickInterval;
 
                         ActorEndpoint.onServerAuraTick?.Invoke(
-                            actor.ValueRO.ActorId,
-                            entry.AuraDefinitionId.ToString(),
-                            entry.InstanceId);
+                            actor.ValueRO.ActorID,
+                            entry.AuraDefinitionID.ToString(),
+                            entry.InstanceID);
                     }
 
                     if (entry.RemainingDuration <= 0f)
                     {
                         ActorEndpoint.onServerAuraExpired?.Invoke(
-                            actor.ValueRO.ActorId,
-                            entry.AuraDefinitionId.ToString(),
-                            entry.InstanceId);
+                            actor.ValueRO.ActorID,
+                            entry.AuraDefinitionID.ToString(),
+                            entry.InstanceID);
 
                         buffer.RemoveAt(i);
                     }

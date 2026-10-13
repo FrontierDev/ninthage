@@ -9,9 +9,9 @@ namespace Game.Server.Services
     /// <summary>Applies faction reputation gains to a server-side player character.</summary>
     public sealed class CharacterReputationService
     {
-        private PlayerActor player;
-        private PlayerReputation playerReputation;
-        private FactionDefinition faction;
+        private PlayerActor _player;
+        private PlayerReputation _playerReputation;
+        private FactionDefinition _faction;
 
         /// <summary>Initializes the service and applies the supplied reputation gain.</summary>
         /// <param name="playerActor">The player character receiving reputation.</param>
@@ -19,9 +19,9 @@ namespace Game.Server.Services
         /// <param name="reputationGained">The amount of reputation to add.</param>
         public CharacterReputationService(PlayerActor playerActor, FactionDefinition faction, int reputationGained)
         {
-            this.player = playerActor;
-            this.playerReputation = playerActor.GetComponent<PlayerReputation>();
-            this.faction = faction;
+            _player = playerActor;
+            _playerReputation = playerActor.GetComponent<PlayerReputation>();
+            _faction = faction;
 
             AddReputation(reputationGained);
         }
@@ -30,20 +30,20 @@ namespace Game.Server.Services
         /// <param name="amount">The amount of reputation to add.</param>
         public void AddReputation(int amount)
         {
-            if (playerReputation.TryGetReputation(faction.DefinitionID, out int currentReputation))
+            if (_playerReputation.TryGetReputation(_faction.DefinitionID, out int currentReputation))
             {
                 currentReputation += amount;
-                playerReputation.SetReputation(faction, currentReputation);
+                _playerReputation.SetReputation(_faction, currentReputation);
 
                 // Notify clients about the reputation update
-                CharacterEndpoint.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionID, currentReputation, amount);
+                CharacterEndpoint.Client_ReputationUpdated(_player.Owner.Value, _faction.DefinitionID, currentReputation, amount);
             }
             else
             {
-                playerReputation.SetReputation(faction, amount);
+                _playerReputation.SetReputation(_faction, amount);
 
                 // Notify clients about the reputation update
-                CharacterEndpoint.Client_ReputationUpdated(player.Owner.Value, faction.DefinitionID, amount, amount);
+                CharacterEndpoint.Client_ReputationUpdated(_player.Owner.Value, _faction.DefinitionID, amount, amount);
             }
         }
     }
