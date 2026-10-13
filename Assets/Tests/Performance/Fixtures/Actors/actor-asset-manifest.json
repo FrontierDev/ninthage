@@ -1,0 +1,22 @@
+{
+  "schema_version": "actor-fixture-assets/v1",
+  "profile_id": "P1-S0-04",
+  "source_status": "project_owned_inputs",
+  "assets": [
+    { "path": "Assets/Prefabs/Test/[PH] NPC Unit.prefab", "guid": "5cbe9f2c3e4197f4297f3d7be3adc229", "kind": "networked_npc_prefab", "required_for": [ "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Prefabs/PlayerPrefab.prefab", "guid": "7e1f5d7272f26f846926bc023027cd83", "kind": "networked_player_prefab", "required_for": [ "real_purrnet_player_entry" ] },
+    { "path": "Assets/Scenes/global_actors.unity", "guid": "28b4d96a6ce1f1d438e580b258317e8a", "kind": "networked_actor_scene", "required_for": [ "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Data/SpellDefinitions/Spell_auto_attack.asset", "guid": "dcbf135932663c241b07ac631e967313", "kind": "spell_definition", "definition_id": "auto_attack", "required_for": [ "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Data/SpellDefinitions/Spell_fireball.asset", "guid": "137ad64b11c470f41bb28ddcf149511e", "kind": "spell_definition", "definition_id": "fireball", "required_for": [ "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Data/SpellDefinitions/Spell_cleave.asset", "guid": "c5ea9c32f6b9f7341851f1fa697ae392", "kind": "spell_definition", "definition_id": "cleave", "required_for": [ "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Data/AuraDefinitions/Aura_burning.asset", "guid": "b4892e1c78746294f8a24caf38aaf19a", "kind": "aura_definition", "definition_id": "burning", "required_for": [ "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Data/AuraDefinitions/Aura_bleed.asset", "guid": "72c02103160bcc54b85688fbc00b734d", "kind": "aura_definition", "definition_id": "bleed", "required_for": [ "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Data/ClassDefinitions/Class_fighter.asset", "guid": "5051c2efb22f37645a8920889c301307", "kind": "class_definition", "definition_id": "fighter", "required_for": [ "S04-I-DATA", "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Data/ClassDefinitions/Class_ranger.asset", "guid": "ed21f318e80d10d498f692536c0bc338", "kind": "class_definition", "definition_id": "ranger", "required_for": [ "S04-I-DATA", "S04-I-FULL", "S04-C-WAKE" ] },
+    { "path": "Assets/Data/ClassDefinitions/Class_sorcerer.asset", "guid": "3a0f616adc9ef8e4f93647ff46807b6f", "kind": "class_definition", "definition_id": "sorcerer", "required_for": [ "S04-I-DATA", "S04-I-FULL", "S04-C-WAKE" ] }
+  ],
+  "limitations": [
+    "The player prefab and global actor scene are existing project inputs; this fixture does not modify or regenerate them.",
+    "The prototype player entry path still hardcodes World_0_0 and (0,0,0) before its height offset."
+  ]
+}

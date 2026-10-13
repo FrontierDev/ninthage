@@ -1,0 +1,485 @@
+{
+  "schema_version": "actor-fixture-catalog/v1",
+  "profile_id": "P1-S0-04",
+  "profile_revision": "1.0.0",
+  "spec_revision": "P1-STRESS-1.0.0",
+  "generator_revision": "1.0.0",
+  "master_seed": 424242,
+  "derivation": "sha256-u32le-v1",
+  "streams": [
+    "actors",
+    "movement",
+    "abilities",
+    "lifecycle"
+  ],
+  "profiles": [
+    {
+      "profile_id": "P1-S0-04",
+      "variant_id": "S04-I-DATA",
+      "revision": "1.0.0",
+      "tier": "T1",
+      "replicate_seed": 424242,
+      "representation": "ecs_data_only",
+      "required_features": [
+        "seeded_actor_placement",
+        "ecs_data_only_actor_state",
+        "deterministic_lifecycle_ledger"
+      ],
+      "population": {
+        "players": {
+          "requested": 0,
+          "connection_kind": "none_data_only",
+          "groups": []
+        },
+        "npcs": {
+          "requested": 100,
+          "representation": "ecs_data_only",
+          "groups": [
+            {
+              "group_id": "npc-idle",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "",
+              "role": "idle",
+              "count": 95,
+              "level_min": 5,
+              "level_max": 10,
+              "class_id": "fighter",
+              "cluster_id": "distant",
+              "route_id": "",
+              "activity": {
+                "idle": 1,
+                "patrolling": 0,
+                "engaged": 0
+              }
+            },
+            {
+              "group_id": "npc-patrol",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "",
+              "role": "patrolling",
+              "count": 4,
+              "level_min": 10,
+              "level_max": 15,
+              "class_id": "ranger",
+              "cluster_id": "outer",
+              "route_id": "patrol-route-alpha",
+              "activity": {
+                "idle": 0,
+                "patrolling": 1,
+                "engaged": 0
+              }
+            },
+            {
+              "group_id": "npc-engaged",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "",
+              "role": "engaged",
+              "count": 1,
+              "level_min": 15,
+              "level_max": 20,
+              "class_id": "sorcerer",
+              "cluster_id": "player-start",
+              "route_id": "engaged-ring",
+              "activity": {
+                "idle": 0,
+                "patrolling": 0,
+                "engaged": 1
+              }
+            }
+          ]
+        },
+        "accounting": {
+          "ecs_data_only_npcs": 100,
+          "full_gameobject_purrnet_npcs": 0,
+          "real_player_connections": 0,
+          "synthetic_network_players": 0
+        }
+      },
+      "space": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": null,
+        "clusters": [
+          {
+            "cluster_id": "distant",
+            "center_world_m": [
+              -512,
+              0,
+              -512
+            ],
+            "radius_m": 64,
+            "players": 0,
+            "npcs": 80
+          },
+          {
+            "cluster_id": "outer",
+            "center_world_m": [
+              128,
+              0,
+              128
+            ],
+            "radius_m": 64,
+            "players": 0,
+            "npcs": 15
+          },
+          {
+            "cluster_id": "player-start",
+            "center_world_m": [
+              0,
+              0,
+              0
+            ],
+            "radius_m": 32,
+            "players": 0,
+            "npcs": 5
+          }
+        ]
+      },
+      "environment": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": null,
+        "origin_cell_size_m": 100,
+        "world_tile_size_m": 256,
+        "authored_grid_columns": 5,
+        "authored_grid_rows": 5,
+        "collision_enabled": true
+      },
+      "provenance": {
+        "fixture_generator": "Game.Tests.Performance.Fixtures.Actors.Test_ActorFixtureGenerator",
+        "generator_revision": "1.0.0",
+        "input_path": "Assets/Tests/Performance/Fixtures/Actors/actor-population-manifest.json",
+        "asset_manifest_path": "Assets/Tests/Performance/Fixtures/Actors/actor-asset-manifest.json",
+        "source_commit": "UNRESOLVED_UNTIL_COMMIT",
+        "source_sha256": "",
+        "asset_manifest_sha256": "ad8a7c5ddced960ac7e028b5f75ff2e6f04ba6cf7ee6e2df946ef90d08e26842"
+      }
+    },
+    {
+      "profile_id": "P1-S0-04",
+      "variant_id": "S04-I-FULL",
+      "revision": "1.0.0",
+      "tier": "T1",
+      "replicate_seed": 424242,
+      "representation": "networked_gameobject_ecs",
+      "required_features": [
+        "seeded_actor_placement",
+        "full_networked_npc_spawn",
+        "server_actor_lifecycle",
+        "legal_scripted_activity"
+      ],
+      "population": {
+        "players": {
+          "requested": 1,
+          "connection_kind": "real_purrnet",
+          "groups": [
+            {
+              "group_id": "player-route",
+              "class_id": "fighter",
+              "role": "traveller",
+              "count": 1,
+              "cluster_id": "player-start",
+              "activity": {
+                "idle": 0.5,
+                "travelling": 0.5,
+                "combat": 0
+              }
+            }
+          ]
+        },
+        "npcs": {
+          "requested": 100,
+          "representation": "networked_gameobject_ecs",
+          "groups": [
+            {
+              "group_id": "npc-idle",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "Assets/Prefabs/Test/[PH] NPC Unit.prefab",
+              "role": "idle",
+              "count": 95,
+              "level_min": 5,
+              "level_max": 10,
+              "class_id": "fighter",
+              "cluster_id": "distant",
+              "route_id": "",
+              "activity": {
+                "idle": 1,
+                "patrolling": 0,
+                "engaged": 0
+              }
+            },
+            {
+              "group_id": "npc-patrol",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "Assets/Prefabs/Test/[PH] NPC Unit.prefab",
+              "role": "patrolling",
+              "count": 4,
+              "level_min": 10,
+              "level_max": 15,
+              "class_id": "ranger",
+              "cluster_id": "outer",
+              "route_id": "patrol-route-alpha",
+              "activity": {
+                "idle": 0,
+                "patrolling": 1,
+                "engaged": 0
+              }
+            },
+            {
+              "group_id": "npc-engaged",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "Assets/Prefabs/Test/[PH] NPC Unit.prefab",
+              "role": "engaged",
+              "count": 1,
+              "level_min": 15,
+              "level_max": 20,
+              "class_id": "sorcerer",
+              "cluster_id": "player-start",
+              "route_id": "engaged-ring",
+              "activity": {
+                "idle": 0,
+                "patrolling": 0,
+                "engaged": 1
+              }
+            }
+          ]
+        },
+        "accounting": {
+          "ecs_data_only_npcs": 0,
+          "full_gameobject_purrnet_npcs": 100,
+          "real_player_connections": 1,
+          "synthetic_network_players": 0
+        }
+      },
+      "space": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": null,
+        "clusters": [
+          {
+            "cluster_id": "distant",
+            "center_world_m": [
+              -512,
+              0,
+              -512
+            ],
+            "radius_m": 64,
+            "players": 0,
+            "npcs": 80
+          },
+          {
+            "cluster_id": "outer",
+            "center_world_m": [
+              128,
+              0,
+              128
+            ],
+            "radius_m": 64,
+            "players": 0,
+            "npcs": 15
+          },
+          {
+            "cluster_id": "player-start",
+            "center_world_m": [
+              0,
+              0,
+              0
+            ],
+            "radius_m": 32,
+            "players": 1,
+            "npcs": 5
+          }
+        ]
+      },
+      "environment": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": null,
+        "origin_cell_size_m": 100,
+        "world_tile_size_m": 256,
+        "authored_grid_columns": 5,
+        "authored_grid_rows": 5,
+        "collision_enabled": true
+      },
+      "provenance": {
+        "fixture_generator": "Game.Tests.Performance.Fixtures.Actors.Test_ActorFixtureGenerator",
+        "generator_revision": "1.0.0",
+        "input_path": "Assets/Tests/Performance/Fixtures/Actors/actor-population-manifest.json",
+        "asset_manifest_path": "Assets/Tests/Performance/Fixtures/Actors/actor-asset-manifest.json",
+        "source_commit": "UNRESOLVED_UNTIL_COMMIT",
+        "source_sha256": "",
+        "asset_manifest_sha256": "ad8a7c5ddced960ac7e028b5f75ff2e6f04ba6cf7ee6e2df946ef90d08e26842"
+      }
+    },
+    {
+      "profile_id": "P1-S0-04",
+      "variant_id": "S04-C-WAKE",
+      "revision": "1.0.0",
+      "tier": "T1",
+      "replicate_seed": 424242,
+      "representation": "networked_gameobject_ecs",
+      "required_features": [
+        "seeded_actor_placement",
+        "full_networked_npc_spawn",
+        "server_actor_lifecycle",
+        "legal_scripted_activity"
+      ],
+      "population": {
+        "players": {
+          "requested": 1,
+          "connection_kind": "real_purrnet",
+          "groups": [
+            {
+              "group_id": "player-route",
+              "class_id": "fighter",
+              "role": "traveller",
+              "count": 1,
+              "cluster_id": "player-start",
+              "activity": {
+                "idle": 0.5,
+                "travelling": 0.5,
+                "combat": 0
+              }
+            }
+          ]
+        },
+        "npcs": {
+          "requested": 100,
+          "representation": "networked_gameobject_ecs",
+          "groups": [
+            {
+              "group_id": "npc-idle",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "Assets/Prefabs/Test/[PH] NPC Unit.prefab",
+              "role": "idle",
+              "count": 95,
+              "level_min": 5,
+              "level_max": 10,
+              "class_id": "fighter",
+              "cluster_id": "distant",
+              "route_id": "",
+              "activity": {
+                "idle": 1,
+                "patrolling": 0,
+                "engaged": 0
+              }
+            },
+            {
+              "group_id": "npc-patrol",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "Assets/Prefabs/Test/[PH] NPC Unit.prefab",
+              "role": "patrolling",
+              "count": 4,
+              "level_min": 10,
+              "level_max": 15,
+              "class_id": "ranger",
+              "cluster_id": "outer",
+              "route_id": "patrol-route-alpha",
+              "activity": {
+                "idle": 0,
+                "patrolling": 1,
+                "engaged": 0
+              }
+            },
+            {
+              "group_id": "npc-engaged",
+              "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+              "prefab_path": "Assets/Prefabs/Test/[PH] NPC Unit.prefab",
+              "role": "engaged",
+              "count": 1,
+              "level_min": 15,
+              "level_max": 20,
+              "class_id": "sorcerer",
+              "cluster_id": "player-start",
+              "route_id": "engaged-ring",
+              "activity": {
+                "idle": 0,
+                "patrolling": 0,
+                "engaged": 1
+              }
+            }
+          ]
+        },
+        "accounting": {
+          "ecs_data_only_npcs": 0,
+          "full_gameobject_purrnet_npcs": 100,
+          "real_player_connections": 1,
+          "synthetic_network_players": 0
+        }
+      },
+      "space": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": null,
+        "clusters": [
+          {
+            "cluster_id": "distant",
+            "center_world_m": [
+              -512,
+              0,
+              -512
+            ],
+            "radius_m": 64,
+            "players": 0,
+            "npcs": 80
+          },
+          {
+            "cluster_id": "outer",
+            "center_world_m": [
+              128,
+              0,
+              128
+            ],
+            "radius_m": 64,
+            "players": 0,
+            "npcs": 15
+          },
+          {
+            "cluster_id": "player-start",
+            "center_world_m": [
+              0,
+              0,
+              0
+            ],
+            "radius_m": 32,
+            "players": 1,
+            "npcs": 5
+          }
+        ]
+      },
+      "environment": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": null,
+        "origin_cell_size_m": 100,
+        "world_tile_size_m": 256,
+        "authored_grid_columns": 5,
+        "authored_grid_rows": 5,
+        "collision_enabled": true
+      },
+      "provenance": {
+        "fixture_generator": "Game.Tests.Performance.Fixtures.Actors.Test_ActorFixtureGenerator",
+        "generator_revision": "1.0.0",
+        "input_path": "Assets/Tests/Performance/Fixtures/Actors/actor-population-manifest.json",
+        "asset_manifest_path": "Assets/Tests/Performance/Fixtures/Actors/actor-asset-manifest.json",
+        "source_commit": "UNRESOLVED_UNTIL_COMMIT",
+        "source_sha256": "",
+        "asset_manifest_sha256": "ad8a7c5ddced960ac7e028b5f75ff2e6f04ba6cf7ee6e2df946ef90d08e26842"
+      }
+    }
+  ],
+  "blocked_capabilities": [
+    {
+      "capability": "true_dormant_sleep_wake",
+      "status": "Blocked",
+      "reason": "Dormant/sleep simulation LOD belongs to Stage 1.4 and is not claimed by this fixture."
+    },
+    {
+      "capability": "synthetic_player_authentication",
+      "status": "Blocked",
+      "reason": "Player entry/authentication requires a real PurrNet client; synthetic actors are never counted as network players."
+    }
+  ],
+  "limitation": "The current prototype player entry path hardcodes World_0_0 and position (0,0,0) before the initial height offset. This fixture does not claim to exercise connection or authentication when no real client is present.",
+  "catalog_sha256": "9e0aeefac55427d1f014dfc0652cf7c209afad8851aa5acc329dc2c143201572"
+}

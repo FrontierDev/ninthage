@@ -1,0 +1,427 @@
+{
+  "schema_version": "actor-scenario/v1",
+  "profile_id": "P1-S0-04",
+  "profile_revision": "1.0.0",
+  "spec_revision": "P1-STRESS-1.0.0",
+  "master_seed": 424242,
+  "profiles": [
+    {
+      "variant_id": "S04-I-DATA",
+      "representation": "ecs_data_only",
+      "requires_real_client": false,
+      "load_ramp_rate_actors_per_s": 0.8333333333333334,
+      "preflight_timeout_s": 30,
+      "ramp_s": 120,
+      "warmup_s": 60,
+      "measurement_s": 300,
+      "recovery_s": 60,
+      "sample_interval_ms": 1000,
+      "movement_routes": [
+        {
+          "route_id": "patrol-route-alpha",
+          "actor_group": "npc-patrol",
+          "loop": true,
+          "start_phase": "warmup",
+          "waypoints_world_m": [
+            {
+              "x": 96,
+              "y": 0,
+              "z": 96
+            },
+            {
+              "x": 160,
+              "y": 0,
+              "z": 96
+            },
+            {
+              "x": 160,
+              "y": 0,
+              "z": 160
+            },
+            {
+              "x": 96,
+              "y": 0,
+              "z": 160
+            }
+          ]
+        },
+        {
+          "route_id": "player-entry-route",
+          "actor_group": "player-route",
+          "loop": true,
+          "start_phase": "measurement",
+          "waypoints_world_m": [
+            {
+              "x": 0,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": 20,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": 120,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": -120,
+              "y": 5,
+              "z": 0
+            }
+          ]
+        }
+      ],
+      "ability_schedule": [
+        {
+          "action_id": "engaged-auto-attack",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "auto_attack",
+          "target_group": "player-route",
+          "effect_kind": "auto_attack",
+          "aura_definition_id": null,
+          "attempts_per_actor_per_s": 0.5,
+          "start_phase": "measurement"
+        },
+        {
+          "action_id": "engaged-fireball",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "fireball",
+          "target_group": "player-route",
+          "effect_kind": "single_target_cast_with_aura",
+          "aura_definition_id": "burning",
+          "attempts_per_actor_per_s": 0.1,
+          "start_phase": "measurement"
+        },
+        {
+          "action_id": "engaged-cleave",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "cleave",
+          "target_group": "player-route",
+          "effect_kind": "aoe_cone_with_aura",
+          "aura_definition_id": "bleed",
+          "attempts_per_actor_per_s": 0.1,
+          "start_phase": "measurement"
+        }
+      ],
+      "events": [
+        {
+          "event_id": "respawn-churn-01",
+          "kind": "respawn_churn",
+          "actor_group": "npc-patrol",
+          "offset_s": 90,
+          "count": 5,
+          "from_activity": "patrolling",
+          "to_activity": "patrolling"
+        },
+        {
+          "event_id": "wake-up-surge-01",
+          "kind": "wake_up_surge",
+          "actor_group": "npc-idle",
+          "offset_s": 150,
+          "count": 10,
+          "from_activity": "idle",
+          "to_activity": "engaged"
+        },
+        {
+          "event_id": "engagement-reset-01",
+          "kind": "reset_engagement",
+          "actor_group": "npc-idle",
+          "offset_s": 240,
+          "count": 10,
+          "from_activity": "engaged",
+          "to_activity": "idle"
+        }
+      ],
+      "deterministic_boundaries": {
+        "preflight_start_s": 0,
+        "ramp_start_s": 0,
+        "warmup_start_s": 120,
+        "measurement_start_s": 180,
+        "measurement_end_s": 480,
+        "recovery_end_s": 540
+      }
+    },
+    {
+      "variant_id": "S04-I-FULL",
+      "representation": "networked_gameobject_ecs",
+      "requires_real_client": true,
+      "load_ramp_rate_actors_per_s": 0.8333333333333334,
+      "preflight_timeout_s": 30,
+      "ramp_s": 120,
+      "warmup_s": 60,
+      "measurement_s": 300,
+      "recovery_s": 60,
+      "sample_interval_ms": 1000,
+      "movement_routes": [
+        {
+          "route_id": "patrol-route-alpha",
+          "actor_group": "npc-patrol",
+          "loop": true,
+          "start_phase": "warmup",
+          "waypoints_world_m": [
+            {
+              "x": 96,
+              "y": 0,
+              "z": 96
+            },
+            {
+              "x": 160,
+              "y": 0,
+              "z": 96
+            },
+            {
+              "x": 160,
+              "y": 0,
+              "z": 160
+            },
+            {
+              "x": 96,
+              "y": 0,
+              "z": 160
+            }
+          ]
+        },
+        {
+          "route_id": "player-entry-route",
+          "actor_group": "player-route",
+          "loop": true,
+          "start_phase": "measurement",
+          "waypoints_world_m": [
+            {
+              "x": 0,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": 20,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": 120,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": -120,
+              "y": 5,
+              "z": 0
+            }
+          ]
+        }
+      ],
+      "ability_schedule": [
+        {
+          "action_id": "engaged-auto-attack",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "auto_attack",
+          "target_group": "player-route",
+          "effect_kind": "auto_attack",
+          "aura_definition_id": null,
+          "attempts_per_actor_per_s": 0.5,
+          "start_phase": "measurement"
+        },
+        {
+          "action_id": "engaged-fireball",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "fireball",
+          "target_group": "player-route",
+          "effect_kind": "single_target_cast_with_aura",
+          "aura_definition_id": "burning",
+          "attempts_per_actor_per_s": 0.1,
+          "start_phase": "measurement"
+        },
+        {
+          "action_id": "engaged-cleave",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "cleave",
+          "target_group": "player-route",
+          "effect_kind": "aoe_cone_with_aura",
+          "aura_definition_id": "bleed",
+          "attempts_per_actor_per_s": 0.1,
+          "start_phase": "measurement"
+        }
+      ],
+      "events": [
+        {
+          "event_id": "respawn-churn-01",
+          "kind": "respawn_churn",
+          "actor_group": "npc-patrol",
+          "offset_s": 90,
+          "count": 5,
+          "from_activity": "patrolling",
+          "to_activity": "patrolling"
+        },
+        {
+          "event_id": "wake-up-surge-01",
+          "kind": "wake_up_surge",
+          "actor_group": "npc-idle",
+          "offset_s": 150,
+          "count": 10,
+          "from_activity": "idle",
+          "to_activity": "engaged"
+        },
+        {
+          "event_id": "engagement-reset-01",
+          "kind": "reset_engagement",
+          "actor_group": "npc-idle",
+          "offset_s": 240,
+          "count": 10,
+          "from_activity": "engaged",
+          "to_activity": "idle"
+        }
+      ],
+      "deterministic_boundaries": {
+        "preflight_start_s": 0,
+        "ramp_start_s": 0,
+        "warmup_start_s": 120,
+        "measurement_start_s": 180,
+        "measurement_end_s": 480,
+        "recovery_end_s": 540
+      }
+    },
+    {
+      "variant_id": "S04-C-WAKE",
+      "representation": "networked_gameobject_ecs",
+      "requires_real_client": true,
+      "load_ramp_rate_actors_per_s": 0.8333333333333334,
+      "preflight_timeout_s": 30,
+      "ramp_s": 120,
+      "warmup_s": 60,
+      "measurement_s": 300,
+      "recovery_s": 60,
+      "sample_interval_ms": 1000,
+      "movement_routes": [
+        {
+          "route_id": "patrol-route-alpha",
+          "actor_group": "npc-patrol",
+          "loop": true,
+          "start_phase": "warmup",
+          "waypoints_world_m": [
+            {
+              "x": 96,
+              "y": 0,
+              "z": 96
+            },
+            {
+              "x": 160,
+              "y": 0,
+              "z": 96
+            },
+            {
+              "x": 160,
+              "y": 0,
+              "z": 160
+            },
+            {
+              "x": 96,
+              "y": 0,
+              "z": 160
+            }
+          ]
+        },
+        {
+          "route_id": "player-entry-route",
+          "actor_group": "player-route",
+          "loop": true,
+          "start_phase": "measurement",
+          "waypoints_world_m": [
+            {
+              "x": 0,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": 20,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": 120,
+              "y": 5,
+              "z": 0
+            },
+            {
+              "x": -120,
+              "y": 5,
+              "z": 0
+            }
+          ]
+        }
+      ],
+      "ability_schedule": [
+        {
+          "action_id": "engaged-auto-attack",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "auto_attack",
+          "target_group": "player-route",
+          "effect_kind": "auto_attack",
+          "aura_definition_id": null,
+          "attempts_per_actor_per_s": 0.5,
+          "start_phase": "measurement"
+        },
+        {
+          "action_id": "engaged-fireball",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "fireball",
+          "target_group": "player-route",
+          "effect_kind": "single_target_cast_with_aura",
+          "aura_definition_id": "burning",
+          "attempts_per_actor_per_s": 0.1,
+          "start_phase": "measurement"
+        },
+        {
+          "action_id": "engaged-cleave",
+          "actor_group": "npc-engaged",
+          "ability_definition_id": "cleave",
+          "target_group": "player-route",
+          "effect_kind": "aoe_cone_with_aura",
+          "aura_definition_id": "bleed",
+          "attempts_per_actor_per_s": 0.1,
+          "start_phase": "measurement"
+        }
+      ],
+      "events": [
+        {
+          "event_id": "respawn-churn-01",
+          "kind": "respawn_churn",
+          "actor_group": "npc-patrol",
+          "offset_s": 90,
+          "count": 5,
+          "from_activity": "patrolling",
+          "to_activity": "patrolling"
+        },
+        {
+          "event_id": "wake-up-surge-01",
+          "kind": "wake_up_surge",
+          "actor_group": "npc-idle",
+          "offset_s": 150,
+          "count": 10,
+          "from_activity": "idle",
+          "to_activity": "engaged"
+        },
+        {
+          "event_id": "engagement-reset-01",
+          "kind": "reset_engagement",
+          "actor_group": "npc-idle",
+          "offset_s": 240,
+          "count": 10,
+          "from_activity": "engaged",
+          "to_activity": "idle"
+        }
+      ],
+      "deterministic_boundaries": {
+        "preflight_start_s": 0,
+        "ramp_start_s": 0,
+        "warmup_start_s": 120,
+        "measurement_start_s": 180,
+        "measurement_end_s": 480,
+        "recovery_end_s": 540
+      }
+    }
+  ],
+  "scenario_catalog_sha256": "8213c5e815dec4dd027296a4c3c444768bbb9a7007e52af831aa6f9069735760"
+}
