@@ -451,16 +451,16 @@ namespace Game.Tests.Performance.Harness
             WorldFixtureLoaded = scene.IsValid() && scene.isLoaded && string.Equals(scene.path, WorldPlan.AssetPath, StringComparison.Ordinal);
             if (!WorldFixtureLoaded)
                 throw new InvalidOperationException($"Loaded scene identity did not match the selected fixture: expected {WorldPlan.AssetPath}, found {scene.path}.");
-            var metadata = FindMetadata(scene, out var hasMissingScript);
-            if (hasMissingScript)
+            var metadata = FindMetadata(scene, out var missingScriptDiagnostic);
+            if (missingScriptDiagnostic != null)
             {
-                throw new InvalidOperationException(
-                    $"Selected fixture scene '{scene.path}' contains an unresolved script reference, so its fixture metadata cannot be trusted. Check the test runtime assembly and imported script GUIDs.");
+                throw new Test_PerformancePrerequisiteException(
+                    $"Selected fixture scene '{scene.path}' contains an unresolved script reference at {missingScriptDiagnostic}. Its fixture metadata cannot be trusted; check the test runtime assembly and imported script GUIDs.");
             }
 
             if (metadata == null)
             {
-                throw new InvalidOperationException(
+                throw new Test_PerformancePrerequisiteException(
                     $"Selected fixture scene '{scene.path}' is missing its required Test_WorldFixtureMetadata component on a root GameObject.");
             }
 
@@ -1192,34 +1192,36 @@ namespace Game.Tests.Performance.Harness
             throw new IOException("Could not allocate a unique benchmark result directory.");
         }
 
-        private static Test_WorldFixtureMetadata FindMetadata(Scene scene, out bool hasMissingScript)
+        private static Test_WorldFixtureMetadata FindMetadata(Scene scene, out string missingScriptDiagnostic)
         {
-            hasMissingScript = false;
+            missingScriptDiagnostic = null;
             Test_WorldFixtureMetadata metadata = null;
             foreach (var root in scene.GetRootGameObjects())
             {
-                if (ContainsMissingScript(root))
-                    hasMissingScript = true;
+                missingScriptDiagnostic = missingScriptDiagnostic ?? FindMissingScript(root, root.name);
                 metadata = metadata ?? root.GetComponent<Test_WorldFixtureMetadata>();
             }
             return metadata;
         }
 
-        private static bool ContainsMissingScript(GameObject root)
+        private static string FindMissingScript(GameObject root, string hierarchyPath)
         {
-            foreach (var component in root.GetComponents<Component>())
+            var components = root.GetComponents<Component>();
+            for (var index = 0; index < components.Length; index++)
             {
-                if (component == null)
-                    return true;
+                if (components[index] == null)
+                    return $"GameObject '{hierarchyPath}' component slot {index}";
             }
 
             for (var index = 0; index < root.transform.childCount; index++)
             {
-                if (ContainsMissingScript(root.transform.GetChild(index).gameObject))
-                    return true;
+                var child = root.transform.GetChild(index).gameObject;
+                var missingScript = FindMissingScript(child, hierarchyPath + "/" + child.name);
+                if (missingScript != null)
+                    return missingScript;
             }
 
-            return false;
+            return null;
         }
 
         private static void AddMetadataMismatch<T>(ICollection<string> mismatches, string fieldName, T expected, T actual)

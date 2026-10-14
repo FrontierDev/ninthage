@@ -4,6 +4,7 @@ using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
 using System.IO;
+using System.Reflection;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -233,6 +234,25 @@ namespace Game.Tests.Performance.Harness
 
             options.WorkloadMode = Test_PerformanceWorkloadMode.NetworkedClients;
             Assert.That(options.GetUnsupportedModeDiagnostic(), Does.Contain("real-client"));
+        }
+
+        [Test]
+        public void FixtureScriptPrerequisitesAreBlockedInsteadOfRunnerErrors()
+        {
+            var classifyFailure = typeof(Test_PerformanceHarnessController).GetMethod(
+                "ClassifyFailure",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(classifyFailure, Is.Not.Null);
+            if (classifyFailure == null)
+                return;
+
+            var classification = classifyFailure.Invoke(
+                null,
+                new object[] { new Test_PerformancePrerequisiteException("fixture script is unavailable") });
+            var classificationType = classification.GetType();
+
+            Assert.That(classificationType.GetProperty("ReasonCode").GetValue(classification), Is.EqualTo("PREREQUISITE_BLOCKED"));
+            Assert.That(classificationType.GetProperty("Status").GetValue(classification), Is.EqualTo(PerformanceRunStatus.BlockedPrerequisite));
         }
 
         [Test]

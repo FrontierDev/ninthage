@@ -184,6 +184,10 @@ namespace Game.Tests.Performance.Fixtures.Editor
                     var fixtureRoot = FindRoot(scene, "FixtureRoot");
                     Assert.That(fixtureRoot, Is.Not.Null, expectedPlan.AssetPath);
                     AssertNoMissingScripts(scene, expectedPlan.AssetPath);
+                    Assert.That(
+                        fixtureRoot.transform.childCount,
+                        Is.EqualTo(expectedPlan.ObjectCount),
+                        $"Scene '{expectedPlan.AssetPath}' contains a different number of direct spawn objects than its manifest.");
 
                     var metadata = fixtureRoot.GetComponent<Test_WorldFixtureMetadata>();
                     Assert.That(metadata, Is.Not.Null, expectedPlan.AssetPath);
@@ -192,6 +196,7 @@ namespace Game.Tests.Performance.Fixtures.Editor
                     Assert.That(metadata.Variant, Is.EqualTo(expectedPlan.Variant), expectedPlan.AssetPath);
                     Assert.That(metadata.Status, Is.EqualTo(expectedPlan.Status), expectedPlan.AssetPath);
                     Assert.That(metadata.Seed, Is.EqualTo(Test_WorldFixtureLayout.DEFAULT_SEED), expectedPlan.AssetPath);
+                    AssertSpawnMetadata(expectedPlan, fixtureRoot);
                 }
                 finally
                 {
@@ -215,16 +220,80 @@ namespace Game.Tests.Performance.Fixtures.Editor
         private static void AssertNoMissingScripts(Scene scene, string scenePath)
         {
             foreach (var root in scene.GetRootGameObjects())
-                AssertNoMissingScripts(root, scenePath);
+            {
+                var missingScript = FindMissingScript(root, root.name);
+                Assert.That(missingScript, Is.Null, $"Scene '{scenePath}' contains an unresolved script reference: {missingScript}");
+            }
         }
 
-        private static void AssertNoMissingScripts(GameObject root, string scenePath)
+        private static string FindMissingScript(GameObject root, string hierarchyPath)
         {
-            foreach (var component in root.GetComponents<Component>())
-                Assert.That(component, Is.Not.Null, $"Scene '{scenePath}' contains a missing root component script.");
+            var components = root.GetComponents<Component>();
+            for (var index = 0; index < components.Length; index++)
+            {
+                if (components[index] == null)
+                    return $"GameObject '{hierarchyPath}' component slot {index} has no imported script.";
+            }
 
             for (var index = 0; index < root.transform.childCount; index++)
-                AssertNoMissingScripts(root.transform.GetChild(index).gameObject, scenePath);
+            {
+                var child = root.transform.GetChild(index).gameObject;
+                var missingScript = FindMissingScript(child, hierarchyPath + "/" + child.name);
+                if (missingScript != null)
+                    return missingScript;
+            }
+
+            return null;
+        }
+
+        private static void AssertSpawnMetadata(Test_WorldFixturePlan expectedPlan, GameObject fixtureRoot)
+        {
+            Assert.That(expectedPlan.Spawns, Is.Not.Null, expectedPlan.AssetPath);
+            foreach (var expectedSpawn in expectedPlan.Spawns)
+            {
+                var spawnName = expectedSpawn.SpawnID.Replace('/', '_');
+                var spawnRoot = FindDirectChild(fixtureRoot.transform, spawnName);
+                Assert.That(spawnRoot, Is.Not.Null, $"Scene '{expectedPlan.AssetPath}' is missing spawn '{expectedSpawn.SpawnID}'.");
+                if (spawnRoot == null)
+                    continue;
+
+                var metadata = spawnRoot.GetComponent<Test_WorldFixtureSpawnMetadata>();
+                if (expectedSpawn.Kind == "Ground")
+                {
+                    Assert.That(metadata, Is.Null, $"Ground spawn '{expectedSpawn.SpawnID}' unexpectedly has spawn metadata.");
+                    continue;
+                }
+
+                Assert.That(metadata, Is.Not.Null, $"Spawn '{expectedSpawn.SpawnID}' is missing Test_WorldFixtureSpawnMetadata.");
+                if (metadata == null)
+                    continue;
+
+                Assert.That(metadata.SpawnID, Is.EqualTo(expectedSpawn.SpawnID));
+                Assert.That(metadata.Kind, Is.EqualTo(expectedSpawn.Kind));
+                Assert.That(metadata.Primitive, Is.EqualTo(expectedSpawn.Primitive));
+                Assert.That(metadata.WorldX, Is.EqualTo(expectedSpawn.WorldX));
+                Assert.That(metadata.WorldY, Is.EqualTo(expectedSpawn.WorldY));
+                Assert.That(metadata.WorldZ, Is.EqualTo(expectedSpawn.WorldZ));
+                Assert.That(metadata.OriginCellX, Is.EqualTo(expectedSpawn.OriginCellX));
+                Assert.That(metadata.OriginCellZ, Is.EqualTo(expectedSpawn.OriginCellZ));
+                Assert.That(metadata.WorldTileX, Is.EqualTo(expectedSpawn.WorldTileX));
+                Assert.That(metadata.WorldTileZ, Is.EqualTo(expectedSpawn.WorldTileZ));
+                Assert.That(metadata.MaterialVariant, Is.EqualTo(expectedSpawn.MaterialVariant));
+                Assert.That(metadata.LODLevels, Is.EqualTo(expectedSpawn.LODLevels));
+                Assert.That(metadata.HasCollision, Is.EqualTo(expectedSpawn.HasCollision));
+            }
+        }
+
+        private static GameObject FindDirectChild(Transform parent, string childName)
+        {
+            for (var index = 0; index < parent.childCount; index++)
+            {
+                var child = parent.GetChild(index).gameObject;
+                if (child.name == childName)
+                    return child;
+            }
+
+            return null;
         }
 
         private static Test_WorldFixturePlan FindScene(Test_WorldFixtureManifest manifest, string variant)
