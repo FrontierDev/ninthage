@@ -169,10 +169,10 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 foreach (var cluster in profile.space.clusters)
                 {
                     builder.Append('|').Append(cluster.cluster_id)
-                        .Append('|').Append(cluster.center_world_m[0].ToString("R", CultureInfo.InvariantCulture))
-                        .Append('|').Append(cluster.center_world_m[1].ToString("R", CultureInfo.InvariantCulture))
-                        .Append('|').Append(cluster.center_world_m[2].ToString("R", CultureInfo.InvariantCulture))
-                        .Append('|').Append(cluster.radius_m.ToString("R", CultureInfo.InvariantCulture));
+                        .Append('|').Append(CanonicalDouble(cluster.center_world_m[0]))
+                        .Append('|').Append(CanonicalDouble(cluster.center_world_m[1]))
+                        .Append('|').Append(CanonicalDouble(cluster.center_world_m[2]))
+                        .Append('|').Append(CanonicalDouble(cluster.radius_m));
                 }
             }
 
@@ -197,17 +197,24 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 builder.Append('|').Append(profile.variant_id)
                     .Append('|').Append(profile.representation)
                     .Append('|').Append(profile.requires_real_client ? '1' : '0')
-                    .Append('|').Append(profile.load_ramp_rate_actors_per_s.ToString("R", CultureInfo.InvariantCulture));
+                    .Append('|').Append(CanonicalDouble(profile.load_ramp_rate_actors_per_s));
 
                 foreach (var route in profile.movement_routes)
                     builder.Append('|').Append(route.route_id).Append('|').Append(route.actor_group).Append('|').Append(route.loop ? '1' : '0');
                 foreach (var action in profile.ability_schedule)
-                    builder.Append('|').Append(action.action_id).Append('|').Append(action.actor_group).Append('|').Append(action.ability_definition_id).Append('|').Append(action.effect_kind).Append('|').Append(action.attempts_per_actor_per_s.ToString("R", CultureInfo.InvariantCulture));
+                    builder.Append('|').Append(action.action_id).Append('|').Append(action.actor_group).Append('|').Append(action.ability_definition_id).Append('|').Append(action.effect_kind).Append('|').Append(CanonicalDouble(action.attempts_per_actor_per_s));
                 foreach (var evt in profile.events)
-                    builder.Append('|').Append(evt.event_id).Append('|').Append(evt.kind).Append('|').Append(evt.offset_s.ToString("R", CultureInfo.InvariantCulture)).Append('|').Append(evt.count.ToString(CultureInfo.InvariantCulture));
+                    builder.Append('|').Append(evt.event_id).Append('|').Append(evt.kind).Append('|').Append(CanonicalDouble(evt.offset_s)).Append('|').Append(evt.count.ToString(CultureInfo.InvariantCulture));
             }
 
             return builder.ToString();
+        }
+
+        /// <summary>Formats numeric manifest inputs identically on Unity Mono and the generator runtime.</summary>
+        private static string CanonicalDouble(double value)
+        {
+            return Math.Round(value, 15, MidpointRounding.AwayFromZero)
+                .ToString("0.###############", CultureInfo.InvariantCulture);
         }
 
         /// <summary>Computes a stable lowercase SHA-256 hash.</summary>

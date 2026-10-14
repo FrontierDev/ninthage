@@ -34,10 +34,14 @@ namespace Game.Tests.Performance.Fixtures.Actors
         {
             var first = Test_ActorFixtureLayout.BuildCatalog(Test_ActorFixtureLayout.DEFAULT_SEED);
             var second = Test_ActorFixtureLayout.BuildCatalog(Test_ActorFixtureLayout.DEFAULT_SEED + 1);
+            var firstPlacements = Test_ActorFixtureLayout.BuildPlacements(first.profiles[1]);
+            var secondPlacements = Test_ActorFixtureLayout.BuildPlacements(second.profiles[1]);
 
             Assert.That(first.catalog_sha256, Is.Not.EqualTo(second.catalog_sha256));
-            Assert.That(PlacementSignature(Test_ActorFixtureLayout.BuildPlacements(first.profiles[1])),
-                Is.Not.EqualTo(PlacementSignature(Test_ActorFixtureLayout.BuildPlacements(second.profiles[1]))));
+            Assert.That(firstPlacements, Has.Count.EqualTo(Test_ActorFixtureLayout.NPC_COUNT));
+            Assert.That(secondPlacements, Has.Count.EqualTo(Test_ActorFixtureLayout.NPC_COUNT));
+            Assert.That(firstPlacements[0].world_x, Is.Not.EqualTo(secondPlacements[0].world_x));
+            Assert.That(firstPlacements[0].world_z, Is.Not.EqualTo(secondPlacements[0].world_z));
         }
 
         [Test]

@@ -39,6 +39,7 @@ namespace Game.Tests.Performance.Harness
         public void ActivityChurnIsMeasurementRelativeAndDeterministic()
         {
             var duration = Test_PerformanceRun.MEASUREMENT_SECONDS;
+            var respawnThreshold = duration * 0.4f;
 
             Assert.That(
                 Test_PerformanceActivityController.ResolveChurnEvent(
@@ -59,7 +60,15 @@ namespace Game.Tests.Performance.Harness
             Assert.That(
                 Test_PerformanceActivityController.ResolveChurnEvent(
                     Test_PerformanceActivityPhase.Measurement,
-                    duration * 0.4f,
+                    respawnThreshold - 0.001f,
+                    duration,
+                    true,
+                    false),
+                Is.EqualTo(Test_PerformanceActivityEvent.None));
+            Assert.That(
+                Test_PerformanceActivityController.ResolveChurnEvent(
+                    Test_PerformanceActivityPhase.Measurement,
+                    respawnThreshold,
                     duration,
                     true,
                     false),

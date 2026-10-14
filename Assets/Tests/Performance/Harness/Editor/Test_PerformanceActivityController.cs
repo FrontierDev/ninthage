@@ -392,9 +392,12 @@ namespace Game.Tests.Performance.Harness
             if (measurementDurationSeconds <= 0f)
                 throw new ArgumentOutOfRangeException(nameof(measurementDurationSeconds));
 
-            if (!churnStarted && elapsedSeconds >= measurementDurationSeconds * CHURN_DESPAWN_FRACTION)
+            // Round the calculated boundaries to the same float precision as sampled elapsed time.
+            var despawnThreshold = (float)((double)measurementDurationSeconds * CHURN_DESPAWN_FRACTION);
+            var respawnThreshold = (float)((double)measurementDurationSeconds * CHURN_RESPAWN_FRACTION);
+            if (!churnStarted && elapsedSeconds >= despawnThreshold)
                 return Test_PerformanceActivityEvent.Despawn;
-            if (churnStarted && !churnRespawned && elapsedSeconds >= measurementDurationSeconds * CHURN_RESPAWN_FRACTION)
+            if (churnStarted && !churnRespawned && elapsedSeconds >= respawnThreshold)
                 return Test_PerformanceActivityEvent.Respawn;
             return Test_PerformanceActivityEvent.None;
         }
