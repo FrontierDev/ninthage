@@ -398,7 +398,9 @@ namespace Game.Tests.Performance.Harness
             var fixtureHash = Test_PerformanceRunMetadata.HashFile(expectedFixturePath);
             RequireEqual(summary.fixture_sha256, fixtureHash, "summary fixture digest");
 
-            var fixtureReference = run.fixture ?? run.fixture_ref;
+            var fixtureReference = string.Equals(run.render.mode, "rendered", StringComparison.OrdinalIgnoreCase)
+                ? run.fixture_ref
+                : run.fixture;
             if (fixtureReference == null)
                 throw new InvalidDataException("run.json is missing its fixture reference.");
             RequireRelativePath(fixtureReference.path, "run fixture reference");

@@ -72,6 +72,46 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void ReaderSelectsFixtureReferenceFromDeclaredExecutionMode()
+        {
+            var serverDirectory = CreateResult(
+                graphical: false,
+                scenario: "Outdoor",
+                finishedUtc: DateTime.UtcNow.AddMinutes(-2),
+                status: "COMPLETE-MEASURED",
+                metrics: "[]",
+                includeConflictingFixtureReferences: true);
+            var graphicalDirectory = CreateResult(
+                graphical: true,
+                scenario: "Forest",
+                finishedUtc: DateTime.UtcNow.AddMinutes(-1),
+                status: "COMPLETE-MEASURED",
+                metrics: "[]",
+                includeConflictingFixtureReferences: true);
+
+            var server = Test_PerformanceResultReader.ReadFinalized(serverDirectory);
+            var graphical = Test_PerformanceResultReader.ReadFinalized(graphicalDirectory);
+
+            Assert.That(server.IsVerified, Is.True, server.ErrorMessage);
+            Assert.That(graphical.IsVerified, Is.True, graphical.ErrorMessage);
+
+            var invalidGraphicalDirectory = CreateResult(
+                graphical: true,
+                scenario: "Forest",
+                finishedUtc: DateTime.UtcNow,
+                status: "COMPLETE-MEASURED",
+                metrics: "[]");
+            var invalidRunPath = Path.Combine(invalidGraphicalDirectory, "run.json");
+            var invalidRunJson = File.ReadAllText(invalidRunPath).Replace(
+                "\"fixture_ref\":{\"path\":\"fixture.json\"",
+                "\"fixture_ref\":{\"path\":\"missing.json\"",
+                StringComparison.Ordinal);
+            File.WriteAllText(invalidRunPath, invalidRunJson);
+
+            AssertUnverified(invalidGraphicalDirectory, "incorrect graphical fixture reference");
+        }
+
+        [Test]
         public void ReaderSelectsLatestFinalizedFailureAndExcludesActiveDirectory()
         {
             var successfulDirectory = CreateResult(
@@ -516,7 +556,13 @@ namespace Game.Tests.Performance.Harness
             Assert.That(view.ErrorMessage, Is.Not.Null.And.Not.Empty, context);
         }
 
-        private string CreateResult(bool graphical, string scenario, DateTime finishedUtc, string status, string metrics)
+        private string CreateResult(
+            bool graphical,
+            string scenario,
+            DateTime finishedUtc,
+            string status,
+            string metrics,
+            bool includeConflictingFixtureReferences = false)
         {
             var runID = "run-" + DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssfff'Z'") + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
             var directory = Path.Combine(GetResultRoot(), runID);
@@ -530,9 +576,15 @@ namespace Game.Tests.Performance.Harness
             File.WriteAllText(fixturePath, fixtureJson);
             var fixtureHash = Test_PerformanceRunMetadata.HashFile(fixturePath);
 
+            var conflictingFixture = includeConflictingFixtureReferences
+                ? "\"fixture\":{\"path\":\"wrong.json\",\"sha256\":\"wrong\"},"
+                : string.Empty;
+            var conflictingFixtureReference = includeConflictingFixtureReferences
+                ? ",\"fixture_ref\":{\"path\":\"wrong.json\",\"sha256\":\"wrong\"}"
+                : string.Empty;
             var runJson = graphical
-                ? $"{{\"schema_version\":\"benchmark-run/v1\",\"run_id\":\"{runID}\",\"created_utc\":\"{finishedUtc.AddSeconds(-1):o}\",\"fixture_ref\":{{\"path\":\"fixture.json\",\"sha256\":\"{fixtureHash}\"}},\"git\":{{\"commit_sha\":\"test-commit\",\"dirty\":true}},\"build\":{{\"kind\":\"rendered_client\"}},\"render\":{{\"mode\":\"rendered\",\"graphical_client\":true}}}}"
-                : $"{{\"schema_version\":\"benchmark-run/v1\",\"run_id\":\"{runID}\",\"created_utc\":\"{finishedUtc.AddSeconds(-1):o}\",\"fixture\":{{\"path\":\"fixture.json\",\"sha256\":\"{fixtureHash}\"}},\"git\":{{\"commit_sha\":\"test-commit\",\"dirty\":true}},\"build\":{{\"kind\":\"editor_playmode_server\"}},\"render\":{{\"mode\":\"server_only\",\"graphical_client\":false}},\"runtime\":{{\"scene_fixture\":\"Outdoor\"}}}}";
+                ? $"{{\"schema_version\":\"benchmark-run/v1\",\"run_id\":\"{runID}\",\"created_utc\":\"{finishedUtc.AddSeconds(-1):o}\",{conflictingFixture}\"fixture_ref\":{{\"path\":\"fixture.json\",\"sha256\":\"{fixtureHash}\"}},\"git\":{{\"commit_sha\":\"test-commit\",\"dirty\":true}},\"build\":{{\"kind\":\"rendered_client\"}},\"render\":{{\"mode\":\"rendered\",\"graphical_client\":true}}}}"
+                : $"{{\"schema_version\":\"benchmark-run/v1\",\"run_id\":\"{runID}\",\"created_utc\":\"{finishedUtc.AddSeconds(-1):o}\",\"fixture\":{{\"path\":\"fixture.json\",\"sha256\":\"{fixtureHash}\"}}{conflictingFixtureReference},\"git\":{{\"commit_sha\":\"test-commit\",\"dirty\":true}},\"build\":{{\"kind\":\"editor_playmode_server\"}},\"render\":{{\"mode\":\"server_only\",\"graphical_client\":false}},\"runtime\":{{\"scene_fixture\":\"Outdoor\"}}}}";
             File.WriteAllText(Path.Combine(directory, "run.json"), runJson);
 
             var achieved = graphical
