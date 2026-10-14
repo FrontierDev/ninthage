@@ -4,6 +4,7 @@ using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
 using System.Collections;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using UnityEditor;
@@ -168,6 +169,356 @@ namespace Game.Tests.Performance.Harness
             Assert.That(metricJson, Does.Contain("\"min\":null"));
             Assert.That(metricJson, Does.Contain("\"reason\":\"no_measurement_samples\""));
             Assert.That(metricJson, Does.Contain("\"raw_trace\":\"samples.ndjson\""));
+        }
+
+        [Test]
+        public void MeasuredZeroRemainsMeasuredInsteadOfUnavailable()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("measured-zero");
+            var summary = CaptureTelemetrySummary(
+                "performance-measured-zero",
+                resultsDirectory,
+                128,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                    Assert.That(PerformanceTelemetry.TryRecord(metric, 0d), Is.True);
+                });
+            var metricJson = ExtractMetricJson(summary, "test.performance.measured-zero");
+
+            Assert.That(metricJson, Does.Contain("\"observation\":\"measured\""));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":1"));
+            Assert.That(metricJson, Does.Contain("\"min\":0"));
+            Assert.That(metricJson, Does.Contain("\"max\":0"));
+            Assert.That(metricJson, Does.Contain("\"mean\":0"));
+            Assert.That(metricJson, Does.Contain("\"measurement_coverage\":1"));
+        }
+
+        [Test]
+        public void DeclaredUnavailableMetricDoesNotLookLikeMeasuredZero()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("declared-unavailable");
+            var summary = CaptureTelemetrySummary(
+                "performance-declared-unavailable",
+                resultsDirectory,
+                128,
+                metric => PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement),
+                PerformanceMetricObservation.Unavailable,
+                "The controlled test intentionally has no source for this metric.");
+            var metricJson = ExtractMetricJson(summary, "test.performance.declared-unavailable");
+
+            Assert.That(metricJson, Does.Contain("\"observation\":\"unavailable\""));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":0"));
+            Assert.That(metricJson, Does.Contain("\"min\":null"));
+            Assert.That(metricJson, Does.Contain("\"mean\":null"));
+            Assert.That(metricJson, Does.Contain("\"reason\":\"The controlled test intentionally has no source for this metric.\""));
+            Assert.That(metricJson, Does.Contain("\"retention_policy\":\"not_collected\""));
+        }
+
+        [Test]
+        public void PercentilesUseTheRetainedMeasurementSampleCount()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("small-percentiles");
+            var summary = CaptureTelemetrySummary(
+                "performance-small-percentiles",
+                resultsDirectory,
+                512,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                    for (var value = 1; value <= 5; value++)
+                        PerformanceTelemetry.TryRecord(metric, value);
+                });
+            var metricJson = ExtractMetricJson(summary, "test.performance.small-percentiles");
+
+            Assert.That(metricJson, Does.Contain("\"sample_count\":5"));
+            Assert.That(metricJson, Does.Contain("\"p50\":3"));
+            Assert.That(metricJson, Does.Contain("\"p95\":5"));
+            Assert.That(metricJson, Does.Contain("\"p99\":null"));
+            Assert.That(metricJson, Does.Contain("\"reason\":\"insufficient_samples\""));
+        }
+
+        [Test]
+        public void TelemetryLifecycleRejectsMeasurementBeforeWorkloadAndStopsCleanly()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("lifecycle-rejection");
+            var metric = new PerformanceMetricDefinition(
+                "test.performance.lifecycle-rejection",
+                PerformanceMetricUnit.Count,
+                PerformanceMetricSide.Server,
+                "test",
+                "lifecycle");
+            try
+            {
+                PerformanceTelemetry.StartSession(
+                    new PerformanceSessionContext("performance-lifecycle-rejection", resultsDirectory)
+                    {
+                        HostId = "test-host",
+                        ProcessId = "test-process",
+                    });
+                PerformanceTelemetry.RegisterMetric(metric, 16);
+
+                Assert.That(PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement), Is.False);
+                Assert.That(PerformanceTelemetry.TryRecord(metric, 1d), Is.True);
+                Assert.That(
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.CompleteMeasured,
+                        "TEST_REJECTED",
+                        "Measurement was rejected before workload application."),
+                    Is.False);
+                Assert.That(PerformanceTelemetry.IsEnabled, Is.False);
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(resultsDirectory))
+                    Directory.Delete(resultsDirectory, true);
+            }
+        }
+
+        [Test]
+        public void MetricRegistrationIsIdempotentButDimensionChangesFailExplicitly()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("metric-registration");
+            var metric = new PerformanceMetricDefinition(
+                "test.performance.metric-registration",
+                PerformanceMetricUnit.Count,
+                PerformanceMetricSide.Client,
+                "test",
+                "registration");
+            var conflictingMetric = new PerformanceMetricDefinition(
+                metric.MetricId,
+                PerformanceMetricUnit.Bytes,
+                metric.Side,
+                metric.Subsystem,
+                metric.Scope);
+            try
+            {
+                PerformanceTelemetry.StartSession(
+                    new PerformanceSessionContext("performance-metric-registration", resultsDirectory)
+                    {
+                        HostId = "test-host",
+                        ProcessId = "test-process",
+                    });
+                PerformanceTelemetry.RegisterMetric(metric, 16);
+                Assert.DoesNotThrow(() => PerformanceTelemetry.RegisterMetric(metric, 16));
+                Assert.Throws<InvalidOperationException>(() => PerformanceTelemetry.RegisterMetric(conflictingMetric, 16));
+
+                PerformanceTelemetry.MarkWorkloadApplied();
+                Assert.That(PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement), Is.True);
+                Assert.That(PerformanceTelemetry.TryRecord(metric, 0d), Is.True);
+                Assert.That(
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.CompleteMeasured,
+                        "TEST_COMPLETE",
+                        "Metric registration contract test completed."),
+                    Is.True);
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(resultsDirectory))
+                    Directory.Delete(resultsDirectory, true);
+            }
+        }
+
+        [Test]
+        public void ExportedTelemetryKeepsSchemaDimensionsAndRawSampleContract()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("export-schema");
+            var metric = new PerformanceMetricDefinition(
+                "test.performance.export-schema",
+                PerformanceMetricUnit.Milliseconds,
+                PerformanceMetricSide.Client,
+                "test_exporter",
+                "frame");
+            try
+            {
+                PerformanceTelemetry.StartSession(
+                    new PerformanceSessionContext("performance-export-schema", resultsDirectory)
+                    {
+                        HostId = "test-host",
+                        ProcessId = "test-process",
+                    });
+                PerformanceTelemetry.RegisterMetric(metric, 16);
+                PerformanceTelemetry.MarkWorkloadApplied();
+                Assert.That(PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement), Is.True);
+                Assert.That(PerformanceTelemetry.TryRecord(metric, 12.5d, 42, 0.5d), Is.True);
+                Assert.That(
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.CompleteMeasured,
+                        "TEST_COMPLETE",
+                        "Telemetry exporter contract test completed."),
+                    Is.True);
+
+                var summary = File.ReadAllText(Path.Combine(resultsDirectory, "summary.json"));
+                var sample = File.ReadAllText(Path.Combine(resultsDirectory, "samples.ndjson"));
+                Assert.That(summary, Does.Contain("\"schema_version\":\"benchmark-summary/v1\""));
+                Assert.That(summary, Does.Contain("\"run_id\":\"performance-export-schema\""));
+                Assert.That(summary, Does.Contain("\"metric_id\":\"test.performance.export-schema\""));
+                Assert.That(summary, Does.Contain("\"source\":\"client\""));
+                Assert.That(summary, Does.Contain("\"unit\":\"ms\""));
+                Assert.That(summary, Does.Contain("\"raw_files\":[\"samples.ndjson\"]"));
+                Assert.That(sample, Does.Contain("\"schema_version\":\"benchmark-sample/v1\""));
+                Assert.That(sample, Does.Contain("\"metric_id\":\"test.performance.export-schema\""));
+                Assert.That(sample, Does.Contain("\"phase\":\"measurement\""));
+                Assert.That(sample, Does.Contain("\"unit\":\"ms\""));
+                Assert.That(sample, Does.Contain("\"frame_or_tick\":42"));
+                Assert.That(sample, Does.Contain("\"interval_seconds\":0.5"));
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(resultsDirectory))
+                    Directory.Delete(resultsDirectory, true);
+            }
+        }
+
+        [Test]
+        public void InvalidRunnerInputsAndPendingEvidenceFailClearly()
+        {
+            var invalidProfile = new Test_PerformanceHarnessOptions
+            {
+                ProfileID = "missing-profile",
+            };
+            Assert.That(invalidProfile.TryValidate(out var profileDiagnostic, out _, out _), Is.False);
+            Assert.That(profileDiagnostic, Does.Contain("Only the tracked profile"));
+
+            var missingWorld = new Test_PerformanceHarnessOptions
+            {
+                WorldFixture = (Test_WorldFixtureVariant)999,
+            };
+            Assert.That(missingWorld.TryValidate(out var worldDiagnostic, out _, out _), Is.False);
+            Assert.That(worldDiagnostic, Does.Contain("World fixture variant"));
+
+            var unsupportedMode = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.StandaloneHeadlessServer,
+            };
+            Assert.That(unsupportedMode.TryValidate(out var modeDiagnostic, out _, out _), Is.False);
+            Assert.That(modeDiagnostic, Does.Contain("blocked"));
+
+            var incompleteState = new Test_PerformancePendingRunState();
+            Assert.Throws<InvalidOperationException>(() => Test_PerformanceRun.Restore(incompleteState));
+        }
+
+        [Test]
+        public void EvidenceFilesPreserveFixtureIdentityPopulationAndRunMetadata()
+        {
+            var run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions());
+            try
+            {
+                var fixture = File.ReadAllText(run.FixturePath);
+                var runJson = File.ReadAllText(run.RunPath);
+
+                Assert.That(fixture, Does.Contain("\"schema_version\":\"benchmark-fixture/v1\""));
+                Assert.That(fixture, Does.Contain("\"master_seed\":424242"));
+                Assert.That(fixture, Does.Contain("\"ecs_data_only_npcs\":100"));
+                Assert.That(fixture, Does.Contain("\"synthetic_clients\":0"));
+                Assert.That(fixture, Does.Contain("\"source_commit\":"));
+                Assert.That(fixture, Does.Contain("\"source_sha256\":"));
+                Assert.That(fixture, Does.Contain("\"fixture_scene_hash\":"));
+                Assert.That(runJson, Does.Contain("\"schema_version\":\"benchmark-run/v1\""));
+                Assert.That(runJson, Does.Contain("\"run_id\":\"" + run.RunID + "\""));
+                Assert.That(runJson, Does.Contain("\"fixture\":{\"path\":\"fixture.json\",\"sha256\":\"" + run.FixtureHash + "\"}"));
+                Assert.That(runJson, Does.Contain("\"standalone_qualified\":false"));
+                Assert.That(runJson, Does.Contain("\"network_clients_supported\":false"));
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(run.ResultsDirectory))
+                    Directory.Delete(run.ResultsDirectory, true);
+            }
+        }
+
+        [Test]
+        public void IncompleteAndTimeoutRunsAreMarkedInEvidence()
+        {
+            var incompleteSummary = CompleteCreatedRun(
+                PerformanceRunStatus.CompleteMeasured,
+                "TEST_COMPLETE",
+                "The test intentionally omitted lifecycle completion.");
+            Assert.That(incompleteSummary, Does.Contain("\"status\":\"FAIL-CORRECTNESS\""));
+            Assert.That(incompleteSummary, Does.Contain("\"reason_code\":\"INCOMPLETE_LIFECYCLE\""));
+
+            var timeoutSummary = CompleteCreatedRun(
+                PerformanceRunStatus.FailTimeout,
+                "PREFLIGHT_TIMEOUT",
+                "The test intentionally exercised the timeout terminal state.");
+            Assert.That(timeoutSummary, Does.Contain("\"status\":\"FAIL-TIMEOUT\""));
+            Assert.That(timeoutSummary, Does.Contain("\"reason_code\":\"PREFLIGHT_TIMEOUT\""));
+        }
+
+        [Test]
+        public void TelemetryEnabledAndDisabledFakeSchedulesHaveEquivalentOutcomes()
+        {
+            var disabledOutcome = RunFakeSchedule(false);
+            var enabledOutcome = RunFakeSchedule(true);
+
+            Assert.That(enabledOutcome.ActorCount, Is.EqualTo(disabledOutcome.ActorCount));
+            Assert.That(enabledOutcome.CastCount, Is.EqualTo(disabledOutcome.CastCount));
+            Assert.That(enabledOutcome.TimerTicks, Is.EqualTo(disabledOutcome.TimerTicks));
+            Assert.That(enabledOutcome.VisibleCount, Is.EqualTo(disabledOutcome.VisibleCount));
+        }
+
+        [Test]
+        public void FakeMeasurementsCanBeConvertedAndComparedWithoutHardware()
+        {
+            var baseline = ReadFakeMeasurement(
+                CaptureTelemetrySummary(
+                    "performance-fake-baseline",
+                    CreateTelemetryTestDirectory("fake-baseline"),
+                    512,
+                    metric =>
+                    {
+                        PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                        for (var value = 1; value <= 100; value++)
+                            PerformanceTelemetry.TryRecord(metric, value);
+                    }),
+                "test.performance.fake-baseline");
+            var candidate = ReadFakeMeasurement(
+                CaptureTelemetrySummary(
+                    "performance-fake-candidate",
+                    CreateTelemetryTestDirectory("fake-candidate"),
+                    512,
+                    metric =>
+                    {
+                        PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                        for (var value = 1; value <= 94; value++)
+                            PerformanceTelemetry.TryRecord(metric, value);
+                        for (var value = 0; value < 6; value++)
+                            PerformanceTelemetry.TryRecord(metric, 105d);
+                    }),
+                "test.performance.fake-candidate");
+
+            Assert.That(candidate.Unit, Is.EqualTo(baseline.Unit));
+            Assert.That(candidate.SampleCount, Is.EqualTo(baseline.SampleCount));
+            Assert.That(candidate.P95, Is.GreaterThan(baseline.P95));
         }
 
         [Test]
@@ -420,11 +771,150 @@ namespace Game.Tests.Performance.Harness
             Assert.That(restored.isSubScene, Is.EqualTo(original[0].isSubScene));
         }
 
+        private static string CompleteCreatedRun(
+            PerformanceRunStatus status,
+            string reasonCode,
+            string message)
+        {
+            var run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions());
+            try
+            {
+                run.Complete(status, reasonCode, message);
+                return File.ReadAllText(run.SummaryPath);
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(run.ResultsDirectory))
+                    Directory.Delete(run.ResultsDirectory, true);
+            }
+        }
+
+        private static Test_FakeScheduleOutcome RunFakeSchedule(bool telemetryEnabled)
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory(telemetryEnabled ? "fake-enabled" : "fake-disabled");
+            var metric = new PerformanceMetricDefinition(
+                "test.performance.fake-schedule",
+                PerformanceMetricUnit.Count,
+                PerformanceMetricSide.Shared,
+                "test_fake_schedule",
+                "step");
+            try
+            {
+                if (telemetryEnabled)
+                {
+                    PerformanceTelemetry.StartSession(
+                        new PerformanceSessionContext(
+                            telemetryEnabled ? "performance-fake-schedule-enabled" : "performance-fake-schedule-disabled",
+                            resultsDirectory)
+                        {
+                            HostId = "test-host",
+                            ProcessId = "test-process",
+                        });
+                    PerformanceTelemetry.RegisterMetric(metric, 16);
+                    PerformanceTelemetry.MarkWorkloadApplied();
+                    Assert.That(PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement), Is.True);
+                }
+
+                var outcome = new Test_FakeScheduleOutcome();
+                for (var step = 0; step < 4; step++)
+                {
+                    outcome.ActorCount += step == 0 ? 4 : 0;
+                    outcome.CastCount += step == 1 || step == 3 ? 2 : 0;
+                    outcome.TimerTicks += 1;
+                    outcome.VisibleCount = outcome.ActorCount;
+                    if (telemetryEnabled)
+                        Assert.That(PerformanceTelemetry.TryRecord(metric, outcome.ActorCount, step, 0.25d), Is.True);
+                }
+
+                if (telemetryEnabled)
+                {
+                    Assert.That(
+                        PerformanceTelemetry.StopSession(
+                            PerformanceRunStatus.CompleteMeasured,
+                            "TEST_COMPLETE",
+                            "Fake schedule completed."),
+                        Is.True);
+                }
+
+                return outcome;
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(resultsDirectory))
+                    Directory.Delete(resultsDirectory, true);
+            }
+        }
+
+        private static Test_FakeMeasurement ReadFakeMeasurement(string summary, string metricID)
+        {
+            var metricJson = ExtractMetricJson(summary, metricID);
+            return new Test_FakeMeasurement
+            {
+                Unit = ExtractJsonString(metricJson, "unit"),
+                SampleCount = (int)ExtractJsonNumber(metricJson, "sample_count"),
+                P95 = ExtractJsonNumber(metricJson, "p95"),
+            };
+        }
+
+        private static string ExtractJsonString(string json, string propertyName)
+        {
+            var marker = "\"" + propertyName + "\":\"";
+            var start = json.IndexOf(marker, StringComparison.Ordinal);
+            Assert.That(start, Is.GreaterThanOrEqualTo(0), "JSON property was not present: " + propertyName);
+            start += marker.Length;
+            var end = json.IndexOf('"', start);
+            Assert.That(end, Is.GreaterThan(start), "JSON string property was not terminated: " + propertyName);
+            return json.Substring(start, end - start);
+        }
+
+        private static double ExtractJsonNumber(string json, string propertyName)
+        {
+            var marker = "\"" + propertyName + "\":";
+            var start = json.IndexOf(marker, StringComparison.Ordinal);
+            Assert.That(start, Is.GreaterThanOrEqualTo(0), "JSON property was not present: " + propertyName);
+            start += marker.Length;
+            var end = start;
+            while (end < json.Length && json[end] != ',' && json[end] != '}')
+                end++;
+            return double.Parse(json.Substring(start, end - start), CultureInfo.InvariantCulture);
+        }
+
+        private sealed class Test_FakeScheduleOutcome
+        {
+            public int ActorCount;
+            public int CastCount;
+            public int TimerTicks;
+            public int VisibleCount;
+        }
+
+        private sealed class Test_FakeMeasurement
+        {
+            public string Unit;
+            public int SampleCount;
+            public double P95;
+        }
+
         private static string CaptureTelemetrySummary(
             string runID,
             string resultsDirectory,
             int capacity,
-            Action<PerformanceMetricDefinition> recordSamples)
+            Action<PerformanceMetricDefinition> recordSamples,
+            PerformanceMetricObservation observation = PerformanceMetricObservation.Measured,
+            string reason = null)
         {
             var metricID = "test.performance." + runID.Substring("performance-".Length);
             var metric = new PerformanceMetricDefinition(
@@ -441,7 +931,7 @@ namespace Game.Tests.Performance.Harness
                         HostId = "test-host",
                         ProcessId = "test-process",
                     });
-                PerformanceTelemetry.RegisterMetric(metric, capacity);
+                PerformanceTelemetry.RegisterMetric(metric, capacity, observation, reason);
                 PerformanceTelemetry.MarkWorkloadApplied();
                 recordSamples(metric);
                 Assert.That(

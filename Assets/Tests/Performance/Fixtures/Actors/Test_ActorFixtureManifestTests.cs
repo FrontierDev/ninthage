@@ -65,6 +65,29 @@ namespace Game.Tests.Performance.Fixtures.Actors
         }
 
         [Test]
+        public void CleanupReportCarriesSymmetricLifecycleAndBaselineMetadata()
+        {
+            var report = new Test_ActorFixtureCleanupReport
+            {
+                expectedFullActors = 100,
+                despawnEvents = 100,
+                remainingTrackedActors = 0,
+                remainingFixtureEntities = 0,
+                currentActorEntities = 7,
+                baselineActorEntities = 7,
+            };
+            var json = JsonUtility.ToJson(report);
+
+            Assert.That(report.despawnEvents, Is.EqualTo(report.expectedFullActors));
+            Assert.That(report.remainingTrackedActors, Is.Zero);
+            Assert.That(report.remainingFixtureEntities, Is.Zero);
+            Assert.That(report.currentActorEntities, Is.EqualTo(report.baselineActorEntities));
+            Assert.That(json, Does.Contain("\"expectedFullActors\":100"));
+            Assert.That(json, Does.Contain("\"despawnEvents\":100"));
+            Assert.That(json, Does.Contain("\"baselineActorEntities\":7"));
+        }
+
+        [Test]
         public void PopulationUsesRequiredActivityAndSpatialMix()
         {
             var profile = Test_ActorFixtureLayout.BuildCatalog().profiles[1];
