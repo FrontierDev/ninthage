@@ -121,6 +121,8 @@ namespace Game.Shared.Performance
         public const string SERVER_ACTOR_COLLIDER_CANDIDATE_COUNT = "server.actor.collider_candidate_count";
         public const string SERVER_ACTOR_FULL_ENTITY_SCAN_COUNT = "server.actor.full_entity_scan_count";
         public const string SERVER_ACTOR_ECS_GAMEOBJECT_SYNC_COUNT = "server.actor.ecs_gameobject_sync_count";
+        public const string SERVER_ACTOR_OWNER_CHANGE_ENTITY_SCAN_COUNT = "server.actor.owner_change_entity_scan_count";
+        public const string SERVER_ACTOR_INTEREST_CHANGE_ENTITY_SCAN_COUNT = "server.actor.interest_change_entity_scan_count";
         public const string SERVER_ACTOR_ALLOC_HEAVY_OPERATION_COUNT = "server.actor.alloc_heavy_operation_count";
         public const string SERVER_ACTOR_SPAWN_EVENT_COUNT = "server.actor.spawn_event_count";
         public const string SERVER_ACTOR_DESPAWN_EVENT_COUNT = "server.actor.despawn_event_count";
