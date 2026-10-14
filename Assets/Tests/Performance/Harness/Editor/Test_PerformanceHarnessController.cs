@@ -448,8 +448,15 @@ namespace Game.Tests.Performance.Harness
                 UnityEngine.Object.Destroy(existingRunner.gameObject);
             }
 
-            var runnerObject = new GameObject("Test_PerformanceHarnessRuntime");
+            var runnerObject = CreateRuntimeRunnerObject();
             runnerObject.AddComponent<Test_PerformanceHarnessBehaviour>().Initialize(_activeRun);
+        }
+
+        internal static GameObject CreateRuntimeRunnerObject()
+        {
+            var runnerObject = new GameObject("Test_PerformanceHarnessRuntime");
+            UnityEngine.Object.DontDestroyOnLoad(runnerObject);
+            return runnerObject;
         }
 
         private static bool CanChangeScenes(out string diagnostic)
@@ -1028,6 +1035,17 @@ namespace Game.Tests.Performance.Harness
         {
             if (_run == null || _run.Finalized)
                 return;
+
+            var playModeIsActive = Application.isPlaying && EditorApplication.isPlaying;
+            if (playModeIsActive && _pendingFailure == null)
+            {
+                var activeScene = SceneManager.GetActiveScene();
+                var fixturePath = _run.WorldPlan == null ? "<unavailable>" : _run.WorldPlan.AssetPath;
+                SetPendingFailure(
+                    new InvalidOperationException(
+                        $"The performance harness runner was destroyed while Play Mode was still active. Active scene: '{activeScene.path}', selected fixture: '{fixturePath}', fixture unload attempted: {_sceneUnloadAttempted}, cleanup completed: {_cleanupCompleted}."),
+                    new Test_PerformanceFailureClassification("RUNNER_DESTROYED_UNEXPECTEDLY", PerformanceRunStatus.FailInstrumentation));
+            }
 
             try
             {

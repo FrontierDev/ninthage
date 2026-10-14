@@ -3,10 +3,14 @@ using Game.Shared.Performance;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
+using System.Collections;
 using System.IO;
 using System.Reflection;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
 
 namespace Game.Tests.Performance.Harness
 {
@@ -253,6 +257,51 @@ namespace Game.Tests.Performance.Harness
 
             Assert.That(classificationType.GetProperty("ReasonCode").GetValue(classification), Is.EqualTo("PREREQUISITE_BLOCKED"));
             Assert.That(classificationType.GetProperty("Status").GetValue(classification), Is.EqualTo(PerformanceRunStatus.BlockedPrerequisite));
+        }
+
+        [UnityTest]
+        [Explicit("Requires the real Bootstrapper to MainMenu Play Mode transition; use the manual Issue #52 closure gate for the complete graphical workload.")]
+        public IEnumerator RuntimeRunnerRootSurvivesBootstrapperTransition()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                Assert.Ignore("The Bootstrapper transition test must start from Edit Mode.");
+
+            yield return new EnterPlayMode();
+
+            GameObject runnerObject = null;
+            var completed = false;
+            try
+            {
+                runnerObject = Test_PerformanceHarnessController.CreateRuntimeRunnerObject();
+                runnerObject.AddComponent<Test_PerformanceHarnessBehaviour>();
+                var loadOperation = SceneManager.LoadSceneAsync("Bootstrapper", LoadSceneMode.Single);
+                Assert.That(loadOperation, Is.Not.Null, "Unity did not create the Bootstrapper load operation.");
+                if (loadOperation == null)
+                    yield break;
+
+                while (!loadOperation.isDone)
+                    yield return null;
+
+                var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
+                while (SceneManager.GetSceneByName("Bootstrapper").isLoaded
+                    && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+
+                Assert.That(SceneManager.GetSceneByName("MainMenu").isLoaded, Is.True, "The ordinary client did not load MainMenu during Bootstrapper transition.");
+                Assert.That(SceneManager.GetSceneByName("Bootstrapper").isLoaded, Is.False, "The ordinary client did not unload Bootstrapper during initialization.");
+                Assert.That(runnerObject, Is.Not.Null, "The test runner root was destroyed during Bootstrapper unload.");
+                completed = true;
+            }
+            finally
+            {
+                if (runnerObject != null)
+                    UnityEngine.Object.Destroy(runnerObject);
+                if (!completed && EditorApplication.isPlayingOrWillChangePlaymode)
+                    EditorApplication.isPlaying = false;
+            }
+
+            if (completed)
+                yield return new ExitPlayMode();
         }
 
         [Test]
