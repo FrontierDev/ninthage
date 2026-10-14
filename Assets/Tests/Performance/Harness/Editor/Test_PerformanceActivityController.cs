@@ -66,6 +66,10 @@ namespace Game.Tests.Performance.Harness
     /// <summary>Records bounded samples produced by the test-only workload controller.</summary>
     internal static class Test_PerformanceHarnessMetrics
     {
+        // Five-second Editor runs can produce thousands of frame/interval observations. Keep the
+        // statistical population bounded while provisioning enough capacity for the supported fixtures.
+        private const int PERFORMANCE_METRIC_CAPACITY = PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC;
+
         public static readonly PerformanceMetricDefinition ECS_ENTITY_COUNT = new(
             "harness.workload.ecs_entity_count",
             PerformanceMetricUnit.Count,
@@ -141,22 +145,22 @@ namespace Game.Tests.Performance.Harness
 
         public static void Register()
         {
-            PerformanceTelemetry.RegisterMetric(ECS_ENTITY_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(PATROLLING_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(COMBAT_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(WAKE_SURGE_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(SPAWN_EVENT_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(DESPAWN_EVENT_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(TOTAL_ALLOCATED_BYTES, 512);
+            PerformanceTelemetry.RegisterMetric(ECS_ENTITY_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(PATROLLING_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(COMBAT_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(WAKE_SURGE_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(SPAWN_EVENT_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(DESPAWN_EVENT_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(TOTAL_ALLOCATED_BYTES, PERFORMANCE_METRIC_CAPACITY);
         }
 
         public static void RegisterGraphical()
         {
-            PerformanceTelemetry.RegisterMetric(GRAPHICAL_OBJECT_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(GRAPHICAL_VISIBLE_OBJECT_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ACTOR_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ROUTE_WAYPOINT_COUNT, 512);
-            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ROUTE_DISTANCE, 512);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_OBJECT_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_VISIBLE_OBJECT_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ACTOR_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ROUTE_WAYPOINT_COUNT, PERFORMANCE_METRIC_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ROUTE_DISTANCE, PERFORMANCE_METRIC_CAPACITY);
         }
 
         public static void RecordGraphical(Test_GraphicalFixtureRuntime fixture)

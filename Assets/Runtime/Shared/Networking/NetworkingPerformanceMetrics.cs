@@ -504,14 +504,14 @@ namespace Game.Shared.Networking
 
         private static void RegisterMeasured(PerformanceMetricDefinition definition)
         {
-            PerformanceTelemetry.RegisterMetric(definition, 4096);
+            PerformanceTelemetry.RegisterMetric(definition, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         private static void RegisterEstimated(PerformanceMetricDefinition definition)
         {
             PerformanceTelemetry.RegisterMetric(
                 definition,
-                4096,
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC,
                 PerformanceMetricObservation.Estimated,
                 "Application payload size is estimated from serialized values and excludes PurrNet framing and transport overhead.");
         }

@@ -24,8 +24,8 @@ namespace Game.Server.Systems
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(SPELL_CAST_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(ACTIVE_CAST_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SPELL_CAST_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(ACTIVE_CAST_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         /// <summary>Updates active spell casts for the current server tick.</summary>

@@ -67,9 +67,9 @@ namespace Game.Server.Core
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(SCENE_LOAD_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(SCENE_UNLOAD_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(PENDING_SCENE_OPERATION_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(SCENE_LOAD_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(SCENE_UNLOAD_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(PENDING_SCENE_OPERATION_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         private void Awake()

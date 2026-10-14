@@ -11,7 +11,7 @@ namespace Game.Tests.Performance.Harness
     internal static class Test_PerformanceCampaignComparisonStatus
     {
         public const string COMPARABLE = "COMPARABLE";
-        public const string PROVISIONAL = "PROVISIONAL/INSUFFICIENT REPEATS";
+        public const string PROVISIONAL = "PROVISIONAL/INSUFFICIENT EVIDENCE";
         public const string NOT_COMPARABLE = "NOT COMPARABLE";
         public const string ERROR = "ERROR";
     }
@@ -100,8 +100,11 @@ namespace Game.Tests.Performance.Harness
     internal sealed class Test_PerformanceCampaignComparisonGroup
     {
         public string Label;
+        public string ProfileID;
+        public bool IsGraphical;
         public string Classification;
         public string Reason;
+        public bool HasInsufficientRequiredEvidence;
         public int BaselineValidCount;
         public int CandidateValidCount;
         public readonly List<Test_PerformanceCampaignAttemptView> BaselineAttempts = new();
@@ -111,7 +114,9 @@ namespace Game.Tests.Performance.Harness
 
     internal sealed class Test_PerformanceCampaignAttemptView
     {
+        public string CampaignID;
         public string AttemptID;
+        public string JobID;
         public string RunID;
         public string State;
         public string ResultStatus;
@@ -121,6 +126,8 @@ namespace Game.Tests.Performance.Harness
         public string ReportPath;
         public string GroupKey;
         public string IdentityKey;
+        public string ProfileID;
+        public Test_PerformanceCampaignSource Source;
         public bool IsValid;
         public readonly List<Test_PerformanceCampaignMetricSample> Metrics = new();
     }
@@ -158,10 +165,18 @@ namespace Game.Tests.Performance.Harness
         public string SamplePolicy;
         public string Semantics;
         public string Direction;
+        public bool IsRequired;
+        public string RequiredStatistics;
         public int BaselineAvailable;
         public int CandidateAvailable;
         public int BaselineQualified;
         public int CandidateQualified;
+        public int BaselineP50Qualified;
+        public int CandidateP50Qualified;
+        public int BaselineP95Qualified;
+        public int CandidateP95Qualified;
+        public int BaselineP99Qualified;
+        public int CandidateP99Qualified;
         public Test_PerformanceCampaignDistribution Baseline;
         public Test_PerformanceCampaignDistribution Candidate;
         public double? DeltaP50;
@@ -171,6 +186,52 @@ namespace Game.Tests.Performance.Harness
         public double? DeltaP95Percent;
         public double? DeltaP99Percent;
         public string Caveat;
+    }
+
+    internal sealed class Test_PerformanceCampaignMetricRequirement
+    {
+        public string MetricID;
+        public string Unit;
+        public string Source;
+        public string Scope;
+        public string[] Statistics;
+
+        public bool Matches(Test_PerformanceCampaignMetricSample sample)
+        {
+            return sample != null
+                && string.Equals(sample.MetricID, MetricID, StringComparison.Ordinal)
+                && string.Equals(sample.Unit, Unit, StringComparison.Ordinal)
+                && string.Equals(sample.Source, Source, StringComparison.Ordinal)
+                && (string.IsNullOrEmpty(Scope) || string.Equals(sample.Scope, Scope, StringComparison.Ordinal));
+        }
+
+        public bool IsQualified(Test_PerformanceCampaignMetricSample sample)
+        {
+            if (!Matches(sample))
+                return false;
+            foreach (var statistic in Statistics)
+            {
+                if (statistic == "p50" && !sample.HasP50
+                    || statistic == "p95" && !sample.HasP95
+                    || statistic == "p99" && !sample.HasP99)
+                    return false;
+            }
+            return true;
+        }
+
+        public string DescribeStatistics()
+        {
+            return string.Join("/", Statistics ?? Array.Empty<string>());
+        }
+    }
+
+    internal sealed class Test_PerformanceCampaignLinkedQualificationReport
+    {
+        public string RootCampaignID;
+        public string Status;
+        public string Summary;
+        public readonly List<string> Reasons = new();
+        public readonly List<Test_PerformanceCampaignComparisonGroup> Groups = new();
     }
 
     internal sealed class Test_PerformanceCampaignDistribution
@@ -347,7 +408,9 @@ namespace Game.Tests.Performance.Harness
             var candidateOnly = report.Groups.Count(group => group.Classification == Test_PerformanceCampaignGroupClassification.CANDIDATE_ONLY);
             var baselineOnly = report.Groups.Count(group => group.Classification == Test_PerformanceCampaignGroupClassification.BASELINE_ONLY);
             var insufficient = report.Groups.Any(group => group.Classification == Test_PerformanceCampaignGroupClassification.MATCHED
-                && (group.BaselineValidCount < minimumValidRepeats || group.CandidateValidCount < minimumValidRepeats));
+                && (group.HasInsufficientRequiredEvidence
+                    || group.BaselineValidCount < minimumValidRepeats
+                    || group.CandidateValidCount < minimumValidRepeats));
             report.Status = hardReasons || incompatible > 0
                 ? Test_PerformanceCampaignComparisonStatus.NOT_COMPARABLE
                 : insufficient || matched == 0
@@ -358,6 +421,312 @@ namespace Game.Tests.Performance.Harness
                 + ", candidate " + candidateAttempts.Count(attempt => attempt.IsValid) + "/" + candidateAttempts.Count
                 + "; minimum " + minimumValidRepeats + " valid repeats; coverage policy " + MIN_MEASUREMENT_COVERAGE.ToString("P0", CultureInfo.InvariantCulture);
             return report;
+        }
+
+        /// <summary>
+        /// Builds an explicit read-only qualification cohort for a campaign and its linked make-up
+        /// campaigns. Ordinary baseline/candidate comparisons intentionally do not use this path.
+        /// </summary>
+        public static Test_PerformanceCampaignLinkedQualificationReport BuildLinkedQualificationCohort(
+            IReadOnlyList<Test_PerformanceCampaignArchive> archives,
+            string campaignID,
+            int minimumValidRepeats = DEFAULT_MIN_VALID_REPEATS)
+        {
+            var report = new Test_PerformanceCampaignLinkedQualificationReport
+            {
+                RootCampaignID = campaignID,
+                Status = Test_PerformanceCampaignComparisonStatus.ERROR,
+            };
+            var selected = FindArchive(archives, campaignID);
+            if (selected == null || !selected.IsValid)
+            {
+                report.Summary = "The selected campaign archive is unavailable or invalid.";
+                return report;
+            }
+
+            var root = ResolveLinkedRoot(archives, selected, report.Reasons);
+            if (root == null)
+            {
+                report.Summary = "The linked campaign root could not be resolved.";
+                return report;
+            }
+            report.RootCampaignID = root.CampaignID;
+            var attemptsByCampaign = new Dictionary<string, List<Test_PerformanceCampaignAttemptView>>(StringComparer.Ordinal);
+            foreach (var archive in archives ?? Array.Empty<Test_PerformanceCampaignArchive>())
+            {
+                if (!archive.IsValid || !IsLinkedToRoot(archives, archive, root.CampaignID))
+                    continue;
+                attemptsByCampaign[archive.CampaignID] = ReadAttempts(archive);
+            }
+
+            foreach (var sourceJob in root.Manifest.jobs ?? new List<Test_PerformanceCampaignJob>())
+            {
+                var sourceGroupKey = BuildCoreGroupKey(sourceJob, null);
+                var group = new Test_PerformanceCampaignComparisonGroup
+                {
+                    Label = sourceJob.DisplayName,
+                    ProfileID = sourceJob.options?.EffectiveProfileID,
+                    IsGraphical = sourceJob.options?.IsGraphicalClient == true,
+                    Classification = "linked qualification cohort",
+                };
+                AddCohortAttempts(group, root, sourceJob, attemptsByCampaign, sourceGroupKey, report.Reasons);
+                foreach (var archive in archives ?? Array.Empty<Test_PerformanceCampaignArchive>())
+                {
+                    if (archive == null || archive == root || !archive.IsValid || !IsLinkedToRoot(archives, archive, root.CampaignID))
+                        continue;
+                    var parentArchive = FindArchive(archives, archive.Manifest.linked_campaign_id);
+                    var parentJob = parentArchive == null ? null : FindJob(parentArchive.Manifest, archive.Manifest.makeup_for_job_id);
+                    if (parentJob == null || !string.Equals(BuildCoreGroupKey(parentJob, null), sourceGroupKey, StringComparison.Ordinal))
+                        continue;
+                    AddCohortAttempts(group, archive, null, attemptsByCampaign, sourceGroupKey, report.Reasons);
+                }
+
+                if (group.BaselineAttempts.Count == 0)
+                    continue;
+                ValidateCohortIdentity(group, root, report.Reasons);
+                BuildCohortMetricComparisons(group, minimumValidRepeats);
+                group.BaselineValidCount = group.BaselineAttempts.Count(attempt => attempt.IsValid);
+                group.HasInsufficientRequiredEvidence = group.Metrics.Any(metric => metric.IsRequired && metric.BaselineQualified < minimumValidRepeats);
+                report.Groups.Add(group);
+            }
+
+            var hasIncompatible = report.Groups.Any(group => !string.IsNullOrEmpty(group.Reason));
+            var hasInsufficient = report.Groups.Any(group => group.HasInsufficientRequiredEvidence
+                || group.BaselineValidCount < minimumValidRepeats);
+            report.Status = hasIncompatible
+                ? Test_PerformanceCampaignComparisonStatus.NOT_COMPARABLE
+                : hasInsufficient
+                    ? Test_PerformanceCampaignComparisonStatus.PROVISIONAL
+                    : Test_PerformanceCampaignComparisonStatus.COMPARABLE;
+            report.Summary = "linked root " + report.RootCampaignID + "; groups " + report.Groups.Count
+                + "; qualified runs " + report.Groups.Sum(group => group.BaselineValidCount)
+                + "; minimum " + minimumValidRepeats + "; duplicate, failed and incompatible attempts remain listed and excluded.";
+            return report;
+        }
+
+        private static void AddCohortAttempts(
+            Test_PerformanceCampaignComparisonGroup group,
+            Test_PerformanceCampaignArchive archive,
+            Test_PerformanceCampaignJob sourceJob,
+            Dictionary<string, List<Test_PerformanceCampaignAttemptView>> attemptsByCampaign,
+            string sourceGroupKey,
+            List<string> reasons)
+        {
+            if (!attemptsByCampaign.TryGetValue(archive.CampaignID, out var attempts))
+                return;
+            var selectedJobIDs = new HashSet<string>(StringComparer.Ordinal);
+            if (sourceJob != null)
+                selectedJobIDs.Add(sourceJob.job_id);
+            else
+            {
+                foreach (var job in archive.Manifest.jobs ?? new List<Test_PerformanceCampaignJob>())
+                {
+                    if (string.Equals(BuildCoreGroupKey(job, null), sourceGroupKey, StringComparison.Ordinal))
+                        selectedJobIDs.Add(job.job_id);
+                }
+            }
+            foreach (var attempt in attempts)
+            {
+                if (!selectedJobIDs.Contains(attempt.JobID))
+                    continue;
+                if (!string.IsNullOrEmpty(attempt.RunID)
+                    && group.BaselineAttempts.Any(existing => string.Equals(existing.RunID, attempt.RunID, StringComparison.Ordinal)))
+                {
+                    attempt.IsValid = false;
+                    attempt.Diagnostic = AddReason(attempt.Diagnostic, "Linked cohort exclusion: duplicate run ID.");
+                    reasons.Add(attempt.RunID + ": duplicate run ID was retained in the inventory but excluded from qualification.");
+                }
+                group.BaselineAttempts.Add(attempt);
+                if (attempt.Source == null)
+                    reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": source provenance is missing from the linked cohort.");
+            }
+        }
+
+        private static void ValidateCohortIdentity(
+            Test_PerformanceCampaignComparisonGroup group,
+            Test_PerformanceCampaignArchive root,
+            List<string> reasons)
+        {
+            var valid = group.BaselineAttempts.Where(attempt => attempt.IsValid).ToList();
+            if (valid.Count == 0)
+                return;
+            var reference = valid[0];
+            foreach (var attempt in group.BaselineAttempts)
+            {
+                if (!attempt.IsValid)
+                    continue;
+                if (!SourcesMatchForQualification(root.Manifest.source, attempt.Source, out var sourceReason))
+                {
+                    attempt.IsValid = false;
+                    attempt.Diagnostic = AddReason(attempt.Diagnostic, "Linked cohort exclusion: " + sourceReason);
+                    group.Reason = AddReason(group.Reason, attempt.RunID + ": " + sourceReason);
+                }
+                else if (!string.Equals(reference.IdentityKey, attempt.IdentityKey, StringComparison.Ordinal))
+                {
+                    attempt.IsValid = false;
+                    attempt.Diagnostic = AddReason(attempt.Diagnostic, "Linked cohort exclusion: fixture/build identity differs from the source cohort.");
+                    group.Reason = AddReason(group.Reason, attempt.RunID + ": fixture/build identity differs from the source cohort.");
+                }
+            }
+            foreach (var requirement in GetRequiredMetricRequirements(group))
+            {
+                foreach (var attempt in group.BaselineAttempts.Where(attempt => attempt.IsValid).ToList())
+                {
+                    var conflictingMetric = attempt.Metrics.FirstOrDefault(metric =>
+                        string.Equals(metric.MetricID, requirement.MetricID, StringComparison.Ordinal)
+                        && !requirement.Matches(metric));
+                    if (conflictingMetric == null)
+                        continue;
+                    attempt.IsValid = false;
+                    attempt.Diagnostic = AddReason(attempt.Diagnostic, "Linked cohort exclusion: required metric identity, unit or scope differs from the source cohort.");
+                    group.Reason = AddReason(group.Reason, attempt.RunID + ": required metric identity, unit or scope differs from the source cohort.");
+                }
+            }
+
+            var policies = group.BaselineAttempts.Where(attempt => attempt.IsValid)
+                .SelectMany(attempt => attempt.Metrics)
+                .GroupBy(metric => metric.MetricID + "|" + metric.Unit + "|" + metric.Source + "|" + metric.Scope, StringComparer.Ordinal);
+            foreach (var policy in policies)
+            {
+                var policyNames = policy.Select(metric => metric.RetentionPolicy ?? UNKNOWN).Distinct(StringComparer.Ordinal).ToList();
+                if (policyNames.Count <= 1)
+                    continue;
+
+                var expectedPolicy = policyNames[0];
+                group.Reason = AddReason(group.Reason, "Linked cohort retention/sampling protocol differs between attempts.");
+                foreach (var attempt in group.BaselineAttempts.Where(attempt => attempt.IsValid).ToList())
+                {
+                    var mismatchedMetric = attempt.Metrics.FirstOrDefault(metric =>
+                        metric.Key.StartsWith(policy.Key, StringComparison.Ordinal)
+                        && !string.Equals(metric.RetentionPolicy ?? UNKNOWN, expectedPolicy, StringComparison.Ordinal));
+                    if (mismatchedMetric == null)
+                        continue;
+                    attempt.IsValid = false;
+                    attempt.Diagnostic = AddReason(attempt.Diagnostic, "Linked cohort exclusion: retention/sampling protocol differs from the source cohort.");
+                    group.Reason = AddReason(group.Reason, attempt.RunID + ": retention/sampling protocol differs from the source cohort.");
+                }
+            }
+        }
+
+        private static bool SourcesMatchForQualification(
+            Test_PerformanceCampaignSource expected,
+            Test_PerformanceCampaignSource actual,
+            out string reason)
+        {
+            reason = null;
+            if (expected == null || actual == null)
+            {
+                reason = "branch, commit or environment provenance is missing";
+                return false;
+            }
+            if (!string.Equals(expected.git_branch, actual.git_branch, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(expected.commit_sha, actual.commit_sha, StringComparison.OrdinalIgnoreCase))
+            {
+                reason = "branch/full commit differs from the source campaign";
+                return false;
+            }
+            if (!string.Equals(expected.hardware, actual.hardware, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(expected.operating_system, actual.operating_system, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(expected.unity_version, actual.unity_version, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(expected.packages_sha256, actual.packages_sha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(expected.packages_lock_sha256, actual.packages_lock_sha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(expected.purrnet_sha256, actual.purrnet_sha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(expected.graphics_device, actual.graphics_device, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(expected.graphics_settings, actual.graphics_settings, StringComparison.OrdinalIgnoreCase))
+            {
+                reason = "hardware, Unity, dependency or graphics identity differs from the source campaign";
+                return false;
+            }
+            return true;
+        }
+
+        private static void BuildCohortMetricComparisons(Test_PerformanceCampaignComparisonGroup group, int minimumValidRepeats)
+        {
+            var samples = group.BaselineAttempts.Where(attempt => attempt.IsValid).SelectMany(attempt => attempt.Metrics).ToList();
+            foreach (var requirement in GetRequiredMetricRequirements(group))
+            {
+                var matching = samples.Where(requirement.Matches).ToList();
+                var comparison = BuildCohortMetricComparison(matching, requirement, minimumValidRepeats, group);
+                group.Metrics.Add(comparison);
+            }
+        }
+
+        private static Test_PerformanceCampaignMetricComparison BuildCohortMetricComparison(
+            List<Test_PerformanceCampaignMetricSample> samples,
+            Test_PerformanceCampaignMetricRequirement requirement,
+            int minimumValidRepeats,
+            Test_PerformanceCampaignComparisonGroup group)
+        {
+            var first = samples.FirstOrDefault();
+            var comparison = new Test_PerformanceCampaignMetricComparison
+            {
+                MetricID = first?.MetricID ?? requirement.MetricID,
+                Unit = first?.Unit ?? requirement.Unit,
+                Source = first?.Source ?? requirement.Source,
+                Scope = first?.Scope ?? requirement.Scope,
+                SamplePolicy = first?.RetentionPolicy,
+                Semantics = DescribeSemantics(first?.Unit ?? requirement.Unit),
+                Direction = DescribeDirection(first?.Unit ?? requirement.Unit),
+                IsRequired = true,
+                RequiredStatistics = requirement.DescribeStatistics(),
+                BaselineAvailable = samples.Count,
+                BaselineQualified = samples.Count(requirement.IsQualified),
+                BaselineP50Qualified = samples.Count(sample => sample.HasP50),
+                BaselineP95Qualified = samples.Count(sample => sample.HasP95),
+                BaselineP99Qualified = samples.Count(sample => sample.HasP99),
+                Baseline = BuildDistribution(samples),
+                Candidate = new Test_PerformanceCampaignDistribution(),
+            };
+            comparison.Caveat = comparison.BaselineQualified < minimumValidRepeats
+                ? "INSUFFICIENT EVIDENCE: linked cohort qualified N " + comparison.BaselineQualified + ", minimum " + minimumValidRepeats + "."
+                : "Linked make-up cohort only; this is not a baseline/candidate regression comparison.";
+            comparison.Caveat = AddReason(comparison.Caveat, DescribeExclusions(group, requirement, first?.Key));
+            return comparison;
+        }
+
+        private static Test_PerformanceCampaignArchive ResolveLinkedRoot(
+            IReadOnlyList<Test_PerformanceCampaignArchive> archives,
+            Test_PerformanceCampaignArchive selected,
+            List<string> reasons)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var current = selected;
+            while (!string.IsNullOrEmpty(current.Manifest.linked_campaign_id))
+            {
+                if (!seen.Add(current.CampaignID))
+                {
+                    reasons.Add("Linked campaign cycle detected.");
+                    return null;
+                }
+                var parent = FindArchive(archives, current.Manifest.linked_campaign_id);
+                if (parent == null || !parent.IsValid)
+                {
+                    reasons.Add("Linked parent campaign is unavailable: " + current.Manifest.linked_campaign_id);
+                    return null;
+                }
+                current = parent;
+            }
+            return current;
+        }
+
+        private static bool IsLinkedToRoot(
+            IReadOnlyList<Test_PerformanceCampaignArchive> archives,
+            Test_PerformanceCampaignArchive archive,
+            string rootCampaignID)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var current = archive;
+            while (current != null)
+            {
+                if (!seen.Add(current.CampaignID))
+                    return false;
+                if (string.Equals(current.CampaignID, rootCampaignID, StringComparison.Ordinal))
+                    return true;
+                if (string.IsNullOrEmpty(current.Manifest.linked_campaign_id))
+                    return false;
+                current = FindArchive(archives, current.Manifest.linked_campaign_id);
+            }
+            return false;
         }
 
         public static void OpenEvidence(string path, string campaignDirectory)
@@ -430,7 +799,9 @@ namespace Game.Tests.Performance.Harness
                 var job = FindJob(archive.Manifest, attempt.job_id);
                 var view = new Test_PerformanceCampaignAttemptView
                 {
+                    CampaignID = archive.CampaignID,
                     AttemptID = attempt.attempt_id,
+                    JobID = attempt.job_id,
                     RunID = attempt.run_id,
                     State = attempt.state,
                     ResultStatus = attempt.result_status,
@@ -440,6 +811,8 @@ namespace Game.Tests.Performance.Harness
                     ReportPath = attempt.report_path,
                     GroupKey = BuildCoreGroupKey(job, null),
                     IdentityKey = BuildIdentityKey(job, null, null),
+                    ProfileID = job?.options?.EffectiveProfileID,
+                    Source = attempt.source ?? archive.Manifest.source,
                 };
                 try
                 {
@@ -473,6 +846,7 @@ namespace Game.Tests.Performance.Harness
                         throw new InvalidDataException("The attempt status is not COMPLETE-MEASURED.");
                     var run = ReadJson<Test_PerformanceComparisonRunDocument>(Path.Combine(attempt.result_path, "run.json"));
                     var summary = ReadJson<Test_PerformanceComparisonSummaryDocument>(Path.Combine(attempt.result_path, "summary.json"));
+                    var fixture = ReadJson<Test_PerformanceComparisonFixtureDocument>(Path.Combine(attempt.result_path, "fixture.json"));
                     if (run.run_id != attempt.run_id || summary.run_id != attempt.run_id)
                         throw new InvalidDataException("Finalized artifact run IDs do not match the campaign attempt.");
                     var expectedReportPath = Path.Combine(attempt.result_path, "report.md");
@@ -481,6 +855,9 @@ namespace Game.Tests.Performance.Harness
                         view.Diagnostic = AddReason(view.Diagnostic, "The campaign report path is missing or stale; the finalized report location was used for display.");
                         view.ReportPath = expectedReportPath;
                     }
+                    ValidateAttemptCorrectness(job, summary, fixture, run, out var correctnessDiagnostic);
+                    if (!string.IsNullOrEmpty(correctnessDiagnostic))
+                        throw new InvalidDataException(correctnessDiagnostic);
                     view.GroupKey = BuildCoreGroupKey(job, run);
                     view.IdentityKey = BuildIdentityKey(job, run, summary.fixture_sha256);
                     view.Metrics.AddRange(ReadMetricSamples(summary));
@@ -495,6 +872,67 @@ namespace Game.Tests.Performance.Harness
             return views;
         }
 
+        private static void ValidateAttemptCorrectness(
+            Test_PerformanceCampaignJob job,
+            Test_PerformanceComparisonSummaryDocument summary,
+            Test_PerformanceComparisonFixtureDocument fixture,
+            Test_PerformanceComparisonRunDocument run,
+            out string diagnostic)
+        {
+            diagnostic = null;
+            if (summary.correctness == null
+                || !string.Equals(summary.correctness.status, "pass", StringComparison.OrdinalIgnoreCase)
+                || summary.correctness.failed != 0
+                || !summary.correctness.cleanup)
+            {
+                diagnostic = "Attempt correctness/lifecycle failed: correctness must be pass with zero failed checks and cleanup=true.";
+                return;
+            }
+            if (summary.phase_completion == null
+                || !summary.phase_completion.preflight
+                || !summary.phase_completion.ramp
+                || !summary.phase_completion.warmup
+                || !summary.phase_completion.measurement
+                || !summary.phase_completion.recovery)
+            {
+                diagnostic = "Attempt correctness/lifecycle failed: preflight, ramp, warmup, measurement and recovery must all be complete.";
+                return;
+            }
+            var graphicalExecution = job?.options?.IsGraphicalClient == true
+                || string.Equals(run.render?.mode, "rendered", StringComparison.OrdinalIgnoreCase);
+            if (graphicalExecution)
+            {
+                var graphical = summary.achieved?.graphical;
+                if (graphical == null
+                    || graphical.requested_objects != graphical.achieved_objects
+                    || graphical.route_waypoints_requested != graphical.route_waypoints_reached
+                    || !graphical.route_complete)
+                {
+                    diagnostic = "Attempt correctness/lifecycle failed: graphical object and route completion invariants did not pass.";
+                    return;
+                }
+            }
+            else if (job?.options?.IsServerOnlyDataMode == true
+                && string.Equals(run.render?.mode, "server_only", StringComparison.OrdinalIgnoreCase))
+            {
+                var population = summary.achieved?.population;
+                var expectedEntities = fixture?.population?.npcs?.accounting?.ecs_data_only_npcs ?? 0;
+                if (population == null
+                    || expectedEntities <= 0
+                    || population.requested_ecs_entities != expectedEntities
+                    || population.measurement_end_ecs_entities != expectedEntities
+                    || population.post_cleanup_fixture_entities != 0
+                    || population.post_cleanup_total_actor_entities != 0)
+                {
+                    diagnostic = "Attempt correctness/lifecycle failed: server population or post-cleanup invariants did not pass.";
+                }
+            }
+            else
+            {
+                diagnostic = "Attempt correctness/lifecycle could not be qualified: execution mode is unsupported or its server/graphical identity is missing.";
+            }
+        }
+
         private static void AddAttempts(Dictionary<string, Test_PerformanceCampaignComparisonGroup> groups, List<Test_PerformanceCampaignAttemptView> attempts, bool baseline)
         {
             foreach (var attempt in attempts)
@@ -502,8 +940,18 @@ namespace Game.Tests.Performance.Harness
                 var key = attempt.GroupKey ?? "unclassified";
                 if (!groups.TryGetValue(key, out var group))
                 {
-                    group = new Test_PerformanceCampaignComparisonGroup { Label = key };
+                    group = new Test_PerformanceCampaignComparisonGroup
+                    {
+                        Label = key,
+                        ProfileID = attempt.ProfileID,
+                        IsGraphical = attempt.ProfileID == "P1-S0-06",
+                    };
                     groups.Add(key, group);
+                }
+                else if (string.IsNullOrEmpty(group.ProfileID))
+                {
+                    group.ProfileID = attempt.ProfileID;
+                    group.IsGraphical = attempt.ProfileID == "P1-S0-06";
                 }
                 if (baseline)
                     group.BaselineAttempts.Add(attempt);
@@ -526,51 +974,153 @@ namespace Game.Tests.Performance.Harness
 
         private static void BuildMetricComparisons(Test_PerformanceCampaignComparisonGroup group, int minimumValidRepeats)
         {
-            var samples = group.BaselineAttempts.Concat(group.CandidateAttempts).Where(attempt => attempt.IsValid).SelectMany(attempt => attempt.Metrics).ToList();
+            var samples = group.BaselineAttempts.Concat(group.CandidateAttempts)
+                .Where(attempt => attempt.IsValid)
+                .SelectMany(attempt => attempt.Metrics)
+                .ToList();
+            var requirements = GetRequiredMetricRequirements(group);
+            foreach (var requirement in requirements)
+            {
+                var baselineSamples = group.BaselineAttempts
+                    .Where(attempt => attempt.IsValid)
+                    .SelectMany(attempt => attempt.Metrics)
+                    .Where(requirement.Matches)
+                    .ToList();
+                var candidateSamples = group.CandidateAttempts
+                    .Where(attempt => attempt.IsValid)
+                    .SelectMany(attempt => attempt.Metrics)
+                    .Where(requirement.Matches)
+                    .ToList();
+                var comparison = BuildMetricComparison(
+                    baselineSamples,
+                    candidateSamples,
+                    requirement,
+                    minimumValidRepeats,
+                    group);
+                group.Metrics.Add(comparison);
+                group.HasInsufficientRequiredEvidence |= comparison.IsRequired
+                    && (comparison.BaselineQualified < minimumValidRepeats || comparison.CandidateQualified < minimumValidRepeats);
+            }
+
             foreach (var key in samples.Select(sample => sample.Key).Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal))
             {
-                var baselineSamples = group.BaselineAttempts.SelectMany(attempt => attempt.Metrics).Where(sample => sample.Key == key).ToList();
-                var candidateSamples = group.CandidateAttempts.SelectMany(attempt => attempt.Metrics).Where(sample => sample.Key == key).ToList();
-                var first = baselineSamples.Concat(candidateSamples).First();
-                var comparison = new Test_PerformanceCampaignMetricComparison
-                {
-                    MetricID = first.MetricID,
-                    Unit = first.Unit,
-                    Source = first.Source,
-                    Scope = first.Scope,
-                    SamplePolicy = first.RetentionPolicy,
-                    Semantics = DescribeSemantics(first.Unit),
-                    Direction = DescribeDirection(first.Unit),
-                    BaselineAvailable = CountAvailable(group.BaselineAttempts, key),
-                    CandidateAvailable = CountAvailable(group.CandidateAttempts, key),
-                    BaselineQualified = baselineSamples.Count(sample => sample.HasP50),
-                    CandidateQualified = candidateSamples.Count(sample => sample.HasP50),
-                    Baseline = BuildDistribution(baselineSamples),
-                    Candidate = BuildDistribution(candidateSamples),
-                };
-                if (comparison.Baseline.Count == 0 || comparison.Candidate.Count == 0)
-                    comparison.Caveat = "Metric is unavailable or unqualified on one side; no zero was substituted.";
-                else
-                {
-                    comparison.DeltaP50 = comparison.Candidate.MedianP50 - comparison.Baseline.MedianP50;
-                    comparison.DeltaP95 = comparison.Candidate.MedianP95 - comparison.Baseline.MedianP95;
-                    comparison.DeltaP99 = comparison.Candidate.MedianP99.HasValue && comparison.Baseline.MedianP99.HasValue ? comparison.Candidate.MedianP99.Value - comparison.Baseline.MedianP99.Value : (double?)null;
-                    comparison.DeltaP50Percent = PercentDelta(comparison.Baseline.MedianP50, comparison.DeltaP50.Value);
-                    comparison.DeltaP95Percent = PercentDelta(comparison.Baseline.MedianP95, comparison.DeltaP95.Value);
-                    comparison.DeltaP99Percent = comparison.DeltaP99.HasValue ? PercentDelta(comparison.Baseline.MedianP99.Value, comparison.DeltaP99.Value) : (double?)null;
-                    comparison.Caveat = comparison.Baseline.Count < minimumValidRepeats || comparison.Candidate.Count < minimumValidRepeats
-                        ? "PROVISIONAL: fewer than " + minimumValidRepeats + " valid independent runs."
-                        : null;
-                }
-                comparison.Caveat = AddReason(comparison.Caveat, "Medians are across runs; p95/p99 are medians of per-run percentiles, not pooled samples.");
-                comparison.Caveat = AddReason(comparison.Caveat, DescribeExclusions(group, key));
-                group.Metrics.Add(comparison);
+                var representative = samples.First(sample => sample.Key == key);
+                if (requirements.Any(requirement => requirement.Matches(representative)))
+                    continue;
+                var baselineSamples = group.BaselineAttempts
+                    .Where(attempt => attempt.IsValid)
+                    .SelectMany(attempt => attempt.Metrics)
+                    .Where(sample => sample.Key == key)
+                    .ToList();
+                var candidateSamples = group.CandidateAttempts
+                    .Where(attempt => attempt.IsValid)
+                    .SelectMany(attempt => attempt.Metrics)
+                    .Where(sample => sample.Key == key)
+                    .ToList();
+                group.Metrics.Add(BuildMetricComparison(baselineSamples, candidateSamples, null, minimumValidRepeats, group));
             }
         }
 
-        private static int CountAvailable(List<Test_PerformanceCampaignAttemptView> attempts, string key)
+        private static Test_PerformanceCampaignMetricComparison BuildMetricComparison(
+            List<Test_PerformanceCampaignMetricSample> baselineSamples,
+            List<Test_PerformanceCampaignMetricSample> candidateSamples,
+            Test_PerformanceCampaignMetricRequirement requirement,
+            int minimumValidRepeats,
+            Test_PerformanceCampaignComparisonGroup group)
         {
-            return attempts.Count(attempt => attempt.IsValid && attempt.Metrics.Any(metric => metric.Key == key));
+            var first = baselineSamples.Concat(candidateSamples).FirstOrDefault();
+            var comparison = new Test_PerformanceCampaignMetricComparison
+            {
+                MetricID = first?.MetricID ?? requirement?.MetricID,
+                Unit = first?.Unit ?? requirement?.Unit,
+                Source = first?.Source ?? requirement?.Source,
+                Scope = first?.Scope ?? requirement?.Scope ?? UNKNOWN,
+                SamplePolicy = first?.RetentionPolicy,
+                Semantics = DescribeSemantics(first?.Unit ?? requirement?.Unit),
+                Direction = DescribeDirection(first?.Unit ?? requirement?.Unit),
+                IsRequired = requirement != null,
+                RequiredStatistics = requirement?.DescribeStatistics(),
+                BaselineAvailable = baselineSamples.Count,
+                CandidateAvailable = candidateSamples.Count,
+                BaselineP50Qualified = baselineSamples.Count(sample => sample.HasP50),
+                CandidateP50Qualified = candidateSamples.Count(sample => sample.HasP50),
+                BaselineP95Qualified = baselineSamples.Count(sample => sample.HasP95),
+                CandidateP95Qualified = candidateSamples.Count(sample => sample.HasP95),
+                BaselineP99Qualified = baselineSamples.Count(sample => sample.HasP99),
+                CandidateP99Qualified = candidateSamples.Count(sample => sample.HasP99),
+                Baseline = BuildDistribution(baselineSamples),
+                Candidate = BuildDistribution(candidateSamples),
+            };
+            comparison.BaselineQualified = requirement == null
+                ? comparison.BaselineP50Qualified
+                : baselineSamples.Count(requirement.IsQualified);
+            comparison.CandidateQualified = requirement == null
+                ? comparison.CandidateP50Qualified
+                : candidateSamples.Count(requirement.IsQualified);
+            if (comparison.Baseline.Count == 0 || comparison.Candidate.Count == 0)
+                comparison.Caveat = "Metric is unavailable or unqualified on one side; no zero was substituted.";
+            else
+            {
+                comparison.DeltaP50 = comparison.Candidate.MedianP50 - comparison.Baseline.MedianP50;
+                comparison.DeltaP95 = comparison.Candidate.MedianP95 - comparison.Baseline.MedianP95;
+                comparison.DeltaP99 = comparison.Candidate.MedianP99.HasValue && comparison.Baseline.MedianP99.HasValue ? comparison.Candidate.MedianP99.Value - comparison.Baseline.MedianP99.Value : (double?)null;
+                comparison.DeltaP50Percent = PercentDelta(comparison.Baseline.MedianP50, comparison.DeltaP50.Value);
+                comparison.DeltaP95Percent = PercentDelta(comparison.Baseline.MedianP95, comparison.DeltaP95.Value);
+                comparison.DeltaP99Percent = comparison.DeltaP99.HasValue ? PercentDelta(comparison.Baseline.MedianP99.Value, comparison.DeltaP99.Value) : (double?)null;
+            }
+            if (comparison.IsRequired)
+            {
+                comparison.Caveat = AddReason(
+                    comparison.Caveat,
+                    comparison.BaselineQualified < minimumValidRepeats || comparison.CandidateQualified < minimumValidRepeats
+                        ? "INSUFFICIENT EVIDENCE: required " + comparison.RequiredStatistics + " qualified N is " + comparison.BaselineQualified + "/" + comparison.CandidateQualified + ", minimum " + minimumValidRepeats + "."
+                        : null);
+            }
+            else if (comparison.BaselineQualified < minimumValidRepeats || comparison.CandidateQualified < minimumValidRepeats)
+            {
+                comparison.Caveat = AddReason(comparison.Caveat, "Descriptive only: fewer than " + minimumValidRepeats + " qualified independent runs.");
+            }
+            comparison.Caveat = AddReason(comparison.Caveat, "Medians are across runs; p95/p99 are medians of per-run percentiles, not pooled samples.");
+            comparison.Caveat = AddReason(comparison.Caveat, DescribeExclusions(group, requirement, first?.Key));
+            return comparison;
+        }
+
+        private static List<Test_PerformanceCampaignMetricRequirement> GetRequiredMetricRequirements(Test_PerformanceCampaignComparisonGroup group)
+        {
+            if (group == null || (group.ProfileID != "P1-S0-04" && group.ProfileID != "P1-S0-06"))
+                return new List<Test_PerformanceCampaignMetricRequirement>();
+            if (group.ProfileID == "P1-S0-04")
+            {
+                return new List<Test_PerformanceCampaignMetricRequirement>
+                {
+                    Requirement("server.actor_manager.update_duration", "ms", "server", "server_update", "p99"),
+                    Requirement("server.ecs.actor_update_duration", "ms", "server", "server_update", "p99"),
+                    Requirement("server.memory.total_allocated_bytes", "bytes", "server", "server_update", "p99"),
+                    Requirement("server.actor.full_entity_scan_count", "count", "server", "server_frame", "p50", "p95", "p99"),
+                };
+            }
+            return new List<Test_PerformanceCampaignMetricRequirement>
+            {
+                Requirement("client.rendered.frame_time", "ms", "client", "rendered_frame", "p95", "p99"),
+                Requirement("client.main_thread.frame_time", "ms", "client", "rendered_frame", "p99"),
+                Requirement("client.render_thread.frame_time", "ms", "client", "rendered_frame", "p99"),
+                Requirement("client.gpu.frame_time", "ms", "client", "rendered_frame", "p99"),
+                Requirement("client.memory.total_allocated_bytes", "bytes", "client", "client_frame", "p50"),
+                Requirement("client.graphics.draw_call_count", "count", "client", "rendered_frame", "p50"),
+                Requirement("client.graphics.triangle_count", "count", "client", "rendered_frame", "p50"),
+            };
+        }
+
+        private static Test_PerformanceCampaignMetricRequirement Requirement(string metricID, string unit, string source, string scope, params string[] statistics)
+        {
+            return new Test_PerformanceCampaignMetricRequirement
+            {
+                MetricID = metricID,
+                Unit = unit,
+                Source = source,
+                Scope = scope,
+                Statistics = statistics,
+            };
         }
 
         private static bool HasMetricPolicyMismatch(Test_PerformanceCampaignComparisonGroup group)
@@ -617,7 +1167,10 @@ namespace Game.Tests.Performance.Harness
             return Math.Sqrt(variance) / Math.Abs(mean);
         }
 
-        private static string DescribeExclusions(Test_PerformanceCampaignComparisonGroup group, string key)
+        private static string DescribeExclusions(
+            Test_PerformanceCampaignComparisonGroup group,
+            Test_PerformanceCampaignMetricRequirement requirement,
+            string key)
         {
             var reasons = new List<string>();
             foreach (var attempt in group.BaselineAttempts.Concat(group.CandidateAttempts))
@@ -627,9 +1180,11 @@ namespace Game.Tests.Performance.Harness
                     reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": " + (attempt.Diagnostic ?? "attempt not valid"));
                     continue;
                 }
-                var metric = attempt.Metrics.FirstOrDefault(value => value.Key == key);
-                if (metric == null || !metric.HasP50)
-                    reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": metric unavailable or below the 95% qualification policy");
+                var metric = requirement == null
+                    ? attempt.Metrics.FirstOrDefault(value => value.Key == key)
+                    : attempt.Metrics.FirstOrDefault(requirement.Matches);
+                if (metric == null || (metric != null && (requirement == null ? !metric.HasP50 : !requirement.IsQualified(metric))))
+                    reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": metric unavailable or below the required retention/statistic policy");
             }
             return reasons.Count == 0 ? null : "Exclusions: " + string.Join(" | ", reasons);
         }
@@ -667,9 +1222,14 @@ namespace Game.Tests.Performance.Harness
             {
                 if (metric.phase != "measurement")
                     continue;
+                var retainedSampleCount = metric.retained_sample_count > 0 ? metric.retained_sample_count : metric.sample_count;
+                var measurementCoverage = metric.attempted_sample_count > 0
+                    ? retainedSampleCount / (double)metric.attempted_sample_count
+                    : (double?)null;
                 var qualified = metric.observation == "measured"
                     && metric.sample_count > 0
-                    && metric.measurement_coverage >= MIN_MEASUREMENT_COVERAGE;
+                    && measurementCoverage.HasValue
+                    && measurementCoverage.Value >= MIN_MEASUREMENT_COVERAGE;
                 samples.Add(new Test_PerformanceCampaignMetricSample
                 {
                     MetricID = metric.metric_id,
@@ -681,11 +1241,11 @@ namespace Game.Tests.Performance.Harness
                     RetentionPolicy = metric.retention_policy,
                     SampleCount = metric.sample_count,
                     AttemptedSampleCount = metric.attempted_sample_count,
-                    RetainedSampleCount = metric.retained_sample_count > 0 ? metric.retained_sample_count : metric.sample_count,
-                    MeasurementCoverage = metric.measurement_coverage,
+                    RetainedSampleCount = retainedSampleCount,
+                    MeasurementCoverage = measurementCoverage ?? 0d,
                     HasP50 = qualified,
                     HasP95 = qualified,
-                    HasP99 = qualified && metric.sample_count >= 100 && metric.reason != "insufficient_samples",
+                    HasP99 = qualified && retainedSampleCount >= 100 && metric.reason != "insufficient_samples",
                     P50 = metric.p50,
                     P95 = metric.p95,
                     P99 = metric.p99,
@@ -701,7 +1261,7 @@ namespace Game.Tests.Performance.Harness
             var options = job?.options;
             var core = options == null
                 ? job?.job_id ?? "unclassified"
-                : string.Join("|", options.EffectiveProfileID, options.WorkloadMode, options.WorldFixture, options.GraphicalScenario, options.DensityTier, options.ActorDensity, options.ActorCount.ToString(CultureInfo.InvariantCulture), options.Seed.ToString(CultureInfo.InvariantCulture), options.WarmupSeconds.ToString("R", CultureInfo.InvariantCulture), options.MeasurementSeconds.ToString("R", CultureInfo.InvariantCulture), options.ActorVariantID);
+                : string.Join("|", options.EffectiveProfileID, options.WorkloadMode, options.WorldFixture, options.GraphicalScenario, options.DensityTier, options.ActorDensity, options.ActorCount.ToString(CultureInfo.InvariantCulture), options.Seed.ToString(CultureInfo.InvariantCulture), Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS.ToString("R", CultureInfo.InvariantCulture), Test_PerformanceRun.RAMP_SECONDS.ToString("R", CultureInfo.InvariantCulture), options.WarmupSeconds.ToString("R", CultureInfo.InvariantCulture), options.MeasurementSeconds.ToString("R", CultureInfo.InvariantCulture), Test_PerformanceRun.RECOVERY_SECONDS.ToString("R", CultureInfo.InvariantCulture), options.ActorVariantID);
             return core;
         }
 
@@ -818,6 +1378,77 @@ namespace Game.Tests.Performance.Harness
             public string run_id;
             public string fixture_sha256;
             public Test_PerformanceComparisonMetricDocument[] metrics;
+            public Test_PerformanceComparisonPhaseDocument phase_completion;
+            public Test_PerformanceComparisonCorrectnessDocument correctness;
+            public Test_PerformanceComparisonAchievedDocument achieved;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonPhaseDocument
+        {
+            public bool preflight;
+            public bool ramp;
+            public bool warmup;
+            public bool measurement;
+            public bool recovery;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonCorrectnessDocument
+        {
+            public string status;
+            public int failed;
+            public bool cleanup;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonAchievedDocument
+        {
+            public Test_PerformanceComparisonPopulationDocument population;
+            public Test_PerformanceComparisonGraphicalDocument graphical;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonPopulationDocument
+        {
+            public int requested_ecs_entities;
+            public int measurement_end_ecs_entities;
+            public int post_cleanup_fixture_entities;
+            public int post_cleanup_total_actor_entities;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonGraphicalDocument
+        {
+            public int requested_objects;
+            public int achieved_objects;
+            public int route_waypoints_requested;
+            public int route_waypoints_reached;
+            public bool route_complete;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonFixtureDocument
+        {
+            public Test_PerformanceComparisonFixturePopulationDocument population;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonFixturePopulationDocument
+        {
+            public Test_PerformanceComparisonFixtureNpcDocument npcs;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonFixtureNpcDocument
+        {
+            public Test_PerformanceComparisonFixtureAccountingDocument accounting;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonFixtureAccountingDocument
+        {
+            public int ecs_data_only_npcs;
         }
 
         [Serializable]

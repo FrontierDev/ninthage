@@ -18,7 +18,7 @@ namespace Game.Server.Systems
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(RESOURCE_REGEN_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(RESOURCE_REGEN_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         /// <summary>Initializes resource-regeneration system state.</summary>

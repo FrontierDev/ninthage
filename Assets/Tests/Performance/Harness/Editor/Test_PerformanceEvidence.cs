@@ -767,6 +767,14 @@ namespace Game.Tests.Performance.Harness
                 {
                     telemetryFinalized = PerformanceTelemetry.StopSession(status, reasonCode, message);
                     _telemetrySummary = File.Exists(SummaryPath) ? File.ReadAllText(SummaryPath) : null;
+                    if (status == PerformanceRunStatus.CompleteMeasured
+                        && string.Equals(ExtractJsonStringValue(_telemetrySummary, "status"), "FAIL-INSTRUMENTATION", StringComparison.Ordinal))
+                    {
+                        status = PerformanceRunStatus.FailInstrumentation;
+                        var telemetryStop = ExtractJsonValue(_telemetrySummary, "stop");
+                        finalReason = ExtractJsonStringValue(telemetryStop, "reason_code") ?? "TELEMETRY_REJECTED";
+                        finalMessage = ExtractJsonStringValue(telemetryStop, "message") ?? "Telemetry rejected the requested measured result.";
+                    }
                 }
             }
             catch (Exception exception)
@@ -1187,6 +1195,43 @@ namespace Game.Tests.Performance.Harness
                     depth++;
                 else if (character == close && --depth == 0)
                     return json.Substring(start, index - start + 1);
+            }
+            return null;
+        }
+
+        private static string ExtractJsonStringValue(string json, string propertyName)
+        {
+            if (string.IsNullOrEmpty(json))
+                return null;
+            var marker = Quote(propertyName) + ":";
+            var propertyIndex = json.IndexOf(marker, StringComparison.Ordinal);
+            if (propertyIndex < 0)
+                return null;
+            var start = propertyIndex + marker.Length;
+            while (start < json.Length && char.IsWhiteSpace(json[start]))
+                start++;
+            if (start >= json.Length || json[start] != '"')
+                return null;
+            start++;
+            var builder = new StringBuilder();
+            var escaped = false;
+            for (var index = start; index < json.Length; index++)
+            {
+                var character = json[index];
+                if (escaped)
+                {
+                    builder.Append(character);
+                    escaped = false;
+                    continue;
+                }
+                if (character == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+                if (character == '"')
+                    return builder.ToString();
+                builder.Append(character);
             }
             return null;
         }

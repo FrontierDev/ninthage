@@ -37,7 +37,7 @@ namespace Game.Server.Core
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(ECS_INITIALIZATION_DURATION_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(ECS_INITIALIZATION_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(
                 SIMULATION_TICK_DURATION_METRIC,
                 0,

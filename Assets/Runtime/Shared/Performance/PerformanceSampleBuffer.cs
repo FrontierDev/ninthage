@@ -28,7 +28,9 @@ namespace Game.Shared.Performance
         private long _measurementAttemptedCount;
         private long _measurementDroppedCount;
         private long _measurementRejectedCount;
+        private long _measurementCapacityOverflowCount;
         private long _measurementReservoirReplacementCount;
+        private long _measurementAcceptedCount;
         private ulong _measurementRandomState = 0x9E3779B97F4A7C15UL;
         private bool _hasMeasurementExtrema;
         private double _measurementMinimum;
@@ -66,6 +68,8 @@ namespace Game.Shared.Performance
         public long MeasurementDroppedCount => _measurementDroppedCount;
 
         public long MeasurementRejectedCount => _measurementRejectedCount;
+
+        public long MeasurementCapacityOverflowCount => _measurementCapacityOverflowCount;
 
         public long MeasurementReservoirReplacementCount => _measurementReservoirReplacementCount;
 
@@ -109,6 +113,7 @@ namespace Game.Shared.Performance
                     _measurementDroppedCount,
                     GetRawTraceSampleCount(),
                     _measurementRejectedCount,
+                    _measurementCapacityOverflowCount,
                     _measurementReservoirReplacementCount);
 
             for (int i = 0; i < _measurementCount; i++)
@@ -122,8 +127,8 @@ namespace Game.Shared.Performance
 
             return new PerformanceMetricSnapshot(
                 _measurementCount,
-                _sortedValues[0],
-                _sortedValues[_measurementCount - 1],
+                _measurementMinimum,
+                _measurementMaximum,
                 sum / _measurementCount,
                 Percentile(50),
                 Percentile(95),
@@ -132,6 +137,7 @@ namespace Game.Shared.Performance
                 _measurementDroppedCount,
                 GetRawTraceSampleCount(),
                 _measurementRejectedCount,
+                _measurementCapacityOverflowCount,
                 _measurementReservoirReplacementCount);
         }
 
@@ -170,28 +176,7 @@ namespace Game.Shared.Performance
             double intervalSeconds,
             PerformanceMeasurementPhase phase)
         {
-            int index;
-            if (_measurementCount < _measurementCapacity)
-            {
-                index = _measurementNextIndex;
-                _measurementNextIndex = (_measurementNextIndex + 1) % _measurementCapacity;
-                _measurementCount++;
-            }
-            else
-            {
-                // Reservoir replacement keeps the retained measurement population unbiased instead of
-                // retaining only an arbitrary recent window when the measurement budget is exceeded.
-                _measurementDroppedCount++;
-                _measurementReservoirReplacementCount++;
-                DroppedCount++;
-                int reservoirIndex = NextReservoirIndex(_measurementAttemptedCount);
-                if (reservoirIndex >= _measurementCapacity)
-                    return true;
-
-                index = reservoirIndex;
-            }
-
-            StoreSample(index, value, monotonicElapsedNanoseconds, frameOrTick, intervalSeconds, phase);
+            _measurementAcceptedCount++;
             if (!_hasMeasurementExtrema)
             {
                 _measurementMinimum = value;
@@ -204,6 +189,29 @@ namespace Game.Shared.Performance
                 _measurementMaximum = Math.Max(_measurementMaximum, value);
             }
 
+            int index;
+            if (_measurementCount < _measurementCapacity)
+            {
+                index = _measurementNextIndex;
+                _measurementNextIndex = (_measurementNextIndex + 1) % _measurementCapacity;
+                _measurementCount++;
+            }
+            else
+            {
+                // Reservoir replacement keeps the retained measurement population unbiased instead of
+                // retaining only an arbitrary recent window when the measurement budget is exceeded.
+                _measurementDroppedCount++;
+                _measurementCapacityOverflowCount++;
+                DroppedCount++;
+                int reservoirIndex = NextReservoirIndex(_measurementAcceptedCount);
+                if (reservoirIndex >= _measurementCapacity)
+                    return true;
+
+                index = reservoirIndex;
+                _measurementReservoirReplacementCount++;
+            }
+
+            StoreSample(index, value, monotonicElapsedNanoseconds, frameOrTick, intervalSeconds, phase);
             return true;
         }
 
@@ -354,6 +362,7 @@ namespace Game.Shared.Performance
             long droppedSampleCount,
             int rawTraceSampleCount,
             long rejectedSampleCount = 0,
+            long capacityOverflowCount = 0,
             long reservoirReplacementCount = 0)
         {
             SampleCount = sampleCount;
@@ -367,6 +376,7 @@ namespace Game.Shared.Performance
             DroppedSampleCount = droppedSampleCount;
             RawTraceSampleCount = rawTraceSampleCount;
             RejectedSampleCount = rejectedSampleCount;
+            CapacityOverflowCount = capacityOverflowCount;
             ReservoirReplacementCount = reservoirReplacementCount;
         }
 
@@ -390,21 +400,30 @@ namespace Game.Shared.Performance
 
         public long RejectedSampleCount { get; }
 
+        public long CapacityOverflowCount { get; }
+
         public long ReservoirReplacementCount { get; }
 
         public int RawTraceSampleCount { get; }
 
-        public double? CoverageRatio => AttemptedSampleCount > 0
+        public double? ValidInputCoverageRatio => AttemptedSampleCount > 0
             ? Math.Max(0L, AttemptedSampleCount - RejectedSampleCount) / (double)AttemptedSampleCount
             : (double?)null;
 
-        public bool IsReservoirSampled => ReservoirReplacementCount > 0;
+        public double? RetentionRatio => AttemptedSampleCount > 0
+            ? SampleCount / (double)AttemptedSampleCount
+            : (double?)null;
+
+        public double? CoverageRatio => RetentionRatio;
+
+        public bool IsReservoirSampled => CapacityOverflowCount > 0;
 
         public static PerformanceMetricSnapshot Empty(
             long attemptedSampleCount,
             long droppedSampleCount,
             int rawTraceSampleCount,
             long rejectedSampleCount = 0,
+            long capacityOverflowCount = 0,
             long reservoirReplacementCount = 0)
         {
             return new PerformanceMetricSnapshot(
@@ -419,6 +438,7 @@ namespace Game.Shared.Performance
                 droppedSampleCount,
                 rawTraceSampleCount,
                 rejectedSampleCount,
+                capacityOverflowCount,
                 reservoirReplacementCount);
         }
     }

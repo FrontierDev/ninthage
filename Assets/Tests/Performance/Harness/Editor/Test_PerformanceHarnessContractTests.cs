@@ -635,17 +635,177 @@ namespace Game.Tests.Performance.Harness
                 });
             var metricJson = ExtractMetricJson(summary, "test.performance.retention-budget");
 
-            Assert.That(summary, Does.Contain("\"status\":\"COMPLETE-MEASURED\""));
-            Assert.That(metricJson, Does.Contain("\"observation\":\"measured\""));
+            Assert.That(summary, Does.Contain("\"status\":\"FAIL-INSTRUMENTATION\""));
+            Assert.That(metricJson, Does.Contain("\"observation\":\"unavailable\""));
             Assert.That(metricJson, Does.Contain("\"attempted_sample_count\":1000"));
             Assert.That(metricJson, Does.Contain("\"sample_count\":384"));
             Assert.That(metricJson, Does.Contain("\"retained_sample_count\":384"));
             Assert.That(metricJson, Does.Contain("\"dropped_sample_count\":616"));
             Assert.That(metricJson, Does.Contain("\"raw_trace_sample_count\":256"));
-            Assert.That(metricJson, Does.Contain("\"measurement_coverage\":1"));
+            Assert.That(ExtractJsonNumber(metricJson, "measurement_coverage"), Is.EqualTo(0.384d).Within(0.000001d));
+            Assert.That(ExtractJsonNumber(metricJson, "valid_sample_coverage"), Is.EqualTo(1d));
             Assert.That(metricJson, Does.Contain("\"rejected_sample_count\":0"));
-            Assert.That(metricJson, Does.Contain("\"reservoir_replacement_count\":616"));
+            Assert.That(ExtractJsonNumber(metricJson, "capacity_overflow_count"), Is.EqualTo(616d));
+            Assert.That(ExtractJsonNumber(metricJson, "reservoir_replacement_count"), Is.GreaterThan(0d).And.LessThan(616d));
             Assert.That(metricJson, Does.Contain("\"retention_policy\":\"phase_reserved_reservoir\""));
+        }
+
+        [Test]
+        public void SufficientMeasurementCapacityRetainsAllSamplesAndStillBoundsRawTrace()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("retention-qualified");
+            var summary = CaptureTelemetrySummary(
+                "performance-retention-qualified",
+                resultsDirectory,
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                    for (var value = 1; value <= 1000; value++)
+                        PerformanceTelemetry.TryRecord(metric, value);
+                });
+            var metricJson = ExtractMetricJson(summary, "test.performance.retention-qualified");
+
+            Assert.That(summary, Does.Contain("\"status\":\"COMPLETE-MEASURED\""));
+            Assert.That(metricJson, Does.Contain("\"observation\":\"measured\""));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":1000"));
+            Assert.That(metricJson, Does.Contain("\"retained_sample_count\":1000"));
+            Assert.That(metricJson, Does.Contain("\"attempted_sample_count\":1000"));
+            Assert.That(metricJson, Does.Contain("\"capacity_overflow_count\":0"));
+            Assert.That(metricJson, Does.Contain("\"measurement_coverage\":1"));
+            Assert.That(metricJson, Does.Contain("\"raw_trace_sample_count\":256"));
+            Assert.That(metricJson, Does.Contain("\"max\":1000"));
+        }
+
+        [Test]
+        public void InvalidMeasurementInputsAreCountedSeparatelyFromRetention()
+        {
+            var resultsDirectory = CreateTelemetryTestDirectory("invalid-measurement-input");
+            var summary = CaptureTelemetrySummary(
+                "performance-invalid-measurement-input",
+                resultsDirectory,
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC,
+                metric =>
+                {
+                    PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                    Assert.That(PerformanceTelemetry.TryRecord(metric, double.NaN), Is.False);
+                    for (var value = 1; value <= 99; value++)
+                        PerformanceTelemetry.TryRecord(metric, value);
+                });
+            var metricJson = ExtractMetricJson(summary, "test.performance.invalid-measurement-input");
+
+            Assert.That(summary, Does.Contain("\"status\":\"COMPLETE-MEASURED\""));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":99"));
+            Assert.That(metricJson, Does.Contain("\"retained_sample_count\":99"));
+            Assert.That(metricJson, Does.Contain("\"attempted_sample_count\":100"));
+            Assert.That(metricJson, Does.Contain("\"rejected_sample_count\":1"));
+            Assert.That(metricJson, Does.Contain("\"capacity_overflow_count\":0"));
+            Assert.That(ExtractJsonNumber(metricJson, "valid_sample_coverage"), Is.EqualTo(0.99d).Within(0.000001d));
+            Assert.That(ExtractJsonNumber(metricJson, "measurement_coverage"), Is.EqualTo(0.99d).Within(0.000001d));
+        }
+
+        [Test]
+        public void FullStreamExtremaRemainVisibleWhenReservoirDoesNotRetainTheExtreme()
+        {
+            var bufferType = typeof(PerformanceTelemetry).Assembly.GetType("Game.Shared.Performance.PerformanceSampleBuffer");
+            Assert.That(bufferType, Is.Not.Null);
+            if (bufferType == null)
+                return;
+
+            var addMethod = bufferType.GetMethod("Add", BindingFlags.Instance | BindingFlags.Public);
+            var snapshotMethod = bufferType.GetMethod("CreateSnapshot", BindingFlags.Instance | BindingFlags.Public);
+            var randomStateField = bufferType.GetField("_measurementRandomState", BindingFlags.Instance | BindingFlags.NonPublic);
+            var valuesField = bufferType.GetField("_values", BindingFlags.Instance | BindingFlags.NonPublic);
+            var capacityField = bufferType.GetField("_measurementCapacity", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(addMethod, Is.Not.Null);
+            Assert.That(snapshotMethod, Is.Not.Null);
+            Assert.That(randomStateField, Is.Not.Null);
+            Assert.That(valuesField, Is.Not.Null);
+            Assert.That(capacityField, Is.Not.Null);
+            if (addMethod == null || snapshotMethod == null || randomStateField == null || valuesField == null || capacityField == null)
+                return;
+
+            const double extreme = 1000000d;
+            object selectedBuffer = null;
+            object selectedSnapshot = null;
+            ulong selectedSeed = 0;
+            var measurementPhase = PerformanceMeasurementPhase.Measurement;
+            for (ulong seed = 1; seed <= 10000 && selectedBuffer == null; seed++)
+            {
+                var buffer = Activator.CreateInstance(bufferType, new object[] { 228 });
+                for (var value = 1; value <= 100; value++)
+                    addMethod.Invoke(buffer, new object[] { (double)value, value, value, -1d, measurementPhase });
+                randomStateField.SetValue(buffer, seed);
+                addMethod.Invoke(buffer, new object[] { extreme, 101L, 101L, -1d, measurementPhase });
+
+                var values = (double[])valuesField.GetValue(buffer);
+                var capacity = (int)capacityField.GetValue(buffer);
+                var retainedExtreme = false;
+                for (var index = 0; index < capacity; index++)
+                    retainedExtreme |= values[index] == extreme;
+                if (!retainedExtreme)
+                {
+                    selectedBuffer = buffer;
+                    selectedSnapshot = snapshotMethod.Invoke(buffer, null);
+                    selectedSeed = seed;
+                }
+            }
+
+            Assert.That(selectedBuffer, Is.Not.Null, "The bounded reservoir did not expose a non-retained sample for the tested seeds.");
+            Assert.That(selectedSnapshot, Is.Not.Null);
+            if (selectedSnapshot == null)
+                return;
+            var maximum = Convert.ToDouble(selectedSnapshot.GetType().GetProperty("Maximum").GetValue(selectedSnapshot));
+            var p99Value = selectedSnapshot.GetType().GetProperty("P99").GetValue(selectedSnapshot);
+            Assert.That(maximum, Is.EqualTo(extreme));
+            Assert.That(p99Value, Is.Not.Null);
+            if (p99Value == null)
+                return;
+            Assert.That(Convert.ToDouble(p99Value), Is.LessThan(extreme));
+
+            var resultsDirectory = CreateTelemetryTestDirectory("full-stream-extrema-export");
+            var metric = new PerformanceMetricDefinition(
+                "test.performance.full-stream-extrema-export",
+                PerformanceMetricUnit.Milliseconds,
+                PerformanceMetricSide.Server,
+                "test",
+                "test_run");
+            try
+            {
+                PerformanceTelemetry.StartSession(
+                    new PerformanceSessionContext("performance-full-stream-extrema-export", resultsDirectory)
+                    {
+                        HostId = "test-host",
+                        ProcessId = "test-process",
+                    });
+                PerformanceTelemetry.RegisterMetric(metric, 228);
+                PerformanceTelemetry.MarkWorkloadApplied();
+                PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                for (var value = 1; value <= 100; value++)
+                    PerformanceTelemetry.TryRecord(metric, value);
+
+                var sessionField = typeof(PerformanceTelemetry).GetField("_session", BindingFlags.Static | BindingFlags.NonPublic);
+                var session = sessionField.GetValue(null);
+                var registrationsField = session.GetType().GetField("_registrations", BindingFlags.Instance | BindingFlags.NonPublic);
+                var registrations = (System.Collections.IDictionary)registrationsField.GetValue(session);
+                var registration = registrations[metric.MetricId];
+                var telemetryBuffer = registration.GetType().GetProperty("Buffer").GetValue(registration);
+                randomStateField.SetValue(telemetryBuffer, selectedSeed);
+                PerformanceTelemetry.TryRecord(metric, extreme);
+                Assert.That(PerformanceTelemetry.StopSession(PerformanceRunStatus.CompleteMeasured, "TEST_COMPLETE", "Extrema export test completed."), Is.True);
+
+                var exported = ExtractMetricJson(File.ReadAllText(Path.Combine(resultsDirectory, "summary.json")), metric.MetricId);
+                Assert.That(exported, Does.Contain("\"observation\":\"measured\""));
+                Assert.That(exported, Does.Contain("\"max\":1000000"));
+                Assert.That(exported, Does.Contain("\"p99\":99"));
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                    PerformanceTelemetry.StopSession(PerformanceRunStatus.FailInstrumentation, "TEST_CLEANUP", "Extrema export test cleanup.");
+                if (Directory.Exists(resultsDirectory))
+                    Directory.Delete(resultsDirectory, true);
+            }
         }
 
         [Test]

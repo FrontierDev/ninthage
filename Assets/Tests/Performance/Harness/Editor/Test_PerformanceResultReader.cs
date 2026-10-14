@@ -473,6 +473,18 @@ namespace Game.Tests.Performance.Harness
                     throw new InvalidDataException("summary.json contains duplicate metric ID: " + metric.metric_id);
                 if (metric.sample_count < 0 || metric.attempted_sample_count < 0 || metric.dropped_sample_count < 0)
                     throw new InvalidDataException("summary.json contains a negative metric sample count: " + metric.metric_id);
+                if (metric.retained_sample_count < 0 || metric.rejected_sample_count < 0 || metric.capacity_overflow_count < 0 || metric.reservoir_replacement_count < 0)
+                    throw new InvalidDataException("summary.json contains a negative metric retention count: " + metric.metric_id);
+                var retainedSampleCount = metric.retained_sample_count > 0 ? metric.retained_sample_count : metric.sample_count;
+                if (retainedSampleCount > metric.attempted_sample_count
+                    || metric.rejected_sample_count > metric.attempted_sample_count
+                    || metric.capacity_overflow_count > metric.attempted_sample_count
+                    || retainedSampleCount + metric.rejected_sample_count > metric.attempted_sample_count
+                    || metric.capacity_overflow_count > metric.attempted_sample_count - metric.rejected_sample_count
+                    || metric.reservoir_replacement_count > metric.capacity_overflow_count)
+                {
+                    throw new InvalidDataException("summary.json contains inconsistent metric retention counts: " + metric.metric_id);
+                }
                 if (!IsKnownObservation(metric.observation))
                     throw new InvalidDataException("summary.json contains an unknown metric observation: " + metric.metric_id);
                 if (!string.Equals(metric.phase, "measurement", StringComparison.OrdinalIgnoreCase))
@@ -481,9 +493,27 @@ namespace Game.Tests.Performance.Harness
                     throw new InvalidDataException("summary.json contains an unknown metric unit: " + metric.metric_id);
                 if (!IsMeasuredObservation(metric.observation) && metric.sample_count != 0)
                     throw new InvalidDataException("summary.json reports samples for an unmeasured metric: " + metric.metric_id);
+                if (metric.attempted_sample_count > 0)
+                {
+                    var retention = retainedSampleCount / (double)metric.attempted_sample_count;
+                    var metricJson = FindMetricJson(summaryJson, metric.metric_id);
+                    if (metricJson == null || IsJsonPropertyNull(metricJson, "measurement_coverage") || Math.Abs(metric.measurement_coverage - retention) > 0.0000001d)
+                        throw new InvalidDataException("summary.json measurement coverage does not match retained/attempted samples: " + metric.metric_id);
+                    if (HasJsonProperty(metricJson, "valid_sample_coverage")
+                        && (IsJsonPropertyNull(metricJson, "valid_sample_coverage")
+                            || Math.Abs(ReadJsonNumber(metricJson, "valid_sample_coverage")
+                                - (metric.attempted_sample_count - metric.rejected_sample_count) / (double)metric.attempted_sample_count) > 0.0000001d))
+                    {
+                        throw new InvalidDataException("summary.json valid sample coverage does not match rejected/attempted samples: " + metric.metric_id);
+                    }
+                    if (IsMeasuredObservation(metric.observation) && retention < 1d - MEASUREMENT_DROP_RATIO)
+                        throw new InvalidDataException("summary.json reports a measured metric below the retention policy: " + metric.metric_id);
+                }
                 ValidateMetricNulls(summaryJson, metric);
             }
         }
+
+        private const double MEASUREMENT_DROP_RATIO = 0.05d;
 
         private static void ValidateMetricNulls(string summaryJson, Test_PerformanceMetricDocument metric)
         {
@@ -501,6 +531,12 @@ namespace Game.Tests.Performance.Harness
                     : !measured || (field == "p99" && metric.sample_count < 100);
                 if (mustBeNull != isNull)
                     throw new InvalidDataException($"summary.json has an invalid null/value state for {metric.metric_id}.{field}.");
+            }
+            if (HasJsonProperty(metricJson, "valid_sample_coverage"))
+            {
+                var isNull = IsJsonPropertyNull(metricJson, "valid_sample_coverage");
+                if (isNull != (metric.attempted_sample_count == 0))
+                    throw new InvalidDataException($"summary.json has an invalid null/value state for {metric.metric_id}.valid_sample_coverage.");
             }
         }
 
@@ -568,6 +604,26 @@ namespace Game.Tests.Performance.Harness
             }
 
             return false;
+        }
+
+        private static double ReadJsonNumber(string json, string propertyName)
+        {
+            var marker = "\"" + propertyName + "\"";
+            var propertyIndex = json.IndexOf(marker, StringComparison.Ordinal);
+            if (propertyIndex < 0)
+                throw new InvalidDataException("summary.json metric is missing property: " + propertyName);
+            var valueStart = propertyIndex + marker.Length;
+            SkipJsonWhitespace(json, ref valueStart);
+            if (valueStart >= json.Length || json[valueStart] != ':')
+                throw new InvalidDataException("summary.json metric has an invalid property: " + propertyName);
+            valueStart++;
+            SkipJsonWhitespace(json, ref valueStart);
+            var valueEnd = valueStart;
+            while (valueEnd < json.Length && json[valueEnd] != ',' && json[valueEnd] != '}')
+                valueEnd++;
+            if (!double.TryParse(json.Substring(valueStart, valueEnd - valueStart), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+                throw new InvalidDataException("summary.json metric has a non-numeric property: " + propertyName);
+            return value;
         }
 
         private static void SkipJsonWhitespace(string json, ref int index)
@@ -1194,6 +1250,9 @@ namespace Game.Tests.Performance.Harness
             public int attempted_sample_count;
             public int retained_sample_count;
             public int dropped_sample_count;
+            public int rejected_sample_count;
+            public int capacity_overflow_count;
+            public int reservoir_replacement_count;
             public double p50;
             public double p95;
             public double p99;

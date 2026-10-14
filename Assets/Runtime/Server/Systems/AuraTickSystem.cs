@@ -24,8 +24,8 @@ namespace Game.Server.Systems
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(AURA_TICK_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(AURA_ENTRY_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(AURA_TICK_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(AURA_ENTRY_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         /// <summary>Processes aura ticks and expirations for server actors.</summary>

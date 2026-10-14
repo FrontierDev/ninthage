@@ -71,12 +71,12 @@ namespace Game.Server.Core
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(SPAWN_COMMAND_COUNT_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(SPAWN_SUCCESS_COUNT_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(SPAWN_FAILURE_COUNT_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(SCENE_LOAD_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(DESPAWN_EVENT_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(SPAWN_COMMAND_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(SPAWN_SUCCESS_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(SPAWN_FAILURE_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(SCENE_LOAD_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(DESPAWN_EVENT_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         private NetworkManager _networkManager;

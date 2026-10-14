@@ -203,6 +203,7 @@ namespace Game.Tests.Performance.Harness
         private string _queueDiagnostic;
         private List<Test_PerformanceCampaignArchive> _campaignArchives = new();
         private Test_PerformanceCampaignComparisonReport _campaignComparison;
+        private Test_PerformanceCampaignLinkedQualificationReport _linkedQualification;
         private string _campaignComparisonDiagnostic;
         private string _baselineCampaignID;
         private string _candidateCampaignID;
@@ -605,7 +606,7 @@ namespace Game.Tests.Performance.Harness
                     RefreshCampaignArchives();
             }
             EditorGUILayout.HelpBox(
-                "Comparison is on-demand and read-only. It uses finalized structured evidence, measurement-phase observations, a 95% coverage policy and at least 5 valid independent runs by default. No pooled samples or budget verdicts are produced.",
+                "Comparison is on-demand and read-only. It uses finalized structured evidence, measurement-phase observations, a 95% retention policy and at least 5 qualified run-level observations for every required metric/statistic by default. No pooled samples or budget verdicts are produced.",
                 MessageType.Info);
 
             if (!string.IsNullOrEmpty(_campaignComparisonDiagnostic))
@@ -643,8 +644,16 @@ namespace Game.Tests.Performance.Harness
                 if (GUILayout.Button("Compare selected campaigns"))
                     _campaignComparison = Test_PerformanceCampaignComparator.Compare(_campaignArchives, _baselineCampaignID, _candidateCampaignID);
             }
+            var qualificationCampaign = candidate ?? baseline;
+            using (new EditorGUI.DisabledScope(qualificationCampaign == null))
+            {
+                if (GUILayout.Button("Evaluate linked make-up cohort"))
+                    _linkedQualification = Test_PerformanceCampaignComparator.BuildLinkedQualificationCohort(_campaignArchives, qualificationCampaign.CampaignID);
+            }
             if (_campaignComparison != null)
                 DrawCampaignComparisonReport(_campaignComparison);
+            if (_linkedQualification != null)
+                DrawLinkedQualificationReport(_linkedQualification);
         }
 
         private void RefreshCampaignArchives()
@@ -657,6 +666,7 @@ namespace Game.Tests.Performance.Harness
             if (FindCampaign(_baselineCampaignID) == null || _baselineCampaignID == _candidateCampaignID)
                 _baselineCampaignID = FindCompletedCampaign(1);
             _campaignComparison = null;
+            _linkedQualification = null;
             Repaint();
         }
 
@@ -714,6 +724,7 @@ namespace Game.Tests.Performance.Harness
                 EditorPrefs.SetString(CANDIDATE_CAMPAIGN_PREF, campaignID ?? string.Empty);
             }
             _campaignComparison = null;
+            _linkedQualification = null;
         }
 
         private static void DrawCampaignDetails(string title, Test_PerformanceCampaignArchive archive)
@@ -752,9 +763,13 @@ namespace Game.Tests.Performance.Harness
                     {
                         EditorGUILayout.LabelField(metric.MetricID + " [" + metric.Unit + "] / " + metric.Source + " / " + metric.Scope, EditorStyles.miniBoldLabel);
                         DrawResultField("Sample policy", metric.SamplePolicy ?? "unknown");
+                        if (metric.IsRequired)
+                            DrawResultField("Required statistics", metric.RequiredStatistics);
                         DrawWrappedField("Semantics", metric.Semantics + "; " + metric.Direction);
                         DrawWrappedField("Baseline", metric.Baseline.Describe() + " (" + metric.BaselineQualified + "/" + metric.BaselineAvailable + " qualified/available)");
                         DrawWrappedField("Candidate", metric.Candidate.Describe() + " (" + metric.CandidateQualified + "/" + metric.CandidateAvailable + " qualified/available)");
+                        if (metric.IsRequired)
+                            DrawResultField("Qualified N p50/p95/p99", metric.BaselineP50Qualified + "/" + metric.BaselineP95Qualified + "/" + metric.BaselineP99Qualified + " baseline; " + metric.CandidateP50Qualified + "/" + metric.CandidateP95Qualified + "/" + metric.CandidateP99Qualified + " candidate");
                         DrawResultField("Delta median p50", FormatDelta(metric.DeltaP50, metric.DeltaP50Percent));
                         DrawResultField("Delta median p95", FormatDelta(metric.DeltaP95, metric.DeltaP95Percent));
                         DrawResultField("Delta median p99", FormatDelta(metric.DeltaP99, metric.DeltaP99Percent));
@@ -770,7 +785,7 @@ namespace Game.Tests.Performance.Harness
             EditorGUILayout.LabelField(title + " (" + attempts.Count + ")", EditorStyles.miniBoldLabel);
             foreach (var attempt in attempts)
             {
-                var line = (attempt.RunID ?? attempt.AttemptID ?? "no run ID") + " / " + (attempt.State ?? "unknown")
+                var line = (attempt.CampaignID ?? "unknown campaign") + " / " + (attempt.RunID ?? attempt.AttemptID ?? "no run ID") + " / " + (attempt.State ?? "unknown")
                     + " / " + (attempt.ResultStatus ?? "no finalized status") + " / " + (attempt.StopReason ?? "no stop reason");
                 EditorGUILayout.LabelField(line, EditorStyles.wordWrappedMiniLabel);
                 if (!string.IsNullOrEmpty(attempt.Diagnostic))
@@ -794,6 +809,36 @@ namespace Game.Tests.Performance.Harness
                     {
                         if (GUILayout.Button("Reveal report", GUILayout.Width(100f)))
                             Test_PerformanceCampaignComparator.OpenEvidence(attempt.ReportPath, campaignDirectory);
+                    }
+                }
+            }
+        }
+
+        private static void DrawLinkedQualificationReport(Test_PerformanceCampaignLinkedQualificationReport report)
+        {
+            EditorGUILayout.Space(6f);
+            var messageType = report.Status == Test_PerformanceCampaignComparisonStatus.COMPARABLE
+                ? MessageType.Info
+                : report.Status == Test_PerformanceCampaignComparisonStatus.PROVISIONAL ? MessageType.Warning : MessageType.Error;
+            EditorGUILayout.HelpBox("Linked qualification cohort: " + report.Status + "\n" + report.Summary, messageType);
+            foreach (var reason in report.Reasons)
+                EditorGUILayout.LabelField(reason, EditorStyles.wordWrappedMiniLabel);
+            foreach (var group in report.Groups)
+            {
+                using (new EditorGUILayout.VerticalScope("box"))
+                {
+                    EditorGUILayout.LabelField(group.Classification + ": " + group.Label, EditorStyles.miniBoldLabel);
+                    DrawResultField("Contributing runs", group.BaselineValidCount + " qualified / " + group.BaselineAttempts.Count + " inventory");
+                    if (!string.IsNullOrEmpty(group.Reason))
+                        DrawWrappedField("Cohort caveat", group.Reason);
+                    DrawCampaignAttempts("Cohort attempts", group.BaselineAttempts, null);
+                    foreach (var metric in group.Metrics)
+                    {
+                        EditorGUILayout.LabelField(metric.MetricID + " [" + metric.Unit + "]", EditorStyles.miniBoldLabel);
+                        DrawResultField("Required statistics", metric.RequiredStatistics ?? "descriptive p50");
+                        DrawWrappedField("Cohort", metric.Baseline.Describe() + " (" + metric.BaselineQualified + "/" + metric.BaselineAvailable + " qualified/available)");
+                        if (!string.IsNullOrEmpty(metric.Caveat))
+                            DrawWrappedField("Metric caveat", metric.Caveat);
                     }
                 }
             }

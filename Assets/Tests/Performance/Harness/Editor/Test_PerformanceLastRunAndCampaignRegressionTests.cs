@@ -3,7 +3,9 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
+using UnityEditor;
 
 namespace Game.Tests.Performance.Harness
 {
@@ -11,6 +13,7 @@ namespace Game.Tests.Performance.Harness
     public sealed class Test_PerformanceLastRunAndCampaignRegressionTests
     {
         private readonly List<string> _createdResultDirectories = new();
+        private readonly List<string> _createdCampaignDirectories = new();
         private string _createdCampaignID;
 
         [TearDown]
@@ -25,6 +28,12 @@ namespace Game.Tests.Performance.Harness
                 }
 
                 var campaignDirectory = GetCampaignDirectory(_createdCampaignID);
+                if (Directory.Exists(campaignDirectory))
+                    Directory.Delete(campaignDirectory, true);
+            }
+
+            foreach (var campaignDirectory in _createdCampaignDirectories)
+            {
                 if (Directory.Exists(campaignDirectory))
                     Directory.Delete(campaignDirectory, true);
             }
@@ -143,10 +152,215 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void ProductionGraphicalEvidenceWriterUsesTheReaderValidationPath()
+        {
+            var options = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.GraphicalClient,
+                GraphicalScenario = Test_GraphicalScenario.Outdoor,
+            };
+            var run = Test_PerformanceRun.Create(options);
+            _createdResultDirectories.Add(run.ResultsDirectory);
+            run.Block("test-only production exporter validation");
+
+            var view = Test_PerformanceEvidence.ReadFinalizedResult(run.ResultsDirectory);
+
+            Assert.That(view.IsVerified, Is.True, view.ErrorMessage);
+            Assert.That(File.ReadAllText(run.RunPath), Does.Contain("\"fixture_ref\""));
+            Assert.That(File.ReadAllText(run.RunPath), Does.Contain("\"mode\":\"rendered\""));
+        }
+
+        [Test]
+        public void ComparatorUsesMetricQualifiedNAndReevaluatesAfterEligibleRun()
+        {
+            var baselineID = "campaign-regression-baseline-" + Guid.NewGuid().ToString("N");
+            var candidateID = "campaign-regression-candidate-" + Guid.NewGuid().ToString("N");
+            var baselineDirectory = CreateCampaignDirectory(baselineID);
+            var candidateDirectory = CreateCampaignDirectory(candidateID);
+            _createdCampaignDirectories.Add(baselineDirectory);
+            _createdCampaignDirectories.Add(candidateDirectory);
+
+            var baseline = BuildGraphicalCampaign(baselineID, 5);
+            var candidate = BuildGraphicalCampaign(candidateID, 5);
+            for (var index = 0; index < 5; index++)
+            {
+                var baselineResult = CreateResult(
+                    graphical: true,
+                    scenario: "Outdoor",
+                    finishedUtc: DateTime.UtcNow.AddMinutes(-20 + index),
+                    status: "COMPLETE-MEASURED",
+                    metrics: BuildRequiredGraphicalMetrics(includeRejectedFrameMetric: false));
+                var candidateResult = CreateResult(
+                    graphical: true,
+                    scenario: "Outdoor",
+                    finishedUtc: DateTime.UtcNow.AddMinutes(-10 + index),
+                    status: "COMPLETE-MEASURED",
+                    metrics: BuildRequiredGraphicalMetrics(includeRejectedFrameMetric: index == 0));
+                AddCompletedAttempt(baseline, index, baselineResult);
+                AddCompletedAttempt(candidate, index, candidateResult);
+            }
+            WriteCampaignManifest(baselineDirectory, baseline);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var firstReport = CompareCampaigns(baselineID, candidateID);
+            var firstGroup = firstReport.Groups.Single(group => group.ProfileID == "P1-S0-06");
+            var firstFrameMetric = firstGroup.Metrics.Single(metric => metric.MetricID == "client.rendered.frame_time");
+            var firstRouteMetric = firstGroup.Metrics.Single(metric => metric.MetricID == "harness.graphical.route_distance");
+            Assert.That(firstReport.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.PROVISIONAL));
+            Assert.That(firstGroup.CandidateValidCount, Is.EqualTo(5));
+            Assert.That(firstFrameMetric.CandidateQualified, Is.EqualTo(4));
+            Assert.That(firstFrameMetric.CandidateP99Qualified, Is.EqualTo(4));
+            Assert.That(firstRouteMetric.Candidate.MedianP99, Is.Null);
+
+            var eligibleResult = CreateResult(
+                graphical: true,
+                scenario: "Outdoor",
+                finishedUtc: DateTime.UtcNow,
+                status: "COMPLETE-MEASURED",
+                metrics: BuildRequiredGraphicalMetrics(includeRejectedFrameMetric: false));
+            AddCompletedAttempt(candidate, 5, eligibleResult);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var secondReport = CompareCampaigns(baselineID, candidateID);
+            var secondGroup = secondReport.Groups.Single(group => group.ProfileID == "P1-S0-06");
+            var secondFrameMetric = secondGroup.Metrics.Single(metric => metric.MetricID == "client.rendered.frame_time");
+            Assert.That(secondReport.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.COMPARABLE));
+            Assert.That(secondGroup.CandidateValidCount, Is.EqualTo(6));
+            Assert.That(secondFrameMetric.CandidateQualified, Is.EqualTo(5));
+            Assert.That(secondFrameMetric.CandidateP99Qualified, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void ComparatorExcludesForgedCompleteAttemptBeforeMetricQualification()
+        {
+            var baselineID = "campaign-lifecycle-baseline-" + Guid.NewGuid().ToString("N");
+            var candidateID = "campaign-lifecycle-candidate-" + Guid.NewGuid().ToString("N");
+            var baselineDirectory = CreateCampaignDirectory(baselineID);
+            var candidateDirectory = CreateCampaignDirectory(candidateID);
+            _createdCampaignDirectories.Add(baselineDirectory);
+            _createdCampaignDirectories.Add(candidateDirectory);
+
+            var baseline = BuildGraphicalCampaign(baselineID, 1);
+            var candidate = BuildGraphicalCampaign(candidateID, 1);
+            var baselineResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-2), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            var candidateResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-1), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            var candidateSummaryPath = Path.Combine(candidateResult, "summary.json");
+            File.WriteAllText(candidateSummaryPath, File.ReadAllText(candidateSummaryPath).Replace(
+                "\"status\":\"pass\"",
+                "\"status\":\"failed\"",
+                StringComparison.Ordinal));
+            AddCompletedAttempt(baseline, 0, baselineResult);
+            AddCompletedAttempt(candidate, 0, candidateResult);
+            WriteCampaignManifest(baselineDirectory, baseline);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var report = CompareCampaigns(baselineID, candidateID, 1);
+            var group = report.Groups.Single(group => group.ProfileID == "P1-S0-06");
+
+            Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.PROVISIONAL));
+            Assert.That(group.BaselineValidCount, Is.EqualTo(1));
+            Assert.That(group.CandidateValidCount, Is.EqualTo(0));
+            Assert.That(group.Metrics.All(metric => metric.CandidateQualified == 0), Is.True);
+            Assert.That(group.CandidateAttempts[0].IsValid, Is.False);
+            Assert.That(group.CandidateAttempts[0].Diagnostic, Does.Contain("correctness/lifecycle"));
+        }
+
+        [Test]
+        public void LinkedMakeupCohortPoolsEquivalentRunsAndPreservesExclusions()
+        {
+            var rootID = "campaign-linked-root-" + Guid.NewGuid().ToString("N");
+            var makeupID = "campaign-linked-makeup-" + Guid.NewGuid().ToString("N");
+            var rootDirectory = CreateCampaignDirectory(rootID);
+            var makeupDirectory = CreateCampaignDirectory(makeupID);
+            _createdCampaignDirectories.Add(rootDirectory);
+            _createdCampaignDirectories.Add(makeupDirectory);
+
+            var root = BuildGraphicalCampaign(rootID, 4);
+            var makeup = BuildGraphicalCampaign(makeupID, 1);
+            makeup.linked_campaign_id = rootID;
+            makeup.makeup_for_job_id = "job-graphical";
+            for (var index = 0; index < 4; index++)
+            {
+                var result = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-10 + index), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+                AddCompletedAttempt(root, index, result);
+            }
+            var makeupResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-2), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            AddCompletedAttempt(makeup, 0, makeupResult);
+            makeup.attempts.Add(new Test_PerformanceCampaignAttempt
+            {
+                attempt_id = makeupID + "-duplicate",
+                job_id = "job-graphical",
+                repeat_index = 2,
+                state = Test_PerformanceCampaignAttemptState.COMPLETED,
+                run_id = root.attempts[0].run_id,
+                result_path = root.attempts[0].result_path,
+                report_path = root.attempts[0].report_path,
+                result_status = "COMPLETE-MEASURED",
+            });
+            makeup.attempts.Add(new Test_PerformanceCampaignAttempt
+            {
+                attempt_id = makeupID + "-failed",
+                job_id = "job-graphical",
+                repeat_index = 3,
+                state = Test_PerformanceCampaignAttemptState.FAILED,
+                result_status = "FAIL-TIMEOUT",
+                diagnostic = "test failure retained in inventory",
+            });
+            WriteCampaignManifest(rootDirectory, root);
+            WriteCampaignManifest(makeupDirectory, makeup);
+
+            var archives = Test_PerformanceCampaignComparator.LoadArchives(out var diagnostic);
+            Assert.That(diagnostic, Is.Null.Or.Empty);
+            var report = Test_PerformanceCampaignComparator.BuildLinkedQualificationCohort(archives, makeupID);
+            var group = report.Groups.Single();
+
+            Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.COMPARABLE));
+            Assert.That(group.BaselineAttempts, Has.Count.EqualTo(7));
+            Assert.That(group.BaselineValidCount, Is.EqualTo(5));
+            Assert.That(group.Metrics.All(metric => metric.BaselineQualified == 5), Is.True);
+            Assert.That(group.BaselineAttempts.Any(attempt => !attempt.IsValid && (attempt.Diagnostic ?? string.Empty).Contains("duplicate run ID")), Is.True);
+            Assert.That(group.BaselineAttempts.Any(attempt => !attempt.IsValid && attempt.State == Test_PerformanceCampaignAttemptState.FAILED), Is.True);
+            Assert.That(group.BaselineAttempts.Where(attempt => attempt.IsValid).Select(attempt => attempt.CampaignID).Distinct().Count(), Is.EqualTo(2));
+            Assert.That(report.Summary, Does.Contain("duplicate"));
+        }
+
+        [Test]
+        public void LinkedMakeupWithChangedCommitIsExcludedAsIncompatible()
+        {
+            var rootID = "campaign-linked-incompatible-root-" + Guid.NewGuid().ToString("N");
+            var makeupID = "campaign-linked-incompatible-makeup-" + Guid.NewGuid().ToString("N");
+            var rootDirectory = CreateCampaignDirectory(rootID);
+            var makeupDirectory = CreateCampaignDirectory(makeupID);
+            _createdCampaignDirectories.Add(rootDirectory);
+            _createdCampaignDirectories.Add(makeupDirectory);
+
+            var root = BuildGraphicalCampaign(rootID, 4);
+            var makeup = BuildGraphicalCampaign(makeupID, 1);
+            makeup.linked_campaign_id = rootID;
+            makeup.makeup_for_job_id = "job-graphical";
+            makeup.source.commit_sha = "changed-commit";
+            for (var index = 0; index < 4; index++)
+                AddCompletedAttempt(root, index, CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-10 + index), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false)));
+            AddCompletedAttempt(makeup, 0, CreateResult(true, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false)));
+            WriteCampaignManifest(rootDirectory, root);
+            WriteCampaignManifest(makeupDirectory, makeup);
+
+            var archives = Test_PerformanceCampaignComparator.LoadArchives(out var diagnostic);
+            Assert.That(diagnostic, Is.Null.Or.Empty);
+            var report = Test_PerformanceCampaignComparator.BuildLinkedQualificationCohort(archives, makeupID);
+            var group = report.Groups.Single();
+
+            Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.NOT_COMPARABLE));
+            Assert.That(group.BaselineValidCount, Is.EqualTo(4));
+            Assert.That(group.Reason, Does.Contain("commit"));
+            Assert.That(group.BaselineAttempts.Any(attempt => !attempt.IsValid && attempt.RunID == Path.GetFileName(makeup.attempts[0].result_path)), Is.True);
+        }
+
+        [Test]
         public void ReaderPreservesUnitsCoverageZerosAndUnavailablePercentiles()
         {
             const string metrics = "["
-                + "{\"metric_id\":\"server.ecs.actor_update_duration\",\"unit\":\"ms\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":100,\"attempted_sample_count\":125,\"dropped_sample_count\":25,\"min\":1,\"max\":10,\"mean\":5,\"p50\":4,\"p95\":9,\"p99\":10,\"measurement_coverage\":0.8,\"reason\":\"\",\"retention_policy\":\"phase_reserved_exact\"},"
+                + "{\"metric_id\":\"server.ecs.actor_update_duration\",\"unit\":\"ms\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":125,\"retained_sample_count\":100,\"dropped_sample_count\":25,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":0.8,\"reason\":\"measurement_sample_coverage_below_policy\",\"retention_policy\":\"phase_reserved_reservoir\"},"
                 + "{\"metric_id\":\"server.memory.total_allocated_bytes\",\"unit\":\"bytes\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":0,\"dropped_sample_count\":0,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":null,\"reason\":\"no source\",\"retention_policy\":\"not_collected\"},"
                 + "{\"metric_id\":\"server.ecs.world_spawn_duration\",\"unit\":\"ms\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":125,\"dropped_sample_count\":25,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":0.8,\"reason\":\"measurement_sample_coverage_below_policy\",\"retention_policy\":\"phase_reserved_reservoir\"},"
                 + "{\"metric_id\":\"server.memory.mono_used_bytes\",\"unit\":\"bytes\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":0,\"max\":0,\"mean\":0,\"p50\":0,\"p95\":0,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"}"
@@ -165,9 +379,8 @@ namespace Game.Tests.Performance.Harness
             var zero = FindMetric(view, "server.memory.mono_used_bytes");
 
             Assert.That(view.IsVerified, Is.True, view.ErrorMessage);
-            Assert.That(measured.SampleCount, Is.EqualTo(100));
-            Assert.That(measured.P95, Is.EqualTo(9));
-            Assert.That(measured.P99, Is.EqualTo(10));
+            Assert.That(measured.SampleCount, Is.EqualTo(0));
+            Assert.That(measured.RetainedSampleCount, Is.EqualTo(100));
             Assert.That(measured.MeasurementCoverage, Is.EqualTo(0.8d));
             Assert.That(measured.DisplayValue, Does.Contain("warning retained 100/125"));
             Assert.That(measured.DisplayValue, Does.Contain("[ms]"));
@@ -601,6 +814,126 @@ namespace Game.Tests.Performance.Harness
             Assert.That(view.ErrorMessage, Is.Not.Null.And.Not.Empty, context);
         }
 
+        private string CreateCampaignDirectory(string campaignID)
+        {
+            var directory = GetCampaignDirectory(campaignID);
+            Directory.CreateDirectory(directory);
+            return directory;
+        }
+
+        private static Test_PerformanceCampaignManifest BuildGraphicalCampaign(string campaignID, int repeatCount)
+        {
+            var options = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.GraphicalClient,
+                GraphicalScenario = Test_GraphicalScenario.Outdoor,
+            };
+            return new Test_PerformanceCampaignManifest
+            {
+                campaign_id = campaignID,
+                state = Test_PerformanceCampaignState.COMPLETED,
+                created_utc = DateTime.UtcNow.AddMinutes(-30).ToString("o"),
+                updated_utc = DateTime.UtcNow.ToString("o"),
+                finished_utc = DateTime.UtcNow.ToString("o"),
+                source = BuildComparableSource(),
+                jobs = new List<Test_PerformanceCampaignJob>
+                {
+                    new Test_PerformanceCampaignJob
+                    {
+                        job_id = "job-graphical",
+                        options = options,
+                        repeat_count = repeatCount,
+                        validation_state = "valid",
+                        fixture_identity = new Test_PerformanceCampaignFixtureIdentity
+                        {
+                            configuration_sha256 = "graphical-fixture-identity",
+                            profile_id = "P1-S0-06",
+                            profile_revision = "1.0.0",
+                            actor_variant_id = "P1-S0-06-I-GEOMETRY",
+                        },
+                    },
+                },
+            };
+        }
+
+        private static Test_PerformanceCampaignSource BuildComparableSource()
+        {
+            return new Test_PerformanceCampaignSource
+            {
+                git_branch = "dev",
+                commit_sha = "test-commit",
+                source_sha256 = "source-sha",
+                dirty = false,
+                diff_sha256 = "diff-sha",
+                packages_sha256 = "packages-sha",
+                packages_lock_sha256 = "packages-lock-sha",
+                purrnet_sha256 = "purrnet-sha",
+                hardware = "test-hardware",
+                operating_system = "test-os",
+                unity_version = "test-unity",
+                graphics_device = "test-gpu",
+                graphics_settings = "test-settings",
+            };
+        }
+
+        private static void AddCompletedAttempt(
+            Test_PerformanceCampaignManifest manifest,
+            int repeatIndex,
+            string resultDirectory)
+        {
+            var runID = Path.GetFileName(resultDirectory);
+            manifest.attempts.Add(new Test_PerformanceCampaignAttempt
+            {
+                attempt_id = manifest.campaign_id + "-attempt-" + repeatIndex,
+                job_id = "job-graphical",
+                repeat_index = repeatIndex + 1,
+                state = Test_PerformanceCampaignAttemptState.COMPLETED,
+                run_id = runID,
+                result_path = resultDirectory,
+                report_path = Path.Combine(resultDirectory, "report.md"),
+                result_status = "COMPLETE-MEASURED",
+                stop_reason = "COMPLETE",
+            });
+        }
+
+        private static void WriteCampaignManifest(string directory, Test_PerformanceCampaignManifest manifest)
+        {
+            File.WriteAllText(Path.Combine(directory, "campaign.json"), JsonUtility.ToJson(manifest, true));
+        }
+
+        private static Test_PerformanceCampaignComparisonReport CompareCampaigns(
+            string baselineID,
+            string candidateID,
+            int minimumValidRepeats = Test_PerformanceCampaignComparator.DEFAULT_MIN_VALID_REPEATS)
+        {
+            var archives = Test_PerformanceCampaignComparator.LoadArchives(out var diagnostic);
+            Assert.That(diagnostic, Is.Null.Or.Empty);
+            return Test_PerformanceCampaignComparator.Compare(archives, baselineID, candidateID, minimumValidRepeats);
+        }
+
+        private static string BuildRequiredGraphicalMetrics(bool includeRejectedFrameMetric)
+        {
+            var metrics = new List<string>
+            {
+                includeRejectedFrameMetric
+                    ? "{\"metric_id\":\"client.rendered.frame_time\",\"source\":\"client\",\"scope\":\"rendered_frame\",\"unit\":\"ms\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"retained_sample_count\":90,\"attempted_sample_count\":100,\"dropped_sample_count\":10,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":0.9,\"reason\":\"measurement_sample_coverage_below_policy\",\"retention_policy\":\"phase_reserved_reservoir\"}"
+                    : MetricJson("client.rendered.frame_time", "ms", "rendered_frame", 4d, 5d, 6d),
+                MetricJson("client.main_thread.frame_time", "ms", "rendered_frame", 2d, 3d, 4d),
+                MetricJson("client.render_thread.frame_time", "ms", "rendered_frame", 1d, 2d, 3d),
+                MetricJson("client.gpu.frame_time", "ms", "rendered_frame", 1d, 1.5d, 2d),
+                MetricJson("client.memory.total_allocated_bytes", "bytes", "client_frame", 100d, 100d, 100d),
+                MetricJson("client.graphics.draw_call_count", "count", "rendered_frame", 26d, 26d, 26d),
+                MetricJson("client.graphics.triangle_count", "count", "rendered_frame", 1930d, 1930d, 1930d),
+                "{\"metric_id\":\"harness.graphical.route_distance\",\"source\":\"client\",\"scope\":\"graphical_route\",\"unit\":\"m\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":11,\"retained_sample_count\":11,\"attempted_sample_count\":11,\"dropped_sample_count\":0,\"min\":1,\"max\":11,\"mean\":6,\"p50\":6,\"p95\":11,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"}",
+            };
+            return "[" + string.Join(",", metrics) + "]";
+        }
+
+        private static string MetricJson(string metricID, string unit, string scope, double p50, double p95, double p99)
+        {
+            return "{\"metric_id\":\"" + metricID + "\",\"source\":\"client\",\"scope\":\"" + scope + "\",\"unit\":\"" + unit + "\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":100,\"retained_sample_count\":100,\"attempted_sample_count\":100,\"dropped_sample_count\":0,\"min\":1,\"max\":100,\"mean\":50,\"p50\":" + p50.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p95\":" + p95.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p99\":" + p99.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"measurement_coverage\":1,\"reason\":\"\",\"retention_policy\":\"phase_reserved_exact\"}";
+        }
+
         private string CreateResult(
             bool graphical,
             string scenario,
@@ -616,7 +949,7 @@ namespace Game.Tests.Performance.Harness
 
             var fixtureJson = graphical
                 ? $"{{\"schema_version\":\"benchmark-fixture/v1\",\"profile\":{{\"id\":\"P1-S0-06\",\"revision\":\"1.0.0\",\"variant\":\"S06-I-GEOMETRY\"}},\"random\":{{\"master_seed\":424242}},\"population\":{{\"npcs\":{{\"requested\":0}},\"accounting\":{{\"full_gameobject_purrnet_npcs\":0}}}},\"environment\":{{\"tile_archetype\":\"{scenario}\"}},\"schedules\":{{\"movement_routes\":[]}}}}"
-                : "{\"schema_version\":\"benchmark-fixture/v1\",\"profile\":{\"id\":\"P1-S0-04\",\"revision\":\"1.0.0\",\"variant\":\"S04-I-DATA\"},\"random\":{\"master_seed\":424242},\"population\":{\"npcs\":{\"requested\":100},\"accounting\":{\"full_gameobject_purrnet_npcs\":0}},\"environment\":{\"tile_archetype\":\"Outdoor\"},\"schedules\":{\"movement_routes\":[]}}";
+                : "{\"schema_version\":\"benchmark-fixture/v1\",\"profile\":{\"id\":\"P1-S0-04\",\"revision\":\"1.0.0\",\"variant\":\"S04-I-DATA\"},\"random\":{\"master_seed\":424242},\"population\":{\"npcs\":{\"requested\":100},\"accounting\":{\"ecs_data_only_npcs\":100,\"full_gameobject_purrnet_npcs\":0}},\"environment\":{\"tile_archetype\":\"Outdoor\"},\"schedules\":{\"movement_routes\":[]}}";
             var fixturePath = Path.Combine(directory, "fixture.json");
             File.WriteAllText(fixturePath, fixtureJson);
             var fixtureHash = Test_PerformanceRunMetadata.HashFile(fixturePath);
@@ -634,9 +967,10 @@ namespace Game.Tests.Performance.Harness
 
             var achieved = graphical
                 ? "{\"npc_actors\":0,\"ecs_entities\":0,\"graphical\":{\"requested_objects\":10,\"achieved_objects\":10,\"requested_actors\":0,\"achieved_actors\":0,\"route_waypoints_requested\":0,\"route_waypoints_reached\":0,\"route_complete\":true}}"
-                : "{\"npc_actors\":0,\"ecs_entities\":100,\"population\":{\"requested_ecs_entities\":100,\"measurement_end_ecs_entities\":100},\"activity\":{\"snapshot_captured\":false}}";
+                : "{\"npc_actors\":0,\"ecs_entities\":100,\"population\":{\"requested_ecs_entities\":100,\"measurement_end_ecs_entities\":100,\"post_cleanup_fixture_entities\":0,\"post_cleanup_total_actor_entities\":0},\"activity\":{\"snapshot_captured\":false}}";
             var correctness = status == "COMPLETE-MEASURED" ? "pass" : "unverified";
-            var summaryJson = $"{{\"schema_version\":\"benchmark-summary/v1\",\"run_id\":\"{runID}\",\"fixture_sha256\":\"{fixtureHash}\",\"status\":\"{status}\",\"started_utc\":\"{finishedUtc.AddSeconds(-2):o}\",\"finished_utc\":\"{finishedUtc:o}\",\"phase_completion\":{{\"preflight\":false,\"ramp\":false,\"warmup\":false,\"measurement\":false,\"recovery\":false}},\"achieved\":{achieved},\"stop\":{{\"reason_code\":\"TEST_STOP\",\"message\":\"test result\"}},\"correctness\":{{\"status\":\"{correctness}\",\"checked\":0,\"failed\":0,\"unverified\":[]}},\"metrics\":{metrics},\"raw_files\":[]}}";
+            var complete = status == "COMPLETE-MEASURED";
+            var summaryJson = $"{{\"schema_version\":\"benchmark-summary/v1\",\"run_id\":\"{runID}\",\"fixture_sha256\":\"{fixtureHash}\",\"status\":\"{status}\",\"started_utc\":\"{finishedUtc.AddSeconds(-2):o}\",\"finished_utc\":\"{finishedUtc:o}\",\"phase_completion\":{{\"preflight\":{complete.ToString().ToLowerInvariant()},\"ramp\":{complete.ToString().ToLowerInvariant()},\"warmup\":{complete.ToString().ToLowerInvariant()},\"measurement\":{complete.ToString().ToLowerInvariant()},\"recovery\":{complete.ToString().ToLowerInvariant()}}},\"achieved\":{achieved},\"stop\":{{\"reason_code\":\"TEST_STOP\",\"message\":\"test result\"}},\"correctness\":{{\"status\":\"{correctness}\",\"checked\":{(complete ? 4 : 0)},\"failed\":0,\"unverified\":[],\"cleanup\":{complete.ToString().ToLowerInvariant()}}},\"metrics\":{metrics},\"raw_files\":[]}}";
             File.WriteAllText(Path.Combine(directory, "summary.json"), summaryJson);
             File.WriteAllText(Path.Combine(directory, "report.md"), "# test result");
             File.WriteAllText(Path.Combine(directory, "artifacts.json"), $"{{\"schema_version\":\"benchmark-artifacts/v1\",\"run_id\":\"{runID}\",\"files\":[{{\"path\":\"fixture.json\"}},{{\"path\":\"run.json\"}},{{\"path\":\"summary.json\"}},{{\"path\":\"report.md\"}}]}}");

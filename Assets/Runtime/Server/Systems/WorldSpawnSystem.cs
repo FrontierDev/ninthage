@@ -24,8 +24,8 @@ namespace Game.Server.Systems
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(WORLD_SPAWN_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(SPAWN_COMMAND_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(WORLD_SPAWN_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(SPAWN_COMMAND_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         /// <summary>Initializes world-spawn system state.</summary>

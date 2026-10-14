@@ -19,7 +19,7 @@ namespace Game.Server.Systems
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(ACTOR_UPDATE_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(ACTOR_UPDATE_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         private EntityQuery _motionQuery;

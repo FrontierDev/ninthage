@@ -24,8 +24,8 @@ namespace Game.Server.Systems
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(ACTOR_TICKER_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(TICKER_ENTRY_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(ACTOR_TICKER_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(TICKER_ENTRY_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         /// <summary>Advances active actor tickers and invokes their callbacks.</summary>

@@ -36,8 +36,8 @@ namespace Game.Server.Core
 
         internal static void RegisterPerformanceMetrics()
         {
-            PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, 4096);
-            PerformanceTelemetry.RegisterMetric(ATTACKER_COUNT_METRIC, 4096);
+            PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(ATTACKER_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         private SpellDefinition _autoAttackSpell;

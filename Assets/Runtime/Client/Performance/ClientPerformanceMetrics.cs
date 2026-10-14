@@ -306,7 +306,7 @@ namespace Game.Client.Performance
 
         private static void RegisterMeasured(PerformanceMetricDefinition definition)
         {
-            PerformanceTelemetry.RegisterMetric(definition, 4096);
+            PerformanceTelemetry.RegisterMetric(definition, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         private static void RegisterUnavailable(PerformanceMetricDefinition definition, string reason)

@@ -130,6 +130,9 @@ namespace Game.Shared.Performance
     public static class PerformanceTelemetry
     {
         internal const int MAX_SAMPLES_PER_METRIC = 10000;
+        // Bounded capacity for the supported five-second Editor workloads. The sample buffer
+        // reserves a small context partition, leaving 9,872 statistical slots.
+        public const int RECOMMENDED_SAMPLES_PER_METRIC = 10000;
         internal const int MAX_REGISTERED_METRICS = 256;
         // A result with more than this measurement loss cannot advertise representative statistics.
         internal const double MAX_MEASUREMENT_DROP_RATIO = 0.05d;
@@ -574,6 +577,7 @@ namespace Game.Shared.Performance
                     snapshot.DroppedSampleCount,
                     snapshot.RawTraceSampleCount,
                     snapshot.RejectedSampleCount,
+                    snapshot.CapacityOverflowCount,
                     snapshot.ReservoirReplacementCount);
             }
 
@@ -598,8 +602,10 @@ namespace Game.Shared.Performance
             PerformanceJson.AppendNullableProperty(builder, "reason", reason, true);
             PerformanceJson.AppendNumberProperty(builder, "dropped_sample_count", snapshot.DroppedSampleCount, true);
             PerformanceJson.AppendNumberProperty(builder, "rejected_sample_count", snapshot.RejectedSampleCount, true);
+            PerformanceJson.AppendNumberProperty(builder, "capacity_overflow_count", snapshot.CapacityOverflowCount, true);
             PerformanceJson.AppendNumberProperty(builder, "reservoir_replacement_count", snapshot.ReservoirReplacementCount, true);
             PerformanceJson.AppendNumberProperty(builder, "raw_trace_sample_count", snapshot.RawTraceSampleCount, true);
+            PerformanceJson.AppendNullableProperty(builder, "valid_sample_coverage", snapshot.ValidInputCoverageRatio, true);
             PerformanceJson.AppendNullableProperty(builder, "measurement_coverage", measurementCoverage, true);
             PerformanceJson.AppendStringProperty(
                 builder,
@@ -626,24 +632,27 @@ namespace Game.Shared.Performance
                     builder.Append(',');
                 first = false;
                 string warning = registration.Definition.MetricId + ": ";
-                if (registration.Buffer.MeasurementReservoirReplacementCount > 0)
+                if (registration.Buffer.MeasurementCapacityOverflowCount > 0)
                 {
-                    warning += "bounded statistical retention used reservoir replacement";
+                    warning += "bounded statistical retention overflowed the measurement capacity";
                     if (registration.Buffer.MeasurementAttemptedCount > 0)
                     {
                         warning += string.Format(
                             CultureInfo.InvariantCulture,
-                            "; retained {0} of {1} attempts; valid coverage {2:P2}; replacements {3}",
+                            "; retained {0} of {1} attempts; valid input {2:P2}; retention {3:P2}; overflows {4}; replacements {5}",
                             registration.Buffer.MeasurementRetainedCount,
                             registration.Buffer.MeasurementAttemptedCount,
                             (registration.Buffer.MeasurementAttemptedCount - registration.Buffer.MeasurementRejectedCount)
                                 / (double)registration.Buffer.MeasurementAttemptedCount,
+                            registration.Buffer.MeasurementRetainedCount
+                                / (double)registration.Buffer.MeasurementAttemptedCount,
+                            registration.Buffer.MeasurementCapacityOverflowCount,
                             registration.Buffer.MeasurementReservoirReplacementCount);
                     }
                 }
                 if (registration.Buffer.MeasurementRejectedCount > 0)
                 {
-                    if (registration.Buffer.MeasurementReservoirReplacementCount > 0)
+                    if (registration.Buffer.MeasurementCapacityOverflowCount > 0)
                         warning += "; ";
                     warning += string.Format(
                         CultureInfo.InvariantCulture,
@@ -651,7 +660,7 @@ namespace Game.Shared.Performance
                         registration.Buffer.MeasurementRejectedCount);
                 }
                 if (registration.Buffer.DroppedCount > 0
-                    && registration.Buffer.MeasurementReservoirReplacementCount == 0
+                    && registration.Buffer.MeasurementCapacityOverflowCount == 0
                     && registration.Buffer.MeasurementRejectedCount == 0)
                 {
                     warning += "bounded context retention dropped samples";
@@ -680,7 +689,7 @@ namespace Game.Shared.Performance
                     continue;
 
                 coverageRatio = registration.Buffer.MeasurementAttemptedCount > 0
-                    ? (registration.Buffer.MeasurementAttemptedCount - registration.Buffer.MeasurementRejectedCount)
+                    ? registration.Buffer.MeasurementRetainedCount
                         / (double)registration.Buffer.MeasurementAttemptedCount
                     : 0d;
                 if (registration.Buffer.MeasurementAttemptedCount > 0
