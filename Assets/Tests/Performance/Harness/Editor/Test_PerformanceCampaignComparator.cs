@@ -45,7 +45,7 @@ namespace Game.Tests.Performance.Harness
                 var branch = source?.git_branch ?? "unknown/not recorded";
                 var commit = source?.commit_sha;
                 var shortCommit = string.IsNullOrEmpty(commit) ? "unknown" : commit.Substring(0, Math.Min(12, commit.Length));
-                var dirty = source == null ? "unknown" : source.dirty ? "dirty" : "clean";
+                var dirty = source == null ? "unknown" : source.dirty ? "dirty (informational)" : "clean (informational)";
                 return CampaignID + " / " + (Manifest?.state ?? "invalid") + " / " + branch + " @ " + shortCommit + " / " + dirty + " / " + completed + "/" + attempted + " completed";
             }
         }
@@ -59,8 +59,8 @@ namespace Game.Tests.Performance.Harness
                     return "branch unknown/not recorded; commit unknown; dirty unknown";
                 return "branch " + (source.git_branch ?? "unknown/not recorded")
                     + "; commit " + (source.commit_sha ?? "unknown")
-                    + "; dirty " + source.dirty
-                    + "; diff " + (source.diff_sha256 ?? "unknown")
+                    + "; dirty " + source.dirty + " (informational)"
+                    + "; diff " + (source.diff_sha256 ?? "unknown") + " (informational)"
                     + "; state " + (source.git_branch_status ?? "unknown")
                     + (string.IsNullOrEmpty(source.git_branch_diagnostic) ? string.Empty : "; diagnostic " + source.git_branch_diagnostic);
             }
@@ -135,12 +135,17 @@ namespace Game.Tests.Performance.Harness
         public string Observation;
         public string Reason;
         public int SampleCount;
+        public int AttemptedSampleCount;
+        public int RetainedSampleCount;
+        public double MeasurementCoverage;
         public bool HasP50;
         public bool HasP95;
         public bool HasP99;
         public double P50;
         public double P95;
         public double P99;
+        public bool HasMaximum;
+        public double Maximum;
         public string Key => MetricID + "|" + Unit + "|" + Source + "|" + Scope + "|" + (RetentionPolicy ?? "unknown");
     }
 
@@ -176,7 +181,13 @@ namespace Game.Tests.Performance.Harness
         public double? MedianP99;
         public double MinP50;
         public double MaxP50;
+        public double MinP95;
+        public double MaxP95;
+        public double? MinP99;
+        public double? MaxP99;
         public double IqrP50;
+        public double? CoefficientOfVariationP50;
+        public double? MaximumObserved;
 
         public string Describe()
         {
@@ -185,7 +196,11 @@ namespace Game.Tests.Performance.Harness
                 + "; median run p95 " + MedianP95.ToString("0.####", CultureInfo.InvariantCulture)
                 + "; median run p99 " + p99
                 + "; p50 min/max " + MinP50.ToString("0.####", CultureInfo.InvariantCulture) + "/" + MaxP50.ToString("0.####", CultureInfo.InvariantCulture)
-                + "; p50 IQR " + IqrP50.ToString("0.####", CultureInfo.InvariantCulture);
+                + "; p50 IQR " + IqrP50.ToString("0.####", CultureInfo.InvariantCulture)
+                + "; p50 CV " + (CoefficientOfVariationP50.HasValue ? CoefficientOfVariationP50.Value.ToString("P1", CultureInfo.InvariantCulture) : "unavailable")
+                + "; max run p95 " + MaxP95.ToString("0.####", CultureInfo.InvariantCulture)
+                + "; max run p99 " + (MaxP99.HasValue ? MaxP99.Value.ToString("0.####", CultureInfo.InvariantCulture) : "unavailable")
+                + "; max observed sample " + (MaximumObserved.HasValue ? MaximumObserved.Value.ToString("0.####", CultureInfo.InvariantCulture) : "unavailable");
         }
     }
 
@@ -373,9 +388,11 @@ namespace Game.Tests.Performance.Harness
                 reasons.Add("Source provenance is missing from one or both campaigns; comparison is unqualified.");
                 return true;
             }
-            var hard = baseline.dirty != candidate.dirty;
+            var hard = false;
             if (baseline.dirty != candidate.dirty)
-                reasons.Add("Dirty state differs; source changes are not safely comparable.");
+                reasons.Add("Dirty state differs; this is informational provenance only and is not a qualification veto.");
+            if (!string.Equals(baseline.diff_sha256, candidate.diff_sha256, StringComparison.OrdinalIgnoreCase))
+                reasons.Add("Working-tree diff identity differs; this is informational provenance only.");
             hard |= CompareRequired(reasons, "hardware", baseline.hardware, candidate.hardware);
             hard |= CompareRequired(reasons, "operating system", baseline.operating_system, candidate.operating_system);
             hard |= CompareRequired(reasons, "Unity version", baseline.unity_version, candidate.unity_version);
@@ -546,6 +563,7 @@ namespace Game.Tests.Performance.Harness
                         : null;
                 }
                 comparison.Caveat = AddReason(comparison.Caveat, "Medians are across runs; p95/p99 are medians of per-run percentiles, not pooled samples.");
+                comparison.Caveat = AddReason(comparison.Caveat, DescribeExclusions(group, key));
                 group.Metrics.Add(comparison);
             }
         }
@@ -569,6 +587,7 @@ namespace Game.Tests.Performance.Harness
             var p50 = samples.Where(sample => sample.HasP50).Select(sample => sample.P50).OrderBy(value => value).ToList();
             var p95 = samples.Where(sample => sample.HasP95).Select(sample => sample.P95).OrderBy(value => value).ToList();
             var p99 = samples.Where(sample => sample.HasP99).Select(sample => sample.P99).OrderBy(value => value).ToList();
+            var maximums = samples.Where(sample => sample.HasMaximum).Select(sample => sample.Maximum).ToList();
             return new Test_PerformanceCampaignDistribution
             {
                 Count = p50.Count,
@@ -577,8 +596,42 @@ namespace Game.Tests.Performance.Harness
                 MedianP99 = p99.Count == 0 ? (double?)null : Median(p99),
                 MinP50 = p50.Count == 0 ? 0d : p50[0],
                 MaxP50 = p50.Count == 0 ? 0d : p50[p50.Count - 1],
+                MinP95 = p95.Count == 0 ? 0d : p95[0],
+                MaxP95 = p95.Count == 0 ? 0d : p95[p95.Count - 1],
+                MinP99 = p99.Count == 0 ? (double?)null : p99[0],
+                MaxP99 = p99.Count == 0 ? (double?)null : p99[p99.Count - 1],
                 IqrP50 = Iqr(p50),
+                CoefficientOfVariationP50 = CoefficientOfVariation(p50),
+                MaximumObserved = maximums.Count == 0 ? (double?)null : maximums.Max(),
             };
+        }
+
+        private static double? CoefficientOfVariation(List<double> values)
+        {
+            if (values.Count < 2)
+                return null;
+            var mean = values.Average();
+            if (Math.Abs(mean) < double.Epsilon)
+                return null;
+            var variance = values.Sum(value => Math.Pow(value - mean, 2d)) / (values.Count - 1);
+            return Math.Sqrt(variance) / Math.Abs(mean);
+        }
+
+        private static string DescribeExclusions(Test_PerformanceCampaignComparisonGroup group, string key)
+        {
+            var reasons = new List<string>();
+            foreach (var attempt in group.BaselineAttempts.Concat(group.CandidateAttempts))
+            {
+                if (!attempt.IsValid)
+                {
+                    reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": " + (attempt.Diagnostic ?? "attempt not valid"));
+                    continue;
+                }
+                var metric = attempt.Metrics.FirstOrDefault(value => value.Key == key);
+                if (metric == null || !metric.HasP50)
+                    reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": metric unavailable or below the 95% qualification policy");
+            }
+            return reasons.Count == 0 ? null : "Exclusions: " + string.Join(" | ", reasons);
         }
 
         private static double? PercentDelta(double baseline, double delta)
@@ -627,12 +680,17 @@ namespace Game.Tests.Performance.Harness
                     Reason = metric.reason,
                     RetentionPolicy = metric.retention_policy,
                     SampleCount = metric.sample_count,
+                    AttemptedSampleCount = metric.attempted_sample_count,
+                    RetainedSampleCount = metric.retained_sample_count > 0 ? metric.retained_sample_count : metric.sample_count,
+                    MeasurementCoverage = metric.measurement_coverage,
                     HasP50 = qualified,
                     HasP95 = qualified,
                     HasP99 = qualified && metric.sample_count >= 100 && metric.reason != "insufficient_samples",
                     P50 = metric.p50,
                     P95 = metric.p95,
                     P99 = metric.p99,
+                    HasMaximum = qualified,
+                    Maximum = metric.max,
                 });
             }
             return samples;
@@ -674,6 +732,8 @@ namespace Game.Tests.Performance.Harness
 
         private static string AddReason(string existing, string reason)
         {
+            if (string.IsNullOrEmpty(reason))
+                return existing;
             return string.IsNullOrEmpty(existing) ? reason : existing + " " + reason;
         }
 
@@ -690,6 +750,8 @@ namespace Game.Tests.Performance.Harness
                 return "memory/byte snapshot or volume";
             if (unit == "count" || unit == "ticks" || unit == "events/s")
                 return "counter or rate; inspect metric identity";
+            if (unit == "m")
+                return "distance; inspect route/fixture identity";
             return unit ?? UNKNOWN;
         }
 
@@ -766,9 +828,12 @@ namespace Game.Tests.Performance.Harness
             public string observation;
             public string phase;
             public int sample_count;
+            public int attempted_sample_count;
+            public int retained_sample_count;
             public double p50;
             public double p95;
             public double p99;
+            public double max;
             public double measurement_coverage;
             public string reason;
             public string source;

@@ -363,9 +363,9 @@ namespace Game.Tests.Performance.Harness
             var sourceDifference = source.DescribeDifference(changedSource);
 
             Assert.That(source.DescribeDifference(source), Is.Null);
-            Assert.That(sourceDifference, Does.Contain("source SHA"));
-            Assert.That(sourceDifference, Does.Contain("dirty flag"));
-            Assert.That(sourceDifference, Does.Contain("working-tree diff SHA"));
+            Assert.That(sourceDifference, Is.Null, "Dirty and diff-only changes are informational and must not pause a campaign.");
+            changedSource.commit_sha = "commit-b";
+            Assert.That(source.DescribeDifference(changedSource), Does.Contain("commit SHA"));
             Assert.That(fixture.DescribeDifference(fixture), Is.Null);
             Assert.That(fixture.DescribeDifference(changedFixture), Does.Contain("Fixture/configuration identity changed"));
         }
@@ -509,6 +509,16 @@ namespace Game.Tests.Performance.Harness
             _createdCampaignID = Test_PerformanceJobQueue.CampaignID;
 
             Assert.That(Test_PerformanceJobQueue.Jobs.Count + Test_PerformanceJobQueue.ExcludedScenarios.Count, Is.EqualTo(5));
+            Assert.That(Test_PerformanceJobQueue.ProfileCoverage, Has.Count.EqualTo(8));
+            for (var index = 0; index < Test_PerformanceJobQueue.ProfileCoverage.Count; index++)
+            {
+                var profile = Test_PerformanceJobQueue.ProfileCoverage[index];
+                Assert.That(profile.profile_id, Is.EqualTo("P1-S0-0" + (index + 1)));
+                Assert.That(profile.status, Is.EqualTo(index == 3 || index == 5 ? "SUPPORTED-NOT-RUN" : "BLOCKED"));
+                Assert.That(profile.capability, Is.Not.Null.And.Not.Empty);
+                Assert.That(profile.runnable_alternative, Is.Not.Null.And.Not.Empty);
+                Assert.That(profile.next_issue_or_stage, Is.Not.Null.And.Not.Empty);
+            }
             foreach (var job in Test_PerformanceJobQueue.Jobs)
             {
                 Assert.That(job.repeat_count, Is.EqualTo(5));

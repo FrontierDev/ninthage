@@ -22,6 +22,10 @@ namespace Game.Tests.Performance.Harness
     internal sealed class Test_PerformanceRunMetadata
     {
         public string Repository;
+        public string GitBranch;
+        public string GitBranchStatus;
+        public string GitBranchDiagnostic;
+        public string CapturedUtc;
         public string Commit;
         public bool Dirty;
         public string DiffSha256;
@@ -41,10 +45,15 @@ namespace Game.Tests.Performance.Harness
 
             var status = RunGit(projectRoot, "status --porcelain");
             var diff = RunGit(projectRoot, "diff --binary HEAD --");
+            var branch = RunGit(projectRoot, "branch --show-current").Trim();
             var machineIdentity = string.Join("|", SystemInfo.operatingSystem, SystemInfo.processorType, SystemInfo.processorCount.ToString(CultureInfo.InvariantCulture));
             return new Test_PerformanceRunMetadata
             {
                 Repository = projectRoot,
+                GitBranch = branch,
+                GitBranchStatus = string.IsNullOrEmpty(branch) ? "detached" : "named",
+                GitBranchDiagnostic = string.IsNullOrEmpty(branch) ? "HEAD is detached; no branch name was available." : null,
+                CapturedUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
                 Commit = commit,
                 Dirty = !string.IsNullOrEmpty(status),
                 DiffSha256 = HashString(diff),
@@ -398,6 +407,8 @@ namespace Game.Tests.Performance.Harness
             {
                 FixtureSha256 = FixtureHash,
                 GitRepository = _metadata.Repository,
+                GitBranch = _metadata.GitBranch,
+                GitCapturedUtc = _metadata.CapturedUtc,
                 GitCommitSha = _metadata.Commit,
                 GitDirty = _metadata.Dirty,
                 BuildKind = IsGraphicalClient ? "editor_playmode_rendered_client" : "editor_playmode_server",
@@ -903,7 +914,7 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "achieved", BuildAchievedJson(), true);
             RawProperty(builder, "resources", $"{{\"total_allocated_bytes\":{UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong()},\"ceiling_bytes\":{MAX_TOTAL_ALLOCATED_BYTES},\"ceiling_status\":{Quote(status == PerformanceRunStatus.FailResource ? "exceeded" : "not_exceeded")}}}", true);
             RawProperty(builder, "stop", $"{{\"phase\":{Quote(CurrentPhaseText())},\"reason_code\":{Quote(reasonCode)},\"message\":{Quote(message)}}}", true);
-            RawProperty(builder, "correctness", $"{{\"status\":{Quote(correctnessStatus)},\"checked\":{checkedAssertions},\"failed\":{failedAssertions},\"unverified\":{unverified}}}", true);
+            RawProperty(builder, "correctness", $"{{\"status\":{Quote(correctnessStatus)},\"checked\":{checkedAssertions},\"failed\":{failedAssertions},\"unverified\":{unverified},\"cleanup\":{CleanupComplete.ToString().ToLowerInvariant()}}}", true);
             RawProperty(builder, "metrics", metrics, true);
             RawProperty(builder, "raw_files", rawFiles, true);
             RawProperty(builder, "warnings", BuildWarnings(status, IsGraphicalClient), false);
@@ -1051,12 +1062,38 @@ namespace Game.Tests.Performance.Harness
         private void WriteArtifacts()
         {
             var entries = new List<string>();
+            var requiredPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "fixture.json",
+                "run.json",
+                "summary.json",
+                "report.md",
+            };
+            var optionalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "samples.ndjson",
+                "logs/runner.log",
+            };
+            var presentPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var path in Directory.GetFiles(ResultsDirectory, "*", SearchOption.AllDirectories))
             {
                 if (string.Equals(Path.GetFileName(path), "artifacts.json", StringComparison.OrdinalIgnoreCase))
                     continue;
                 var relative = path.Substring(ResultsDirectory.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace('\\', '/');
-                entries.Add($"{{\"path\":{Quote(relative)},\"sha256\":{Quote(Test_PerformanceRunMetadata.HashFile(path))},\"bytes\":{new FileInfo(path).Length.ToString(CultureInfo.InvariantCulture)},\"media_type\":{Quote(GuessMediaType(path))},\"collector\":\"test_performance_harness\"}}");
+                presentPaths.Add(relative);
+                var required = requiredPaths.Contains(relative);
+                var optional = optionalPaths.Contains(relative) || !required;
+                entries.Add($"{{\"path\":{Quote(relative)},\"status\":\"present\",\"required\":{required.ToString().ToLowerInvariant()},\"optional\":{optional.ToString().ToLowerInvariant()},\"sha256\":{Quote(Test_PerformanceRunMetadata.HashFile(path))},\"bytes\":{new FileInfo(path).Length.ToString(CultureInfo.InvariantCulture)},\"media_type\":{Quote(GuessMediaType(path))},\"collector\":\"test_performance_harness\"}}");
+            }
+            foreach (var relative in requiredPaths)
+            {
+                if (!presentPaths.Contains(relative))
+                    entries.Add($"{{\"path\":{Quote(relative)},\"status\":\"absent\",\"required\":true,\"optional\":false,\"sha256\":\"\",\"bytes\":0,\"media_type\":{Quote(GuessMediaType(relative))},\"collector\":\"test_performance_harness\"}}");
+            }
+            foreach (var relative in optionalPaths)
+            {
+                if (!presentPaths.Contains(relative))
+                    entries.Add($"{{\"path\":{Quote(relative)},\"status\":\"absent\",\"required\":false,\"optional\":true,\"sha256\":\"\",\"bytes\":0,\"media_type\":{Quote(GuessMediaType(relative))},\"collector\":\"test_performance_harness\"}}");
             }
             entries.Sort(StringComparer.Ordinal);
             File.WriteAllText(
@@ -1390,7 +1427,7 @@ namespace Game.Tests.Performance.Harness
             Property(builder, "schema_version", "benchmark-run/v1", true);
             Property(builder, "run_id", run.RunID, true);
             RawProperty(builder, "fixture", $"{{\"path\":{Test_PerformanceRun.Quote("fixture.json")},\"sha256\":{Test_PerformanceRun.Quote(run.FixtureHash)}}}", true);
-            RawProperty(builder, "git", $"{{\"repository\":{Test_PerformanceRun.Quote(metadata.Repository)},\"commit_sha\":{Test_PerformanceRun.Quote(metadata.Commit)},\"dirty\":{metadata.Dirty.ToString().ToLowerInvariant()},\"diff_sha256\":{Test_PerformanceRun.Quote(metadata.DiffSha256)}}}", true);
+            RawProperty(builder, "git", $"{{\"repository\":{Test_PerformanceRun.Quote(metadata.Repository)},\"branch\":{Test_PerformanceRun.Quote(metadata.GitBranch)},\"branch_status\":{Test_PerformanceRun.Quote(metadata.GitBranchStatus)},\"branch_diagnostic\":{Test_PerformanceRun.Quote(metadata.GitBranchDiagnostic)},\"captured_utc\":{Test_PerformanceRun.Quote(metadata.CapturedUtc)},\"commit_sha\":{Test_PerformanceRun.Quote(metadata.Commit)},\"dirty\":{metadata.Dirty.ToString().ToLowerInvariant()},\"diff_sha256\":{Test_PerformanceRun.Quote(metadata.DiffSha256)}}}", true);
             RawProperty(builder, "unity", $"{{\"version\":{Test_PerformanceRun.Quote(Application.unityVersion)},\"platform\":{Test_PerformanceRun.Quote(Application.platform.ToString())}}}", true);
             RawProperty(builder, "packages", $"{{\"manifest_sha256\":{Test_PerformanceRun.Quote(metadata.PackagesSha256)},\"lock_sha256\":{Test_PerformanceRun.Quote(metadata.PackagesLockSha256)}}}", true);
             RawProperty(builder, "purrnet", $"{{\"source\":\"Assets/ThirdParty/PurrNet\",\"sha256\":{Test_PerformanceRun.Quote(metadata.PurrNetSha256)}}}", true);
@@ -1455,7 +1492,7 @@ namespace Game.Tests.Performance.Harness
             Property(builder, "run_id", run.RunID, true);
             RawProperty(builder, "fixture_ref", $"{{\"path\":\"fixture.json\",\"sha256\":{Quote(run.FixtureHash)}}}", true);
             Property(builder, "created_utc", DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), true);
-            RawProperty(builder, "git", $"{{\"repository\":\"FrontierDev/ninthage\",\"commit_sha\":{Quote(metadata.Commit)},\"dirty\":{metadata.Dirty.ToString().ToLowerInvariant()},\"dirty_diff_sha256\":{Quote(metadata.DiffSha256)}}}", true);
+            RawProperty(builder, "git", $"{{\"repository\":\"FrontierDev/ninthage\",\"branch\":{Quote(metadata.GitBranch)},\"branch_status\":{Quote(metadata.GitBranchStatus)},\"branch_diagnostic\":{Quote(metadata.GitBranchDiagnostic)},\"captured_utc\":{Quote(metadata.CapturedUtc)},\"commit_sha\":{Quote(metadata.Commit)},\"dirty\":{metadata.Dirty.ToString().ToLowerInvariant()},\"dirty_diff_sha256\":{Quote(metadata.DiffSha256)}}}", true);
             RawProperty(builder, "toolchain", $"{{\"unity\":{Quote(Application.unityVersion)},\"unity_revision\":{Quote(ReadUnityRevision(metadata.Repository))},\"packages_manifest_sha256\":{Quote(metadata.PackagesSha256)},\"packages_lock_sha256\":{Quote(metadata.PackagesLockSha256)},\"purrnet_source_id\":\"Assets/ThirdParty/PurrNet\",\"purrnet_sha256\":{Quote(metadata.PurrNetSha256)},\"fixture_generator_version\":\"1.0.0\",\"runner_version\":\"graphical-harness/v1\",\"telemetry_version\":\"benchmark-sample/v1\"}}", true);
             RawProperty(builder, "build", $"{{\"kind\":\"rendered_client\",\"target\":{Quote(Application.platform.ToString())},\"subtarget\":\"editor_playmode\",\"development\":{UnityEngine.Debug.isDebugBuild.ToString().ToLowerInvariant()},\"autoconnect_profiler\":false,\"deep_profiling\":false,\"script_debugging\":false,\"defines\":[\"UNITY_EDITOR\"],\"scripting_backend\":\"editor\",\"build_sha256\":null}}", true);
             RawProperty(builder, "render", $"{{\"mode\":\"rendered\",\"graphical_client\":true,\"graphics_api\":{Quote(SystemInfo.graphicsDeviceType.ToString())},\"urprenderer\":{Quote(renderer)},\"quality_level\":{Quote(quality)},\"resolution_px\":{resolution},\"vsync\":{QualitySettings.vSyncCount},\"target_fps\":{targetFps}}}", true);

@@ -30,6 +30,7 @@ namespace Game.Tests.Performance.Harness
             string observation,
             int sampleCount,
             int attemptedSampleCount,
+            int retainedSampleCount,
             int droppedSampleCount,
             double p50,
             double p95,
@@ -45,6 +46,7 @@ namespace Game.Tests.Performance.Harness
             Observation = observation;
             SampleCount = sampleCount;
             AttemptedSampleCount = attemptedSampleCount;
+            RetainedSampleCount = retainedSampleCount;
             DroppedSampleCount = droppedSampleCount;
             P50 = p50;
             P95 = p95;
@@ -66,6 +68,8 @@ namespace Game.Tests.Performance.Harness
         public int SampleCount { get; }
 
         public int AttemptedSampleCount { get; }
+
+        public int RetainedSampleCount { get; }
 
         public int DroppedSampleCount { get; }
 
@@ -100,10 +104,10 @@ namespace Game.Tests.Performance.Harness
                 var coverage = AttemptedSampleCount > 0
                     ? $"coverage {MeasurementCoverage:P0}"
                     : "coverage unavailable";
-                var warning = DroppedSampleCount > 0 || (AttemptedSampleCount > 0 && MeasurementCoverage < 1d)
+                var warning = (AttemptedSampleCount > 0 && MeasurementCoverage < 1d)
                     ? $"; warning retained {SampleCount}/{AttemptedSampleCount}"
                     : string.Empty;
-                return $"samples {SampleCount}/{AttemptedSampleCount}; p50 {FormatNumber(P50)}; p95 {FormatNumber(P95)}; p99 {p99}; {coverage}{warning} [{Unit}]";
+                return $"samples {RetainedSampleCount}/{AttemptedSampleCount}; p50 {FormatNumber(P50)}; p95 {FormatNumber(P95)}; p99 {p99}; {coverage}; retention {RetentionPolicy}{warning} [{Unit}]";
             }
         }
 
@@ -171,6 +175,10 @@ namespace Game.Tests.Performance.Harness
         public string Seed { get; private set; }
 
         public string Commit { get; private set; }
+
+        public string Branch { get; private set; }
+
+        public string SourceCapturedUtc { get; private set; }
 
         public string DirtyState { get; private set; }
 
@@ -424,8 +432,23 @@ namespace Game.Tests.Performance.Harness
                     throw new InvalidDataException("artifacts.json contains a null file entry.");
                 RequireRelativePath(artifact.path, "artifact path");
                 var artifactPath = Path.GetFullPath(Path.Combine(directory, artifact.path));
+                var absent = string.Equals(artifact.status, "absent", StringComparison.OrdinalIgnoreCase);
+                if (absent)
+                {
+                    if (requiredArtifacts.Contains(artifact.path) || artifact.required)
+                        throw new InvalidDataException("Required artifact is explicitly absent: " + artifact.path);
+                    continue;
+                }
                 if (!IsSafeExistingFile(artifactPath, directory))
                     throw new InvalidDataException("Artifact path is missing or outside the result directory: " + artifact.path);
+                if (!string.IsNullOrEmpty(artifact.sha256)
+                    && !string.Equals(Test_PerformanceRunMetadata.HashFile(artifactPath), artifact.sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("Artifact SHA-256 does not match the finalized file: " + artifact.path);
+                }
+                if ((!string.IsNullOrEmpty(artifact.sha256) || artifact.bytes > 0)
+                    && artifact.bytes != new FileInfo(artifactPath).Length)
+                    throw new InvalidDataException("Artifact byte count does not match the finalized file: " + artifact.path);
                 requiredArtifacts.Remove(artifact.path);
             }
             if (requiredArtifacts.Count > 0)
@@ -582,6 +605,8 @@ namespace Game.Tests.Performance.Harness
             view.Scenario = BuildScenario(run, fixture, graphical);
             view.Seed = fixture.random.master_seed.ToString(CultureInfo.InvariantCulture);
             view.Commit = run.git.commit_sha;
+            view.Branch = string.IsNullOrEmpty(run.git.branch) ? run.git.branch_status : run.git.branch;
+            view.SourceCapturedUtc = run.git.captured_utc;
             view.DirtyState = run.git.dirty ? "dirty" : "clean";
             view.Duration = BuildDuration(summary.started_utc, summary.finished_utc);
             view.Status = summary.status;
@@ -738,6 +763,7 @@ namespace Game.Tests.Performance.Harness
                         0,
                         0,
                         0,
+                        0,
                         "Metric absent from summary.json.",
                         "not_collected",
                         false));
@@ -751,6 +777,7 @@ namespace Game.Tests.Performance.Harness
                     metric.observation,
                     metric.sample_count,
                     metric.attempted_sample_count,
+                    metric.retained_sample_count > 0 ? metric.retained_sample_count : metric.sample_count,
                     metric.dropped_sample_count,
                     metric.p50,
                     metric.p95,
@@ -1165,6 +1192,7 @@ namespace Game.Tests.Performance.Harness
             public string phase;
             public int sample_count;
             public int attempted_sample_count;
+            public int retained_sample_count;
             public int dropped_sample_count;
             public double p50;
             public double p95;
@@ -1181,7 +1209,15 @@ namespace Game.Tests.Performance.Harness
         private sealed class Test_PerformanceFileReferenceDocument { public string path; public string sha256; }
 
         [Serializable]
-        private sealed class Test_PerformanceGitDocument { public string commit_sha; public bool dirty; }
+        private sealed class Test_PerformanceGitDocument
+        {
+            public string branch;
+            public string branch_status;
+            public string branch_diagnostic;
+            public string captured_utc;
+            public string commit_sha;
+            public bool dirty;
+        }
 
         [Serializable]
         private sealed class Test_PerformanceBuildDocument { public string kind; }
@@ -1221,7 +1257,15 @@ namespace Game.Tests.Performance.Harness
         private sealed class Test_PerformanceFixtureRouteDocument { public string route_id; }
 
         [Serializable]
-        private sealed class Test_PerformanceArtifactDocument { public string path; }
+        private sealed class Test_PerformanceArtifactDocument
+        {
+            public string path;
+            public string status;
+            public bool required;
+            public bool optional;
+            public string sha256;
+            public long bytes;
+        }
 
         #pragma warning restore 0649
     }

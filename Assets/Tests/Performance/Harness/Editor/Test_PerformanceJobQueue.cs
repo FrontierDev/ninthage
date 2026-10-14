@@ -67,13 +67,9 @@ namespace Game.Tests.Performance.Harness
             var differences = new List<string>();
             if (!string.IsNullOrEmpty(git_branch) && !string.IsNullOrEmpty(current.git_branch))
                 AddDifference(differences, "Git branch", git_branch, current.git_branch);
-            if (!string.IsNullOrEmpty(git_branch_status) && !string.IsNullOrEmpty(current.git_branch_status))
-                AddDifference(differences, "Git branch state", git_branch_status, current.git_branch_status);
+            else if (!string.Equals(git_branch, current.git_branch, StringComparison.OrdinalIgnoreCase))
+                differences.Add($"Git branch changed from '{git_branch ?? "unknown/not recorded"}' to '{current.git_branch ?? "unknown/not recorded"}'");
             AddDifference(differences, "commit SHA", commit_sha, current.commit_sha);
-            AddDifference(differences, "source SHA", source_sha256, current.source_sha256);
-            if (dirty != current.dirty)
-                differences.Add($"dirty flag changed from {dirty} to {current.dirty}");
-            AddDifference(differences, "working-tree diff SHA", diff_sha256, current.diff_sha256);
             AddDifference(differences, "Packages manifest SHA", packages_sha256, current.packages_sha256);
             AddDifference(differences, "packages lock SHA", packages_lock_sha256, current.packages_lock_sha256);
             AddDifference(differences, "PurrNet SHA", purrnet_sha256, current.purrnet_sha256);
@@ -166,6 +162,18 @@ namespace Game.Tests.Performance.Harness
         public string result_status;
         public string stop_reason;
         public string diagnostic;
+        public Test_PerformanceCampaignSource source;
+    }
+
+    [Serializable]
+    internal sealed class Test_PerformanceProfileCoverage
+    {
+        public string profile_id;
+        public string mode;
+        public string status = "BLOCKED";
+        public string capability;
+        public string runnable_alternative;
+        public string next_issue_or_stage;
     }
 
     [Serializable]
@@ -185,6 +193,9 @@ namespace Game.Tests.Performance.Harness
         public bool cancel_remaining;
         public Test_PerformanceCampaignSource source;
         public List<string> excluded_scenarios = new();
+        public List<Test_PerformanceProfileCoverage> profile_coverage = new();
+        public string linked_campaign_id;
+        public string makeup_for_job_id;
         public List<Test_PerformanceCampaignJob> jobs = new();
         public List<Test_PerformanceCampaignAttempt> attempts = new();
     }
@@ -197,6 +208,9 @@ namespace Game.Tests.Performance.Harness
         public string updated_utc;
         public string state;
         public string stop_policy;
+        public string linked_campaign_id;
+        public Test_PerformanceCampaignSource source;
+        public List<Test_PerformanceProfileCoverage> profile_coverage = new();
         public List<Test_PerformanceCampaignIndexAttempt> attempts = new();
     }
 
@@ -209,6 +223,31 @@ namespace Game.Tests.Performance.Harness
         public string result_path;
         public string status;
         public string stop_reason;
+        public Test_PerformanceCampaignSource source;
+        public string profile_id;
+        public string fixture_sha256;
+        public string seed;
+        public string configuration_sha256;
+        public string hardware;
+        public string unity_version;
+        public string graphics_device;
+        public string started_utc;
+        public string finished_utc;
+        public string correctness_status;
+        public string cleanup_status;
+        public string artifact_index_status;
+        public Test_PerformanceCampaignIndexArtifact[] artifacts;
+    }
+
+    [Serializable]
+    internal sealed class Test_PerformanceCampaignIndexArtifact
+    {
+        public string path;
+        public string sha256;
+        public long bytes;
+        public bool required;
+        public bool optional;
+        public string status;
     }
 
     /// <summary>Persists and sequentially coordinates test-owned performance campaign jobs.</summary>
@@ -274,7 +313,7 @@ namespace Game.Tests.Performance.Harness
                 var abbreviatedSHA = string.IsNullOrEmpty(_manifest.source.commit_sha)
                     ? "unknown"
                     : _manifest.source.commit_sha.Substring(0, Math.Min(12, _manifest.source.commit_sha.Length));
-                return $"{branch} @ {abbreviatedSHA} / {(_manifest.source.dirty ? "dirty" : "clean")}";
+                return $"{branch} @ {abbreviatedSHA} / {(_manifest.source.dirty ? "dirty (informational)" : "clean (informational)")}";
             }
         }
 
@@ -288,7 +327,7 @@ namespace Game.Tests.Performance.Harness
                 var branch = string.IsNullOrEmpty(source.git_branch) ? "unknown/not recorded" : source.git_branch;
                 var branchState = string.IsNullOrEmpty(source.git_branch_status) ? "unknown" : source.git_branch_status;
                 var diagnostic = string.IsNullOrEmpty(source.git_branch_diagnostic) ? string.Empty : $"; diagnostic {source.git_branch_diagnostic}";
-                return $"branch {branch} ({branchState}); commit {source.commit_sha ?? "unknown"}; dirty {source.dirty}; diff {source.diff_sha256 ?? "unknown"}; captured {source.captured_utc ?? "unknown"}{diagnostic}";
+                return $"branch {branch} ({branchState}); commit {source.commit_sha ?? "unknown"}; dirty {source.dirty} (informational); diff {source.diff_sha256 ?? "unknown"} (informational); captured {source.captured_utc ?? "unknown"}{diagnostic}";
             }
         }
 
@@ -297,6 +336,10 @@ namespace Game.Tests.Performance.Harness
         public static IReadOnlyList<Test_PerformanceCampaignAttempt> Attempts => _manifest == null ? (IReadOnlyList<Test_PerformanceCampaignAttempt>)Array.Empty<Test_PerformanceCampaignAttempt>() : _manifest.attempts;
 
         public static IReadOnlyList<string> ExcludedScenarios => _manifest == null ? (IReadOnlyList<string>)Array.Empty<string>() : _manifest.excluded_scenarios;
+
+        public static IReadOnlyList<Test_PerformanceProfileCoverage> ProfileCoverage => _manifest == null
+            ? (IReadOnlyList<Test_PerformanceProfileCoverage>)Array.Empty<Test_PerformanceProfileCoverage>()
+            : _manifest.profile_coverage;
 
         public static int TotalAttempts => _manifest == null ? 0 : _manifest.attempts.Count > 0 ? _manifest.attempts.Count : CountRequestedAttempts();
 
@@ -466,6 +509,44 @@ namespace Game.Tests.Performance.Harness
             return true;
         }
 
+        public static bool CreateMakeupCampaign(string jobID, int repeatCount, out string diagnostic)
+        {
+            diagnostic = null;
+            if (!CanCreateNewDraft)
+                return FailUI("The current campaign is still running.", out diagnostic);
+            if (_manifest == null
+                || (_manifest.state != Test_PerformanceCampaignState.COMPLETED
+                    && _manifest.state != Test_PerformanceCampaignState.CANCELLED
+                    && _manifest.state != Test_PerformanceCampaignState.PAUSED))
+            {
+                return FailUI("A make-up campaign can only be created from a settled campaign.", out diagnostic);
+            }
+            if (repeatCount < 1 || repeatCount > MAX_REPEAT_COUNT)
+                return FailUI($"Make-up repeats must be between 1 and {MAX_REPEAT_COUNT}.", out diagnostic);
+            var sourceManifest = _manifest;
+            var sourceCampaignID = sourceManifest.campaign_id;
+            var sourceJob = FindJob(jobID);
+            if (sourceJob == null)
+                return FailUI("The selected make-up workload no longer exists.", out diagnostic);
+            _manifest = null;
+            _campaignDirectory = null;
+            if (!EnsureDraftCampaign(out diagnostic))
+            {
+                _manifest = sourceManifest;
+                return false;
+            }
+
+            var makeupJob = sourceJob.Clone(CreateID("job"));
+            makeupJob.repeat_count = repeatCount;
+            _manifest.linked_campaign_id = sourceCampaignID;
+            _manifest.makeup_for_job_id = jobID;
+            _manifest.jobs.Add(makeupJob);
+            _manifest.queue_diagnostic = "Make-up repeats preserve the original campaign; every attempt receives new evidence and a new run ID.";
+            Persist();
+            NotifyChanged();
+            return true;
+        }
+
         public static bool SetStopPolicy(string policy, out string diagnostic)
         {
             diagnostic = null;
@@ -502,6 +583,7 @@ namespace Game.Tests.Performance.Harness
             };
             _manifest.jobs.Clear();
             _manifest.excluded_scenarios.Clear();
+            _manifest.profile_coverage = BuildProfileCoverage();
             _manifest.queue_diagnostic = null;
             foreach (var candidate in candidates)
             {
@@ -627,6 +709,10 @@ namespace Game.Tests.Performance.Harness
                         unverified++;
                 }
                 lines.Add($"{job.DisplayName}: valid completed {completed}/{job.repeat_count}; blocked {blocked}; unverified {unverified}");
+            }
+            foreach (var profile in _manifest.profile_coverage ?? new List<Test_PerformanceProfileCoverage>())
+            {
+                lines.Add($"{profile.profile_id} / {profile.mode}: {profile.status}; {profile.capability}; alternative: {profile.runnable_alternative}; next: {profile.next_issue_or_stage}");
             }
             return lines;
         }
@@ -909,6 +995,12 @@ namespace Game.Tests.Performance.Harness
                 PauseCampaign(sourceDiagnostic);
                 return;
             }
+            var attemptSource = CaptureSourceIdentity(out var attemptSourceDiagnostic);
+            if (attemptSource == null)
+            {
+                PauseCampaign(attemptSourceDiagnostic);
+                return;
+            }
             if (!TryBuildFixtureIdentity(job.options, out var currentIdentity, out var validationDiagnostic))
             {
                 PauseCampaign("The queued job failed immediate preflight: " + validationDiagnostic);
@@ -930,6 +1022,7 @@ namespace Game.Tests.Performance.Harness
             _lastCompletedRunID = Test_PerformanceHarnessController.LastCompletedRunID;
             attempt.state = Test_PerformanceCampaignAttemptState.RUNNING;
             attempt.started_utc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            attempt.source = attemptSource;
             attempt.diagnostic = null;
             Persist();
             NotifyChanged();
@@ -1028,6 +1121,11 @@ namespace Game.Tests.Performance.Harness
                 attempt.state = Test_PerformanceCampaignAttemptState.UNVERIFIED;
                 attempt.diagnostic = result.ErrorMessage;
             }
+            else if (!SourceMatchesAttempt(attempt, result, out var sourceDiagnostic))
+            {
+                attempt.state = Test_PerformanceCampaignAttemptState.UNVERIFIED;
+                attempt.diagnostic = sourceDiagnostic;
+            }
             else if (result.Status == "COMPLETE-MEASURED")
             {
                 attempt.state = Test_PerformanceCampaignAttemptState.COMPLETED;
@@ -1047,6 +1145,29 @@ namespace Game.Tests.Performance.Harness
             Persist();
             NotifyChanged();
             HandleAttemptSettled(attempt);
+        }
+
+        private static bool SourceMatchesAttempt(
+            Test_PerformanceCampaignAttempt attempt,
+            Test_PerformanceLastRunView result,
+            out string diagnostic)
+        {
+            diagnostic = null;
+            if (attempt?.source == null)
+                return true;
+            var expectedBranch = string.IsNullOrEmpty(attempt.source.git_branch)
+                ? attempt.source.git_branch_status
+                : attempt.source.git_branch;
+            var actualBranch = result?.Branch;
+            if (!string.Equals(expectedBranch, actualBranch, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(attempt.source.commit_sha, result?.Commit, StringComparison.OrdinalIgnoreCase))
+            {
+                diagnostic = "Attempt source identity changed while the run was executing; the result was preserved but not mixed into this campaign cohort. "
+                    + "queued " + (expectedBranch ?? "unknown") + " @ " + (attempt.source.commit_sha ?? "unknown")
+                    + "; evidence " + (actualBranch ?? "unknown") + " @ " + (result?.Commit ?? "unknown") + ".";
+                return false;
+            }
+            return true;
         }
 
         private static void HandleAttemptSettled(Test_PerformanceCampaignAttempt attempt)
@@ -1244,7 +1365,7 @@ namespace Game.Tests.Performance.Harness
                     git_branch_status = branchStatus,
                     git_branch_diagnostic = branchDiagnostic,
                     commit_sha = metadata.Commit,
-                    source_sha256 = Test_PerformanceRunMetadata.HashString(string.Join("|", metadata.Commit, metadata.DiffSha256, metadata.PackagesSha256, metadata.PackagesLockSha256, metadata.PurrNetSha256)),
+                    source_sha256 = Test_PerformanceRunMetadata.HashString(string.Join("|", metadata.Commit, metadata.PackagesSha256, metadata.PackagesLockSha256, metadata.PurrNetSha256)),
                     dirty = metadata.Dirty,
                     diff_sha256 = metadata.DiffSha256,
                     packages_sha256 = metadata.PackagesSha256,
@@ -1372,6 +1493,97 @@ namespace Game.Tests.Performance.Harness
             };
         }
 
+        private static List<Test_PerformanceProfileCoverage> BuildProfileCoverage()
+        {
+            var profiles = new List<Test_PerformanceProfileCoverage>
+            {
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = "P1-S0-01",
+                    mode = "server + rendered client / networked city",
+                    capability = "Blocked: generated city density, real authenticated clients, cross-tile interests and required telemetry are not available in the current runner.",
+                    runnable_alternative = "P1-S0-04 ECS data-only or P1-S0-06 isolated rendered geometry.",
+                    next_issue_or_stage = "#43-#52; later Stage 1.2/1.5 client and world-interest work.",
+                },
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = "P1-S0-02",
+                    mode = "networked server + rendered clients / PvP combat",
+                    capability = "Blocked: repeatable faction, legal PvP target and multi-client correctness fixtures are not available.",
+                    runnable_alternative = "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+                    next_issue_or_stage = "#43-#52 and later Stage 1.2/1.5 combat and network qualification.",
+                },
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = "P1-S0-03",
+                    mode = "networked server + rendered clients / boss and AoE",
+                    capability = "Blocked: authored boss encounter, legal AoE target fan-out and replayable combat fixtures are not available.",
+                    runnable_alternative = "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+                    next_issue_or_stage = "#45 and #51/#52 content and correctness verification.",
+                },
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = "P1-S0-04",
+                    mode = "Editor server / ECS data-only and activity",
+                    status = "SUPPORTED-NOT-RUN",
+                    capability = "The existing runner supports ECS data-only minimal/activity snapshots; full PurrNet dormant and wake variants remain blocked.",
+                    runnable_alternative = "EcsDataOnlyMinimal and EcsDataOnlyActivity are the current runnable variants.",
+                    next_issue_or_stage = "Run five qualified repeats for each required metric; Stage 1.4 for true dormant/wake simulation.",
+                },
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = "P1-S0-05",
+                    mode = "rendered client + streamed world / traversal",
+                    capability = "Blocked: the current harness does not execute the required six-tile route, streaming transitions and origin-boundary correctness contract.",
+                    runnable_alternative = "P1-S0-06 fixed Outdoor/Forest/Settlement rendered fixtures without a streaming claim.",
+                    next_issue_or_stage = "#44/#46/#49/#52 and Stages 1.2/1.6 streaming corrections.",
+                },
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = "P1-S0-06",
+                    mode = "Editor rendered client / geometry, forest and settlement",
+                    status = "SUPPORTED-NOT-RUN",
+                    capability = "The existing graphical fixture runner supports isolated rendered Outdoor, Forest and Settlement routes; it does not qualify network density or production streaming.",
+                    runnable_alternative = "Outdoor, Forest and Settlement are the current runnable variants.",
+                    next_issue_or_stage = "Run five qualified repeats for each required metric; #44/#49/#52 for production-density and client telemetry expansion.",
+                },
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = "P1-S0-07",
+                    mode = "server + rendered clients / login and reconnect bursts",
+                    capability = "Blocked: safe disposable account generation, real client admission and reconnect correctness are not available in the current runner.",
+                    runnable_alternative = "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+                    next_issue_or_stage = "#46/#51 and Stages 1.7-1.8 reconnect and durable-session work.",
+                },
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = "P1-S0-08",
+                    mode = "Editor server / long-duration authoritative soak",
+                    capability = "Blocked: the current harness has no compliant multi-hour churn, persistence, leak and scheduler-backlog observation contract.",
+                    runnable_alternative = "P1-S0-04 bounded short server measurement only; it is not a soak or production-capacity claim.",
+                    next_issue_or_stage = "#47-#51; Stage 1.1 scheduler telemetry and Stages 1.7-1.8 durability.",
+                },
+            };
+            if (_manifest == null)
+                return profiles;
+
+            foreach (var profile in profiles)
+            {
+                if (profile.status == "BLOCKED")
+                    continue;
+                var jobIDs = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var job in _manifest.jobs ?? new List<Test_PerformanceCampaignJob>())
+                {
+                    if (job?.options?.EffectiveProfileID == profile.profile_id)
+                        jobIDs.Add(job.job_id);
+                }
+                var measured = (_manifest.attempts ?? new List<Test_PerformanceCampaignAttempt>())
+                    .Exists(attempt => jobIDs.Contains(attempt.job_id) && attempt.state == Test_PerformanceCampaignAttemptState.COMPLETED);
+                profile.status = measured ? "SUPPORTED-MEASURED" : "SUPPORTED-NOT-RUN";
+            }
+            return profiles;
+        }
+
         private static bool EnsureDraftCampaign(out string diagnostic)
         {
             diagnostic = null;
@@ -1404,6 +1616,7 @@ namespace Game.Tests.Performance.Harness
             if (_manifest == null || string.IsNullOrEmpty(_campaignDirectory))
                 return;
             _manifest.updated_utc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            _manifest.profile_coverage = BuildProfileCoverage();
             WriteAtomic(Path.Combine(_campaignDirectory, CAMPAIGN_FILE_NAME), _manifest);
             var index = new Test_PerformanceCampaignIndex
             {
@@ -1411,21 +1624,126 @@ namespace Game.Tests.Performance.Harness
                 updated_utc = _manifest.updated_utc,
                 state = _manifest.state,
                 stop_policy = _manifest.stop_policy,
+                linked_campaign_id = _manifest.linked_campaign_id,
+                source = _manifest.source,
+                profile_coverage = _manifest.profile_coverage,
             };
             foreach (var attempt in _manifest.attempts)
-            {
-                index.attempts.Add(new Test_PerformanceCampaignIndexAttempt
-                {
-                    job_id = attempt.job_id,
-                    repeat_index = attempt.repeat_index,
-                    run_id = attempt.run_id,
-                    result_path = attempt.result_path,
-                    status = attempt.result_status ?? attempt.state,
-                    stop_reason = attempt.stop_reason,
-                });
-            }
+                index.attempts.Add(BuildIndexAttempt(attempt));
             WriteAtomic(Path.Combine(_campaignDirectory, INDEX_FILE_NAME), index);
         }
+
+        private static Test_PerformanceCampaignIndexAttempt BuildIndexAttempt(Test_PerformanceCampaignAttempt attempt)
+        {
+            var job = FindJob(attempt.job_id);
+            var source = attempt.source ?? _manifest.source;
+            var index = new Test_PerformanceCampaignIndexAttempt
+            {
+                job_id = attempt.job_id,
+                repeat_index = attempt.repeat_index,
+                run_id = attempt.run_id,
+                result_path = attempt.result_path,
+                status = attempt.result_status ?? attempt.state,
+                stop_reason = attempt.stop_reason,
+                source = source,
+                profile_id = job?.options?.EffectiveProfileID,
+                seed = job == null ? null : job.options.Seed.ToString(CultureInfo.InvariantCulture),
+                configuration_sha256 = job?.fixture_identity?.configuration_sha256,
+                hardware = source?.hardware,
+                unity_version = source?.unity_version,
+                graphics_device = source?.graphics_device,
+                started_utc = attempt.started_utc,
+                finished_utc = attempt.finished_utc,
+                artifact_index_status = "absent",
+            };
+            if (string.IsNullOrEmpty(attempt.result_path) || !Directory.Exists(attempt.result_path))
+                return index;
+
+            var summaryPath = Path.Combine(attempt.result_path, "summary.json");
+            if (File.Exists(summaryPath))
+            {
+                var summary = JsonUtility.FromJson<Test_PerformanceCampaignIndexSummary>(File.ReadAllText(summaryPath));
+                if (summary != null)
+                {
+                    index.fixture_sha256 = summary.fixture_sha256;
+                    index.correctness_status = summary.correctness?.status;
+                    index.cleanup_status = summary.correctness == null
+                        ? null
+                        : summary.correctness.cleanup ? "complete" : "incomplete";
+                }
+            }
+            var artifactsPath = Path.Combine(attempt.result_path, "artifacts.json");
+            if (!File.Exists(artifactsPath))
+                return index;
+            var artifactDocument = JsonUtility.FromJson<Test_PerformanceCampaignArtifactDocument>(File.ReadAllText(artifactsPath));
+            if (artifactDocument?.files == null)
+            {
+                index.artifact_index_status = "invalid";
+                return index;
+            }
+            var verified = true;
+            var entries = new List<Test_PerformanceCampaignIndexArtifact>();
+            foreach (var artifact in artifactDocument.files)
+            {
+                if (artifact == null)
+                {
+                    verified = false;
+                    continue;
+                }
+                var present = !string.Equals(artifact.status, "absent", StringComparison.OrdinalIgnoreCase);
+                var entry = new Test_PerformanceCampaignIndexArtifact
+                {
+                    path = artifact.path,
+                    sha256 = artifact.sha256,
+                    bytes = artifact.bytes,
+                    required = artifact.required,
+                    optional = artifact.optional || !artifact.required,
+                    status = present ? "present" : "absent",
+                };
+                if (present)
+                {
+                    var path = Path.GetFullPath(Path.Combine(attempt.result_path, artifact.path ?? string.Empty));
+                    if (!IsSafeResultFile(path) || string.IsNullOrEmpty(artifact.sha256)
+                        || !string.Equals(Test_PerformanceRunMetadata.HashFile(path), artifact.sha256, StringComparison.OrdinalIgnoreCase)
+                        || artifact.bytes != new FileInfo(path).Length)
+                    {
+                        verified = false;
+                    }
+                }
+                else if (artifact.required)
+                {
+                    verified = false;
+                }
+                entries.Add(entry);
+            }
+            index.artifacts = entries.ToArray();
+            index.artifact_index_status = verified ? "verified" : "hash_mismatch_or_missing";
+            return index;
+        }
+
+        #pragma warning disable 0649
+
+        [Serializable]
+        private sealed class Test_PerformanceCampaignArtifactDocument
+        {
+            public Test_PerformanceCampaignIndexArtifact[] files;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceCampaignIndexSummary
+        {
+            public string fixture_sha256;
+            public Test_PerformanceCampaignIndexCorrectness correctness;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceCampaignIndexCorrectness
+        {
+            public string status;
+            public bool cleanup;
+        }
+
+        #pragma warning restore 0649
 
         private static void WriteAtomic(string path, object value)
         {

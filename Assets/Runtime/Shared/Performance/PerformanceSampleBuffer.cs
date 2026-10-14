@@ -27,6 +27,8 @@ namespace Game.Shared.Performance
         private long _attemptedCount;
         private long _measurementAttemptedCount;
         private long _measurementDroppedCount;
+        private long _measurementRejectedCount;
+        private long _measurementReservoirReplacementCount;
         private ulong _measurementRandomState = 0x9E3779B97F4A7C15UL;
         private bool _hasMeasurementExtrema;
         private double _measurementMinimum;
@@ -62,6 +64,10 @@ namespace Game.Shared.Performance
         public int MeasurementRetainedCount => _measurementCount;
 
         public long MeasurementDroppedCount => _measurementDroppedCount;
+
+        public long MeasurementRejectedCount => _measurementRejectedCount;
+
+        public long MeasurementReservoirReplacementCount => _measurementReservoirReplacementCount;
 
         public int RawTraceSampleCount => GetRawTraceSampleCount();
 
@@ -101,7 +107,9 @@ namespace Game.Shared.Performance
                 return PerformanceMetricSnapshot.Empty(
                     _measurementAttemptedCount,
                     _measurementDroppedCount,
-                    GetRawTraceSampleCount());
+                    GetRawTraceSampleCount(),
+                    _measurementRejectedCount,
+                    _measurementReservoirReplacementCount);
 
             for (int i = 0; i < _measurementCount; i++)
                 _sortedValues[i] = _values[GetMeasurementIndex(i)];
@@ -114,15 +122,17 @@ namespace Game.Shared.Performance
 
             return new PerformanceMetricSnapshot(
                 _measurementCount,
-                _hasMeasurementExtrema ? _measurementMinimum : _sortedValues[0],
-                _hasMeasurementExtrema ? _measurementMaximum : _sortedValues[_measurementCount - 1],
+                _sortedValues[0],
+                _sortedValues[_measurementCount - 1],
                 sum / _measurementCount,
                 Percentile(50),
                 Percentile(95),
                 _measurementCount >= 100 ? Percentile(99) : null,
                 _measurementAttemptedCount,
                 _measurementDroppedCount,
-                GetRawTraceSampleCount());
+                GetRawTraceSampleCount(),
+                _measurementRejectedCount,
+                _measurementReservoirReplacementCount);
         }
 
         public void WriteRawSamples(
@@ -172,6 +182,7 @@ namespace Game.Shared.Performance
                 // Reservoir replacement keeps the retained measurement population unbiased instead of
                 // retaining only an arbitrary recent window when the measurement budget is exceeded.
                 _measurementDroppedCount++;
+                _measurementReservoirReplacementCount++;
                 DroppedCount++;
                 int reservoirIndex = NextReservoirIndex(_measurementAttemptedCount);
                 if (reservoirIndex >= _measurementCapacity)
@@ -223,7 +234,10 @@ namespace Game.Shared.Performance
         {
             DroppedCount++;
             if (phase == PerformanceMeasurementPhase.Measurement)
+            {
                 _measurementDroppedCount++;
+                _measurementRejectedCount++;
+            }
         }
 
         private void StoreSample(
@@ -338,7 +352,9 @@ namespace Game.Shared.Performance
             double? p99,
             long attemptedSampleCount,
             long droppedSampleCount,
-            int rawTraceSampleCount)
+            int rawTraceSampleCount,
+            long rejectedSampleCount = 0,
+            long reservoirReplacementCount = 0)
         {
             SampleCount = sampleCount;
             Minimum = minimum;
@@ -350,6 +366,8 @@ namespace Game.Shared.Performance
             AttemptedSampleCount = attemptedSampleCount;
             DroppedSampleCount = droppedSampleCount;
             RawTraceSampleCount = rawTraceSampleCount;
+            RejectedSampleCount = rejectedSampleCount;
+            ReservoirReplacementCount = reservoirReplacementCount;
         }
 
         public int SampleCount { get; }
@@ -370,18 +388,24 @@ namespace Game.Shared.Performance
 
         public long DroppedSampleCount { get; }
 
+        public long RejectedSampleCount { get; }
+
+        public long ReservoirReplacementCount { get; }
+
         public int RawTraceSampleCount { get; }
 
         public double? CoverageRatio => AttemptedSampleCount > 0
-            ? SampleCount / (double)AttemptedSampleCount
+            ? Math.Max(0L, AttemptedSampleCount - RejectedSampleCount) / (double)AttemptedSampleCount
             : (double?)null;
 
-        public bool IsReservoirSampled => DroppedSampleCount > 0;
+        public bool IsReservoirSampled => ReservoirReplacementCount > 0;
 
         public static PerformanceMetricSnapshot Empty(
             long attemptedSampleCount,
             long droppedSampleCount,
-            int rawTraceSampleCount)
+            int rawTraceSampleCount,
+            long rejectedSampleCount = 0,
+            long reservoirReplacementCount = 0)
         {
             return new PerformanceMetricSnapshot(
                 0,
@@ -393,7 +417,9 @@ namespace Game.Shared.Performance
                 null,
                 attemptedSampleCount,
                 droppedSampleCount,
-                rawTraceSampleCount);
+                rawTraceSampleCount,
+                rejectedSampleCount,
+                reservoirReplacementCount);
         }
     }
 }

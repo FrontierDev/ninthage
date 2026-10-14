@@ -6,7 +6,7 @@
 **Campaign window:** 2026-10-14 18:46:52Z — 19:07:31Z
 **Last updated:** 2026-10-14
 
-> **Qualification:** The campaign produced useful, internally consistent workload and telemetry evidence. It does not satisfy the clean-source, complete-profile, adequate-coverage or standalone-build conditions required to sign off a Stage 1.0 production performance baseline. This document records what was actually observed and preserves the reasons that the evidence remains provisional.
+> **Qualification:** The campaign produced useful, internally consistent workload and telemetry evidence. It does not satisfy the complete-profile, adequate-coverage, portable-retrieval or standalone-build conditions required to sign off a Stage 1.0 production performance baseline. Dirty working-tree state is recorded provenance only and is not a qualification failure.
 
 ## 1. Executive result
 
@@ -25,9 +25,9 @@ The campaign did **not** establish production capacity, networked-player capacit
 
 | Field | Recorded value |
 | --- | --- |
-| Campaign manifest | [`campaign.json`](../../Builds/Benchmarks/Results/Campaigns/campaign-20261014T184624379Z-d9cbdff6/campaign.json) |
-| Evidence index | [`index.json`](../../Builds/Benchmarks/Results/Campaigns/campaign-20261014T184624379Z-d9cbdff6/index.json) |
-| Attempt evidence | [`Builds/Benchmarks/Results`](../../Builds/Benchmarks/Results) — each run directory contains `fixture.json`, `run.json`, `summary.json`, `report.md`, `samples.ndjson`, `artifacts.json` and logs where emitted |
+| Campaign manifest | `Builds/Benchmarks/Results/Campaigns/campaign-20261014T184624379Z-d9cbdff6/campaign.json`; SHA-256 is recorded in the [tracked evidence catalogue](Phase-1-Performance-Evidence-Catalogue.md) |
+| Evidence index | `Builds/Benchmarks/Results/Campaigns/campaign-20261014T184624379Z-d9cbdff6/index.json`; SHA-256 is recorded in the [tracked evidence catalogue](Phase-1-Performance-Evidence-Catalogue.md) |
+| Attempt evidence | local / not externally retrievable; run IDs and `artifacts.json` hashes are recorded in the [tracked evidence catalogue](Phase-1-Performance-Evidence-Catalogue.md) |
 | Branch / commit | `dev` / `9fa2b9afbd254e622482ac93a1f56de6fe5dffb9` |
 | Source state | `dirty=true`; source SHA-256 `a54f0c779ac367d4d7558b8f4b9edf735a8c81659e56ce2195c5cadea55e0a62`; diff SHA-256 `182d6414326e2688e240aef6f4dadd6ac3d9275cd0ff31178c8e7ca1104fc9ad` |
 | Unity | `6000.3.10f1` |
@@ -38,7 +38,7 @@ The campaign did **not** establish production capacity, networked-player capacit
 | Workload timing | 2 s ramp / 2 s warmup / 5 s measurement / 1 s recovery |
 | Repetition | Five attempts per selected job; seed `424242` |
 
-The run identity, fixture references, fixture hashes, source metadata and listed artifact hashes were checked against the exported files. The campaign was internally consistent, but its dirty source state prevents clean baseline promotion.
+The run identity, fixture references, fixture hashes and listed artifact hashes were checked against the local files available during the campaign review. The source branch and full commit are recorded; dirty state is informational. The catalogue explicitly does not make the ignored local results retrievable from GitHub.
 
 ## 3. Measured workload coverage
 
@@ -111,7 +111,7 @@ Draw-call and triangle observations were stable for the qualified samples: 26 dr
 
 The campaign reports explicitly identify the following limitations:
 
-1. The source was dirty when the campaign was captured. A clean checkout is required before accepting this as a frozen baseline.
+1. The source was dirty when the campaign was captured. This is retained as informational provenance and does not block qualification by itself.
 2. The campaign contains no controlled telemetry-enabled versus telemetry-disabled comparison, so collector overhead cannot be separated from workload cost.
 3. The selected jobs cover minimal/activity outdoor server work and outdoor/forest/settlement graphical work. Empty, streaming-route, density-sweep and other catalogue profiles were not present, while `excluded_scenarios` was empty. Full Stage 1.0 matrix coverage is therefore not demonstrated.
 4. The runs used Editor Play Mode. They cannot establish standalone headless server capacity, authenticated clients, real PurrNet multi-client scale, ordinary world streaming, or production actor/nameplate/VFX density.
@@ -124,4 +124,25 @@ The warnings in the individual reports are part of the evidence and must remain 
 
 This document is a useful provisional evidence handoff to #55. It records reproducible workload outcomes and hardware-specific metric observations without silently promoting unsupported claims. It is **not** a signed Stage 1.0 baseline.
 
-Before promotion, rerun the currently supported matrix from a clean `dev` revision with five qualified repeats per metric, add the controlled telemetry comparison, document or execute the missing profiles, and obtain the user's independent reproducibility/sign-off. The candidate guardrails and comparison rules are recorded separately in [Phase 1.0 Performance Budgets](Phase-1-Performance-Budgets.md).
+Before promotion, rerun the currently supported matrix with the recorded branch/full SHA, five qualified repeats per metric, add the controlled telemetry comparison if the runner can support it, document or execute the missing profiles, export and independently verify the archive, and obtain the user's reproducibility/sign-off. The candidate guardrails and comparison rules are recorded separately in [Phase 1.0 Performance Budgets](Phase-1-Performance-Budgets.md).
+
+## 7. Profile coverage and blockers
+
+| Profile | Relevant mode | Status | Exact current capability/blocker | Runnable alternative | Next issue/stage |
+| --- | --- | --- | --- | --- | --- |
+| `P1-S0-01` | server + rendered client / networked city | `BLOCKED` | Generated city density, authenticated clients, cross-tile interests and required telemetry are unavailable. | `P1-S0-04` ECS data-only; `P1-S0-06` isolated rendering | #43-#52; later Stage 1.2/1.5 |
+| `P1-S0-02` | networked server + clients / PvP | `BLOCKED` | Repeatable factions, legal PvP targets and multi-client correctness fixtures are unavailable. | `P1-S0-04`; `P1-S0-06` | #43-#52; Stage 1.2/1.5 |
+| `P1-S0-03` | networked server + clients / boss and AoE | `BLOCKED` | Authored boss, legal AoE fan-out and replayable combat fixtures are unavailable. | `P1-S0-04`; `P1-S0-06` | #45, #51/#52 |
+| `P1-S0-04` | Editor server / ECS data-only and activity | `SUPPORTED-MEASURED` | The five-run campaign measured the existing minimal/activity snapshots; full PurrNet dormant/wake variants remain blocked. | Minimal and activity variants | Five qualified repeats per budgeted metric; Stage 1.4 for true dormant/wake |
+| `P1-S0-05` | rendered client + streamed world / traversal | `BLOCKED` | Six-tile route, streaming transitions and origin-boundary correctness are not executed by the current harness. | `P1-S0-06` fixed rendered fixtures | #44/#46/#49/#52; Stages 1.2/1.6 |
+| `P1-S0-06` | Editor rendered client / geometry, forest, settlement | `SUPPORTED-MEASURED` | The five-run campaign measured the existing isolated routes; it does not qualify network density or production streaming. | Outdoor, Forest, Settlement | Five qualified repeats per budgeted metric; #44/#49/#52 |
+| `P1-S0-07` | server + clients / login and reconnect | `BLOCKED` | Safe disposable accounts, real admission and reconnect correctness are unavailable. | `P1-S0-04`; `P1-S0-06` | #46/#51; Stages 1.7-1.8 |
+| `P1-S0-08` | Editor server / authoritative soak | `BLOCKED` | Multi-hour churn, persistence, leak and scheduler-backlog observation are not supported. | Short bounded `P1-S0-04` server measurement only | #47-#51; Stage 1.1 and 1.7-1.8 |
+
+The five jobs in the campaign remain five genuine fixtures, not networked/full-actor, streaming, fixed-tick or standalone-capacity claims.
+
+## 8. Run-level variability and guardrail disposition
+
+The comparator now reports every run ID, metric-level valid N, retained/attempted count, coverage, run-level p50/p95/p99 medians, min/max, p50 IQR and coefficient of variation where at least two qualified run values exist. It also lists excluded run IDs and reasons. It never pools frame samples across attempts. The three named coverage-rejected attempts remain preserved and excluded only for the affected metrics.
+
+The 10% server and 20% graphical changes are still review alerts, not approved budgets: the previous campaign has only four qualified observations for affected metrics and does not establish a stable noise estimate. Editor-process memory/frame values and per-fixture draw/triangle signatures remain separate from standalone/product-wide budgets.

@@ -28,6 +28,10 @@ namespace Game.Shared.Performance
 
         public string GitRepository { get; set; }
 
+        public string GitBranch { get; set; }
+
+        public string GitCapturedUtc { get; set; }
+
         public string GitCommitSha { get; set; }
 
         public bool? GitDirty { get; set; }
@@ -54,6 +58,8 @@ namespace Game.Shared.Performance
         {
             ValidateOptional(FixtureSha256, nameof(FixtureSha256), 128);
             ValidateOptional(GitRepository, nameof(GitRepository), 256);
+            ValidateOptional(GitBranch, nameof(GitBranch), 256);
+            ValidateOptional(GitCapturedUtc, nameof(GitCapturedUtc), 64);
             ValidateOptional(GitCommitSha, nameof(GitCommitSha), 64);
             if (!string.IsNullOrEmpty(GitCommitSha) && !IsHex(GitCommitSha))
                 throw new ArgumentException("GitCommitSha must contain only hexadecimal characters.", nameof(GitCommitSha));
@@ -487,6 +493,8 @@ namespace Game.Shared.Performance
             StringBuilder builder = new StringBuilder(512);
             builder.Append('{');
             PerformanceJson.AppendStringProperty(builder, "git_repository", Context.GitRepository, true);
+            PerformanceJson.AppendStringProperty(builder, "git_branch", Context.GitBranch, true);
+            PerformanceJson.AppendStringProperty(builder, "git_captured_utc", Context.GitCapturedUtc, true);
             PerformanceJson.AppendStringProperty(builder, "git_sha", Context.GitCommitSha, true);
             PerformanceJson.AppendNullableProperty(builder, "git_dirty", Context.GitDirty, true);
             PerformanceJson.AppendStringProperty(builder, "build_kind", Context.BuildKind, true);
@@ -564,7 +572,9 @@ namespace Game.Shared.Performance
                 snapshot = PerformanceMetricSnapshot.Empty(
                     snapshot.AttemptedSampleCount,
                     snapshot.DroppedSampleCount,
-                    snapshot.RawTraceSampleCount);
+                    snapshot.RawTraceSampleCount,
+                    snapshot.RejectedSampleCount,
+                    snapshot.ReservoirReplacementCount);
             }
 
             builder.Append('{');
@@ -587,6 +597,8 @@ namespace Game.Shared.Performance
             PerformanceJson.AppendNullableProperty(builder, "raw_trace", registration.Buffer != null && registration.Buffer.Count > 0 ? "samples.ndjson" : null, true);
             PerformanceJson.AppendNullableProperty(builder, "reason", reason, true);
             PerformanceJson.AppendNumberProperty(builder, "dropped_sample_count", snapshot.DroppedSampleCount, true);
+            PerformanceJson.AppendNumberProperty(builder, "rejected_sample_count", snapshot.RejectedSampleCount, true);
+            PerformanceJson.AppendNumberProperty(builder, "reservoir_replacement_count", snapshot.ReservoirReplacementCount, true);
             PerformanceJson.AppendNumberProperty(builder, "raw_trace_sample_count", snapshot.RawTraceSampleCount, true);
             PerformanceJson.AppendNullableProperty(builder, "measurement_coverage", measurementCoverage, true);
             PerformanceJson.AppendStringProperty(
@@ -614,18 +626,35 @@ namespace Game.Shared.Performance
                     builder.Append(',');
                 first = false;
                 string warning = registration.Definition.MetricId + ": ";
-                if (registration.Buffer.DroppedCount > 0)
+                if (registration.Buffer.MeasurementReservoirReplacementCount > 0)
                 {
-                    warning += "bounded sample retention dropped samples";
+                    warning += "bounded statistical retention used reservoir replacement";
                     if (registration.Buffer.MeasurementAttemptedCount > 0)
                     {
                         warning += string.Format(
                             CultureInfo.InvariantCulture,
-                            "; measurement retained {0} of {1} attempts ({2:P2} coverage)",
+                            "; retained {0} of {1} attempts; valid coverage {2:P2}; replacements {3}",
                             registration.Buffer.MeasurementRetainedCount,
                             registration.Buffer.MeasurementAttemptedCount,
-                            registration.Buffer.MeasurementRetainedCount / (double)registration.Buffer.MeasurementAttemptedCount);
+                            (registration.Buffer.MeasurementAttemptedCount - registration.Buffer.MeasurementRejectedCount)
+                                / (double)registration.Buffer.MeasurementAttemptedCount,
+                            registration.Buffer.MeasurementReservoirReplacementCount);
                     }
+                }
+                if (registration.Buffer.MeasurementRejectedCount > 0)
+                {
+                    if (registration.Buffer.MeasurementReservoirReplacementCount > 0)
+                        warning += "; ";
+                    warning += string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0} invalid measurement samples rejected",
+                        registration.Buffer.MeasurementRejectedCount);
+                }
+                if (registration.Buffer.DroppedCount > 0
+                    && registration.Buffer.MeasurementReservoirReplacementCount == 0
+                    && registration.Buffer.MeasurementRejectedCount == 0)
+                {
+                    warning += "bounded context retention dropped samples";
                 }
                 if (registration.Buffer.RawTraceSampleCount < registration.Buffer.Count)
                 {
@@ -650,9 +679,12 @@ namespace Game.Shared.Performance
                         && registration.Observation != PerformanceMetricObservation.Estimated))
                     continue;
 
-                coverageRatio = registration.Buffer.MeasurementRetainedCount
-                    / (double)registration.Buffer.MeasurementAttemptedCount;
-                if (coverageRatio < 1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO)
+                coverageRatio = registration.Buffer.MeasurementAttemptedCount > 0
+                    ? (registration.Buffer.MeasurementAttemptedCount - registration.Buffer.MeasurementRejectedCount)
+                        / (double)registration.Buffer.MeasurementAttemptedCount
+                    : 0d;
+                if (registration.Buffer.MeasurementAttemptedCount > 0
+                    && coverageRatio < 1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO)
                 {
                     metricID = registration.Definition.MetricId;
                     return true;

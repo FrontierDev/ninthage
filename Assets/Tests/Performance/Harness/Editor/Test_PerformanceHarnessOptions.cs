@@ -456,6 +456,8 @@ namespace Game.Tests.Performance.Harness
                 DrawResultField("Job", Test_PerformanceJobQueue.CurrentJobDisplayName);
                 DrawResultField("Repeat", currentAttempt.repeat_index.ToString());
                 DrawResultField("Run ID", currentAttempt.run_id);
+                if (currentAttempt.source != null)
+                    DrawWrappedField("Attempt source", currentAttempt.source.git_branch + " @ " + currentAttempt.source.commit_sha + "; captured " + currentAttempt.source.captured_utc + "; dirty " + currentAttempt.source.dirty + " (informational)");
                 DrawSelectableValue("Report path", currentAttempt.report_path);
             }
 
@@ -514,6 +516,11 @@ namespace Game.Tests.Performance.Harness
                         if (GUILayout.Button("Remove", GUILayout.Width(56f)))
                             ShowQueueAction(Test_PerformanceJobQueue.RemoveJob(job.job_id, out diagnostic), diagnostic);
                     }
+                    using (new EditorGUI.DisabledScope(Test_PerformanceJobQueue.CanEdit || (Test_PerformanceJobQueue.CampaignState != Test_PerformanceCampaignState.COMPLETED && Test_PerformanceJobQueue.CampaignState != Test_PerformanceCampaignState.CANCELLED && Test_PerformanceJobQueue.CampaignState != Test_PerformanceCampaignState.PAUSED)))
+                    {
+                        if (GUILayout.Button("Make-up 1", GUILayout.Width(70f)))
+                            ShowQueueAction(Test_PerformanceJobQueue.CreateMakeupCampaign(job.job_id, 1, out diagnostic), diagnostic);
+                    }
                 }
 
                 foreach (var attempt in Test_PerformanceJobQueue.Attempts)
@@ -542,6 +549,8 @@ namespace Game.Tests.Performance.Harness
                     }
                     if (!string.IsNullOrEmpty(attempt.result_path))
                         DrawSelectableValue("Result path", attempt.result_path);
+                    if (attempt.source != null)
+                        DrawWrappedField("Attempt source", (attempt.source.git_branch ?? attempt.source.git_branch_status ?? "unknown") + " @ " + (attempt.source.commit_sha ?? "unknown") + "; captured " + (attempt.source.captured_utc ?? "unknown") + "; dirty " + attempt.source.dirty + " (informational)");
                     if (!string.IsNullOrEmpty(attempt.diagnostic))
                         DrawWrappedField("Attempt diagnostic", attempt.diagnostic);
                 }
@@ -766,6 +775,14 @@ namespace Game.Tests.Performance.Harness
                 EditorGUILayout.LabelField(line, EditorStyles.wordWrappedMiniLabel);
                 if (!string.IsNullOrEmpty(attempt.Diagnostic))
                     DrawWrappedField("Reason", attempt.Diagnostic);
+                foreach (var metric in attempt.Metrics)
+                {
+                    EditorGUILayout.LabelField(
+                        "  " + metric.MetricID + ": retained " + metric.RetainedSampleCount + "/" + metric.AttemptedSampleCount
+                        + "; coverage " + metric.MeasurementCoverage.ToString("P0")
+                        + (metric.HasP50 ? "; qualified" : "; excluded: unavailable/coverage"),
+                        EditorStyles.wordWrappedMiniLabel);
+                }
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     using (new EditorGUI.DisabledScope(string.IsNullOrEmpty(attempt.ResultPath)))
@@ -799,7 +816,9 @@ namespace Game.Tests.Performance.Harness
             DrawResultField("Profile", _lastRunView.Profile);
             DrawResultField("Scenario", _lastRunView.Scenario);
             DrawResultField("Seed", _lastRunView.Seed);
+            DrawResultField("Branch", _lastRunView.Branch);
             DrawResultField("Commit", _lastRunView.Commit);
+            DrawResultField("Source captured", _lastRunView.SourceCapturedUtc);
             DrawResultField("Working tree", _lastRunView.DirtyState);
             DrawResultField("Duration", _lastRunView.Duration);
             DrawResultField("Status", _lastRunView.Status);

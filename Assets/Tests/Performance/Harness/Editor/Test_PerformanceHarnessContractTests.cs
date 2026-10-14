@@ -490,8 +490,16 @@ namespace Game.Tests.Performance.Harness
 
                 var view = Test_PerformanceEvidence.ReadFinalizedResult(run.ResultsDirectory);
                 var summary = File.ReadAllText(run.SummaryPath);
+                var runJson = File.ReadAllText(run.RunPath);
+                var artifacts = File.ReadAllText(Path.Combine(run.ResultsDirectory, "artifacts.json"));
 
                 Assert.That(view.IsVerified, Is.True, view.ErrorMessage);
+                Assert.That(runJson, Does.Contain("\"branch\":"));
+                Assert.That(runJson, Does.Contain("\"captured_utc\":"));
+                Assert.That(artifacts, Does.Contain("\"status\":\"present\""));
+                Assert.That(artifacts, Does.Contain("\"required\":true"));
+                Assert.That(artifacts, Does.Contain("\"optional\":true"));
+                Assert.That(artifacts, Does.Contain("\"sha256\":"));
                 Assert.That(summary, Does.Contain("\"metric_id\":\"harness.graphical.route_distance\""));
                 Assert.That(summary, Does.Contain("\"unit\":\"m\""));
                 Assert.That(summary, Does.Contain("\"metric_id\":\"test.graphical.event_rate\""));
@@ -627,15 +635,16 @@ namespace Game.Tests.Performance.Harness
                 });
             var metricJson = ExtractMetricJson(summary, "test.performance.retention-budget");
 
-            Assert.That(summary, Does.Contain("\"status\":\"FAIL-INSTRUMENTATION\""));
-            Assert.That(metricJson, Does.Contain("\"observation\":\"unavailable\""));
-            Assert.That(metricJson, Does.Contain("\"reason\":\"measurement_sample_coverage_below_policy\""));
+            Assert.That(summary, Does.Contain("\"status\":\"COMPLETE-MEASURED\""));
+            Assert.That(metricJson, Does.Contain("\"observation\":\"measured\""));
             Assert.That(metricJson, Does.Contain("\"attempted_sample_count\":1000"));
-            Assert.That(metricJson, Does.Contain("\"sample_count\":0"));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":384"));
             Assert.That(metricJson, Does.Contain("\"retained_sample_count\":384"));
             Assert.That(metricJson, Does.Contain("\"dropped_sample_count\":616"));
             Assert.That(metricJson, Does.Contain("\"raw_trace_sample_count\":256"));
-            Assert.That(metricJson, Does.Contain("\"measurement_coverage\":0.384"));
+            Assert.That(metricJson, Does.Contain("\"measurement_coverage\":1"));
+            Assert.That(metricJson, Does.Contain("\"rejected_sample_count\":0"));
+            Assert.That(metricJson, Does.Contain("\"reservoir_replacement_count\":616"));
             Assert.That(metricJson, Does.Contain("\"retention_policy\":\"phase_reserved_reservoir\""));
         }
 
