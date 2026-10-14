@@ -2,7 +2,6 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Utility;
-using Game.Shared.Runtime;
 using Game.Shared.Runtime.Spellcasting;
 using Guid = System.Guid;
 using PurrNet;
@@ -138,7 +137,6 @@ namespace Game.Shared.Runtime.Actors
             _expiredAurasThisFrame.Clear();
         }
 
-        [ToDo("Any onActorDespawned logic.")]
         protected override void OnDestroy()
         {
             if (NetworkManager.isServerStatic)

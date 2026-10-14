@@ -1,5 +1,4 @@
 using Game.Shared;
-using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
 using TMPro;
 using UnityEngine;
@@ -37,7 +36,6 @@ namespace Game.Client.UI
         /// <summary>
         /// Sets the value managed by <c>SetRelation</c>.
         /// </summary>
-        [ToDo("Consider adding a method to set the relation which updates the bar color and text colors accordingly.")]
         public void SetRelation(FactionRelationState state)
         {
             switch (state)

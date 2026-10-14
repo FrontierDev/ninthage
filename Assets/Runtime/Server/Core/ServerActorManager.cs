@@ -3,7 +3,6 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
-using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using PurrNet;
@@ -526,7 +525,6 @@ namespace Game.Server.Core
         /// Scans for nearby players and starts aggro timers on NPCs.
         /// Once the delay expires the NPC acquires a target and begins auto-attacking.
         /// </summary>
-        [ToDo("NPC aggro should be checked from the player, not the NPC, to avoid iterating over all NPCs every frame. This is a temporary implementation.")]
         private void UpdateNPCAggro()
         {
             using var markerScope = NPC_AGGRO_MARKER.Begin();

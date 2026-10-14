@@ -182,11 +182,48 @@ namespace Game.Tests.Performance.Harness
 
         public static event Action StateChanged;
 
+        internal static event Action LifecycleSettled;
+
         public static bool IsRunning => _activeRun != null && !_activeRun.Finalized;
+
+        public static string ActiveRunID => IsRunning ? _activeRun.RunID : null;
+
+        public static string ActiveResultDirectory => IsRunning ? _activeRun.ResultsDirectory : null;
+
+        public static string LastCompletedRunID { get; private set; }
+
+        public static string LastCompletedResultDirectory { get; private set; }
 
         public static string Status { get; private set; } = "Idle";
 
         public static string LastReportPath { get; private set; }
+
+        internal static bool TryValidateLaunchPrerequisites(Test_PerformanceHarnessOptions options, out string diagnostic)
+        {
+            diagnostic = null;
+            try
+            {
+                if (options == null)
+                    return FailLaunchValidation("A performance workload configuration is required.", out diagnostic);
+                if (EditorApplication.isPlayingOrWillChangePlaymode)
+                    return FailLaunchValidation("Stop the current Play Mode session before launching a performance workload.", out diagnostic);
+                if (!options.TryValidate(out diagnostic, out _, out _))
+                    return false;
+                if (!CanChangeScenes(out diagnostic))
+                    return false;
+
+                var harnessScenePath = options.IsGraphicalClient
+                    ? Test_GraphicalFixturePreflight.CLIENT_BOOTSTRAP_SCENE_PATH
+                    : Test_PerformanceRun.HARNESS_SCENE_PATH;
+                if (AssetDatabase.LoadAssetAtPath<SceneAsset>(harnessScenePath) == null)
+                    return FailLaunchValidation("Required Play Mode entry scene is missing or not imported: " + harnessScenePath, out diagnostic);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                return FailLaunchValidation("Launch preflight failed: " + exception.Message, out diagnostic);
+            }
+        }
 
         internal static void PersistActiveRun(string lifecycle)
         {
@@ -221,6 +258,7 @@ namespace Game.Tests.Performance.Harness
                 if (!string.IsNullOrEmpty(run.ValidationDiagnostic))
                 {
                     run.Block(run.ValidationDiagnostic);
+                    RememberCompletedRun(run);
                     LastReportPath = run.ReportPath;
                     Status = "Blocked: " + run.ValidationDiagnostic;
                     StateChanged?.Invoke();
@@ -230,6 +268,7 @@ namespace Game.Tests.Performance.Harness
                 if (!CanChangeScenes(out var dirtySceneDiagnostic))
                 {
                     run.Block(dirtySceneDiagnostic);
+                    RememberCompletedRun(run);
                     LastReportPath = run.ReportPath;
                     Status = "Blocked: " + dirtySceneDiagnostic;
                     StateChanged?.Invoke();
@@ -243,6 +282,7 @@ namespace Game.Tests.Performance.Harness
                 if (harnessScene == null)
                 {
                     run.Block("Required Play Mode entry scene is missing or not imported: " + harnessScenePath);
+                    RememberCompletedRun(run);
                     LastReportPath = run.ReportPath;
                     Status = "Blocked: Play Mode entry scene unavailable";
                     StateChanged?.Invoke();
@@ -276,10 +316,14 @@ namespace Game.Tests.Performance.Harness
                         UnityEngine.Debug.LogException(finalizationException);
                     }
                 }
+                if (run != null && run.Finalized)
+                    RememberCompletedRun(run);
                 RestorePreviousSceneSetup();
                 _activeRun = null;
                 _previousSceneSetup = null;
                 ClearPendingRun();
+                if (run != null)
+                    LastReportPath = run.ReportPath;
                 Status = "Could not start: " + exception.Message;
                 StateChanged?.Invoke();
                 UnityEngine.Debug.LogException(exception);
@@ -301,6 +345,7 @@ namespace Game.Tests.Performance.Harness
             if (!ReferenceEquals(run, _activeRun))
                 return;
             LastReportPath = run.ReportPath;
+            RememberCompletedRun(run);
             Status = "Finished: " + run.ReportPath;
             PersistActiveRun(FINALIZED_LIFECYCLE);
             StateChanged?.Invoke();
@@ -330,6 +375,7 @@ namespace Game.Tests.Performance.Harness
                 _previousSceneSetup = null;
                 _activeRun = null;
                 StateChanged?.Invoke();
+                LifecycleSettled?.Invoke();
             }
         }
 
@@ -366,6 +412,8 @@ namespace Game.Tests.Performance.Harness
                 if (state.finalized || state.lifecycle == FINALIZED_LIFECYCLE)
                 {
                     Status = "Finished: " + state.reportPath;
+                    LastCompletedRunID = state.runID;
+                    LastCompletedResultDirectory = state.resultsDirectory;
                     if (!EditorApplication.isPlayingOrWillChangePlaymode)
                     {
                         RestorePreviousSceneSetup();
@@ -384,6 +432,7 @@ namespace Game.Tests.Performance.Harness
                         new InvalidOperationException("The Editor domain reloaded after the performance run had started, so the run was finalized as incomplete."),
                         "EDITOR_RELOAD_INTERRUPTED",
                         PerformanceRunStatus.FailInstrumentation);
+                    RememberCompletedRun(staleRun);
                     _activeRun = staleRun;
                     RestorePreviousSceneSetup();
                     _previousSceneSetup = null;
@@ -426,6 +475,20 @@ namespace Game.Tests.Performance.Harness
         private static void ClearPendingRun()
         {
             SessionState.EraseString(PENDING_RUN_SESSION_KEY);
+        }
+
+        private static bool FailLaunchValidation(string message, out string diagnostic)
+        {
+            diagnostic = message;
+            return false;
+        }
+
+        private static void RememberCompletedRun(Test_PerformanceRun run)
+        {
+            if (run == null)
+                return;
+            LastCompletedRunID = run.RunID;
+            LastCompletedResultDirectory = run.ResultsDirectory;
         }
 
         private static void ResumeRuntimeAfterReload()

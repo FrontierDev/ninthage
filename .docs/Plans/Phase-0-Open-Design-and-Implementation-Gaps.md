@@ -8,11 +8,13 @@
 
 This document is an audit record, not a product-design replacement. It does not approve any current temporary behaviour, resolve an open design question, or make a new gameplay choice. The authoritative subsystem PDDs remain the source of product behaviour; this document records where the current implementation does not yet satisfy them or where the PDDs intentionally leave a decision open.
 
+The `[ToDo]` attributes and editor-generated `todo.txt` referenced by this historical audit were subsequently removed. Ongoing requirements are tracked in GitHub.
+
 ## 1. Audit method and classification
 
 The audit covered:
 
-- all 12 current runtime `[ToDo(...)]` sites reported by source search;
+- all 12 runtime `[ToDo(...)]` sites reported by source search at the time of the audit;
 - runtime `TODO`, `TO DO`, `for now`, `for simplicity`, `prototype`, `obsolete`, temporary and hard-coded-path markers;
 - the source locations named by this issue;
 - the authoritative PDDs and Phase 1 implementation plan listed in the dependency section below.
@@ -246,7 +248,6 @@ These markers were reviewed so they are not silently converted into product requ
 | `Assets/Runtime/Client/VFX/RiftLightning.cs` | “Temporary” comments describe local collider/list/renderer lifetimes inside the effect implementation. | **Not an unresolved design marker.** These are implementation-local temporary values, not deferred product behaviour or an authority/path decision. | No |
 | `Assets/Runtime/Server/Core/ServerInitialization.cs` and `Assets/Runtime/Client/Core/ClientInitialization.cs` | `Resources/NetworkManager` is a named bootstrap prefab path. | **Intentional bootstrap dependency, not a hotfixable gameplay-definition path.** The Phase 1 plan’s `Resources.Load` removal applies to content designated remotely hotfixable and explicitly preserves local bootstrap/executable-bound content. | No standalone blocker |
 | `Assets/Runtime/Client/Core/ClientWorldManager.cs`, character selection/creation managers | Named scenes such as `global_world`, `CharacterSelection` and `CharacterCreation` are used for current bootstrap/UI transitions. | **Existing bootstrap contract.** The audit found no TODO asserting that these strings are a final world-location policy; world-entry location is tracked under GAP-02/GAP-03. | No standalone blocker |
-| `Assets/Runtime/Shared/Runtime/ToDoAttribute.cs` and `Assets/Editor/ToDoGenerator.cs` | Defines and reports `[ToDo]` metadata. | **Audit infrastructure, not a product gap.** The generated `todo.txt` is not modified as a substitute for this inventory. | No |
 
 ## 5. Phase 1 dependency summary
 
@@ -277,7 +278,7 @@ No runtime or editor manual test is claimed by this documentation issue. Runtime
 
 ## 7. Audit completeness
 
-All 12 runtime `[ToDo]` attributes were reviewed:
+All 12 runtime `[ToDo]` attributes present during the audit were reviewed:
 
 - Client audio cache/lifetime — GAP-17;
 - party loot — GAP-06;

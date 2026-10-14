@@ -1,6 +1,5 @@
 using Game.Shared.Data;
 using Game.Shared.Data.Dialogue;
-using Game.Shared.Runtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -35,7 +34,6 @@ namespace Game.Client.UI
             this.index = index;
         }
 
-        [ToDo("Set the choice icon sprite.")]
         private void UpdateEntry()
         {
             _choiceText.text = data.ChoiceText;

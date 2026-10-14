@@ -2,7 +2,6 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Performance;
-using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using PurrNet;
@@ -187,7 +186,6 @@ namespace Game.Server.Core
             StartCoroutine(SpawnPlayerCoroutine(playerID));
         }
 
-        [ToDo("Implement proper spawn point selection logic rather than hardcoding to a specific scene and position.Lots of placeholder code in this method that not be in production.")]
         private IEnumerator SpawnPlayerCoroutine(PlayerID playerID)
         {
             var spawnScene = new Vector2Int(0, 0);

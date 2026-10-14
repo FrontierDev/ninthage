@@ -1173,11 +1173,6 @@ Use `Endpoint` rather than `Channel` because PurrNet already uses **Channel** as
 - Existing `Test_` type naming already conforms.
 - Add XML documentation to any currently undocumented public type/member in this file during implementation.
 
-#### `Assets/Runtime/Shared/Runtime/ToDoAttribute.cs`
-
-- Namespace: global → `Game.Shared.Runtime`.
-- XML documentation: add docs to `ToDoAttribute` and its constructor.
-
 #### `Assets/Runtime/Shared/Runtime/VFX/IVFXFadeIn.cs`
 
 - Namespace: `Game.Shared` → `Game.Shared.Runtime.VFX`.

@@ -78,8 +78,7 @@ Assets/
 │   ├── Inspectors/
 │   ├── Windows/
 │   ├── WorldEditor/
-│   ├── Editor.asmdef
-│   └── ToDoGenerator.cs
+│   └── Editor.asmdef
 │
 └── Runtime/
     ├── Client/

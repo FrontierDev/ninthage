@@ -2,7 +2,6 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Items;
 using Game.Shared.Utility;
@@ -16,7 +15,6 @@ namespace Game.Server.Services
     /// The server compiles the loot and distributes it to each player.
     /// </summary>
     /// <summary>Collects and distributes loot for a server-side party.</summary>
-    [ToDo("This is a very basic implementation that just gives all loot to each player. This will need to be reworked once the party system is implemented.")]
     public sealed class PartyLootService
     {
         // For now, we're only handling single players.

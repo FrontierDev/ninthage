@@ -10,7 +10,6 @@ namespace Game.Shared.Runtime.Actors
 {
     /// <summary>Represents a player-controlled actor and its persisted character state.</summary>
     [RequireComponent(typeof(NetworkIdentity))]
-    [ToDo("Store references to the individual components for ease of access rather than relying on GetComponent calls.")]
     public class PlayerActor : Actor, IInteractable
     {
         /// <summary>Gets whether this actor is a player.</summary>

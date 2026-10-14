@@ -1295,6 +1295,17 @@ namespace Game.Tests.Performance.Harness
     /// <summary>Builds the versioned fixture and run documents without changing project assets.</summary>
     internal static class Test_PerformanceEvidence
     {
+        /// <summary>Reads the newest finalized local result without touching raw sample traces.</summary>
+        public static Test_PerformanceLastRunView ReadLatestFinalizedResult(string activeResultDirectory)
+        {
+            return Test_PerformanceResultReader.LoadLatest(activeResultDirectory);
+        }
+
+        internal static Test_PerformanceLastRunView ReadFinalizedResult(string resultDirectory)
+        {
+            return Test_PerformanceResultReader.ReadFinalized(resultDirectory);
+        }
+
         private static string Quote(string value)
         {
             return Test_PerformanceRun.Quote(value);
@@ -1447,7 +1458,7 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "git", $"{{\"repository\":\"FrontierDev/ninthage\",\"commit_sha\":{Quote(metadata.Commit)},\"dirty\":{metadata.Dirty.ToString().ToLowerInvariant()},\"dirty_diff_sha256\":{Quote(metadata.DiffSha256)}}}", true);
             RawProperty(builder, "toolchain", $"{{\"unity\":{Quote(Application.unityVersion)},\"unity_revision\":{Quote(ReadUnityRevision(metadata.Repository))},\"packages_manifest_sha256\":{Quote(metadata.PackagesSha256)},\"packages_lock_sha256\":{Quote(metadata.PackagesLockSha256)},\"purrnet_source_id\":\"Assets/ThirdParty/PurrNet\",\"purrnet_sha256\":{Quote(metadata.PurrNetSha256)},\"fixture_generator_version\":\"1.0.0\",\"runner_version\":\"graphical-harness/v1\",\"telemetry_version\":\"benchmark-sample/v1\"}}", true);
             RawProperty(builder, "build", $"{{\"kind\":\"rendered_client\",\"target\":{Quote(Application.platform.ToString())},\"subtarget\":\"editor_playmode\",\"development\":{UnityEngine.Debug.isDebugBuild.ToString().ToLowerInvariant()},\"autoconnect_profiler\":false,\"deep_profiling\":false,\"script_debugging\":false,\"defines\":[\"UNITY_EDITOR\"],\"scripting_backend\":\"editor\",\"build_sha256\":null}}", true);
-            RawProperty(builder, "render", $"{{\"mode\":\"rendered\",\"graphics_api\":{Quote(SystemInfo.graphicsDeviceType.ToString())},\"urprenderer\":{Quote(renderer)},\"quality_level\":{Quote(quality)},\"resolution_px\":{resolution},\"vsync\":{QualitySettings.vSyncCount},\"target_fps\":{targetFps}}}", true);
+            RawProperty(builder, "render", $"{{\"mode\":\"rendered\",\"graphical_client\":true,\"graphics_api\":{Quote(SystemInfo.graphicsDeviceType.ToString())},\"urprenderer\":{Quote(renderer)},\"quality_level\":{Quote(quality)},\"resolution_px\":{resolution},\"vsync\":{QualitySettings.vSyncCount},\"target_fps\":{targetFps}}}", true);
             RawProperty(builder, "hardware", $"[{{\"host_id\":{Quote(metadata.HostID)},\"role\":\"rendered_client\",\"os\":{Quote(SystemInfo.operatingSystemFamily.ToString())},\"os_version\":{Quote(SystemInfo.operatingSystem)},\"cpu_model\":{Quote(SystemInfo.processorType)},\"physical_cores\":null,\"logical_cores\":{SystemInfo.processorCount},\"ram_bytes\":{metadata.MemoryBytes},\"gpu_model\":{Quote(SystemInfo.graphicsDeviceName)},\"vram_bytes\":{(long)SystemInfo.graphicsMemorySize * 1024L * 1024L},\"gpu_driver\":{Quote(SystemInfo.graphicsDeviceVersion)},\"storage_class\":null}}]", true);
             RawProperty(builder, "processes", $"{{\"server\":0,\"headless_network_clients\":0,\"rendered_clients\":1,\"actor_test_processes\":0,\"client_host_allocation\":[{{\"host_id\":{Quote(metadata.HostID)},\"client_processes\":1}}]}}", true);
             RawProperty(builder, "clocks", "{\"utc_clock_source\":\"host_system_clock\",\"monotonic_clock_source\":\"System.Diagnostics.Stopwatch\",\"simulation_clock_source\":\"unity_player_loop\",\"utc_clock_sync\":\"not_verified\"}", true);

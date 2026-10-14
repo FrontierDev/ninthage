@@ -1,5 +1,4 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
-using Game.Shared.Runtime;
 using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Networking;
 using System.Collections.Generic;
@@ -158,7 +157,6 @@ namespace Game.Shared.Data.ClassBehaviours
             targetStats.Observers_ReceiveSnapshot(targetStats.BuildSnapshot(ActorStatReplicationMode.Observers));
         }
 
-        [ToDo("Increase the actor's haste rating according to their surge.")]
         /// <summary>
         /// Generates surge based on the mana cost of a spell and the caster's current instability.
         /// </summary>
@@ -337,7 +335,6 @@ namespace Game.Shared.Data.ClassBehaviours
                 statContainer.Client_ReceiveSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
         }
 
-        [ToDo("Base instability damage on something other than a hardcoded value, and include damage type/school.")]
         /// <summary>
         /// Deals instability damage to the actor, called by tickers when in unstable/critical states.
         /// </summary>
