@@ -227,6 +227,63 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void GraphicalScenarioPlansAreDeterministicAndSeeded()
+        {
+            var first = Test_GraphicalFixtureLayout.BuildPlan(
+                Test_GraphicalScenario.Forest,
+                Test_WorldFixtureDensityTier.D1_Default,
+                Test_GraphicalActorDensity.None,
+                Test_GraphicalFixtureLayout.DEFAULT_SEED);
+            var second = Test_GraphicalFixtureLayout.BuildPlan(
+                Test_GraphicalScenario.Forest,
+                Test_WorldFixtureDensityTier.D1_Default,
+                Test_GraphicalActorDensity.None,
+                Test_GraphicalFixtureLayout.DEFAULT_SEED);
+
+            Assert.That(first.IsReady, Is.True);
+            Assert.That(first.PlanHash, Is.EqualTo(second.PlanHash));
+            Assert.That(first.Waypoints, Has.Length.EqualTo(4));
+            Assert.That(first.RequestedObjectCount, Is.GreaterThan(200));
+            Assert.That(first.RequiresWorldStreaming, Is.False);
+            Test_GraphicalFixtureLayout.ValidatePlan(first);
+        }
+
+        [Test]
+        public void GraphicalScenarioSeedAndActorDensityDoNotDowngradeSilently()
+        {
+            var changedSeed = Test_GraphicalFixtureLayout.BuildPlan(
+                Test_GraphicalScenario.Outdoor,
+                Test_WorldFixtureDensityTier.D1_Default,
+                Test_GraphicalActorDensity.None,
+                Test_GraphicalFixtureLayout.DEFAULT_SEED + 1);
+            var actors = Test_GraphicalFixtureLayout.BuildPlan(
+                Test_GraphicalScenario.Outdoor,
+                Test_WorldFixtureDensityTier.D1_Default,
+                Test_GraphicalActorDensity.VisibleTen,
+                Test_GraphicalFixtureLayout.DEFAULT_SEED);
+
+            Assert.That(changedSeed.Status, Is.EqualTo("Blocked"));
+            Assert.That(changedSeed.BlockedReason, Does.Contain("seed"));
+            Assert.That(actors.RequestedActorCount, Is.EqualTo(10));
+            Assert.That(actors.RequiresRealClientSession, Is.True);
+        }
+
+        [Test]
+        public void AdjacentGraphicalScenarioRequiresNormalStreamingPath()
+        {
+            var plan = Test_GraphicalFixtureLayout.BuildPlan(
+                Test_GraphicalScenario.AdjacentTiles,
+                Test_WorldFixtureDensityTier.D1_Default,
+                Test_GraphicalActorDensity.None,
+                Test_GraphicalFixtureLayout.DEFAULT_SEED);
+
+            Assert.That(plan.RequiresWorldStreaming, Is.True);
+            Assert.That(plan.FixtureVariants, Has.Length.EqualTo(2));
+            Assert.That(plan.Waypoints[1].WorldTileX, Is.EqualTo(0));
+            Assert.That(plan.Waypoints[2].WorldTileX, Is.EqualTo(1));
+        }
+
+        [Test]
         public void TrackedHarnessSceneAndFixtureInputsRemainPresent()
         {
             Assert.That(File.Exists(Test_PerformanceRun.HARNESS_SCENE_PATH), Is.True);

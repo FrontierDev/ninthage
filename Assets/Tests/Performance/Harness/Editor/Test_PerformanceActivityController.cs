@@ -108,6 +108,36 @@ namespace Game.Tests.Performance.Harness
             PerformanceMetricSide.Server,
             "benchmark_harness",
             "interval");
+        public static readonly PerformanceMetricDefinition GRAPHICAL_OBJECT_COUNT = new(
+            "harness.graphical.object_count",
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Client,
+            "benchmark_harness",
+            "interval");
+        public static readonly PerformanceMetricDefinition GRAPHICAL_VISIBLE_OBJECT_COUNT = new(
+            "harness.graphical.visible_object_count",
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Client,
+            "benchmark_harness",
+            "interval");
+        public static readonly PerformanceMetricDefinition GRAPHICAL_ACTOR_COUNT = new(
+            "harness.graphical.actor_count",
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Client,
+            "benchmark_harness",
+            "interval");
+        public static readonly PerformanceMetricDefinition GRAPHICAL_ROUTE_WAYPOINT_COUNT = new(
+            "harness.graphical.route_waypoint_count",
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Client,
+            "benchmark_harness",
+            "interval");
+        public static readonly PerformanceMetricDefinition GRAPHICAL_ROUTE_DISTANCE = new(
+            "harness.graphical.route_distance",
+            PerformanceMetricUnit.Metres,
+            PerformanceMetricSide.Client,
+            "benchmark_harness",
+            "interval");
 
         public static void Register()
         {
@@ -118,6 +148,28 @@ namespace Game.Tests.Performance.Harness
             PerformanceTelemetry.RegisterMetric(SPAWN_EVENT_COUNT, 512);
             PerformanceTelemetry.RegisterMetric(DESPAWN_EVENT_COUNT, 512);
             PerformanceTelemetry.RegisterMetric(TOTAL_ALLOCATED_BYTES, 512);
+        }
+
+        public static void RegisterGraphical()
+        {
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_OBJECT_COUNT, 512);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_VISIBLE_OBJECT_COUNT, 512);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ACTOR_COUNT, 512);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ROUTE_WAYPOINT_COUNT, 512);
+            PerformanceTelemetry.RegisterMetric(GRAPHICAL_ROUTE_DISTANCE, 512);
+        }
+
+        public static void RecordGraphical(Test_GraphicalFixtureRuntime fixture)
+        {
+            if (fixture == null)
+                throw new ArgumentNullException(nameof(fixture));
+
+            var frame = UnityEngine.Time.frameCount;
+            PerformanceTelemetry.TryRecord(GRAPHICAL_OBJECT_COUNT, fixture.ActualObjectCount, frame);
+            PerformanceTelemetry.TryRecord(GRAPHICAL_VISIBLE_OBJECT_COUNT, fixture.VisibleObjectCount, frame);
+            PerformanceTelemetry.TryRecord(GRAPHICAL_ACTOR_COUNT, fixture.ActualActorCount, frame);
+            PerformanceTelemetry.TryRecord(GRAPHICAL_ROUTE_WAYPOINT_COUNT, fixture.RouteWaypointsReached, frame);
+            PerformanceTelemetry.TryRecord(GRAPHICAL_ROUTE_DISTANCE, fixture.RouteDistanceTravelled, frame);
         }
     }
 

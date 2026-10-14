@@ -9,8 +9,10 @@ using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace Game.Tests.Performance.Harness
@@ -164,6 +166,7 @@ namespace Game.Tests.Performance.Harness
             Test_PerformanceHarnessOptions options,
             Test_ActorFixtureProfile actorProfile,
             Test_ActorScenarioProfile scenario,
+            Test_GraphicalScenarioPlan graphicalPlan,
             Test_WorldFixturePlan worldPlan,
             Test_PerformanceRunMetadata metadata,
             string runID,
@@ -173,6 +176,7 @@ namespace Game.Tests.Performance.Harness
             Options = options;
             ActorProfile = actorProfile;
             Scenario = scenario;
+            GraphicalPlan = graphicalPlan;
             WorldPlan = worldPlan;
             _metadata = metadata;
             RunID = runID;
@@ -189,6 +193,8 @@ namespace Game.Tests.Performance.Harness
         public Test_ActorFixtureProfile ActorProfile { get; }
 
         public Test_ActorScenarioProfile Scenario { get; }
+
+        public Test_GraphicalScenarioPlan GraphicalPlan { get; }
 
         public Test_WorldFixturePlan WorldPlan { get; }
 
@@ -254,6 +260,10 @@ namespace Game.Tests.Performance.Harness
 
         public Test_PerformanceActivityController ActivityController { get; private set; }
 
+        public Test_GraphicalFixtureRuntime GraphicalRuntime { get; private set; }
+
+        public bool IsGraphicalClient => Options.IsGraphicalClient;
+
         public int RequestedActorCount => Options.ActorCount;
 
         public string FixtureHash => Test_PerformanceRunMetadata.HashFile(FixturePath);
@@ -265,13 +275,13 @@ namespace Game.Tests.Performance.Harness
 
             var projectRoot = Directory.GetParent(Application.dataPath).FullName;
             var metadata = Test_PerformanceRunMetadata.Capture(projectRoot);
-            ResolveInputs(options, out var actorProfile, out var scenario, out var worldPlan);
+            ResolveInputs(options, out var actorProfile, out var scenario, out var graphicalPlan, out var worldPlan);
             var resultRoot = Path.Combine(projectRoot, RESULT_ROOT);
             Directory.CreateDirectory(resultRoot);
             var runID = CreateUniqueRunID(resultRoot);
             var resultsDirectory = Path.Combine(resultRoot, runID);
             Directory.CreateDirectory(resultsDirectory);
-            var run = new Test_PerformanceRun(options, actorProfile, scenario, worldPlan, metadata, runID, resultsDirectory, DateTime.UtcNow);
+            var run = new Test_PerformanceRun(options, actorProfile, scenario, graphicalPlan, worldPlan, metadata, runID, resultsDirectory, DateTime.UtcNow);
             run.WriteFixtureAndRun(projectRoot);
             return run;
         }
@@ -314,11 +324,12 @@ namespace Game.Tests.Performance.Harness
             if (!string.Equals(Test_PerformanceRunMetadata.HashFile(fixturePath), state.fixtureSha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("The pending performance run fixture digest changed during Editor reload.");
 
-            ResolveInputs(options, out var actorProfile, out var scenario, out var worldPlan);
+            ResolveInputs(options, out var actorProfile, out var scenario, out var graphicalPlan, out var worldPlan);
             var run = new Test_PerformanceRun(
                 options,
                 actorProfile,
                 scenario,
+                graphicalPlan,
                 worldPlan,
                 state.metadata,
                 state.runID,
@@ -332,8 +343,30 @@ namespace Game.Tests.Performance.Harness
             Test_PerformanceHarnessOptions options,
             out Test_ActorFixtureProfile actorProfile,
             out Test_ActorScenarioProfile scenario,
+            out Test_GraphicalScenarioPlan graphicalPlan,
             out Test_WorldFixturePlan worldPlan)
         {
+            graphicalPlan = null;
+            if (options.IsGraphicalClient)
+            {
+                graphicalPlan = Test_GraphicalFixtureLayout.BuildPlan(
+                    options.GraphicalScenario,
+                    options.DensityTier,
+                    options.ActorDensity,
+                    options.Seed);
+                actorProfile = null;
+                scenario = null;
+                worldPlan = FindWorldPlan(
+                    Test_WorldFixtureLayout.BuildManifest(new Test_WorldFixtureOptions
+                    {
+                        Seed = options.Seed,
+                        DensityTier = options.DensityTier,
+                        FixtureVersion = Test_WorldFixtureLayout.FIXTURE_VERSION,
+                    }),
+                    graphicalPlan.FixtureVariants[0]);
+                return;
+            }
+
             var catalog = Test_ActorFixtureLayout.BuildCatalog(options.Seed);
             var scenarioCatalog = Test_ActorFixtureLayout.BuildScenarioCatalog(options.Seed);
             actorProfile = FindActorProfile(catalog, options.ActorVariantID);
@@ -367,12 +400,14 @@ namespace Game.Tests.Performance.Harness
                 GitRepository = _metadata.Repository,
                 GitCommitSha = _metadata.Commit,
                 GitDirty = _metadata.Dirty,
-                BuildKind = "editor_playmode_server",
-                BuildFlags = "test_only;ordinary_server_initialization;no_deep_profiling",
-                ProfileRevision = ActorProfile.revision,
+                BuildKind = IsGraphicalClient ? "editor_playmode_rendered_client" : "editor_playmode_server",
+                BuildFlags = IsGraphicalClient
+                    ? "test_only;ordinary_client_initialization;no_deep_profiling"
+                    : "test_only;ordinary_server_initialization;no_deep_profiling",
+                ProfileRevision = IsGraphicalClient ? GraphicalPlan.ProfileRevision : ActorProfile.revision,
                 Seed = Options.Seed.ToString(CultureInfo.InvariantCulture),
                 Platform = Application.platform.ToString(),
-                GraphicsOptions = SystemInfo.graphicsDeviceName,
+                GraphicsOptions = BuildGraphicsIdentity(),
                 Hardware = _metadata.Hardware,
                 HostId = _metadata.HostID,
                 ProcessId = "unity-editor-process-" + _metadata.ProcessID.ToString(CultureInfo.InvariantCulture),
@@ -387,6 +422,27 @@ namespace Game.Tests.Performance.Harness
         {
             ServerInitialization.RegisterPerformanceMetrics();
             AppendLog("Project-owned server metrics registered.");
+        }
+
+        public void RegisterClientMetrics()
+        {
+            if (!IsGraphicalClient)
+                throw new InvalidOperationException("Client metrics can only be registered for a graphical client run.");
+            Game.Client.ClientInitialization.RegisterPerformanceMetrics();
+            Test_PerformanceHarnessMetrics.RegisterGraphical();
+            AppendLog("Project-owned client and graphical harness metrics registered.");
+        }
+
+        public void RefreshGraphicalRunEvidence()
+        {
+            if (!IsGraphicalClient)
+                throw new InvalidOperationException("Graphical run evidence can only be refreshed for a graphical client run.");
+
+            File.WriteAllText(
+                RunPath,
+                Test_PerformanceEvidence.BuildRunJson(this, _metadata.Repository, _metadata),
+                new UTF8Encoding(false));
+            AppendLog("Graphical run evidence captured after ordinary client initialization.");
         }
 
         public void SetLoadedWorld(Scene scene)
@@ -436,6 +492,25 @@ namespace Game.Tests.Performance.Harness
             ActivityController = new Test_PerformanceActivityController(FixtureRuntime, activityEnabled);
             PreflightCompleted = true;
             AppendLog("Data-only ECS fixture prepared with zero entities for incremental ramp.");
+        }
+
+        public Test_GraphicalFixtureRuntime CreateGraphicalRuntime()
+        {
+            if (!IsGraphicalClient || GraphicalPlan == null)
+                throw new InvalidOperationException("The selected run has no graphical scenario plan.");
+            GraphicalRuntime = new Test_GraphicalFixtureRuntime(GraphicalPlan);
+            PreflightCompleted = true;
+            AppendLog("Graphical fixture prepared: " + GraphicalPlan.ScenarioID);
+            return GraphicalRuntime;
+        }
+
+        public void CaptureGraphicalSnapshot()
+        {
+            if (!IsGraphicalClient || GraphicalRuntime == null)
+                return;
+            ObserveEntityCount(GraphicalRuntime.ActualObjectCount);
+            AppendLog(
+                $"Graphical measurement snapshot: objects={GraphicalRuntime.ActualObjectCount}, visible={GraphicalRuntime.VisibleObjectCount}, actors={GraphicalRuntime.ActualActorCount}, routeWaypoints={GraphicalRuntime.RouteWaypointsReached}/{GraphicalPlan.Waypoints.Length}, routeDistance={GraphicalRuntime.RouteDistanceTravelled.ToString("R", CultureInfo.InvariantCulture)}.");
         }
 
         public Test_PerformancePendingRunState CreatePendingRunState(SceneSetup[] previousSceneSetup, string lifecycle)
@@ -529,6 +604,25 @@ namespace Game.Tests.Performance.Harness
 
         public void MarkWorkloadApplied()
         {
+            if (IsGraphicalClient)
+            {
+                if (GraphicalRuntime == null || !WorldFixtureLoaded)
+                    throw new InvalidOperationException("The graphical fixture scene must be loaded before marking the rendered workload active.");
+                if (GraphicalRuntime.ActualObjectCount != GraphicalPlan.RequestedObjectCount
+                    || GraphicalRuntime.ActualActorCount != GraphicalPlan.RequestedActorCount)
+                {
+                    throw new InvalidOperationException(
+                        $"Graphical workload density was not achieved: objects {GraphicalRuntime.ActualObjectCount}/{GraphicalPlan.RequestedObjectCount}, actors {GraphicalRuntime.ActualActorCount}/{GraphicalPlan.RequestedActorCount}.");
+                }
+
+                PerformanceTelemetry.MarkWorkloadApplied();
+                WorkloadApplied = true;
+                RampCompletedEntityCount = GraphicalRuntime.ActualObjectCount;
+                ObserveEntityCount(RampCompletedEntityCount);
+                AppendLog("Requested graphical object workload applied: " + GraphicalRuntime.ActualObjectCount.ToString(CultureInfo.InvariantCulture));
+                return;
+            }
+
             if (!WorldFixtureLoaded || FixtureRuntime == null || ActivityController == null)
                 throw new InvalidOperationException("The selected world and workload must be applied before marking the workload active.");
             if (FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
@@ -542,11 +636,17 @@ namespace Game.Tests.Performance.Harness
 
         public void BeginPhase(PerformanceMeasurementPhase phase)
         {
+            if (IsGraphicalClient && phase == PerformanceMeasurementPhase.Measurement)
+            {
+                if (GraphicalRuntime == null || !WorldFixtureLoaded)
+                    throw new InvalidOperationException("The graphical fixture must exist before measurement begins.");
+            }
+
             if (phase == PerformanceMeasurementPhase.Measurement)
             {
-                if (FixtureRuntime == null || ActivityController == null)
+                if (!IsGraphicalClient && (FixtureRuntime == null || ActivityController == null))
                     throw new InvalidOperationException("The data-only fixture must exist before measurement begins.");
-                if (FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
+                if (!IsGraphicalClient && FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
                 {
                     throw new InvalidOperationException(
                         $"Measurement cannot begin with {FixtureRuntime.DataOnlyEntityCount} ECS entities; expected {RequestedActorCount}.");
@@ -558,9 +658,10 @@ namespace Game.Tests.Performance.Harness
             _currentPhase = phase;
             if (phase == PerformanceMeasurementPhase.Measurement)
             {
-                ActivityController.BeginMeasurement();
+                if (!IsGraphicalClient)
+                    ActivityController.BeginMeasurement();
                 MeasurementStarted = true;
-                MeasurementStartEntityCount = FixtureRuntime == null ? 0 : FixtureRuntime.DataOnlyEntityCount;
+                MeasurementStartEntityCount = IsGraphicalClient ? GraphicalRuntime.ActualObjectCount : FixtureRuntime.DataOnlyEntityCount;
                 ObserveEntityCount(MeasurementStartEntityCount);
             }
         }
@@ -601,6 +702,15 @@ namespace Game.Tests.Performance.Harness
 
         public void MarkCleanupComplete()
         {
+            if (IsGraphicalClient)
+            {
+                if (GraphicalRuntime == null || !GraphicalRuntime.CleanupComplete)
+                    throw new InvalidOperationException("Graphical fixture cleanup did not restore the camera and release its test-owned state.");
+                CleanupComplete = true;
+                AppendLog("Graphical fixture cleanup completed.");
+                return;
+            }
+
             if (FixtureRuntime == null)
                 throw new InvalidOperationException("No actor fixture exists to clean up.");
             FixtureRuntime.AssertCleanupComplete();
@@ -657,7 +767,21 @@ namespace Game.Tests.Performance.Harness
             }
 
             _measurementSamplesAvailable = HasMeasurementSamples();
-            if (status == PerformanceRunStatus.CompleteMeasured
+            var graphicalLifecycleIncomplete = IsGraphicalClient
+                && (!WorkloadApplied
+                    || !RampCompleted
+                    || !WarmupCompleted
+                    || !MeasurementCompleted
+                    || !RecoveryCompleted
+                    || GraphicalRuntime == null
+                    || RampCompletedEntityCount != GraphicalPlan.RequestedObjectCount
+                    || MeasurementStartEntityCount != GraphicalPlan.RequestedObjectCount
+                    || MeasurementEndEntityCount != GraphicalPlan.RequestedObjectCount
+                    || PeakEntityCount < GraphicalPlan.RequestedObjectCount
+                    || !MeasurementStarted
+                    || !GraphicalRuntime.RouteComplete
+                    || !CleanupComplete);
+            var serverLifecycleIncomplete = !IsGraphicalClient
                 && (!WorkloadApplied
                     || !RampCompleted
                     || !WarmupCompleted
@@ -669,7 +793,8 @@ namespace Game.Tests.Performance.Harness
                     || PeakEntityCount < RequestedActorCount
                     || !MeasurementStarted
                     || !ActivitySnapshotCaptured
-                    || !CleanupComplete))
+                    || !CleanupComplete);
+            if (status == PerformanceRunStatus.CompleteMeasured && (graphicalLifecycleIncomplete || serverLifecycleIncomplete))
             {
                 status = PerformanceRunStatus.FailCorrectness;
                 finalReason = "INCOMPLETE_LIFECYCLE";
@@ -743,7 +868,9 @@ namespace Game.Tests.Performance.Harness
 
         private void WriteFixtureAndRun(string projectRoot)
         {
-            var fixtureJson = Test_PerformanceEvidence.BuildFixtureJson(Options, ActorProfile, Scenario, WorldPlan, _metadata);
+            var fixtureJson = IsGraphicalClient
+                ? Test_PerformanceEvidence.BuildGraphicalFixtureJson(Options, GraphicalPlan, WorldPlan, _metadata)
+                : Test_PerformanceEvidence.BuildFixtureJson(Options, ActorProfile, Scenario, WorldPlan, _metadata);
             File.WriteAllText(FixturePath, fixtureJson, new UTF8Encoding(false));
             var runJson = Test_PerformanceEvidence.BuildRunJson(this, projectRoot, _metadata);
             File.WriteAllText(RunPath, runJson, new UTF8Encoding(false));
@@ -760,6 +887,10 @@ namespace Game.Tests.Performance.Harness
                 ? "pass"
                 : blockedPreflight ? "unverified" : "failed";
             var failedAssertions = blockedPreflight || status == PerformanceRunStatus.CompleteMeasured ? 0 : 1;
+            var unverified = IsGraphicalClient
+                ? BuildGraphicalUnverifiedJson()
+                : "[\"standalone_headless\",\"networked_clients\"]";
+            var checkedAssertions = WorkloadApplied ? 4 : 0;
             var builder = new StringBuilder();
             builder.AppendLine("{");
             Property(builder, "schema_version", "benchmark-summary/v1", true);
@@ -772,10 +903,10 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "achieved", BuildAchievedJson(), true);
             RawProperty(builder, "resources", $"{{\"total_allocated_bytes\":{UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong()},\"ceiling_bytes\":{MAX_TOTAL_ALLOCATED_BYTES},\"ceiling_status\":{Quote(status == PerformanceRunStatus.FailResource ? "exceeded" : "not_exceeded")}}}", true);
             RawProperty(builder, "stop", $"{{\"phase\":{Quote(CurrentPhaseText())},\"reason_code\":{Quote(reasonCode)},\"message\":{Quote(message)}}}", true);
-            RawProperty(builder, "correctness", $"{{\"status\":{Quote(correctnessStatus)},\"checked\":{(WorkloadApplied ? 4 : 0)},\"failed\":{failedAssertions},\"unverified\":[\"standalone_headless\",\"networked_clients\"]}}", true);
+            RawProperty(builder, "correctness", $"{{\"status\":{Quote(correctnessStatus)},\"checked\":{checkedAssertions},\"failed\":{failedAssertions},\"unverified\":{unverified}}}", true);
             RawProperty(builder, "metrics", metrics, true);
             RawProperty(builder, "raw_files", rawFiles, true);
-            RawProperty(builder, "warnings", BuildWarnings(status), false);
+            RawProperty(builder, "warnings", BuildWarnings(status, IsGraphicalClient), false);
             builder.AppendLine();
             builder.Append('}');
             File.WriteAllText(SummaryPath, builder.ToString(), new UTF8Encoding(false));
@@ -790,8 +921,38 @@ namespace Game.Tests.Performance.Harness
             return "[" + string.Join(",", files) + "]";
         }
 
+        private string BuildGraphicalUnverifiedJson()
+        {
+            var unverified = new List<string>();
+            if (GraphicalPlan.RequiresRealClientSession)
+                unverified.Add("real_player_session");
+            if (GraphicalPlan.RequiresWorldStreaming)
+                unverified.Add("normal_world_streaming");
+            if (unverified.Count == 0)
+                return "[]";
+            return "[\"" + string.Join("\",\"", unverified) + "\"]";
+        }
+
         private string BuildAchievedJson()
         {
+            if (IsGraphicalClient)
+            {
+                var objectCount = GraphicalRuntime == null ? 0 : GraphicalRuntime.ActualObjectCount;
+                var visibleCount = GraphicalRuntime == null ? 0 : GraphicalRuntime.VisibleObjectCount;
+                var routeWaypoints = GraphicalRuntime == null ? 0 : GraphicalRuntime.RouteWaypointsReached;
+                var routeComplete = GraphicalRuntime != null && GraphicalRuntime.RouteComplete;
+                return "{\"connected_players\":" + GetRealPlayerCount()
+                    + ",\"authenticated_players\":0,\"in_world_players\":0,\"npc_actors\":" + (GraphicalRuntime == null ? 0 : GraphicalRuntime.ActualActorCount)
+                    + ",\"ecs_entities\":0,\"network_identities\":0,\"gameobjects\":" + objectCount
+                    + ",\"scene_tiles_loaded\":" + (WorldFixtureLoaded ? 1 : 0) + ",\"renders_visible\":" + visibleCount
+                    + ",\"accepted_abilities\":0,\"graphical\":{\"requested_objects\":" + GraphicalPlan.RequestedObjectCount
+                    + ",\"achieved_objects\":" + objectCount + ",\"requested_actors\":" + GraphicalPlan.RequestedActorCount
+                    + ",\"achieved_actors\":" + (GraphicalRuntime == null ? 0 : GraphicalRuntime.ActualActorCount)
+                    + ",\"route_waypoints_requested\":" + GraphicalPlan.Waypoints.Length + ",\"route_waypoints_reached\":" + routeWaypoints
+                    + ",\"route_complete\":" + routeComplete.ToString().ToLowerInvariant() + ",\"requested_nameplates\":" + GraphicalPlan.RequestedNameplateCount
+                    + ",\"requested_vfx\":" + GraphicalPlan.RequestedVFXCount + "}}";
+            }
+
             var measuredEntityCount = MeasurementStarted
                 ? MeasurementEndEntityCount
                 : RampCompletedEntityCount;
@@ -835,12 +996,23 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine();
             builder.AppendLine("- Status: `" + StatusText(status) + "`");
             builder.AppendLine("- Run ID: `" + RunID + "`");
-            builder.AppendLine("- Profile: `" + Options.ProfileID + "`");
-            builder.AppendLine("- World fixture: `" + Options.WorldFixture + "` (`" + (WorldPlan == null ? "unavailable" : WorldPlan.AssetPath) + "`)");
+            builder.AppendLine("- Profile: `" + Options.EffectiveProfileID + "`");
+            builder.AppendLine("- World fixture: `" + (IsGraphicalClient ? GraphicalPlan.ScenarioID : Options.WorldFixture.ToString()) + "` (`" + (WorldPlan == null ? "unavailable" : WorldPlan.AssetPath) + "`)");
             builder.AppendLine("- Workload: `" + Options.WorkloadMode + "`");
             builder.AppendLine("- Seed: `" + Options.Seed.ToString(CultureInfo.InvariantCulture) + "`");
             builder.AppendLine("- Git commit: `" + _metadata.Commit + "` (dirty: `" + _metadata.Dirty.ToString().ToLowerInvariant() + "`)");
-            builder.AppendLine("- Requested ECS entities: `" + RequestedActorCount + "`");
+            if (IsGraphicalClient)
+            {
+                builder.AppendLine("- Requested graphical objects: `" + GraphicalPlan.RequestedObjectCount + "`");
+                builder.AppendLine("- Achieved graphical objects: `" + (GraphicalRuntime == null ? "unverified" : GraphicalRuntime.ActualObjectCount.ToString(CultureInfo.InvariantCulture)) + "`");
+                builder.AppendLine("- Requested graphical actors: `" + GraphicalPlan.RequestedActorCount + "`");
+                builder.AppendLine("- Achieved graphical actors: `" + (GraphicalRuntime == null ? "unverified" : GraphicalRuntime.ActualActorCount.ToString(CultureInfo.InvariantCulture)) + "`");
+                builder.AppendLine("- Route coverage: `" + (GraphicalRuntime == null ? "unverified" : GraphicalRuntime.RouteWaypointsReached + "/" + GraphicalPlan.Waypoints.Length) + "` waypoints");
+            }
+            else
+            {
+                builder.AppendLine("- Requested ECS entities: `" + RequestedActorCount + "`");
+            }
             builder.AppendLine("- Ramp-completed ECS entities: `" + RampCompletedEntityCount + "`");
             builder.AppendLine("- Measurement-start ECS entities: `" + MeasurementStartEntityCount + "`");
             builder.AppendLine("- Measurement-end ECS entities: `" + MeasurementEndEntityCount + "`");
@@ -866,7 +1038,9 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine();
             builder.AppendLine("Stop reason: `" + reasonCode + "`");
             builder.AppendLine();
-            builder.AppendLine("This is an Editor Play Mode server measurement. It does not qualify standalone headless capacity, graphical client rendering, authentication throughput, or multi-client network behavior.");
+            builder.AppendLine(IsGraphicalClient
+                ? "This is an Editor Play Mode rendered-client measurement. It does not qualify authenticated player density, normal PurrNet world streaming, or multi-client network behavior."
+                : "This is an Editor Play Mode server measurement. It does not qualify standalone headless capacity, graphical client rendering, authentication throughput, or multi-client network behavior.");
             if (status == PerformanceRunStatus.BlockedPrerequisite)
                 builder.AppendLine("No workload execution occurred.");
             if (!string.IsNullOrEmpty(ValidationDiagnostic))
@@ -908,13 +1082,32 @@ namespace Game.Tests.Performance.Harness
             return PurrNet.NetworkManager.main == null ? 0 : PurrNet.NetworkManager.main.playerCount;
         }
 
-        private static string BuildWarnings(PerformanceRunStatus status)
+        private string BuildGraphicsIdentity()
+        {
+            if (!IsGraphicalClient)
+                return SystemInfo.graphicsDeviceName;
+
+            var pipeline = GraphicsSettings.currentRenderPipeline;
+            return string.Join(
+                ";",
+                SystemInfo.graphicsDeviceType,
+                SystemInfo.graphicsDeviceName,
+                "render_pipeline=" + Test_PerformanceEvidence.BuildRendererIdentity(pipeline),
+                "resolution=" + Screen.width.ToString(CultureInfo.InvariantCulture) + "x" + Screen.height.ToString(CultureInfo.InvariantCulture),
+                "quality=" + QualitySettings.GetQualityLevel().ToString(CultureInfo.InvariantCulture),
+                "vsync=" + QualitySettings.vSyncCount.ToString(CultureInfo.InvariantCulture),
+                "target_fps=" + Application.targetFrameRate.ToString(CultureInfo.InvariantCulture));
+        }
+
+        private static string BuildWarnings(PerformanceRunStatus status, bool graphical)
         {
             var warnings = new List<string>
             {
-                "Editor Play Mode is not standalone headless execution.",
+                graphical ? "Editor Play Mode is not a standalone rendered-client build." : "Editor Play Mode is not standalone headless execution.",
                 "No synthetic network clients or authentication bypass were used.",
             };
+            if (graphical)
+                warnings.Add("Normal PurrNet world streaming and real actor/nameplate/VFX density were not claimed unless the selected fixture preflight and route reported them.");
             if (status != PerformanceRunStatus.CompleteMeasured)
                 warnings.Add("No successful measured result should be interpreted from this run status.");
             return "[\"" + string.Join("\",\"", warnings.ConvertAll(Escape)) + "\"]";
@@ -1100,6 +1293,11 @@ namespace Game.Tests.Performance.Harness
     /// <summary>Builds the versioned fixture and run documents without changing project assets.</summary>
     internal static class Test_PerformanceEvidence
     {
+        private static string Quote(string value)
+        {
+            return Test_PerformanceRun.Quote(value);
+        }
+
         public static string BuildFixtureJson(
             Test_PerformanceHarnessOptions options,
             Test_ActorFixtureProfile actor,
@@ -1171,6 +1369,9 @@ namespace Game.Tests.Performance.Harness
 
         public static string BuildRunJson(Test_PerformanceRun run, string projectRoot, Test_PerformanceRunMetadata metadata)
         {
+            if (run.IsGraphicalClient)
+                return BuildGraphicalRunJson(run, metadata);
+
             var builder = new StringBuilder();
             builder.AppendLine("{");
             Property(builder, "schema_version", "benchmark-run/v1", true);
@@ -1190,6 +1391,110 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine();
             builder.Append('}');
             return builder.ToString();
+        }
+
+        public static string BuildGraphicalFixtureJson(
+            Test_PerformanceHarnessOptions options,
+            Test_GraphicalScenarioPlan plan,
+            Test_WorldFixturePlan world,
+            Test_PerformanceRunMetadata metadata)
+        {
+            if (plan == null)
+                throw new ArgumentNullException(nameof(plan));
+            if (world == null)
+                throw new ArgumentNullException(nameof(world));
+
+            var sourcePath = "Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json";
+            var sourceHash = Test_PerformanceRunMetadata.HashFile(Path.Combine(metadata.Repository, sourcePath));
+            var builder = new StringBuilder();
+            builder.AppendLine("{");
+            Property(builder, "schema_version", "benchmark-fixture/v1", true);
+            RawProperty(builder, "profile", $"{{\"id\":{Quote(plan.ProfileID)},\"revision\":{Quote(plan.ProfileRevision)},\"spec_revision\":{Quote(Test_GraphicalFixtureLayout.SPEC_REVISION)},\"variant\":{Quote("S06-I-GEOMETRY")},\"tier\":{Quote(plan.ObjectDensityTier.Replace("_Default", string.Empty).Replace("_Minimal", string.Empty))}}}", true);
+            RawProperty(builder, "random", $"{{\"master_seed\":{options.Seed},\"replicate_seed\":{options.Seed},\"replicate_index\":0,\"derivation\":\"sha256-u32le-v1\",\"streams\":[\"world\",\"actors\",\"movement\",\"abilities\",\"network\"]}}", true);
+            RawProperty(builder, "provenance", $"{{\"fixture_generator\":{Quote(Test_GraphicalFixtureLayout.ROUTE_GENERATOR)},\"generator_revision\":\"1.0.0\",\"input_path\":{Quote(sourcePath)},\"asset_manifest_path\":{Quote(sourcePath)},\"source_commit\":{Quote(metadata.Commit)},\"source_sha256\":{Quote(sourceHash)},\"asset_manifest_sha256\":{Quote(sourceHash)}}}", true);
+            RawProperty(builder, "required_features", BuildGraphicalRequiredFeaturesJson(plan), true);
+            RawProperty(builder, "population", BuildGraphicalPopulationJson(plan), true);
+            RawProperty(builder, "space", BuildGraphicalSpaceJson(plan, world), true);
+            RawProperty(builder, "environment", BuildGraphicalEnvironmentJson(plan, world), true);
+            RawProperty(builder, "schedules", BuildGraphicalSchedulesJson(plan), true);
+            RawProperty(builder, "network", "{\"preset\":\"NET-LOCAL\",\"transport\":\"PurrNet\",\"shaper\":\"none\",\"target_rtt_ms\":null,\"target_jitter_ms\":null,\"target_loss_ratio\":null,\"connection_attempts_per_s\":0}", true);
+            RawProperty(builder, "timing", $"{{\"preflight_timeout_s\":{Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS.ToString("R", CultureInfo.InvariantCulture)},\"ramp_s\":{Test_PerformanceRun.RAMP_SECONDS.ToString("R", CultureInfo.InvariantCulture)},\"warmup_s\":{options.WarmupSeconds.ToString("R", CultureInfo.InvariantCulture)},\"measurement_s\":{options.MeasurementSeconds.ToString("R", CultureInfo.InvariantCulture)},\"recovery_s\":{Test_PerformanceRun.RECOVERY_SECONDS.ToString("R", CultureInfo.InvariantCulture)},\"sample_interval_ms\":500}}", true);
+            RawProperty(builder, "stops", "{\"total_timeout_s\":120,\"memory_ceiling_bytes\":4294967296,\"terminate_on_correctness_failure\":true,\"terminate_on_missing_fixture\":true,\"terminate_on_missing_required_telemetry\":true}", false);
+            builder.AppendLine("}");
+            return builder.ToString();
+        }
+
+        private static string BuildGraphicalRunJson(Test_PerformanceRun run, Test_PerformanceRunMetadata metadata)
+        {
+            var pipeline = GraphicsSettings.currentRenderPipeline;
+            var qualityNames = QualitySettings.names;
+            var quality = QualitySettings.GetQualityLevel() >= 0 && QualitySettings.GetQualityLevel() < qualityNames.Length
+                ? qualityNames[QualitySettings.GetQualityLevel()]
+                : "unknown";
+            var renderer = BuildRendererIdentity(pipeline);
+            var resolution = $"[{Screen.width},{Screen.height}]";
+            var targetFps = Application.targetFrameRate < 0
+                ? "null"
+                : Application.targetFrameRate.ToString(CultureInfo.InvariantCulture);
+            var builder = new StringBuilder();
+            builder.AppendLine("{");
+            Property(builder, "schema_version", "benchmark-run/v1", true);
+            Property(builder, "run_id", run.RunID, true);
+            RawProperty(builder, "fixture_ref", $"{{\"path\":\"fixture.json\",\"sha256\":{Quote(run.FixtureHash)}}}", true);
+            Property(builder, "created_utc", DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), true);
+            RawProperty(builder, "git", $"{{\"repository\":\"FrontierDev/ninthage\",\"commit_sha\":{Quote(metadata.Commit)},\"dirty\":{metadata.Dirty.ToString().ToLowerInvariant()},\"dirty_diff_sha256\":{Quote(metadata.DiffSha256)}}}", true);
+            RawProperty(builder, "toolchain", $"{{\"unity\":{Quote(Application.unityVersion)},\"unity_revision\":{Quote(ReadUnityRevision(metadata.Repository))},\"packages_manifest_sha256\":{Quote(metadata.PackagesSha256)},\"packages_lock_sha256\":{Quote(metadata.PackagesLockSha256)},\"purrnet_source_id\":\"Assets/ThirdParty/PurrNet\",\"purrnet_sha256\":{Quote(metadata.PurrNetSha256)},\"fixture_generator_version\":\"1.0.0\",\"runner_version\":\"graphical-harness/v1\",\"telemetry_version\":\"benchmark-sample/v1\"}}", true);
+            RawProperty(builder, "build", $"{{\"kind\":\"rendered_client\",\"target\":{Quote(Application.platform.ToString())},\"subtarget\":\"editor_playmode\",\"development\":{UnityEngine.Debug.isDebugBuild.ToString().ToLowerInvariant()},\"autoconnect_profiler\":false,\"deep_profiling\":false,\"script_debugging\":false,\"defines\":[\"UNITY_EDITOR\"],\"scripting_backend\":\"editor\",\"build_sha256\":null}}", true);
+            RawProperty(builder, "render", $"{{\"mode\":\"rendered\",\"graphics_api\":{Quote(SystemInfo.graphicsDeviceType.ToString())},\"urprenderer\":{Quote(renderer)},\"quality_level\":{Quote(quality)},\"resolution_px\":{resolution},\"vsync\":{QualitySettings.vSyncCount},\"target_fps\":{targetFps}}}", true);
+            RawProperty(builder, "hardware", $"[{{\"host_id\":{Quote(metadata.HostID)},\"role\":\"rendered_client\",\"os\":{Quote(SystemInfo.operatingSystemFamily.ToString())},\"os_version\":{Quote(SystemInfo.operatingSystem)},\"cpu_model\":{Quote(SystemInfo.processorType)},\"physical_cores\":null,\"logical_cores\":{SystemInfo.processorCount},\"ram_bytes\":{metadata.MemoryBytes},\"gpu_model\":{Quote(SystemInfo.graphicsDeviceName)},\"vram_bytes\":{(long)SystemInfo.graphicsMemorySize * 1024L * 1024L},\"gpu_driver\":{Quote(SystemInfo.graphicsDeviceVersion)},\"storage_class\":null}}]", true);
+            RawProperty(builder, "processes", $"{{\"server\":0,\"headless_network_clients\":0,\"rendered_clients\":1,\"actor_test_processes\":0,\"client_host_allocation\":[{{\"host_id\":{Quote(metadata.HostID)},\"client_processes\":1}}]}}", true);
+            RawProperty(builder, "clocks", "{\"utc_clock_source\":\"host_system_clock\",\"monotonic_clock_source\":\"System.Diagnostics.Stopwatch\",\"simulation_clock_source\":\"unity_player_loop\",\"utc_clock_sync\":\"not_verified\"}", true);
+            RawProperty(builder, "execution", "{\"command_template\":\"Unity Editor Play Mode via Tools/Performance/Test Workload Runner\",\"environment_id\":\"local-development\",\"test_data_scope\":\"isolated_disposable\",\"profiling_mode\":\"not_enabled\",\"network_shaper_version\":null}", true);
+            RawProperty(builder, "runtime_observed", $"{{\"actual_build_sha256\":null,\"actual_content_sha256\":{Quote(run.GraphicalPlan.PlanHash)},\"actual_transport_rtt_ms\":null,\"actual_transport_loss_ratio\":null}}", false);
+            builder.AppendLine("}");
+            return builder.ToString();
+        }
+
+        internal static string BuildRendererIdentity(RenderPipelineAsset pipeline)
+        {
+            if (pipeline == null)
+                return "none";
+
+            var renderer = pipeline.name;
+            if (!string.Equals(pipeline.GetType().Name, "UniversalRenderPipelineAsset", StringComparison.Ordinal))
+                return renderer + ";renderer_data=not_urp";
+
+            var rendererAsset = AssetDatabase.LoadMainAssetAtPath("Assets/Settings/PC_Renderer.asset");
+            if (rendererAsset == null)
+                return renderer + ";renderer_data=unavailable";
+
+            var serializedRenderer = new SerializedObject(rendererAsset);
+            var renderingMode = serializedRenderer.FindProperty("m_RenderingMode");
+            var mode = renderingMode == null
+                ? "unavailable"
+                : renderingMode.intValue == 2 ? "ForwardPlus" : renderingMode.intValue.ToString(CultureInfo.InvariantCulture);
+            return renderer + ";" + rendererAsset.name + "/" + mode;
+        }
+
+        private static string ReadUnityRevision(string projectRoot)
+        {
+            var versionPath = Path.Combine(projectRoot, "ProjectSettings", "ProjectVersion.txt");
+            if (!File.Exists(versionPath))
+                return "unavailable";
+
+            foreach (var line in File.ReadLines(versionPath))
+            {
+                const string marker = "m_EditorVersionWithRevision:";
+                if (!line.StartsWith(marker, StringComparison.Ordinal))
+                    continue;
+
+                var open = line.IndexOf('(');
+                var close = line.IndexOf(')', open + 1);
+                if (open >= 0 && close > open + 1)
+                    return line.Substring(open + 1, close - open - 1);
+            }
+
+            return "unavailable";
         }
 
         private static FixturePopulation BuildPopulation(Test_ActorFixtureProfile actor)
@@ -1223,6 +1528,76 @@ namespace Game.Tests.Performance.Harness
                     synthetic_network_players = 0,
                 },
             };
+        }
+
+        private static string BuildGraphicalPopulationJson(Test_GraphicalScenarioPlan plan)
+        {
+            var groups = plan.RequestedActorCount == 0
+                ? "[]"
+                : "[{\"definition_id\":\"fixture-visible-actor\",\"role\":\"visible\",\"count\":" + plan.RequestedActorCount + ",\"activity\":{\"idle\":1,\"patrolling\":0,\"engaged\":0},\"cluster_id\":\"camera-route\"}]";
+            return "{\"players\":{\"requested\":0,\"connection_kind\":\"none_data_only\",\"groups\":[]},\"npcs\":{\"requested\":"
+                + plan.RequestedActorCount + ",\"representation\":\"networked_gameobject_ecs\",\"groups\":" + groups
+                + ",\"accounting\":{\"ecs_data_only_npcs\":0,\"full_gameobject_purrnet_npcs\":" + plan.RequestedActorCount
+                + ",\"real_player_connections\":0,\"synthetic_network_players\":0}}}";
+        }
+
+        private static string BuildGraphicalRequiredFeaturesJson(Test_GraphicalScenarioPlan plan)
+        {
+            var features = new List<string>
+            {
+                "seeded_world_fixture",
+                "rendered_client",
+                "deterministic_camera_route",
+            };
+            if (plan.RequiresRealClientSession)
+                features.Add("real_purrnet_client_session");
+            if (plan.RequiresWorldStreaming)
+                features.Add("normal_world_streaming");
+            return "[\"" + string.Join("\",\"", features) + "\"]";
+        }
+
+        private static string BuildGraphicalSpaceJson(Test_GraphicalScenarioPlan plan, Test_WorldFixturePlan world)
+        {
+            var anchorTileX = world.WorldTileX;
+            var anchorTileZ = world.WorldTileZ;
+            var waypoint = plan.Waypoints[0];
+            return "{\"world_id\":\"fixture-world\",\"map_id\":\"fixture-open-world\",\"instance_id\":null,\"origin_cell_size_m\":100,\"world_tile_size_m\":256,\"generated_grid\":{\"columns\":"
+                + plan.FixtureVariants.Length + ",\"rows\":1,\"anchor_tile\":[" + anchorTileX + "," + anchorTileZ
+                + "]},\"clusters\":[{\"id\":\"camera-route\",\"center_world_m\":["
+                + waypoint.WorldX.ToString("R", CultureInfo.InvariantCulture) + ","
+                + waypoint.WorldY.ToString("R", CultureInfo.InvariantCulture) + ","
+                + waypoint.WorldZ.ToString("R", CultureInfo.InvariantCulture) + "],\"radius_m\":"
+                + plan.RouteDistanceMeters.ToString("R", CultureInfo.InvariantCulture) + ",\"players\":0,\"npcs\":"
+                + plan.RequestedActorCount + "}]}";
+        }
+
+        private static string BuildGraphicalEnvironmentJson(Test_GraphicalScenarioPlan plan, Test_WorldFixturePlan world)
+        {
+            if (world.Spawns == null)
+                throw new InvalidOperationException("The graphical world fixture plan has no deterministic spawn list for environment evidence.");
+
+            var terrain = CountSpawns(world, "Ground");
+            var buildings = CountSpawns(world, "Building");
+            var trees = CountSpawns(world, "Tree");
+            var undergrowth = CountSpawns(world, "Undergrowth");
+            var props = world.ObjectCount - terrain - buildings - trees - undergrowth;
+            return $"{{\"tile_archetype\":{Quote(plan.ScenarioID.ToLowerInvariant())},\"terrain_per_tile\":{terrain},\"buildings_per_tile\":{buildings},\"props_per_tile\":{props},\"trees_per_tile\":{trees},\"undergrowth_per_tile\":{undergrowth},\"material_slots_per_tile\":{world.MaterialVariantCount},\"dynamic_lights_per_tile\":0,\"lod_policy_id\":\"fixture-lod-v1\",\"collision_enabled\":true}}";
+        }
+
+        private static int CountSpawns(Test_WorldFixturePlan world, string kind)
+        {
+            var count = 0;
+            foreach (var spawn in world.Spawns)
+            {
+                if (string.Equals(spawn.Kind, kind, StringComparison.Ordinal))
+                    count++;
+            }
+            return count;
+        }
+
+        private static string BuildGraphicalSchedulesJson(Test_GraphicalScenarioPlan plan)
+        {
+            return $"{{\"movement\":[{{\"actor_group\":\"camera\",\"route_id\":{Quote(plan.RouteID)},\"loop\":false,\"start_phase\":\"warmup\"}}],\"abilities\":[],\"events\":[]}}";
         }
 
         private static FixtureSpace BuildSpace(Test_ActorFixtureSpace space)

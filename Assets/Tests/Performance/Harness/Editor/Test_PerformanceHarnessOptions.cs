@@ -15,6 +15,7 @@ namespace Game.Tests.Performance.Harness
         FullNetworkedActors,
         StandaloneHeadlessServer,
         NetworkedClients,
+        GraphicalClient,
     }
 
     /// <summary>Bounded Editor configuration for one test-only performance run.</summary>
@@ -27,6 +28,10 @@ namespace Game.Tests.Performance.Harness
         public Test_PerformanceWorkloadMode WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyMinimal;
         public int ActorCount = Test_ActorFixtureLayout.NPC_COUNT;
         public int Seed = Test_ActorFixtureLayout.DEFAULT_SEED;
+        public Test_GraphicalScenario GraphicalScenario = Test_GraphicalScenario.Outdoor;
+        public Test_GraphicalActorDensity ActorDensity = Test_GraphicalActorDensity.None;
+        public float WarmupSeconds = Test_GraphicalFixtureLayout.DEFAULT_WARMUP_SECONDS;
+        public float MeasurementSeconds = Test_GraphicalFixtureLayout.DEFAULT_MEASUREMENT_SECONDS;
 
         public Test_PerformanceHarnessOptions Clone()
         {
@@ -38,8 +43,16 @@ namespace Game.Tests.Performance.Harness
                 WorkloadMode = WorkloadMode,
                 ActorCount = ActorCount,
                 Seed = Seed,
+                GraphicalScenario = GraphicalScenario,
+                ActorDensity = ActorDensity,
+                WarmupSeconds = WarmupSeconds,
+                MeasurementSeconds = MeasurementSeconds,
             };
         }
+
+        public bool IsGraphicalClient => WorkloadMode == Test_PerformanceWorkloadMode.GraphicalClient;
+
+        public string EffectiveProfileID => IsGraphicalClient ? Test_GraphicalFixtureLayout.PROFILE_ID : ProfileID;
 
         public bool IsServerOnlyDataMode => WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
             || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity;
@@ -48,6 +61,8 @@ namespace Game.Tests.Performance.Harness
         {
             get
             {
+                if (IsGraphicalClient)
+                    return Test_GraphicalFixtureLayout.PROFILE_ID + "-I-GEOMETRY";
                 return WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
                     || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity
                     ? "S04-I-DATA"
@@ -63,6 +78,14 @@ namespace Game.Tests.Performance.Harness
             diagnostic = null;
             worldPlan = null;
             actorProfile = null;
+
+            if (IsGraphicalClient)
+            {
+                if (!Test_GraphicalFixturePreflight.TryValidate(this, out var graphicalPlan, out diagnostic))
+                    return false;
+                worldPlan = FindWorldPlan(graphicalPlan, graphicalPlan.FixtureVariants[0]);
+                return true;
+            }
 
             if (ProfileID != Test_ActorFixtureLayout.PROFILE_ID)
                 return Fail("Only the tracked profile P1-S0-04 is available to this runner.", out diagnostic);
@@ -138,6 +161,8 @@ namespace Game.Tests.Performance.Harness
                     return "Standalone headless execution is blocked: no public or test-owned standalone launch hook is available to this runner.";
                 case Test_PerformanceWorkloadMode.NetworkedClients:
                     return "Networked-client execution is blocked: no supported real-client driver is available; server-only execution remains independent.";
+                case Test_PerformanceWorkloadMode.GraphicalClient:
+                    return "Graphical execution is blocked until the selected rendered-client fixture passes graphical preflight.";
                 default:
                     return "The selected workload mode is not supported by this test-only runner.";
             }
@@ -147,6 +172,23 @@ namespace Game.Tests.Performance.Harness
         {
             diagnostic = message;
             return false;
+        }
+
+        private static Test_WorldFixturePlan FindWorldPlan(Test_GraphicalScenarioPlan plan, string variant)
+        {
+            var manifest = Test_WorldFixtureLayout.BuildManifest(new Test_WorldFixtureOptions
+            {
+                Seed = plan.Seed,
+                DensityTier = (Test_WorldFixtureDensityTier)Enum.Parse(typeof(Test_WorldFixtureDensityTier), plan.ObjectDensityTier),
+                FixtureVersion = Test_WorldFixtureLayout.FIXTURE_VERSION,
+            });
+            foreach (var worldPlan in manifest.Scenes)
+            {
+                if (worldPlan.Variant == variant)
+                    return worldPlan;
+            }
+
+            return null;
         }
     }
 
@@ -178,25 +220,40 @@ namespace Game.Tests.Performance.Harness
         private void OnGUI()
         {
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-            EditorGUILayout.LabelField("Test-only server workload", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Test-only performance workload", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Runs the ordinary project server in an Editor Play Mode test scene. It does not build, launch a standalone player, bypass authentication, or create synthetic clients.",
+                "Runs one selected test-only workload through the ordinary project startup path. Graphical runs use the rendered client and never synthesize authenticated actors or replace missing streamed scenes.",
                 MessageType.Info);
 
             using (new EditorGUI.DisabledScope(Test_PerformanceHarnessController.IsRunning))
             {
-                EditorGUILayout.LabelField("Profile", _options.ProfileID);
+                EditorGUILayout.LabelField("Profile", _options.EffectiveProfileID);
                 _options.WorldFixture = (Test_WorldFixtureVariant)EditorGUILayout.EnumPopup("World fixture", _options.WorldFixture);
                 _options.WorkloadMode = (Test_PerformanceWorkloadMode)EditorGUILayout.EnumPopup("Workload mode", _options.WorkloadMode);
                 _options.DensityTier = (Test_WorldFixtureDensityTier)EditorGUILayout.EnumPopup("Density tier", _options.DensityTier);
-                _options.ActorCount = EditorGUILayout.IntField("Actor count", _options.ActorCount);
+                if (!_options.IsGraphicalClient)
+                    _options.ActorCount = EditorGUILayout.IntField("Actor count", _options.ActorCount);
                 _options.Seed = EditorGUILayout.IntField("Seed", _options.Seed);
+
+                if (_options.IsGraphicalClient)
+                {
+                    _options.GraphicalScenario = (Test_GraphicalScenario)EditorGUILayout.EnumPopup("Graphical scenario", _options.GraphicalScenario);
+                    _options.ActorDensity = (Test_GraphicalActorDensity)EditorGUILayout.EnumPopup("Actor density", _options.ActorDensity);
+                    _options.WarmupSeconds = EditorGUILayout.FloatField("Warmup seconds", _options.WarmupSeconds);
+                    _options.MeasurementSeconds = EditorGUILayout.FloatField("Measurement seconds", _options.MeasurementSeconds);
+                }
             }
 
             EditorGUILayout.Space(8f);
             EditorGUILayout.LabelField("Execution", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Phase timing", "2 s ramp / 2 s warmup / 5 s measurement / 1 s recovery");
-            EditorGUILayout.LabelField("Population", "Fixture-defined 100 NPCs; selected count must remain 100");
+            EditorGUILayout.LabelField(
+                "Phase timing",
+                _options.IsGraphicalClient
+                    ? $"2 s ramp / {_options.WarmupSeconds:0.##} s warmup / {_options.MeasurementSeconds:0.##} s measurement / 1 s recovery"
+                    : "2 s ramp / 2 s warmup / 5 s measurement / 1 s recovery");
+            EditorGUILayout.LabelField(
+                "Population",
+                _options.IsGraphicalClient ? "World objects from the selected tracked scene; actors require a real supported client session." : "Fixture-defined 100 NPCs; selected count must remain 100");
 
             using (new EditorGUILayout.HorizontalScope())
             {

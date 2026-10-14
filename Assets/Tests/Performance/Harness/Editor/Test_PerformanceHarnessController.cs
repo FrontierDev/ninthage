@@ -78,6 +78,10 @@ namespace Game.Tests.Performance.Harness
         public int workloadMode;
         public int actorCount;
         public int seed;
+        public int graphicalScenario;
+        public int actorDensity;
+        public float warmupSeconds;
+        public float measurementSeconds;
 
         public static Test_PerformancePendingRunOptions Capture(Test_PerformanceHarnessOptions options)
         {
@@ -89,6 +93,10 @@ namespace Game.Tests.Performance.Harness
                 workloadMode = (int)options.WorkloadMode,
                 actorCount = options.ActorCount,
                 seed = options.Seed,
+                graphicalScenario = (int)options.GraphicalScenario,
+                actorDensity = (int)options.ActorDensity,
+                warmupSeconds = options.WarmupSeconds,
+                measurementSeconds = options.MeasurementSeconds,
             };
         }
 
@@ -102,6 +110,10 @@ namespace Game.Tests.Performance.Harness
                 WorkloadMode = (Test_PerformanceWorkloadMode)workloadMode,
                 ActorCount = actorCount,
                 Seed = seed,
+                GraphicalScenario = (Test_GraphicalScenario)graphicalScenario,
+                ActorDensity = (Test_GraphicalActorDensity)actorDensity,
+                WarmupSeconds = warmupSeconds,
+                MeasurementSeconds = measurementSeconds,
             };
         }
     }
@@ -224,12 +236,15 @@ namespace Game.Tests.Performance.Harness
                     return;
                 }
 
-                var harnessScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(Test_PerformanceRun.HARNESS_SCENE_PATH);
+                var harnessScenePath = run.IsGraphicalClient
+                    ? Test_GraphicalFixturePreflight.CLIENT_BOOTSTRAP_SCENE_PATH
+                    : Test_PerformanceRun.HARNESS_SCENE_PATH;
+                var harnessScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(harnessScenePath);
                 if (harnessScene == null)
                 {
-                    run.Block("Test-owned harness scene is missing or not imported: " + Test_PerformanceRun.HARNESS_SCENE_PATH);
+                    run.Block("Required Play Mode entry scene is missing or not imported: " + harnessScenePath);
                     LastReportPath = run.ReportPath;
-                    Status = "Blocked: harness scene unavailable";
+                    Status = "Blocked: Play Mode entry scene unavailable";
                     StateChanged?.Invoke();
                     return;
                 }
@@ -237,11 +252,13 @@ namespace Game.Tests.Performance.Harness
                 _previousSceneSetup = EditorSceneManager.GetSceneManagerSetup();
                 _activeRun = run;
                 PersistActiveRun(STARTING_LIFECYCLE);
-                var opened = EditorSceneManager.OpenScene(Test_PerformanceRun.HARNESS_SCENE_PATH, OpenSceneMode.Single);
+                var opened = EditorSceneManager.OpenScene(harnessScenePath, OpenSceneMode.Single);
                 if (!opened.IsValid())
                     throw new InvalidOperationException("Unity could not open the test-owned performance harness scene.");
 
-                Status = "Starting ordinary server Play Mode...";
+                Status = run.IsGraphicalClient
+                    ? "Starting ordinary graphical client Play Mode..."
+                    : "Starting ordinary server Play Mode...";
                 LastReportPath = run.ReportPath;
                 StateChanged?.Invoke();
                 EditorApplication.isPlaying = true;
@@ -459,6 +476,7 @@ namespace Game.Tests.Performance.Harness
     {
         private Test_PerformanceRun _run;
         private Test_ActorFixtureRuntime _fixture;
+        private Test_GraphicalFixtureRuntime _graphicalFixture;
         private Scene _selectedWorldScene;
         private bool _cleanupCompleted;
         private bool _sceneUnloadAttempted;
@@ -480,7 +498,7 @@ namespace Game.Tests.Performance.Harness
         private IEnumerator Execute()
         {
             yield return DriveNested(ExecuteCore(), RecordExecutionFailure);
-            if (_fixture != null && !_cleanupCompleted)
+            if ((_fixture != null || _graphicalFixture != null) && !_cleanupCompleted)
                 yield return DriveNested(CleanupFixture(), RecordCleanupFailure);
             if (_selectedWorldScene.IsValid() && _selectedWorldScene.isLoaded && !_sceneUnloadAttempted)
                 yield return DriveNested(UnloadSelectedWorldFixture(), RecordSceneCleanupFailure);
@@ -526,6 +544,12 @@ namespace Game.Tests.Performance.Harness
         {
             _run.StartTelemetry();
             Test_PerformanceHarnessController.PersistActiveRun("running");
+            if (_run.IsGraphicalClient)
+            {
+                yield return ExecuteGraphicalCore();
+                yield break;
+            }
+
             yield return WaitForServerReady();
             _run.RegisterServerMetrics();
             yield return LoadSelectedWorldFixture();
@@ -576,6 +600,73 @@ namespace Game.Tests.Performance.Harness
                 PerformanceRunStatus.CompleteMeasured,
                 "MEASUREMENT_COMPLETE",
                 "The requested data-only population was measured and cleaned up successfully.");
+        }
+
+        private IEnumerator ExecuteGraphicalCore()
+        {
+            yield return WaitForClientReady();
+            _run.RegisterClientMetrics();
+            _run.RefreshGraphicalRunEvidence();
+            yield return LoadSelectedWorldFixture();
+            _graphicalFixture = _run.CreateGraphicalRuntime();
+            _graphicalFixture.AttachCamera(Camera.main);
+            _graphicalFixture.ValidateLoadedScene(_selectedWorldScene);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+
+            _run.BeginPhase(PerformanceMeasurementPhase.Ramp);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            yield return RunGraphicalRamp();
+            if (_run.StopRequested)
+            {
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the graphical run during ramp; this is not a timeout.");
+                yield break;
+            }
+
+            _run.MarkWorkloadApplied();
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Ramp);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            _run.BeginPhase(PerformanceMeasurementPhase.Warmup);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            yield return RunGraphicalWarmup();
+            if (_run.StopRequested)
+            {
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the graphical run during warmup; this is not a timeout.");
+                yield break;
+            }
+
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Warmup);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            _run.BeginPhase(PerformanceMeasurementPhase.Measurement);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            yield return RunGraphicalMeasurement();
+            if (_run.StopRequested)
+            {
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the graphical run during measurement; this is not a timeout.");
+                yield break;
+            }
+
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Measurement);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            _run.BeginPhase(PerformanceMeasurementPhase.Recovery);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            yield return RunGraphicalRecovery();
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Recovery);
+            yield return CleanupFixture();
+
+            if (!_graphicalFixture.RouteComplete)
+            {
+                SetRequestedResult(
+                    PerformanceRunStatus.FailCorrectness,
+                    "WORKLOAD_NOT_ACHIEVED",
+                    $"The graphical route reached {_graphicalFixture.RouteWaypointsReached} of {_graphicalFixture.Plan.Waypoints.Length} waypoints.");
+            }
+            else
+            {
+                SetRequestedResult(
+                    PerformanceRunStatus.CompleteMeasured,
+                    "MEASUREMENT_COMPLETE",
+                    "The selected graphical fixture was rendered through the ordinary client path and the deterministic camera route completed.");
+            }
         }
 
         private IEnumerator DriveNested(IEnumerator root, Action<Exception> onException)
@@ -650,6 +741,8 @@ namespace Game.Tests.Performance.Harness
                 return new Test_PerformanceFailureClassification("USER_STOPPED", PerformanceRunStatus.FailCorrectness);
             if (exception is Test_ActorFixturePreconditionException)
                 return new Test_PerformanceFailureClassification("FIXTURE_PRECONDITION_FAILED", PerformanceRunStatus.FailProvision);
+            if (exception is Test_PerformancePrerequisiteException)
+                return new Test_PerformanceFailureClassification("PREREQUISITE_BLOCKED", PerformanceRunStatus.BlockedPrerequisite);
             if (exception is TimeoutException)
                 return new Test_PerformanceFailureClassification("TIMEOUT", PerformanceRunStatus.FailTimeout);
             if (exception is Test_PerformanceResourceCeilingException)
@@ -699,6 +792,22 @@ namespace Game.Tests.Performance.Harness
             ThrowIfStopRequested();
         }
 
+        private IEnumerator WaitForClientReady()
+        {
+            ThrowIfStopRequested();
+            var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
+            while (!Game.Shared.GameConfigurationManager.IsInitialized
+                || !Game.Client.ClientWorldManager.Initialized
+                || !Game.Client.ClientPositionManager.Initialized)
+            {
+                ThrowIfStopRequested();
+                if (Time.realtimeSinceStartup >= deadline)
+                    throw new TimeoutException("Timed out waiting for ordinary graphical client initialization (configuration, client world manager and client position manager).");
+                yield return null;
+            }
+            ThrowIfStopRequested();
+        }
+
         private IEnumerator LoadSelectedWorldFixture()
         {
             var operation = EditorSceneManager.LoadSceneAsyncInPlayMode(
@@ -741,6 +850,68 @@ namespace Game.Tests.Performance.Harness
             }
             _run.ActivityController.AdvanceRamp(Test_PerformanceRun.RAMP_SECONDS, Test_PerformanceRun.RAMP_SECONDS);
             _run.ObserveEntityCount(_fixture.DataOnlyEntityCount);
+        }
+
+        private IEnumerator RunGraphicalRamp()
+        {
+            var start = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - start < Test_PerformanceRun.RAMP_SECONDS)
+            {
+                ThrowIfStopRequested();
+                _graphicalFixture.Advance(0f, Test_PerformanceRun.RAMP_SECONDS);
+                _graphicalFixture.RecordMetrics();
+                yield return null;
+            }
+        }
+
+        private IEnumerator RunGraphicalWarmup()
+        {
+            var start = Time.realtimeSinceStartup;
+            var nextSample = 0f;
+            while (Time.realtimeSinceStartup - start < _run.Options.WarmupSeconds)
+            {
+                ThrowIfStopRequested();
+                var elapsed = Time.realtimeSinceStartup - start;
+                _graphicalFixture.Advance(elapsed, _run.Options.WarmupSeconds);
+                if (elapsed >= nextSample)
+                {
+                    _graphicalFixture.RecordMetrics();
+                    nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
+                }
+                yield return null;
+            }
+        }
+
+        private IEnumerator RunGraphicalMeasurement()
+        {
+            var start = Time.realtimeSinceStartup;
+            var nextSample = 0f;
+            while (Time.realtimeSinceStartup - start < _run.Options.MeasurementSeconds)
+            {
+                ThrowIfStopRequested();
+                var elapsed = Time.realtimeSinceStartup - start;
+                _graphicalFixture.Advance(elapsed, _run.Options.MeasurementSeconds);
+                if (elapsed >= nextSample)
+                {
+                    _graphicalFixture.RecordMetrics();
+                    nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
+                }
+                yield return null;
+            }
+
+            _graphicalFixture.Advance(_run.Options.MeasurementSeconds, _run.Options.MeasurementSeconds);
+            _graphicalFixture.RecordMetrics();
+            _run.CaptureGraphicalSnapshot();
+        }
+
+        private IEnumerator RunGraphicalRecovery()
+        {
+            var start = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - start < Test_PerformanceRun.RECOVERY_SECONDS)
+            {
+                ThrowIfStopRequested();
+                yield return null;
+            }
         }
 
         private IEnumerator RunWarmup()
@@ -811,6 +982,14 @@ namespace Game.Tests.Performance.Harness
         {
             if (_cleanupCompleted)
                 yield break;
+            if (_graphicalFixture != null)
+            {
+                _graphicalFixture.Dispose();
+                _run.MarkCleanupComplete();
+                _cleanupCompleted = true;
+                Test_PerformanceHarnessController.PersistActiveRun("running");
+                yield break;
+            }
             if (_fixture == null)
                 yield break;
 
@@ -852,7 +1031,13 @@ namespace Game.Tests.Performance.Harness
 
             try
             {
-                if (_fixture != null && !_cleanupCompleted)
+                if (_graphicalFixture != null && !_cleanupCompleted)
+                {
+                    _graphicalFixture.Dispose();
+                    _run.MarkCleanupComplete();
+                    _cleanupCompleted = true;
+                }
+                else if (_fixture != null && !_cleanupCompleted)
                 {
                     _run.CaptureActivitySnapshot("measurement_interrupted_pre_cleanup");
                     _fixture.Cleanup();
