@@ -182,6 +182,41 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void ReaderAcceptsCanonicalTelemetryUnitsAndRejectsUnsupportedUnits()
+        {
+            const string metrics = "["
+                + "{\"metric_id\":\"test.unit.milliseconds\",\"unit\":\"ms\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":1,\"max\":1,\"mean\":1,\"p50\":1,\"p95\":1,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"},"
+                + "{\"metric_id\":\"test.unit.bytes\",\"unit\":\"bytes\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":1,\"max\":1,\"mean\":1,\"p50\":1,\"p95\":1,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"},"
+                + "{\"metric_id\":\"test.unit.count\",\"unit\":\"count\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":1,\"max\":1,\"mean\":1,\"p50\":1,\"p95\":1,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"},"
+                + "{\"metric_id\":\"test.unit.ticks\",\"unit\":\"ticks\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":1,\"max\":1,\"mean\":1,\"p50\":1,\"p95\":1,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"},"
+                + "{\"metric_id\":\"harness.graphical.event_rate\",\"unit\":\"events/s\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":1,\"max\":1,\"mean\":1,\"p50\":1,\"p95\":1,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"},"
+                + "{\"metric_id\":\"test.unit.ratio\",\"unit\":\"ratio\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":1,\"max\":1,\"mean\":1,\"p50\":1,\"p95\":1,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"},"
+                + "{\"metric_id\":\"harness.graphical.route_distance\",\"unit\":\"m\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":1,\"max\":1,\"mean\":1,\"p50\":1,\"p95\":1,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"}"
+                + "]";
+            var directory = CreateResult(
+                graphical: true,
+                scenario: "Forest",
+                finishedUtc: DateTime.UtcNow.AddMinutes(6),
+                status: "FAIL-INSTRUMENTATION",
+                metrics: metrics);
+
+            var view = Test_PerformanceResultReader.ReadFinalized(directory);
+
+            Assert.That(view.IsVerified, Is.True, view.ErrorMessage);
+
+            var unsupportedDirectory = CreateResult(
+                graphical: true,
+                scenario: "Forest",
+                finishedUtc: DateTime.UtcNow.AddMinutes(7),
+                status: "FAIL-INSTRUMENTATION",
+                metrics: metrics.Replace("\"unit\":\"m\"", "\"unit\":\"furlongs\"", StringComparison.Ordinal));
+            var unsupported = Test_PerformanceResultReader.ReadFinalized(unsupportedDirectory);
+
+            Assert.That(unsupported.IsVerified, Is.False);
+            Assert.That(unsupported.ErrorMessage, Does.Contain("unknown metric unit"));
+        }
+
+        [Test]
         public void ReaderRejectsMalformedPartialWrongIdentitySchemaAndOutsideResults()
         {
             var directory = CreateResult(

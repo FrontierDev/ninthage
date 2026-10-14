@@ -1007,7 +1007,13 @@ namespace Game.Tests.Performance.Harness
 
         private static bool IsKnownUnit(string unit)
         {
-            return unit == "ms" || unit == "bytes" || unit == "count" || unit == "ticks" || unit == "events_per_second" || unit == "ratio" || unit == "metres";
+            return unit == "ms"
+                || unit == "bytes"
+                || unit == "count"
+                || unit == "ticks"
+                || unit == "events/s"
+                || unit == "ratio"
+                || unit == "m";
         }
 
         private sealed class Test_PerformanceResultCandidate

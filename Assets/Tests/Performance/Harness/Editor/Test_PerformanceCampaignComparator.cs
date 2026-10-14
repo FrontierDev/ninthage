@@ -688,7 +688,7 @@ namespace Game.Tests.Performance.Harness
                 return "duration/latency";
             if (unit == "bytes")
                 return "memory/byte snapshot or volume";
-            if (unit == "count" || unit == "ticks" || unit == "events_per_second")
+            if (unit == "count" || unit == "ticks" || unit == "events/s")
                 return "counter or rate; inspect metric identity";
             return unit ?? UNKNOWN;
         }

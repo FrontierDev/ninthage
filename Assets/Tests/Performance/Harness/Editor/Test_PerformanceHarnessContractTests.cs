@@ -457,6 +457,66 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void ProducedGraphicalEvidenceUsesCanonicalUnitsAndIsReadable()
+        {
+            var run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.GraphicalClient,
+            });
+            var canonicalDefinitions = new[]
+            {
+                new PerformanceMetricDefinition("test.graphical.milliseconds", PerformanceMetricUnit.Milliseconds, PerformanceMetricSide.Client, "test", "interval"),
+                new PerformanceMetricDefinition("test.graphical.bytes", PerformanceMetricUnit.Bytes, PerformanceMetricSide.Client, "test", "interval"),
+                new PerformanceMetricDefinition("test.graphical.count", PerformanceMetricUnit.Count, PerformanceMetricSide.Client, "test", "interval"),
+                new PerformanceMetricDefinition("test.graphical.ticks", PerformanceMetricUnit.Ticks, PerformanceMetricSide.Client, "test", "interval"),
+                new PerformanceMetricDefinition("test.graphical.event_rate", PerformanceMetricUnit.EventsPerSecond, PerformanceMetricSide.Client, "test", "interval"),
+                new PerformanceMetricDefinition("test.graphical.ratio", PerformanceMetricUnit.Ratio, PerformanceMetricSide.Client, "test", "interval"),
+            };
+            try
+            {
+                run.StartTelemetry();
+                Test_PerformanceHarnessMetrics.RegisterGraphical();
+                foreach (var definition in canonicalDefinitions)
+                    PerformanceTelemetry.RegisterMetric(definition, 16);
+                PerformanceTelemetry.MarkWorkloadApplied();
+                Assert.That(PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement), Is.True);
+                Assert.That(PerformanceTelemetry.TryRecord(Test_PerformanceHarnessMetrics.GRAPHICAL_ROUTE_DISTANCE, 12.5d, 1), Is.True);
+                foreach (var definition in canonicalDefinitions)
+                    Assert.That(PerformanceTelemetry.TryRecord(definition, 1d, 1), Is.True);
+                run.Complete(
+                    PerformanceRunStatus.FailInstrumentation,
+                    "TEST_CANONICAL_UNITS",
+                    "The test intentionally finalized production graphical evidence.");
+
+                var view = Test_PerformanceEvidence.ReadFinalizedResult(run.ResultsDirectory);
+                var summary = File.ReadAllText(run.SummaryPath);
+
+                Assert.That(view.IsVerified, Is.True, view.ErrorMessage);
+                Assert.That(summary, Does.Contain("\"metric_id\":\"harness.graphical.route_distance\""));
+                Assert.That(summary, Does.Contain("\"unit\":\"m\""));
+                Assert.That(summary, Does.Contain("\"metric_id\":\"test.graphical.event_rate\""));
+                Assert.That(summary, Does.Contain("\"unit\":\"events/s\""));
+                Assert.That(summary, Does.Contain("\"unit\":\"ms\""));
+                Assert.That(summary, Does.Contain("\"unit\":\"bytes\""));
+                Assert.That(summary, Does.Contain("\"unit\":\"count\""));
+                Assert.That(summary, Does.Contain("\"unit\":\"ticks\""));
+                Assert.That(summary, Does.Contain("\"unit\":\"ratio\""));
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(run.ResultsDirectory))
+                    Directory.Delete(run.ResultsDirectory, true);
+            }
+        }
+
+        [Test]
         public void IncompleteAndTimeoutRunsAreMarkedInEvidence()
         {
             var incompleteSummary = CompleteCreatedRun(
