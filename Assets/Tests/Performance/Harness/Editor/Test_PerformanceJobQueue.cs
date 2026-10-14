@@ -1432,11 +1432,13 @@ namespace Game.Tests.Performance.Harness
             var directory = Path.GetDirectoryName(path);
             Directory.CreateDirectory(directory);
             var temporaryPath = path + ".tmp";
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+
             File.WriteAllText(temporaryPath, JsonUtility.ToJson(value, true), new UTF8Encoding(false));
             if (File.Exists(path))
-                File.Replace(temporaryPath, path, null);
-            else
-                File.Move(temporaryPath, path);
+                File.Delete(path);
+            File.Move(temporaryPath, path);
         }
 
         private static void ValidateManifest(Test_PerformanceCampaignManifest manifest, string directory)

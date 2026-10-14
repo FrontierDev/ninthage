@@ -59,6 +59,7 @@ namespace Game.Tests.Performance.Harness
             Assert.That(server.EvidenceScope, Does.Contain("ECS data-only"));
             Assert.That(server.Scenario, Is.EqualTo("Outdoor"));
             Assert.That(server.Seed, Is.EqualTo("424242"));
+            Assert.That(server.RouteSummary, Is.EqualTo("Graphical route: not_applicable"));
             Assert.That(graphical.IsVerified, Is.True, graphical.ErrorMessage);
             Assert.That(graphical.EvidenceScope, Does.Contain("rendered-client"));
             Assert.That(graphical.Scenario, Is.EqualTo("Forest"));
@@ -107,6 +108,7 @@ namespace Game.Tests.Performance.Harness
             const string metrics = "["
                 + "{\"metric_id\":\"server.ecs.actor_update_duration\",\"unit\":\"ms\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":100,\"attempted_sample_count\":125,\"dropped_sample_count\":25,\"min\":1,\"max\":10,\"mean\":5,\"p50\":4,\"p95\":9,\"p99\":10,\"measurement_coverage\":0.8,\"reason\":\"\",\"retention_policy\":\"phase_reserved_exact\"},"
                 + "{\"metric_id\":\"server.memory.total_allocated_bytes\",\"unit\":\"bytes\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":0,\"dropped_sample_count\":0,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":null,\"reason\":\"no source\",\"retention_policy\":\"not_collected\"},"
+                + "{\"metric_id\":\"server.ecs.world_spawn_duration\",\"unit\":\"ms\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":125,\"dropped_sample_count\":25,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":0.8,\"reason\":\"measurement_sample_coverage_below_policy\",\"retention_policy\":\"phase_reserved_reservoir\"},"
                 + "{\"metric_id\":\"server.memory.mono_used_bytes\",\"unit\":\"bytes\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":0,\"max\":0,\"mean\":0,\"p50\":0,\"p95\":0,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"}"
                 + "]";
             var directory = CreateResult(
@@ -119,6 +121,7 @@ namespace Game.Tests.Performance.Harness
             var view = Test_PerformanceResultReader.ReadFinalized(directory);
             var measured = FindMetric(view, "server.ecs.actor_update_duration");
             var unavailable = FindMetric(view, "server.memory.total_allocated_bytes");
+            var coverageRejected = FindMetric(view, "server.ecs.world_spawn_duration");
             var zero = FindMetric(view, "server.memory.mono_used_bytes");
 
             Assert.That(view.IsVerified, Is.True, view.ErrorMessage);
@@ -130,6 +133,9 @@ namespace Game.Tests.Performance.Harness
             Assert.That(measured.DisplayValue, Does.Contain("[ms]"));
             Assert.That(unavailable.Observation, Is.EqualTo("unavailable"));
             Assert.That(unavailable.DisplayValue, Is.EqualTo("unavailable [bytes]"));
+            Assert.That(coverageRejected.Observation, Is.EqualTo("unavailable"));
+            Assert.That(coverageRejected.MeasurementCoverage, Is.EqualTo(0.8d));
+            Assert.That(coverageRejected.DisplayValue, Is.EqualTo("unavailable [ms]"));
             Assert.That(zero.P50, Is.EqualTo(0));
             Assert.That(zero.DisplayValue, Does.Contain("p50 0"));
             Assert.That(zero.DisplayValue, Does.Contain("p99 insufficient_samples"));
@@ -477,6 +483,15 @@ namespace Game.Tests.Performance.Harness
             Assert.That(Test_PerformanceJobQueue.RemoveJob(duplicateID, out diagnostic), Is.True, diagnostic);
             Assert.That(Test_PerformanceJobQueue.Jobs, Has.Count.EqualTo(2));
             Assert.That(Test_PerformanceJobQueue.QueuedCount, Is.EqualTo(4));
+
+            var campaignDirectory = GetCampaignDirectory(_createdCampaignID);
+            var campaignPath = Path.Combine(campaignDirectory, "campaign.json");
+            var indexPath = Path.Combine(campaignDirectory, "index.json");
+            Assert.That(File.Exists(campaignPath), Is.True);
+            Assert.That(File.Exists(indexPath), Is.True);
+            Assert.That(JsonUtility.FromJson<Test_PerformanceCampaignManifest>(File.ReadAllText(campaignPath)), Is.Not.Null);
+            Assert.That(JsonUtility.FromJson<Test_PerformanceCampaignIndex>(File.ReadAllText(indexPath)), Is.Not.Null);
+            Assert.That(Directory.GetFiles(campaignDirectory, "*.tmp"), Is.Empty);
         }
 
         private static Test_PerformanceMetricView FindMetric(Test_PerformanceLastRunView view, string metricID)

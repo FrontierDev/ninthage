@@ -355,7 +355,7 @@ namespace Game.Tests.Performance.Harness
                 var fixture = ReadJson<Test_PerformanceFixtureDocument>(fixturePath, "fixture.json");
                 var artifacts = ReadJson<Test_PerformanceArtifactsDocument>(artifactsPath, "artifacts.json");
                 ValidateDocuments(directory, directoryRunID, summaryJson, summary, run, fixture, artifacts);
-                Populate(view, directory, summary, run, fixture);
+                Populate(view, directory, summaryJson, summary, run, fixture);
                 view.IsVerified = true;
             }
             catch (Exception exception)
@@ -471,7 +471,9 @@ namespace Game.Tests.Performance.Harness
             foreach (var field in numericFields)
             {
                 var isNull = IsJsonPropertyNull(metricJson, field);
-                var mustBeNull = !measured || (field == "p99" && metric.sample_count < 100);
+                var mustBeNull = field == "measurement_coverage"
+                    ? metric.attempted_sample_count == 0
+                    : !measured || (field == "p99" && metric.sample_count < 100);
                 if (mustBeNull != isNull)
                     throw new InvalidDataException($"summary.json has an invalid null/value state for {metric.metric_id}.{field}.");
             }
@@ -523,6 +525,26 @@ namespace Game.Tests.Performance.Harness
             return json.Substring(valueStart).StartsWith("null", StringComparison.Ordinal);
         }
 
+        private static bool HasJsonProperty(string json, string propertyName)
+        {
+            var marker = "\"" + propertyName + "\"";
+            var searchStart = 0;
+            while (searchStart < json.Length)
+            {
+                var propertyIndex = json.IndexOf(marker, searchStart, StringComparison.Ordinal);
+                if (propertyIndex < 0)
+                    return false;
+
+                var valueStart = propertyIndex + marker.Length;
+                SkipJsonWhitespace(json, ref valueStart);
+                if (valueStart < json.Length && json[valueStart] == ':')
+                    return true;
+                searchStart = propertyIndex + marker.Length;
+            }
+
+            return false;
+        }
+
         private static void SkipJsonWhitespace(string json, ref int index)
         {
             while (index < json.Length && char.IsWhiteSpace(json[index]))
@@ -532,22 +554,23 @@ namespace Game.Tests.Performance.Harness
         private static void Populate(
             Test_PerformanceLastRunView view,
             string directory,
+            string summaryJson,
             Test_PerformanceSummaryDocument summary,
             Test_PerformanceRunDocument run,
             Test_PerformanceFixtureDocument fixture)
         {
-            var graphical = string.Equals(run.render.mode, "rendered", StringComparison.OrdinalIgnoreCase)
-                || run.render.graphical_client;
-            if (graphical != (summary.achieved.graphical != null))
+            var graphical = IsGraphicalExecution(run);
+            var summaryGraphicalPropertyPresent = HasJsonProperty(summaryJson, "graphical")
+                && !IsJsonPropertyNull(summaryJson, "graphical");
+            if (graphical != summaryGraphicalPropertyPresent)
             {
-                var summaryGraphical = summary.achieved.graphical != null;
                 throw new InvalidDataException(
                     "summary.json and run.json disagree about graphical execution: run.render.mode='"
                     + (run.render.mode ?? "missing")
                     + "', run.render.graphical_client="
                     + run.render.graphical_client
                     + ", summary.achieved.graphical="
-                    + summaryGraphical
+                    + summaryGraphicalPropertyPresent
                     + ".");
             }
 
@@ -569,7 +592,7 @@ namespace Game.Tests.Performance.Harness
                 : "Editor-only ECS data-only fixture; not standalone headless capacity or real actor/network coverage.";
             view.PopulationSummary = BuildPopulationSummary(summary, fixture, graphical);
             view.ActivitySummary = BuildActivitySummary(summary);
-            view.RouteSummary = BuildRouteSummary(summary);
+            view.RouteSummary = BuildRouteSummary(summary, graphical);
             view.PurrNetStatus = BuildPurrNetStatus(summary, graphical);
             view.ReportPath = Path.Combine(directory, "report.md");
 
@@ -581,6 +604,15 @@ namespace Game.Tests.Performance.Harness
 
             foreach (var group in BuildMetricGroups(summary.metrics, graphical))
                 view.MetricGroups.Add(group);
+        }
+
+        private static bool IsGraphicalExecution(Test_PerformanceRunDocument run)
+        {
+            if (string.Equals(run.render.mode, "rendered", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (string.Equals(run.render.mode, "server_only", StringComparison.OrdinalIgnoreCase))
+                return false;
+            throw new InvalidDataException("run.json contains an unsupported or missing render.mode: " + (run.render.mode ?? "missing") + ".");
         }
 
         private static List<Test_PerformanceMetricGroupView> BuildMetricGroups(Test_PerformanceMetricDocument[] metrics, bool graphical)
@@ -781,13 +813,15 @@ namespace Game.Tests.Performance.Harness
                 + $"wake surge {activity.wake_surge}; churn spawn {activity.spawn_events}, despawn {activity.despawn_events}";
         }
 
-        private static string BuildRouteSummary(Test_PerformanceSummaryDocument summary)
+        private static string BuildRouteSummary(Test_PerformanceSummaryDocument summary, bool graphical)
         {
-            var graphical = summary.achieved.graphical;
-            if (graphical == null)
+            if (!graphical)
                 return "Graphical route: not_applicable";
-            var state = graphical.route_complete ? "complete" : "incomplete";
-            return $"Graphical route: {graphical.route_waypoints_reached}/{graphical.route_waypoints_requested} waypoints ({state})";
+            var graphicalPopulation = summary.achieved.graphical;
+            if (graphicalPopulation == null)
+                return "Graphical route: not_applicable";
+            var state = graphicalPopulation.route_complete ? "complete" : "incomplete";
+            return $"Graphical route: {graphicalPopulation.route_waypoints_reached}/{graphicalPopulation.route_waypoints_requested} waypoints ({state})";
         }
 
         private static string BuildPurrNetStatus(Test_PerformanceSummaryDocument summary, bool graphical)
@@ -843,10 +877,17 @@ namespace Game.Tests.Performance.Harness
             timestamp = default;
             const string prefix = "run-";
             const string format = "yyyyMMdd'T'HHmmssfff'Z'";
-            if (string.IsNullOrEmpty(runID) || !runID.StartsWith(prefix, StringComparison.Ordinal) || runID.Length < prefix.Length + format.Length)
+            const int timestampLength = 19;
+            if (string.IsNullOrEmpty(runID) || !runID.StartsWith(prefix, StringComparison.Ordinal))
                 return false;
+
+            var timestampStart = prefix.Length;
+            var separatorIndex = timestampStart + timestampLength;
+            if (runID.Length <= separatorIndex + 1 || runID[separatorIndex] != '-')
+                return false;
+
             return DateTime.TryParseExact(
-                runID.Substring(prefix.Length, format.Length),
+                runID.Substring(timestampStart, timestampLength),
                 format,
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,

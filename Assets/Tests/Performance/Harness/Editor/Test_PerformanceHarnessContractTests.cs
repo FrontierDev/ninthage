@@ -575,6 +575,7 @@ namespace Game.Tests.Performance.Harness
             Assert.That(metricJson, Does.Contain("\"retained_sample_count\":384"));
             Assert.That(metricJson, Does.Contain("\"dropped_sample_count\":616"));
             Assert.That(metricJson, Does.Contain("\"raw_trace_sample_count\":256"));
+            Assert.That(metricJson, Does.Contain("\"measurement_coverage\":0.384"));
             Assert.That(metricJson, Does.Contain("\"retention_policy\":\"phase_reserved_reservoir\""));
         }
 
