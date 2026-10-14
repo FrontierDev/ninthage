@@ -231,6 +231,83 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void ComparatorReportsMissingScenarioGroupsAsProvisional()
+        {
+            var baselineID = "campaign-five-scenario-baseline-" + Guid.NewGuid().ToString("N");
+            var candidateID = "campaign-outdoor-only-candidate-" + Guid.NewGuid().ToString("N");
+            var baselineDirectory = CreateCampaignDirectory(baselineID);
+            var candidateDirectory = CreateCampaignDirectory(candidateID);
+            _createdCampaignDirectories.Add(baselineDirectory);
+            _createdCampaignDirectories.Add(candidateDirectory);
+
+            var baseline = BuildFiveScenarioCampaign(baselineID, 1);
+            var candidate = BuildGraphicalCampaign(candidateID, 1);
+            for (var index = 0; index < baseline.jobs.Count; index++)
+            {
+                var job = baseline.jobs[index];
+                var graphical = job.options.IsGraphicalClient;
+                var scenario = graphical ? job.options.GraphicalScenario.ToString() : job.options.WorldFixture.ToString();
+                var metrics = graphical ? BuildRequiredGraphicalMetrics(false) : BuildRequiredServerMetrics(false);
+                AddCompletedAttempt(
+                    baseline,
+                    index,
+                    CreateResult(graphical, scenario, DateTime.UtcNow.AddMinutes(-10 + index), "COMPLETE-MEASURED", metrics),
+                    job.job_id);
+            }
+            AddCompletedAttempt(
+                candidate,
+                0,
+                CreateResult(true, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false)));
+            WriteCampaignManifest(baselineDirectory, baseline);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var report = CompareCampaigns(baselineID, candidateID, 1);
+            var matchedOutdoor = report.Groups.Single(group => group.Label == "P1-S0-06 / GraphicalClient / Outdoor");
+
+            Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.PROVISIONAL));
+            Assert.That(matchedOutdoor.Classification, Is.EqualTo(Test_PerformanceCampaignGroupClassification.MATCHED));
+            Assert.That(matchedOutdoor.BaselineValidCount, Is.EqualTo(1));
+            Assert.That(matchedOutdoor.CandidateValidCount, Is.EqualTo(1));
+            Assert.That(matchedOutdoor.Metrics.Where(metric => metric.IsRequired).All(metric => metric.CandidateQualified == 1), Is.True);
+            Assert.That(report.Groups.Where(group => group.Classification == Test_PerformanceCampaignGroupClassification.BASELINE_ONLY)
+                .Select(group => group.Label), Is.EquivalentTo(new[]
+                {
+                    "P1-S0-04 / EcsDataOnlyActivity / Outdoor",
+                    "P1-S0-04 / EcsDataOnlyMinimal / Outdoor",
+                    "P1-S0-06 / GraphicalClient / Forest",
+                    "P1-S0-06 / GraphicalClient / Settlement",
+                }));
+            Assert.That(report.Reasons, Has.Some.EqualTo("Candidate campaign " + candidateID + " lacks scenario groups: P1-S0-04 / EcsDataOnlyActivity / Outdoor, P1-S0-04 / EcsDataOnlyMinimal / Outdoor, P1-S0-06 / GraphicalClient / Forest, P1-S0-06 / GraphicalClient / Settlement."));
+            Assert.That(report.Summary, Does.Contain("missing candidate groups [P1-S0-04 / EcsDataOnlyActivity / Outdoor"));
+
+            var fullyMatchedID = "campaign-five-scenario-matched-" + Guid.NewGuid().ToString("N");
+            var fullyMatchedDirectory = CreateCampaignDirectory(fullyMatchedID);
+            _createdCampaignDirectories.Add(fullyMatchedDirectory);
+            var fullyMatched = BuildFiveScenarioCampaign(fullyMatchedID, 1);
+            for (var index = 0; index < fullyMatched.jobs.Count; index++)
+            {
+                var job = fullyMatched.jobs[index];
+                var graphical = job.options.IsGraphicalClient;
+                var scenario = graphical ? job.options.GraphicalScenario.ToString() : job.options.WorldFixture.ToString();
+                AddCompletedAttempt(
+                    fullyMatched,
+                    index,
+                    CreateResult(
+                        graphical,
+                        scenario,
+                        DateTime.UtcNow.AddMinutes(1 + index),
+                        "COMPLETE-MEASURED",
+                        graphical ? BuildRequiredGraphicalMetrics(false) : BuildRequiredServerMetrics(false)),
+                    job.job_id);
+            }
+            WriteCampaignManifest(fullyMatchedDirectory, fullyMatched);
+
+            var matchedReport = CompareCampaigns(baselineID, fullyMatchedID, 1);
+            Assert.That(matchedReport.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.COMPARABLE));
+            Assert.That(matchedReport.Groups.All(group => group.Classification == Test_PerformanceCampaignGroupClassification.MATCHED), Is.True);
+        }
+
+        [Test]
         public void ComparatorExcludesForgedCompleteAttemptBeforeMetricQualification()
         {
             var baselineID = "campaign-lifecycle-baseline-" + Guid.NewGuid().ToString("N");
@@ -427,6 +504,83 @@ namespace Game.Tests.Performance.Harness
 
             Assert.That(unsupported.IsVerified, Is.False);
             Assert.That(unsupported.ErrorMessage, Does.Contain("unknown metric unit"));
+        }
+
+        [Test]
+        public void ReaderPreservesHistoricalReservoirCoverageAndRejectsForgedCurrentCoverage()
+        {
+            var directory = CreateResult(
+                graphical: false,
+                scenario: "Outdoor",
+                finishedUtc: DateTime.UtcNow,
+                status: "COMPLETE-MEASURED",
+                metrics: "["
+                    + LegacyReservoirMetricJson("server.actor_manager.update_duration", "ms", "server_update", 384, 1000, 4d, 5d, 6d)
+                    + ","
+                    + MetricJsonWithSource("server.ecs.actor_update_duration", "server", "ms", "server_update", 4d, 5d, 6d)
+                    + "]");
+
+            var view = Test_PerformanceResultReader.ReadFinalized(directory);
+            var legacy = FindMetric(view, "server.actor_manager.update_duration");
+            var unaffected = FindMetric(view, "server.ecs.actor_update_duration");
+
+            Assert.That(view.IsVerified, Is.True, view.ErrorMessage);
+            Assert.That(view.Status, Is.EqualTo("COMPLETE-MEASURED"));
+            Assert.That(legacy.MeasurementCoverage, Is.EqualTo(0.384d).Within(0.0000001d));
+            Assert.That(legacy.OriginalMeasurementCoverage, Is.EqualTo(1d));
+            Assert.That(legacy.CoverageDiagnostic, Does.Contain("legacy_coverage_semantics"));
+            Assert.That(legacy.DisplayValue, Does.Contain("exported measurement_coverage=1"));
+            Assert.That(legacy.DisplayValue, Does.Contain("effective retained coverage=0.384"));
+            Assert.That(unaffected.MeasurementCoverage, Is.EqualTo(1d));
+            Assert.That(unaffected.CoverageDiagnostic, Is.Null.Or.Empty);
+
+            var forgedDirectory = CreateResult(
+                graphical: false,
+                scenario: "Outdoor",
+                finishedUtc: DateTime.UtcNow.AddMinutes(1),
+                status: "COMPLETE-MEASURED",
+                metrics: "[" + CurrentMetricJsonWithForgedCoverage("server.actor_manager.update_duration", "server_update") + "]");
+            var forged = Test_PerformanceResultReader.ReadFinalized(forgedDirectory);
+
+            Assert.That(forged.IsVerified, Is.False);
+            Assert.That(forged.ErrorMessage, Does.Contain("measurement coverage does not match retained/attempted samples"));
+        }
+
+        [Test]
+        public void ComparatorUsesEffectiveHistoricalRetentionForQualification()
+        {
+            var baselineID = "campaign-legacy-baseline-" + Guid.NewGuid().ToString("N");
+            var candidateID = "campaign-legacy-candidate-" + Guid.NewGuid().ToString("N");
+            var baselineDirectory = CreateCampaignDirectory(baselineID);
+            var candidateDirectory = CreateCampaignDirectory(candidateID);
+            _createdCampaignDirectories.Add(baselineDirectory);
+            _createdCampaignDirectories.Add(candidateDirectory);
+
+            var baseline = BuildServerCampaign(baselineID, 1);
+            var candidate = BuildServerCampaign(candidateID, 1);
+            AddCompletedAttempt(
+                baseline,
+                0,
+                CreateResult(false, "Outdoor", DateTime.UtcNow.AddMinutes(-1), "COMPLETE-MEASURED", BuildRequiredServerMetrics(true)),
+                "job-server");
+            AddCompletedAttempt(
+                candidate,
+                0,
+                CreateResult(false, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredServerMetrics(true)),
+                "job-server");
+            WriteCampaignManifest(baselineDirectory, baseline);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var report = CompareCampaigns(baselineID, candidateID, 1);
+            var group = report.Groups.Single();
+            var legacyMetric = group.Metrics.Single(metric => metric.MetricID == "server.actor_manager.update_duration");
+            var unaffectedMetric = group.Metrics.Single(metric => metric.MetricID == "server.ecs.actor_update_duration");
+
+            Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.PROVISIONAL));
+            Assert.That(group.CandidateAttempts.Single().IsValid, Is.True);
+            Assert.That(legacyMetric.CandidateQualified, Is.EqualTo(0));
+            Assert.That(unaffectedMetric.CandidateQualified, Is.EqualTo(1));
+            Assert.That(legacyMetric.Caveat, Does.Contain("legacy_coverage_semantics"));
         }
 
         [Test]
@@ -856,6 +1010,109 @@ namespace Game.Tests.Performance.Harness
             };
         }
 
+        private static Test_PerformanceCampaignManifest BuildFiveScenarioCampaign(string campaignID, int repeatCount)
+        {
+            var jobs = new List<Test_PerformanceCampaignJob>
+            {
+                BuildCampaignJob(
+                    "job-server-minimal",
+                    new Test_PerformanceHarnessOptions
+                    {
+                        WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyMinimal,
+                    },
+                    "server-minimal-fixture-identity"),
+                BuildCampaignJob(
+                    "job-server-activity",
+                    new Test_PerformanceHarnessOptions
+                    {
+                        WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyActivity,
+                    },
+                    "server-activity-fixture-identity"),
+                BuildCampaignJob(
+                    "job-graphical-outdoor",
+                    new Test_PerformanceHarnessOptions
+                    {
+                        WorkloadMode = Test_PerformanceWorkloadMode.GraphicalClient,
+                        GraphicalScenario = Test_GraphicalScenario.Outdoor,
+                    },
+                    "graphical-fixture-identity"),
+                BuildCampaignJob(
+                    "job-graphical-forest",
+                    new Test_PerformanceHarnessOptions
+                    {
+                        WorkloadMode = Test_PerformanceWorkloadMode.GraphicalClient,
+                        GraphicalScenario = Test_GraphicalScenario.Forest,
+                    },
+                    "graphical-forest-fixture-identity"),
+                BuildCampaignJob(
+                    "job-graphical-settlement",
+                    new Test_PerformanceHarnessOptions
+                    {
+                        WorkloadMode = Test_PerformanceWorkloadMode.GraphicalClient,
+                        GraphicalScenario = Test_GraphicalScenario.Settlement,
+                    },
+                    "graphical-settlement-fixture-identity"),
+            };
+            foreach (var job in jobs)
+                job.repeat_count = repeatCount;
+            return new Test_PerformanceCampaignManifest
+            {
+                campaign_id = campaignID,
+                state = Test_PerformanceCampaignState.COMPLETED,
+                created_utc = DateTime.UtcNow.AddMinutes(-30).ToString("o"),
+                updated_utc = DateTime.UtcNow.ToString("o"),
+                finished_utc = DateTime.UtcNow.ToString("o"),
+                source = BuildComparableSource(),
+                jobs = jobs,
+            };
+        }
+
+        private static Test_PerformanceCampaignJob BuildCampaignJob(
+            string jobID,
+            Test_PerformanceHarnessOptions options,
+            string configurationIdentity)
+        {
+            return new Test_PerformanceCampaignJob
+            {
+                job_id = jobID,
+                options = options,
+                repeat_count = 1,
+                validation_state = "valid",
+                fixture_identity = new Test_PerformanceCampaignFixtureIdentity
+                {
+                    configuration_sha256 = configurationIdentity,
+                    profile_id = options.EffectiveProfileID,
+                    profile_revision = "1.0.0",
+                    actor_variant_id = options.ActorVariantID,
+                },
+            };
+        }
+
+        private static Test_PerformanceCampaignManifest BuildServerCampaign(string campaignID, int repeatCount)
+        {
+            var job = BuildCampaignJob(
+                "job-server",
+                new Test_PerformanceHarnessOptions
+                {
+                    WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyMinimal,
+                },
+                "server-fixture-identity");
+            job.repeat_count = repeatCount;
+            return new Test_PerformanceCampaignManifest
+            {
+                campaign_id = campaignID,
+                state = Test_PerformanceCampaignState.COMPLETED,
+                created_utc = DateTime.UtcNow.AddMinutes(-30).ToString("o"),
+                updated_utc = DateTime.UtcNow.ToString("o"),
+                finished_utc = DateTime.UtcNow.ToString("o"),
+                source = BuildComparableSource(),
+                jobs = new List<Test_PerformanceCampaignJob>
+                {
+                    job,
+                },
+            };
+        }
+
         private static Test_PerformanceCampaignSource BuildComparableSource()
         {
             return new Test_PerformanceCampaignSource
@@ -879,13 +1136,14 @@ namespace Game.Tests.Performance.Harness
         private static void AddCompletedAttempt(
             Test_PerformanceCampaignManifest manifest,
             int repeatIndex,
-            string resultDirectory)
+            string resultDirectory,
+            string jobID = "job-graphical")
         {
             var runID = Path.GetFileName(resultDirectory);
             manifest.attempts.Add(new Test_PerformanceCampaignAttempt
             {
                 attempt_id = manifest.campaign_id + "-attempt-" + repeatIndex,
-                job_id = "job-graphical",
+                job_id = jobID,
                 repeat_index = repeatIndex + 1,
                 state = Test_PerformanceCampaignAttemptState.COMPLETED,
                 run_id = runID,
@@ -929,9 +1187,44 @@ namespace Game.Tests.Performance.Harness
             return "[" + string.Join(",", metrics) + "]";
         }
 
+        private static string BuildRequiredServerMetrics(bool includeLegacyMetric)
+        {
+            var metrics = new List<string>
+            {
+                includeLegacyMetric
+                    ? LegacyReservoirMetricJson("server.actor_manager.update_duration", "ms", "server_update", 4d, 5d, 6d)
+                    : MetricJsonWithSource("server.actor_manager.update_duration", "server", "ms", "server_update", 4d, 5d, 6d),
+                MetricJsonWithSource("server.ecs.actor_update_duration", "server", "ms", "server_update", 4d, 5d, 6d),
+                MetricJsonWithSource("server.memory.total_allocated_bytes", "server", "bytes", "server_update", 100d, 100d, 100d),
+                MetricJsonWithSource("server.actor.full_entity_scan_count", "server", "count", "server_frame", 26d, 26d, 26d),
+            };
+            return "[" + string.Join(",", metrics) + "]";
+        }
+
         private static string MetricJson(string metricID, string unit, string scope, double p50, double p95, double p99)
         {
-            return "{\"metric_id\":\"" + metricID + "\",\"source\":\"client\",\"scope\":\"" + scope + "\",\"unit\":\"" + unit + "\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":100,\"retained_sample_count\":100,\"attempted_sample_count\":100,\"dropped_sample_count\":0,\"min\":1,\"max\":100,\"mean\":50,\"p50\":" + p50.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p95\":" + p95.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p99\":" + p99.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"measurement_coverage\":1,\"reason\":\"\",\"retention_policy\":\"phase_reserved_exact\"}";
+            return MetricJsonWithSource(metricID, "client", unit, scope, p50, p95, p99);
+        }
+
+        private static string MetricJsonWithSource(string metricID, string source, string unit, string scope, double p50, double p95, double p99)
+        {
+            return "{\"metric_id\":\"" + metricID + "\",\"source\":\"" + source + "\",\"scope\":\"" + scope + "\",\"unit\":\"" + unit + "\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":100,\"retained_sample_count\":100,\"attempted_sample_count\":100,\"dropped_sample_count\":0,\"min\":1,\"max\":100,\"mean\":50,\"p50\":" + p50.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p95\":" + p95.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p99\":" + p99.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"measurement_coverage\":1,\"reason\":\"\",\"retention_policy\":\"phase_reserved_exact\"}";
+        }
+
+        private static string LegacyReservoirMetricJson(string metricID, string unit, string scope, double p50, double p95, double p99)
+        {
+            return LegacyReservoirMetricJson(metricID, unit, scope, 384, 1000, p50, p95, p99);
+        }
+
+        private static string LegacyReservoirMetricJson(string metricID, string unit, string scope, int retained, int attempted, double p50, double p95, double p99)
+        {
+            var reservoirReplacementCount = attempted - retained;
+            return "{\"metric_id\":\"" + metricID + "\",\"source\":\"server\",\"scope\":\"" + scope + "\",\"unit\":\"" + unit + "\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":" + retained + ",\"retained_sample_count\":" + retained + ",\"attempted_sample_count\":" + attempted + ",\"dropped_sample_count\":" + reservoirReplacementCount + ",\"rejected_sample_count\":0,\"reservoir_replacement_count\":" + reservoirReplacementCount + ",\"min\":1,\"max\":100,\"mean\":50,\"p50\":" + p50.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p95\":" + p95.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p99\":" + p99.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"measurement_coverage\":1,\"reason\":\"\",\"retention_policy\":\"phase_reserved_reservoir\"}";
+        }
+
+        private static string CurrentMetricJsonWithForgedCoverage(string metricID, string scope)
+        {
+            return "{\"metric_id\":\"" + metricID + "\",\"source\":\"server\",\"scope\":\"" + scope + "\",\"unit\":\"ms\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":100,\"retained_sample_count\":100,\"attempted_sample_count\":100,\"dropped_sample_count\":0,\"rejected_sample_count\":0,\"capacity_overflow_count\":0,\"reservoir_replacement_count\":0,\"valid_sample_coverage\":1,\"min\":1,\"max\":100,\"mean\":50,\"p50\":4,\"p95\":5,\"p99\":6,\"measurement_coverage\":0.9,\"reason\":\"\",\"retention_policy\":\"phase_reserved_reservoir\"}";
         }
 
         private string CreateResult(

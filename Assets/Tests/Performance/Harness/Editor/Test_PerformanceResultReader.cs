@@ -38,7 +38,9 @@ namespace Game.Tests.Performance.Harness
             double measurementCoverage,
             string reason,
             string retentionPolicy,
-            bool present)
+            bool present,
+            double? originalMeasurementCoverage = null,
+            string coverageDiagnostic = null)
         {
             Label = label;
             MetricID = metricID;
@@ -52,6 +54,8 @@ namespace Game.Tests.Performance.Harness
             P95 = p95;
             P99 = p99;
             MeasurementCoverage = measurementCoverage;
+            OriginalMeasurementCoverage = originalMeasurementCoverage ?? measurementCoverage;
+            CoverageDiagnostic = coverageDiagnostic;
             Reason = reason;
             RetentionPolicy = retentionPolicy;
             Present = present;
@@ -81,6 +85,10 @@ namespace Game.Tests.Performance.Harness
 
         public double MeasurementCoverage { get; }
 
+        public double OriginalMeasurementCoverage { get; }
+
+        public string CoverageDiagnostic { get; }
+
         public string Reason { get; }
 
         public string RetentionPolicy { get; }
@@ -107,7 +115,8 @@ namespace Game.Tests.Performance.Harness
                 var warning = (AttemptedSampleCount > 0 && MeasurementCoverage < 1d)
                     ? $"; warning retained {SampleCount}/{AttemptedSampleCount}"
                     : string.Empty;
-                return $"samples {RetainedSampleCount}/{AttemptedSampleCount}; p50 {FormatNumber(P50)}; p95 {FormatNumber(P95)}; p99 {p99}; {coverage}; retention {RetentionPolicy}{warning} [{Unit}]";
+                var legacyWarning = string.IsNullOrEmpty(CoverageDiagnostic) ? string.Empty : "; " + CoverageDiagnostic;
+                return $"samples {RetainedSampleCount}/{AttemptedSampleCount}; p50 {FormatNumber(P50)}; p95 {FormatNumber(P95)}; p99 {p99}; {coverage}; retention {RetentionPolicy}{warning}{legacyWarning} [{Unit}]";
             }
         }
 
@@ -120,7 +129,7 @@ namespace Game.Tests.Performance.Harness
                 state = "unavailable";
             else
                 state = string.IsNullOrEmpty(Observation) ? "unverified" : Observation;
-            return state + " [" + Unit + "]";
+            return state + (string.IsNullOrEmpty(CoverageDiagnostic) ? string.Empty : "; " + CoverageDiagnostic) + " [" + Unit + "]";
         }
 
         private static string FormatNumber(double value)
@@ -476,12 +485,18 @@ namespace Game.Tests.Performance.Harness
                 if (metric.retained_sample_count < 0 || metric.rejected_sample_count < 0 || metric.capacity_overflow_count < 0 || metric.reservoir_replacement_count < 0)
                     throw new InvalidDataException("summary.json contains a negative metric retention count: " + metric.metric_id);
                 var retainedSampleCount = metric.retained_sample_count > 0 ? metric.retained_sample_count : metric.sample_count;
+                var metricJson = FindMetricJson(summaryJson, metric.metric_id);
+                var hasCapacityOverflowCount = metricJson != null && HasJsonProperty(metricJson, "capacity_overflow_count");
                 if (retainedSampleCount > metric.attempted_sample_count
                     || metric.rejected_sample_count > metric.attempted_sample_count
-                    || metric.capacity_overflow_count > metric.attempted_sample_count
                     || retainedSampleCount + metric.rejected_sample_count > metric.attempted_sample_count
-                    || metric.capacity_overflow_count > metric.attempted_sample_count - metric.rejected_sample_count
-                    || metric.reservoir_replacement_count > metric.capacity_overflow_count)
+                    || (hasCapacityOverflowCount && (metric.capacity_overflow_count > metric.attempted_sample_count
+                        || metric.capacity_overflow_count > metric.attempted_sample_count - metric.rejected_sample_count
+                        || metric.reservoir_replacement_count > metric.capacity_overflow_count))
+                    || (!hasCapacityOverflowCount
+                        && metric.reservoir_replacement_count > 0
+                        && (retainedSampleCount >= metric.attempted_sample_count
+                            || (long)metric.dropped_sample_count != metric.rejected_sample_count + (long)metric.reservoir_replacement_count)))
                 {
                     throw new InvalidDataException("summary.json contains inconsistent metric retention counts: " + metric.metric_id);
                 }
@@ -496,9 +511,24 @@ namespace Game.Tests.Performance.Harness
                 if (metric.attempted_sample_count > 0)
                 {
                     var retention = retainedSampleCount / (double)metric.attempted_sample_count;
-                    var metricJson = FindMetricJson(summaryJson, metric.metric_id);
-                    if (metricJson == null || IsJsonPropertyNull(metricJson, "measurement_coverage") || Math.Abs(metric.measurement_coverage - retention) > 0.0000001d)
+                    metric.effective_measurement_coverage = retention;
+                    if (TryGetLegacyCoverageSemantics(
+                        metricJson,
+                        metric.retention_policy,
+                        metric.attempted_sample_count,
+                        retainedSampleCount,
+                        metric.dropped_sample_count,
+                        metric.rejected_sample_count,
+                        metric.reservoir_replacement_count,
+                        metric.measurement_coverage,
+                        out var legacyDiagnostic))
+                    {
+                        metric.legacy_coverage_semantics = legacyDiagnostic;
+                    }
+                    else if (metricJson == null || IsJsonPropertyNull(metricJson, "measurement_coverage") || Math.Abs(metric.measurement_coverage - retention) > 0.0000001d)
+                    {
                         throw new InvalidDataException("summary.json measurement coverage does not match retained/attempted samples: " + metric.metric_id);
+                    }
                     if (HasJsonProperty(metricJson, "valid_sample_coverage")
                         && (IsJsonPropertyNull(metricJson, "valid_sample_coverage")
                             || Math.Abs(ReadJsonNumber(metricJson, "valid_sample_coverage")
@@ -506,14 +536,65 @@ namespace Game.Tests.Performance.Harness
                     {
                         throw new InvalidDataException("summary.json valid sample coverage does not match rejected/attempted samples: " + metric.metric_id);
                     }
-                    if (IsMeasuredObservation(metric.observation) && retention < 1d - MEASUREMENT_DROP_RATIO)
+                    if (string.IsNullOrEmpty(metric.legacy_coverage_semantics)
+                        && IsMeasuredObservation(metric.observation)
+                        && retention < 1d - MEASUREMENT_DROP_RATIO)
                         throw new InvalidDataException("summary.json reports a measured metric below the retention policy: " + metric.metric_id);
+                }
+                else
+                {
+                    metric.effective_measurement_coverage = 0d;
                 }
                 ValidateMetricNulls(summaryJson, metric);
             }
         }
 
         private const double MEASUREMENT_DROP_RATIO = 0.05d;
+
+        internal static bool TryGetLegacyCoverageSemantics(
+            string metricJson,
+            string retentionPolicy,
+            int attemptedSampleCount,
+            int retainedSampleCount,
+            int droppedSampleCount,
+            int rejectedSampleCount,
+            int reservoirReplacementCount,
+            double exportedCoverage,
+            out string diagnostic)
+        {
+            diagnostic = null;
+            if (string.IsNullOrEmpty(metricJson)
+                || !string.Equals(retentionPolicy, "phase_reserved_reservoir", StringComparison.Ordinal)
+                || attemptedSampleCount <= 0
+                || retainedSampleCount <= 0
+                || retainedSampleCount >= attemptedSampleCount
+                || droppedSampleCount < 0
+                || reservoirReplacementCount <= 0
+                || !HasJsonProperty(metricJson, "retained_sample_count")
+                || !HasJsonProperty(metricJson, "dropped_sample_count")
+                || !HasJsonProperty(metricJson, "rejected_sample_count")
+                || !HasJsonProperty(metricJson, "reservoir_replacement_count")
+                || HasJsonProperty(metricJson, "capacity_overflow_count")
+                || HasJsonProperty(metricJson, "valid_sample_coverage")
+                || (long)droppedSampleCount != rejectedSampleCount + (long)reservoirReplacementCount)
+            {
+                return false;
+            }
+
+            var validInputCoverage = Math.Max(0, attemptedSampleCount - rejectedSampleCount) / (double)attemptedSampleCount;
+            if (Math.Abs(exportedCoverage - validInputCoverage) > 0.0000001d)
+                return false;
+
+            var effectiveRetention = retainedSampleCount / (double)attemptedSampleCount;
+            diagnostic = string.Format(
+                CultureInfo.InvariantCulture,
+                "legacy_coverage_semantics: exported measurement_coverage={0:0.####} was valid-input coverage; effective retained coverage={1:0.####} ({2}/{3} retained/attempted), so this metric is excluded from qualification",
+                exportedCoverage,
+                effectiveRetention,
+                retainedSampleCount,
+                attemptedSampleCount);
+            return true;
+        }
 
         private static void ValidateMetricNulls(string summaryJson, Test_PerformanceMetricDocument metric)
         {
@@ -838,10 +919,12 @@ namespace Game.Tests.Performance.Harness
                     metric.p50,
                     metric.p95,
                     metric.p99,
-                    metric.measurement_coverage,
+                    metric.effective_measurement_coverage,
                     metric.reason,
                     metric.retention_policy,
-                    true));
+                    true,
+                    metric.measurement_coverage,
+                    metric.legacy_coverage_semantics));
             }
             return new Test_PerformanceMetricGroupView(title, views);
         }
@@ -1257,8 +1340,10 @@ namespace Game.Tests.Performance.Harness
             public double p95;
             public double p99;
             public double measurement_coverage;
+            public double effective_measurement_coverage;
             public string reason;
             public string retention_policy;
+            public string legacy_coverage_semantics;
         }
 
         [Serializable]
@@ -1339,6 +1424,29 @@ namespace Game.Tests.Performance.Harness
         public static Test_PerformanceLastRunView ReadFinalized(string resultDirectory)
         {
             return Test_PerformanceLastRunView.ReadFinalized(resultDirectory);
+        }
+
+        internal static bool TryGetLegacyCoverageSemantics(
+            string metricJson,
+            string retentionPolicy,
+            int attemptedSampleCount,
+            int retainedSampleCount,
+            int droppedSampleCount,
+            int rejectedSampleCount,
+            int reservoirReplacementCount,
+            double exportedCoverage,
+            out string diagnostic)
+        {
+            return Test_PerformanceLastRunView.TryGetLegacyCoverageSemantics(
+                metricJson,
+                retentionPolicy,
+                attemptedSampleCount,
+                retainedSampleCount,
+                droppedSampleCount,
+                rejectedSampleCount,
+                reservoirReplacementCount,
+                exportedCoverage,
+                out diagnostic);
         }
     }
 }

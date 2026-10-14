@@ -125,6 +125,7 @@ namespace Game.Tests.Performance.Harness
         public string ResultPath;
         public string ReportPath;
         public string GroupKey;
+        public string GroupLabel;
         public string IdentityKey;
         public string ProfileID;
         public Test_PerformanceCampaignSource Source;
@@ -407,19 +408,35 @@ namespace Game.Tests.Performance.Harness
             var incompatible = report.Groups.Count(group => group.Classification == Test_PerformanceCampaignGroupClassification.INCOMPATIBLE);
             var candidateOnly = report.Groups.Count(group => group.Classification == Test_PerformanceCampaignGroupClassification.CANDIDATE_ONLY);
             var baselineOnly = report.Groups.Count(group => group.Classification == Test_PerformanceCampaignGroupClassification.BASELINE_ONLY);
+            var missingBaselineLabels = report.Groups
+                .Where(group => group.Classification == Test_PerformanceCampaignGroupClassification.CANDIDATE_ONLY)
+                .Select(group => group.Label)
+                .OrderBy(label => label, StringComparer.Ordinal)
+                .ToList();
+            var missingCandidateLabels = report.Groups
+                .Where(group => group.Classification == Test_PerformanceCampaignGroupClassification.BASELINE_ONLY)
+                .Select(group => group.Label)
+                .OrderBy(label => label, StringComparer.Ordinal)
+                .ToList();
+            if (missingBaselineLabels.Count > 0)
+                report.Reasons.Add("Baseline campaign " + report.Baseline.CampaignID + " lacks scenario groups: " + string.Join(", ", missingBaselineLabels) + ".");
+            if (missingCandidateLabels.Count > 0)
+                report.Reasons.Add("Candidate campaign " + report.Candidate.CampaignID + " lacks scenario groups: " + string.Join(", ", missingCandidateLabels) + ".");
             var insufficient = report.Groups.Any(group => group.Classification == Test_PerformanceCampaignGroupClassification.MATCHED
                 && (group.HasInsufficientRequiredEvidence
                     || group.BaselineValidCount < minimumValidRepeats
                     || group.CandidateValidCount < minimumValidRepeats));
+            var missingScenarios = candidateOnly > 0 || baselineOnly > 0;
             report.Status = hardReasons || incompatible > 0
                 ? Test_PerformanceCampaignComparisonStatus.NOT_COMPARABLE
-                : insufficient || matched == 0
+                : insufficient || missingScenarios || matched == 0
                     ? Test_PerformanceCampaignComparisonStatus.PROVISIONAL
                     : Test_PerformanceCampaignComparisonStatus.COMPARABLE;
             report.Summary = "matched " + matched + "; candidate only " + candidateOnly + "; baseline only " + baselineOnly
                 + "; incompatible " + incompatible + "; valid runs baseline " + baselineAttempts.Count(attempt => attempt.IsValid) + "/" + baselineAttempts.Count
                 + ", candidate " + candidateAttempts.Count(attempt => attempt.IsValid) + "/" + candidateAttempts.Count
-                + "; minimum " + minimumValidRepeats + " valid repeats; coverage policy " + MIN_MEASUREMENT_COVERAGE.ToString("P0", CultureInfo.InvariantCulture);
+                + "; minimum " + minimumValidRepeats + " valid repeats; coverage policy " + MIN_MEASUREMENT_COVERAGE.ToString("P0", CultureInfo.InvariantCulture)
+                + (missingScenarios ? "; missing baseline groups [" + string.Join(", ", missingBaselineLabels) + "]; missing candidate groups [" + string.Join(", ", missingCandidateLabels) + "]" : string.Empty);
             return report;
         }
 
@@ -810,6 +827,7 @@ namespace Game.Tests.Performance.Harness
                     ResultPath = attempt.result_path,
                     ReportPath = attempt.report_path,
                     GroupKey = BuildCoreGroupKey(job, null),
+                    GroupLabel = job?.DisplayName,
                     IdentityKey = BuildIdentityKey(job, null, null),
                     ProfileID = job?.options?.EffectiveProfileID,
                     Source = attempt.source ?? archive.Manifest.source,
@@ -844,6 +862,7 @@ namespace Game.Tests.Performance.Harness
                         throw new InvalidDataException(finalized.ErrorMessage ?? "The finalized result failed structured identity validation.");
                     if (finalized.Status != "COMPLETE-MEASURED")
                         throw new InvalidDataException("The attempt status is not COMPLETE-MEASURED.");
+                    var summaryJson = File.ReadAllText(Path.Combine(attempt.result_path, "summary.json"));
                     var run = ReadJson<Test_PerformanceComparisonRunDocument>(Path.Combine(attempt.result_path, "run.json"));
                     var summary = ReadJson<Test_PerformanceComparisonSummaryDocument>(Path.Combine(attempt.result_path, "summary.json"));
                     var fixture = ReadJson<Test_PerformanceComparisonFixtureDocument>(Path.Combine(attempt.result_path, "fixture.json"));
@@ -860,7 +879,7 @@ namespace Game.Tests.Performance.Harness
                         throw new InvalidDataException(correctnessDiagnostic);
                     view.GroupKey = BuildCoreGroupKey(job, run);
                     view.IdentityKey = BuildIdentityKey(job, run, summary.fixture_sha256);
-                    view.Metrics.AddRange(ReadMetricSamples(summary));
+                    view.Metrics.AddRange(ReadMetricSamples(summary, summaryJson));
                     view.IsValid = true;
                 }
                 catch (Exception exception)
@@ -942,7 +961,7 @@ namespace Game.Tests.Performance.Harness
                 {
                     group = new Test_PerformanceCampaignComparisonGroup
                     {
-                        Label = key,
+                        Label = attempt.GroupLabel ?? key,
                         ProfileID = attempt.ProfileID,
                         IsGraphical = attempt.ProfileID == "P1-S0-06",
                     };
@@ -1183,8 +1202,10 @@ namespace Game.Tests.Performance.Harness
                 var metric = requirement == null
                     ? attempt.Metrics.FirstOrDefault(value => value.Key == key)
                     : attempt.Metrics.FirstOrDefault(requirement.Matches);
-                if (metric == null || (metric != null && (requirement == null ? !metric.HasP50 : !requirement.IsQualified(metric))))
+                if (metric == null)
                     reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": metric unavailable or below the required retention/statistic policy");
+                else if (requirement == null ? !metric.HasP50 : !requirement.IsQualified(metric))
+                    reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": " + (string.IsNullOrEmpty(metric.Reason) ? "metric unavailable or below the required retention/statistic policy" : metric.Reason));
             }
             return reasons.Count == 0 ? null : "Exclusions: " + string.Join(" | ", reasons);
         }
@@ -1215,7 +1236,7 @@ namespace Game.Tests.Performance.Harness
             return lower == upper ? values[lower] : values[lower] + (values[upper] - values[lower]) * (position - lower);
         }
 
-        private static List<Test_PerformanceCampaignMetricSample> ReadMetricSamples(Test_PerformanceComparisonSummaryDocument summary)
+        private static List<Test_PerformanceCampaignMetricSample> ReadMetricSamples(Test_PerformanceComparisonSummaryDocument summary, string summaryJson)
         {
             var samples = new List<Test_PerformanceCampaignMetricSample>();
             foreach (var metric in summary.metrics ?? Array.Empty<Test_PerformanceComparisonMetricDocument>())
@@ -1230,6 +1251,17 @@ namespace Game.Tests.Performance.Harness
                     && metric.sample_count > 0
                     && measurementCoverage.HasValue
                     && measurementCoverage.Value >= MIN_MEASUREMENT_COVERAGE;
+                var metricJson = FindMetricJson(summaryJson, metric.metric_id);
+                Test_PerformanceResultReader.TryGetLegacyCoverageSemantics(
+                    metricJson,
+                    metric.retention_policy,
+                    metric.attempted_sample_count,
+                    retainedSampleCount,
+                    metric.dropped_sample_count,
+                    metric.rejected_sample_count,
+                    metric.reservoir_replacement_count,
+                    metric.measurement_coverage,
+                    out var legacyDiagnostic);
                 samples.Add(new Test_PerformanceCampaignMetricSample
                 {
                     MetricID = metric.metric_id,
@@ -1237,7 +1269,7 @@ namespace Game.Tests.Performance.Harness
                     Source = string.IsNullOrEmpty(metric.source) ? InferSource(metric.metric_id) : metric.source,
                     Scope = string.IsNullOrEmpty(metric.scope) ? UNKNOWN : metric.scope,
                     Observation = metric.observation,
-                    Reason = metric.reason,
+                    Reason = AddReason(metric.reason, legacyDiagnostic),
                     RetentionPolicy = metric.retention_policy,
                     SampleCount = metric.sample_count,
                     AttemptedSampleCount = metric.attempted_sample_count,
@@ -1328,6 +1360,21 @@ namespace Game.Tests.Performance.Harness
             if (value == null)
                 throw new InvalidDataException("Malformed finalized evidence: " + Path.GetFileName(path));
             return value;
+        }
+
+        private static string FindMetricJson(string summaryJson, string metricID)
+        {
+            if (string.IsNullOrEmpty(summaryJson) || string.IsNullOrEmpty(metricID))
+                return null;
+            var marker = "\"metric_id\":\"" + metricID + "\"";
+            var metricIndex = summaryJson.IndexOf(marker, StringComparison.Ordinal);
+            if (metricIndex < 0)
+                return null;
+            var objectStart = summaryJson.LastIndexOf('{', metricIndex);
+            var objectEnd = summaryJson.IndexOf('}', metricIndex + marker.Length);
+            return objectStart < 0 || objectEnd <= objectStart
+                ? null
+                : summaryJson.Substring(objectStart, objectEnd - objectStart + 1);
         }
 
         private static string GetResultRoot()
@@ -1461,6 +1508,9 @@ namespace Game.Tests.Performance.Harness
             public int sample_count;
             public int attempted_sample_count;
             public int retained_sample_count;
+            public int dropped_sample_count;
+            public int rejected_sample_count;
+            public int reservoir_replacement_count;
             public double p50;
             public double p95;
             public double p99;
