@@ -1,0 +1,307 @@
+# Manual-only smoke validation for the test-owned performance contracts.
+# Heavier distributed-client, GPU and soak profiles belong on separately
+# provisioned self-hosted runners and must be added with matching baselines.
+# Add those profiles as separate jobs with explicit runner labels, build/client
+# allocation, telemetry, stop rules and an approved equivalent baseline; do not
+# reuse the GitHub-hosted job or compare its hardware as a performance gate.
+name: Performance Smoke Validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  performance-smoke:
+    name: Deterministic performance smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      PERFORMANCE_PROFILE: P1-S0-04
+      PERFORMANCE_VARIANT: S04-I-DATA
+      PERFORMANCE_SEED: "424242"
+      PERFORMANCE_OUTPUT: performance-smoke
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialise performance artifact directory
+        run: mkdir -p "$PERFORMANCE_OUTPUT/fixtures"
+
+      - name: Capture and validate deterministic fixture metadata
+        run: |
+          set -euo pipefail
+          command -v jq >/dev/null || { echo "::error::jq is required to validate performance fixture manifests."; exit 1; }
+
+          actor_manifest="Assets/Tests/Performance/Fixtures/Actors/actor-population-manifest.json"
+          scenario_manifest="Assets/Tests/Performance/Fixtures/Scenarios/scenario-manifest.json"
+          world_manifest="Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json"
+
+          jq -e --argjson seed "$PERFORMANCE_SEED" --arg variant "$PERFORMANCE_VARIANT" '
+            .schema_version == "actor-fixture-catalog/v1"
+            and .profile_id == "P1-S0-04"
+            and .master_seed == $seed
+            and any(.profiles[];
+              .variant_id == $variant
+              and .representation == "ecs_data_only"
+              and .replicate_seed == $seed
+              and .population.players.requested == 0
+              and .population.npcs.requested == 100)
+          ' "$actor_manifest" >/dev/null
+
+          jq -e --argjson seed "$PERFORMANCE_SEED" --arg variant "$PERFORMANCE_VARIANT" '
+            .schema_version == "actor-scenario/v1"
+            and .profile_id == "P1-S0-04"
+            and .master_seed == $seed
+            and any(.profiles[];
+              .variant_id == $variant
+              and .representation == "ecs_data_only"
+              and .requires_real_client == false)
+          ' "$scenario_manifest" >/dev/null
+
+          jq -e --argjson seed "$PERFORMANCE_SEED" '
+            .SchemaVersion == "world-asset-manifest/v1"
+            and .FixtureVersion == "1.0.0"
+            and .Seed == $seed
+            and any(.Scenes[];
+              .Variant == "Outdoor"
+              and .Status == "Ready"
+              and (.SceneHash | length) > 0)
+          ' "$world_manifest" >/dev/null
+
+          cp "$actor_manifest" "$PERFORMANCE_OUTPUT/fixtures/actor-population-manifest.json"
+          cp "$scenario_manifest" "$PERFORMANCE_OUTPUT/fixtures/scenario-manifest.json"
+          cp "$world_manifest" "$PERFORMANCE_OUTPUT/fixtures/world-fixture-manifest.json"
+
+          if git diff --quiet && git diff --cached --quiet; then
+            git_dirty=false
+          else
+            git_dirty=true
+          fi
+
+          started_epoch="$(date -u +%s)"
+          started_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          unity_version="$(sed -n 's/^m_EditorVersion: //p' ProjectSettings/ProjectVersion.txt)"
+          unity_revision="$(sed -n 's/^m_EditorVersionWithRevision: .* (\(.*\))$/\1/p' ProjectSettings/ProjectVersion.txt)"
+          commit_sha="$(git rev-parse HEAD)"
+          actor_hash="$(sha256sum "$actor_manifest" | cut -d' ' -f1)"
+          scenario_hash="$(sha256sum "$scenario_manifest" | cut -d' ' -f1)"
+          world_hash="$(sha256sum "$world_manifest" | cut -d' ' -f1)"
+
+          jq -n \
+            --arg schema "performance-smoke-run/v1" \
+            --arg run_id "gha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --arg created_utc "$started_utc" \
+            --arg commit_sha "$commit_sha" \
+            --arg unity_version "$unity_version" \
+            --arg unity_revision "$unity_revision" \
+            --arg platform "$RUNNER_OS" \
+            --arg host "$(uname -srmo)" \
+            --arg profile "$PERFORMANCE_PROFILE" \
+            --arg variant "$PERFORMANCE_VARIANT" \
+            --argjson seed "$PERFORMANCE_SEED" \
+            --arg actor_hash "$actor_hash" \
+            --arg scenario_hash "$scenario_hash" \
+            --arg world_hash "$world_hash" \
+            --argjson dirty "$git_dirty" \
+            '{
+              schema_version: $schema,
+              run_id: $run_id,
+              created_utc: $created_utc,
+              source: {
+                commit_sha: $commit_sha,
+                dirty: $dirty,
+                unity_version: $unity_version,
+                unity_revision: $unity_revision,
+                platform: $platform,
+                runner_host: $host
+              },
+              build: {
+                kind: "ordinary_unity_editor_test_harness",
+                flags: [
+                  "test_only",
+                  "ordinary_project",
+                  "no_dedicated_benchmark_executable",
+                  "no_startup_override"
+                ]
+              },
+              fixture: {
+                profile: $profile,
+                variant: $variant,
+                seed: $seed,
+                expected_population: { players: 0, npcs: 100 },
+                manifest_sha256: {
+                  actor_population: $actor_hash,
+                  scenario: $scenario_hash,
+                  world: $world_hash
+                }
+              },
+              execution: {
+                harness: "game-ci/unity-test-runner@v4",
+                test_mode: "editmode",
+                achieved_workload: null,
+                achieved_workload_status: "not_observed_until_a_finalized_run_is_emitted"
+              },
+              comparison: {
+                status: "not_applicable",
+                reason: "No approved equivalent hardware/build baseline is configured for GitHub-hosted runners."
+              }
+            }' > "$PERFORMANCE_OUTPUT/metadata.json"
+
+          echo "PERFORMANCE_STARTED_EPOCH=$started_epoch" >> "$GITHUB_ENV"
+          echo "PERFORMANCE_STARTED_UTC=$started_utc" >> "$GITHUB_ENV"
+
+      - name: Validate Unity licensing configuration
+        run: |
+          set -euo pipefail
+          test -n "$UNITY_LICENSE" || { echo "::error::UNITY_LICENSE secret is not configured."; exit 1; }
+          test -n "$UNITY_EMAIL" || { echo "::error::UNITY_EMAIL secret is not configured."; exit 1; }
+          test -n "$UNITY_PASSWORD" || { echo "::error::UNITY_PASSWORD secret is not configured."; exit 1; }
+
+      - name: Run bounded performance contract smoke tests
+        id: unity-test-runner
+        uses: game-ci/unity-test-runner@v4
+        with:
+          projectPath: .
+          testMode: editmode
+          artifactsPath: performance-smoke/unity-artifacts
+          customParameters: >-
+            -testFilter Game.Tests.Performance.Harness.Test_PerformanceHarnessContractTests
+            -testResults performance-smoke/TestResults.xml
+            -logFile performance-smoke/unity-editor.log
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Finalize smoke evidence
+        if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.unity-test-runner.outcome }}
+        run: |
+          set -euo pipefail
+          finished_epoch="$(date -u +%s)"
+          finished_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          started_epoch="${PERFORMANCE_STARTED_EPOCH:-$finished_epoch}"
+          duration_seconds=$((finished_epoch - started_epoch))
+
+          test_results=""
+          if [ -f "$PERFORMANCE_OUTPUT/TestResults.xml" ]; then
+            test_results="$PERFORMANCE_OUTPUT/TestResults.xml"
+          else
+            test_results="$(find "$PERFORMANCE_OUTPUT" -type f \( -name 'TestResults*.xml' -o -name '*.xml' \) -print -quit || true)"
+          fi
+
+          structured_test_result_present=true
+          if [ -z "$test_results" ] || ! grep -q '<test-run' "$test_results"; then
+            structured_test_result_present=false
+          fi
+
+          unity_artifacts_path="$PERFORMANCE_OUTPUT/unity-artifacts"
+          unity_artifacts_present=false
+          if [ -d "$unity_artifacts_path" ] && [ -n "$(find "$unity_artifacts_path" -type f -print -quit)" ]; then
+            unity_artifacts_present=true
+          fi
+
+          artifact_status=true
+          if [ "$structured_test_result_present" != "true" ] || [ "$unity_artifacts_present" != "true" ]; then
+            artifact_status=false
+          fi
+
+          status="BLOCKED-PREREQUISITE"
+          failure_category="non_interactive_runner_unavailable"
+          if [ "$TEST_OUTCOME" != "success" ]; then
+            if [ "$structured_test_result_present" = "true" ]; then
+              status="FAIL-CORRECTNESS"
+              failure_category="unity_test_harness"
+            else
+              status="FAIL-PROVISION"
+              failure_category="unity_runner_or_build"
+            fi
+          elif [ "$artifact_status" != "true" ]; then
+            status="FAIL-INSTRUMENTATION"
+            failure_category="missing_test_or_unity_artifact"
+          fi
+
+          if [ -n "$test_results" ]; then
+            test_results_json="$test_results"
+          else
+            test_results_json="null"
+          fi
+
+          jq --arg status "$status" \
+            --arg failure_category "$failure_category" \
+            --arg finished_utc "$finished_utc" \
+            --arg test_outcome "$TEST_OUTCOME" \
+            --arg test_results "$test_results_json" \
+            --arg artifacts_path "$unity_artifacts_path" \
+            --argjson duration "$duration_seconds" \
+            --argjson structured_test_result_present "$structured_test_result_present" \
+            --argjson unity_artifacts_present "$unity_artifacts_present" \
+            --argjson artifact_status "$artifact_status" \
+            '. + {
+              status: $status,
+              failure_category: $failure_category,
+              finished_utc: $finished_utc,
+              duration_seconds: $duration,
+              test_outcome: $test_outcome,
+              test_results: (if $test_results == "null" then null else $test_results end),
+              unity_artifacts_path: $artifacts_path,
+              structured_test_result_present: $structured_test_result_present,
+              unity_artifacts_present: $unity_artifacts_present,
+              artifacts_complete: $artifact_status,
+              achieved_workload: null,
+              stop: {
+                reason: "No finalized COMPLETE-MEASURED run was emitted by the non-interactive contract-test harness.",
+                measured_metrics_claimed: false
+              }
+            }' "$PERFORMANCE_OUTPUT/metadata.json" > "$PERFORMANCE_OUTPUT/summary.json"
+
+          cat > "$PERFORMANCE_OUTPUT/report.md" <<EOF
+          # Performance smoke validation
+
+          - Status: $status
+          - Profile: $PERFORMANCE_PROFILE / $PERFORMANCE_VARIANT
+          - Seed: $PERFORMANCE_SEED
+          - Source commit: $(git rev-parse HEAD)
+          - Unity test outcome: $TEST_OUTCOME
+          - Duration: ${duration_seconds}s
+
+          The smoke job validates the tracked fixture manifests and runs the ordinary Unity EditMode performance contract suite. It does not claim an achieved actor workload, GPU metrics, transport metrics or a comparable performance baseline. A finalized measured result requires a supported non-interactive runner entrypoint and suitable provisioned hardware.
+
+          Heavier distributed-client, GPU and soak profiles should be dispatched as separate workflow jobs on provisioned self-hosted runners after their build, client allocation, telemetry and equivalent-baseline contracts are available.
+          EOF
+
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Performance smoke
+
+          - Status: $status
+          - Profile: $PERFORMANCE_PROFILE / $PERFORMANCE_VARIANT
+          - Seed: $PERFORMANCE_SEED
+          - Unity test outcome: $TEST_OUTCOME
+          - Achieved workload: not claimed
+
+          The job intentionally does not compare GitHub-hosted hardware or fabricate GPU/network metrics. Heavy distributed-client, GPU and soak profiles require separately provisioned self-hosted runners.
+          EOF
+
+      - name: Upload performance smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: performance-smoke
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail when smoke evidence is incomplete
+        if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.unity-test-runner.outcome }}
+        run: |
+          set -euo pipefail
+          status="$(jq -r '.status' performance-smoke/summary.json)"
+          if [ "$status" != "COMPLETE-SMOKE" ]; then
+            echo "::error::Performance smoke did not complete: $status (Unity outcome: $TEST_OUTCOME). Inspect the uploaded evidence for the failure category and blocker details."
+            exit 1
+          fi
