@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Ability acquisition, spell ranks, active specialisation, specialisation ability ownership, talent trees, talent ranks, talent allocation, respecialisation, known-ability state and action-bar expectations  
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-14
 
 ---
 
@@ -99,6 +99,18 @@ Ninth Age uses a traditional MMORPG binding model.
 The player may bind any currently known usable ability to available action-bar slots.
 
 There is no small active-skill loadout cap.
+
+---
+
+### 2.7 Class-first toolkit development and progressive complexity
+
+- Plan the **shared base-class toolkit first**. By the early levels each class needs a recognisable, playable loop with meaningful decisions, rather than empty progression or excessive mechanical complexity.
+- Choose a specialisation at **level 10** as already required in this PDD. Exclusive, transformational specialisation abilities should **generally** be concentrated in the mid-to-late levels; exceptions are permitted where earlier access is necessary for the specialisation to function in level-appropriate group roles.
+- The base toolkit must not depend on talent selections to remedy fundamental missing gameplay. Specialisations build on and substantially reinterpret shared abilities, including through active talent-granted spells and modifications to existing class abilities.
+- Some early abilities may **intentionally become obsolete**, be replaced by a later ability, or be retained only for niche situations. Ability replacement is distinct from ranks (which improve the same logical ability); content design must explicitly identify the relationship.
+- A class must be capable and independently playable, **not** possess every possible category of crowd control, healing, mobility or support. Functional redundancy across different classes and specialisations avoids making any one class mandatory for regular group content; overlapping functions should remain mechanically distinctive.
+- For each ability, author first its **toolkit purpose, counterplay, interactions, progression and mechanics**. Next choose appropriate Physical / magical school(s). Only then author **name, icon, animation, VFX and audio**. No school automatically owns all slows, periodic effects, spell disruption, or other effect types.
+- The cross-class [capability matrix](Class-Design-PDD.md#21-preliminary-cross-class-capability-matrix-2026-10-14) is **provisional guidance**, not an automatically granted ability list or a requirement to homogenise class coverage.
 
 ---
 

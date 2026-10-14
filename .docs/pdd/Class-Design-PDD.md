@@ -2,8 +2,8 @@
 
 **Project:** Ninth Age  
 **Document Type:** Product Design Document  
-**Status:** Draft / Design Baseline  
-**Purpose:** Define the current intended playable class roster, establish each class's core identity and gameplay space, and explicitly identify areas requiring further design work.
+**Status:** Draft / Design Baseline (capability matrix provisional)  
+**Purpose:** Define the intended playable class roster, class identity, cross-class toolkit philosophy, preliminary capability coverage, and remaining design questions.
 
 ---
 
@@ -1040,16 +1040,7 @@ may be more readable than treating Instability itself as the cost of every Sorce
 
 ## 14.3 Specialisation Structure
 
-Three specialisations per class is currently the working structure.
-
-This has not yet been formally established as an immutable system requirement.
-
-Consideration should be given to whether:
-
-- Every class requires exactly three.
-- Additional specialisations may be added later.
-- Specialisations determine role.
-- A class can perform secondary roles outside its specialisation.
+The current Abilities and Talents PDD establishes **three specialisations and three freely mixable talent trees per class**, with one active specialisation selected from level 10. Active specialisation determines the character's primary role and its exclusive automatic ability package; talent investment may cross any of the class's three trees. The exact ability cadence and possible future roster expansion remain open. Role flexibility outside the active specialisation is class/content design, not an automatic entitlement.
 
 ---
 
@@ -1202,3 +1193,122 @@ The target conceptual separation is:
 - **Naturalist:** power through natural systems.
 
 Future class design should preserve these distinctions.
+
+
+---
+
+# 19. Ability-Toolkit Design Principles (2026-10-14)
+
+The following principles are established design direction for all nine classes; exact ability lists and numerical balance are not yet approved.
+
+1. **Class first.** Develop a coherent shared class toolkit before defining specialisation-specific abilities. The class itself must feel complete, not like three disconnected mini-classes.
+2. **Accessible early combat with meaningful decisions.** The opening levels establish the core class loop, fundamentals of resource use and a few offensive, defensive and situational choices. Simplicity must not mean repeated use of one button; complexity is introduced incrementally.
+3. **Specialisation depth later.** Active specialisation is selected at level 10 (per the Abilities and Talents PDD), but major exclusive spells and talent-driven gameplay transformations should generally arrive at mid-to-late levels. Early exceptions must be justified by role viability.
+4. **Multiple paths to mechanical depth.** Talents can modify shared abilities, add passive interactions, or grant genuinely new active abilities. The base toolkit stays useful; specialisation makes it behave differently.
+5. **Purpose, interaction and progression.** Plan each ability as a role in the toolkit: baseline attack, burst, defence, interruption, control, utility, etc. Avoid duplicate functions without a progression reason. Some early abilities may intentionally be superseded or become redundant (e.g., an early basic heal replaced by a later stronger one). Do not artificially preserve every ability at endgame.
+6. **Complete but unequal toolkits.** Every class should have sufficient offense, survivability, and relevant situation/group contribution to play independently. Every class does **not** need every healing, movement, crowd-control or support mechanic. Role-specialised builds need all necessary tools for the role they claim to fulfil.
+7. **Functional redundancy without forced composition.** Encounters may require tanking, healing, interrupts, control or counterplay; multiple class/specialisation combinations must reasonably provide required functions. No unique class mechanic, buff, dispel or summon should create a mandatory class slot in ordinary group content. Overlapping functional coverage need not mean identical ability buttons or effectiveness.
+8. **Distinguish access from effectiveness.** Capability access, reliability, conditions, cooldown, range, resource cost and niche value are separate design decisions. Share functions selectively but retain different class solutions and strengths.
+9. **Design in order:** (a) shared class + specialisation ability toolkit and interactions, (b) magical school(s) / Physical as appropriate, (c) ability names, icons, animation, visual effects and audio effects. Neither school themes nor presentation should determine the initial mechanical toolkit.
+
+The [Abilities and Talents PDD](Abilities-and-Talents-PDD.md) remains authoritative for how class abilities, automatic active-specialisation abilities and talent-granted abilities are acquired and persisted.
+
+# 20. Magical School Assignment in Class Design
+
+Ninth Age has **eight magical schools**: **Chaos, Earth, Air, Water, Fire, Light, Shadow and Psychic**. Physical damage is separate and is not a ninth magical school. Chaos is primordial magic; Earth, Air, Water and Fire are elemental expressions; Light, Shadow and Psychic are spiritual expressions involving consciousness and soul.
+
+- Magical schools are **not class-exclusive**. A class may access only a subset consistent with its identity (for example, Naturalists need not use Fire).
+- A school describes the magic's nature, **not a fixed catalogue of effects**. Periodic damage, slows, casting disruption and other mechanics are not universally locked to one school; class expression governs actual ability design.
+- Ordinary magical casting does **not** impose a universal instability/backlash/environmental penalty on gameplay. Deliberate manipulation near the magical field's limits and its gameplay consequences are part of the **Sorcerer** identity (Instability).
+- The Cleric specialisation associations are **Holy → Light (divinity), Spirit → Shadow (soul), Mind → Psychic (mind)**. Shadow's negative moral and cultural associations are world lore and do not automatically prescribe a caster's morality or ability mechanics.
+- Final school access and any multi-school interactions remain subject to class-specific review; do not infer school-specific spell names, effects or numerical resistances from this table alone.
+
+# 21. Preliminary Cross-Class Capability Matrix (2026-10-14)
+
+**Status:** Provisional coverage proposal, **not** locked ability lists or implementation instructions.
+
+**Legend:** `C` = intended core/base-class access; `T` = candidate through specialisation or talents (not necessarily every spec); `?` = undecided; `—` = not currently proposed (not an immutable prohibition).
+
+**Columns:** Cl = Cleric; Ex = Exemplar; Fi = Fighter; Du = Duellist; Ra = Ranger; So = Sorcerer; Oc = Occultist; Na = Naturalist; As = Ascetic.
+
+Every class is assumed to have baseline direct offense and enough individual defence to function, whether or not it has healing or a particular control primitive. The matrix is a **coverage tool**, not an entitlement checklist.
+
+### Crowd control and debuffs
+
+| Capability | Cl | Ex | Fi | Du | Ra | So | Oc | Na | As |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Stun | T | T | C | C | T | T | — | — | C |
+| Root | — | — | — | — | C | T | T | C | — |
+| Slow | T | — | T | C | C | C | — | C | T |
+| Incapacitate / disorient | T | — | — | C | C | T | T | — | T |
+| Fear / forced fleeing | T | — | T | — | — | — | C | — | — |
+| Interrupt casting | T | C | C | C | C | C | T | T | C |
+| Silence / spell lockout | T | — | — | T | — | C | C | — | — |
+| Disarm | — | T | C | C | T | — | — | — | T |
+| Knockback / forced movement | — | T | C | T | — | T | T | C | C |
+| Taunt | — | T | T | — | — | — | — | T | T |
+| Reduce enemy damage | T | C | C | T | — | — | C | T | — |
+| Reduce physical defence | — | T | C | C | C | — | — | — | T |
+| Increase magical vulnerability | T | — | — | — | — | C | C | T | — |
+| Reduce healing received | T | — | — | C | T | — | C | — | — |
+| Drain / disrupt resources | T | — | — | T | — | C | C | — | — |
+
+### Healing, defence and group support
+
+| Capability | Cl | Ex | Fi | Du | Ra | So | Oc | Na | As |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Self-healing | C | C | T | — | T | — | T | C | C |
+| Direct ally healing | C | T | — | — | — | — | — | C | T |
+| Group healing | T | T | — | — | — | — | — | T | T |
+| Healing over time | T | — | — | — | — | — | — | C | T |
+| Absorption / magical barriers | C | T | T | — | — | C | T | T | T |
+| Protect / intercept for allies | T | C | T | — | — | — | T | T | T |
+| Cleanse harmful effects | C | T | — | — | T | T | T | C | T |
+| Remove enemy buffs | T | — | — | T | — | C | C | T | — |
+| Restore ally resources | T | — | — | — | — | T | T | T | — |
+| Offensive group support | T | C | C | — | C | T | — | T | — |
+| Defensive group support | C | C | T | — | — | T | — | C | T |
+| Resurrection | C | T | — | — | — | — | — | T | T |
+| Threat reduction / redirection | — | T | T | C | T | — | T | — | — |
+| Control resistance / removal | C | C | C | T | T | T | — | T | C |
+
+### Offensive and tactical mechanics
+
+| Capability | Cl | Ex | Fi | Du | Ra | So | Oc | Na | As |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Periodic damage | T | — | T | C | C | C | C | C | — |
+| Area damage | T | C | T | T | C | C | T | C | T |
+| Execute / finishing attacks | — | T | T | C | C | C | T | — | C |
+| Charge / dash / leap | — | T | C | C | C | T | — | T | C |
+| Stealth / concealment | — | — | — | C | T | — | — | — | — |
+| Detect / track hidden targets | T | — | — | T | C | T | — | T | — |
+| Traps | — | — | — | T | C | — | — | — | — |
+| Persistent ground effects | T | C | — | — | C | T | T | C | — |
+| Combat companions / summons | ? | — | — | — | ? | — | T | T | — |
+| Transformation / shapeshifting | — | — | — | — | — | — | — | T | — |
+| Poison-based combat | — | — | — | C | T | — | T | T | — |
+| Bleeding-focused combat | — | — | T | C | T | — | — | — | T |
+
+### Equipment and fighting styles
+
+| Capability | Cl | Ex | Fi | Du | Ra | So | Oc | Na | As |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Dual wield | — | — | T | C | ? | — | — | — | T |
+| Two-handed melee weapons | ? | C | C | T | T | — | — | T | ? |
+| Shields | ? | C | C | — | — | — | — | T | — |
+| Bows / crossbows | — | — | T | T | C | — | — | — | — |
+| Unarmed combat | — | — | T | T | — | — | — | T | C |
+
+# 22. Review and Encounter Coverage Rules
+
+Before locking a class toolkit:
+
+- Check the overall roster for **healthy asymmetry**: some tools should be rare, and specialisations should feel different; avoid distributing every capability to every class.
+- Check each intended tank and healer specialisation for **role completeness** at the levels where group encounters expect that role. The Dungeon and Group Content PDD expects flexible low-level parties and, at mid-level and above, a conventional 1 tank / 1 healer / 3 DPS party without prescribing classes.
+- Audit every ordinary mandatory encounter function against **multiple feasible group compositions** without a named-class requirement. Some classes may solve the problem differently, including with positioning, damage prevention or alternative counters.
+- Avoid unique, irreplaceable permanent group buffs that implicitly require all nine classes in a raid. Class-specific utility may be useful or advantageous without being required to access content or achieve normal success.
+- Test in both solo and group scenarios. `C` and `T` do not imply equal output, cooldown, range, or reliability.
+
+# 23. Dedicated Class PDDs
+
+Further class-specific design is maintained in [`class-design/`](class-design/). Each class document records current source-grounded identity and proposed specialisations, a candidate class-first toolkit and its share of the provisional capability matrix, differentiation, progression, and open issues. These drafts do **not** lock the final ability catalogue, role eligibility, equipment rules, magic-school allocation or numerical balance until those questions are explicitly resolved.
