@@ -1,0 +1,14 @@
+{
+"schema_version":"benchmark-fixture/v1",
+"profile":{"id":"P1-S0-06","revision":"1.0.0","spec_revision":"P1-STRESS-1.0.0","variant":"S06-I-GEOMETRY","tier":"D1"},
+"random":{"master_seed":424242,"replicate_seed":424242,"replicate_index":0,"derivation":"sha256-u32le-v1","streams":["world","actors","movement","abilities","network"]},
+"provenance":{"fixture_generator":"Game.Tests.Performance.Fixtures.Test_GraphicalFixtureLayout","generator_revision":"1.0.0","input_path":"Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json","asset_manifest_path":"Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json","source_commit":"d22a939232c842a1415bd627c2a6a0be3663ce95","source_sha256":"96d94aa9137a695587903ae0e171f9cb2bc345eaabb47a1ad919f06450a3d4d0","asset_manifest_sha256":"96d94aa9137a695587903ae0e171f9cb2bc345eaabb47a1ad919f06450a3d4d0"},
+"required_features":["seeded_world_fixture","rendered_client","deterministic_camera_route"],
+"population":{"players":{"requested":0,"connection_kind":"none_data_only","groups":[]},"npcs":{"requested":0,"representation":"networked_gameobject_ecs","groups":[],"accounting":{"ecs_data_only_npcs":0,"full_gameobject_purrnet_npcs":0,"real_player_connections":0,"synthetic_network_players":0}}},
+"space":{"world_id":"fixture-world","map_id":"fixture-open-world","instance_id":null,"origin_cell_size_m":100,"world_tile_size_m":256,"generated_grid":{"columns":1,"rows":1,"anchor_tile":[1,1]},"clusters":[{"id":"camera-route","center_world_m":[280,8,280],"radius_m":294.156433,"players":0,"npcs":0}]},
+"environment":{"tile_archetype":"settlement","terrain_per_tile":1,"buildings_per_tile":15,"props_per_tile":80,"trees_per_tile":0,"undergrowth_per_tile":0,"material_slots_per_tile":4,"dynamic_lights_per_tile":0,"lod_policy_id":"fixture-lod-v1","collision_enabled":true},
+"schedules":{"movement":[{"actor_group":"camera","route_id":"graphical-settlement-route","loop":false,"start_phase":"warmup"}],"abilities":[],"events":[]},
+"network":{"preset":"NET-LOCAL","transport":"PurrNet","shaper":"none","target_rtt_ms":null,"target_jitter_ms":null,"target_loss_ratio":null,"connection_attempts_per_s":0},
+"timing":{"preflight_timeout_s":30,"ramp_s":2,"warmup_s":2,"measurement_s":5,"recovery_s":1,"sample_interval_ms":500},
+"stops":{"total_timeout_s":120,"memory_ceiling_bytes":4294967296,"terminate_on_correctness_failure":true,"terminate_on_missing_fixture":true,"terminate_on_missing_required_telemetry":true}
+}

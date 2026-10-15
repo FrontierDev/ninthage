@@ -1,0 +1,16 @@
+{
+"schema_version":"benchmark-run/v1",
+"run_id":"run-20261015T205724864Z-05e4723c",
+"fixture_ref":{"path":"fixture.json","sha256":"c35a57c17b7117d4af7b9d48efdae8c737deaf9b0ab5aa5a1c4bd0ad819584e8"},
+"created_utc":"2026-10-15T20:57:41.5022880Z",
+"git":{"repository":"FrontierDev/ninthage","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-15T20:57:24.5521859Z","commit_sha":"d22a939232c842a1415bd627c2a6a0be3663ce95","dirty":true,"dirty_diff_sha256":"6ad758273312429c5ebdb4a086f4bc1becf8ba9228961cd2e5aefed9154c3fa1"},
+"toolchain":{"unity":"6000.3.10f1","unity_revision":"e35f0c77bd8e","packages_manifest_sha256":"8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90","packages_lock_sha256":"933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9","purrnet_source_id":"Assets/ThirdParty/PurrNet","purrnet_sha256":"e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941","fixture_generator_version":"1.0.0","runner_version":"graphical-harness/v1","telemetry_version":"benchmark-sample/v1"},
+"build":{"kind":"rendered_client","target":"WindowsEditor","subtarget":"editor_playmode","development":true,"autoconnect_profiler":false,"deep_profiling":false,"script_debugging":false,"defines":["UNITY_EDITOR"],"scripting_backend":"editor","build_sha256":null},
+"render":{"mode":"rendered","graphical_client":true,"graphics_api":"Direct3D12","urprenderer":"PC_RPAsset;PC_Renderer/ForwardPlus","quality_level":"PC","resolution_px":[1920,1080],"vsync":0,"target_fps":null},
+"hardware":[{"host_id":"editor-host-2557e243b63e","role":"rendered_client","os":"Windows","os_version":"Windows 11  (10.0.26200)","cpu_model":"AMD Ryzen 7 5700X 8-Core Processor ","physical_cores":null,"logical_cores":16,"ram_bytes":17085497344,"gpu_model":"NVIDIA GeForce RTX 4060 Ti","vram_bytes":8335130624,"gpu_driver":"Direct3D 12 [level 12.2]","storage_class":null}],
+"processes":{"server":0,"headless_network_clients":0,"rendered_clients":1,"actor_test_processes":0,"client_host_allocation":[{"host_id":"editor-host-2557e243b63e","client_processes":1}]},
+"clocks":{"utc_clock_source":"host_system_clock","monotonic_clock_source":"System.Diagnostics.Stopwatch","simulation_clock_source":"unity_player_loop","utc_clock_sync":"not_verified"},
+"application_context":{"run_in_background":true,"focus_observation":"summary_observability.focus"},
+"execution":{"command_template":"Unity Editor Play Mode via Tools/Performance/Test Workload Runner","environment_id":"local-development","test_data_scope":"isolated_disposable","profiling_mode":"not_enabled","network_shaper_version":null},
+"runtime_observed":{"actual_build_sha256":null,"actual_content_sha256":"1761394ab69601e9f510ccd1553f93753108318d34fcf06f13c633a7dcf8f0ec","actual_transport_rtt_ms":null,"actual_transport_loss_ratio":null}
+}
