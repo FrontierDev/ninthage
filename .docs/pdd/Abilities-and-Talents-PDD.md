@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Ability acquisition, spell ranks, active specialisation, specialisation ability ownership, talent trees, talent ranks, talent allocation, respecialisation, known-ability state and action-bar expectations  
-**Last updated:** 2026-10-14
+**Last updated:** 2026-10-15
 
 ---
 
@@ -84,6 +84,8 @@ Talents may:
 
 The talent system is not limited to passive stat bonuses.
 
+**Capstone design rule:** The culmination of a talent tree should meaningfully **change the specialisation's combat rotation**, not merely grant a numerically stronger spell. A class/spec must be functional before the capstone; capstones transform an established loop. Talent mastery follows tree progression rather than a required gameplay breakthrough every ten levels, while spell ranks remain relevant through level 60.
+
 ### 2.5 Spell ranks are real progression
 
 Abilities may have multiple learned ranks.
@@ -104,12 +106,12 @@ There is no small active-skill loadout cap.
 
 ### 2.7 Class-first toolkit development and progressive complexity
 
-- Plan the **shared base-class toolkit first**. By the early levels each class needs a recognisable, playable loop with meaningful decisions, rather than empty progression or excessive mechanical complexity.
-- Choose a specialisation at **level 10** as already required in this PDD. Exclusive, transformational specialisation abilities should **generally** be concentrated in the mid-to-late levels; exceptions are permitted where earlier access is necessary for the specialisation to function in level-appropriate group roles.
+- Plan the **shared base-class toolkit first**. By the early levels each class needs a recognisable, playable loop with meaningful decisions, rather than empty progression or excessive mechanical complexity. For the first playable slice, **level 10** is the class-baseline and first-specialisation demonstration target (see the Sorcerer class design PDD). Aim for roughly **5–7 combat abilities and 1–2 utilities** by that point. Learnable passives **count** toward those categories; higher ranks do not. Inherent class mechanics do not incur a fictional trainer purchase.
+- Choose a specialisation at **level 10** as already required in this PDD. That choice should **automatically grant an initial, identity-defining specialisation ability** so its fundamental loop is evident **before** spending talent points. Later exclusive abilities and transformational capstones deepen the role, rather than introducing the role for the first time. No rule requires a new conceptual milestone every ten levels.
 - The base toolkit must not depend on talent selections to remedy fundamental missing gameplay. Specialisations build on and substantially reinterpret shared abilities, including through active talent-granted spells and modifications to existing class abilities.
 - Some early abilities may **intentionally become obsolete**, be replaced by a later ability, or be retained only for niche situations. Ability replacement is distinct from ranks (which improve the same logical ability); content design must explicitly identify the relationship.
-- A class must be capable and independently playable, **not** possess every possible category of crowd control, healing, mobility or support. Functional redundancy across different classes and specialisations avoids making any one class mandatory for regular group content; overlapping functions should remain mechanically distinctive.
-- For each ability, author first its **toolkit purpose, counterplay, interactions, progression and mechanics**. Next choose appropriate Physical / magical school(s). Only then author **name, icon, animation, VFX and audio**. No school automatically owns all slows, periodic effects, spell disruption, or other effect types.
+- A class must be capable and independently playable, **not** possess every possible category of crowd control, healing, mobility or support. Functional redundancy across different classes and specialisations avoids making any one class mandatory for regular group content; overlapping functions should remain mechanically distinctive. A healer does **not** need generic direct-heal filler spells if other tools provide complete healing capability. Balance total expected **trainer expenditure** across classes, including learnable passives, in the scarce-gold early game.
+- For each ability, author first its **toolkit purpose, counterplay, interactions, progression and mechanics**. Next choose appropriate Physical / magical school(s). Only then author **name, icon, animation, VFX and audio**. No school automatically owns all slows, periodic effects, spell disruption, or other effect types. Reserve unusually high-impact long-cast spells for later progression so early normal NPC encounters cannot be trivialised by the same opening nuke.
 - The cross-class [capability matrix](Class-Design-PDD.md#21-preliminary-cross-class-capability-matrix-2026-10-14) is **provisional guidance**, not an automatically granted ability list or a requirement to homogenise class coverage.
 
 ---
