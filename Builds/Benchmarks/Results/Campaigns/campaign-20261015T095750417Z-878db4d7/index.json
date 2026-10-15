@@ -1,0 +1,2294 @@
+{
+    "schema_version": "performance-campaign-index/v1",
+    "campaign_id": "campaign-20261015T095750417Z-878db4d7",
+    "updated_utc": "2026-10-15T10:25:40.7478663Z",
+    "state": "completed",
+    "stop_policy": "stop_on_failure",
+    "linked_campaign_id": "",
+    "source": {
+        "captured_utc": "2026-10-15T10:02:05.8635166Z",
+        "git_branch": "dev",
+        "git_branch_status": "named",
+        "git_branch_diagnostic": "",
+        "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+        "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+        "dirty": false,
+        "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+        "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+        "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+        "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+        "operating_system": "Windows 11  (10.0.26200)",
+        "unity_version": "6000.3.10f1",
+        "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+        "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+    },
+    "profile_coverage": [
+        {
+            "profile_id": "P1-S0-01",
+            "mode": "server + rendered client / networked city",
+            "status": "BLOCKED",
+            "capability": "Blocked: generated city density, real authenticated clients, cross-tile interests and required telemetry are not available in the current runner.",
+            "runnable_alternative": "P1-S0-04 ECS data-only or P1-S0-06 isolated rendered geometry.",
+            "next_issue_or_stage": "#43-#52; later Stage 1.2/1.5 client and world-interest work."
+        },
+        {
+            "profile_id": "P1-S0-02",
+            "mode": "networked server + rendered clients / PvP combat",
+            "status": "BLOCKED",
+            "capability": "Blocked: repeatable faction, legal PvP target and multi-client correctness fixtures are not available.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#43-#52 and later Stage 1.2/1.5 combat and network qualification."
+        },
+        {
+            "profile_id": "P1-S0-03",
+            "mode": "networked server + rendered clients / boss and AoE",
+            "status": "BLOCKED",
+            "capability": "Blocked: authored boss encounter, legal AoE target fan-out and replayable combat fixtures are not available.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#45 and #51/#52 content and correctness verification."
+        },
+        {
+            "profile_id": "P1-S0-04",
+            "mode": "Editor server / ECS data-only and activity",
+            "status": "SUPPORTED-MEASURED",
+            "capability": "The existing runner supports ECS data-only minimal/activity snapshots; full PurrNet dormant and wake variants remain blocked.",
+            "runnable_alternative": "EcsDataOnlyMinimal and EcsDataOnlyActivity are the current runnable variants.",
+            "next_issue_or_stage": "Run five qualified repeats for each required metric; Stage 1.4 for true dormant/wake simulation."
+        },
+        {
+            "profile_id": "P1-S0-05",
+            "mode": "rendered client + streamed world / traversal",
+            "status": "BLOCKED",
+            "capability": "Blocked: the current harness does not execute the required six-tile route, streaming transitions and origin-boundary correctness contract.",
+            "runnable_alternative": "P1-S0-06 fixed Outdoor/Forest/Settlement rendered fixtures without a streaming claim.",
+            "next_issue_or_stage": "#44/#46/#49/#52 and Stages 1.2/1.6 streaming corrections."
+        },
+        {
+            "profile_id": "P1-S0-06",
+            "mode": "Editor rendered client / geometry, forest and settlement",
+            "status": "SUPPORTED-MEASURED",
+            "capability": "The existing graphical fixture runner supports isolated rendered Outdoor, Forest and Settlement routes; it does not qualify network density or production streaming.",
+            "runnable_alternative": "Outdoor, Forest and Settlement are the current runnable variants.",
+            "next_issue_or_stage": "Run five qualified repeats for each required metric; #44/#49/#52 for production-density and client telemetry expansion."
+        },
+        {
+            "profile_id": "P1-S0-07",
+            "mode": "server + rendered clients / login and reconnect bursts",
+            "status": "BLOCKED",
+            "capability": "Blocked: safe disposable account generation, real client admission and reconnect correctness are not available in the current runner.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#46/#51 and Stages 1.7-1.8 reconnect and durable-session work."
+        },
+        {
+            "profile_id": "P1-S0-08",
+            "mode": "Editor server / long-duration authoritative soak",
+            "status": "BLOCKED",
+            "capability": "Blocked: the current harness has no compliant multi-hour churn, persistence, leak and scheduler-backlog observation contract.",
+            "runnable_alternative": "P1-S0-04 bounded short server measurement only; it is not a soak or production-capacity claim.",
+            "next_issue_or_stage": "#47-#51; Stage 1.1 scheduler telemetry and Stages 1.7-1.8 durability."
+        }
+    ],
+    "attempts": [
+        {
+            "job_id": "job-20261015T095751713Z-8f6790a3",
+            "repeat_index": 1,
+            "run_id": "run-20261015T100208134Z-9fd06081",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T100208134Z-9fd06081",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:02:07.5256305Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "bc71a7d9c1ab6ba0cb3079065c8ae1901ffa6dc3378624902fc3e82b55f1ce4d",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:02:07.5281582Z",
+            "finished_utc": "2026-10-15T10:03:17.9344413Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "3cc55041194c8bc02bb150d9436c99c304c78e0be2ec5feac10e00ef90cff8c8",
+                    "bytes": 708,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "0dbf9a6d385865be3da351fa1db1a4aa63eba65c598663ed12e76f08090935db",
+                    "bytes": 1374,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "7d7cf0ec7b7ae349a827df386a76a28d8939f405347a6547e5f6f24346b672a9",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "f2aba326215d23002b381c5bb5981c14f9ea14717c5191636e02fe9607522a13",
+                    "bytes": 4057347,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "4902ef1d1790c4c52ad0617f7b0db20552e74ba715487f8d60d10b3d763460ef",
+                    "bytes": 62894,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751713Z-8f6790a3",
+            "repeat_index": 2,
+            "run_id": "run-20261015T100327498Z-1ecb4da1",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T100327498Z-1ecb4da1",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:03:26.9614668Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "bc71a7d9c1ab6ba0cb3079065c8ae1901ffa6dc3378624902fc3e82b55f1ce4d",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:03:26.9711011Z",
+            "finished_utc": "2026-10-15T10:04:17.3044522Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "aca8be5e493b2989e45fee21707d2c38e4f838b9a69276f46a92c54f0bc598da",
+                    "bytes": 708,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "867d08841603fded51efa78018f200a875563a95e0db2f8c8dfac7674ccfebbc",
+                    "bytes": 1374,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "cdbadd9263aeb1e768ec7ada1e16c8a9ae7435f474d14f55ca36d902562e6dfd",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "da6137faee164466fca4a945375ab1282d046793302480a13343b8eb49e3bd27",
+                    "bytes": 4055888,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "98d4e058e81447de98210953fb0fb4dd7e9b8bd9d8ae9d4c5e25ac8928383f24",
+                    "bytes": 62847,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751713Z-8f6790a3",
+            "repeat_index": 3,
+            "run_id": "run-20261015T100419314Z-2eee9be7",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T100419314Z-2eee9be7",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:04:18.7469336Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "bc71a7d9c1ab6ba0cb3079065c8ae1901ffa6dc3378624902fc3e82b55f1ce4d",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:04:18.7515785Z",
+            "finished_utc": "2026-10-15T10:06:14.9909442Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "9f5c27f4721283c1c98b76cae87ace19b812cd7f65d9465f6c341c7cc8bb1fae",
+                    "bytes": 708,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "a7c4b4c68902248a586055ea2e39b4c402d86871a0b50bbfcf3ff2fb2fbd0686",
+                    "bytes": 1374,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "91226612c0bf8b874a81a991e9285df446b421cc44b2d5a73b86032680fe359b",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "444ff8ccbd4cbd78c306e9f68c8b40b3b07728ae5af614f0f5c024529b3e95b8",
+                    "bytes": 4054381,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "eb6c05d94600258aa77592ec802d8d1478b8c1be82196304a8d003dfe84918e3",
+                    "bytes": 62892,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751713Z-8f6790a3",
+            "repeat_index": 4,
+            "run_id": "run-20261015T100616864Z-7bf61232",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T100616864Z-7bf61232",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:06:16.2779246Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "bc71a7d9c1ab6ba0cb3079065c8ae1901ffa6dc3378624902fc3e82b55f1ce4d",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:06:16.2809474Z",
+            "finished_utc": "2026-10-15T10:10:09.0234047Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "ed7a45dea77b8381c05983bfb78df42296fd570243b9917a7016aa0b34bc8848",
+                    "bytes": 708,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "b8abcc4ba9c39a07f2e339f992af2e7aa1d7b024da2d8322a89d0685bedeb547",
+                    "bytes": 1374,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "4c8e1c9bf01b9012c97d9a8a806387d9af524e90182060bf2f8a100b7156bcc3",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "1ebbb23b8e72eb9fb5a97a9223e61d1720861eb6aff6c494d5898cbf490e9ee8",
+                    "bytes": 4053947,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "9f46b06d6e793bc7c7a1fbec5b1731d18ed3eb635fc8f2f06199bb5f54f1349a",
+                    "bytes": 62893,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751713Z-8f6790a3",
+            "repeat_index": 5,
+            "run_id": "run-20261015T101011209Z-aee37938",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101011209Z-aee37938",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:10:10.4539895Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "bc71a7d9c1ab6ba0cb3079065c8ae1901ffa6dc3378624902fc3e82b55f1ce4d",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:10:10.4587628Z",
+            "finished_utc": "2026-10-15T10:11:11.9019921Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "ae6b3c29bfe5eae08f3961668a15c5234216ea3c3a917ceef770dc3993b507c2",
+                    "bytes": 708,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "c1e020fde92adbd609e975d56d96dc00b61e0a42c0edd9b61b80325e931d2d11",
+                    "bytes": 1374,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "9fba0d663547b9a9a451f9b1c45e676ab461bfdd26a4d9ca0d2ff3f6b80ed35a",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "594b1ac2dd4617383f926065d8cc20cd644601249caac26d7037d75395c4ebb8",
+                    "bytes": 4054099,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "7cf9ede8472890aaa222124b76edfd8119d2b5107ac19be4c181d16d6f558671",
+                    "bytes": 62897,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751724Z-e3c5a1bb",
+            "repeat_index": 1,
+            "run_id": "run-20261015T101114493Z-005802d5",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101114493Z-005802d5",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:11:13.8021439Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "eb2820aa2b5ecb0a1652b08bd101ca85c21c19701912dfe30c6a4bf27f255829",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:11:13.8096750Z",
+            "finished_utc": "2026-10-15T10:11:33.8109930Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "ece74b5aa8658dce078c94142c3d8c8b26e710598b842d63e628d3a628cdb21e",
+                    "bytes": 709,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "a50ef23344af03b4a06f429e44cb1c91d65b50ae9066b544ea6cd6010b935fce",
+                    "bytes": 1376,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "f15e0c41f307a5d578eee8dc234d4dcd74446ed9f93d1144179a5f6bbe18c0ed",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "c3dfcd47b380e4d209fc00e8aeee3bdb52bf861db3f1224df73de5921c5f40a5",
+                    "bytes": 4054645,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "15d2b92ee080d6d669555884fb639c8e33f44ba14edea2610ddd2f3d3792373e",
+                    "bytes": 62950,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751724Z-e3c5a1bb",
+            "repeat_index": 2,
+            "run_id": "run-20261015T101136245Z-58925582",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101136245Z-58925582",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:11:35.5209128Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "eb2820aa2b5ecb0a1652b08bd101ca85c21c19701912dfe30c6a4bf27f255829",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:11:35.5235062Z",
+            "finished_utc": "2026-10-15T10:12:56.8911847Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "faa93e208124d839b7ce1ce9b20dbdbf80dfdac548d37607d162ff5c8559b46d",
+                    "bytes": 709,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "8c15c7fce98cbbf6bed9c49702095a37f1261bbbd9c2f7e418afc0b06181cfa2",
+                    "bytes": 1376,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "3f00c7fd5ddabdc1144b3099474b0cfe0291797e9027cd1cd85c7b687d3431a2",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "f64918834933807db23da11afc2662583c766897cb213fd102e11d51bbcb9e6c",
+                    "bytes": 4054404,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "42986301b3ea756eb8606b44ad16714b229d5e52b9f07127fcfe2945822cc42a",
+                    "bytes": 62953,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751724Z-e3c5a1bb",
+            "repeat_index": 3,
+            "run_id": "run-20261015T101259552Z-9b41f685",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101259552Z-9b41f685",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:12:58.7674953Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "eb2820aa2b5ecb0a1652b08bd101ca85c21c19701912dfe30c6a4bf27f255829",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:12:58.7739732Z",
+            "finished_utc": "2026-10-15T10:13:19.3748347Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "1775be532a9e6e4801d4e67d9c8aa4af54e9b8a795beb176f148b431b5157395",
+                    "bytes": 709,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "bd5090ac790ec10ec4017b7070bfd97ac7be11d6a746e86caa4b4dd4aec38dcf",
+                    "bytes": 1376,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "11126a439995b58a918520d82395e5d5feb644827152bba34bc3327a4a9d0bdc",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "8f24c5a6e2eb6a79a8152e412165e40aab21c6975d0a4e093d089ec7bed83c64",
+                    "bytes": 4054325,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "8465f383470ca84cc593bfa36e94a79f4d487ef452501f2ca83ab84d49f0c731",
+                    "bytes": 62952,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751724Z-e3c5a1bb",
+            "repeat_index": 4,
+            "run_id": "run-20261015T101322165Z-56592753",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101322165Z-56592753",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:13:21.3121652Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "eb2820aa2b5ecb0a1652b08bd101ca85c21c19701912dfe30c6a4bf27f255829",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:13:21.3157252Z",
+            "finished_utc": "2026-10-15T10:15:02.2085940Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "78608c4e3253b9b2482684121f2eaad9db615f342fd07540bb3993e187933753",
+                    "bytes": 709,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "31ea8085d62f348e0562cd87f5cabb45825be2ef7c144c79f2a8e2a3e9fd8943",
+                    "bytes": 1376,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "a795b11aecf3e28cc487d853f593fce7ff1b9ae21bbbf4183c937be94c7739a6",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "b4e555fcdaccf5523390d51de1070b532b77fa780cf9b3e8dff3aa77fcc269cd",
+                    "bytes": 4054159,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "6d79e19cb1468bfa19ca0ad553760ce2364f540620cff6f18467f92182224309",
+                    "bytes": 62949,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751724Z-e3c5a1bb",
+            "repeat_index": 5,
+            "run_id": "run-20261015T101504806Z-ca328c3d",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101504806Z-ca328c3d",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:15:03.9823717Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-04",
+            "fixture_sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+            "seed": "424242",
+            "configuration_sha256": "eb2820aa2b5ecb0a1652b08bd101ca85c21c19701912dfe30c6a4bf27f255829",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:15:03.9859279Z",
+            "finished_utc": "2026-10-15T10:18:00.8132060Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73",
+                    "bytes": 9455,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "12d256d01a11bf86d3faf8e484e66222428cebf8849eff766dd441ce2572eb29",
+                    "bytes": 709,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "e50f923e6b88d9a1e0ee35fec29045826282ffec928f02b05a43b9fc49b7fc70",
+                    "bytes": 1376,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "be136e186b1f564dd30a4c35237c1fc5fd9991bdd7728508287a44e9828e0f8a",
+                    "bytes": 1956,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "0b9bd88111aeec5d6c8a638c2c19aef4efa2730843501e4abbdf0add11f913b1",
+                    "bytes": 4054033,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "a7061bdcddb4c03c48af2f9b5b8dfe159ee1d42f27eeb54d3bc62adc90d96c9a",
+                    "bytes": 62957,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751728Z-b46f05ba",
+            "repeat_index": 1,
+            "run_id": "run-20261015T101803597Z-5db2d245",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101803597Z-5db2d245",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:18:02.6774038Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+            "seed": "424242",
+            "configuration_sha256": "852b3dc253cb4694b1c508a94b11422f2ee4396c31874489de1efe0bf8ab5ada",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:18:02.6893123Z",
+            "finished_utc": "2026-10-15T10:18:24.1503361Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+                    "bytes": 2477,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "f78ed7072f4e887d93516f9d0fda53ba4a5a156c62a18de6cb0f69476b8fcf54",
+                    "bytes": 737,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "43a566debacd9f76810ea0e69bf207de58c6e8a3ee320cc001ec4828b57fbe3e",
+                    "bytes": 1363,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "47ca76649f9037ec59281264a08e8f6ae9ce4148d86c383c33ca67f57939480e",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "93c37885bbabe1ac741c7dcb3f9e2b0c4166a99456d25364a60cdfdb0acb3e12",
+                    "bytes": 1909409,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "926394b147591c55f1d5eefd5683a641a471f3257af8e874d12ac92c2c8456e9",
+                    "bytes": 61011,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751728Z-b46f05ba",
+            "repeat_index": 2,
+            "run_id": "run-20261015T101826941Z-05945209",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101826941Z-05945209",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:18:26.0326255Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+            "seed": "424242",
+            "configuration_sha256": "852b3dc253cb4694b1c508a94b11422f2ee4396c31874489de1efe0bf8ab5ada",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:18:26.0442969Z",
+            "finished_utc": "2026-10-15T10:18:53.3329597Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+                    "bytes": 2477,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "277be9d1160a491c6261e6e8580f0f85f61255c71ec5c64fd9bc2a408114d545",
+                    "bytes": 737,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "9dbd67beb6b8b92dbec65b159e266cb65346c4455f15389320a6a77f7823d4f9",
+                    "bytes": 1363,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "02b287e23d61f055637bff97aa2b4e83613e08bcf08416817d49d040e968f268",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "f299885fd1926101d11cd76139b8e80740cd3dab2a09675c4ccdad7335387503",
+                    "bytes": 2129232,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "dae20f2aa9d7a0d95b9cd1dd5767c3ed54a2bf2df8ff60ecde740ebf57976b72",
+                    "bytes": 61044,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751728Z-b46f05ba",
+            "repeat_index": 3,
+            "run_id": "run-20261015T101856220Z-c2ac0c46",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101856220Z-c2ac0c46",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:18:55.2694933Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+            "seed": "424242",
+            "configuration_sha256": "852b3dc253cb4694b1c508a94b11422f2ee4396c31874489de1efe0bf8ab5ada",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:18:55.2796131Z",
+            "finished_utc": "2026-10-15T10:19:23.5803670Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+                    "bytes": 2477,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "dd28f96db215cf1387adad0f4460c990b9760943ca89d7baac82cec59a733bbf",
+                    "bytes": 737,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "9a88ad5cd1c619b175d0935e1e6798d3501e15119ad9b49addebaf0fc1b52dbf",
+                    "bytes": 1363,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "b9f1eb6eddb549b8fd7eb69b5fc3c0f80649d206218e6d7107be4a4b06c1acd8",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "e20c3fe9b7bffef92ee2c276e4d870849b6c2f8c6f37d59e7a2be9d230a51ffa",
+                    "bytes": 2129284,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "d959e83c1bec691aaf27018c01f2eb53cac735ae4c1f3da482853d62b872f00b",
+                    "bytes": 61050,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751728Z-b46f05ba",
+            "repeat_index": 4,
+            "run_id": "run-20261015T101926597Z-258511ae",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101926597Z-258511ae",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:19:25.6101614Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+            "seed": "424242",
+            "configuration_sha256": "852b3dc253cb4694b1c508a94b11422f2ee4396c31874489de1efe0bf8ab5ada",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:19:25.6199711Z",
+            "finished_utc": "2026-10-15T10:19:53.5624892Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+                    "bytes": 2477,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "590119dc0ca524ab408611dc4f4338b415f97425c7895a8a3fa9646cd8a913bf",
+                    "bytes": 737,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "83eac5f894e996c249eaee1f09c1c29a19ebf5c388bfcd6e3f0ce875a2f3e88f",
+                    "bytes": 1363,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "b8e37c423b635fff6f810dc78b823ccf112820501cba224178723e77cf823443",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "9b04a7e1439ee5c0e1e18d940f945ceefa7c64250d51e4286f169a4763818eff",
+                    "bytes": 2129289,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "d94235803229cad43e5393c3deeb442141b6381a63f4915a0be88587e283a4b6",
+                    "bytes": 61056,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751728Z-b46f05ba",
+            "repeat_index": 5,
+            "run_id": "run-20261015T101956621Z-c5a0c469",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T101956621Z-c5a0c469",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:19:55.6054504Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+            "seed": "424242",
+            "configuration_sha256": "852b3dc253cb4694b1c508a94b11422f2ee4396c31874489de1efe0bf8ab5ada",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:19:55.6150400Z",
+            "finished_utc": "2026-10-15T10:20:23.9156190Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882",
+                    "bytes": 2477,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "664156daaca340819a55320be9b609a0b86482ea7ccdd8be9f72848a2108d7cb",
+                    "bytes": 737,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "df30c3a3ec1510d1b267ac79787158a4a39efbb44b40b290d590257f8a6dbef2",
+                    "bytes": 1363,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "a8e6bc170d2373e7e5db4d4591b1eddfe5074623c33611fa2947f79e436c3eed",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "4b910adac90a7b184a7098648579e466a22f71b3d1ea8e90723dc371c3539046",
+                    "bytes": 2129280,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "eb7bd962dc286bda3918203f36513c40821d2d3efbf0768c8719c359d68ce6ad",
+                    "bytes": 61055,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751743Z-b0dced97",
+            "repeat_index": 1,
+            "run_id": "run-20261015T102027066Z-2fcbb747",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102027066Z-2fcbb747",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:20:26.0285828Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+            "seed": "424242",
+            "configuration_sha256": "1a9e700a6a4beeb5b9d7826c35515c480ad9d5f41657944e77ebed45098560c0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:20:26.0413893Z",
+            "finished_utc": "2026-10-15T10:20:54.2248503Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+                    "bytes": 2478,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "f05ae1dc1f050908203c5e3c85a2da7c2fa549945167851c95ae9bf7c7a9735c",
+                    "bytes": 738,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "685a52a6ae3a238f62a2ef32e21f2f523435674536017d234e9fb4f483a97664",
+                    "bytes": 1367,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "e95ee4514b4c338ed5f4c3664b13f1e492ed31eaf29b4c630c5d9d9e5d303c46",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "a9d54fd570179f9a5aed4dcc00c253b7c7f684c7903dc236eb1fa8b6727a795e",
+                    "bytes": 2129483,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "59e39db640a4b1fd6c06c0e50c08f4a8243cad639435286a6a9c57be6c3e24c1",
+                    "bytes": 61067,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751743Z-b0dced97",
+            "repeat_index": 2,
+            "run_id": "run-20261015T102057557Z-5fdf575c",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102057557Z-5fdf575c",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:20:56.5241248Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+            "seed": "424242",
+            "configuration_sha256": "1a9e700a6a4beeb5b9d7826c35515c480ad9d5f41657944e77ebed45098560c0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:20:56.5339479Z",
+            "finished_utc": "2026-10-15T10:21:24.5624628Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+                    "bytes": 2478,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "7a7bdd8c3bda297f61e32bf7b66175ca06417ccc13eb141c578e463cefb56128",
+                    "bytes": 738,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "d41247b5d8d535a0e968276f5435d4ccec567a8a0df07c29d792b1009f58ceb1",
+                    "bytes": 1367,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "b464abf2a181b3a0e0b5ef6dacd0d1ef30e614e210f07022a6388dd24afca5fc",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "4137e099459290eb2731b5402aa5670311807a39e559b40525f08f4b8949ef3c",
+                    "bytes": 2129459,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "f5129720b38b995283498ab5d5354209614d1e411a359eaad74ed3aa3b6af55d",
+                    "bytes": 61064,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751743Z-b0dced97",
+            "repeat_index": 3,
+            "run_id": "run-20261015T102127846Z-f2fb3403",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102127846Z-f2fb3403",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:21:26.7618248Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+            "seed": "424242",
+            "configuration_sha256": "1a9e700a6a4beeb5b9d7826c35515c480ad9d5f41657944e77ebed45098560c0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:21:26.7746172Z",
+            "finished_utc": "2026-10-15T10:21:54.7323345Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+                    "bytes": 2478,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "21c726dc991767bccdc139ea9654910e0cdfc4369119212c3695df3bdf7461b5",
+                    "bytes": 738,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "45c3acfa69018c9a61be606cfca2b70ce81e94d5f358984b38c9b7819d665a8a",
+                    "bytes": 1367,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "5e0961d10448b62d3e8827b6ebb0de44af9db8f09555cf5e7a48febf5d5eec38",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "61c67056cdf83df5086805135d39a9ee8c6d62b161c3955726829d5e0b050a72",
+                    "bytes": 2129435,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "bdbc7ef0c7d75e74c215c2b76b8211e964b505de69666fe96eb8850c70440cfd",
+                    "bytes": 61066,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751743Z-b0dced97",
+            "repeat_index": 4,
+            "run_id": "run-20261015T102158121Z-da0458af",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102158121Z-da0458af",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:21:57.0259078Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+            "seed": "424242",
+            "configuration_sha256": "1a9e700a6a4beeb5b9d7826c35515c480ad9d5f41657944e77ebed45098560c0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:21:57.0356112Z",
+            "finished_utc": "2026-10-15T10:22:25.9106667Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+                    "bytes": 2478,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "9b5bc8ccd9691c689e951dcf24b316a46e12520761bef43dde1a9e5b0394eb3e",
+                    "bytes": 738,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "bf025346d4c1e9e49f72de03e9f44789416a346ee47af67f3bb3504195430c1b",
+                    "bytes": 1367,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "61f807627da9cfe4182de422731a439025934f2b8469ec673f0fb349096f3124",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "accff6ff5e1e348dcb474481da839dd7fa069f8ed828f9833112eb81f4b41d23",
+                    "bytes": 2129416,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "fa31ab663d81f175b5a28daaf38f225b896f96fec5c2f64c53e5f8a00ae4a1d0",
+                    "bytes": 61062,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751743Z-b0dced97",
+            "repeat_index": 5,
+            "run_id": "run-20261015T102229347Z-88b163a7",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102229347Z-88b163a7",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:22:28.2466035Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+            "seed": "424242",
+            "configuration_sha256": "1a9e700a6a4beeb5b9d7826c35515c480ad9d5f41657944e77ebed45098560c0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:22:28.2603941Z",
+            "finished_utc": "2026-10-15T10:22:57.6127637Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7",
+                    "bytes": 2478,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "703d1150fecc303bd6dc3f3ba8841d7c16dc56dfc3773f4365525d21bf749a2e",
+                    "bytes": 738,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "b348ba2597397ceb6fe2c3e63af93e20bd124d964f51ad1cd966e98ce34751d0",
+                    "bytes": 1367,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "589409599642d0a683e9418270c84fa6879ac1b58d4411e70ed034f5cbe69360",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "8d5bfc5e8a2cd45e95d70efc8a0e2b5d83880a18f3abb14819669a924f28bf2a",
+                    "bytes": 2129584,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "fb3f902429aa25ae96560b31fc752d38008e59139be4a0c72c42bc2d6b6cf7d5",
+                    "bytes": 61063,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751747Z-c1b51b19",
+            "repeat_index": 1,
+            "run_id": "run-20261015T102301309Z-bf4fdf60",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102301309Z-bf4fdf60",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:23:00.1225531Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+            "seed": "424242",
+            "configuration_sha256": "11634dbb313ab4159337ae9680ad85a5f0a125f3c6bc9822e535911cd43b5bd0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:23:00.1325995Z",
+            "finished_utc": "2026-10-15T10:23:30.5460298Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+                    "bytes": 2486,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "c476f67f08ae9d75cdff075193c1684e0c75d573021443fd50665d7d3479d467",
+                    "bytes": 744,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "b5357f2ab101ee853213ca1a674f3b52e7d16cc24d623ad156531f4711c7b08f",
+                    "bytes": 1369,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "97630e1a09808713f0e188493e06827e440235669352194c43076ee351ed2b72",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "9ca87b44bcab23e04989138fc57bdb35e9a7db3221fe988914c1d7b160111be7",
+                    "bytes": 2129350,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "48cdf32bdc22d1a8ce151f7549711bef8b2c20b72bd5fe07788f29046b7cf500",
+                    "bytes": 61057,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751747Z-c1b51b19",
+            "repeat_index": 2,
+            "run_id": "run-20261015T102334277Z-b95280d1",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102334277Z-b95280d1",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:23:33.0519676Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+            "seed": "424242",
+            "configuration_sha256": "11634dbb313ab4159337ae9680ad85a5f0a125f3c6bc9822e535911cd43b5bd0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:23:33.0640706Z",
+            "finished_utc": "2026-10-15T10:24:02.8596858Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+                    "bytes": 2486,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "a10a5f5e74b618e6c337c2e5a23d667f75abb1d97712097a7ef369daa8873e54",
+                    "bytes": 744,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "9fcb89752be2bf0df57200956f17927033943371521a3f8f2b2d283331b78b65",
+                    "bytes": 1369,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "adcf1a39c6edbcbde211d65da7bdac207b23cf02ba4000594d990306ed5f69eb",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "4219e2bb26942c53d5d36e63e744223d8fbcba6768c2723de1bdcd61a121b42b",
+                    "bytes": 2129435,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "963448900169235dd5e8a76654feaa797f0e2bb919b2f9f39e0c172f83bcf876",
+                    "bytes": 61057,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751747Z-c1b51b19",
+            "repeat_index": 3,
+            "run_id": "run-20261015T102406684Z-b1bec106",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102406684Z-b1bec106",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:24:05.4349143Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+            "seed": "424242",
+            "configuration_sha256": "11634dbb313ab4159337ae9680ad85a5f0a125f3c6bc9822e535911cd43b5bd0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:24:05.4449654Z",
+            "finished_utc": "2026-10-15T10:24:34.7979888Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+                    "bytes": 2486,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "36529ebe66df542ffaa32d7e38c73da89d7657c0618d4e9ab92bbea08db3ebab",
+                    "bytes": 744,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "0962cbb2d6e42cf54a40bd684aa943d58bd7682c5a8f177e08b0950329ee8065",
+                    "bytes": 1369,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "948f6d19293c31ac9f0c48fb8794103ca5f8bc62630721363f8400566465bde5",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "f0f7e49d5c07cfb2747a42b6e3e795de8ae6be4fe53965bed507afec1cfcea57",
+                    "bytes": 2129386,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "c98d818195fa0212fdaf6ad81d89fc57f999565fea6f909a08cf933c984fffb8",
+                    "bytes": 61057,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751747Z-c1b51b19",
+            "repeat_index": 4,
+            "run_id": "run-20261015T102438742Z-06c18e46",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102438742Z-06c18e46",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:24:37.4218909Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+            "seed": "424242",
+            "configuration_sha256": "11634dbb313ab4159337ae9680ad85a5f0a125f3c6bc9822e535911cd43b5bd0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:24:37.4330330Z",
+            "finished_utc": "2026-10-15T10:25:06.8873064Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+                    "bytes": 2486,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "00d85f63adbb4ace284bd9f6a443d47257f2670933e5c584efcef611b4976c14",
+                    "bytes": 744,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "7a998bd3bdff91b865fea5213cf2b7597f1ffe928034c12fe9d6ef6886ad6b68",
+                    "bytes": 1369,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "0b8e1ae1479e7c9ebf9fcbbf21b46a0e1f62df51676a65743a3f97fd2a7b871b",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "01ac30c7c0005efad8590379b594a2245cd232fdcd0c516bc6cc039dade90d11",
+                    "bytes": 2129465,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "e723dbe81b4fb9c94a605fac2c9b531a97bfdc64baf2130b113cf295b9a17cd5",
+                    "bytes": 61056,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        },
+        {
+            "job_id": "job-20261015T095751747Z-c1b51b19",
+            "repeat_index": 5,
+            "run_id": "run-20261015T102510952Z-3720f2c7",
+            "result_path": "C:\\Users\\recip\\Unity\\NinthAge\\Builds/Benchmarks/Results\\run-20261015T102510952Z-3720f2c7",
+            "status": "COMPLETE-MEASURED",
+            "stop_reason": "MEASUREMENT_COMPLETE",
+            "source": {
+                "captured_utc": "2026-10-15T10:25:09.6730506Z",
+                "git_branch": "dev",
+                "git_branch_status": "named",
+                "git_branch_diagnostic": "",
+                "commit_sha": "665abcc51a6761354f0feb9e350e148dc04ba1a3",
+                "source_sha256": "d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b",
+                "dirty": false,
+                "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "packages_sha256": "8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90",
+                "packages_lock_sha256": "933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9",
+                "purrnet_sha256": "e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941",
+                "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+                "operating_system": "Windows 11  (10.0.26200)",
+                "unity_version": "6000.3.10f1",
+                "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+                "graphics_settings": "quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset"
+            },
+            "profile_id": "P1-S0-06",
+            "fixture_sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+            "seed": "424242",
+            "configuration_sha256": "11634dbb313ab4159337ae9680ad85a5f0a125f3c6bc9822e535911cd43b5bd0",
+            "hardware": "Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16",
+            "unity_version": "6000.3.10f1",
+            "graphics_device": "Direct3D12 / NVIDIA GeForce RTX 4060 Ti",
+            "started_utc": "2026-10-15T10:25:09.6843775Z",
+            "finished_utc": "2026-10-15T10:25:39.1006364Z",
+            "correctness_status": "pass",
+            "cleanup_status": "complete",
+            "artifact_index_status": "verified",
+            "artifacts": [
+                {
+                    "path": "fixture.json",
+                    "sha256": "d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605",
+                    "bytes": 2486,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "logs/runner.log",
+                    "sha256": "d69710f37823989e5773ea668b0dc010b054193616353f9e10fa24381b233938",
+                    "bytes": 744,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "report.md",
+                    "sha256": "18d589dac1901b667accabd636796658582726242693ef68554da546372a1afc",
+                    "bytes": 1369,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "run.json",
+                    "sha256": "6259a9338e730993bb7cc42e2cc15af468d465f36b838a5980f246b349eae1ae",
+                    "bytes": 2740,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                },
+                {
+                    "path": "samples.ndjson",
+                    "sha256": "52d6db4c27646a5280104dae58c2e1fe9103ef50c18f96120cb5489f77c3d3ab",
+                    "bytes": 2129394,
+                    "required": false,
+                    "optional": true,
+                    "status": "present"
+                },
+                {
+                    "path": "summary.json",
+                    "sha256": "cc516bdfa98942b20dfda56cb22268f71ce4a5da41306553838609a629807511",
+                    "bytes": 61061,
+                    "required": true,
+                    "optional": false,
+                    "status": "present"
+                }
+            ]
+        }
+    ]
+}
