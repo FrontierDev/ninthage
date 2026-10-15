@@ -2,40 +2,40 @@
 
 **Retrieval status:** local / not externally retrievable. The result tree is Git-ignored and no user-supplied archive location has been added. These hashes are catalogue references, not GitHub-hosted evidence links.
 
-**Campaign:** `campaign-20261014T184624379Z-d9cbdff6`  
-**Local root:** `Builds/Benchmarks/Results`  
-**Campaign manifest SHA-256:** `68825584af90b9b71da8ceee50ecdaa88f49a9b1ac9c1c451f1639d79c800e75`  
-**Campaign index SHA-256:** `d3e57a1539eba2ae13efc2db65c3969065d7020ec49a7f0ff57e978690593015`
+**Campaign:** `campaign-20261015T095750417Z-878db4d7`<br>
+**Local root:** `Builds/Benchmarks/Results`<br>
+**Campaign manifest SHA-256:** `7e51e249ff12d771d67cbbf517b4486ee4074fa1c2a71d8d2094743761fd5457`<br>
+**Campaign index SHA-256:** `a8e7928b809017f7709d91c69e2bbb96ea0f38d34c8199f772c16adf7975f030`
 
-The following is a lightweight catalogue of the 25 preserved attempt IDs. Each hash is the SHA-256 of that run's `artifacts.json`; the artifact manifest contains the individual file paths, byte counts and hashes. Failed, rejected and incomplete attempts must remain in future catalogues in the same form.
+The following is a lightweight catalogue of the 25 preserved attempt IDs. All 25 attempts in this campaign completed with `COMPLETE-MEASURED`; the first Outdoor graphical attempt still retains its explicit missing GPU/render-thread metrics and zero draw/triangle observation. Each hash is the SHA-256 of that run's `artifacts.json`; the artifact manifest contains the individual file paths, byte counts and hashes. Failed, rejected and incomplete attempts must remain in future catalogues in the same form.
 
 | Job / repeat | Run ID | `artifacts.json` SHA-256 |
 | --- | --- | --- |
-| `job-20261014T184627390Z-89defca9` / 1 | `run-20261014T184653482Z-50c1b856` | `d3ac4740fb743a6c1613103818fe81ba6c3824958bf7ed2f80074ba56664c872` |
-| same / 2 | `run-20261014T184715294Z-8ef40393` | `0b51e0f1cc1d0c6de2e5668abc7efc6f174c89bedc5ecf59961203da2acba860` |
-| same / 3 | `run-20261014T184746176Z-19c1343b` | `5914eaefbdbb9b2b187938198f37fa7a56ec684f55bad8c1af15f558e0fe25c1` |
-| same / 4 | `run-20261014T184817298Z-d55e5030` | `74bfd5a706f1b9aaacee8cd2fa7306a4e210be3d55c4a74c1281cfbc740783c0` |
-| same / 5 | `run-20261014T184849048Z-e09b9cad` | `2b15c282619df9d0add0b1dd7bdda624a28626f71dd34bc91033a9ec6319803d` |
-| `job-20261014T184627395Z-d00f5949` / 1 | `run-20261014T184920367Z-e788926a` | `98bcaee941cbdf6904b7134e7534fb502a9fc9d7b0f2e2e80451cc1d3ee4d69c` |
-| same / 2 | `run-20261014T184951561Z-61bba0f5` | `57f286965c750ec94320f485f6edd7cbbfe33b591127a1d9b77053e856a2daf7` |
-| same / 3 | `run-20261014T185023036Z-492fb9e9` | `6489be5c22433b24cb6b60a523fd1a06e3049d6afe48dac1ebc9ca31938c04db` |
-| same / 4 | `run-20261014T185054454Z-5d6fa329` | `5471598576eeecf21c135a6fce63b647fbf7cc9b8a97c726135c7ea95bd9f78b` |
-| same / 5 | `run-20261014T185125671Z-8d99e52e` | `6508adbad0b6537a3a77c4d3f56670f0a904153cca800de0a825e2084f370309` |
-| `job-20261014T184627395Z-f733c531` / 1 | `run-20261014T185156878Z-9ea71024` | `aafc399cc918230d438624175ce3128e2bb59722eef2b5785ff185e430037937` |
-| same / 2 | `run-20261014T185228650Z-5a76e536` | `00dd01303fd4853fc44da5730813444add2dd2467d6b175518c4ad35717888f3` |
-| same / 3 | `run-20261014T185301244Z-79aaa62e` | `34ff513ee922c33d4e983b54c5529e229c3815ac7056a7f5b0f0dea300dff4a1` |
-| same / 4 | `run-20261014T185333775Z-6e209896` | `22306f6f3d209ad560d7a1a6cff115b377d68f9141d6d484dcf51d4e37a65de4` |
-| same / 5 | `run-20261014T185406611Z-9c051cbe` | `89846341722a43aeba19c47acefecbaf6316805f4e20eb491b959faebd9caf9c` |
-| `job-20261014T184627399Z-7ad8836a` / 1 | `run-20261014T185603363Z-671f3546` | `effdac282f050ed48fa12c63bb563366168420d710961ab7cf80d7e085beb2a5` |
-| same / 2 | `run-20261014T185639993Z-84c311b3` | `47afbc1035fb06fe3e1d2682b7ea4ffd9bc282dc994bd024c0736e3f2019074d` |
-| same / 3 | `run-20261014T185714104Z-7df78bde` | `e0d2dd36078eae1849ea67bf350c0ab6726c53ecef378d0dfb7a2db75f2f3171` |
-| same / 4 | `run-20261014T185957861Z-6dd5e572` | `53c8ba3a8f49ac4de6f01bf7e6cfdd49fbbe06fc38cb55f32e30a851ce0e737e` |
-| same / 5 | `run-20261014T190155107Z-d70ee790` | `0633dce799128c0015b2bf355ea451886bc7120842cc4faa9611292675261a8e` |
-| `job-20261014T184627404Z-74fc733e` / 1 | `run-20261014T190306157Z-40e237f0` | `551dd1ddd2768ad078d835eb6438505298aa16edbbd6fce656e43e28b5309a` |
-| same / 2 | `run-20261014T190404578Z-2bb08330` | `aa69b1486d0db1bd840c6ec23a5a625ba091444892767f7794fd38b748ac93c4` |
-| same / 3 | `run-20261014T190446993Z-8900ead0` | `c7a4b23e4a1b007422402e0523a84710289ca66598b6c7a811dd09921ff8c01d` |
-| same / 4 | `run-20261014T190550038Z-82d7ba1e` | `042aa89e71654fac8306924b1aba02540b5872d2a2844685a0ab0c057b1e0e51` |
-| same / 5 | `run-20261014T190708296Z-84263c64` | `cc2a0ff999f36b35e334b57c98acf61506daaa9bc2d54ab7a397dc2af6eece98`
+| `job-20261015T095751713Z-8f6790a3` / 1 | `run-20261015T100208134Z-9fd06081` | `707d4e895c58d36b035ba97b57a57a6c5e81e670670b177710f8a16f6b71c84c` |
+| same / 2 | `run-20261015T100327498Z-1ecb4da1` | `73b51f320cb2d2cf4270a2f624dbe061cffd333211f415e6cad7fea3123ad199` |
+| same / 3 | `run-20261015T100419314Z-2eee9be7` | `f8136db221578db74235d3050158d098ac4465e04b892a49fb2a9a7cd9fd39f2` |
+| same / 4 | `run-20261015T100616864Z-7bf61232` | `e550c3c86733f7af80e15c048530eee6b93c639482c6f4eacb13bfdf363130d9` |
+| same / 5 | `run-20261015T101011209Z-aee37938` | `3eced167b7eec4f8c8501855cecafe953274ca6b41d10e91758bdb3423d5d901` |
+| `job-20261015T095751724Z-e3c5a1bb` / 1 | `run-20261015T101114493Z-005802d5` | `ed36044a3baec324ea379efc9932512cf7db4a533515fc1be894c9f187651388` |
+| same / 2 | `run-20261015T101136245Z-58925582` | `69bb2c06d1a00b76350eb4cb291e7c27a4bd9ab462bb0ba95c5812dfc7f9977d` |
+| same / 3 | `run-20261015T101259552Z-9b41f685` | `f9b6dc5a4fde255f7d86b1ef19bd3d9e8f150db8187c8834ba91206c6c814ecc` |
+| same / 4 | `run-20261015T101322165Z-56592753` | `3434b9050c8256d2f0593b0a1ea83a3ea610001680b3ac9132498a9fc823b5d3` |
+| same / 5 | `run-20261015T101504806Z-ca328c3d` | `065c28a8accb5cb7764364f5a51770894f4fb3004e69ffb8e458f3d6870c664a` |
+| `job-20261015T095751728Z-b46f05ba` / 1 | `run-20261015T101803597Z-5db2d245` | `5a807ea28930d7312f922f9a3fddf4e92f6e895157f42fe8f55ffcb68459e084` |
+| same / 2 | `run-20261015T101826941Z-05945209` | `a8a39437851077c1592ff8ecb69b2b16053d3794201dc77e1a688c69c6414ee7` |
+| same / 3 | `run-20261015T101856220Z-c2ac0c46` | `51a9410744252b4981af2db9110f16dcb2cbfe62bf9a38090e41e51f8d46552e` |
+| same / 4 | `run-20261015T101926597Z-258511ae` | `a335c44efbd52fe7eaa388772e637937d2d31e630f2fcc78f2a673f74bcbde34` |
+| same / 5 | `run-20261015T101956621Z-c5a0c469` | `9d60c468a83d0abc466455da356d6dfada18f5c3776ca0fa2f8765bfa285d4ab` |
+| `job-20261015T095751743Z-b0dced97` / 1 | `run-20261015T102027066Z-2fcbb747` | `8cc1a90b738c0a1f57d08d8a81ea5d297040de3df45a3120c9439d694e193d85` |
+| same / 2 | `run-20261015T102057557Z-5fdf575c` | `f689075a55235040afffc55cc2bbb2d2258de5db54eb4e45e548d488cc995178` |
+| same / 3 | `run-20261015T102127846Z-f2fb3403` | `fc63f65d80028be883cd266098334bbf643e9db5476036de5156c67d9f5c2ce1` |
+| same / 4 | `run-20261015T102158121Z-da0458af` | `5a27a696999307c6c720ebafbb6be7e9c4f3a3cb7c4c50e7f9b90dccf906d6c2` |
+| same / 5 | `run-20261015T102229347Z-88b163a7` | `1774e0bd02ba2feb7fbbed4c90f2ca1960995da7df75c7585ad40a0392fedd46` |
+| `job-20261015T095751747Z-c1b51b19` / 1 | `run-20261015T102301309Z-bf4fdf60` | `1c0a612acdb60ac510a78eff043b41753e78309350b78df5ea8df28a8d13b952` |
+| same / 2 | `run-20261015T102334277Z-b95280d1` | `41fb4aa15a30d2a902ee90febf00b54172c94f8fbe2c79bde3010bb329e960bb` |
+| same / 3 | `run-20261015T102406684Z-b1bec106` | `432c120276319a40062caba722bc0327515cdb98fbdaa8f74b186c880acc74eb` |
+| same / 4 | `run-20261015T102438742Z-06c18e46` | `254e35e3d4d43b4424e473d95e30e2e5c38fae91733df6f02304cd82dafb9326` |
+| same / 5 | `run-20261015T102510952Z-3720f2c7` | `dbf53c606a10c1002c36d614a002c7e1f7f0bb536fe8ec9265aa7158937ed9ef`
 
 ## Offline export and verification
 
@@ -43,7 +43,7 @@ Until an archive location is supplied, run the following offline PowerShell proc
 
 ```powershell
 $sourceResults = (Resolve-Path 'Builds/Benchmarks/Results').Path
-$archiveRoot = 'D:/NinthAge-performance-archive-20261014'
+$archiveRoot = 'D:/NinthAge-performance-archive-20261015'
 if (Test-Path -LiteralPath $archiveRoot) { throw "Refusing to overwrite existing archive: $archiveRoot" }
 New-Item -ItemType Directory -Path $archiveRoot | Out-Null
 Copy-Item -LiteralPath $sourceResults -Destination (Join-Path $archiveRoot 'Results') -Recurse
