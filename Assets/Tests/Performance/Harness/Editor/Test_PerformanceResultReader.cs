@@ -113,7 +113,7 @@ namespace Game.Tests.Performance.Harness
                     ? $"coverage {MeasurementCoverage:P0}"
                     : "coverage unavailable";
                 var warning = (AttemptedSampleCount > 0 && MeasurementCoverage < 1d)
-                    ? $"; warning retained {SampleCount}/{AttemptedSampleCount}"
+                    ? $"; warning retained {RetainedSampleCount}/{AttemptedSampleCount}"
                     : string.Empty;
                 var legacyWarning = string.IsNullOrEmpty(CoverageDiagnostic) ? string.Empty : "; " + CoverageDiagnostic;
                 return $"samples {RetainedSampleCount}/{AttemptedSampleCount}; p50 {FormatNumber(P50)}; p95 {FormatNumber(P95)}; p99 {p99}; {coverage}; retention {RetentionPolicy}{warning}{legacyWarning} [{Unit}]";
@@ -123,10 +123,10 @@ namespace Game.Tests.Performance.Harness
         private string GetUnmeasuredState()
         {
             string state;
-            if (string.Equals(RetentionPolicy, "not_collected", StringComparison.OrdinalIgnoreCase))
-                state = "not_collected";
-            else if (string.Equals(Observation, "unavailable", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Observation, "unavailable", StringComparison.OrdinalIgnoreCase))
                 state = "unavailable";
+            else if (string.Equals(RetentionPolicy, "not_collected", StringComparison.OrdinalIgnoreCase))
+                state = "not_collected";
             else
                 state = string.IsNullOrEmpty(Observation) ? "unverified" : Observation;
             return state + (string.IsNullOrEmpty(CoverageDiagnostic) ? string.Empty : "; " + CoverageDiagnostic) + " [" + Unit + "]";
@@ -487,14 +487,26 @@ namespace Game.Tests.Performance.Harness
                 var retainedSampleCount = metric.retained_sample_count > 0 ? metric.retained_sample_count : metric.sample_count;
                 var metricJson = FindMetricJson(summaryJson, metric.metric_id);
                 var hasCapacityOverflowCount = metricJson != null && HasJsonProperty(metricJson, "capacity_overflow_count");
+                var hasLegacyCoverageSemantics = TryGetLegacyCoverageSemantics(
+                    metricJson,
+                    metric.retention_policy,
+                    metric.attempted_sample_count,
+                    retainedSampleCount,
+                    metric.dropped_sample_count,
+                    metric.rejected_sample_count,
+                    metric.reservoir_replacement_count,
+                    metric.measurement_coverage,
+                    out var legacyDiagnostic);
                 if (retainedSampleCount > metric.attempted_sample_count
                     || metric.rejected_sample_count > metric.attempted_sample_count
                     || retainedSampleCount + metric.rejected_sample_count > metric.attempted_sample_count
                     || (hasCapacityOverflowCount && (metric.capacity_overflow_count > metric.attempted_sample_count
                         || metric.capacity_overflow_count > metric.attempted_sample_count - metric.rejected_sample_count
-                        || metric.reservoir_replacement_count > metric.capacity_overflow_count))
+                        || metric.reservoir_replacement_count > metric.capacity_overflow_count
+                        || (long)metric.dropped_sample_count != metric.rejected_sample_count + (long)metric.capacity_overflow_count))
                     || (!hasCapacityOverflowCount
                         && metric.reservoir_replacement_count > 0
+                        && !hasLegacyCoverageSemantics
                         && (retainedSampleCount >= metric.attempted_sample_count
                             || (long)metric.dropped_sample_count != metric.rejected_sample_count + (long)metric.reservoir_replacement_count)))
                 {
@@ -512,16 +524,7 @@ namespace Game.Tests.Performance.Harness
                 {
                     var retention = retainedSampleCount / (double)metric.attempted_sample_count;
                     metric.effective_measurement_coverage = retention;
-                    if (TryGetLegacyCoverageSemantics(
-                        metricJson,
-                        metric.retention_policy,
-                        metric.attempted_sample_count,
-                        retainedSampleCount,
-                        metric.dropped_sample_count,
-                        metric.rejected_sample_count,
-                        metric.reservoir_replacement_count,
-                        metric.measurement_coverage,
-                        out var legacyDiagnostic))
+                    if (hasLegacyCoverageSemantics)
                     {
                         metric.legacy_coverage_semantics = legacyDiagnostic;
                     }
@@ -570,12 +573,14 @@ namespace Game.Tests.Performance.Harness
                 || retainedSampleCount >= attemptedSampleCount
                 || droppedSampleCount < 0
                 || reservoirReplacementCount <= 0
-                || !HasJsonProperty(metricJson, "retained_sample_count")
+                || (!HasJsonProperty(metricJson, "retained_sample_count")
+                    && !HasJsonProperty(metricJson, "sample_count"))
                 || !HasJsonProperty(metricJson, "dropped_sample_count")
                 || !HasJsonProperty(metricJson, "rejected_sample_count")
                 || !HasJsonProperty(metricJson, "reservoir_replacement_count")
                 || HasJsonProperty(metricJson, "capacity_overflow_count")
                 || HasJsonProperty(metricJson, "valid_sample_coverage")
+                || (long)droppedSampleCount != attemptedSampleCount - retainedSampleCount
                 || (long)droppedSampleCount != rejectedSampleCount + (long)reservoirReplacementCount)
             {
                 return false;
@@ -828,6 +833,7 @@ namespace Game.Tests.Performance.Harness
             groups.Add(BuildMetricGroup("Server ECS / actor CPU timing", metrics, new[]
             {
                 new Test_PerformanceMetricSpec("server.ecs.actor_update_duration", "ECS actor update", "ms"),
+                new Test_PerformanceMetricSpec("server.ecs.world_spawn_duration", "ECS world spawn", "ms"),
                 new Test_PerformanceMetricSpec("server.ecs.resource_regen_duration", "ECS resource regeneration", "ms"),
                 new Test_PerformanceMetricSpec("server.ecs.spell_cast_duration", "ECS spell cast", "ms"),
                 new Test_PerformanceMetricSpec("server.ecs.cooldown_tick_duration", "ECS cooldown tick", "ms"),

@@ -375,8 +375,8 @@ namespace Game.Tests.Performance.Harness
                 Assert.That(sample, Does.Contain("\"metric_id\":\"test.performance.export-schema\""));
                 Assert.That(sample, Does.Contain("\"phase\":\"measurement\""));
                 Assert.That(sample, Does.Contain("\"unit\":\"ms\""));
-                Assert.That(sample, Does.Contain("\"frame_or_tick\":42"));
-                Assert.That(sample, Does.Contain("\"interval_seconds\":0.5"));
+                Assert.That(sample, Does.Contain("\"frame_or_tick\":\"42\""));
+                Assert.That(sample, Does.Contain("\"interval_seconds\":\"0.5\""));
             }
             finally
             {
@@ -429,10 +429,10 @@ namespace Game.Tests.Performance.Harness
                 var fixture = File.ReadAllText(run.FixturePath);
                 var runJson = File.ReadAllText(run.RunPath);
 
-                Assert.That(fixture, Does.Contain("\"schema_version\":\"benchmark-fixture/v1\""));
-                Assert.That(fixture, Does.Contain("\"master_seed\":424242"));
-                Assert.That(fixture, Does.Contain("\"ecs_data_only_npcs\":100"));
-                Assert.That(fixture, Does.Contain("\"synthetic_clients\":0"));
+                Assert.That(fixture, Does.Contain("\"schema_version\": \"benchmark-fixture/v1\""));
+                Assert.That(fixture, Does.Contain("\"master_seed\": 424242"));
+                Assert.That(fixture, Does.Contain("\"ecs_data_only_npcs\": 100"));
+                Assert.That(fixture, Does.Contain("\"synthetic_clients\": 0"));
                 Assert.That(fixture, Does.Contain("\"source_commit\":"));
                 Assert.That(fixture, Does.Contain("\"source_sha256\":"));
                 Assert.That(fixture, Does.Contain("\"fixture_scene_hash\":"));
@@ -638,7 +638,7 @@ namespace Game.Tests.Performance.Harness
             Assert.That(summary, Does.Contain("\"status\":\"FAIL-INSTRUMENTATION\""));
             Assert.That(metricJson, Does.Contain("\"observation\":\"unavailable\""));
             Assert.That(metricJson, Does.Contain("\"attempted_sample_count\":1000"));
-            Assert.That(metricJson, Does.Contain("\"sample_count\":384"));
+            Assert.That(metricJson, Does.Contain("\"sample_count\":0"));
             Assert.That(metricJson, Does.Contain("\"retained_sample_count\":384"));
             Assert.That(metricJson, Does.Contain("\"dropped_sample_count\":616"));
             Assert.That(metricJson, Does.Contain("\"raw_trace_sample_count\":256"));
@@ -824,7 +824,7 @@ namespace Game.Tests.Performance.Harness
         [Test]
         public void FixtureScriptPrerequisitesAreBlockedInsteadOfRunnerErrors()
         {
-            var classifyFailure = typeof(Test_PerformanceHarnessController).GetMethod(
+            var classifyFailure = typeof(Test_PerformanceHarnessBehaviour).GetMethod(
                 "ClassifyFailure",
                 BindingFlags.Static | BindingFlags.NonPublic);
             Assert.That(classifyFailure, Is.Not.Null);

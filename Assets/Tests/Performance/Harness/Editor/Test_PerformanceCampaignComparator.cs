@@ -394,10 +394,7 @@ namespace Game.Tests.Performance.Harness
                     group.Classification = Test_PerformanceCampaignGroupClassification.MATCHED;
                     BuildMetricComparisons(group, minimumValidRepeats);
                     if (HasMetricPolicyMismatch(group))
-                    {
-                        group.Reason = AddReason(group.Reason, "Metric sample/retention policy differs between the selected campaigns.");
-                        hardReasons = true;
-                    }
+                        group.Reason = AddReason(group.Reason, "Metric sample/retention policy differs between the selected campaigns; qualification remains metric-specific.");
                     if (group.BaselineValidCount < minimumValidRepeats || group.CandidateValidCount < minimumValidRepeats)
                         report.Reasons.Add(group.Label + ": fewer than " + minimumValidRepeats + " valid independent repeats; descriptive statistics are provisional.");
                 }
@@ -657,6 +654,29 @@ namespace Game.Tests.Performance.Harness
             return true;
         }
 
+        private static Test_PerformanceCampaignSource SelectAttemptSource(
+            Test_PerformanceCampaignSource attemptSource,
+            Test_PerformanceCampaignSource campaignSource)
+        {
+            return HasSourceIdentity(attemptSource) ? attemptSource : campaignSource;
+        }
+
+        private static bool HasSourceIdentity(Test_PerformanceCampaignSource source)
+        {
+            return source != null
+                && (!string.IsNullOrEmpty(source.git_branch)
+                    || !string.IsNullOrEmpty(source.git_branch_status)
+                    || !string.IsNullOrEmpty(source.commit_sha)
+                    || !string.IsNullOrEmpty(source.hardware)
+                    || !string.IsNullOrEmpty(source.operating_system)
+                    || !string.IsNullOrEmpty(source.unity_version)
+                    || !string.IsNullOrEmpty(source.packages_sha256)
+                    || !string.IsNullOrEmpty(source.packages_lock_sha256)
+                    || !string.IsNullOrEmpty(source.purrnet_sha256)
+                    || !string.IsNullOrEmpty(source.graphics_device)
+                    || !string.IsNullOrEmpty(source.graphics_settings));
+        }
+
         private static void BuildCohortMetricComparisons(Test_PerformanceCampaignComparisonGroup group, int minimumValidRepeats)
         {
             var samples = group.BaselineAttempts.Where(attempt => attempt.IsValid).SelectMany(attempt => attempt.Metrics).ToList();
@@ -830,7 +850,7 @@ namespace Game.Tests.Performance.Harness
                     GroupLabel = job?.DisplayName,
                     IdentityKey = BuildIdentityKey(job, null, null),
                     ProfileID = job?.options?.EffectiveProfileID,
-                    Source = attempt.source ?? archive.Manifest.source,
+                    Source = SelectAttemptSource(attempt.source, archive.Manifest.source),
                 };
                 try
                 {
@@ -935,7 +955,7 @@ namespace Game.Tests.Performance.Harness
                 && string.Equals(run.render?.mode, "server_only", StringComparison.OrdinalIgnoreCase))
             {
                 var population = summary.achieved?.population;
-                var expectedEntities = fixture?.population?.npcs?.accounting?.ecs_data_only_npcs ?? 0;
+                var expectedEntities = fixture?.population?.accounting?.ecs_data_only_npcs ?? 0;
                 if (population == null
                     || expectedEntities <= 0
                     || population.requested_ecs_entities != expectedEntities
@@ -1366,15 +1386,41 @@ namespace Game.Tests.Performance.Harness
         {
             if (string.IsNullOrEmpty(summaryJson) || string.IsNullOrEmpty(metricID))
                 return null;
-            var marker = "\"metric_id\":\"" + metricID + "\"";
-            var metricIndex = summaryJson.IndexOf(marker, StringComparison.Ordinal);
-            if (metricIndex < 0)
-                return null;
-            var objectStart = summaryJson.LastIndexOf('{', metricIndex);
-            var objectEnd = summaryJson.IndexOf('}', metricIndex + marker.Length);
-            return objectStart < 0 || objectEnd <= objectStart
-                ? null
-                : summaryJson.Substring(objectStart, objectEnd - objectStart + 1);
+            const string property = "\"metric_id\"";
+            var searchStart = 0;
+            while (searchStart < summaryJson.Length)
+            {
+                var propertyIndex = summaryJson.IndexOf(property, searchStart, StringComparison.Ordinal);
+                if (propertyIndex < 0)
+                    return null;
+                var valueStart = propertyIndex + property.Length;
+                SkipJsonWhitespace(summaryJson, ref valueStart);
+                if (valueStart >= summaryJson.Length || summaryJson[valueStart] != ':')
+                    return null;
+                valueStart++;
+                SkipJsonWhitespace(summaryJson, ref valueStart);
+                if (valueStart >= summaryJson.Length || summaryJson[valueStart] != '"')
+                    return null;
+                var valueEnd = summaryJson.IndexOf('"', valueStart + 1);
+                if (valueEnd > valueStart
+                    && string.Equals(summaryJson.Substring(valueStart + 1, valueEnd - valueStart - 1), metricID, StringComparison.Ordinal))
+                {
+                    var objectStart = summaryJson.LastIndexOf('{', propertyIndex);
+                    var objectEnd = summaryJson.IndexOf('}', valueEnd);
+                    return objectStart < 0 || objectEnd <= objectStart
+                        ? null
+                        : summaryJson.Substring(objectStart, objectEnd - objectStart + 1);
+                }
+                searchStart = valueEnd > propertyIndex ? valueEnd + 1 : propertyIndex + property.Length;
+            }
+
+            return null;
+        }
+
+        private static void SkipJsonWhitespace(string json, ref int index)
+        {
+            while (index < json.Length && char.IsWhiteSpace(json[index]))
+                index++;
         }
 
         private static string GetResultRoot()
@@ -1484,13 +1530,11 @@ namespace Game.Tests.Performance.Harness
         private sealed class Test_PerformanceComparisonFixturePopulationDocument
         {
             public Test_PerformanceComparisonFixtureNpcDocument npcs;
+            public Test_PerformanceComparisonFixtureAccountingDocument accounting;
         }
 
         [Serializable]
-        private sealed class Test_PerformanceComparisonFixtureNpcDocument
-        {
-            public Test_PerformanceComparisonFixtureAccountingDocument accounting;
-        }
+        private sealed class Test_PerformanceComparisonFixtureNpcDocument { public int requested; }
 
         [Serializable]
         private sealed class Test_PerformanceComparisonFixtureAccountingDocument

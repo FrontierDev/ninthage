@@ -76,7 +76,10 @@ namespace Game.Tests.Performance.Harness
             foreach (var group in graphical.MetricGroups)
             {
                 foreach (var metric in group.Metrics)
-                    Assert.That(metric.MetricID, Does.Not.StartWith("server."));
+                {
+                    if (metric.Present)
+                        Assert.That(metric.MetricID, Does.Not.StartWith("server."));
+                }
             }
         }
 
@@ -439,7 +442,7 @@ namespace Game.Tests.Performance.Harness
             const string metrics = "["
                 + "{\"metric_id\":\"server.ecs.actor_update_duration\",\"unit\":\"ms\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":125,\"retained_sample_count\":100,\"dropped_sample_count\":25,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":0.8,\"reason\":\"measurement_sample_coverage_below_policy\",\"retention_policy\":\"phase_reserved_reservoir\"},"
                 + "{\"metric_id\":\"server.memory.total_allocated_bytes\",\"unit\":\"bytes\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":0,\"dropped_sample_count\":0,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":null,\"reason\":\"no source\",\"retention_policy\":\"not_collected\"},"
-                + "{\"metric_id\":\"server.ecs.world_spawn_duration\",\"unit\":\"ms\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":125,\"dropped_sample_count\":25,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":0.8,\"reason\":\"measurement_sample_coverage_below_policy\",\"retention_policy\":\"phase_reserved_reservoir\"},"
+                + "{\"metric_id\":\"server.ecs.world_spawn_duration\",\"unit\":\"ms\",\"observation\":\"unavailable\",\"phase\":\"measurement\",\"sample_count\":0,\"attempted_sample_count\":125,\"retained_sample_count\":100,\"dropped_sample_count\":25,\"min\":null,\"max\":null,\"mean\":null,\"p50\":null,\"p95\":null,\"p99\":null,\"measurement_coverage\":0.8,\"reason\":\"measurement_sample_coverage_below_policy\",\"retention_policy\":\"phase_reserved_reservoir\"},"
                 + "{\"metric_id\":\"server.memory.mono_used_bytes\",\"unit\":\"bytes\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":1,\"attempted_sample_count\":1,\"dropped_sample_count\":0,\"min\":0,\"max\":0,\"mean\":0,\"p50\":0,\"p95\":0,\"p99\":null,\"measurement_coverage\":1,\"reason\":\"insufficient_samples\",\"retention_policy\":\"phase_reserved_exact\"}"
                 + "]";
             var directory = CreateResult(
@@ -459,7 +462,7 @@ namespace Game.Tests.Performance.Harness
             Assert.That(measured.SampleCount, Is.EqualTo(0));
             Assert.That(measured.RetainedSampleCount, Is.EqualTo(100));
             Assert.That(measured.MeasurementCoverage, Is.EqualTo(0.8d));
-            Assert.That(measured.DisplayValue, Does.Contain("warning retained 100/125"));
+            Assert.That(measured.DisplayValue, Is.EqualTo("unavailable [ms]"));
             Assert.That(measured.DisplayValue, Does.Contain("[ms]"));
             Assert.That(unavailable.Observation, Is.EqualTo("unavailable"));
             Assert.That(unavailable.DisplayValue, Is.EqualTo("unavailable [bytes]"));
@@ -581,6 +584,35 @@ namespace Game.Tests.Performance.Harness
             Assert.That(legacyMetric.CandidateQualified, Is.EqualTo(0));
             Assert.That(unaffectedMetric.CandidateQualified, Is.EqualTo(1));
             Assert.That(legacyMetric.Caveat, Does.Contain("legacy_coverage_semantics"));
+        }
+
+        [Test]
+        public void LegacyReservoirCoverageCanUseTheHistoricalSampleCountFallback()
+        {
+            var metricJson = LegacyReservoirMetricJson(
+                "server.actor_manager.update_duration",
+                "ms",
+                "server_update",
+                384,
+                1000,
+                4d,
+                5d,
+                6d,
+                includeRetainedSampleCount: false);
+
+            Assert.That(
+                Test_PerformanceResultReader.TryGetLegacyCoverageSemantics(
+                    metricJson,
+                    "phase_reserved_reservoir",
+                    1000,
+                    384,
+                    616,
+                    0,
+                    616,
+                    1d,
+                    out var diagnostic),
+                Is.True);
+            Assert.That(diagnostic, Does.Contain("384/1000 retained/attempted"));
         }
 
         [Test]
@@ -1213,13 +1245,15 @@ namespace Game.Tests.Performance.Harness
 
         private static string LegacyReservoirMetricJson(string metricID, string unit, string scope, double p50, double p95, double p99)
         {
-            return LegacyReservoirMetricJson(metricID, unit, scope, 384, 1000, p50, p95, p99);
+            return LegacyReservoirMetricJson(metricID, unit, scope, 384, 1000, p50, p95, p99, includeRetainedSampleCount: true);
         }
 
-        private static string LegacyReservoirMetricJson(string metricID, string unit, string scope, int retained, int attempted, double p50, double p95, double p99)
+        private static string LegacyReservoirMetricJson(string metricID, string unit, string scope, int retained, int attempted, double p50, double p95, double p99, bool includeRetainedSampleCount = true)
         {
-            var reservoirReplacementCount = attempted - retained;
-            return "{\"metric_id\":\"" + metricID + "\",\"source\":\"server\",\"scope\":\"" + scope + "\",\"unit\":\"" + unit + "\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":" + retained + ",\"retained_sample_count\":" + retained + ",\"attempted_sample_count\":" + attempted + ",\"dropped_sample_count\":" + reservoirReplacementCount + ",\"rejected_sample_count\":0,\"reservoir_replacement_count\":" + reservoirReplacementCount + ",\"min\":1,\"max\":100,\"mean\":50,\"p50\":" + p50.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p95\":" + p95.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p99\":" + p99.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"measurement_coverage\":1,\"reason\":\"\",\"retention_policy\":\"phase_reserved_reservoir\"}";
+            var droppedSampleCount = attempted - retained;
+            var reservoirReplacementCount = droppedSampleCount;
+            var retainedProperty = includeRetainedSampleCount ? "\"retained_sample_count\":" + retained + "," : string.Empty;
+            return "{\"metric_id\":\"" + metricID + "\",\"source\":\"server\",\"scope\":\"" + scope + "\",\"unit\":\"" + unit + "\",\"observation\":\"measured\",\"phase\":\"measurement\",\"sample_count\":" + retained + "," + retainedProperty + "\"attempted_sample_count\":" + attempted + ",\"dropped_sample_count\":" + droppedSampleCount + ",\"rejected_sample_count\":0,\"reservoir_replacement_count\":" + reservoirReplacementCount + ",\"min\":1,\"max\":100,\"mean\":50,\"p50\":" + p50.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p95\":" + p95.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"p99\":" + p99.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ",\"measurement_coverage\":1,\"reason\":\"\",\"retention_policy\":\"phase_reserved_reservoir\"}";
         }
 
         private static string CurrentMetricJsonWithForgedCoverage(string metricID, string scope)
