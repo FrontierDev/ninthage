@@ -934,7 +934,7 @@ Tentative coverage:
 | Fighter | Strong | — | Strong | — | Strong |
 | Duellist | — | — | Strong | Limited | Strong |
 | Ranger | — | Limited | Possible | Strong | Strong |
-| Sorcerer | — | — | — | Strong | Strong |
+| Sorcerer | — | Strong (Fluxweaver) | Strong (Voidbrand) | Strong (Cataclyst) | Strong |
 | Occultist | Possible | Possible | — | Strong | Strong |
 | Naturalist | Strong | Strong | Strong | Possible | Moderate |
 | Ascetic | Strong | Moderate | Strong | — | Moderate |
