@@ -420,10 +420,11 @@ namespace Game.Tests.Performance.Harness
             if (!Finalized)
                 return;
 
+            EnsureFinalizedEvidenceExists();
             if (_observability.total_attempt_wall_clock_seconds < 0d)
                 _observability.total_attempt_wall_clock_seconds = (DateTime.UtcNow - _startedUtc).TotalSeconds;
             UpdateFinalizedSummaryLifecycle();
-            WriteReport(_finalStatus, _finalReasonCode, _finalMessage);
+            UpdateFinalizedReportLifecycle();
             WriteArtifacts();
         }
 
@@ -480,6 +481,9 @@ namespace Game.Tests.Performance.Harness
             }
             if (!File.Exists(fixturePath) || !File.Exists(runPath))
                 throw new FileNotFoundException("The pending performance run evidence files are missing.", fixturePath);
+            if (state.finalized
+                && (!File.Exists(summaryPath) || !File.Exists(reportPath)))
+                throw new FileNotFoundException("The finalized performance run workload evidence files are missing.", !File.Exists(summaryPath) ? summaryPath : reportPath);
             if (!string.Equals(Test_PerformanceRunMetadata.HashFile(fixturePath), state.fixtureSha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("The pending performance run fixture digest changed during Editor reload.");
 
@@ -1373,7 +1377,44 @@ namespace Game.Tests.Performance.Harness
             var summaryJson = File.ReadAllText(SummaryPath);
             var orchestrationJson = BuildOrchestrationJson();
             var updatedSummary = ReplaceJsonObjectProperty(summaryJson, "orchestration", orchestrationJson);
-            File.WriteAllText(SummaryPath, updatedSummary, new UTF8Encoding(false));
+            if (!string.Equals(summaryJson, updatedSummary, StringComparison.Ordinal))
+                File.WriteAllText(SummaryPath, updatedSummary, new UTF8Encoding(false));
+        }
+
+        private void UpdateFinalizedReportLifecycle()
+        {
+            if (!File.Exists(ReportPath))
+                throw new FileNotFoundException("The finalized performance report is missing during lifecycle completion.", ReportPath);
+
+            const string orchestrationPrefix = "- Editor orchestration: ";
+            var report = File.ReadAllText(ReportPath);
+            var lineStart = report.IndexOf(orchestrationPrefix, StringComparison.Ordinal);
+            if (lineStart < 0)
+                throw new InvalidDataException("The finalized performance report is missing its Editor orchestration field.");
+
+            var lineEnd = report.IndexOf('\n', lineStart);
+            var contentEnd = lineEnd < 0 ? report.Length : lineEnd;
+            if (contentEnd > lineStart && report[contentEnd - 1] == '\r')
+                contentEnd--;
+            var replacement = orchestrationPrefix + BuildOrchestrationDisplay();
+            var updatedReport = report.Substring(0, lineStart) + replacement + report.Substring(contentEnd);
+            if (!string.Equals(report, updatedReport, StringComparison.Ordinal))
+                File.WriteAllText(ReportPath, updatedReport, new UTF8Encoding(false));
+        }
+
+        private void EnsureFinalizedEvidenceExists()
+        {
+            var missing = new List<string>();
+            if (!File.Exists(FixturePath))
+                missing.Add("fixture.json");
+            if (!File.Exists(RunPath))
+                missing.Add("run.json");
+            if (!File.Exists(SummaryPath))
+                missing.Add("summary.json");
+            if (!File.Exists(ReportPath))
+                missing.Add("report.md");
+            if (missing.Count > 0)
+                throw new FileNotFoundException("The finalized performance run is missing required evidence: " + string.Join(", ", missing));
         }
 
         private void RestoreFinalizationFields(Test_PerformancePendingRunState state)

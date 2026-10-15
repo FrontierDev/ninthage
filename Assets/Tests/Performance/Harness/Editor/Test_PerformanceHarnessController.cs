@@ -500,6 +500,7 @@ namespace Game.Tests.Performance.Harness
             if (_activeRun == null || !_activeRun.Finalized)
                 return;
 
+            _activeRun.MarkPlayModeExited();
             var sceneRestored = RestorePreviousSceneSetup(out var diagnostic);
             if (sceneRestored)
                 _activeRun.MarkSceneRestored();

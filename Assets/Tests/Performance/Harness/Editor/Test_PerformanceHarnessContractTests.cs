@@ -1001,6 +1001,220 @@ namespace Game.Tests.Performance.Harness
             Assert.That(restored.isSubScene, Is.EqualTo(original[0].isSubScene));
         }
 
+        [Test]
+        public void RestoredFinalizedGraphicalRunPreservesWorkloadEvidence()
+        {
+            var originalSceneSetup = EditorSceneManager.GetSceneManagerSetup();
+            Test_PerformanceRun run = null;
+            GameObject cameraObject = null;
+            Scene fixtureScene = default;
+            try
+            {
+                run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions
+                {
+                    WorkloadMode = Test_PerformanceWorkloadMode.GraphicalClient,
+                    GraphicalScenario = Test_GraphicalScenario.Outdoor,
+                });
+                fixtureScene = EditorSceneManager.OpenScene(run.GraphicalPlan.FixtureScenePaths[0], OpenSceneMode.Additive);
+                run.SetLoadedWorld(fixtureScene);
+                var graphicalRuntime = run.CreateGraphicalRuntime();
+                cameraObject = new GameObject("PerformanceHarnessRegressionCamera");
+                graphicalRuntime.AttachCamera(cameraObject.AddComponent<Camera>());
+                graphicalRuntime.ValidateLoadedScene(fixtureScene);
+                graphicalRuntime.Advance(1f, 1f);
+                var expectedObjectCount = graphicalRuntime.ActualObjectCount;
+                var expectedActorCount = graphicalRuntime.ActualActorCount;
+                var expectedRouteCoverage = graphicalRuntime.RouteWaypointsReached + "/" + run.GraphicalPlan.Waypoints.Length;
+                graphicalRuntime.Dispose();
+                run.MarkCleanupComplete();
+
+                run.StartTelemetry();
+                var testMetric = new PerformanceMetricDefinition(
+                    "test.performance.finalized-reload",
+                    PerformanceMetricUnit.Milliseconds,
+                    PerformanceMetricSide.Shared,
+                    "test_finalized_reload",
+                    "sample");
+                PerformanceTelemetry.RegisterMetric(testMetric, 16);
+                run.BeginPhase(PerformanceMeasurementPhase.Ramp);
+                run.MarkWorkloadApplied();
+                run.MarkPhaseComplete(PerformanceMeasurementPhase.Ramp);
+                run.BeginPhase(PerformanceMeasurementPhase.Warmup);
+                run.MarkPhaseComplete(PerformanceMeasurementPhase.Warmup);
+                run.BeginPhase(PerformanceMeasurementPhase.Measurement);
+                Assert.That(PerformanceTelemetry.TryRecord(testMetric, 4d, 1, 0.1d), Is.True);
+                run.RecordMeasurementFrame();
+                run.RecordMeasurementSample();
+                run.ObserveEntityCount(expectedObjectCount);
+                run.MarkPhaseComplete(PerformanceMeasurementPhase.Measurement);
+                run.BeginPhase(PerformanceMeasurementPhase.Recovery);
+                run.MarkPhaseComplete(PerformanceMeasurementPhase.Recovery);
+                run.MarkWorkloadFinalized();
+                run.Complete(
+                    PerformanceRunStatus.CompleteMeasured,
+                    "MEASUREMENT_COMPLETE",
+                    "The graphical reload regression fixture completed.");
+
+                var originalSummary = File.ReadAllText(run.SummaryPath);
+                var originalRawSamples = File.ReadAllBytes(Path.Combine(run.ResultsDirectory, "samples.ndjson"));
+                var state = run.CreatePendingRunState(Array.Empty<SceneSetup>(), "finalized");
+                var restored = Test_PerformanceRun.Restore(state);
+                Assert.That(restored.GraphicalRuntime, Is.Null);
+
+                restored.CompleteEditorLifecycle();
+
+                var restoredSummary = File.ReadAllText(run.SummaryPath);
+                var restoredReport = File.ReadAllText(run.ReportPath);
+                Assert.That(restoredReport, Does.Contain($"- Achieved graphical objects: `{expectedObjectCount}`"));
+                Assert.That(restoredReport, Does.Contain($"- Achieved graphical actors: `{expectedActorCount}`"));
+                Assert.That(restoredReport, Does.Contain($"- Route coverage: `{expectedRouteCoverage}` waypoints"));
+                Assert.That(restoredReport, Does.Not.Contain("Achieved graphical objects: `unverified`"));
+                Assert.That(restoredReport, Does.Not.Contain("Achieved graphical actors: `unverified`"));
+                Assert.That(restoredReport, Does.Not.Contain("Route coverage: `unverified`"));
+                Assert.That(ExtractJsonValue(originalSummary, "status"), Is.EqualTo(ExtractJsonValue(restoredSummary, "status")));
+                Assert.That(ExtractJsonValue(originalSummary, "achieved"), Is.EqualTo(ExtractJsonValue(restoredSummary, "achieved")));
+                Assert.That(ExtractJsonValue(originalSummary, "stop"), Is.EqualTo(ExtractJsonValue(restoredSummary, "stop")));
+                Assert.That(ExtractJsonValue(originalSummary, "metrics"), Is.EqualTo(ExtractJsonValue(restoredSummary, "metrics")));
+                Assert.That(ExtractJsonValue(originalSummary, "raw_files"), Is.EqualTo(ExtractJsonValue(restoredSummary, "raw_files")));
+                Assert.That(File.ReadAllBytes(Path.Combine(run.ResultsDirectory, "samples.ndjson")), Is.EqualTo(originalRawSamples));
+                Assert.That(Test_PerformanceEvidence.ReadFinalizedResult(run.ResultsDirectory).IsVerified, Is.True);
+
+                var idempotentSummary = File.ReadAllText(run.SummaryPath);
+                var idempotentReport = File.ReadAllText(run.ReportPath);
+                var idempotentArtifacts = File.ReadAllText(Path.Combine(run.ResultsDirectory, "artifacts.json"));
+                restored.CompleteEditorLifecycle();
+                Assert.That(File.ReadAllText(run.SummaryPath), Is.EqualTo(idempotentSummary));
+                Assert.That(File.ReadAllText(run.ReportPath), Is.EqualTo(idempotentReport));
+                Assert.That(File.ReadAllText(Path.Combine(run.ResultsDirectory, "artifacts.json")), Is.EqualTo(idempotentArtifacts));
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Finalized reload regression cleanup.");
+                }
+                if (cameraObject != null)
+                    UnityEngine.Object.DestroyImmediate(cameraObject);
+                if (fixtureScene.IsValid() && fixtureScene.isLoaded)
+                    EditorSceneManager.CloseScene(fixtureScene, true);
+                if (run != null && Directory.Exists(run.ResultsDirectory))
+                    Directory.Delete(run.ResultsDirectory, true);
+                if (originalSceneSetup != null && originalSceneSetup.Length > 0)
+                    EditorSceneManager.RestoreSceneManagerSetup(originalSceneSetup);
+            }
+        }
+
+        [Test]
+        public void RestoredFinalizedLifecycleKeepsReloadTimingUnknownAndReportsSceneFailure()
+        {
+            var run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions());
+            try
+            {
+                run.MarkWorkloadFinalized();
+                run.Complete(
+                    PerformanceRunStatus.FailCorrectness,
+                    "TEST_FINALIZED",
+                    "Finalized lifecycle regression fixture.");
+                var restored = Test_PerformanceRun.Restore(run.CreatePendingRunState(Array.Empty<SceneSetup>(), "finalized"));
+                restored.MarkPlayModeExited();
+                restored.MarkSceneRestoreFailed("test scene restoration failure");
+                restored.CompleteEditorLifecycle();
+
+                var orchestration = ExtractJsonValue(File.ReadAllText(run.SummaryPath), "orchestration");
+                Assert.That(orchestration, Does.Contain("\"play_mode_exited_utc\":\""));
+                Assert.That(orchestration, Does.Contain("\"scene_restored_utc\":\"\""));
+                Assert.That(orchestration, Does.Contain("\"workload_finalized_to_play_mode_exited_seconds\":null"));
+                Assert.That(orchestration, Does.Contain("\"play_mode_exit_to_scene_restored_seconds\":null"));
+                Assert.That(orchestration, Does.Contain("\"scene_restoration_status\":\"failed\""));
+                Assert.That(orchestration, Does.Contain("test scene restoration failure"));
+                Assert.That(Test_PerformanceEvidence.ReadFinalizedResult(run.ResultsDirectory).IsVerified, Is.True);
+            }
+            finally
+            {
+                if (Directory.Exists(run.ResultsDirectory))
+                    Directory.Delete(run.ResultsDirectory, true);
+            }
+        }
+
+        [Test]
+        public void NoReloadFinalizedLifecycleKeepsMeasuredEvidenceAndKnownTimings()
+        {
+            var run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions());
+            try
+            {
+                run.MarkQueueDispatch(1, DateTime.UtcNow);
+                run.MarkPlayModeEntered();
+                run.MarkWorkloadFinalized();
+                run.Complete(
+                    PerformanceRunStatus.FailCorrectness,
+                    "TEST_FINALIZED",
+                    "No-reload lifecycle regression fixture.");
+                var originalSummary = File.ReadAllText(run.SummaryPath);
+                run.MarkPlayModeExited();
+                run.MarkSceneRestored();
+                run.CompleteEditorLifecycle();
+
+                var summary = File.ReadAllText(run.SummaryPath);
+                var orchestration = ExtractJsonValue(summary, "orchestration");
+                Assert.That(orchestration, Does.Contain("\"queue_dispatch_to_play_mode_entered_seconds\":").And.Not.Contain("\"queue_dispatch_to_play_mode_entered_seconds\":null"));
+                Assert.That(orchestration, Does.Contain("\"workload_finalized_to_play_mode_exited_seconds\":").And.Not.Contain("\"workload_finalized_to_play_mode_exited_seconds\":null"));
+                Assert.That(orchestration, Does.Contain("\"play_mode_exit_to_scene_restored_seconds\":").And.Not.Contain("\"play_mode_exit_to_scene_restored_seconds\":null"));
+                Assert.That(ExtractJsonValue(originalSummary, "status"), Is.EqualTo(ExtractJsonValue(summary, "status")));
+                Assert.That(ExtractJsonValue(originalSummary, "stop"), Is.EqualTo(ExtractJsonValue(summary, "stop")));
+                Assert.That(ExtractJsonValue(originalSummary, "metrics"), Is.EqualTo(ExtractJsonValue(summary, "metrics")));
+                Assert.That(File.ReadAllText(run.ReportPath), Does.Contain("- Requested ECS entities:"));
+                Assert.That(Test_PerformanceEvidence.ReadFinalizedResult(run.ResultsDirectory).IsVerified, Is.True);
+            }
+            finally
+            {
+                if (Directory.Exists(run.ResultsDirectory))
+                    Directory.Delete(run.ResultsDirectory, true);
+            }
+        }
+
+        [Test]
+        public void RestoredFinalizedServerRunPreservesPersistedActivityEvidence()
+        {
+            var run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions());
+            try
+            {
+                run.MarkWorkloadFinalized();
+                run.Complete(
+                    PerformanceRunStatus.FailCorrectness,
+                    "TEST_FINALIZED",
+                    "Server reload regression fixture.");
+                var report = File.ReadAllText(run.ReportPath)
+                    .Replace("- Ramp-completed ECS entities: `0`", "- Ramp-completed ECS entities: `100`", StringComparison.Ordinal)
+                    .Replace("- Measurement-start ECS entities: `0`", "- Measurement-start ECS entities: `100`", StringComparison.Ordinal)
+                    .Replace("- Measurement-end ECS entities: `0`", "- Measurement-end ECS entities: `100`", StringComparison.Ordinal)
+                    .Replace("- Peak ECS entities observed: `0`", "- Peak ECS entities observed: `100`", StringComparison.Ordinal)
+                    .Replace(
+                        "- Measured activity snapshot: `unverified` (measurement did not start or no pre-cleanup snapshot was captured)",
+                        "- Measured activity snapshot (`measurement`, before teardown): idle=`7`, patrolling=`11`, combat=`82`, wake surge=`3`",
+                        StringComparison.Ordinal);
+                File.WriteAllText(run.ReportPath, report);
+
+                var restored = Test_PerformanceRun.Restore(run.CreatePendingRunState(Array.Empty<SceneSetup>(), "finalized"));
+                restored.CompleteEditorLifecycle();
+
+                var restoredReport = File.ReadAllText(run.ReportPath);
+                Assert.That(restoredReport, Does.Contain("- Ramp-completed ECS entities: `100`"));
+                Assert.That(restoredReport, Does.Contain("- Measurement-start ECS entities: `100`"));
+                Assert.That(restoredReport, Does.Contain("- Measurement-end ECS entities: `100`"));
+                Assert.That(restoredReport, Does.Contain("- Peak ECS entities observed: `100`"));
+                Assert.That(restoredReport, Does.Contain("idle=`7`, patrolling=`11`, combat=`82`, wake surge=`3`"));
+                Assert.That(Test_PerformanceEvidence.ReadFinalizedResult(run.ResultsDirectory).IsVerified, Is.True);
+            }
+            finally
+            {
+                if (Directory.Exists(run.ResultsDirectory))
+                    Directory.Delete(run.ResultsDirectory, true);
+            }
+        }
+
         private static string CompleteCreatedRun(
             PerformanceRunStatus status,
             string reasonCode,
@@ -1204,6 +1418,67 @@ namespace Game.Tests.Performance.Harness
             var end = summary.IndexOf('}', start);
             Assert.That(end, Is.GreaterThan(start), "Metric JSON was not terminated.");
             return summary.Substring(start, end - start + 1);
+        }
+
+        private static string ExtractJsonValue(string json, string propertyName)
+        {
+            var marker = "\"" + propertyName + "\":";
+            var propertyIndex = json.IndexOf(marker, StringComparison.Ordinal);
+            Assert.That(propertyIndex, Is.GreaterThanOrEqualTo(0), "JSON property was not present: " + propertyName);
+            var start = propertyIndex + marker.Length;
+            while (start < json.Length && char.IsWhiteSpace(json[start]))
+                start++;
+            Assert.That(start, Is.LessThan(json.Length), "JSON property had no value: " + propertyName);
+            if (json[start] == '"')
+            {
+                var end = start + 1;
+                var escaped = false;
+                for (; end < json.Length; end++)
+                {
+                    if (escaped)
+                    {
+                        escaped = false;
+                        continue;
+                    }
+                    if (json[end] == '\\')
+                    {
+                        escaped = true;
+                        continue;
+                    }
+                    if (json[end] == '"')
+                        return json.Substring(start, end - start + 1);
+                }
+            }
+
+            Assert.That(json[start] == '{' || json[start] == '[', Is.True, "JSON property was not an object or array: " + propertyName);
+            var open = json[start];
+            var close = open == '{' ? '}' : ']';
+            var depth = 0;
+            var inString = false;
+            var escapedValue = false;
+            for (var index = start; index < json.Length; index++)
+            {
+                var character = json[index];
+                if (inString)
+                {
+                    if (escapedValue)
+                        escapedValue = false;
+                    else if (character == '\\')
+                        escapedValue = true;
+                    else if (character == '"')
+                        inString = false;
+                    continue;
+                }
+                if (character == '"')
+                    inString = true;
+                else if (character == open)
+                    depth++;
+                else if (character == close && --depth == 0)
+                    return json.Substring(start, index - start + 1);
+            }
+
+            Assert.Fail("JSON property was not terminated: " + propertyName);
+            return null;
         }
     }
 }
