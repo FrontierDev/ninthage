@@ -20,6 +20,31 @@ namespace Game.Tests.Performance.Harness
         public string State { get; }
     }
 
+    internal sealed class Test_PerformanceArchiveIntegrityReport
+    {
+        public string RunID { get; internal set; }
+        public readonly List<string> RequiredMissing = new();
+        public readonly List<string> OptionalAbsent = new();
+        public readonly List<string> OptionalDeclaredPresentMissing = new();
+
+        public bool IsComplete => RequiredMissing.Count == 0 && OptionalDeclaredPresentMissing.Count == 0;
+
+        public string Summary
+        {
+            get
+            {
+                return "required missing: " + Format(RequiredMissing)
+                    + "; optional absent: " + Format(OptionalAbsent)
+                    + "; optional declared present but missing: " + Format(OptionalDeclaredPresentMissing);
+            }
+        }
+
+        private static string Format(List<string> paths)
+        {
+            return paths.Count == 0 ? "none" : string.Join(", ", paths);
+        }
+    }
+
     /// <summary>Represents one existing metric summary without recalculating telemetry.</summary>
     internal sealed class Test_PerformanceMetricView
     {
@@ -213,6 +238,18 @@ namespace Game.Tests.Performance.Harness
 
         public string RouteSummary { get; private set; }
 
+        public string MeasurementSummary { get; private set; }
+
+        public string OrchestrationSummary { get; private set; }
+
+        public string FocusSummary { get; private set; }
+
+        public string RenderingSummary { get; private set; }
+
+        public string ArchiveIntegritySummary { get; private set; }
+
+        public Test_PerformanceArchiveIntegrityReport ArchiveIntegrity { get; private set; }
+
         public List<Test_PerformancePhaseView> Phases { get; }
 
         public List<Test_PerformanceMetricGroupView> MetricGroups { get; }
@@ -302,6 +339,85 @@ namespace Game.Tests.Performance.Harness
             return Read(resultDirectory, Path.GetFileName(resultDirectory));
         }
 
+        internal static Test_PerformanceArchiveIntegrityReport CheckArchiveIntegrity(string resultDirectory, string runID = null)
+        {
+            var report = new Test_PerformanceArchiveIntegrityReport
+            {
+                RunID = runID ?? Path.GetFileName(resultDirectory),
+            };
+            var requiredPaths = new[] { "fixture.json", "run.json", "summary.json", "report.md" };
+            var optionalPaths = new[] { "samples.ndjson", "logs/runner.log" };
+            var artifactsPath = Path.Combine(resultDirectory ?? string.Empty, "artifacts.json");
+            if (!IsSafeExistingFile(artifactsPath, resultDirectory))
+            {
+                report.RequiredMissing.Add(DescribeArtifact(report.RunID, "artifacts.json"));
+                return report;
+            }
+
+            Test_PerformanceArtifactsDocument artifacts;
+            try
+            {
+                artifacts = JsonUtility.FromJson<Test_PerformanceArtifactsDocument>(File.ReadAllText(artifactsPath));
+            }
+            catch (Exception exception)
+            {
+                report.RequiredMissing.Add(DescribeArtifact(report.RunID, "artifacts.json") + " (invalid: " + exception.Message + ")");
+                return report;
+            }
+
+            var entries = artifacts?.files ?? Array.Empty<Test_PerformanceArtifactDocument>();
+            foreach (var relative in requiredPaths)
+            {
+                var entry = FindArtifact(entries, relative);
+                var path = Path.Combine(resultDirectory, relative);
+                if (entry == null || string.Equals(entry.status, "absent", StringComparison.OrdinalIgnoreCase) || !IsSafeExistingFile(path, resultDirectory))
+                    report.RequiredMissing.Add(DescribeArtifact(report.RunID, relative));
+            }
+            foreach (var relative in optionalPaths)
+            {
+                var entry = FindArtifact(entries, relative);
+                var path = Path.Combine(resultDirectory, relative);
+                if (entry == null || string.Equals(entry.status, "absent", StringComparison.OrdinalIgnoreCase))
+                {
+                    report.OptionalAbsent.Add(DescribeArtifact(report.RunID, relative));
+                }
+                else if (!IsSafeExistingFile(path, resultDirectory))
+                {
+                    report.OptionalDeclaredPresentMissing.Add(DescribeArtifact(report.RunID, relative));
+                }
+            }
+            var knownOptionalPaths = new HashSet<string>(optionalPaths, StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in entries)
+            {
+                if (entry == null
+                    || !entry.optional
+                    || string.Equals(entry.status, "absent", StringComparison.OrdinalIgnoreCase)
+                    || knownOptionalPaths.Contains(entry.path))
+                    continue;
+                var path = Path.Combine(resultDirectory, entry.path ?? string.Empty);
+                if (!IsSafeExistingFile(path, resultDirectory))
+                    report.OptionalDeclaredPresentMissing.Add(DescribeArtifact(report.RunID, entry.path));
+            }
+            return report;
+        }
+
+        private static Test_PerformanceArtifactDocument FindArtifact(
+            Test_PerformanceArtifactDocument[] entries,
+            string relativePath)
+        {
+            foreach (var entry in entries)
+            {
+                if (entry != null && string.Equals(entry.path, relativePath, StringComparison.OrdinalIgnoreCase))
+                    return entry;
+            }
+            return null;
+        }
+
+        private static string DescribeArtifact(string runID, string relativePath)
+        {
+            return (runID ?? "unknown-run") + "/" + relativePath;
+        }
+
         private static Test_PerformanceResultCandidate BuildCandidate(string directory, string runID, DateTime identityTimestamp)
         {
             var candidate = new Test_PerformanceResultCandidate(directory, runID, identityTimestamp);
@@ -360,6 +476,8 @@ namespace Game.Tests.Performance.Harness
                 var runPath = Path.Combine(directory, "run.json");
                 var fixturePath = Path.Combine(directory, "fixture.json");
                 var artifactsPath = Path.Combine(directory, "artifacts.json");
+                view.ArchiveIntegrity = CheckArchiveIntegrity(directory, directoryRunID);
+                view.ArchiveIntegritySummary = view.ArchiveIntegrity.Summary;
                 RequireFile(summaryPath, "summary.json");
                 RequireFile(runPath, "run.json");
                 RequireFile(fixturePath, "fixture.json");
@@ -379,6 +497,8 @@ namespace Game.Tests.Performance.Harness
             {
                 view.IsVerified = false;
                 view.ErrorMessage = exception.Message;
+                if (view.ArchiveIntegrity != null && !view.ArchiveIntegrity.IsComplete)
+                    view.ErrorMessage += " Archive integrity: " + view.ArchiveIntegrity.Summary;
             }
 
             return view;
@@ -763,6 +883,10 @@ namespace Game.Tests.Performance.Harness
             view.ActivitySummary = BuildActivitySummary(summary);
             view.RouteSummary = BuildRouteSummary(summary, graphical);
             view.PurrNetStatus = BuildPurrNetStatus(summary, graphical);
+            view.MeasurementSummary = BuildMeasurementSummary(summary.measurement);
+            view.OrchestrationSummary = BuildOrchestrationSummary(summary.orchestration);
+            view.FocusSummary = BuildFocusSummary(summary.focus);
+            view.RenderingSummary = BuildRenderingSummary(summary.rendering, graphical);
             view.ReportPath = Path.Combine(directory, "report.md");
 
             view.Phases.Add(new Test_PerformancePhaseView("Preflight", summary.phase_completion.preflight));
@@ -1017,6 +1141,56 @@ namespace Game.Tests.Performance.Harness
             return states.Count == 0 ? "not_collected" : string.Join(", ", states);
         }
 
+        private static string BuildMeasurementSummary(Test_PerformanceMeasurementDocument measurement)
+        {
+            if (measurement == null)
+                return "unknown/not captured (older result schema)";
+            return "configured " + FormatNumber(measurement.configured_seconds) + " s; actual "
+                + FormatDuration(measurement.actual_elapsed_seconds, measurement.timing_known)
+                + "; " + measurement.measured_frame_count + " frames / " + measurement.measured_sample_count + " samples"
+                + "; pause gap " + (measurement.pause_gap_detected ? "detected" : "not detected")
+                + " (max " + FormatNumber(measurement.max_frame_delivery_gap_seconds) + " s)";
+        }
+
+        private static string BuildOrchestrationSummary(Test_PerformanceOrchestrationDocument orchestration)
+        {
+            if (orchestration == null)
+                return "unknown/not captured (older result schema)";
+            return "Play Mode startup " + FormatDuration(orchestration.queue_dispatch_to_play_mode_entered_seconds, true)
+                + "; teardown " + FormatDuration(orchestration.workload_finalized_to_play_mode_exited_seconds, true)
+                + "; scene restore " + FormatDuration(orchestration.play_mode_exit_to_scene_restored_seconds, true)
+                + "; total attempt wall-clock " + FormatDuration(orchestration.total_attempt_wall_clock_seconds, true);
+        }
+
+        private static string BuildFocusSummary(Test_PerformanceFocusDocument focus)
+        {
+            if (focus == null)
+                return "unknown/not captured (older result schema)";
+            return (focus.context ?? "unknown") + "; transitions " + focus.transition_count
+                + "; focused " + focus.focused_frame_count + "; unfocused " + focus.unfocused_frame_count
+                + "; unknown " + focus.unknown_focus_frame_count + "; runInBackground " + focus.run_in_background;
+        }
+
+        private static string BuildRenderingSummary(Test_PerformanceRenderingDocument rendering, bool graphical)
+        {
+            if (!graphical)
+                return "not_applicable";
+            if (rendering == null)
+                return "unknown/not captured (older result schema); render metrics are not qualified";
+            return (rendering.qualification_status ?? "unknown") + "; probe " + (rendering.probe_status ?? "unknown")
+                + (string.IsNullOrEmpty(rendering.reason_code) ? string.Empty : "; " + rendering.reason_code);
+        }
+
+        private static string FormatDuration(double value, bool timingKnown)
+        {
+            return !timingKnown || value < 0d ? "unknown" : FormatNumber(value) + " s";
+        }
+
+        private static string FormatNumber(double value)
+        {
+            return value < 0d ? "unknown" : value.ToString("0.###", CultureInfo.InvariantCulture);
+        }
+
         private static string BuildDuration(string startedUtc, string finishedUtc)
         {
             if (!TryParseUtc(startedUtc, out var started) || !TryParseUtc(finishedUtc, out var finished) || finished < started)
@@ -1238,6 +1412,10 @@ namespace Game.Tests.Performance.Harness
             public string started_utc;
             public string finished_utc;
             public Test_PerformancePhaseCompletionDocument phase_completion;
+            public Test_PerformanceMeasurementDocument measurement;
+            public Test_PerformanceOrchestrationDocument orchestration;
+            public Test_PerformanceFocusDocument focus;
+            public Test_PerformanceRenderingDocument rendering;
             public Test_PerformanceAchievedDocument achieved;
             public Test_PerformanceStopDocument stop;
             public Test_PerformanceCorrectnessDocument correctness;
@@ -1280,6 +1458,49 @@ namespace Game.Tests.Performance.Harness
 
         [Serializable]
         private sealed class Test_PerformancePhaseCompletionDocument { public bool preflight; public bool ramp; public bool warmup; public bool measurement; public bool recovery; }
+
+        [Serializable]
+        private sealed class Test_PerformanceMeasurementDocument
+        {
+            public double configured_seconds;
+            public double actual_elapsed_seconds;
+            public bool timing_known;
+            public int measured_frame_count;
+            public int measured_sample_count;
+            public bool pause_gap_detected;
+            public double max_frame_delivery_gap_seconds;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceOrchestrationDocument
+        {
+            public double queue_dispatch_to_play_mode_entered_seconds;
+            public double workload_finalized_to_play_mode_exited_seconds;
+            public double play_mode_exit_to_scene_restored_seconds;
+            public double total_attempt_wall_clock_seconds;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceFocusDocument
+        {
+            public string context;
+            public bool observation_known;
+            public bool run_in_background;
+            public int transition_count;
+            public int focused_frame_count;
+            public int unfocused_frame_count;
+            public int unknown_focus_frame_count;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceRenderingDocument
+        {
+            public string execution_status;
+            public string qualification_status;
+            public string probe_status;
+            public string reason_code;
+            public bool workload_verified;
+        }
 
         [Serializable]
         private sealed class Test_PerformanceAchievedDocument
@@ -1430,6 +1651,11 @@ namespace Game.Tests.Performance.Harness
         public static Test_PerformanceLastRunView ReadFinalized(string resultDirectory)
         {
             return Test_PerformanceLastRunView.ReadFinalized(resultDirectory);
+        }
+
+        internal static Test_PerformanceArchiveIntegrityReport CheckArchiveIntegrity(string resultDirectory, string runID = null)
+        {
+            return Test_PerformanceLastRunView.CheckArchiveIntegrity(resultDirectory, runID);
         }
 
         internal static bool TryGetLegacyCoverageSemantics(

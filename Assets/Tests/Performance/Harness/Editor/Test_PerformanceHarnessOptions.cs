@@ -755,6 +755,7 @@ namespace Game.Tests.Performance.Harness
                 {
                     EditorGUILayout.LabelField(group.Classification + ": " + group.Label, EditorStyles.miniBoldLabel);
                     DrawResultField("Valid repeats", group.BaselineValidCount + " baseline / " + group.CandidateValidCount + " candidate");
+                    DrawResultField("Qualified execution cohort", group.BaselineQualifiedAttemptCount + " baseline / " + group.CandidateQualifiedAttemptCount + " candidate");
                     if (!string.IsNullOrEmpty(group.Reason))
                         DrawWrappedField("Group caveat", group.Reason);
                     DrawCampaignAttempts("Baseline attempts", group.BaselineAttempts, report.Baseline.Directory);
@@ -786,7 +787,10 @@ namespace Game.Tests.Performance.Harness
             foreach (var attempt in attempts)
             {
                 var line = (attempt.CampaignID ?? "unknown campaign") + " / " + (attempt.RunID ?? attempt.AttemptID ?? "no run ID") + " / " + (attempt.State ?? "unknown")
-                    + " / " + (attempt.ResultStatus ?? "no finalized status") + " / " + (attempt.StopReason ?? "no stop reason");
+                    + " / " + (attempt.ResultStatus ?? "no finalized status") + " / " + (attempt.StopReason ?? "no stop reason")
+                    + " / execution " + (attempt.IsValid ? "complete" : "not qualified")
+                    + " / performance " + (attempt.PerformanceQualified ? "qualified" : "provisional")
+                    + " / queue dispatch-settle " + (attempt.DispatchToQueueSettledSeconds < 0d ? "unknown" : attempt.DispatchToQueueSettledSeconds.ToString("0.###")) + " s";
                 EditorGUILayout.LabelField(line, EditorStyles.wordWrappedMiniLabel);
                 if (!string.IsNullOrEmpty(attempt.Diagnostic))
                     DrawWrappedField("Reason", attempt.Diagnostic);
@@ -828,7 +832,7 @@ namespace Game.Tests.Performance.Harness
                 using (new EditorGUILayout.VerticalScope("box"))
                 {
                     EditorGUILayout.LabelField(group.Classification + ": " + group.Label, EditorStyles.miniBoldLabel);
-                    DrawResultField("Contributing runs", group.BaselineValidCount + " qualified / " + group.BaselineAttempts.Count + " inventory");
+                    DrawResultField("Contributing runs", group.BaselineQualifiedAttemptCount + " performance-qualified / " + group.BaselineValidCount + " execution-valid / " + group.BaselineAttempts.Count + " inventory");
                     if (!string.IsNullOrEmpty(group.Reason))
                         DrawWrappedField("Cohort caveat", group.Reason);
                     DrawCampaignAttempts("Cohort attempts", group.BaselineAttempts, null);
@@ -866,6 +870,8 @@ namespace Game.Tests.Performance.Harness
             DrawResultField("Source captured", _lastRunView.SourceCapturedUtc);
             DrawResultField("Working tree", _lastRunView.DirtyState);
             DrawResultField("Duration", _lastRunView.Duration);
+            DrawWrappedField("Measurement", _lastRunView.MeasurementSummary);
+            DrawWrappedField("Editor orchestration", _lastRunView.OrchestrationSummary);
             DrawResultField("Status", _lastRunView.Status);
             DrawResultField("Stop reason", _lastRunView.StopReason);
             DrawWrappedField("Stop message", _lastRunView.StopMessage);
@@ -881,6 +887,9 @@ namespace Game.Tests.Performance.Harness
             DrawWrappedField("Activity / churn", _lastRunView.ActivitySummary);
             DrawWrappedField("Route coverage", _lastRunView.RouteSummary);
             DrawWrappedField("PurrNet / headless", _lastRunView.PurrNetStatus);
+            DrawWrappedField("Focus context", _lastRunView.FocusSummary);
+            DrawWrappedField("Rendering qualification", _lastRunView.RenderingSummary);
+            DrawWrappedField("Archive integrity", _lastRunView.ArchiveIntegritySummary);
         }
 
         private void DrawMeasurementSection()

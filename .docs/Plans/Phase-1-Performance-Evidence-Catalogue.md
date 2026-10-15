@@ -7,6 +7,8 @@
 **Campaign manifest SHA-256:** `7e51e249ff12d771d67cbbf517b4486ee4074fa1c2a71d8d2094743761fd5457`<br>
 **Campaign index SHA-256:** `a8e7928b809017f7709d91c69e2bbb96ea0f38d34c8199f772c16adf7975f030`
 
+**Archive integrity:** **INCOMPLETE** for the optional runner logs. The historical `artifacts.json` manifests declare `logs/runner.log` as present, but the original `.log` files are unavailable in this checkout because `*.log` is ignored. The original manifests and hashes must remain unchanged; do not synthesize or silently rewrite the missing logs.
+
 The following is a lightweight catalogue of the 25 preserved attempt IDs. All 25 attempts in this campaign completed with `COMPLETE-MEASURED`; the first Outdoor graphical attempt still retains its explicit missing GPU/render-thread metrics and zero draw/triangle observation. Each hash is the SHA-256 of that run's `artifacts.json`; the artifact manifest contains the individual file paths, byte counts and hashes. Failed, rejected and incomplete attempts must remain in future catalogues in the same form.
 
 | Job / repeat | Run ID | `artifacts.json` SHA-256 |

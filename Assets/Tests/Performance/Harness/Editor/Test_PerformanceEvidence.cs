@@ -148,6 +148,61 @@ namespace Game.Tests.Performance.Harness
         }
     }
 
+    [Serializable]
+    internal sealed class Test_PerformancePhaseTimingState
+    {
+        public string started_utc;
+        public string completed_utc;
+        public double configured_seconds = -1d;
+        public double actual_elapsed_seconds = -1d;
+        public bool timing_known;
+    }
+
+    [Serializable]
+    internal sealed class Test_PerformanceObservabilityState
+    {
+        public string timing_domain = "editor_monotonic_current_domain";
+        public string queue_dispatch_utc;
+        public string play_mode_entered_utc;
+        public string workload_finalized_utc;
+        public string play_mode_exited_utc;
+        public string scene_restored_utc;
+        public double queue_dispatch_to_play_mode_entered_seconds = -1d;
+        public double workload_finalized_to_play_mode_exited_seconds = -1d;
+        public double play_mode_exit_to_scene_restored_seconds = -1d;
+        public double total_attempt_wall_clock_seconds = -1d;
+        public Test_PerformancePhaseTimingState ramp = new();
+        public Test_PerformancePhaseTimingState warmup = new();
+        public Test_PerformancePhaseTimingState measurement = new();
+        public Test_PerformancePhaseTimingState recovery = new();
+        public int measurement_frame_count;
+        public int measurement_sample_count;
+        public bool measurement_timing_known;
+        public double max_frame_delivery_gap_seconds = -1d;
+        public bool pause_gap_detected;
+        public bool pause_gap_detectable;
+        public int focus_transition_count;
+        public int focused_frame_count;
+        public int unfocused_frame_count;
+        public int unknown_focus_frame_count;
+        public double focused_seconds = -1d;
+        public double unfocused_seconds = -1d;
+        public double unknown_focus_seconds = -1d;
+        public bool focus_observation_known;
+        public bool run_in_background;
+        public string focus_context = "unknown";
+        public string rendering_qualification = "not_applicable";
+        public string rendering_probe_status = "not_applicable";
+        public string rendering_reason;
+        public bool rendering_workload_verified;
+        public int expected_visible_object_count;
+        public double draw_call_p50;
+        public double triangle_p50;
+        public bool has_draw_call_p50;
+        public bool has_triangle_p50;
+        public int rendering_frame_sample_count;
+    }
+
     /// <summary>Owns one Editor runner attempt, its telemetry session and evidence files.</summary>
     internal sealed class Test_PerformanceRun
     {
@@ -170,6 +225,21 @@ namespace Game.Tests.Performance.Harness
         private PerformanceMeasurementPhase _currentPhase = PerformanceMeasurementPhase.Preflight;
         private Test_PerformanceActivitySnapshot _activitySnapshot;
         private string _activitySnapshotPhase;
+        private readonly Test_PerformanceObservabilityState _observability = new();
+        private long _queueDispatchTimestamp;
+        private long _playModeEnteredTimestamp;
+        private long _workloadFinalizedTimestamp;
+        private long _playModeExitedTimestamp;
+        private long _sceneRestoredTimestamp;
+        private long _phaseStartTimestamp;
+        private long _focusStateTimestamp;
+        private long _lastMeasurementFrameTimestamp;
+        private bool _focusState;
+        private bool _focusStateActive;
+        private bool _focusObservationForcedUnknown;
+        private PerformanceRunStatus _finalStatus;
+        private string _finalReasonCode;
+        private string _finalMessage;
 
         private Test_PerformanceRun(
             Test_PerformanceHarnessOptions options,
@@ -195,6 +265,11 @@ namespace Game.Tests.Performance.Harness
             SummaryPath = Path.Combine(resultsDirectory, "summary.json");
             ReportPath = Path.Combine(resultsDirectory, "report.md");
             _startedUtc = startedUtc.ToUniversalTime();
+            _observability.run_in_background = Application.runInBackground;
+            _observability.measurement.configured_seconds = options.IsGraphicalClient
+                ? options.MeasurementSeconds
+                : MEASUREMENT_SECONDS;
+            _observability.expected_visible_object_count = graphicalPlan == null ? 0 : graphicalPlan.RequestedObjectCount;
         }
 
         public Test_PerformanceHarnessOptions Options { get; }
@@ -276,6 +351,60 @@ namespace Game.Tests.Performance.Harness
         public int RequestedActorCount => Options.ActorCount;
 
         public string FixtureHash => Test_PerformanceRunMetadata.HashFile(FixturePath);
+
+        public string MeasurementSummary => BuildMeasurementDisplay();
+
+        public string OrchestrationSummary => BuildOrchestrationDisplay();
+
+        public string FocusSummary => BuildFocusDisplay();
+
+        public string RenderingSummary => BuildRenderingDisplay();
+
+        internal bool RenderingWorkloadVerified => _observability.rendering_workload_verified;
+
+        internal string RenderingQualification => _observability.rendering_qualification;
+
+        internal string FocusContext => _observability.focus_context;
+
+        internal void MarkQueueDispatch(long timestamp, DateTime utc)
+        {
+            _queueDispatchTimestamp = timestamp;
+            _observability.queue_dispatch_utc = utc.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture);
+        }
+
+        internal void MarkPlayModeEntered()
+        {
+            MarkLifecycleEvent(ref _playModeEnteredTimestamp, value => _observability.play_mode_entered_utc = value);
+            _observability.queue_dispatch_to_play_mode_entered_seconds = ElapsedSeconds(_queueDispatchTimestamp, _playModeEnteredTimestamp);
+        }
+
+        internal void MarkWorkloadFinalized()
+        {
+            MarkLifecycleEvent(ref _workloadFinalizedTimestamp, value => _observability.workload_finalized_utc = value);
+        }
+
+        internal void MarkPlayModeExited()
+        {
+            MarkLifecycleEvent(ref _playModeExitedTimestamp, value => _observability.play_mode_exited_utc = value);
+            _observability.workload_finalized_to_play_mode_exited_seconds = ElapsedSeconds(_workloadFinalizedTimestamp, _playModeExitedTimestamp);
+        }
+
+        internal void MarkSceneRestored()
+        {
+            MarkLifecycleEvent(ref _sceneRestoredTimestamp, value => _observability.scene_restored_utc = value);
+            _observability.play_mode_exit_to_scene_restored_seconds = ElapsedSeconds(_playModeExitedTimestamp, _sceneRestoredTimestamp);
+        }
+
+        internal void CompleteEditorLifecycle()
+        {
+            if (!Finalized)
+                return;
+
+            _observability.total_attempt_wall_clock_seconds = (DateTime.UtcNow - _startedUtc).TotalSeconds;
+            WriteSummary(_finalStatus, _finalReasonCode, _finalMessage);
+            WriteReport(_finalStatus, _finalReasonCode, _finalMessage);
+            WriteArtifacts();
+        }
 
         public static Test_PerformanceRun Create(Test_PerformanceHarnessOptions options)
         {
@@ -569,6 +698,7 @@ namespace Game.Tests.Performance.Harness
                 activityDespawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.DespawnEventCount,
                 activityTotalSpawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.TotalSpawnEventCount,
                 activityTotalDespawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.TotalDespawnEventCount,
+                observability = _observability,
             };
         }
 
@@ -608,6 +738,19 @@ namespace Game.Tests.Performance.Harness
                     state.activityTotalSpawnEventCount,
                     state.activityTotalDespawnEventCount);
                 _activitySnapshotPhase = "restored_pre_cleanup";
+            }
+            if (state.observability != null)
+            {
+                CopyObservability(state.observability, _observability);
+                _observability.timing_domain = "mixed_monotonic_domains_after_reload";
+                if (!MeasurementCompleted)
+                {
+                    _observability.measurement.actual_elapsed_seconds = -1d;
+                    _observability.measurement.timing_known = false;
+                    _observability.measurement_timing_known = false;
+                    _observability.focus_observation_known = false;
+                    _focusObservationForcedUnknown = true;
+                }
             }
             if (telemetrySessionWasActive)
                 AppendLog("Telemetry session restarted after restoring the pending Editor run.");
@@ -667,6 +810,11 @@ namespace Game.Tests.Performance.Harness
             if (!PerformanceTelemetry.BeginPhase(phase))
                 throw new InvalidOperationException("Telemetry rejected phase transition to " + phase + ".");
             _currentPhase = phase;
+            _phaseStartTimestamp = Stopwatch.GetTimestamp();
+            var phaseTiming = GetPhaseTiming(phase);
+            phaseTiming.configured_seconds = GetConfiguredPhaseSeconds(phase);
+            phaseTiming.started_utc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            phaseTiming.timing_known = true;
             if (phase == PerformanceMeasurementPhase.Measurement)
             {
                 if (!IsGraphicalClient)
@@ -674,6 +822,23 @@ namespace Game.Tests.Performance.Harness
                 MeasurementStarted = true;
                 MeasurementStartEntityCount = IsGraphicalClient ? GraphicalRuntime.ActualObjectCount : FixtureRuntime.DataOnlyEntityCount;
                 ObserveEntityCount(MeasurementStartEntityCount);
+                _observability.measurement_frame_count = 0;
+                _observability.measurement_sample_count = 0;
+                _observability.measurement_timing_known = true;
+                _observability.max_frame_delivery_gap_seconds = 0d;
+                _observability.pause_gap_detected = false;
+                _observability.pause_gap_detectable = true;
+                _lastMeasurementFrameTimestamp = Stopwatch.GetTimestamp();
+                _observability.focused_frame_count = 0;
+                _observability.unfocused_frame_count = 0;
+                _observability.unknown_focus_frame_count = 0;
+                _observability.focused_seconds = 0d;
+                _observability.unfocused_seconds = 0d;
+                _observability.unknown_focus_seconds = 0d;
+                _observability.focus_transition_count = 0;
+                _focusStateActive = false;
+                _focusObservationForcedUnknown = false;
+                RecordFocusState(Application.isFocused, true);
             }
         }
 
@@ -692,6 +857,16 @@ namespace Game.Tests.Performance.Harness
 
         public void MarkPhaseComplete(PerformanceMeasurementPhase phase)
         {
+            var timing = GetPhaseTiming(phase);
+            timing.completed_utc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            timing.actual_elapsed_seconds = ElapsedSeconds(_phaseStartTimestamp, Stopwatch.GetTimestamp());
+            timing.timing_known = timing.actual_elapsed_seconds >= 0d;
+            if (phase == PerformanceMeasurementPhase.Measurement)
+            {
+                CloseFocusInterval();
+                _observability.measurement_timing_known = timing.timing_known;
+                _observability.measurement_frame_count = Math.Max(0, _observability.measurement_frame_count);
+            }
             switch (phase)
             {
                 case PerformanceMeasurementPhase.Ramp:
@@ -709,6 +884,73 @@ namespace Game.Tests.Performance.Harness
                 default:
                     throw new ArgumentOutOfRangeException(nameof(phase), phase, null);
             }
+        }
+
+        public void RecordMeasurementFrame()
+        {
+            if (!MeasurementStarted || MeasurementCompleted)
+                return;
+            _observability.measurement_frame_count++;
+            var now = Stopwatch.GetTimestamp();
+            if (_lastMeasurementFrameTimestamp > 0 && now >= _lastMeasurementFrameTimestamp)
+            {
+                var gapSeconds = (now - _lastMeasurementFrameTimestamp) / (double)Stopwatch.Frequency;
+                if (gapSeconds > _observability.max_frame_delivery_gap_seconds)
+                    _observability.max_frame_delivery_gap_seconds = gapSeconds;
+                if (gapSeconds > 1d)
+                    _observability.pause_gap_detected = true;
+            }
+            _lastMeasurementFrameTimestamp = now;
+            if (_focusObservationForcedUnknown)
+                RecordFocusState(false, false);
+            else
+                RecordFocusState(Application.isFocused, true);
+            if (!_observability.focus_observation_known)
+                _observability.unknown_focus_frame_count++;
+            else if (_focusState)
+                _observability.focused_frame_count++;
+            else
+                _observability.unfocused_frame_count++;
+        }
+
+        public void RecordMeasurementSample()
+        {
+            if (MeasurementStarted && !MeasurementCompleted)
+                _observability.measurement_sample_count++;
+        }
+
+        public void RecordFocusState(bool focused, bool known)
+        {
+            if (MeasurementCompleted)
+                return;
+            if (!MeasurementStarted)
+            {
+                _observability.focus_observation_known = known;
+                if (known)
+                {
+                    _focusState = focused;
+                    _focusObservationForcedUnknown = false;
+                }
+                else
+                    _focusObservationForcedUnknown = true;
+                return;
+            }
+
+            var now = Stopwatch.GetTimestamp();
+            if (_focusStateActive)
+                AddFocusDuration(now - _focusStateTimestamp, _focusState, _observability.focus_observation_known);
+            if (_focusStateActive && _observability.focus_observation_known && known && _focusState != focused)
+                _observability.focus_transition_count++;
+            _focusState = focused;
+            _focusStateTimestamp = now;
+            _focusStateActive = true;
+            _observability.focus_observation_known = known;
+            _focusObservationForcedUnknown = !known;
+        }
+
+        public void RecordFocusUnknown()
+        {
+            RecordFocusState(false, false);
         }
 
         public void MarkCleanupComplete()
@@ -786,6 +1028,8 @@ namespace Game.Tests.Performance.Harness
             }
 
             _measurementSamplesAvailable = HasMeasurementSamples();
+            if (IsGraphicalClient)
+                EvaluateGraphicalRenderingEvidence();
             var graphicalLifecycleIncomplete = IsGraphicalClient
                 && (!WorkloadApplied
                     || !RampCompleted
@@ -838,6 +1082,9 @@ namespace Game.Tests.Performance.Harness
             File.WriteAllText(Path.Combine(logDirectory, "runner.log"), _log.ToString(), new UTF8Encoding(false));
             WriteReport(status, finalReason, finalMessage);
             WriteArtifacts();
+            _finalStatus = status;
+            _finalReasonCode = finalReason;
+            _finalMessage = finalMessage;
             Finalized = true;
         }
 
@@ -874,6 +1121,200 @@ namespace Game.Tests.Performance.Harness
                     return true;
             }
             return false;
+        }
+
+        private void EvaluateGraphicalRenderingEvidence()
+        {
+            _observability.rendering_qualification = "unverified";
+            _observability.rendering_workload_verified = false;
+            if (string.IsNullOrEmpty(_telemetrySummary))
+            {
+                _observability.rendering_probe_status = "unknown";
+                _observability.rendering_reason = "RENDER_PROBES_UNAVAILABLE";
+                return;
+            }
+
+            Test_PerformanceTelemetrySummaryDocument telemetry;
+            try
+            {
+                telemetry = JsonUtility.FromJson<Test_PerformanceTelemetrySummaryDocument>(_telemetrySummary);
+            }
+            catch (Exception exception)
+            {
+                _observability.rendering_probe_status = "invalid_summary";
+                _observability.rendering_reason = "RENDER_PROBES_UNAVAILABLE: " + exception.Message;
+                return;
+            }
+            var drawCalls = FindMetric(telemetry, "client.graphics.draw_call_count");
+            var triangles = FindMetric(telemetry, "client.graphics.triangle_count");
+            var renderedFrames = FindMetric(telemetry, "client.rendered.frame_time")
+                ?? FindMetric(telemetry, "client.rendered.frame_interval");
+            _observability.rendering_frame_sample_count = renderedFrames == null ? 0 : renderedFrames.sample_count;
+            _observability.has_draw_call_p50 = IsMeasuredMetric(drawCalls);
+            _observability.has_triangle_p50 = IsMeasuredMetric(triangles);
+            if (_observability.has_draw_call_p50)
+                _observability.draw_call_p50 = drawCalls.p50;
+            if (_observability.has_triangle_p50)
+                _observability.triangle_p50 = triangles.p50;
+
+            if (!IsMeasuredMetric(drawCalls) || !IsMeasuredMetric(triangles))
+            {
+                _observability.rendering_probe_status = "unsupported_or_unavailable";
+                _observability.rendering_reason = "RENDER_PROBES_UNAVAILABLE";
+                return;
+            }
+
+            if (drawCalls.p50 <= 0d || triangles.p50 <= 0d)
+            {
+                _observability.rendering_probe_status = "measured_zero";
+                _observability.rendering_reason = "RENDER_WORKLOAD_UNVERIFIED";
+                return;
+            }
+
+            if (renderedFrames == null || renderedFrames.sample_count <= 0)
+            {
+                _observability.rendering_probe_status = "geometry_measured_frame_stats_unavailable";
+                _observability.rendering_reason = "RENDER_FRAME_PROBES_UNAVAILABLE";
+                return;
+            }
+
+            _observability.rendering_probe_status = "measured_nonzero";
+            _observability.rendering_qualification = "verified";
+            _observability.rendering_workload_verified = true;
+            _observability.rendering_reason = null;
+        }
+
+        private static bool IsMeasuredMetric(Test_PerformanceTelemetryMetricDocument metric)
+        {
+            return metric != null
+                && (metric.observation == "measured" || metric.observation == "estimated")
+                && metric.sample_count > 0;
+        }
+
+        private static Test_PerformanceTelemetryMetricDocument FindMetric(
+            Test_PerformanceTelemetrySummaryDocument summary,
+            string metricID)
+        {
+            foreach (var metric in summary?.metrics ?? Array.Empty<Test_PerformanceTelemetryMetricDocument>())
+            {
+                if (metric != null && string.Equals(metric.metric_id, metricID, StringComparison.Ordinal))
+                    return metric;
+            }
+            return null;
+        }
+
+        private Test_PerformancePhaseTimingState GetPhaseTiming(PerformanceMeasurementPhase phase)
+        {
+            switch (phase)
+            {
+                case PerformanceMeasurementPhase.Ramp: return _observability.ramp;
+                case PerformanceMeasurementPhase.Warmup: return _observability.warmup;
+                case PerformanceMeasurementPhase.Measurement: return _observability.measurement;
+                case PerformanceMeasurementPhase.Recovery: return _observability.recovery;
+                default: throw new ArgumentOutOfRangeException(nameof(phase), phase, null);
+            }
+        }
+
+        private double GetConfiguredPhaseSeconds(PerformanceMeasurementPhase phase)
+        {
+            switch (phase)
+            {
+                case PerformanceMeasurementPhase.Ramp:
+                    return RAMP_SECONDS;
+                case PerformanceMeasurementPhase.Warmup:
+                    return IsGraphicalClient ? Options.WarmupSeconds : WARMUP_SECONDS;
+                case PerformanceMeasurementPhase.Measurement:
+                    return _observability.measurement.configured_seconds;
+                case PerformanceMeasurementPhase.Recovery:
+                    return RECOVERY_SECONDS;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(phase), phase, null);
+            }
+        }
+
+        private void MarkLifecycleEvent(ref long timestamp, Action<string> setUtc)
+        {
+            timestamp = Stopwatch.GetTimestamp();
+            setUtc(DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture));
+        }
+
+        private static double ElapsedSeconds(long startedTimestamp, long completedTimestamp)
+        {
+            if (startedTimestamp <= 0 || completedTimestamp < startedTimestamp)
+                return -1d;
+            return (completedTimestamp - startedTimestamp) / (double)Stopwatch.Frequency;
+        }
+
+        private void CloseFocusInterval()
+        {
+            if (!_focusStateActive)
+                return;
+            AddFocusDuration(Stopwatch.GetTimestamp() - _focusStateTimestamp, _focusState, _observability.focus_observation_known);
+            _focusStateActive = false;
+            _observability.focus_context = !_observability.focus_observation_known
+                ? "unknown"
+                : _observability.unfocused_frame_count > 0 || _observability.unfocused_seconds > 0d
+                    ? "known_background"
+                    : "known_foreground";
+        }
+
+        private void AddFocusDuration(long elapsedTimestamp, bool focused, bool known)
+        {
+            if (elapsedTimestamp < 0)
+                return;
+            var seconds = elapsedTimestamp / (double)Stopwatch.Frequency;
+            if (!known)
+                _observability.unknown_focus_seconds += seconds;
+            else if (focused)
+                _observability.focused_seconds += seconds;
+            else
+                _observability.unfocused_seconds += seconds;
+        }
+
+        private static void CopyObservability(Test_PerformanceObservabilityState source, Test_PerformanceObservabilityState target)
+        {
+            if (source == null || target == null)
+                return;
+            target.timing_domain = source.timing_domain;
+            target.queue_dispatch_utc = source.queue_dispatch_utc;
+            target.play_mode_entered_utc = source.play_mode_entered_utc;
+            target.workload_finalized_utc = source.workload_finalized_utc;
+            target.play_mode_exited_utc = source.play_mode_exited_utc;
+            target.scene_restored_utc = source.scene_restored_utc;
+            target.queue_dispatch_to_play_mode_entered_seconds = source.queue_dispatch_to_play_mode_entered_seconds;
+            target.workload_finalized_to_play_mode_exited_seconds = source.workload_finalized_to_play_mode_exited_seconds;
+            target.play_mode_exit_to_scene_restored_seconds = source.play_mode_exit_to_scene_restored_seconds;
+            target.total_attempt_wall_clock_seconds = source.total_attempt_wall_clock_seconds;
+            target.ramp = source.ramp ?? new Test_PerformancePhaseTimingState();
+            target.warmup = source.warmup ?? new Test_PerformancePhaseTimingState();
+            target.measurement = source.measurement ?? new Test_PerformancePhaseTimingState();
+            target.recovery = source.recovery ?? new Test_PerformancePhaseTimingState();
+            target.measurement_frame_count = source.measurement_frame_count;
+            target.measurement_sample_count = source.measurement_sample_count;
+            target.measurement_timing_known = source.measurement_timing_known;
+            target.max_frame_delivery_gap_seconds = source.max_frame_delivery_gap_seconds;
+            target.pause_gap_detected = source.pause_gap_detected;
+            target.pause_gap_detectable = source.pause_gap_detectable;
+            target.focus_transition_count = source.focus_transition_count;
+            target.focused_frame_count = source.focused_frame_count;
+            target.unfocused_frame_count = source.unfocused_frame_count;
+            target.unknown_focus_frame_count = source.unknown_focus_frame_count;
+            target.focused_seconds = source.focused_seconds;
+            target.unfocused_seconds = source.unfocused_seconds;
+            target.unknown_focus_seconds = source.unknown_focus_seconds;
+            target.focus_observation_known = source.focus_observation_known;
+            target.run_in_background = source.run_in_background;
+            target.focus_context = source.focus_context;
+            target.rendering_qualification = source.rendering_qualification;
+            target.rendering_probe_status = source.rendering_probe_status;
+            target.rendering_reason = source.rendering_reason;
+            target.rendering_workload_verified = source.rendering_workload_verified;
+            target.expected_visible_object_count = source.expected_visible_object_count;
+            target.draw_call_p50 = source.draw_call_p50;
+            target.triangle_p50 = source.triangle_p50;
+            target.has_draw_call_p50 = source.has_draw_call_p50;
+            target.has_triangle_p50 = source.has_triangle_p50;
+            target.rendering_frame_sample_count = source.rendering_frame_sample_count;
         }
 
         public void AppendLog(string message)
@@ -919,6 +1360,11 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "started_utc", blockedPreflight ? "null" : Quote(_startedUtc.ToString("o", CultureInfo.InvariantCulture)), true);
             RawProperty(builder, "finished_utc", blockedPreflight ? "null" : Quote(finishedUtc.ToString("o", CultureInfo.InvariantCulture)), true);
             RawProperty(builder, "phase_completion", $"{{\"preflight\":{(!blockedPreflight && PreflightCompleted).ToString().ToLowerInvariant()},\"ramp\":{RampCompleted.ToString().ToLowerInvariant()},\"warmup\":{WarmupCompleted.ToString().ToLowerInvariant()},\"measurement\":{MeasurementCompleted.ToString().ToLowerInvariant()},\"recovery\":{RecoveryCompleted.ToString().ToLowerInvariant()}}}", true);
+            RawProperty(builder, "measurement", BuildMeasurementJson(), true);
+            RawProperty(builder, "phase_timing", BuildPhaseTimingJson(), true);
+            RawProperty(builder, "orchestration", BuildOrchestrationJson(), true);
+            RawProperty(builder, "focus", BuildFocusJson(), true);
+            RawProperty(builder, "rendering", BuildRenderingJson(status), true);
             RawProperty(builder, "achieved", BuildAchievedJson(), true);
             RawProperty(builder, "resources", $"{{\"total_allocated_bytes\":{UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong()},\"ceiling_bytes\":{MAX_TOTAL_ALLOCATED_BYTES},\"ceiling_status\":{Quote(status == PerformanceRunStatus.FailResource ? "exceeded" : "not_exceeded")}}}", true);
             RawProperty(builder, "stop", $"{{\"phase\":{Quote(CurrentPhaseText())},\"reason_code\":{Quote(reasonCode)},\"message\":{Quote(message)}}}", true);
@@ -929,6 +1375,125 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine();
             builder.Append('}');
             File.WriteAllText(SummaryPath, builder.ToString(), new UTF8Encoding(false));
+        }
+
+        private string BuildMeasurementJson()
+        {
+            return "{\"configured_seconds\":" + NumberOrNull(_observability.measurement.configured_seconds)
+                + ",\"actual_elapsed_seconds\":" + NumberOrNull(_observability.measurement.actual_elapsed_seconds)
+                + ",\"timing_known\":" + _observability.measurement_timing_known.ToString().ToLowerInvariant()
+                + ",\"measured_frame_count\":" + _observability.measurement_frame_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"measured_sample_count\":" + _observability.measurement_sample_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"pause_gap_detected\":" + _observability.pause_gap_detected.ToString().ToLowerInvariant()
+                + ",\"max_frame_delivery_gap_seconds\":" + NumberOrNull(_observability.max_frame_delivery_gap_seconds)
+                + ",\"pause_gap_reason\":" + Quote(_observability.pause_gap_detectable
+                    ? _observability.pause_gap_detected ? "frame_delivery_gap_over_1s" : "none_over_1s"
+                    : "timing_unknown") + "}";
+        }
+
+        private string BuildPhaseTimingJson()
+        {
+            return "{\"timing_domain\":" + Quote(_observability.timing_domain)
+                + ",\"ramp\":" + BuildPhaseTiming(_observability.ramp)
+                + ",\"warmup\":" + BuildPhaseTiming(_observability.warmup)
+                + ",\"measurement\":" + BuildPhaseTiming(_observability.measurement)
+                + ",\"recovery\":" + BuildPhaseTiming(_observability.recovery) + "}";
+        }
+
+        private static string BuildPhaseTiming(Test_PerformancePhaseTimingState timing)
+        {
+            return "{\"started_utc\":" + Quote(timing.started_utc)
+                + ",\"completed_utc\":" + Quote(timing.completed_utc)
+                + ",\"configured_seconds\":" + NumberOrNull(timing.configured_seconds)
+                + ",\"actual_elapsed_seconds\":" + NumberOrNull(timing.actual_elapsed_seconds)
+                + ",\"timing_known\":" + timing.timing_known.ToString().ToLowerInvariant() + "}";
+        }
+
+        private string BuildOrchestrationJson()
+        {
+            return "{\"queue_dispatch_utc\":" + Quote(_observability.queue_dispatch_utc)
+                + ",\"play_mode_entered_utc\":" + Quote(_observability.play_mode_entered_utc)
+                + ",\"workload_finalized_utc\":" + Quote(_observability.workload_finalized_utc)
+                + ",\"play_mode_exited_utc\":" + Quote(_observability.play_mode_exited_utc)
+                + ",\"scene_restored_utc\":" + Quote(_observability.scene_restored_utc)
+                + ",\"queue_dispatch_to_play_mode_entered_seconds\":" + NumberOrNull(_observability.queue_dispatch_to_play_mode_entered_seconds)
+                + ",\"workload_finalized_to_play_mode_exited_seconds\":" + NumberOrNull(_observability.workload_finalized_to_play_mode_exited_seconds)
+                + ",\"play_mode_exit_to_scene_restored_seconds\":" + NumberOrNull(_observability.play_mode_exit_to_scene_restored_seconds)
+                + ",\"total_attempt_wall_clock_seconds\":" + NumberOrNull(_observability.total_attempt_wall_clock_seconds)
+                + ",\"timing_domain\":" + Quote(_observability.timing_domain) + "}";
+        }
+
+        private string BuildFocusJson()
+        {
+            return "{\"context\":" + Quote(_observability.focus_context)
+                + ",\"observation_known\":" + _observability.focus_observation_known.ToString().ToLowerInvariant()
+                + ",\"run_in_background\":" + _observability.run_in_background.ToString().ToLowerInvariant()
+                + ",\"transition_count\":" + _observability.focus_transition_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"focused_frame_count\":" + _observability.focused_frame_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"unfocused_frame_count\":" + _observability.unfocused_frame_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"unknown_focus_frame_count\":" + _observability.unknown_focus_frame_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"focused_seconds\":" + NumberOrNull(_observability.focused_seconds)
+                + ",\"unfocused_seconds\":" + NumberOrNull(_observability.unfocused_seconds)
+                + ",\"unknown_focus_seconds\":" + NumberOrNull(_observability.unknown_focus_seconds) + "}";
+        }
+
+        private string BuildRenderingJson(PerformanceRunStatus status)
+        {
+            if (!IsGraphicalClient)
+                return "{\"execution_status\":\"not_applicable\",\"qualification_status\":\"not_applicable\"}";
+            return "{\"execution_status\":" + Quote(status == PerformanceRunStatus.CompleteMeasured ? "complete" : "failed")
+                + ",\"qualification_status\":" + Quote(_observability.rendering_qualification)
+                + ",\"probe_status\":" + Quote(_observability.rendering_probe_status)
+                + ",\"reason_code\":" + Quote(_observability.rendering_reason)
+                + ",\"expected_visible_geometry\":" + (_observability.expected_visible_object_count > 0 ? "true" : "false")
+                + ",\"expected_visible_object_count\":" + _observability.expected_visible_object_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"draw_call_p50\":" + (_observability.has_draw_call_p50 ? _observability.draw_call_p50.ToString("R", CultureInfo.InvariantCulture) : "null")
+                + ",\"triangle_p50\":" + (_observability.has_triangle_p50 ? _observability.triangle_p50.ToString("R", CultureInfo.InvariantCulture) : "null")
+                + ",\"rendering_frame_sample_count\":" + _observability.rendering_frame_sample_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"workload_verified\":" + _observability.rendering_workload_verified.ToString().ToLowerInvariant() + "}";
+        }
+
+        private string BuildMeasurementDisplay()
+        {
+            return "configured " + _observability.measurement.configured_seconds.ToString("0.###", CultureInfo.InvariantCulture)
+                + " s; actual " + FormatDuration(_observability.measurement.actual_elapsed_seconds)
+                + "; " + _observability.measurement_frame_count.ToString(CultureInfo.InvariantCulture)
+                + " frames / " + _observability.measurement_sample_count.ToString(CultureInfo.InvariantCulture) + " samples";
+        }
+
+        private string BuildOrchestrationDisplay()
+        {
+            return "Play Mode startup " + FormatDuration(_observability.queue_dispatch_to_play_mode_entered_seconds)
+                + "; teardown " + FormatDuration(_observability.workload_finalized_to_play_mode_exited_seconds)
+                + "; scene restore " + FormatDuration(_observability.play_mode_exit_to_scene_restored_seconds)
+                + "; total attempt wall-clock " + FormatDuration(_observability.total_attempt_wall_clock_seconds);
+        }
+
+        private string BuildFocusDisplay()
+        {
+            return _observability.focus_context + "; transitions " + _observability.focus_transition_count.ToString(CultureInfo.InvariantCulture)
+                + "; focused " + _observability.focused_frame_count.ToString(CultureInfo.InvariantCulture)
+                + "; unfocused " + _observability.unfocused_frame_count.ToString(CultureInfo.InvariantCulture)
+                + "; unknown " + _observability.unknown_focus_frame_count.ToString(CultureInfo.InvariantCulture)
+                + "; runInBackground " + _observability.run_in_background;
+        }
+
+        private string BuildRenderingDisplay()
+        {
+            if (!IsGraphicalClient)
+                return "not_applicable";
+            return _observability.rendering_qualification + "; probe " + _observability.rendering_probe_status
+                + (string.IsNullOrEmpty(_observability.rendering_reason) ? string.Empty : "; " + _observability.rendering_reason);
+        }
+
+        private static string FormatDuration(double seconds)
+        {
+            return seconds < 0d ? "unknown" : seconds.ToString("0.###", CultureInfo.InvariantCulture) + " s";
+        }
+
+        private static string NumberOrNull(double value)
+        {
+            return value < 0d ? "null" : value.ToString("R", CultureInfo.InvariantCulture);
         }
 
         private string BuildRawFilesJson()
@@ -1050,6 +1615,11 @@ namespace Game.Tests.Performance.Harness
                 builder.AppendLine("- Measured activity snapshot: `unverified` (measurement did not start or no pre-cleanup snapshot was captured)");
             }
             builder.AppendLine("- Report directory: `" + ResultsDirectory + "`");
+            builder.AppendLine("- Measurement: " + BuildMeasurementDisplay());
+            builder.AppendLine("- Editor orchestration: " + BuildOrchestrationDisplay());
+            builder.AppendLine("- Focus context: " + BuildFocusDisplay());
+            if (IsGraphicalClient)
+                builder.AppendLine("- Rendering qualification: " + BuildRenderingDisplay());
             builder.AppendLine();
             builder.AppendLine("## Result");
             builder.AppendLine();
@@ -1144,7 +1714,7 @@ namespace Game.Tests.Performance.Harness
                 "target_fps=" + Application.targetFrameRate.ToString(CultureInfo.InvariantCulture));
         }
 
-        private static string BuildWarnings(PerformanceRunStatus status, bool graphical)
+        private string BuildWarnings(PerformanceRunStatus status, bool graphical)
         {
             var warnings = new List<string>
             {
@@ -1152,7 +1722,13 @@ namespace Game.Tests.Performance.Harness
                 "No synthetic network clients or authentication bypass were used.",
             };
             if (graphical)
+            {
                 warnings.Add("Normal PurrNet world streaming and real actor/nameplate/VFX density were not claimed unless the selected fixture preflight and route reported them.");
+                if (_observability.rendering_qualification != "verified")
+                    warnings.Add("Rendering workload qualification is " + _observability.rendering_qualification + "; raw graphical metrics are preserved but excluded from qualified render-budget cohorts.");
+                if (_observability.focus_context != "known_foreground")
+                    warnings.Add("Application focus context is " + _observability.focus_context + "; this run is context-qualified provisionally and was not rejected automatically.");
+            }
             if (status != PerformanceRunStatus.CompleteMeasured)
                 warnings.Add("No successful measured result should be interpreted from this run status.");
             return "[\"" + string.Join("\",\"", warnings.ConvertAll(Escape)) + "\"]";
@@ -1372,6 +1948,25 @@ namespace Game.Tests.Performance.Harness
             }
             return builder.ToString();
         }
+
+        #pragma warning disable 0649
+
+        [Serializable]
+        private sealed class Test_PerformanceTelemetrySummaryDocument
+        {
+            public Test_PerformanceTelemetryMetricDocument[] metrics;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceTelemetryMetricDocument
+        {
+            public string metric_id;
+            public string observation;
+            public int sample_count;
+            public double p50;
+        }
+
+        #pragma warning restore 0649
     }
 
     /// <summary>Builds the versioned fixture and run documents without changing project assets.</summary>
@@ -1481,6 +2076,7 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "hardware", $"{{\"host_id\":{Test_PerformanceRun.Quote(metadata.HostID)},\"description\":{Test_PerformanceRun.Quote(metadata.Hardware)},\"system_memory_bytes\":{metadata.MemoryBytes.ToString(CultureInfo.InvariantCulture)},\"graphics_device\":{Test_PerformanceRun.Quote(SystemInfo.graphicsDeviceName)}}}", true);
             RawProperty(builder, "process", $"{{\"unity_editor_pid\":{metadata.ProcessID},\"server_processes\":1,\"client_processes\":0,\"synthetic_clients\":0}}", true);
             RawProperty(builder, "clocks", "{\"utc\":true,\"monotonic_source\":\"Unity telemetry session\"}", true);
+            RawProperty(builder, "application_context", "{\"run_in_background\":" + Application.runInBackground.ToString().ToLowerInvariant() + "}", true);
             RawProperty(builder, "execution", "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":true,\"credentials\":\"none_for_server_only_data_fixture\"}", true);
             RawProperty(builder, "runtime", $"{{\"scene_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"scene_path\":{Test_PerformanceRun.Quote(run.WorldPlan == null ? string.Empty : run.WorldPlan.AssetPath)},\"standalone_qualified\":false,\"network_clients_supported\":false}}", false);
             builder.AppendLine();
@@ -1544,6 +2140,7 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "hardware", $"[{{\"host_id\":{Quote(metadata.HostID)},\"role\":\"rendered_client\",\"os\":{Quote(SystemInfo.operatingSystemFamily.ToString())},\"os_version\":{Quote(SystemInfo.operatingSystem)},\"cpu_model\":{Quote(SystemInfo.processorType)},\"physical_cores\":null,\"logical_cores\":{SystemInfo.processorCount},\"ram_bytes\":{metadata.MemoryBytes},\"gpu_model\":{Quote(SystemInfo.graphicsDeviceName)},\"vram_bytes\":{(long)SystemInfo.graphicsMemorySize * 1024L * 1024L},\"gpu_driver\":{Quote(SystemInfo.graphicsDeviceVersion)},\"storage_class\":null}}]", true);
             RawProperty(builder, "processes", $"{{\"server\":0,\"headless_network_clients\":0,\"rendered_clients\":1,\"actor_test_processes\":0,\"client_host_allocation\":[{{\"host_id\":{Quote(metadata.HostID)},\"client_processes\":1}}]}}", true);
             RawProperty(builder, "clocks", "{\"utc_clock_source\":\"host_system_clock\",\"monotonic_clock_source\":\"System.Diagnostics.Stopwatch\",\"simulation_clock_source\":\"unity_player_loop\",\"utc_clock_sync\":\"not_verified\"}", true);
+            RawProperty(builder, "application_context", "{\"run_in_background\":" + Application.runInBackground.ToString().ToLowerInvariant() + ",\"focus_observation\":\"summary_observability.focus\"}", true);
             RawProperty(builder, "execution", "{\"command_template\":\"Unity Editor Play Mode via Tools/Performance/Test Workload Runner\",\"environment_id\":\"local-development\",\"test_data_scope\":\"isolated_disposable\",\"profiling_mode\":\"not_enabled\",\"network_shaper_version\":null}", true);
             RawProperty(builder, "runtime_observed", $"{{\"actual_build_sha256\":null,\"actual_content_sha256\":{Quote(run.GraphicalPlan.PlanHash)},\"actual_transport_rtt_ms\":null,\"actual_transport_loss_ratio\":null}}", false);
             builder.AppendLine("}");

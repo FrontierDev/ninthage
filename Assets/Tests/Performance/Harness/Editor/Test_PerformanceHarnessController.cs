@@ -56,6 +56,7 @@ namespace Game.Tests.Performance.Harness
         public int activityDespawnEventCount;
         public int activityTotalSpawnEventCount;
         public int activityTotalDespawnEventCount;
+        public Test_PerformanceObservabilityState observability;
 
         public SceneSetup[] RestoreSceneSetup()
         {
@@ -236,6 +237,22 @@ namespace Game.Tests.Performance.Harness
 
         public static void Start(Test_PerformanceHarnessOptions options)
         {
+            StartInternal(options, 0, null);
+        }
+
+        internal static void StartQueued(
+            Test_PerformanceHarnessOptions options,
+            long queueDispatchTimestamp,
+            DateTime queueDispatchUtc)
+        {
+            StartInternal(options, queueDispatchTimestamp, queueDispatchUtc);
+        }
+
+        private static void StartInternal(
+            Test_PerformanceHarnessOptions options,
+            long queueDispatchTimestamp,
+            DateTime? queueDispatchUtc)
+        {
             RestorePendingRun();
             if (IsRunning)
             {
@@ -254,6 +271,10 @@ namespace Game.Tests.Performance.Harness
             try
             {
                 run = Test_PerformanceRun.Create(options);
+                if (queueDispatchTimestamp > 0 && queueDispatchUtc.HasValue)
+                    run.MarkQueueDispatch(queueDispatchTimestamp, queueDispatchUtc.Value);
+                else
+                    run.MarkQueueDispatch(System.Diagnostics.Stopwatch.GetTimestamp(), DateTime.UtcNow);
                 run.Validate();
                 if (!string.IsNullOrEmpty(run.ValidationDiagnostic))
                 {
@@ -344,6 +365,7 @@ namespace Game.Tests.Performance.Harness
         {
             if (!ReferenceEquals(run, _activeRun))
                 return;
+            run.MarkWorkloadFinalized();
             LastReportPath = run.ReportPath;
             RememberCompletedRun(run);
             Status = "Finished: " + run.ReportPath;
@@ -360,6 +382,7 @@ namespace Game.Tests.Performance.Harness
                 if (_activeRun == null || _activeRun.Finalized)
                     return;
 
+                _activeRun.MarkPlayModeEntered();
                 PersistActiveRun(RUNNING_LIFECYCLE);
                 StartRuntimeRunner();
                 return;
@@ -370,7 +393,16 @@ namespace Game.Tests.Performance.Harness
                 if (_activeRun != null && !_activeRun.Finalized)
                     _activeRun.AbortFromPlayModeExit();
 
-                RestorePreviousSceneSetup();
+                if (_activeRun != null && _activeRun.Finalized)
+                    _activeRun.MarkPlayModeExited();
+
+                var sceneRestored = RestorePreviousSceneSetup();
+                if (_activeRun != null && _activeRun.Finalized)
+                {
+                    if (sceneRestored)
+                        _activeRun.MarkSceneRestored();
+                    _activeRun.CompleteEditorLifecycle();
+                }
                 ClearPendingRun();
                 _previousSceneSetup = null;
                 _activeRun = null;
@@ -456,19 +488,21 @@ namespace Game.Tests.Performance.Harness
             StateChanged?.Invoke();
         }
 
-        private static void RestorePreviousSceneSetup()
+        private static bool RestorePreviousSceneSetup()
         {
             if (_previousSceneSetup == null || _previousSceneSetup.Length == 0)
-                return;
+                return true;
 
             try
             {
                 EditorSceneManager.RestoreSceneManagerSetup(_previousSceneSetup);
+                return true;
             }
             catch (Exception exception)
             {
                 Status = "Run finished, but the previous Editor scene setup could not be restored: " + exception.Message;
                 UnityEngine.Debug.LogException(exception);
+                return false;
             }
         }
 
@@ -558,6 +592,11 @@ namespace Game.Tests.Performance.Harness
         private string _requestedMessage;
 
         public bool IsInitialized => _run != null;
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            _run?.RecordFocusState(hasFocus, true);
+        }
 
         public void Initialize(Test_PerformanceRun run)
         {
@@ -913,9 +952,11 @@ namespace Game.Tests.Performance.Harness
                 if (elapsed >= nextSample)
                 {
                     _run.ActivityController.RecordSample(Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS);
+                    _run.RecordMeasurementSample();
                     nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
                 }
                 _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_TOTAL_ALLOCATED_BYTES);
+                _run.RecordMeasurementFrame();
                 yield return null;
             }
             _run.ActivityController.AdvanceRamp(Test_PerformanceRun.RAMP_SECONDS, Test_PerformanceRun.RAMP_SECONDS);
@@ -930,6 +971,8 @@ namespace Game.Tests.Performance.Harness
                 ThrowIfStopRequested();
                 _graphicalFixture.Advance(0f, Test_PerformanceRun.RAMP_SECONDS);
                 _graphicalFixture.RecordMetrics();
+                _run.RecordMeasurementSample();
+                _run.RecordMeasurementFrame();
                 yield return null;
             }
         }
@@ -946,8 +989,10 @@ namespace Game.Tests.Performance.Harness
                 if (elapsed >= nextSample)
                 {
                     _graphicalFixture.RecordMetrics();
+                    _run.RecordMeasurementSample();
                     nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
                 }
+                _run.RecordMeasurementFrame();
                 yield return null;
             }
         }
@@ -964,13 +1009,17 @@ namespace Game.Tests.Performance.Harness
                 if (elapsed >= nextSample)
                 {
                     _graphicalFixture.RecordMetrics();
+                    _run.RecordMeasurementSample();
                     nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
                 }
+                _run.RecordMeasurementFrame();
                 yield return null;
             }
 
             _graphicalFixture.Advance(_run.Options.MeasurementSeconds, _run.Options.MeasurementSeconds);
             _graphicalFixture.RecordMetrics();
+            _run.RecordMeasurementSample();
+            _run.RecordMeasurementFrame();
             _run.CaptureGraphicalSnapshot();
         }
 
@@ -1000,9 +1049,11 @@ namespace Game.Tests.Performance.Harness
                 if (elapsed >= nextSample)
                 {
                     _run.ActivityController.RecordSample(Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS);
+                    _run.RecordMeasurementSample();
                     nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
                 }
                 _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_TOTAL_ALLOCATED_BYTES);
+                _run.RecordMeasurementFrame();
                 yield return null;
             }
         }
@@ -1023,9 +1074,11 @@ namespace Game.Tests.Performance.Harness
                 if (elapsed >= nextSample)
                 {
                     _run.ActivityController.RecordSample(Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS);
+                    _run.RecordMeasurementSample();
                     nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
                 }
                 _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_TOTAL_ALLOCATED_BYTES);
+                _run.RecordMeasurementFrame();
                 yield return null;
             }
 

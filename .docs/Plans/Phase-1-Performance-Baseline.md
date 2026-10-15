@@ -117,6 +117,7 @@ The campaign reports explicitly identify the following limitations:
 4. The runs used Editor Play Mode. They cannot establish standalone headless server capacity, authenticated clients, real PurrNet multi-client scale, ordinary world streaming, or production actor/nameplate/VFX density.
 5. No profiler capture is listed in the finalized artifact sets. No profiler-based claim is made here.
 6. No measured metric fell below the 95% retained-sample policy. However, the first Outdoor repeat has no GPU/render-thread samples and reports a zero draw/triangle signature, so those GPU/render-thread distributions have `N=4/5` and the draw/triangle signature is not yet a clean five-repeat observation.
+7. The portable archive is incomplete for the optional `logs/runner.log` artifacts: the historical manifests declare them present, but the original ignored `.log` files are unavailable in this checkout. Their manifests and recorded hashes remain preserved; no replacement log or historical rewrite is valid.
 
 The warnings in the individual reports are part of the evidence and must remain attached to any comparison. In particular, 100 data-only ECS entities must not be described as 100 concurrent authenticated users or 100 full networked NPCs.
 

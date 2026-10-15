@@ -155,6 +155,64 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void ArchiveIntegrityDistinguishesRequiredMissingOptionalAbsentAndDeclaredPresentMissing()
+        {
+            var directory = CreateResult(
+                graphical: false,
+                scenario: "Outdoor",
+                finishedUtc: DateTime.UtcNow,
+                status: "BLOCKED-PREREQUISITE",
+                metrics: "[]");
+            var runID = Path.GetFileName(directory);
+
+            var optionalAbsent = Test_PerformanceResultReader.CheckArchiveIntegrity(directory, runID);
+            Assert.That(optionalAbsent.RequiredMissing, Is.Empty);
+            Assert.That(optionalAbsent.OptionalAbsent, Has.Some.EqualTo(runID + "/logs/runner.log"));
+            Assert.That(optionalAbsent.OptionalDeclaredPresentMissing, Is.Empty);
+
+            var artifactsPath = Path.Combine(directory, "artifacts.json");
+            var artifacts = File.ReadAllText(artifactsPath).Replace(
+                "]}",
+                ",{\"path\":\"logs/runner.log\",\"status\":\"present\",\"required\":false,\"optional\":true}]}",
+                StringComparison.Ordinal);
+            File.WriteAllText(artifactsPath, artifacts);
+            var declaredPresentMissing = Test_PerformanceResultReader.CheckArchiveIntegrity(directory, runID);
+            Assert.That(declaredPresentMissing.OptionalDeclaredPresentMissing, Has.Some.EqualTo(runID + "/logs/runner.log"));
+            Assert.That(declaredPresentMissing.OptionalAbsent, Does.Not.Contain(runID + "/logs/runner.log"));
+
+            File.Delete(Path.Combine(directory, "summary.json"));
+            var requiredMissing = Test_PerformanceResultReader.CheckArchiveIntegrity(directory, runID);
+            Assert.That(requiredMissing.RequiredMissing, Has.Some.EqualTo(runID + "/summary.json"));
+            Assert.That(requiredMissing.OptionalDeclaredPresentMissing, Has.Some.EqualTo(runID + "/logs/runner.log"));
+        }
+
+        [Test]
+        public void ReaderDisplaysIndependentMeasurementOrchestrationFocusAndRenderingStates()
+        {
+            var directory = CreateResult(
+                graphical: true,
+                scenario: "Outdoor",
+                finishedUtc: DateTime.UtcNow,
+                status: "COMPLETE-MEASURED",
+                metrics: BuildRequiredGraphicalMetrics(false));
+            var summaryPath = Path.Combine(directory, "summary.json");
+            var summary = File.ReadAllText(summaryPath).Replace(
+                "\"rendering\":{\"execution_status\":\"complete\",\"qualification_status\":\"verified\",\"probe_status\":\"measured_nonzero\",\"reason_code\":\"\",\"workload_verified\":true}",
+                "\"measurement\":{\"configured_seconds\":5,\"actual_elapsed_seconds\":5.1,\"timing_known\":true,\"measured_frame_count\":9706,\"measured_sample_count\":11,\"pause_gap_detected\":false,\"max_frame_delivery_gap_seconds\":0.02},\"orchestration\":{\"queue_dispatch_to_play_mode_entered_seconds\":70,\"workload_finalized_to_play_mode_exited_seconds\":2,\"play_mode_exit_to_scene_restored_seconds\":3,\"total_attempt_wall_clock_seconds\":80},\"rendering\":{\"execution_status\":\"complete\",\"qualification_status\":\"unverified\",\"probe_status\":\"measured_zero\",\"reason_code\":\"RENDER_WORKLOAD_UNVERIFIED\",\"workload_verified\":false}",
+                StringComparison.Ordinal);
+            File.WriteAllText(summaryPath, summary);
+
+            var view = Test_PerformanceResultReader.ReadFinalized(directory);
+
+            Assert.That(view.IsVerified, Is.True, view.ErrorMessage);
+            Assert.That(view.MeasurementSummary, Does.Contain("configured 5 s"));
+            Assert.That(view.MeasurementSummary, Does.Contain("9706 frames"));
+            Assert.That(view.OrchestrationSummary, Does.Contain("Play Mode startup 70 s"));
+            Assert.That(view.RenderingSummary, Does.Contain("unverified"));
+            Assert.That(view.FocusSummary, Does.Contain("known_foreground"));
+        }
+
+        [Test]
         public void ProductionGraphicalEvidenceWriterUsesTheReaderValidationPath()
         {
             var options = new Test_PerformanceHarnessOptions
@@ -231,6 +289,45 @@ namespace Game.Tests.Performance.Harness
             Assert.That(secondGroup.CandidateValidCount, Is.EqualTo(6));
             Assert.That(secondFrameMetric.CandidateQualified, Is.EqualTo(5));
             Assert.That(secondFrameMetric.CandidateP99Qualified, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void ComparatorKeepsExecutionValidButExcludesUnverifiedRenderingFromTheBudgetCohort()
+        {
+            var baselineID = "campaign-render-proof-baseline-" + Guid.NewGuid().ToString("N");
+            var candidateID = "campaign-render-proof-candidate-" + Guid.NewGuid().ToString("N");
+            var baselineDirectory = CreateCampaignDirectory(baselineID);
+            var candidateDirectory = CreateCampaignDirectory(candidateID);
+            _createdCampaignDirectories.Add(baselineDirectory);
+            _createdCampaignDirectories.Add(candidateDirectory);
+
+            var baseline = BuildGraphicalCampaign(baselineID, 1);
+            var candidate = BuildGraphicalCampaign(candidateID, 1);
+            var baselineResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-1), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            var candidateResult = CreateResult(true, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            var candidateSummaryPath = Path.Combine(candidateResult, "summary.json");
+            File.WriteAllText(
+                candidateSummaryPath,
+                File.ReadAllText(candidateSummaryPath).Replace(
+                    "\"qualification_status\":\"verified\",\"probe_status\":\"measured_nonzero\",\"reason_code\":\"\",\"workload_verified\":true",
+                    "\"qualification_status\":\"unverified\",\"probe_status\":\"measured_zero\",\"reason_code\":\"RENDER_WORKLOAD_UNVERIFIED\",\"workload_verified\":false",
+                    StringComparison.Ordinal));
+            AddCompletedAttempt(baseline, 0, baselineResult);
+            AddCompletedAttempt(candidate, 0, candidateResult);
+            WriteCampaignManifest(baselineDirectory, baseline);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var report = CompareCampaigns(baselineID, candidateID, 1);
+            var group = report.Groups.Single(group => group.ProfileID == "P1-S0-06");
+            var frameMetric = group.Metrics.Single(metric => metric.MetricID == "client.rendered.frame_time");
+
+            Assert.That(group.CandidateValidCount, Is.EqualTo(1));
+            Assert.That(group.CandidateQualifiedAttemptCount, Is.EqualTo(0));
+            Assert.That(frameMetric.CandidateQualified, Is.EqualTo(0));
+            Assert.That(frameMetric.Candidate.MedianP50, Is.Null);
+            Assert.That(group.CandidateAttempts.Single().IsValid, Is.True);
+            Assert.That(group.CandidateAttempts.Single().Diagnostic, Does.Contain("RENDER_WORKLOAD_UNVERIFIED"));
+            Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.PROVISIONAL));
         }
 
         [Test]
@@ -397,6 +494,7 @@ namespace Game.Tests.Performance.Harness
             Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.COMPARABLE));
             Assert.That(group.BaselineAttempts, Has.Count.EqualTo(7));
             Assert.That(group.BaselineValidCount, Is.EqualTo(5));
+            Assert.That(group.BaselineQualifiedAttemptCount, Is.EqualTo(5));
             Assert.That(group.Metrics.All(metric => metric.BaselineQualified == 5), Is.True);
             Assert.That(group.BaselineAttempts.Any(attempt => !attempt.IsValid && (attempt.Diagnostic ?? string.Empty).Contains("duplicate run ID")), Is.True);
             Assert.That(group.BaselineAttempts.Any(attempt => !attempt.IsValid && attempt.State == Test_PerformanceCampaignAttemptState.FAILED), Is.True);
@@ -1297,7 +1395,10 @@ namespace Game.Tests.Performance.Harness
                 : "{\"npc_actors\":0,\"ecs_entities\":100,\"population\":{\"requested_ecs_entities\":100,\"measurement_end_ecs_entities\":100,\"post_cleanup_fixture_entities\":0,\"post_cleanup_total_actor_entities\":0},\"activity\":{\"snapshot_captured\":false}}";
             var correctness = status == "COMPLETE-MEASURED" ? "pass" : "unverified";
             var complete = status == "COMPLETE-MEASURED";
-            var summaryJson = $"{{\"schema_version\":\"benchmark-summary/v1\",\"run_id\":\"{runID}\",\"fixture_sha256\":\"{fixtureHash}\",\"status\":\"{status}\",\"started_utc\":\"{finishedUtc.AddSeconds(-2):o}\",\"finished_utc\":\"{finishedUtc:o}\",\"phase_completion\":{{\"preflight\":{complete.ToString().ToLowerInvariant()},\"ramp\":{complete.ToString().ToLowerInvariant()},\"warmup\":{complete.ToString().ToLowerInvariant()},\"measurement\":{complete.ToString().ToLowerInvariant()},\"recovery\":{complete.ToString().ToLowerInvariant()}}},\"achieved\":{achieved},\"stop\":{{\"reason_code\":\"TEST_STOP\",\"message\":\"test result\"}},\"correctness\":{{\"status\":\"{correctness}\",\"checked\":{(complete ? 4 : 0)},\"failed\":0,\"unverified\":[],\"cleanup\":{complete.ToString().ToLowerInvariant()}}},\"metrics\":{metrics},\"raw_files\":[]}}";
+            var rendering = graphical
+                ? "\"rendering\":{\"execution_status\":\"complete\",\"qualification_status\":\"verified\",\"probe_status\":\"measured_nonzero\",\"reason_code\":\"\",\"workload_verified\":true},\"focus\":{\"context\":\"known_foreground\",\"observation_known\":true,\"run_in_background\":false,\"transition_count\":0,\"focused_frame_count\":100,\"unfocused_frame_count\":0,\"unknown_focus_frame_count\":0},"
+                : string.Empty;
+            var summaryJson = $"{{\"schema_version\":\"benchmark-summary/v1\",\"run_id\":\"{runID}\",\"fixture_sha256\":\"{fixtureHash}\",\"status\":\"{status}\",\"started_utc\":\"{finishedUtc.AddSeconds(-2):o}\",\"finished_utc\":\"{finishedUtc:o}\",\"phase_completion\":{{\"preflight\":{complete.ToString().ToLowerInvariant()},\"ramp\":{complete.ToString().ToLowerInvariant()},\"warmup\":{complete.ToString().ToLowerInvariant()},\"measurement\":{complete.ToString().ToLowerInvariant()},\"recovery\":{complete.ToString().ToLowerInvariant()}}},{rendering}\"achieved\":{achieved},\"stop\":{{\"reason_code\":\"TEST_STOP\",\"message\":\"test result\"}},\"correctness\":{{\"status\":\"{correctness}\",\"checked\":{(complete ? 4 : 0)},\"failed\":0,\"unverified\":[],\"cleanup\":{complete.ToString().ToLowerInvariant()}}},\"metrics\":{metrics},\"raw_files\":[]}}";
             File.WriteAllText(Path.Combine(directory, "summary.json"), summaryJson);
             File.WriteAllText(Path.Combine(directory, "report.md"), "# test result");
             File.WriteAllText(Path.Combine(directory, "artifacts.json"), $"{{\"schema_version\":\"benchmark-artifacts/v1\",\"run_id\":\"{runID}\",\"files\":[{{\"path\":\"fixture.json\"}},{{\"path\":\"run.json\"}},{{\"path\":\"summary.json\"}},{{\"path\":\"report.md\"}}]}}");

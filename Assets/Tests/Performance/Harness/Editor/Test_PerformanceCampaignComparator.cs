@@ -107,6 +107,8 @@ namespace Game.Tests.Performance.Harness
         public bool HasInsufficientRequiredEvidence;
         public int BaselineValidCount;
         public int CandidateValidCount;
+        public int BaselineQualifiedAttemptCount;
+        public int CandidateQualifiedAttemptCount;
         public readonly List<Test_PerformanceCampaignAttemptView> BaselineAttempts = new();
         public readonly List<Test_PerformanceCampaignAttemptView> CandidateAttempts = new();
         public readonly List<Test_PerformanceCampaignMetricComparison> Metrics = new();
@@ -124,12 +126,18 @@ namespace Game.Tests.Performance.Harness
         public string Diagnostic;
         public string ResultPath;
         public string ReportPath;
+        public string DispatchUtc;
+        public string QueueSettledUtc;
+        public double DispatchToQueueSettledSeconds;
         public string GroupKey;
         public string GroupLabel;
         public string IdentityKey;
         public string ProfileID;
         public Test_PerformanceCampaignSource Source;
         public bool IsValid;
+        public bool PerformanceQualified;
+        public string RenderingQualification;
+        public string FocusContext;
         public readonly List<Test_PerformanceCampaignMetricSample> Metrics = new();
     }
 
@@ -155,6 +163,7 @@ namespace Game.Tests.Performance.Harness
         public bool HasMaximum;
         public double Maximum;
         public string Key => MetricID + "|" + Unit + "|" + Source + "|" + Scope + "|" + (RetentionPolicy ?? "unknown");
+
     }
 
     internal sealed class Test_PerformanceCampaignMetricComparison
@@ -379,6 +388,8 @@ namespace Game.Tests.Performance.Harness
             {
                 group.BaselineValidCount = group.BaselineAttempts.Count(attempt => attempt.IsValid);
                 group.CandidateValidCount = group.CandidateAttempts.Count(attempt => attempt.IsValid);
+                group.BaselineQualifiedAttemptCount = group.BaselineAttempts.Count(attempt => attempt.IsValid && attempt.PerformanceQualified);
+                group.CandidateQualifiedAttemptCount = group.CandidateAttempts.Count(attempt => attempt.IsValid && attempt.PerformanceQualified);
                 if (group.BaselineAttempts.Count == 0)
                     group.Classification = Test_PerformanceCampaignGroupClassification.CANDIDATE_ONLY;
                 else if (group.CandidateAttempts.Count == 0)
@@ -395,8 +406,8 @@ namespace Game.Tests.Performance.Harness
                     BuildMetricComparisons(group, minimumValidRepeats);
                     if (HasMetricPolicyMismatch(group))
                         group.Reason = AddReason(group.Reason, "Metric sample/retention policy differs between the selected campaigns; qualification remains metric-specific.");
-                    if (group.BaselineValidCount < minimumValidRepeats || group.CandidateValidCount < minimumValidRepeats)
-                        report.Reasons.Add(group.Label + ": fewer than " + minimumValidRepeats + " valid independent repeats; descriptive statistics are provisional.");
+                    if (group.BaselineQualifiedAttemptCount < minimumValidRepeats || group.CandidateQualifiedAttemptCount < minimumValidRepeats)
+                        report.Reasons.Add(group.Label + ": fewer than " + minimumValidRepeats + " performance-qualified independent repeats; descriptive statistics are provisional.");
                 }
                 report.Groups.Add(group);
             }
@@ -421,18 +432,25 @@ namespace Game.Tests.Performance.Harness
                 report.Reasons.Add("Candidate campaign " + report.Candidate.CampaignID + " lacks scenario groups: " + string.Join(", ", missingCandidateLabels) + ".");
             var insufficient = report.Groups.Any(group => group.Classification == Test_PerformanceCampaignGroupClassification.MATCHED
                 && (group.HasInsufficientRequiredEvidence
-                    || group.BaselineValidCount < minimumValidRepeats
-                    || group.CandidateValidCount < minimumValidRepeats));
+                    || group.BaselineQualifiedAttemptCount < minimumValidRepeats
+                    || group.CandidateQualifiedAttemptCount < minimumValidRepeats));
+            var contextWarning = report.Groups
+                .SelectMany(group => group.BaselineAttempts.Concat(group.CandidateAttempts))
+                .Any(attempt => attempt.IsValid
+                    && !string.Equals(attempt.RenderingQualification, "not_applicable", StringComparison.Ordinal)
+                    && !string.Equals(attempt.FocusContext, "known_foreground", StringComparison.Ordinal));
+            if (contextWarning)
+                report.Reasons.Add("One or more graphical attempts were unfocused or had unknown focus context; render comparison is provisional and no attempt was rejected automatically.");
             var missingScenarios = candidateOnly > 0 || baselineOnly > 0;
             report.Status = hardReasons || incompatible > 0
                 ? Test_PerformanceCampaignComparisonStatus.NOT_COMPARABLE
-                : insufficient || missingScenarios || matched == 0
+                : insufficient || missingScenarios || matched == 0 || contextWarning
                     ? Test_PerformanceCampaignComparisonStatus.PROVISIONAL
                     : Test_PerformanceCampaignComparisonStatus.COMPARABLE;
             report.Summary = "matched " + matched + "; candidate only " + candidateOnly + "; baseline only " + baselineOnly
                 + "; incompatible " + incompatible + "; valid runs baseline " + baselineAttempts.Count(attempt => attempt.IsValid) + "/" + baselineAttempts.Count
                 + ", candidate " + candidateAttempts.Count(attempt => attempt.IsValid) + "/" + candidateAttempts.Count
-                + "; minimum " + minimumValidRepeats + " valid repeats; coverage policy " + MIN_MEASUREMENT_COVERAGE.ToString("P0", CultureInfo.InvariantCulture)
+                + "; minimum " + minimumValidRepeats + " performance-qualified repeats; coverage policy " + MIN_MEASUREMENT_COVERAGE.ToString("P0", CultureInfo.InvariantCulture)
                 + (missingScenarios ? "; missing baseline groups [" + string.Join(", ", missingBaselineLabels) + "]; missing candidate groups [" + string.Join(", ", missingCandidateLabels) + "]" : string.Empty);
             return report;
         }
@@ -500,20 +518,28 @@ namespace Game.Tests.Performance.Harness
                 ValidateCohortIdentity(group, root, report.Reasons);
                 BuildCohortMetricComparisons(group, minimumValidRepeats);
                 group.BaselineValidCount = group.BaselineAttempts.Count(attempt => attempt.IsValid);
+                group.BaselineQualifiedAttemptCount = group.BaselineAttempts.Count(attempt => attempt.IsValid && attempt.PerformanceQualified);
                 group.HasInsufficientRequiredEvidence = group.Metrics.Any(metric => metric.IsRequired && metric.BaselineQualified < minimumValidRepeats);
                 report.Groups.Add(group);
             }
 
             var hasIncompatible = report.Groups.Any(group => !string.IsNullOrEmpty(group.Reason));
             var hasInsufficient = report.Groups.Any(group => group.HasInsufficientRequiredEvidence
-                || group.BaselineValidCount < minimumValidRepeats);
+                || group.BaselineQualifiedAttemptCount < minimumValidRepeats);
+            var hasContextWarning = report.Groups
+                .SelectMany(group => group.BaselineAttempts)
+                .Any(attempt => attempt.IsValid
+                    && !string.Equals(attempt.RenderingQualification, "not_applicable", StringComparison.Ordinal)
+                    && !string.Equals(attempt.FocusContext, "known_foreground", StringComparison.Ordinal));
+            if (hasContextWarning)
+                report.Reasons.Add("One or more linked graphical attempts were unfocused or had unknown focus context; the qualification cohort is provisional and no attempt was rejected automatically.");
             report.Status = hasIncompatible
                 ? Test_PerformanceCampaignComparisonStatus.NOT_COMPARABLE
-                : hasInsufficient
+                : hasInsufficient || hasContextWarning
                     ? Test_PerformanceCampaignComparisonStatus.PROVISIONAL
                     : Test_PerformanceCampaignComparisonStatus.COMPARABLE;
             report.Summary = "linked root " + report.RootCampaignID + "; groups " + report.Groups.Count
-                + "; qualified runs " + report.Groups.Sum(group => group.BaselineValidCount)
+                + "; performance-qualified runs " + report.Groups.Sum(group => group.BaselineQualifiedAttemptCount)
                 + "; minimum " + minimumValidRepeats + "; duplicate, failed and incompatible attempts remain listed and excluded.";
             return report;
         }
@@ -679,7 +705,10 @@ namespace Game.Tests.Performance.Harness
 
         private static void BuildCohortMetricComparisons(Test_PerformanceCampaignComparisonGroup group, int minimumValidRepeats)
         {
-            var samples = group.BaselineAttempts.Where(attempt => attempt.IsValid).SelectMany(attempt => attempt.Metrics).ToList();
+            var samples = group.BaselineAttempts
+                .Where(attempt => attempt.IsValid && attempt.PerformanceQualified)
+                .SelectMany(attempt => attempt.Metrics)
+                .ToList();
             foreach (var requirement in GetRequiredMetricRequirements(group))
             {
                 var matching = samples.Where(requirement.Matches).ToList();
@@ -846,11 +875,17 @@ namespace Game.Tests.Performance.Harness
                     Diagnostic = attempt.diagnostic,
                     ResultPath = attempt.result_path,
                     ReportPath = attempt.report_path,
+                    DispatchUtc = attempt.dispatch_utc,
+                    QueueSettledUtc = attempt.queue_settled_utc,
+                    DispatchToQueueSettledSeconds = string.IsNullOrEmpty(attempt.dispatch_utc) ? -1d : attempt.dispatch_to_queue_settled_seconds,
                     GroupKey = BuildCoreGroupKey(job, null),
                     GroupLabel = job?.DisplayName,
                     IdentityKey = BuildIdentityKey(job, null, null),
                     ProfileID = job?.options?.EffectiveProfileID,
                     Source = SelectAttemptSource(attempt.source, archive.Manifest.source),
+                    PerformanceQualified = job?.options?.IsGraphicalClient != true,
+                    RenderingQualification = job?.options?.IsGraphicalClient == true ? "unknown" : "not_applicable",
+                    FocusContext = "unknown",
                 };
                 try
                 {
@@ -897,9 +932,19 @@ namespace Game.Tests.Performance.Harness
                     ValidateAttemptCorrectness(job, summary, fixture, run, out var correctnessDiagnostic);
                     if (!string.IsNullOrEmpty(correctnessDiagnostic))
                         throw new InvalidDataException(correctnessDiagnostic);
+                    var graphicalExecution = job?.options?.IsGraphicalClient == true
+                        || string.Equals(run.render?.mode, "rendered", StringComparison.OrdinalIgnoreCase);
+                    view.RenderingQualification = graphicalExecution
+                        ? summary.rendering?.qualification_status ?? "unknown"
+                        : "not_applicable";
+                    view.FocusContext = graphicalExecution ? summary.focus?.context ?? "unknown" : "not_applicable";
+                    view.PerformanceQualified = !graphicalExecution
+                        || string.Equals(view.RenderingQualification, "verified", StringComparison.OrdinalIgnoreCase);
+                    if (graphicalExecution && !view.PerformanceQualified)
+                        view.Diagnostic = AddReason(view.Diagnostic, "Rendering qualification is " + view.RenderingQualification + "; rendered-frame budget metrics remain raw but are excluded from the qualified cohort.");
                     view.GroupKey = BuildCoreGroupKey(job, run);
                     view.IdentityKey = BuildIdentityKey(job, run, summary.fixture_sha256);
-                    view.Metrics.AddRange(ReadMetricSamples(summary, summaryJson));
+                    view.Metrics.AddRange(ReadMetricSamples(summary, summaryJson, view.PerformanceQualified));
                     view.IsValid = true;
                 }
                 catch (Exception exception)
@@ -1256,7 +1301,10 @@ namespace Game.Tests.Performance.Harness
             return lower == upper ? values[lower] : values[lower] + (values[upper] - values[lower]) * (position - lower);
         }
 
-        private static List<Test_PerformanceCampaignMetricSample> ReadMetricSamples(Test_PerformanceComparisonSummaryDocument summary, string summaryJson)
+        private static List<Test_PerformanceCampaignMetricSample> ReadMetricSamples(
+            Test_PerformanceComparisonSummaryDocument summary,
+            string summaryJson,
+            bool performanceQualified)
         {
             var samples = new List<Test_PerformanceCampaignMetricSample>();
             foreach (var metric in summary.metrics ?? Array.Empty<Test_PerformanceComparisonMetricDocument>())
@@ -1271,6 +1319,14 @@ namespace Game.Tests.Performance.Harness
                     && metric.sample_count > 0
                     && measurementCoverage.HasValue
                     && measurementCoverage.Value >= MIN_MEASUREMENT_COVERAGE;
+                var renderingDependent = string.Equals(metric.scope, "rendered_frame", StringComparison.Ordinal)
+                    || metric.metric_id == "client.rendered.frame_time"
+                    || metric.metric_id == "client.render_thread.frame_time"
+                    || metric.metric_id == "client.gpu.frame_time"
+                    || metric.metric_id == "client.graphics.draw_call_count"
+                    || metric.metric_id == "client.graphics.triangle_count";
+                if (renderingDependent && !performanceQualified)
+                    qualified = false;
                 var metricJson = FindMetricJson(summaryJson, metric.metric_id);
                 Test_PerformanceResultReader.TryGetLegacyCoverageSemantics(
                     metricJson,
@@ -1289,7 +1345,9 @@ namespace Game.Tests.Performance.Harness
                     Source = string.IsNullOrEmpty(metric.source) ? InferSource(metric.metric_id) : metric.source,
                     Scope = string.IsNullOrEmpty(metric.scope) ? UNKNOWN : metric.scope,
                     Observation = metric.observation,
-                    Reason = AddReason(metric.reason, legacyDiagnostic),
+                    Reason = AddReason(
+                        AddReason(metric.reason, legacyDiagnostic),
+                        renderingDependent && !performanceQualified ? "RENDER_WORKLOAD_UNVERIFIED_OR_NOT_CAPTURED" : null),
                     RetentionPolicy = metric.retention_policy,
                     SampleCount = metric.sample_count,
                     AttemptedSampleCount = metric.attempted_sample_count,
@@ -1472,6 +1530,8 @@ namespace Game.Tests.Performance.Harness
             public string fixture_sha256;
             public Test_PerformanceComparisonMetricDocument[] metrics;
             public Test_PerformanceComparisonPhaseDocument phase_completion;
+            public Test_PerformanceComparisonRenderingDocument rendering;
+            public Test_PerformanceComparisonFocusDocument focus;
             public Test_PerformanceComparisonCorrectnessDocument correctness;
             public Test_PerformanceComparisonAchievedDocument achieved;
         }
@@ -1484,6 +1544,20 @@ namespace Game.Tests.Performance.Harness
             public bool warmup;
             public bool measurement;
             public bool recovery;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonRenderingDocument
+        {
+            public string qualification_status;
+            public string probe_status;
+            public string reason_code;
+        }
+
+        [Serializable]
+        private sealed class Test_PerformanceComparisonFocusDocument
+        {
+            public string context;
         }
 
         [Serializable]

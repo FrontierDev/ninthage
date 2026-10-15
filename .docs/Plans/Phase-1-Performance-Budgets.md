@@ -72,6 +72,8 @@ These thresholds must be reviewed after a new qualifying campaign. The graphical
 5. A p99 that is unavailable because the sample count is below policy remains unavailable. Do not compare it as zero, copy it from another run or replace it with p95. The first Outdoor GPU/render-thread metrics are unavailable because no measurement samples were emitted, not because p99 was inferred.
 6. A new approved baseline requires a new immutable campaign identity and a documented reason: source change, fixture revision, dependency/hardware change or an explicitly approved measurement-protocol change. Existing artifacts are never overwritten.
 
+The 15 October archive is currently incomplete for the optional `logs/runner.log` files declared present by its historical manifests. This is an evidence-retrieval limitation, not a reason to alter the original manifests or to treat the missing logs as empty.
+
 The current campaign cannot produce a before/after regression result because it contains only one candidate set and no approved baseline. The guardrails above are intended to make the next equivalent campaign reviewable, not to retroactively certify this one; the first Outdoor rendering anomaly must also be resolved before the graphical signature is treated as stable.
 
 ## 5. Missing budgets and required follow-up

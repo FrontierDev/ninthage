@@ -2,6 +2,7 @@ using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -163,6 +164,9 @@ namespace Game.Tests.Performance.Harness
         public string stop_reason;
         public string diagnostic;
         public Test_PerformanceCampaignSource source;
+        public string dispatch_utc;
+        public string queue_settled_utc;
+        public double dispatch_to_queue_settled_seconds = -1d;
     }
 
     [Serializable]
@@ -273,6 +277,7 @@ namespace Game.Tests.Performance.Harness
         private static bool _advanceScheduled;
         private static bool _finalizeScheduled;
         private static string _lastCompletedRunID;
+        private static long _activeAttemptDispatchTimestamp;
 
         static Test_PerformanceJobQueue()
         {
@@ -1019,9 +1024,12 @@ namespace Game.Tests.Performance.Harness
             }
 
             _activeAttemptIndex = attemptIndex;
+            _activeAttemptDispatchTimestamp = Stopwatch.GetTimestamp();
             _lastCompletedRunID = Test_PerformanceHarnessController.LastCompletedRunID;
             attempt.state = Test_PerformanceCampaignAttemptState.RUNNING;
-            attempt.started_utc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            var dispatchUtc = DateTime.UtcNow;
+            attempt.started_utc = dispatchUtc.ToString("o", CultureInfo.InvariantCulture);
+            attempt.dispatch_utc = attempt.started_utc;
             attempt.source = attemptSource;
             attempt.diagnostic = null;
             Persist();
@@ -1029,7 +1037,10 @@ namespace Game.Tests.Performance.Harness
 
             try
             {
-                Test_PerformanceHarnessController.Start(job.options.Clone());
+                Test_PerformanceHarnessController.StartQueued(
+                    job.options.Clone(),
+                    _activeAttemptDispatchTimestamp,
+                    dispatchUtc);
             }
             catch (Exception exception)
             {
@@ -1172,6 +1183,15 @@ namespace Game.Tests.Performance.Harness
 
         private static void HandleAttemptSettled(Test_PerformanceCampaignAttempt attempt)
         {
+            attempt.queue_settled_utc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            if (_activeAttemptDispatchTimestamp > 0)
+            {
+                var elapsedTicks = Stopwatch.GetTimestamp() - _activeAttemptDispatchTimestamp;
+                attempt.dispatch_to_queue_settled_seconds = elapsedTicks < 0
+                    ? -1d
+                    : elapsedTicks / (double)Stopwatch.Frequency;
+            }
+            _activeAttemptDispatchTimestamp = 0;
             Persist();
             NotifyChanged();
             if (_manifest.cancel_remaining)
