@@ -605,7 +605,7 @@ Voidbrand stealth is not Duellist stealth: Duellist uses stealth mainly as an op
 | **1** | **Chaos Bolt** | Ranged Chaos damage, generates Instability (Cataclyst-themed). |
 | **2** | **Brand** | Weapon-scaled melee Chaos damage, -Attack Power debuff for 6 sec, generates Instability; 6-sec cooldown (Voidbrand-themed). |
 | **4** | **Crystallise** | 1-sec cast, 6-sec cooldown; costs Mana, reduces Instability, small shield (Fluxweaver-themed). Fluxweaver talents can accelerate the cast and improve absorption. |
-| **6** | **Enlightenment** | Party Intelligence buff (utility). |
+| **6** | **Winds of Wisdom** | Party Intelligence buff (utility). |
 | **8** | **Nullify** | Moderate-range interrupt, 15-sec cooldown, Voidbrand-themed. Fifteen seconds is the standard interrupt cooldown. |
 | **10** | **Dimensional Rift** | Creates one active rift maximum for that Sorcerer. |
 | **10** | **Control Rift: Nova** | Destroys the active rift to deal area damage. |
