@@ -159,6 +159,16 @@ Sorcerer class-wide access includes a ranged damaging spell, melee weapon-scalin
 
 Magic school assignment follows ability mechanics; specialisation theme is **not** a one-school lock. The names already agreed in discussion are retained; icon/animation/VFX/SFX decisions remain a later presentation stage.
 
+### 8.1 Sorcerer icon art direction — Radiant Slate
+
+**Radiant Slate**, not Arcane Slate, is the project's approved overall interface theme. All Sorcerer ability icons must follow the [Spell Icon Art Direction PDD](../Spell-Icon-Art-Direction-PDD.md) and be reviewed within the actual 40×40 action-bar slot from the [UI and UX PDD](../UI-and-UX-PDD.md).
+
+**Mandatory:** complete **opaque, edge-to-edge painted backgrounds**, no built-in borders/frames, one clear focal subject, strong silhouettes, restrained detail and genuinely varied spell-specific palettes. No transparent cut-outs or default purple/cyan shard vortices. These are compact game icons, **not cinematic illustrations**.
+
+The benchmark consists of **Chaos Bolt** (diagonal projectile), **Crystallise** (ice-themed defensive barrier), **Winds of Wisdom** (calm air/intellect party buff) and **Dimensional Rift** (narrow vertical tear through space). Each must be recognisable independently at 32, 40, 48 and 64 pixels without its label. **Crystallise must read as protection rather than crystal summoning; Nullify as spell interruption rather than a destructive explosion; Dimensional Rift as a planar tear rather than a scenic portal.**
+
+Art briefs and differentiation guidance for all sixteen agreed Sorcerer spells are maintained centrally in the Spell Icon Art Direction PDD. Those art briefs do not fix unapproved school, mana, cooldown or damage values.
+
 ## 9. Phase 2 vertical-slice goals and verification
 
 Phase 2's **Core Playable Vertical Slice** should demonstrate the **Sorcerer levels 1–10** and its three distinct level-10 specialisation identities, with no talents allocated:

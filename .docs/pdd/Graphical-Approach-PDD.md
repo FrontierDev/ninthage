@@ -745,6 +745,8 @@ The interface must remain legible over bright snow, dark marshes, volcanic scene
 
 ---
 
+**Spell icon exception to world-asset workflows:** spell icons are authored **complete painted squares** for Radiant Slate UI, not isolated objects with transparent backgrounds. Follow the [Spell Icon Art Direction PDD](Spell-Icon-Art-Direction-PDD.md) for subject distinction, silhouette, opacity, action-bar size and approval. The world and spell-icon pipelines share readability goals but are not interchangeable art styles.
+
 ## 19. Asset Production Standards
 
 ### 19.1 General Asset Workflow
