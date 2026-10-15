@@ -109,6 +109,7 @@ namespace Game.Tests.Performance.Harness
         public int CandidateValidCount;
         public int BaselineQualifiedAttemptCount;
         public int CandidateQualifiedAttemptCount;
+        public string ContextDiagnostic;
         public readonly List<Test_PerformanceCampaignAttemptView> BaselineAttempts = new();
         public readonly List<Test_PerformanceCampaignAttemptView> CandidateAttempts = new();
         public readonly List<Test_PerformanceCampaignMetricComparison> Metrics = new();
@@ -434,13 +435,9 @@ namespace Game.Tests.Performance.Harness
                 && (group.HasInsufficientRequiredEvidence
                     || group.BaselineQualifiedAttemptCount < minimumValidRepeats
                     || group.CandidateQualifiedAttemptCount < minimumValidRepeats));
-            var contextWarning = report.Groups
-                .SelectMany(group => group.BaselineAttempts.Concat(group.CandidateAttempts))
-                .Any(attempt => attempt.IsValid
-                    && !string.Equals(attempt.RenderingQualification, "not_applicable", StringComparison.Ordinal)
-                    && !string.Equals(attempt.FocusContext, "known_foreground", StringComparison.Ordinal));
-            if (contextWarning)
-                report.Reasons.Add("One or more graphical attempts were unfocused or had unknown focus context; render comparison is provisional and no attempt was rejected automatically.");
+            foreach (var group in report.Groups.Where(group => group.Classification == Test_PerformanceCampaignGroupClassification.MATCHED))
+                ApplyContextDiagnostic(group, report.Reasons, compareCampaignSides: true);
+            var contextWarning = report.Groups.Any(group => !string.IsNullOrEmpty(group.ContextDiagnostic));
             var missingScenarios = candidateOnly > 0 || baselineOnly > 0;
             report.Status = hardReasons || incompatible > 0
                 ? Test_PerformanceCampaignComparisonStatus.NOT_COMPARABLE
@@ -517,6 +514,7 @@ namespace Game.Tests.Performance.Harness
                     continue;
                 ValidateCohortIdentity(group, root, report.Reasons);
                 BuildCohortMetricComparisons(group, minimumValidRepeats);
+                ApplyContextDiagnostic(group, report.Reasons, compareCampaignSides: false);
                 group.BaselineValidCount = group.BaselineAttempts.Count(attempt => attempt.IsValid);
                 group.BaselineQualifiedAttemptCount = group.BaselineAttempts.Count(attempt => attempt.IsValid && attempt.PerformanceQualified);
                 group.HasInsufficientRequiredEvidence = group.Metrics.Any(metric => metric.IsRequired && metric.BaselineQualified < minimumValidRepeats);
@@ -526,13 +524,7 @@ namespace Game.Tests.Performance.Harness
             var hasIncompatible = report.Groups.Any(group => !string.IsNullOrEmpty(group.Reason));
             var hasInsufficient = report.Groups.Any(group => group.HasInsufficientRequiredEvidence
                 || group.BaselineQualifiedAttemptCount < minimumValidRepeats);
-            var hasContextWarning = report.Groups
-                .SelectMany(group => group.BaselineAttempts)
-                .Any(attempt => attempt.IsValid
-                    && !string.Equals(attempt.RenderingQualification, "not_applicable", StringComparison.Ordinal)
-                    && !string.Equals(attempt.FocusContext, "known_foreground", StringComparison.Ordinal));
-            if (hasContextWarning)
-                report.Reasons.Add("One or more linked graphical attempts were unfocused or had unknown focus context; the qualification cohort is provisional and no attempt was rejected automatically.");
+            var hasContextWarning = report.Groups.Any(group => !string.IsNullOrEmpty(group.ContextDiagnostic));
             report.Status = hasIncompatible
                 ? Test_PerformanceCampaignComparisonStatus.NOT_COMPARABLE
                 : hasInsufficient || hasContextWarning
@@ -580,6 +572,53 @@ namespace Game.Tests.Performance.Harness
                 if (attempt.Source == null)
                     reasons.Add((attempt.RunID ?? attempt.AttemptID ?? "unknown run") + ": source provenance is missing from the linked cohort.");
             }
+        }
+
+        private static void ApplyContextDiagnostic(
+            Test_PerformanceCampaignComparisonGroup group,
+            List<string> reasons,
+            bool compareCampaignSides)
+        {
+            if (group == null
+                || (!group.IsGraphical
+                    && !group.BaselineAttempts.Concat(group.CandidateAttempts).Any(attempt =>
+                        !string.Equals(attempt.RenderingQualification, "not_applicable", StringComparison.Ordinal))))
+                return;
+
+            var baselineContexts = GetQualifiedFocusContexts(group.BaselineAttempts);
+            var candidateContexts = GetQualifiedFocusContexts(group.CandidateAttempts);
+            var allContexts = baselineContexts.Concat(candidateContexts).Distinct(StringComparer.Ordinal).ToList();
+            if (allContexts.Count == 0)
+                return;
+            if (allContexts.Contains("unknown", StringComparer.Ordinal))
+            {
+                group.ContextDiagnostic = "Graphical focus context is unknown for one or more performance-qualified attempts; comparability cannot be judged for the affected render metrics.";
+            }
+            else if (baselineContexts.Count > 1 || candidateContexts.Count > 1)
+            {
+                group.ContextDiagnostic = "Graphical focus context varied within a compared campaign; the effect on render metrics cannot be isolated.";
+            }
+            else if (compareCampaignSides
+                && baselineContexts.Count == 1
+                && candidateContexts.Count == 1
+                && !string.Equals(baselineContexts[0], candidateContexts[0], StringComparison.Ordinal))
+            {
+                group.ContextDiagnostic = "Graphical focus context differs between baseline (" + baselineContexts[0]
+                    + ") and candidate (" + candidateContexts[0] + "); the affected render comparison is provisional.";
+            }
+
+            if (!string.IsNullOrEmpty(group.ContextDiagnostic))
+                reasons.Add(group.Label + ": " + group.ContextDiagnostic);
+        }
+
+        private static List<string> GetQualifiedFocusContexts(List<Test_PerformanceCampaignAttemptView> attempts)
+        {
+            return attempts
+                .Where(attempt => attempt.IsValid && attempt.PerformanceQualified)
+                .Select(attempt => string.IsNullOrEmpty(attempt.FocusContext) ? "unknown" : attempt.FocusContext)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(context => context, StringComparer.Ordinal)
+                .ToList();
         }
 
         private static void ValidateCohortIdentity(

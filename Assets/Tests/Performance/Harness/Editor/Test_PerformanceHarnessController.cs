@@ -30,6 +30,9 @@ namespace Game.Tests.Performance.Harness
         public bool stopRequested;
         public bool telemetryStarted;
         public bool finalized;
+        public string finalizedStatus;
+        public string finalizedReasonCode;
+        public string finalizedMessage;
         public bool worldFixtureLoaded;
         public bool preflightCompleted;
         public bool workloadApplied;
@@ -339,7 +342,7 @@ namespace Game.Tests.Performance.Harness
                 }
                 if (run != null && run.Finalized)
                     RememberCompletedRun(run);
-                RestorePreviousSceneSetup();
+                RestorePreviousSceneSetup(out _);
                 _activeRun = null;
                 _previousSceneSetup = null;
                 ClearPendingRun();
@@ -396,11 +399,13 @@ namespace Game.Tests.Performance.Harness
                 if (_activeRun != null && _activeRun.Finalized)
                     _activeRun.MarkPlayModeExited();
 
-                var sceneRestored = RestorePreviousSceneSetup();
+                var sceneRestored = RestorePreviousSceneSetup(out var sceneRestoreDiagnostic);
                 if (_activeRun != null && _activeRun.Finalized)
                 {
                     if (sceneRestored)
                         _activeRun.MarkSceneRestored();
+                    else
+                        _activeRun.MarkSceneRestoreFailed(sceneRestoreDiagnostic);
                     _activeRun.CompleteEditorLifecycle();
                 }
                 ClearPendingRun();
@@ -443,12 +448,14 @@ namespace Game.Tests.Performance.Harness
                 LastReportPath = state.reportPath;
                 if (state.finalized || state.lifecycle == FINALIZED_LIFECYCLE)
                 {
+                    state.finalized = true;
+                    _activeRun = Test_PerformanceRun.Restore(state);
                     Status = "Finished: " + state.reportPath;
                     LastCompletedRunID = state.runID;
                     LastCompletedResultDirectory = state.resultsDirectory;
                     if (!EditorApplication.isPlayingOrWillChangePlaymode)
                     {
-                        RestorePreviousSceneSetup();
+                        CompleteFinalizedRunAfterReload();
                         _previousSceneSetup = null;
                         ClearPendingRun();
                     }
@@ -466,7 +473,7 @@ namespace Game.Tests.Performance.Harness
                         PerformanceRunStatus.FailInstrumentation);
                     RememberCompletedRun(staleRun);
                     _activeRun = staleRun;
-                    RestorePreviousSceneSetup();
+                    RestorePreviousSceneSetup(out _);
                     _previousSceneSetup = null;
                     ClearPendingRun();
                     Status = "Run interrupted by Editor reload: " + staleRun.ReportPath;
@@ -478,7 +485,7 @@ namespace Game.Tests.Performance.Harness
             }
             catch (Exception exception)
             {
-                RestorePreviousSceneSetup();
+                RestorePreviousSceneSetup(out _);
                 ClearPendingRun();
                 _previousSceneSetup = null;
                 _activeRun = null;
@@ -488,8 +495,25 @@ namespace Game.Tests.Performance.Harness
             StateChanged?.Invoke();
         }
 
-        private static bool RestorePreviousSceneSetup()
+        private static void CompleteFinalizedRunAfterReload()
         {
+            if (_activeRun == null || !_activeRun.Finalized)
+                return;
+
+            var sceneRestored = RestorePreviousSceneSetup(out var diagnostic);
+            if (sceneRestored)
+                _activeRun.MarkSceneRestored();
+            else
+                _activeRun.MarkSceneRestoreFailed(diagnostic);
+            _activeRun.CompleteEditorLifecycle();
+            RememberCompletedRun(_activeRun);
+            LastReportPath = _activeRun.ReportPath;
+            _activeRun = null;
+        }
+
+        private static bool RestorePreviousSceneSetup(out string diagnostic)
+        {
+            diagnostic = null;
             if (_previousSceneSetup == null || _previousSceneSetup.Length == 0)
                 return true;
 
@@ -500,6 +524,7 @@ namespace Game.Tests.Performance.Harness
             }
             catch (Exception exception)
             {
+                diagnostic = "Previous Editor scene setup could not be restored: " + exception.Message;
                 Status = "Run finished, but the previous Editor scene setup could not be restored: " + exception.Message;
                 UnityEngine.Debug.LogException(exception);
                 return false;

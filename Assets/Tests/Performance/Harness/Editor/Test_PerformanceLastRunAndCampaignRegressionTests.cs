@@ -187,6 +187,80 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void OptionalDeclaredPresentMissingDoesNotInvalidateQualifiedResultOrComparison()
+        {
+            var baselineID = "campaign-optional-baseline-" + Guid.NewGuid().ToString("N");
+            var candidateID = "campaign-optional-candidate-" + Guid.NewGuid().ToString("N");
+            var baselineDirectory = CreateCampaignDirectory(baselineID);
+            var candidateDirectory = CreateCampaignDirectory(candidateID);
+            _createdCampaignDirectories.Add(baselineDirectory);
+            _createdCampaignDirectories.Add(candidateDirectory);
+
+            var baselineResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-1), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            var candidateResult = CreateResult(true, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            foreach (var result in new[] { baselineResult, candidateResult })
+            {
+                var artifactsPath = Path.Combine(result, "artifacts.json");
+                var artifacts = File.ReadAllText(artifactsPath).Replace(
+                    "]}",
+                    ",{\"path\":\"logs/runner.log\",\"status\":\"present\",\"required\":false,\"optional\":true}]}",
+                    StringComparison.Ordinal);
+                File.WriteAllText(artifactsPath, artifacts);
+            }
+
+            var baselineView = Test_PerformanceResultReader.ReadFinalized(baselineResult);
+            Assert.That(baselineView.IsVerified, Is.True, baselineView.ErrorMessage);
+            Assert.That(baselineView.ArchiveIntegrity.IsComplete, Is.False);
+            Assert.That(baselineView.ArchiveIntegritySummary, Does.Contain("optional declared present but missing"));
+
+            var baseline = BuildGraphicalCampaign(baselineID, 1);
+            var candidate = BuildGraphicalCampaign(candidateID, 1);
+            AddCompletedAttempt(baseline, 0, baselineResult);
+            AddCompletedAttempt(candidate, 0, candidateResult);
+            WriteCampaignManifest(baselineDirectory, baseline);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var report = CompareCampaigns(baselineID, candidateID, 1);
+            var group = report.Groups.Single(group => group.ProfileID == "P1-S0-06");
+            Assert.That(group.BaselineQualifiedAttemptCount, Is.EqualTo(1));
+            Assert.That(group.CandidateQualifiedAttemptCount, Is.EqualTo(1));
+            Assert.That(group.Metrics.Single(metric => metric.MetricID == "client.rendered.frame_time").CandidateQualified, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void CorruptOptionalArtifactHasDistinctIntegrityDiagnostic()
+        {
+            var directory = CreateResult(true, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            var logPath = Path.Combine(directory, "logs", "runner.log");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath));
+            File.WriteAllText(logPath, "actual optional log");
+            var artifactsPath = Path.Combine(directory, "artifacts.json");
+            var artifacts = File.ReadAllText(artifactsPath).Replace(
+                "]}",
+                ",{\"path\":\"logs/runner.log\",\"status\":\"present\",\"required\":false,\"optional\":true,\"sha256\":\"wrong\",\"bytes\":1}]}",
+                StringComparison.Ordinal);
+            File.WriteAllText(artifactsPath, artifacts);
+
+            var view = Test_PerformanceResultReader.ReadFinalized(directory);
+
+            Assert.That(view.IsVerified, Is.False);
+            Assert.That(view.ErrorMessage, Does.Contain("Artifact SHA-256 does not match"));
+            Assert.That(view.ArchiveIntegrity.Corrupt, Has.Some.EqualTo(Path.GetFileName(directory) + "/logs/runner.log (SHA-256 mismatch)"));
+        }
+
+        [Test]
+        public void CorruptRequiredArtifactPreventsFinalizedResultRead()
+        {
+            var directory = CreateResult(false, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredServerMetrics(false));
+            File.WriteAllText(Path.Combine(directory, "report.md"), "changed required report");
+
+            var view = Test_PerformanceResultReader.ReadFinalized(directory);
+
+            Assert.That(view.IsVerified, Is.False);
+            Assert.That(view.ErrorMessage, Does.Contain("Artifact SHA-256 does not match").Or.Contain("byte count does not match"));
+        }
+
+        [Test]
         public void ReaderDisplaysIndependentMeasurementOrchestrationFocusAndRenderingStates()
         {
             var directory = CreateResult(
@@ -200,7 +274,7 @@ namespace Game.Tests.Performance.Harness
                 "\"rendering\":{\"execution_status\":\"complete\",\"qualification_status\":\"verified\",\"probe_status\":\"measured_nonzero\",\"reason_code\":\"\",\"workload_verified\":true}",
                 "\"measurement\":{\"configured_seconds\":5,\"actual_elapsed_seconds\":5.1,\"timing_known\":true,\"measured_frame_count\":9706,\"measured_sample_count\":11,\"pause_gap_detected\":false,\"max_frame_delivery_gap_seconds\":0.02},\"orchestration\":{\"queue_dispatch_to_play_mode_entered_seconds\":70,\"workload_finalized_to_play_mode_exited_seconds\":2,\"play_mode_exit_to_scene_restored_seconds\":3,\"total_attempt_wall_clock_seconds\":80},\"rendering\":{\"execution_status\":\"complete\",\"qualification_status\":\"unverified\",\"probe_status\":\"measured_zero\",\"reason_code\":\"RENDER_WORKLOAD_UNVERIFIED\",\"workload_verified\":false}",
                 StringComparison.Ordinal);
-            File.WriteAllText(summaryPath, summary);
+            WriteSummaryAndRefreshArtifacts(directory, summary);
 
             var view = Test_PerformanceResultReader.ReadFinalized(directory);
 
@@ -306,8 +380,8 @@ namespace Game.Tests.Performance.Harness
             var baselineResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-1), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
             var candidateResult = CreateResult(true, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
             var candidateSummaryPath = Path.Combine(candidateResult, "summary.json");
-            File.WriteAllText(
-                candidateSummaryPath,
+            WriteSummaryAndRefreshArtifacts(
+                candidateResult,
                 File.ReadAllText(candidateSummaryPath).Replace(
                     "\"qualification_status\":\"verified\",\"probe_status\":\"measured_nonzero\",\"reason_code\":\"\",\"workload_verified\":true",
                     "\"qualification_status\":\"unverified\",\"probe_status\":\"measured_zero\",\"reason_code\":\"RENDER_WORKLOAD_UNVERIFIED\",\"workload_verified\":false",
@@ -328,6 +402,63 @@ namespace Game.Tests.Performance.Harness
             Assert.That(group.CandidateAttempts.Single().IsValid, Is.True);
             Assert.That(group.CandidateAttempts.Single().Diagnostic, Does.Contain("RENDER_WORKLOAD_UNVERIFIED"));
             Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.PROVISIONAL));
+        }
+
+        [Test]
+        public void ComparatorAllowsConsistentlyBackgroundedQualifiedGraphicalRuns()
+        {
+            var baselineID = "campaign-background-baseline-" + Guid.NewGuid().ToString("N");
+            var candidateID = "campaign-background-candidate-" + Guid.NewGuid().ToString("N");
+            var baselineDirectory = CreateCampaignDirectory(baselineID);
+            var candidateDirectory = CreateCampaignDirectory(candidateID);
+            _createdCampaignDirectories.Add(baselineDirectory);
+            _createdCampaignDirectories.Add(candidateDirectory);
+            var baseline = BuildGraphicalCampaign(baselineID, 1);
+            var candidate = BuildGraphicalCampaign(candidateID, 1);
+            var baselineResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-1), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            var candidateResult = CreateResult(true, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            SetGraphicalFocusContext(baselineResult, "known_background", true);
+            SetGraphicalFocusContext(candidateResult, "known_background", true);
+            AddCompletedAttempt(baseline, 0, baselineResult);
+            AddCompletedAttempt(candidate, 0, candidateResult);
+            WriteCampaignManifest(baselineDirectory, baseline);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var report = CompareCampaigns(baselineID, candidateID, 1);
+            var group = report.Groups.Single(group => group.ProfileID == "P1-S0-06");
+
+            Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.COMPARABLE));
+            Assert.That(group.ContextDiagnostic, Is.Null.Or.Empty);
+            Assert.That(group.BaselineAttempts.Single().FocusContext, Is.EqualTo("known_background"));
+            Assert.That(group.CandidateAttempts.Single().PerformanceQualified, Is.True);
+        }
+
+        [Test]
+        public void ComparatorReportsForegroundBackgroundDifferenceWithoutRejectingQualifiedMetrics()
+        {
+            var baselineID = "campaign-focus-difference-baseline-" + Guid.NewGuid().ToString("N");
+            var candidateID = "campaign-focus-difference-candidate-" + Guid.NewGuid().ToString("N");
+            var baselineDirectory = CreateCampaignDirectory(baselineID);
+            var candidateDirectory = CreateCampaignDirectory(candidateID);
+            _createdCampaignDirectories.Add(baselineDirectory);
+            _createdCampaignDirectories.Add(candidateDirectory);
+            var baseline = BuildGraphicalCampaign(baselineID, 1);
+            var candidate = BuildGraphicalCampaign(candidateID, 1);
+            var baselineResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-1), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            var candidateResult = CreateResult(true, "Outdoor", DateTime.UtcNow, "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
+            SetGraphicalFocusContext(candidateResult, "known_background", true);
+            AddCompletedAttempt(baseline, 0, baselineResult);
+            AddCompletedAttempt(candidate, 0, candidateResult);
+            WriteCampaignManifest(baselineDirectory, baseline);
+            WriteCampaignManifest(candidateDirectory, candidate);
+
+            var report = CompareCampaigns(baselineID, candidateID, 1);
+            var group = report.Groups.Single(group => group.ProfileID == "P1-S0-06");
+
+            Assert.That(report.Status, Is.EqualTo(Test_PerformanceCampaignComparisonStatus.PROVISIONAL));
+            Assert.That(group.ContextDiagnostic, Does.Contain("differs between baseline"));
+            Assert.That(group.BaselineAttempts.Single().PerformanceQualified, Is.True);
+            Assert.That(group.CandidateAttempts.Single().PerformanceQualified, Is.True);
         }
 
         [Test]
@@ -422,7 +553,7 @@ namespace Game.Tests.Performance.Harness
             var baselineResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-2), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
             var candidateResult = CreateResult(true, "Outdoor", DateTime.UtcNow.AddMinutes(-1), "COMPLETE-MEASURED", BuildRequiredGraphicalMetrics(false));
             var candidateSummaryPath = Path.Combine(candidateResult, "summary.json");
-            File.WriteAllText(candidateSummaryPath, File.ReadAllText(candidateSummaryPath).Replace(
+            WriteSummaryAndRefreshArtifacts(candidateResult, File.ReadAllText(candidateSummaryPath).Replace(
                 "\"status\":\"pass\"",
                 "\"status\":\"failed\"",
                 StringComparison.Ordinal));
@@ -1317,6 +1448,15 @@ namespace Game.Tests.Performance.Harness
             return "[" + string.Join(",", metrics) + "]";
         }
 
+        private static void SetGraphicalFocusContext(string resultDirectory, string context, bool runInBackground)
+        {
+            var summaryPath = Path.Combine(resultDirectory, "summary.json");
+            var summary = File.ReadAllText(summaryPath)
+                .Replace("\"context\":\"known_foreground\"", "\"context\":\"" + context + "\"", StringComparison.Ordinal)
+                .Replace("\"run_in_background\":false", "\"run_in_background\":" + runInBackground.ToString().ToLowerInvariant(), StringComparison.Ordinal);
+            WriteSummaryAndRefreshArtifacts(resultDirectory, summary);
+        }
+
         private static string BuildRequiredServerMetrics(bool includeLegacyMetric)
         {
             var metrics = new List<string>
@@ -1401,8 +1541,36 @@ namespace Game.Tests.Performance.Harness
             var summaryJson = $"{{\"schema_version\":\"benchmark-summary/v1\",\"run_id\":\"{runID}\",\"fixture_sha256\":\"{fixtureHash}\",\"status\":\"{status}\",\"started_utc\":\"{finishedUtc.AddSeconds(-2):o}\",\"finished_utc\":\"{finishedUtc:o}\",\"phase_completion\":{{\"preflight\":{complete.ToString().ToLowerInvariant()},\"ramp\":{complete.ToString().ToLowerInvariant()},\"warmup\":{complete.ToString().ToLowerInvariant()},\"measurement\":{complete.ToString().ToLowerInvariant()},\"recovery\":{complete.ToString().ToLowerInvariant()}}},{rendering}\"achieved\":{achieved},\"stop\":{{\"reason_code\":\"TEST_STOP\",\"message\":\"test result\"}},\"correctness\":{{\"status\":\"{correctness}\",\"checked\":{(complete ? 4 : 0)},\"failed\":0,\"unverified\":[],\"cleanup\":{complete.ToString().ToLowerInvariant()}}},\"metrics\":{metrics},\"raw_files\":[]}}";
             File.WriteAllText(Path.Combine(directory, "summary.json"), summaryJson);
             File.WriteAllText(Path.Combine(directory, "report.md"), "# test result");
-            File.WriteAllText(Path.Combine(directory, "artifacts.json"), $"{{\"schema_version\":\"benchmark-artifacts/v1\",\"run_id\":\"{runID}\",\"files\":[{{\"path\":\"fixture.json\"}},{{\"path\":\"run.json\"}},{{\"path\":\"summary.json\"}},{{\"path\":\"report.md\"}}]}}");
+            var artifactEntries = new[]
+            {
+                BuildArtifactEntry(directory, "fixture.json", required: true, optional: false),
+                BuildArtifactEntry(directory, "run.json", required: true, optional: false),
+                BuildArtifactEntry(directory, "summary.json", required: true, optional: false),
+                BuildArtifactEntry(directory, "report.md", required: true, optional: false),
+            };
+            File.WriteAllText(Path.Combine(directory, "artifacts.json"), $"{{\"schema_version\":\"benchmark-artifacts/v1\",\"run_id\":\"{runID}\",\"files\":[{string.Join(",", artifactEntries)}]}}");
             return directory;
+        }
+
+        private static string BuildArtifactEntry(string directory, string relativePath, bool required, bool optional)
+        {
+            var path = Path.Combine(directory, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            return $"{{\"path\":\"{relativePath}\",\"status\":\"present\",\"required\":{required.ToString().ToLowerInvariant()},\"optional\":{optional.ToString().ToLowerInvariant()},\"sha256\":\"{Test_PerformanceRunMetadata.HashFile(path)}\",\"bytes\":{new FileInfo(path).Length}}}";
+        }
+
+        private static void WriteSummaryAndRefreshArtifacts(string directory, string summary)
+        {
+            File.WriteAllText(Path.Combine(directory, "summary.json"), summary);
+            var artifactsPath = Path.Combine(directory, "artifacts.json");
+            var artifacts = File.ReadAllText(artifactsPath);
+            var markerIndex = artifacts.IndexOf("\"path\":\"summary.json\"", StringComparison.Ordinal);
+            Assert.That(markerIndex, Is.GreaterThanOrEqualTo(0), "summary.json artifact entry was not present");
+            var objectStart = artifacts.LastIndexOf('{', markerIndex);
+            var objectEnd = artifacts.IndexOf('}', markerIndex);
+            Assert.That(objectStart, Is.GreaterThanOrEqualTo(0));
+            Assert.That(objectEnd, Is.GreaterThan(objectStart));
+            var entry = BuildArtifactEntry(directory, "summary.json", required: true, optional: false);
+            File.WriteAllText(artifactsPath, artifacts.Substring(0, objectStart) + entry + artifacts.Substring(objectEnd + 1));
         }
 
         private static string GetResultRoot()

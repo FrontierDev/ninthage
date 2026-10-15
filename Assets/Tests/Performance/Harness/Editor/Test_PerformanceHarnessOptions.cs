@@ -758,6 +758,8 @@ namespace Game.Tests.Performance.Harness
                     DrawResultField("Qualified execution cohort", group.BaselineQualifiedAttemptCount + " baseline / " + group.CandidateQualifiedAttemptCount + " candidate");
                     if (!string.IsNullOrEmpty(group.Reason))
                         DrawWrappedField("Group caveat", group.Reason);
+                    if (!string.IsNullOrEmpty(group.ContextDiagnostic))
+                        DrawWrappedField("Context caveat", group.ContextDiagnostic);
                     DrawCampaignAttempts("Baseline attempts", group.BaselineAttempts, report.Baseline.Directory);
                     DrawCampaignAttempts("Candidate attempts", group.CandidateAttempts, report.Candidate.Directory);
                     foreach (var metric in group.Metrics)
@@ -790,6 +792,8 @@ namespace Game.Tests.Performance.Harness
                     + " / " + (attempt.ResultStatus ?? "no finalized status") + " / " + (attempt.StopReason ?? "no stop reason")
                     + " / execution " + (attempt.IsValid ? "complete" : "not qualified")
                     + " / performance " + (attempt.PerformanceQualified ? "qualified" : "provisional")
+                    + " / focus " + (attempt.FocusContext ?? "unknown")
+                    + " / rendering " + (attempt.RenderingQualification ?? "unknown")
                     + " / queue dispatch-settle " + (attempt.DispatchToQueueSettledSeconds < 0d ? "unknown" : attempt.DispatchToQueueSettledSeconds.ToString("0.###")) + " s";
                 EditorGUILayout.LabelField(line, EditorStyles.wordWrappedMiniLabel);
                 if (!string.IsNullOrEmpty(attempt.Diagnostic))
@@ -835,6 +839,8 @@ namespace Game.Tests.Performance.Harness
                     DrawResultField("Contributing runs", group.BaselineQualifiedAttemptCount + " performance-qualified / " + group.BaselineValidCount + " execution-valid / " + group.BaselineAttempts.Count + " inventory");
                     if (!string.IsNullOrEmpty(group.Reason))
                         DrawWrappedField("Cohort caveat", group.Reason);
+                    if (!string.IsNullOrEmpty(group.ContextDiagnostic))
+                        DrawWrappedField("Context caveat", group.ContextDiagnostic);
                     DrawCampaignAttempts("Cohort attempts", group.BaselineAttempts, null);
                     foreach (var metric in group.Metrics)
                     {

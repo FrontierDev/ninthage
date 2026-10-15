@@ -26,16 +26,21 @@ namespace Game.Tests.Performance.Harness
         public readonly List<string> RequiredMissing = new();
         public readonly List<string> OptionalAbsent = new();
         public readonly List<string> OptionalDeclaredPresentMissing = new();
+        public readonly List<string> Corrupt = new();
 
-        public bool IsComplete => RequiredMissing.Count == 0 && OptionalDeclaredPresentMissing.Count == 0;
+        public bool IsComplete => RequiredMissing.Count == 0
+            && OptionalDeclaredPresentMissing.Count == 0
+            && Corrupt.Count == 0;
 
         public string Summary
         {
             get
             {
-                return "required missing: " + Format(RequiredMissing)
+                return (IsComplete ? "COMPLETE" : "INCOMPLETE")
+                    + "; required missing: " + Format(RequiredMissing)
                     + "; optional absent: " + Format(OptionalAbsent)
-                    + "; optional declared present but missing: " + Format(OptionalDeclaredPresentMissing);
+                    + "; optional declared present but missing: " + Format(OptionalDeclaredPresentMissing)
+                    + "; corrupt: " + Format(Corrupt);
             }
         }
 
@@ -386,6 +391,25 @@ namespace Game.Tests.Performance.Harness
                     report.OptionalDeclaredPresentMissing.Add(DescribeArtifact(report.RunID, relative));
                 }
             }
+            foreach (var entry in entries)
+            {
+                if (entry == null
+                    || string.Equals(entry.status, "absent", StringComparison.OrdinalIgnoreCase)
+                    || string.IsNullOrEmpty(entry.path))
+                    continue;
+                var path = Path.Combine(resultDirectory, entry.path);
+                if (!IsSafeExistingFile(path, resultDirectory))
+                    continue;
+                if (!string.IsNullOrEmpty(entry.sha256)
+                    && !string.Equals(Test_PerformanceRunMetadata.HashFile(path), entry.sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    report.Corrupt.Add(DescribeArtifact(report.RunID, entry.path) + " (SHA-256 mismatch)");
+                }
+                else if (entry.bytes > 0 && entry.bytes != new FileInfo(path).Length)
+                {
+                    report.Corrupt.Add(DescribeArtifact(report.RunID, entry.path) + " (byte count mismatch)");
+                }
+            }
             var knownOptionalPaths = new HashSet<string>(optionalPaths, StringComparer.OrdinalIgnoreCase);
             foreach (var entry in entries)
             {
@@ -562,20 +586,31 @@ namespace Game.Tests.Performance.Harness
                 RequireRelativePath(artifact.path, "artifact path");
                 var artifactPath = Path.GetFullPath(Path.Combine(directory, artifact.path));
                 var absent = string.Equals(artifact.status, "absent", StringComparison.OrdinalIgnoreCase);
+                var required = requiredArtifacts.Contains(artifact.path) || artifact.required;
                 if (absent)
                 {
-                    if (requiredArtifacts.Contains(artifact.path) || artifact.required)
+                    if (required)
                         throw new InvalidDataException("Required artifact is explicitly absent: " + artifact.path);
                     continue;
                 }
                 if (!IsSafeExistingFile(artifactPath, directory))
+                {
+                    if (artifact.optional
+                        && !artifact.required
+                        && string.Equals(artifact.status, "present", StringComparison.OrdinalIgnoreCase))
+                        continue;
                     throw new InvalidDataException("Artifact path is missing or outside the result directory: " + artifact.path);
+                }
                 if (!string.IsNullOrEmpty(artifact.sha256)
                     && !string.Equals(Test_PerformanceRunMetadata.HashFile(artifactPath), artifact.sha256, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidDataException("Artifact SHA-256 does not match the finalized file: " + artifact.path);
                 }
-                if ((!string.IsNullOrEmpty(artifact.sha256) || artifact.bytes > 0)
+                if (required && string.IsNullOrEmpty(artifact.sha256))
+                    throw new InvalidDataException("Required artifact is missing its SHA-256: " + artifact.path);
+                if (required && artifact.bytes < 0)
+                    throw new InvalidDataException("Required artifact has an invalid byte count: " + artifact.path);
+                if ((!string.IsNullOrEmpty(artifact.sha256) || artifact.bytes > 0 || required)
                     && artifact.bytes != new FileInfo(artifactPath).Length)
                     throw new InvalidDataException("Artifact byte count does not match the finalized file: " + artifact.path);
                 requiredArtifacts.Remove(artifact.path);
@@ -1158,7 +1193,9 @@ namespace Game.Tests.Performance.Harness
                 return "unknown/not captured (older result schema)";
             return "Play Mode startup " + FormatDuration(orchestration.queue_dispatch_to_play_mode_entered_seconds, true)
                 + "; teardown " + FormatDuration(orchestration.workload_finalized_to_play_mode_exited_seconds, true)
-                + "; scene restore " + FormatDuration(orchestration.play_mode_exit_to_scene_restored_seconds, true)
+                + "; scene restore " + (orchestration.scene_restoration_status ?? "unknown") + " ("
+                + FormatDuration(orchestration.play_mode_exit_to_scene_restored_seconds, true) + ")"
+                + (string.IsNullOrEmpty(orchestration.scene_restoration_diagnostic) ? string.Empty : "; " + orchestration.scene_restoration_diagnostic)
                 + "; total attempt wall-clock " + FormatDuration(orchestration.total_attempt_wall_clock_seconds, true);
         }
 
@@ -1478,6 +1515,8 @@ namespace Game.Tests.Performance.Harness
             public double workload_finalized_to_play_mode_exited_seconds;
             public double play_mode_exit_to_scene_restored_seconds;
             public double total_attempt_wall_clock_seconds;
+            public string scene_restoration_status;
+            public string scene_restoration_diagnostic;
         }
 
         [Serializable]

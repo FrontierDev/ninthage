@@ -167,6 +167,8 @@ namespace Game.Tests.Performance.Harness
         public string workload_finalized_utc;
         public string play_mode_exited_utc;
         public string scene_restored_utc;
+        public string scene_restoration_status = "pending";
+        public string scene_restoration_diagnostic;
         public double queue_dispatch_to_play_mode_entered_seconds = -1d;
         public double workload_finalized_to_play_mode_exited_seconds = -1d;
         public double play_mode_exit_to_scene_restored_seconds = -1d;
@@ -385,14 +387,32 @@ namespace Game.Tests.Performance.Harness
 
         internal void MarkPlayModeExited()
         {
+            if (!string.IsNullOrEmpty(_observability.play_mode_exited_utc))
+                return;
             MarkLifecycleEvent(ref _playModeExitedTimestamp, value => _observability.play_mode_exited_utc = value);
             _observability.workload_finalized_to_play_mode_exited_seconds = ElapsedSeconds(_workloadFinalizedTimestamp, _playModeExitedTimestamp);
         }
 
         internal void MarkSceneRestored()
         {
+            if (!string.IsNullOrEmpty(_observability.scene_restored_utc)
+                || string.Equals(_observability.scene_restoration_status, "failed", StringComparison.Ordinal))
+                return;
             MarkLifecycleEvent(ref _sceneRestoredTimestamp, value => _observability.scene_restored_utc = value);
             _observability.play_mode_exit_to_scene_restored_seconds = ElapsedSeconds(_playModeExitedTimestamp, _sceneRestoredTimestamp);
+            _observability.scene_restoration_status = "restored";
+            _observability.scene_restoration_diagnostic = null;
+        }
+
+        internal void MarkSceneRestoreFailed(string diagnostic)
+        {
+            if (!string.IsNullOrEmpty(_observability.scene_restored_utc)
+                || string.Equals(_observability.scene_restoration_status, "failed", StringComparison.Ordinal))
+                return;
+            _observability.scene_restoration_status = "failed";
+            _observability.scene_restoration_diagnostic = diagnostic ?? "Scene restoration failed; timing is unavailable.";
+            _observability.play_mode_exit_to_scene_restored_seconds = -1d;
+            ValidationDiagnostic = AppendDiagnostic(ValidationDiagnostic, _observability.scene_restoration_diagnostic);
         }
 
         internal void CompleteEditorLifecycle()
@@ -400,8 +420,9 @@ namespace Game.Tests.Performance.Harness
             if (!Finalized)
                 return;
 
-            _observability.total_attempt_wall_clock_seconds = (DateTime.UtcNow - _startedUtc).TotalSeconds;
-            WriteSummary(_finalStatus, _finalReasonCode, _finalMessage);
+            if (_observability.total_attempt_wall_clock_seconds < 0d)
+                _observability.total_attempt_wall_clock_seconds = (DateTime.UtcNow - _startedUtc).TotalSeconds;
+            UpdateFinalizedSummaryLifecycle();
             WriteReport(_finalStatus, _finalReasonCode, _finalMessage);
             WriteArtifacts();
         }
@@ -672,6 +693,9 @@ namespace Game.Tests.Performance.Harness
                 stopRequested = StopRequested,
                 telemetryStarted = _telemetryStarted,
                 finalized = Finalized,
+                finalizedStatus = Finalized ? StatusText(_finalStatus) : null,
+                finalizedReasonCode = Finalized ? _finalReasonCode : null,
+                finalizedMessage = Finalized ? _finalMessage : null,
                 worldFixtureLoaded = WorldFixtureLoaded,
                 preflightCompleted = PreflightCompleted,
                 workloadApplied = WorkloadApplied,
@@ -709,6 +733,8 @@ namespace Game.Tests.Performance.Harness
             var telemetrySessionWasActive = state.telemetryStarted;
             _telemetryStarted = false;
             Finalized = state.finalized;
+            if (Finalized)
+                RestoreFinalizationFields(state);
             WorldFixtureLoaded = state.worldFixtureLoaded;
             PreflightCompleted = state.preflightCompleted;
             WorkloadApplied = state.workloadApplied;
@@ -1076,15 +1102,15 @@ namespace Game.Tests.Performance.Harness
                 finalMessage = "Measurement entered but no bounded telemetry samples were written for the measurement phase.";
             }
 
-            WriteSummary(status, finalReason, finalMessage);
-            var logDirectory = Path.Combine(ResultsDirectory, "logs");
-            Directory.CreateDirectory(logDirectory);
-            File.WriteAllText(Path.Combine(logDirectory, "runner.log"), _log.ToString(), new UTF8Encoding(false));
-            WriteReport(status, finalReason, finalMessage);
-            WriteArtifacts();
             _finalStatus = status;
             _finalReasonCode = finalReason;
             _finalMessage = finalMessage;
+            WriteSummary(_finalStatus, _finalReasonCode, _finalMessage);
+            var logDirectory = Path.Combine(ResultsDirectory, "logs");
+            Directory.CreateDirectory(logDirectory);
+            File.WriteAllText(Path.Combine(logDirectory, "runner.log"), _log.ToString(), new UTF8Encoding(false));
+            WriteReport(_finalStatus, _finalReasonCode, _finalMessage);
+            WriteArtifacts();
             Finalized = true;
         }
 
@@ -1281,6 +1307,8 @@ namespace Game.Tests.Performance.Harness
             target.workload_finalized_utc = source.workload_finalized_utc;
             target.play_mode_exited_utc = source.play_mode_exited_utc;
             target.scene_restored_utc = source.scene_restored_utc;
+            target.scene_restoration_status = source.scene_restoration_status;
+            target.scene_restoration_diagnostic = source.scene_restoration_diagnostic;
             target.queue_dispatch_to_play_mode_entered_seconds = source.queue_dispatch_to_play_mode_entered_seconds;
             target.workload_finalized_to_play_mode_exited_seconds = source.workload_finalized_to_play_mode_exited_seconds;
             target.play_mode_exit_to_scene_restored_seconds = source.play_mode_exit_to_scene_restored_seconds;
@@ -1335,6 +1363,101 @@ namespace Game.Tests.Performance.Harness
             var runJson = Test_PerformanceEvidence.BuildRunJson(this, projectRoot, _metadata);
             File.WriteAllText(RunPath, runJson, new UTF8Encoding(false));
             AppendLog("Evidence directory created: " + ResultsDirectory);
+        }
+
+        private void UpdateFinalizedSummaryLifecycle()
+        {
+            if (!File.Exists(SummaryPath))
+                throw new FileNotFoundException("The finalized performance summary is missing during lifecycle completion.", SummaryPath);
+
+            var summaryJson = File.ReadAllText(SummaryPath);
+            var orchestrationJson = BuildOrchestrationJson();
+            var updatedSummary = ReplaceJsonObjectProperty(summaryJson, "orchestration", orchestrationJson);
+            File.WriteAllText(SummaryPath, updatedSummary, new UTF8Encoding(false));
+        }
+
+        private void RestoreFinalizationFields(Test_PerformancePendingRunState state)
+        {
+            var summaryJson = File.Exists(SummaryPath) ? File.ReadAllText(SummaryPath) : null;
+            var statusText = state.finalizedStatus ?? ExtractJsonStringValue(summaryJson, "status");
+            if (!TryParseStatus(statusText, out _finalStatus))
+                throw new InvalidDataException("The finalized pending performance run has no recognized final status.");
+
+            var stopJson = ExtractJsonValue(summaryJson, "stop");
+            _finalReasonCode = state.finalizedReasonCode ?? ExtractJsonStringValue(stopJson, "reason_code");
+            _finalMessage = state.finalizedMessage ?? ExtractJsonStringValue(stopJson, "message");
+            if (string.IsNullOrEmpty(_finalReasonCode) || _finalMessage == null)
+                throw new InvalidDataException("The finalized pending performance run has incomplete stop evidence.");
+        }
+
+        private static bool TryParseStatus(string statusText, out PerformanceRunStatus status)
+        {
+            switch (statusText)
+            {
+                case "COMPLETE-MEASURED": status = PerformanceRunStatus.CompleteMeasured; return true;
+                case "BLOCKED-PREREQUISITE": status = PerformanceRunStatus.BlockedPrerequisite; return true;
+                case "FAIL-CORRECTNESS": status = PerformanceRunStatus.FailCorrectness; return true;
+                case "FAIL-PROVISION": status = PerformanceRunStatus.FailProvision; return true;
+                case "FAIL-RESOURCE": status = PerformanceRunStatus.FailResource; return true;
+                case "FAIL-TIMEOUT": status = PerformanceRunStatus.FailTimeout; return true;
+                case "FAIL-INSTRUMENTATION": status = PerformanceRunStatus.FailInstrumentation; return true;
+                default:
+                    status = default;
+                    return false;
+            }
+        }
+
+        private static string ReplaceJsonObjectProperty(string json, string propertyName, string replacement)
+        {
+            var marker = Quote(propertyName) + ":";
+            var propertyIndex = json.IndexOf(marker, StringComparison.Ordinal);
+            if (propertyIndex < 0)
+            {
+                var end = json.LastIndexOf('}');
+                if (end < 0)
+                    throw new InvalidDataException("The finalized performance summary is not a JSON object.");
+                var prefix = json.Substring(0, end).TrimEnd();
+                var separator = prefix.EndsWith("{", StringComparison.Ordinal) ? string.Empty : ",";
+                return prefix + separator + marker + replacement + json.Substring(end);
+            }
+
+            var valueStart = propertyIndex + marker.Length;
+            while (valueStart < json.Length && char.IsWhiteSpace(json[valueStart]))
+                valueStart++;
+            var valueEnd = FindJsonValueEnd(json, valueStart);
+            return json.Substring(0, valueStart) + replacement + json.Substring(valueEnd);
+        }
+
+        private static int FindJsonValueEnd(string json, int valueStart)
+        {
+            if (valueStart >= json.Length || (json[valueStart] != '{' && json[valueStart] != '['))
+                throw new InvalidDataException("The finalized performance summary orchestration property is not a JSON object.");
+            var open = json[valueStart];
+            var close = open == '[' ? ']' : '}';
+            var depth = 0;
+            var escaped = false;
+            var inString = false;
+            for (var index = valueStart; index < json.Length; index++)
+            {
+                var character = json[index];
+                if (inString)
+                {
+                    if (escaped)
+                        escaped = false;
+                    else if (character == '\\')
+                        escaped = true;
+                    else if (character == '"')
+                        inString = false;
+                    continue;
+                }
+                if (character == '"')
+                    inString = true;
+                else if (character == open)
+                    depth++;
+                else if (character == close && --depth == 0)
+                    return index + 1;
+            }
+            throw new InvalidDataException("The finalized performance summary orchestration property is incomplete.");
         }
 
         private void WriteSummary(PerformanceRunStatus status, string reasonCode, string message)
@@ -1420,6 +1543,8 @@ namespace Game.Tests.Performance.Harness
                 + ",\"workload_finalized_to_play_mode_exited_seconds\":" + NumberOrNull(_observability.workload_finalized_to_play_mode_exited_seconds)
                 + ",\"play_mode_exit_to_scene_restored_seconds\":" + NumberOrNull(_observability.play_mode_exit_to_scene_restored_seconds)
                 + ",\"total_attempt_wall_clock_seconds\":" + NumberOrNull(_observability.total_attempt_wall_clock_seconds)
+                + ",\"scene_restoration_status\":" + Quote(_observability.scene_restoration_status)
+                + ",\"scene_restoration_diagnostic\":" + Quote(_observability.scene_restoration_diagnostic)
                 + ",\"timing_domain\":" + Quote(_observability.timing_domain) + "}";
         }
 
@@ -1465,7 +1590,8 @@ namespace Game.Tests.Performance.Harness
         {
             return "Play Mode startup " + FormatDuration(_observability.queue_dispatch_to_play_mode_entered_seconds)
                 + "; teardown " + FormatDuration(_observability.workload_finalized_to_play_mode_exited_seconds)
-                + "; scene restore " + FormatDuration(_observability.play_mode_exit_to_scene_restored_seconds)
+                + "; scene restore " + (_observability.scene_restoration_status ?? "unknown") + " (" + FormatDuration(_observability.play_mode_exit_to_scene_restored_seconds) + ")"
+                + (string.IsNullOrEmpty(_observability.scene_restoration_diagnostic) ? string.Empty : "; " + _observability.scene_restoration_diagnostic)
                 + "; total attempt wall-clock " + FormatDuration(_observability.total_attempt_wall_clock_seconds);
         }
 
