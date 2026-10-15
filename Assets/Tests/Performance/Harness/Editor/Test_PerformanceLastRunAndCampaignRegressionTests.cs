@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using UnityEditor;
 
@@ -1109,6 +1110,94 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void RestoredFinalizedAttemptIsReconciledWithoutDuplication()
+        {
+            if (Test_PerformanceHarnessController.IsRunning)
+                Assert.Ignore("A performance run is active; the regression test cannot replace controller runtime state.");
+
+            var resultDirectory = CreateResult(
+                graphical: false,
+                scenario: "Outdoor",
+                finishedUtc: DateTime.UtcNow,
+                status: "COMPLETE-MEASURED",
+                metrics: BuildRequiredServerMetrics(includeLegacyMetric: false));
+            var runID = Path.GetFileName(resultDirectory);
+            var campaignID = "campaign-restored-finalized-" + Guid.NewGuid().ToString("N");
+            var campaignDirectory = CreateCampaignDirectory(campaignID);
+            _createdCampaignDirectories.Add(campaignDirectory);
+
+            var manifest = BuildServerCampaign(campaignID, 1);
+            manifest.state = Test_PerformanceCampaignState.RUNNING;
+            manifest.stop_after_current = true;
+            manifest.attempts.Add(new Test_PerformanceCampaignAttempt
+            {
+                attempt_id = campaignID + "-attempt-1",
+                job_id = "job-server",
+                repeat_index = 1,
+                state = Test_PerformanceCampaignAttemptState.RUNNING,
+                run_id = runID,
+                result_path = resultDirectory,
+                report_path = Path.Combine(resultDirectory, "report.md"),
+                source = new Test_PerformanceCampaignSource { commit_sha = "test-commit" },
+            });
+
+            var queueState = CapturePrivateStaticFields(
+                typeof(Test_PerformanceJobQueue),
+                "_manifest",
+                "_campaignDirectory",
+                "_restoreDiagnostic",
+                "_activeAttemptIndex",
+                "_advanceScheduled",
+                "_finalizeScheduled",
+                "_lastCompletedRunID",
+                "_activeAttemptDispatchTimestamp");
+            var controllerState = CapturePrivateStaticFields(
+                typeof(Test_PerformanceHarnessController),
+                "<LastCompletedRunID>k__BackingField",
+                "<LastCompletedResultDirectory>k__BackingField",
+                "<LastReportPath>k__BackingField");
+
+            try
+            {
+                SetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_manifest", manifest);
+                SetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_campaignDirectory", campaignDirectory);
+                SetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_restoreDiagnostic", null);
+                SetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_activeAttemptIndex", -1);
+                SetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_advanceScheduled", false);
+                SetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_finalizeScheduled", false);
+                SetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_lastCompletedRunID", null);
+                SetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_activeAttemptDispatchTimestamp", 0L);
+                SetPrivateStaticField(typeof(Test_PerformanceHarnessController), "<LastCompletedRunID>k__BackingField", runID);
+                SetPrivateStaticField(typeof(Test_PerformanceHarnessController), "<LastCompletedResultDirectory>k__BackingField", resultDirectory);
+                SetPrivateStaticField(typeof(Test_PerformanceHarnessController), "<LastReportPath>k__BackingField", Path.Combine(resultDirectory, "report.md"));
+
+                var restoreMethod = typeof(Test_PerformanceJobQueue).GetMethod(
+                    "RestoreRuntimeAttemptState",
+                    BindingFlags.Static | BindingFlags.NonPublic);
+                Assert.That(restoreMethod, Is.Not.Null);
+                restoreMethod.Invoke(null, null);
+                restoreMethod.Invoke(null, null);
+
+                Assert.That(manifest.attempts, Has.Count.EqualTo(1));
+                Assert.That(manifest.attempts[0].state, Is.EqualTo(Test_PerformanceCampaignAttemptState.COMPLETED));
+                Assert.That(manifest.attempts[0].run_id, Is.EqualTo(runID));
+                Assert.That(manifest.attempts[0].result_path, Is.EqualTo(resultDirectory));
+                Assert.That(manifest.attempts[0].result_status, Is.EqualTo("COMPLETE-MEASURED"));
+                Assert.That(manifest.attempts[0].diagnostic, Is.Null);
+                Assert.That(manifest.state, Is.EqualTo(Test_PerformanceCampaignState.PAUSED));
+                Assert.That(Test_PerformanceJobQueue.CompletedCount, Is.EqualTo(1));
+                Assert.That(Test_PerformanceJobQueue.RunningCount, Is.EqualTo(0));
+                Assert.That(Test_PerformanceJobQueue.UnverifiedCount, Is.EqualTo(0));
+                Assert.That(GetPrivateStaticField(typeof(Test_PerformanceJobQueue), "_activeAttemptIndex"), Is.EqualTo(-1));
+            }
+            finally
+            {
+                RestorePrivateStaticFields(typeof(Test_PerformanceJobQueue), queueState);
+                RestorePrivateStaticFields(typeof(Test_PerformanceHarnessController), controllerState);
+            }
+        }
+
+        [Test]
         public void QueueLimitsAndPoliciesAreExplicitAndBounded()
         {
             Assert.That(Test_PerformanceJobQueue.MAX_JOBS, Is.EqualTo(50));
@@ -1418,6 +1507,34 @@ namespace Game.Tests.Performance.Harness
         private static void WriteCampaignManifest(string directory, Test_PerformanceCampaignManifest manifest)
         {
             File.WriteAllText(Path.Combine(directory, "campaign.json"), JsonUtility.ToJson(manifest, true));
+        }
+
+        private static Dictionary<string, object> CapturePrivateStaticFields(Type declaringType, params string[] fieldNames)
+        {
+            var values = new Dictionary<string, object>(StringComparer.Ordinal);
+            foreach (var fieldName in fieldNames)
+                values[fieldName] = GetPrivateStaticField(declaringType, fieldName);
+            return values;
+        }
+
+        private static object GetPrivateStaticField(Type declaringType, string fieldName)
+        {
+            var field = declaringType.GetField(fieldName, BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, declaringType.FullName + "." + fieldName);
+            return field.GetValue(null);
+        }
+
+        private static void SetPrivateStaticField(Type declaringType, string fieldName, object value)
+        {
+            var field = declaringType.GetField(fieldName, BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, declaringType.FullName + "." + fieldName);
+            field.SetValue(null, value);
+        }
+
+        private static void RestorePrivateStaticFields(Type declaringType, Dictionary<string, object> values)
+        {
+            foreach (var value in values)
+                SetPrivateStaticField(declaringType, value.Key, value.Value);
         }
 
         private static Test_PerformanceCampaignComparisonReport CompareCampaigns(

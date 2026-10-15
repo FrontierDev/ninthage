@@ -813,12 +813,31 @@ namespace Game.Tests.Performance.Harness
                 return;
             }
 
+            if (TryReconcileRecoveredFinalizedAttempt(attempt))
+                return;
+
             attempt.state = Test_PerformanceCampaignAttemptState.INCOMPLETE;
             attempt.diagnostic = "The Editor restarted or the pending runner could not be restored; the attempt was not repeated.";
             _manifest.state = Test_PerformanceCampaignState.PAUSED;
             _manifest.pause_reason = attempt.diagnostic;
             _activeAttemptIndex = -1;
             Persist();
+        }
+
+        private static bool TryReconcileRecoveredFinalizedAttempt(Test_PerformanceCampaignAttempt attempt)
+        {
+            if (attempt == null
+                || string.IsNullOrEmpty(attempt.run_id)
+                || !string.Equals(attempt.run_id, Test_PerformanceHarnessController.LastCompletedRunID, StringComparison.Ordinal)
+                || string.IsNullOrEmpty(Test_PerformanceHarnessController.LastCompletedResultDirectory))
+            {
+                return false;
+            }
+
+            attempt.result_path = Test_PerformanceHarnessController.LastCompletedResultDirectory;
+            attempt.report_path = Test_PerformanceHarnessController.LastReportPath ?? attempt.report_path;
+            FinalizeActiveAttempt();
+            return true;
         }
 
         private static bool PrepareCampaignForLaunch(out string diagnostic)

@@ -1,0 +1,254 @@
+{
+    "schema_version": "performance-campaign/v1",
+    "campaign_id": "campaign-20261015T205113129Z-d1d3d540",
+    "created_utc": "2026-10-15T20:51:13.1290637Z",
+    "updated_utc": "2026-10-15T20:51:14.3663681Z",
+    "started_utc": "",
+    "finished_utc": "",
+    "state": "draft",
+    "stop_policy": "stop_on_failure",
+    "pause_reason": "",
+    "queue_diagnostic": "",
+    "stop_after_current": false,
+    "cancel_remaining": false,
+    "source": {
+        "captured_utc": "",
+        "git_branch": "",
+        "git_branch_status": "",
+        "git_branch_diagnostic": "",
+        "commit_sha": "",
+        "source_sha256": "",
+        "dirty": false,
+        "diff_sha256": "",
+        "packages_sha256": "",
+        "packages_lock_sha256": "",
+        "purrnet_sha256": "",
+        "hardware": "",
+        "operating_system": "",
+        "unity_version": "",
+        "graphics_device": "",
+        "graphics_settings": ""
+    },
+    "excluded_scenarios": [],
+    "profile_coverage": [
+        {
+            "profile_id": "P1-S0-01",
+            "mode": "server + rendered client / networked city",
+            "status": "BLOCKED",
+            "capability": "Blocked: generated city density, real authenticated clients, cross-tile interests and required telemetry are not available in the current runner.",
+            "runnable_alternative": "P1-S0-04 ECS data-only or P1-S0-06 isolated rendered geometry.",
+            "next_issue_or_stage": "#43-#52; later Stage 1.2/1.5 client and world-interest work."
+        },
+        {
+            "profile_id": "P1-S0-02",
+            "mode": "networked server + rendered clients / PvP combat",
+            "status": "BLOCKED",
+            "capability": "Blocked: repeatable faction, legal PvP target and multi-client correctness fixtures are not available.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#43-#52 and later Stage 1.2/1.5 combat and network qualification."
+        },
+        {
+            "profile_id": "P1-S0-03",
+            "mode": "networked server + rendered clients / boss and AoE",
+            "status": "BLOCKED",
+            "capability": "Blocked: authored boss encounter, legal AoE target fan-out and replayable combat fixtures are not available.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#45 and #51/#52 content and correctness verification."
+        },
+        {
+            "profile_id": "P1-S0-04",
+            "mode": "Editor server / ECS data-only and activity",
+            "status": "SUPPORTED-NOT-RUN",
+            "capability": "The existing runner supports ECS data-only minimal/activity snapshots; full PurrNet dormant and wake variants remain blocked.",
+            "runnable_alternative": "EcsDataOnlyMinimal and EcsDataOnlyActivity are the current runnable variants.",
+            "next_issue_or_stage": "Run five qualified repeats for each required metric; Stage 1.4 for true dormant/wake simulation."
+        },
+        {
+            "profile_id": "P1-S0-05",
+            "mode": "rendered client + streamed world / traversal",
+            "status": "BLOCKED",
+            "capability": "Blocked: the current harness does not execute the required six-tile route, streaming transitions and origin-boundary correctness contract.",
+            "runnable_alternative": "P1-S0-06 fixed Outdoor/Forest/Settlement rendered fixtures without a streaming claim.",
+            "next_issue_or_stage": "#44/#46/#49/#52 and Stages 1.2/1.6 streaming corrections."
+        },
+        {
+            "profile_id": "P1-S0-06",
+            "mode": "Editor rendered client / geometry, forest and settlement",
+            "status": "SUPPORTED-NOT-RUN",
+            "capability": "The existing graphical fixture runner supports isolated rendered Outdoor, Forest and Settlement routes; it does not qualify network density or production streaming.",
+            "runnable_alternative": "Outdoor, Forest and Settlement are the current runnable variants.",
+            "next_issue_or_stage": "Run five qualified repeats for each required metric; #44/#49/#52 for production-density and client telemetry expansion."
+        },
+        {
+            "profile_id": "P1-S0-07",
+            "mode": "server + rendered clients / login and reconnect bursts",
+            "status": "BLOCKED",
+            "capability": "Blocked: safe disposable account generation, real client admission and reconnect correctness are not available in the current runner.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#46/#51 and Stages 1.7-1.8 reconnect and durable-session work."
+        },
+        {
+            "profile_id": "P1-S0-08",
+            "mode": "Editor server / long-duration authoritative soak",
+            "status": "BLOCKED",
+            "capability": "Blocked: the current harness has no compliant multi-hour churn, persistence, leak and scheduler-backlog observation contract.",
+            "runnable_alternative": "P1-S0-04 bounded short server measurement only; it is not a soak or production-capacity claim.",
+            "next_issue_or_stage": "#47-#51; Stage 1.1 scheduler telemetry and Stages 1.7-1.8 durability."
+        }
+    ],
+    "linked_campaign_id": "",
+    "makeup_for_job_id": "",
+    "jobs": [
+        {
+            "job_id": "job-20261015T205114351Z-68cde3a6",
+            "options": {
+                "ProfileID": "P1-S0-04",
+                "WorldFixture": 1,
+                "DensityTier": 1,
+                "WorkloadMode": 0,
+                "ActorCount": 100,
+                "Seed": 424242,
+                "GraphicalScenario": 1,
+                "ActorDensity": 0,
+                "WarmupSeconds": 2.0,
+                "MeasurementSeconds": 5.0
+            },
+            "repeat_count": 5,
+            "validation_state": "valid",
+            "validation_diagnostic": "",
+            "fixture_identity": {
+                "configuration_sha256": "bc71a7d9c1ab6ba0cb3079065c8ae1901ffa6dc3378624902fc3e82b55f1ce4d",
+                "profile_id": "P1-S0-04",
+                "profile_revision": "1.0.0",
+                "actor_variant_id": "S04-I-DATA",
+                "world_fixture_id": "world-outdoor",
+                "world_scene_path": "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity",
+                "world_scene_guid": "2b3c4d5e6f708192a3b4c5d6e7f80192",
+                "world_scene_hash": "08211f02e84ab7129469fb9324401e7a53ea9d9ff554a0bf4efe50a6c55cc29f",
+                "graphical_plan_hash": "",
+                "graphical_route_id": ""
+            }
+        },
+        {
+            "job_id": "job-20261015T205114351Z-dd7d0a2f",
+            "options": {
+                "ProfileID": "P1-S0-04",
+                "WorldFixture": 1,
+                "DensityTier": 1,
+                "WorkloadMode": 1,
+                "ActorCount": 100,
+                "Seed": 424242,
+                "GraphicalScenario": 1,
+                "ActorDensity": 0,
+                "WarmupSeconds": 2.0,
+                "MeasurementSeconds": 5.0
+            },
+            "repeat_count": 5,
+            "validation_state": "valid",
+            "validation_diagnostic": "",
+            "fixture_identity": {
+                "configuration_sha256": "eb2820aa2b5ecb0a1652b08bd101ca85c21c19701912dfe30c6a4bf27f255829",
+                "profile_id": "P1-S0-04",
+                "profile_revision": "1.0.0",
+                "actor_variant_id": "S04-I-DATA",
+                "world_fixture_id": "world-outdoor",
+                "world_scene_path": "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity",
+                "world_scene_guid": "2b3c4d5e6f708192a3b4c5d6e7f80192",
+                "world_scene_hash": "08211f02e84ab7129469fb9324401e7a53ea9d9ff554a0bf4efe50a6c55cc29f",
+                "graphical_plan_hash": "",
+                "graphical_route_id": ""
+            }
+        },
+        {
+            "job_id": "job-20261015T205114353Z-112ad139",
+            "options": {
+                "ProfileID": "P1-S0-06",
+                "WorldFixture": 1,
+                "DensityTier": 1,
+                "WorkloadMode": 5,
+                "ActorCount": 0,
+                "Seed": 424242,
+                "GraphicalScenario": 1,
+                "ActorDensity": 0,
+                "WarmupSeconds": 2.0,
+                "MeasurementSeconds": 5.0
+            },
+            "repeat_count": 5,
+            "validation_state": "valid",
+            "validation_diagnostic": "",
+            "fixture_identity": {
+                "configuration_sha256": "852b3dc253cb4694b1c508a94b11422f2ee4396c31874489de1efe0bf8ab5ada",
+                "profile_id": "P1-S0-06",
+                "profile_revision": "1.0.0",
+                "actor_variant_id": "P1-S0-06-I-GEOMETRY",
+                "world_fixture_id": "world-outdoor",
+                "world_scene_path": "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity",
+                "world_scene_guid": "",
+                "world_scene_hash": "08211f02e84ab7129469fb9324401e7a53ea9d9ff554a0bf4efe50a6c55cc29f",
+                "graphical_plan_hash": "1761394ab69601e9f510ccd1553f93753108318d34fcf06f13c633a7dcf8f0ec",
+                "graphical_route_id": "graphical-outdoor-route"
+            }
+        },
+        {
+            "job_id": "job-20261015T205114357Z-013e671e",
+            "options": {
+                "ProfileID": "P1-S0-06",
+                "WorldFixture": 1,
+                "DensityTier": 1,
+                "WorkloadMode": 5,
+                "ActorCount": 0,
+                "Seed": 424242,
+                "GraphicalScenario": 2,
+                "ActorDensity": 0,
+                "WarmupSeconds": 2.0,
+                "MeasurementSeconds": 5.0
+            },
+            "repeat_count": 5,
+            "validation_state": "valid",
+            "validation_diagnostic": "",
+            "fixture_identity": {
+                "configuration_sha256": "1a9e700a6a4beeb5b9d7826c35515c480ad9d5f41657944e77ebed45098560c0",
+                "profile_id": "P1-S0-06",
+                "profile_revision": "1.0.0",
+                "actor_variant_id": "P1-S0-06-I-GEOMETRY",
+                "world_fixture_id": "world-forest",
+                "world_scene_path": "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Forest.unity",
+                "world_scene_guid": "",
+                "world_scene_hash": "b9d19445476886f6683c082320e63bfcc08aeaafa35a0f3e979204a44629e509",
+                "graphical_plan_hash": "6a474b649cbb99246000c23f8beba27b42d29f24080151e44a1066f3498f70ed",
+                "graphical_route_id": "graphical-forest-route"
+            }
+        },
+        {
+            "job_id": "job-20261015T205114360Z-d346599b",
+            "options": {
+                "ProfileID": "P1-S0-06",
+                "WorldFixture": 1,
+                "DensityTier": 1,
+                "WorkloadMode": 5,
+                "ActorCount": 0,
+                "Seed": 424242,
+                "GraphicalScenario": 3,
+                "ActorDensity": 0,
+                "WarmupSeconds": 2.0,
+                "MeasurementSeconds": 5.0
+            },
+            "repeat_count": 5,
+            "validation_state": "valid",
+            "validation_diagnostic": "",
+            "fixture_identity": {
+                "configuration_sha256": "11634dbb313ab4159337ae9680ad85a5f0a125f3c6bc9822e535911cd43b5bd0",
+                "profile_id": "P1-S0-06",
+                "profile_revision": "1.0.0",
+                "actor_variant_id": "P1-S0-06-I-GEOMETRY",
+                "world_fixture_id": "world-settlement",
+                "world_scene_path": "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Settlement.unity",
+                "world_scene_guid": "",
+                "world_scene_hash": "89823c8fb1d9d6e41a225241223eb33d8cda33f9ef21459f1fb4a8cf61a764f6",
+                "graphical_plan_hash": "dca86daef43612a0791b3c71487918ec737898f7625865039405836bcfb2cc73",
+                "graphical_route_id": "graphical-settlement-route"
+            }
+        }
+    ],
+    "attempts": []
+}

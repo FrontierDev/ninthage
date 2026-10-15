@@ -248,31 +248,40 @@ namespace Game.Tests.Performance.Harness
     internal sealed class Test_PerformanceCampaignDistribution
     {
         public int Count;
-        public double MedianP50;
-        public double MedianP95;
+        public double? MedianP50;
+        public double? MedianP95;
         public double? MedianP99;
-        public double MinP50;
-        public double MaxP50;
-        public double MinP95;
-        public double MaxP95;
+        public double? MinP50;
+        public double? MaxP50;
+        public double? MinP95;
+        public double? MaxP95;
         public double? MinP99;
         public double? MaxP99;
-        public double IqrP50;
+        public double? IqrP50;
         public double? CoefficientOfVariationP50;
         public double? MaximumObserved;
 
         public string Describe()
         {
-            var p99 = MedianP99.HasValue ? MedianP99.Value.ToString("0.####", CultureInfo.InvariantCulture) : "unavailable";
-            return "n " + Count + "; median run p50 " + MedianP50.ToString("0.####", CultureInfo.InvariantCulture)
-                + "; median run p95 " + MedianP95.ToString("0.####", CultureInfo.InvariantCulture)
-                + "; median run p99 " + p99
-                + "; p50 min/max " + MinP50.ToString("0.####", CultureInfo.InvariantCulture) + "/" + MaxP50.ToString("0.####", CultureInfo.InvariantCulture)
-                + "; p50 IQR " + IqrP50.ToString("0.####", CultureInfo.InvariantCulture)
-                + "; p50 CV " + (CoefficientOfVariationP50.HasValue ? CoefficientOfVariationP50.Value.ToString("P1", CultureInfo.InvariantCulture) : "unavailable")
-                + "; max run p95 " + MaxP95.ToString("0.####", CultureInfo.InvariantCulture)
-                + "; max run p99 " + (MaxP99.HasValue ? MaxP99.Value.ToString("0.####", CultureInfo.InvariantCulture) : "unavailable")
-                + "; max observed sample " + (MaximumObserved.HasValue ? MaximumObserved.Value.ToString("0.####", CultureInfo.InvariantCulture) : "unavailable");
+            return "n " + Count + "; median run p50 " + Format(MedianP50)
+                + "; median run p95 " + Format(MedianP95)
+                + "; median run p99 " + Format(MedianP99)
+                + "; p50 min/max " + Format(MinP50) + "/" + Format(MaxP50)
+                + "; p50 IQR " + Format(IqrP50)
+                + "; p50 CV " + FormatPercent(CoefficientOfVariationP50)
+                + "; max run p95 " + Format(MaxP95)
+                + "; max run p99 " + Format(MaxP99)
+                + "; max observed sample " + Format(MaximumObserved);
+        }
+
+        private static string Format(double? value)
+        {
+            return value.HasValue ? value.Value.ToString("0.####", CultureInfo.InvariantCulture) : "unavailable";
+        }
+
+        private static string FormatPercent(double? value)
+        {
+            return value.HasValue ? value.Value.ToString("P1", CultureInfo.InvariantCulture) : "unavailable";
         }
     }
 
@@ -980,7 +989,12 @@ namespace Game.Tests.Performance.Harness
                     view.PerformanceQualified = !graphicalExecution
                         || string.Equals(view.RenderingQualification, "verified", StringComparison.OrdinalIgnoreCase);
                     if (graphicalExecution && !view.PerformanceQualified)
-                        view.Diagnostic = AddReason(view.Diagnostic, "Rendering qualification is " + view.RenderingQualification + "; rendered-frame budget metrics remain raw but are excluded from the qualified cohort.");
+                    {
+                        var renderingDiagnostic = "Rendering qualification is " + view.RenderingQualification;
+                        if (!string.IsNullOrEmpty(summary.rendering?.reason_code))
+                            renderingDiagnostic += " (" + summary.rendering.reason_code + ")";
+                        view.Diagnostic = AddReason(view.Diagnostic, renderingDiagnostic + "; rendered-frame budget metrics remain raw but are excluded from the qualified cohort.");
+                    }
                     view.GroupKey = BuildCoreGroupKey(job, run);
                     view.IdentityKey = BuildIdentityKey(job, run, summary.fixture_sha256);
                     view.Metrics.AddRange(ReadMetricSamples(summary, summaryJson, view.PerformanceQualified));
@@ -1184,11 +1198,17 @@ namespace Game.Tests.Performance.Harness
                 comparison.Caveat = "Metric is unavailable or unqualified on one side; no zero was substituted.";
             else
             {
-                comparison.DeltaP50 = comparison.Candidate.MedianP50 - comparison.Baseline.MedianP50;
-                comparison.DeltaP95 = comparison.Candidate.MedianP95 - comparison.Baseline.MedianP95;
+                if (comparison.Candidate.MedianP50.HasValue && comparison.Baseline.MedianP50.HasValue)
+                {
+                    comparison.DeltaP50 = comparison.Candidate.MedianP50.Value - comparison.Baseline.MedianP50.Value;
+                    comparison.DeltaP50Percent = PercentDelta(comparison.Baseline.MedianP50.Value, comparison.DeltaP50.Value);
+                }
+                if (comparison.Candidate.MedianP95.HasValue && comparison.Baseline.MedianP95.HasValue)
+                {
+                    comparison.DeltaP95 = comparison.Candidate.MedianP95.Value - comparison.Baseline.MedianP95.Value;
+                    comparison.DeltaP95Percent = PercentDelta(comparison.Baseline.MedianP95.Value, comparison.DeltaP95.Value);
+                }
                 comparison.DeltaP99 = comparison.Candidate.MedianP99.HasValue && comparison.Baseline.MedianP99.HasValue ? comparison.Candidate.MedianP99.Value - comparison.Baseline.MedianP99.Value : (double?)null;
-                comparison.DeltaP50Percent = PercentDelta(comparison.Baseline.MedianP50, comparison.DeltaP50.Value);
-                comparison.DeltaP95Percent = PercentDelta(comparison.Baseline.MedianP95, comparison.DeltaP95.Value);
                 comparison.DeltaP99Percent = comparison.DeltaP99.HasValue ? PercentDelta(comparison.Baseline.MedianP99.Value, comparison.DeltaP99.Value) : (double?)null;
             }
             if (comparison.IsRequired)
@@ -1319,17 +1339,17 @@ namespace Game.Tests.Performance.Harness
             return Math.Abs(baseline) < double.Epsilon ? (double?)null : delta / baseline * 100d;
         }
 
-        private static double Median(List<double> values)
+        private static double? Median(List<double> values)
         {
             if (values.Count == 0)
-                return 0d;
+                return null;
             var middle = values.Count / 2;
             return values.Count % 2 == 0 ? (values[middle - 1] + values[middle]) / 2d : values[middle];
         }
 
-        private static double Iqr(List<double> values)
+        private static double? Iqr(List<double> values)
         {
-            return values.Count < 2 ? 0d : Percentile(values, 0.75d) - Percentile(values, 0.25d);
+            return values.Count < 2 ? (double?)null : Percentile(values, 0.75d) - Percentile(values, 0.25d);
         }
 
         private static double Percentile(List<double> values, double percentile)
