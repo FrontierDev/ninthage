@@ -1,149 +1,124 @@
 # Ninth Age — Phase 1.0 Performance Baseline
 
-**Status:** Provisional evidence handoff; **not accepted as a frozen or production baseline**<br>
-**Issues:** [#55 — Capture immutable performance baselines and establish acceptance budgets](https://github.com/FrontierDev/ninthage/issues/55), [#56 — Execute repeated performance baseline measurement campaign](https://github.com/FrontierDev/ninthage/issues/56)<br>
-**Campaign:** `campaign-20261015T095750417Z-878db4d7`<br>
-**Campaign window:** 2026-10-15 10:02:05Z — 10:25:40Z
-**Last updated:** 2026-10-15
+**Status:** PROVISIONAL EDITOR-ONLY REFERENCE — captured and documented; not a standalone or production-capacity baseline; manual approval pending  
+**Campaign:** `campaign-20261015T205113129Z-d1d3d540`  
+**Benchmark source:** `dev @ d22a939232c842a1415bd627c2a6a0be3663ce95` (clean)  
+**Immutable evidence reference:** `c2840577b7d098e7c9118d7f56161721038e7663` (the commit containing this campaign's archived files; distinct from benchmark source)  
+**Campaign window:** 2026-10-15 20:51:56Z — 21:04:46Z (UTC)  
+**Related:** [#55](https://github.com/FrontierDev/ninthage/issues/55), [#56](https://github.com/FrontierDev/ninthage/issues/56), [#63](https://github.com/FrontierDev/ninthage/issues/63), [performance budgets](Phase-1-Performance-Budgets.md), [evidence catalogue](Phase-1-Performance-Evidence-Catalogue.md)  
+**Updated:** 2026-10-15
 
-> **Qualification:** The campaign completed 25 attempts with clean provenance, correct fixture/lifecycle checks and five repeats per selected job. It does not satisfy the complete-profile, portable-retrieval or standalone-build conditions required to sign off a Stage 1.0 production performance baseline. The first Outdoor graphical repeat produced no GPU or render-thread samples and reported zero draw calls/triangles; those metric-specific limitations remain explicit.
+> This document **supersedes** the earlier `campaign-20261015T095750417Z-878db4d7` campaign as the reference for these five Editor fixtures. The earlier campaign may be removed by the owner; its findings are not mixed into the new five-run cohorts. The budgets remain *provisional Editor-only review thresholds*, not evidence of a production MMORPG's playable capacity.
 
-## 1. Executive result
+## 1. Executive outcome
 
-The campaign demonstrated that the current test-session harness can repeatedly execute the selected server and graphical workloads, export traceable evidence, and preserve correctness failures as structured results. It established the following useful observations:
+- **25/25 scheduled attempts** in five five-repeat jobs finished `COMPLETE-MEASURED`, with stop reason `MEASUREMENT_COMPLETE`. The persisted campaign lists no failed, skipped, interrupted, retried or additional attempts. This statement applies to the *archived campaign inventory*, not to earlier development/test executions.
+- **25/25** reported correctness `pass` (four checks, zero failures), all required phases complete and cleanup successful.
+- **10/10 server runs** achieved 100 data-only ECS entities and returned fixture/actor counts to zero after cleanup. Activity fixtures repeated the intended idle/patrol/combat/wake/spawn/despawn counts.
+- **15/15 graphical runs** achieved the requested scene object counts, completed the four-waypoint camera route, reported nonzero draw/triangle statistics, and were marked `rendering.qualification_status = verified`. Unlike the superseded campaign, no graphical run has an absent GPU or render-thread measurement.
+- All 25 measurement phases took approximately **5.001–5.004 s** against the configured 5 s, with no detected pause gap over one second. Focus was `known_foreground` in all runs, with zero reported transitions. No measured metric fell below 95% retained/attempted coverage.
+- The five selected workloads satisfy the **provisional** thresholds in the [budget policy](Phase-1-Performance-Budgets.md), evaluated against the median of qualified *run-level* statistics, not pooled samples.
 
-- 25 of 25 attempts completed with `COMPLETE-MEASURED`, `MEASUREMENT_COMPLETE`.
-- All 25 summaries reported correctness `pass`, with four assertions checked, zero failed assertions and cleanup complete.
-- Both data-only server workloads achieved the requested 100 ECS entities and returned fixture state and actor counts to zero after cleanup.
-- The activity workload repeatedly produced the expected activity and spawn/despawn invariants.
-- The graphical workloads completed all four route phases and achieved their requested object counts.
-- Frame, CPU, GPU, draw-call, triangle, memory and harness metrics were exported with units, sample counts and explicit unavailable reasons. No unavailable metric was replaced with zero.
+**Boundary:** These are Unity **Editor Play Mode** measurements for isolated test-owned workloads. No authenticated player throughput, standalone headless capacity, normal PurrNet streamed-world traversal, PvP/boss scaling, production NPC density, login/reconnect or soak capability was measured.
 
-The campaign did **not** establish production capacity, networked-player capacity, standalone server performance, normal PurrNet streaming performance or final acceptance thresholds.
+## 2. Evidence identity and execution protocol
 
-## 2. Evidence identity and protocol
-
-| Field | Recorded value |
+| Field | Evidence |
 | --- | --- |
-| Campaign manifest | `Builds/Benchmarks/Results/Campaigns/campaign-20261015T095750417Z-878db4d7/campaign.json`; SHA-256 is recorded in the [tracked evidence catalogue](Phase-1-Performance-Evidence-Catalogue.md) |
-| Evidence index | `Builds/Benchmarks/Results/Campaigns/campaign-20261015T095750417Z-878db4d7/index.json`; SHA-256 is recorded in the [tracked evidence catalogue](Phase-1-Performance-Evidence-Catalogue.md) |
-| Attempt evidence | local / not externally retrievable; run IDs and `artifacts.json` hashes are recorded in the [tracked evidence catalogue](Phase-1-Performance-Evidence-Catalogue.md) |
-| Branch / commit | `dev` / `665abcc51a6761354f0feb9e350e148dc04ba1a3` |
-| Source state | `dirty=false`; source SHA-256 `d1c44164274aa355c8a2a0110af462e3b50942f304bb320e6036e071bf228d6b`; diff SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
-| Unity | `6000.3.10f1` |
-| Operating system | Windows 11 `10.0.26200` |
-| Hardware | AMD Ryzen 7 5700X 8-Core Processor, 16 logical CPUs; NVIDIA GeForce RTX 4060 Ti; Direct3D12 |
-| Graphics settings | `quality_level=0; vsync=0; target_fps=-1; render_pipeline=PC_RPAsset` |
-| Dependency identity | Packages SHA-256 `8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90`; lock SHA-256 `933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9`; PurrNet SHA-256 `e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941` |
-| Workload timing | 2 s ramp / 2 s warmup / 5 s measurement / 1 s recovery |
-| Repetition | Five attempts per selected job; seed `424242` |
+| Campaign and index | [committed campaign manifest](https://github.com/FrontierDev/ninthage/blob/c2840577b7d098e7c9118d7f56161721038e7663/Builds/Benchmarks/Results/Campaigns/campaign-20261015T205113129Z-d1d3d540/campaign.json); [committed campaign index](https://github.com/FrontierDev/ninthage/blob/c2840577b7d098e7c9118d7f56161721038e7663/Builds/Benchmarks/Results/Campaigns/campaign-20261015T205113129Z-d1d3d540/index.json) |
+| Attempt files | 25 tracked `run-*/` directories with `fixture.json`, `run.json`, `summary.json`, `report.md`, `artifacts.json` and `samples.ndjson`; see [catalogue](Phase-1-Performance-Evidence-Catalogue.md) |
+| Benchmark commit / branch | `d22a939232c842a1415bd627c2a6a0be3663ce95` / `dev` |
+| Source state | `dirty=false`; source SHA-256 `5ecd7ffe55cd3296642fa8d7d260466411aab8d2884d3f8296b054e25b8e8310`; diff SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| Package identity | manifest SHA-256 `8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90`; lock SHA-256 `933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9` |
+| PurrNet identity | SHA-256 `e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941` |
+| Unity / OS | `6000.3.10f1` / Windows 11 `10.0.26200` |
+| CPU / GPU | AMD Ryzen 7 5700X (16 logical CPUs); NVIDIA GeForce RTX 4060 Ti; Direct3D12 |
+| Graphics settings | `quality_level=0;vsync=0;target_fps=-1;render_pipeline=PC_RPAsset` |
+| Fixture seed | `424242`, recorded per job and in fixture artifacts |
+| Timing | 2 s ramp / 2 s warmup / **5 s measured** / 1 s recovery (graphical warmup/measurement configured at 2/5 s) |
+| Repetitions | Five independent sequential executions per selected fixture; exact run IDs linked from catalogue |
+| Metric retention | All selected budget metrics have five qualified per-run p99 values; route-only interval metrics have ~11 samples/run and no p99, by policy |
+| Archive integrity | **INCOMPLETE on GitHub**: all 25 optional `logs/runner.log` entries are declared present but untracked (`*.log` ignored). Required tracked artifacts are present with indexed byte counts matching repository objects; cryptographic digest re-verification is not claimed. See catalogue. |
 
-The run identity, fixture references, fixture hashes and listed artifact hashes were checked against the local files available during the campaign review. The source branch and full commit match the current clean `dev` checkout. The catalogue explicitly does not make the ignored local results retrievable from GitHub.
+The campaign's original `index.json` reports `artifact_index_status=verified` based on evidence available when the index was produced. That is not a substitute for validating a *fresh clone*, which currently lacks declared-present optional logs. Missing optional logs are **not** converted into missing measurements or a correctness failure.
 
-## 3. Measured workload coverage
+## 3. Workload and correctness coverage
 
-| Job | Workload | Fixture / requested population | Repeats | Result |
+| Workload | Job ID | Requested population | Enabled renderers reported | Execution |
 | --- | --- | --- | ---: | --- |
-| `job-20261015T095751713Z-8f6790a3` | `EcsDataOnlyMinimal` | Outdoor / 100 ECS entities / fixture `92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73` | 5/5 | 100 achieved; cleanup returned to zero |
-| `job-20261015T095751724Z-e3c5a1bb` | `EcsDataOnlyActivity` | Outdoor / 100 ECS entities / fixture `92bbacf122d17d4f73377bdfd4bf59e494754d7d0d34aae391f2b2bf08552e73` | 5/5 | 100 achieved; activity and cleanup invariants passed |
-| `job-20261015T095751728Z-b46f05ba` | Graphical outdoor | 33 objects / fixture `6d527e46b4b51622b18a46a5e1224161ba78531f0a661dabdb616813fd22b882` | 5/5 | 33 achieved; route 4/4; 97 visible objects |
-| `job-20261015T095751743Z-b0dced97` | Graphical forest | 251 objects / fixture `9ad4e51e30c595f6b6a668ce66c9333be71fc16a184640a5f2b4472c8eac60d7` | 5/5 | 251 achieved; route 4/4; 551 visible objects |
-| `job-20261015T095751747Z-c1b51b19` | Graphical settlement | 96 objects / fixture `d381512a0382367f08ab470721ccd04d11ae6d5ecf4e06c036a2ad3ff9035605` | 5/5 | 96 achieved; route 4/4; 286 visible objects |
+| ECS Minimal (`P1-S0-04`) | `job-20261015T205114351Z-68cde3a6` | 100 data-only ECS entities | — | 5/5 complete |
+| ECS Activity (`P1-S0-04`) | `job-20261015T205114351Z-dd7d0a2f` | 100 data-only ECS entities | — | 5/5 complete |
+| Graphical Outdoor (`P1-S0-06`) | `job-20261015T205114353Z-112ad139` | 33 fixture objects | 97 | 5/5 complete |
+| Graphical Forest (`P1-S0-06`) | `job-20261015T205114357Z-013e671e` | 251 fixture objects | 551 | 5/5 complete |
+| Graphical Settlement (`P1-S0-06`) | `job-20261015T205114360Z-d346599b` | 96 fixture objects | 286 | 5/5 complete |
 
-### 3.1 Server correctness and activity observations
+All server runs recorded 100 ECS entities at the end of measurement and zero remaining fixture/actor entities after cleanup. **ECS Activity** recorded, in each of five repeats: 85 idle; 4 patrolling; 11 combat; 10 wake-surge (included in combat); 5 measurement spawn events; 5 despawn events; 105 total spawns including ramp; 5 total despawns.
 
-The minimal workload reported 100 ECS entities in every measurement. The activity workload reported the same achieved population and, on every run, the following activity/event values:
+Each graphical run completed route 4/4. The graphical summary describes 33 Outdoor, 251 Forest and 96 Settlement scene objects, with 97/551/286 enabled renderers counted in their loaded scenes. **Enabled renderer counts are not equivalent to confirmed draw contribution by each object.** All 15 graphical traces reported `26` draw calls, `26` batches and `1,930` triangles (p50/p95/p99 and sampled minimum/maximum); these are recorded **test-fixture signatures**, not general graphical-density or scene-visibility budgets. The qualification test confirms nonzero rendering statistics, not independent attribution of every fixture renderer.
 
-| Observation | Value |
-| --- | ---: |
-| Idle actors | 85 |
-| Patrolling actors | 4 |
-| Combat actors | 11 |
-| Wake-surge actors | 10 |
-| Spawn events | 5 |
-| Despawn events | 5 |
-| Total spawn events | 105 |
-| Total despawn events | 5 |
-| Wake surge is a combat subset | `true` |
+## 4. Measured reference values
 
-The post-cleanup fixture and actor counts returned to zero for both server workloads. These are workload correctness observations, not claims about authenticated players, networked actors or supported population capacity.
+Aggregation rule: **take the median of the five individual run-level p50, p95 and p99 values**, independently for each metric. Do not pool all frames into one percentile. All budget rows below have qualified **N = 5**; the units are those emitted by the summary metrics.
 
-### 3.2 Graphical correctness observations
+### 4.1 Server — `P1-S0-04`, 100 data-only ECS entities
 
-All graphical attempts achieved their requested object count and completed all four route waypoints. The harness reported 97 visible objects for outdoor, 551 for forest and 286 for settlement. `harness.graphical.route_distance` used metres (`m`) and was measured in all 15 graphical attempts. Its p99 is unavailable because each route metric has only 11 retained samples; this is an explicit sample-size limitation, not a missing or fabricated value.
+| Workload / metric | N | Median run p50 | Median run p95 | Median run p99 | Largest individual sample |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Minimal / `server.actor_manager.update_duration` (ms) | 5 | 0.0306 | 0.0422 | **0.0518** | 0.2173 |
+| Minimal / `server.ecs.actor_update_duration` (ms) | 5 | 0.0264 | 0.0351 | **0.0716** | 0.8601 |
+| Minimal / `server.actor.full_entity_scan_count` (count) | 5 | 200 | 200 | **200** | 200 |
+| Minimal / `server.memory.total_allocated_bytes` (bytes) | 5 | 1,085,722,738 | 1,087,127,218 | **1,087,251,058** | 1,094,024,536 |
+| Activity / `server.actor_manager.update_duration` (ms) | 5 | 0.0307 | 0.0384 | **0.0498** | 3.1462 |
+| Activity / `server.ecs.actor_update_duration` (ms) | 5 | 0.0260 | 0.0329 | **0.0455** | 0.2240 |
+| Activity / `server.actor.full_entity_scan_count` (count) | 5 | 200 | 200 | **200** | 200 |
+| Activity / `server.memory.total_allocated_bytes` (bytes) | 5 | 1,086,829,335 | 1,088,313,533 | **1,088,483,029** | 1,088,929,311 |
 
-## 4. Performance observations
+Frame/operation percentiles describe work **inside** the measurement window; a large individual raw-sample maximum is retained for diagnosis rather than substituted for a run p99. The maximum Actor Manager Activity sample was **3.1462 ms**, while that workload's median-run p99 was **0.0498 ms**.
 
-The tables below follow the campaign comparator convention: each cell is the median of the corresponding per-run statistic over qualified repeats. `N` is the number of qualified repeats for that metric. These values are observations for this exact clean Editor configuration, not approved budgets.
+### 4.2 Graphical client — `P1-S0-06`
 
-### 4.1 Server metrics
+| Scenario / metric | N | Median run p50 | Median run p95 | Median run p99 | Largest individual sample |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Outdoor / `client.rendered.frame_time` (ms) | 5 | 2.1576 | 2.6506 | **3.0143** | 24.2804 |
+| Forest / `client.rendered.frame_time` (ms) | 5 | 2.1740 | 2.6823 | **3.4821** | 21.2869 |
+| Settlement / `client.rendered.frame_time` (ms) | 5 | 2.1419 | 2.5791 | **3.1237** | 24.2834 |
 
-| Workload | Metric | Unit | N | Median run p50 | Median run p95 | Median run p99 |
-| --- | --- | --- | ---: | ---: | ---: | ---: |
-| Minimal | `server.actor_manager.update_duration` | ms | 5 | 0.030 | 0.044 | 0.057 |
-| Minimal | `server.ecs.actor_update_duration` | ms | 5 | 0.026 | 0.037 | 0.049 |
-| Minimal | `server.actor.full_entity_scan_count` | count | 5 | 200 | 200 | 200 |
-| Minimal | `server.memory.total_allocated_bytes` | bytes | 5 | 1,080,087,387 | 1,081,555,068 | 1,081,683,708 |
-| Activity | `server.actor_manager.update_duration` | ms | 5 | 0.030 | 0.039 | 0.048 |
-| Activity | `server.ecs.actor_update_duration` | ms | 5 | 0.026 | 0.033 | 0.055 |
-| Activity | `server.actor.full_entity_scan_count` | count | 5 | 200 | 200 | 200 |
-| Activity | `server.memory.total_allocated_bytes` | bytes | 5 | 1,080,660,812 | 1,082,128,520 | 1,082,259,610 |
-
-All selected server metrics met the 95% retained-sample policy in all five repeats. The median-run values above do not hide rare raw-sample spikes: the maximum observed `server.actor_manager.update_duration` was 3.1536 ms in Minimal and 9.9785 ms in Activity, while the corresponding ECS maxima were 0.5174 ms and 0.4033 ms. These are diagnostic sample maxima, not the p99 references used by the review guardrails.
-
-### 4.2 Graphical frame and resource metrics
-
-| Scenario | Metric | Unit | N | Median run p50 | Median run p95 | Median run p99 | Max observed range |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Outdoor | `client.rendered.frame_time` | ms | 5 | 1.982 | 2.335 | 2.670 | 15.325-20.715 |
-| Forest | `client.rendered.frame_time` | ms | 5 | 1.998 | 2.392 | 2.804 | 4.456-21.607 |
-| Settlement | `client.rendered.frame_time` | ms | 5 | 2.208 | 2.738 | 3.240 | 5.984-24.072 |
-
-| Scenario | Main-thread p99 | Render-thread p99 | GPU p99 | Client allocated-memory median p50 |
+| Scenario | Main-thread p99 (ms) | Render-thread p99 (ms) | GPU p99 (ms) | Client allocated memory, median run p50 (bytes) |
 | --- | ---: | ---: | ---: | ---: |
-| Outdoor | 1.247 ms | 1.021 ms (`N=4`) | 0.749 ms (`N=4`) | 1,317,416,180 bytes |
-| Forest | 1.266 ms | 1.024 ms | 0.756 ms | 1,330,793,461 bytes |
-| Settlement | 1.449 ms | 1.119 ms | 0.835 ms | 1,342,087,560 bytes |
+| Outdoor | 1.6050 | 1.0442 | 0.822272 | 1,351,172,901 |
+| Forest | 1.8642 | 1.0833 | 0.824320 | 1,363,893,340 |
+| Settlement | 1.6136 | 1.0326 | 0.815104 | 1,375,133,452 |
 
-Fourteen of the fifteen graphical attempts reported the fixture signature of 26 draw calls and 1,930 triangles. The first Outdoor attempt, `run-20261015T101803597Z-5db2d245`, reported measured `0/0` for those two metrics and no GPU or render-thread samples; its rendered-frame, main-thread and memory metrics remain measured. The nonzero signature describes these exact test fixtures, not a general scene-density budget, and the first-Outdoor anomaly must be resolved before promotion to a hard guardrail. `harness.graphical.route_distance` remains p99-unavailable because each route metric has only 11 retained samples.
+All 15 graphical attempts supplied >2,100 measured frame samples/run and valid GPU/render-thread measurements; no graphical metric above uses a missing-sample substitute. `harness.graphical.route_distance` is measured with approximately 11 retained samples/run, so its **p99 is legitimately unavailable** (<100 samples) and is not used as a budget percentile.
 
-## 5. Evidence limitations and excluded claims
+## 5. Variability, time domains, and interpretation
 
-The campaign reports explicitly identify the following limitations:
+- **Forest frame-time tail:** five individual run p99 values **3.0427, 3.2658, 3.4821, 4.5349, 7.0678 ms**, versus median frame-time p50 values near 2.15–2.24 ms. Forest main-thread p99 similarly reaches 4.3839 ms in repeat 5. Corresponding GPU p99 values remain around 0.82–0.88 ms. The cause is **not established**; Editor/system contention and scheduling are possible but unproven. Keep the outlier visible, not silently excluded.
+- **ECS Minimal actor-update tail:** individual p99 values **0.0803, 0.0426, 0.0716, 0.0425, 0.0843 ms**. This is a reproducibility/noise observation, not proof of a regression against the obsolete pre-#63 protocol.
+- **Measurement vs Editor overhead:** the measurement windows are ~5 s. Individual queue/orchestration durations were roughly **20–29 s**, including Play Mode startup, domain reload and scene restoration, and **are not game-workload CPU/GPU time**. Some startup duration fields are `null` because a monotonic clock domain cannot safely be carried through Editor reload; their UTC timestamps remain available. Do not treat these nulls as zero or as evidence that Editor startup took no time.
+- **Focus:** `known_foreground` for all 25, zero recorded transitions, `run_in_background=true`. This gives comparable recorded conditions **within this campaign**, but does not measure or rule out competing CPU/GPU work elsewhere on the PC.
 
-1. The source was clean when the campaign was captured. This improves reproducibility provenance but does not establish a production build.
-2. The campaign contains no controlled telemetry-enabled versus telemetry-disabled comparison, so collector overhead cannot be separated from workload cost.
-3. The selected jobs cover minimal/activity outdoor server work and outdoor/forest/settlement graphical work. Empty, streaming-route, density-sweep and other catalogue profiles were not present, while `excluded_scenarios` was empty. Full Stage 1.0 matrix coverage is therefore not demonstrated.
-4. The runs used Editor Play Mode. They cannot establish standalone headless server capacity, authenticated clients, real PurrNet multi-client scale, ordinary world streaming, or production actor/nameplate/VFX density.
-5. No profiler capture is listed in the finalized artifact sets. No profiler-based claim is made here.
-6. No measured metric fell below the 95% retained-sample policy. However, the first Outdoor repeat has no GPU/render-thread samples and reports a zero draw/triangle signature, so those GPU/render-thread distributions have `N=4/5` and the draw/triangle signature is not yet a clean five-repeat observation.
-7. The portable archive is incomplete for the optional `logs/runner.log` artifacts: the historical manifests declare them present, but the original ignored `.log` files are unavailable in this checkout. Their manifests and recorded hashes remain preserved; no replacement log or historical rewrite is valid.
+## 6. Coverage gaps and excluded capacity claims
 
-The warnings in the individual reports are part of the evidence and must remain attached to any comparison. In particular, 100 data-only ECS entities must not be described as 100 concurrent authenticated users or 100 full networked NPCs.
+The source campaign records all eight Phase 1 profile statuses; only `P1-S0-04` and `P1-S0-06` have supported measurements:
 
-## 6. Baseline disposition and next handoff
+| Profile | Status | Capability or blocker | Runnable alternative | Next step |
+| --- | --- | --- | --- | --- |
+| `P1-S0-01` | `BLOCKED` | generated city density, real authenticated clients, cross-tile interests and required telemetry are not available in the current runner. | P1-S0-04 ECS data-only or P1-S0-06 isolated rendered geometry. | #43-#52; later Stage 1.2/1.5 client and world-interest work. |
+| `P1-S0-02` | `BLOCKED` | repeatable faction, legal PvP target and multi-client correctness fixtures are not available. | P1-S0-04 server data-only or P1-S0-06 rendered geometry. | #43-#52 and later Stage 1.2/1.5 combat and network qualification. |
+| `P1-S0-03` | `BLOCKED` | authored boss encounter, legal AoE target fan-out and replayable combat fixtures are not available. | P1-S0-04 server data-only or P1-S0-06 rendered geometry. | #45 and #51/#52 content and correctness verification. |
+| `P1-S0-04` | `SUPPORTED-MEASURED` | The existing runner supports ECS data-only minimal/activity snapshots; full PurrNet dormant and wake variants remain blocked. | EcsDataOnlyMinimal and EcsDataOnlyActivity are the current runnable variants. | Run five qualified repeats for each required metric; Stage 1.4 for true dormant/wake simulation. |
+| `P1-S0-05` | `BLOCKED` | the current harness does not execute the required six-tile route, streaming transitions and origin-boundary correctness contract. | P1-S0-06 fixed Outdoor/Forest/Settlement rendered fixtures without a streaming claim. | #44/#46/#49/#52 and Stages 1.2/1.6 streaming corrections. |
+| `P1-S0-06` | `SUPPORTED-MEASURED` | The existing graphical fixture runner supports isolated rendered Outdoor, Forest and Settlement routes; it does not qualify network density or production streaming. | Outdoor, Forest and Settlement are the current runnable variants. | Run five qualified repeats for each required metric; #44/#49/#52 for production-density and client telemetry expansion. |
+| `P1-S0-07` | `BLOCKED` | safe disposable account generation, real client admission and reconnect correctness are not available in the current runner. | P1-S0-04 server data-only or P1-S0-06 rendered geometry. | #46/#51 and Stages 1.7-1.8 reconnect and durable-session work. |
+| `P1-S0-08` | `BLOCKED` | the current harness has no compliant multi-hour churn, persistence, leak and scheduler-backlog observation contract. | P1-S0-04 bounded short server measurement only; it is not a soak or production-capacity claim. | #47-#51; Stage 1.1 scheduler telemetry and Stages 1.7-1.8 durability. |
 
-This document is a useful provisional evidence handoff to #55. It records reproducible workload outcomes and hardware-specific metric observations without silently promoting unsupported claims. It is **not** a signed Stage 1.0 baseline.
+There is **no** measured budget yet for network visibility/serialization throughput, login or reconnect rate, real-client combat density, standalone headless server tick/backlog, streaming scene transfer, persistence, soak/leaks or telemetry-off overhead. No measured observations from other workloads are substituted for these missing profiles.
 
-Before promotion, rerun or diagnose the first Outdoor graphical repeat so GPU/render-thread and draw/triangle observations are complete, add the controlled telemetry comparison if the runner can support it, document or execute the missing profiles, export and independently verify the archive, and obtain the user's reproducibility/sign-off. The candidate guardrails and comparison rules are recorded separately in [Phase 1.0 Performance Budgets](Phase-1-Performance-Budgets.md).
+## 7. Baseline disposition and next actions
 
-## 7. Profile coverage and blockers
+**Established for provisional Editor-only comparison:** the immutable evidence identity, five-run references, qualification policy and thresholds in the linked [budget document](Phase-1-Performance-Budgets.md). Later Editor campaigns can compare compatible fixtures/hardware/protocols against this documented reference, keeping changes in source revision explicit. These are **not approved production limits**.
 
-| Profile | Relevant mode | Status | Exact current capability/blocker | Runnable alternative | Next issue/stage |
-| --- | --- | --- | --- | --- | --- |
-| `P1-S0-01` | server + rendered client / networked city | `BLOCKED` | Generated city density, authenticated clients, cross-tile interests and required telemetry are unavailable. | `P1-S0-04` ECS data-only; `P1-S0-06` isolated rendering | #43-#52; later Stage 1.2/1.5 |
-| `P1-S0-02` | networked server + clients / PvP | `BLOCKED` | Repeatable factions, legal PvP targets and multi-client correctness fixtures are unavailable. | `P1-S0-04`; `P1-S0-06` | #43-#52; Stage 1.2/1.5 |
-| `P1-S0-03` | networked server + clients / boss and AoE | `BLOCKED` | Authored boss, legal AoE fan-out and replayable combat fixtures are unavailable. | `P1-S0-04`; `P1-S0-06` | #45, #51/#52 |
-| `P1-S0-04` | Editor server / ECS data-only and activity | `SUPPORTED-MEASURED` | The latest five-run campaign measured the existing minimal/activity snapshots; full PurrNet dormant/wake variants remain blocked. | Minimal and activity variants | Stage 1.4 for true dormant/wake simulation |
-| `P1-S0-05` | rendered client + streamed world / traversal | `BLOCKED` | Six-tile route, streaming transitions and origin-boundary correctness are not executed by the current harness. | `P1-S0-06` fixed rendered fixtures | #44/#46/#49/#52; Stages 1.2/1.6 |
-| `P1-S0-06` | Editor rendered client / geometry, forest, settlement | `SUPPORTED-MEASURED` | The latest five-run campaign measured the existing isolated routes; the first Outdoor repeat has missing GPU/render-thread samples and a zero draw/triangle signature, and the profile does not qualify network density or production streaming. | Outdoor, Forest, Settlement | Resolve the first-Outdoor metric gap; #44/#49/#52 |
-| `P1-S0-07` | server + clients / login and reconnect | `BLOCKED` | Safe disposable accounts, real admission and reconnect correctness are unavailable. | `P1-S0-04`; `P1-S0-06` | #46/#51; Stages 1.7-1.8 |
-| `P1-S0-08` | Editor server / authoritative soak | `BLOCKED` | Multi-hour churn, persistence, leak and scheduler-backlog observation are not supported. | Short bounded `P1-S0-04` server measurement only | #47-#51; Stage 1.1 and 1.7-1.8 |
+**Still required for a portable complete evidence bundle:** add the original optional runner logs if available (do not fabricate them) or keep the archive explicitly `INCOMPLETE`. See catalogue for the offline hash procedure. This limitation does not invalidate the existing required summary files.
 
-The five jobs in the campaign remain five genuine fixtures, not networked/full-actor, streaming, fixed-tick or standalone-capacity claims.
-
-## 8. Run-level variability and guardrail disposition
-
-The comparator now reports every run ID, metric-level valid N, retained/attempted count, coverage, run-level p50/p95/p99 medians, min/max, p50 IQR and coefficient of variation where at least two qualified run values exist. It also lists excluded run IDs and reasons. It never pools frame samples across attempts. This campaign has no retained-coverage rejection; the first Outdoor run remains preserved with explicit `no_measurement_samples` reasons for GPU/render-thread metrics and its measured `0/0` draw/triangle result.
-
-The 10% server and 20% graphical changes are still review alerts, not approved budgets: the latest campaign has one metric-specific four-of-five gap and a first-Outdoor rendering anomaly, and does not establish a stable production noise estimate. Editor-process memory/frame values and per-fixture draw/triangle signatures remain separate from standalone/product-wide budgets.
+**Still required for broader sign-off:** user review of this documented provisional policy, controlled collector-overhead comparison when implemented, the blocked profile execution plans and future ordinary client/headless/networked benchmarks. No further 25-repeat Editor campaign is necessary solely to document the existing results.
