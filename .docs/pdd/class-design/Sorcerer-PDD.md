@@ -40,7 +40,7 @@ All seven of these are **class-wide spells**, available to Cataclyst, Fluxweaver
 | **1** | **Chaos Bolt** | Cataclyst | Baseline ranged **Chaos** damage; generates Instability. First resource-building offensive spell. |
 | **2** | **Brand** | Voidbrand | **Melee-range Chaos** damage based on weapon damage; reduces target **Attack Power for 6 sec**, generates Instability; **6-sec cooldown**. |
 | **4** | **Crystallise** | Fluxweaver | **1-sec cast**, **6-sec cooldown**; costs Mana, reduces Instability and grants a **small absorption shield**. |
-| **6** | **Enlightenment** | General class utility | **Party-wide Intelligence buff**; exact magnitude, duration and cost undecided. |
+| **6** | **Winds of Wisdom** | General class utility | **Party-wide Intelligence buff**; exact magnitude, duration and cost undecided. |
 | **8** | **Nullify** | Voidbrand | **Interrupt**, **moderate range**, **15-sec cooldown** (the common interrupt cadence). Precise range and any lockout duration undecided. |
 | **10** | **Dimensional Rift** | Cataclyst | Places a dimensional rift; **at most one active rift per Sorcerer**. Existing rift implementation is a starting point; exact placement, duration, replacement and cooldown are subject to review. |
 | **10** | **Control Rift: Nova** | Cataclyst | **Destroys the active rift**, dealing **area-of-effect damage** at the rift. Further Control Rift abilities are expected later. |
@@ -52,7 +52,7 @@ Level-10 shared kit: **six active combat spells and one party utility**. After t
 - **Chaos Bolt:** "Hurl unstable Chaos energy at an enemy, dealing damage and generating Instability."
 - **Brand:** "Strike an enemy in melee range with chaotic magic, dealing weapon-scaled Chaos damage and reducing its Attack Power for 6 seconds. Generates Instability."
 - **Crystallise:** "Crystallise unstable magic into a protective barrier, reducing your Instability and absorbing a small amount of damage."
-- **Enlightenment:** "Enlighten the minds of your party, increasing their Intelligence."
+- **Winds of Wisdom:** "Call forth a gentle current of magical wind that sharpens the minds of your party, increasing their Intelligence."
 - **Nullify:** "Disrupt a target's spellcasting, interrupting its current cast."
 - **Dimensional Rift:** "Open a dimensional rift at the chosen location. Only one rift may remain active at a time."
 - **Control Rift: Nova:** "Collapse your active dimensional rift, dealing area damage around its location."
@@ -153,11 +153,21 @@ Sorcerer class-wide access includes a ranged damaging spell, melee weapon-scalin
 
 ## 8. Magical schools and equipment
 
-**Confirmed:** Chaos Bolt and Brand deal **Chaos** damage. Molten Barrage deals **Fire** damage. The precise magical school/mitigation handling of Crystallise, Enlightenment, Nullify, Dimensional Rift, Control Rift effects, Locus and advanced talent spells needs a separate mechanics-first review.
+**Confirmed:** Chaos Bolt and Brand deal **Chaos** damage. Molten Barrage deals **Fire** damage. The precise magical school/mitigation handling of Crystallise, Winds of Wisdom, Nullify, Dimensional Rift, Control Rift effects, Locus and advanced talent spells needs a separate mechanics-first review.
 
 **Equipment direction:** a Sorcerer may be an ordinary light-armour spellcaster, but **Voidbrand must be able to use a melee weapon** for Brand and future melee spells. Exact weapon choices, class equipment rules and damage coefficients are open.
 
 Magic school assignment follows ability mechanics; specialisation theme is **not** a one-school lock. The names already agreed in discussion are retained; icon/animation/VFX/SFX decisions remain a later presentation stage.
+
+### 8.1 Sorcerer icon art direction — Radiant Slate
+
+**Radiant Slate**, not Arcane Slate, is the project's approved overall interface theme. All Sorcerer ability icons must follow the [Spell Icon Art Direction PDD](../Spell-Icon-Art-Direction-PDD.md) and be reviewed within the actual 40×40 action-bar slot from the [UI and UX PDD](../UI-and-UX-PDD.md).
+
+**Mandatory:** complete **opaque, edge-to-edge painted backgrounds**, no built-in borders/frames, one clear focal subject, strong silhouettes, restrained detail and genuinely varied spell-specific palettes. No transparent cut-outs or default purple/cyan shard vortices. These are compact game icons, **not cinematic illustrations**.
+
+The benchmark consists of **Chaos Bolt** (diagonal projectile), **Crystallise** (ice-themed defensive barrier), **Winds of Wisdom** (calm air/intellect party buff) and **Dimensional Rift** (narrow vertical tear through space). Each must be recognisable independently at 32, 40, 48 and 64 pixels without its label. **Crystallise must read as protection rather than crystal summoning; Nullify as spell interruption rather than a destructive explosion; Dimensional Rift as a planar tear rather than a scenic portal.**
+
+Art briefs and differentiation guidance for all sixteen agreed Sorcerer spells are maintained centrally in the Spell Icon Art Direction PDD. Those art briefs do not fix unapproved school, mana, cooldown or damage values.
 
 ## 9. Phase 2 vertical-slice goals and verification
 

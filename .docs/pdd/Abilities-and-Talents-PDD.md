@@ -114,6 +114,19 @@ There is no small active-skill loadout cap.
 - For each ability, author first its **toolkit purpose, counterplay, interactions, progression and mechanics**. Next choose appropriate Physical / magical school(s). Only then author **name, icon, animation, VFX and audio**. No school automatically owns all slows, periodic effects, spell disruption, or other effect types. Reserve unusually high-impact long-cast spells for later progression so early normal NPC encounters cannot be trivialised by the same opening nuke.
 - The cross-class [capability matrix](Class-Design-PDD.md#21-preliminary-cross-class-capability-matrix-2026-10-14) is **provisional guidance**, not an automatically granted ability list or a requirement to homogenise class coverage.
 
+### 2.8 Radiant Slate spell-icon authoring and approval
+
+All authored class spells and talent-granted spells follow the [Spell Icon Art Direction PDD](Spell-Icon-Art-Direction-PDD.md) and the [UI and UX PDD](UI-and-UX-PDD.md). **Radiant Slate is the authoritative UI theme.**
+
+- Finish **mechanical purpose**, combat loop and intended effect first; assign an appropriate school where known. Then define artwork.
+- Before art generation, specify **one readable primary subject/action**, a unique silhouette, dominant colour families, the full painted background and the visual distinction from adjacent class icons.
+- Spell icons are **complete edge-to-edge hand-painted square compositions with fully opaque backgrounds**. No transparent alpha, isolated emblem floating over nothing, text, built-in slot frame or border.
+- Keep the painted foreground/background integrated, high-contrast and concise. Avoid excessive bloom, micro-detail, crystal confetti and generic purple/cyan swirls.
+- Test each candidate in a real Radiant Slate action-bar slot at **32×32, 40×40 (default), 48×48 and 64×64 px**, including a side-by-side class-set comparison. Rework any icon that cannot be recognised without its name.
+- **Art approval is separate from spell-system functionality**; artwork does not determine new mechanics or imply special school exclusivity. The UI owns selection, cooldown, rank, disabled and range overlays.
+
+Spell ranks may reuse the same icon; higher rank is not a justification for generating an unrelated visual identity.
+
 ---
 
 ## 3. Terminology

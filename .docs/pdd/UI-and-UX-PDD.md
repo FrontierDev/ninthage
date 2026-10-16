@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Radiant Slate visual system, UI design tokens, shader-driven components, HUD, action bars, unit frames, nameplates, inventory, character sheet, talents, quest/reputation presentation, maps, tooltips, combat feedback, contextual tips, window behaviour, interaction conventions, scaling and UI-state persistence  
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-15
 
 ---
 
@@ -85,7 +85,7 @@ No subsystem should create its own unrelated visual language.
 
 ## 3. Radiant Slate
 
-**Radiant Slate** is the authoritative Ninth Age UI design system.
+**Radiant Slate** is the authoritative Ninth Age UI design system. The supplied **Radiant Slate MMO UI concept sheet** and [Radiant Slate UI Style Guide](../../Assets/Runtime/Client/Shaders/Radiant%20Slate.html) establish its visual identity. The earlier **Arcane Slate** term refers to historical shader foundations, **not** a separate or preferred overall UI theme.
 
 Its character is:
 
@@ -296,6 +296,8 @@ Icons should be authored to read at their normal presentation size.
 
 Do not compensate for unreadable icons by making every control larger.
 
+**Spell icons are painted artwork rather than isolated transparent glyphs:** fully opaque, complete square paintings (including corners/background), no baked frame, distinctive silhouette and readable at 32/40/48/64 px. Full requirements and rejection rules: [Spell Icon Art Direction PDD](Spell-Icon-Art-Direction-PDD.md). Smaller functional UI glyphs are not automatically subject to the spell-art background requirement.
+
 ---
 
 ## 11. Typography
@@ -359,8 +361,8 @@ Radiant Slate text tokens are:
 | Token | Colour |
 |---|---|
 | Text.Primary | `#E6EAF2` |
-| Text.Secondary | `#AAB2C5` |
-| Text.Muted | `#7C8599` |
+| Text.Secondary | `#B6BECC` |
+| Text.Muted | `#8B94A5` |
 | Text.Disabled | derived muted/low-opacity treatment |
 
 Primary text is used for:
@@ -390,10 +392,13 @@ The Radiant Slate structural palette is:
 
 | Token | Colour |
 |---|---|
-| Slate.Deep | `#1E2430` |
-| Slate.Panel | `#2A3140` |
-| Slate.Elevated | `#353D4F` |
-| Slate.Border | `#4A5568` |
+| Slate.Deep / Background | `#1E222A` |
+| Slate.Panel | `#2A303A` |
+| Slate.Elevated | `#353E4A` |
+| Slate.Border | `#4B5566` |
+| Slate.PanelAlt | `#232A33` |
+| Slate.Raised | `#414B59` |
+| Slate.BorderSoft | `#5A6679` |
 
 The overwhelming majority of normal UI chrome should remain within this family.
 
@@ -409,7 +414,7 @@ Semantic accents are:
 | Accent.Positive | `#38B986` |
 | Accent.Warning | `#E88A52` |
 | Accent.Information | `#56A8EF` |
-| Accent.Error | `#D85C5C` |
+| Accent.Error | `#C96A63` |
 
 Gold is the ordinary:
 
@@ -489,6 +494,8 @@ Baked assets remain appropriate for:
 ---
 
 ## 19. Existing ArcaneSlate Shader Foundation
+
+**Legacy naming clarification:** this section describes existing technical shader identifiers. It does not make Arcane Slate the art direction; **Radiant Slate remains authoritative**, including its supplied visual guide and reference concept sheet.
 
 The current shader family is retained as the implementation foundation.
 
@@ -981,7 +988,7 @@ A slot displays, where relevant:
 - unavailable/disabled state;
 - resource/range invalid state.
 
-The icon remains the dominant visual element.
+The icon remains the dominant visual element. A spell icon must be **fully opaque painted artwork including its own painted background**, while the **slot border and all gameplay overlays are UI-provided**. New spell-icon art is reviewed against the [Spell Icon Art Direction PDD](Spell-Icon-Art-Direction-PDD.md) at the 40 px default size.
 
 ---
 
@@ -2000,7 +2007,8 @@ Review should verify:
 - information hierarchy;
 - scaling;
 - screen-bound behaviour;
-- consistency with adjacent systems.
+- consistency with adjacent systems;
+- where spell icons are present, fully painted opaque icon backgrounds, distinct action silhouettes and recognisability in the real-size action bar.
 
 A technically functional window with arbitrary styling is not UI-complete.
 
@@ -2067,6 +2075,9 @@ The following decisions are locked:
 55. Local UI preferences may persist client-side.
 56. Gameplay-authoritative state remains server-owned.
 57. A major UI is not considered complete merely because it is functional; it must conform to Radiant Slate.
+58. Final spell icons are opaque edge-to-edge painted squares; transparent backgrounds and baked slot frames are not allowed.
+59. Spell icons must be visually distinct and reviewed at 32, 40, 48 and 64 px in Radiant Slate slots, following the Spell Icon Art Direction PDD.
+60. The supplied Radiant Slate UI style guide and concept sheet are reference art; legacy ArcaneSlate shader names do not rename the UI theme.
 
 ---
 
@@ -2179,6 +2190,7 @@ The UI/UX system satisfies this PDD when all of the following are true.
 - Selected spell rank is preserved.
 - Cooldown/GCD/charges are visually distinct.
 - Keybind text remains legible without obscuring the icon.
+- Spell icon artwork is opaque, edge-to-edge painted, free of baked frames, visually distinct and readable at normal 40 px presentation as specified in the Spell Icon Art Direction PDD.
 
 ### 97.7 Unit frames/nameplates
 
@@ -2253,7 +2265,7 @@ It is one coherent **Radiant Slate** interface system.
 
 Radiant Slate uses a disciplined 4 px layout grid, Manrope typography, dark slate structural surfaces, restrained aged-metal shader treatment, pale text and Radiant Gold selection/focus accents.
 
-The existing ArcaneSlate shaders already provide the correct technical foundation and should be standardised rather than replaced.
+The existing ArcaneSlate shaders are retained as **historically named technical infrastructure**, not as a second UI theme; they should be standardised toward the approved Radiant Slate palette and component behaviour. Final spell-icon artwork is complete, opaque and painted to its edges, without baked action-bar framing.
 
 Major visual values — fonts, colours, borders, icon sizes, slot sizes, control heights and interaction states — are shared design tokens.
 

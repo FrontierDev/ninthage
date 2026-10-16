@@ -1,4 +1,7 @@
-# Arcane Slate UI Shader Copilot Instructions
+# ArcaneSlate UI Shader Copilot Instructions (Legacy Technical Reference)
+
+> **Status:** Historical implementation reference, **not** the current Ninth Age UI style authority. The game uses **Radiant Slate** (see [Radiant Slate UI Style Guide](Radiant%20Slate.html) and [UI and UX PDD](../../../../.docs/pdd/UI-and-UX-PDD.md)). The `ArcaneSlate` shader identifiers are intentionally retained for technical compatibility; old colours, glow suggestions and style naming in this file must not override Radiant Slate tokens. Spell-icon artwork follows the [Spell Icon Art Direction PDD](../../../../.docs/pdd/Spell-Icon-Art-Direction-PDD.md), including fully painted opaque backgrounds.
+
 
 ## Goal
 Create a reusable Unity UI shader stack for the **Arcane Slate** interface style used in this MMORPG project.

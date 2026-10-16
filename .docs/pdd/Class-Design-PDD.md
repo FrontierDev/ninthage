@@ -605,7 +605,7 @@ Voidbrand stealth is not Duellist stealth: Duellist uses stealth mainly as an op
 | **1** | **Chaos Bolt** | Ranged Chaos damage, generates Instability (Cataclyst-themed). |
 | **2** | **Brand** | Weapon-scaled melee Chaos damage, -Attack Power debuff for 6 sec, generates Instability; 6-sec cooldown (Voidbrand-themed). |
 | **4** | **Crystallise** | 1-sec cast, 6-sec cooldown; costs Mana, reduces Instability, small shield (Fluxweaver-themed). Fluxweaver talents can accelerate the cast and improve absorption. |
-| **6** | **Enlightenment** | Party Intelligence buff (utility). |
+| **6** | **Winds of Wisdom** | Party Intelligence buff (utility). |
 | **8** | **Nullify** | Moderate-range interrupt, 15-sec cooldown, Voidbrand-themed. Fifteen seconds is the standard interrupt cooldown. |
 | **10** | **Dimensional Rift** | Creates one active rift maximum for that Sorcerer. |
 | **10** | **Control Rift: Nova** | Destroys the active rift to deal area damage. |
@@ -1167,7 +1167,7 @@ The following principles are established design direction for all nine classes; 
 6. **Complete but unequal toolkits.** Every class should have sufficient offense, survivability, and relevant situation/group contribution to play independently. Every class does **not** need every healing, movement, crowd-control or support mechanic. Role-specialised builds need all necessary tools for the role they claim to fulfil, but a healer need not use direct healing: for example, Sorcerer Fluxweaver specialises in shielding and Instability-proportional healing.
 7. **Functional redundancy without forced composition.** Encounters may require tanking, healing, interrupts, control or counterplay; multiple class/specialisation combinations must reasonably provide required functions. No unique class mechanic, buff, dispel or summon should create a mandatory class slot in ordinary group content. Overlapping functional coverage need not mean identical ability buttons or effectiveness.
 8. **Distinguish access from effectiveness.** Capability access, reliability, conditions, cooldown, range, resource cost and niche value are separate design decisions. Share functions selectively but retain different class solutions and strengths.
-9. **Design in order:** (a) shared class + specialisation ability toolkit and interactions, (b) magical school(s) / Physical as appropriate, (c) ability names, icons, animation, visual effects and audio effects. Neither school themes nor presentation should determine the initial mechanical toolkit.
+9. **Design in order:** (a) shared class + specialisation ability toolkit and interactions, (b) magical school(s) / Physical as appropriate, (c) ability names, icons, animation, visual effects and audio effects. Neither school themes nor presentation should determine the initial mechanical toolkit. **Once authored, every spell icon must conform to the [Radiant Slate Spell Icon Art Direction PDD](Spell-Icon-Art-Direction-PDD.md): a legible, distinctive, fully opaque, edge-to-edge painted square without baked UI frames or transparent backgrounds.**
 10. **Level-10 playable identity:** use roughly **5–7 learned combat abilities (including learnable combat passives) plus 1–2 learned utilities (including utility passives)** through level 10 as a flexible budget, excluding ranks and inherent class mechanics. Before choosing a specialisation, the base class must be mechanically enjoyable. Selecting an active specialisation at **level 10** grants an immediate identity-defining spell without talent investment. Balance cumulative trainer costs across classes so more passives or skills do not unfairly penalise early gold expenditure.
 11. **No early pull-deleting abilities:** lengthy cast / high-burst spells are principally mid-to-late progression tools. Balance against normal NPC health, not solely bosses. Establish meaningful gameplay decisions before introducing overwhelming opening attacks.
 12. **Talent mastery without artificial ten-level milestones:** talent trees build from their level-10 introduction toward advanced mastery and a **rotation-transforming culmination**, rather than simply granting a high-number nuke at the end. Fundamental role viability must precede the capstone; spell ranks continue through level 60.
@@ -1271,5 +1271,8 @@ Before locking a class toolkit:
 - Test in both solo and group scenarios. `C` and `T` do not imply equal output, cooldown, range, or reliability.
 
 # 23. Dedicated Class PDDs
+
+**Presentation authority:** [Radiant Slate Spell Icon Art Direction PDD](Spell-Icon-Art-Direction-PDD.md) specifies icon composition, unique silhouettes, painted backgrounds, small-scale validation and the Sorcerer benchmark set. Radiant Slate is the overall UI style; existing ArcaneSlate shader names are historical implementation details, not a competing theme.
+
 
 Further class-specific design is maintained in [`class-design/`](class-design/). Each class document records current source-grounded identity and proposed specialisations, a candidate class-first toolkit and its share of the provisional capability matrix, differentiation, progression, and open issues. These drafts do **not** lock the final ability catalogue, role eligibility, equipment rules, magic-school allocation or numerical balance until those questions are explicitly resolved.
