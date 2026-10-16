@@ -23,7 +23,6 @@ namespace Game.Server.Core
         public const string GCD_ID = "GCD";
 
         private EntityManager _entityManager;
-        private EntityQuery _actorComponentQuery;
         private readonly ServerSimulationMutationQueue<CooldownMutation> _pendingMutations = new();
         private readonly Dictionary<(Guid ActorID, string SpellID), float> _pendingCooldowns = new();
         private CooldownMutation[] _commitSnapshot;
@@ -54,7 +53,6 @@ namespace Game.Server.Core
 
             var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             ActorEndpoint.onServerStartCooldown += StartCooldown;
 
@@ -94,6 +92,9 @@ namespace Game.Server.Core
         {
             if (ServerECSManager.IsMutationBoundaryActive)
             {
+                if (!TryGetAuthoritativeActorEntity(actorID, out _))
+                    return;
+
                 _pendingCooldowns[(actorID, spellID)] = duration;
                 _pendingMutations.Enqueue(new CooldownMutation(actorID, spellID, duration));
                 return;
@@ -104,49 +105,35 @@ namespace Game.Server.Core
 
         private void StartCooldownNow(Guid actorID, string spellID, float duration)
         {
+            if (!TryGetAuthoritativeActorEntity(actorID, out Entity entity))
+                return;
+
             var fixedSpellID = new FixedString64Bytes(spellID);
+            var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity);
 
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            try
+            // Update existing entry or append a new one.
+            bool found = false;
+            for (int i = 0; i < buffer.Length; i++)
             {
-                foreach (var entity in entities)
+                if (buffer[i].SpellID == fixedSpellID)
                 {
-                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (component.ActorID != actorID) continue;
-
-                    var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity);
-
-                    // Update existing entry or append a new one.
-                    bool found = false;
-                    for (int i = 0; i < buffer.Length; i++)
+                    buffer[i] = new Systems.CooldownElement
                     {
-                        if (buffer[i].SpellID == fixedSpellID)
-                        {
-                            buffer[i] = new Systems.CooldownElement
-                            {
-                                SpellID = fixedSpellID,
-                                RemainingCooldown = duration
-                            };
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (!found)
-                    {
-                        buffer.Add(new Systems.CooldownElement
-                        {
-                            SpellID = fixedSpellID,
-                            RemainingCooldown = duration
-                        });
-                    }
-
-                    return;
+                        SpellID = fixedSpellID,
+                        RemainingCooldown = duration
+                    };
+                    found = true;
+                    break;
                 }
             }
-            finally
+
+            if (!found)
             {
-                entities.Dispose();
+                buffer.Add(new Systems.CooldownElement
+                {
+                    SpellID = fixedSpellID,
+                    RemainingCooldown = duration
+                });
             }
         }
 
@@ -165,35 +152,37 @@ namespace Game.Server.Core
         /// <returns>The remaining duration in seconds, or zero when inactive.</returns>
         public float GetRemainingCooldown(Guid actorID, string spellID)
         {
+            if (!TryGetAuthoritativeActorEntity(actorID, out Entity entity))
+                return 0f;
+
             var fixedSpellID = new FixedString64Bytes(spellID);
             float pendingCooldown = _pendingCooldowns.TryGetValue((actorID, spellID), out float pending)
                 ? pending
                 : 0f;
 
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            try
+            var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity, true);
+            for (int i = 0; i < buffer.Length; i++)
             {
-                foreach (var entity in entities)
-                {
-                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (component.ActorID != actorID) continue;
-
-                    var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity, true);
-                    for (int i = 0; i < buffer.Length; i++)
-                    {
-                        if (buffer[i].SpellID == fixedSpellID)
-                            return Mathf.Max(buffer[i].RemainingCooldown, pendingCooldown);
-                    }
-
-                    return pendingCooldown;
-                }
-            }
-            finally
-            {
-                entities.Dispose();
+                if (buffer[i].SpellID == fixedSpellID)
+                    return Mathf.Max(buffer[i].RemainingCooldown, pendingCooldown);
             }
 
             return pendingCooldown;
+        }
+
+        private bool TryGetAuthoritativeActorEntity(Guid actorID, out Entity entity)
+        {
+            if (ServerActorManager.Instance == null
+                || !ServerActorManager.Instance.TryGetActorEntity(actorID, out entity)
+                || !_entityManager.Exists(entity)
+                || !_entityManager.HasComponent<Systems.ActorComponent>(entity)
+                || !_entityManager.HasBuffer<Systems.CooldownElement>(entity))
+            {
+                entity = Entity.Null;
+                return false;
+            }
+
+            return _entityManager.GetComponentData<Systems.ActorComponent>(entity).ActorID == actorID;
         }
     }
 }

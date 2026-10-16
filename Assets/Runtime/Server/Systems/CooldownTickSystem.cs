@@ -34,7 +34,7 @@ namespace Game.Server.Systems
             using var markerScope = COOLDOWN_TICK_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int cooldownEntryCount = 0;
-            float dt = SystemAPI.Time.DeltaTime;
+            float fixedDeltaTime = SystemAPI.Time.DeltaTime;
 
             foreach (var (_, entity) in
                 SystemAPI.Query<DynamicBuffer<CooldownElement>>()
@@ -44,7 +44,7 @@ namespace Game.Server.Systems
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     var entry = buffer[i];
-                    entry.RemainingCooldown -= dt;
+                    entry.RemainingCooldown -= fixedDeltaTime;
 
                     if (entry.RemainingCooldown <= 0f)
                         buffer.RemoveAt(i);
