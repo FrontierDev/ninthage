@@ -504,7 +504,47 @@ namespace Game.Client.UI.Inventory
 }
 ```
 
-## 23. Convention Summary
+## 23. Minimal Implementation and Review Discipline
+
+These rules apply **when changing existing code**, not just when choosing names and formatting. Code quality includes the amount of state, branching, and maintenance burden introduced.
+
+### 23.1 Prefer the smallest correct change
+
+- Make the smallest change that demonstrably satisfies the issue's observable acceptance criteria. Do not redesign adjacent subsystems to pre-empt hypothetical future needs.
+- **Prefer existing owners, data and interfaces.** Before adding a manager, event bus, registry, cache, queue, callback layer, helper type, or parallel source of truth, identify the concrete invariant that existing code cannot enforce and explain why a local change cannot satisfy it.
+- Do not duplicate authoritative state across registries unless synchronisation and invalidation are explicit and indispensable. A new dictionary/queue introduces its own lifetime, cancellation and failure paths.
+- Avoid defensive fallbacks that hide invalid states or convert failed operations into apparent success. Surface the actual failure; preserve already-defined behaviour.
+- Avoid abstractions built for only one speculative use case. A small amount of duplication is preferable to an unproven framework, but do not knowingly duplicate existing project-owned helpers.
+- Limit behavioural modifications to the issue's exact operation and boundary. Do not rename, restyle, reformat, or optimise neighbouring code while implementing a fix.
+
+### 23.2 Size and complexity expectations
+
+These are **review triggers, not arbitrary hard limits**: ordinarily aim for **one behavioural invariant**, **one primary production subsystem**, **one to three production source files**, and **roughly 150 or fewer net new production lines** per implementation issue. Changes that add a new state owner, involve multiple authoritative managers, or require hundreds of lines should be treated as high-risk even if their net line count is small.
+
+If a proposed change exceeds those targets, **stop before implementing** and either:
+1. split it into smaller, individually verifiable changes with explicit dependencies and unchanged public contracts; or
+2. document the smallest viable reason it cannot be split, enumerate the extra state/paths introduced, and obtain explicit owner approval for the larger scope.
+
+Do not game the guideline by compressing code, omitting comments, or making many tightly coupled mini-commits that cannot be validated independently. Judge semantic complexity and reviewability first.
+
+### 23.3 Evidence-based correctness review
+
+Every requested corrective change must be classified as:
+
+- **Confirmed defect:** a reproducible failing test, direct code-level proof of incorrect behaviour, or an explicit contradiction of an approved contract. Fix it in a narrowly scoped production issue.
+- **Potential defect:** a plausible scenario without established incorrect behaviour. Write a focused failing regression test or investigate the contract first; do not automatically add production state or force another implementation revision.
+- **Future concern:** a possible scalability or architectural improvement outside current acceptance criteria. Record it separately only when actionable; do not expand the current issue.
+
+A reviewer should cite the exact path/method, entry conditions, observable incorrect state or callback sequence, and smallest correction. If expected semantics are not settled, request a design decision rather than presenting an assumption as a bug.
+
+### 23.4 Validate boundaries without speculative machinery
+
+For simulation, ECS, networking, and persistence changes, validate the specific lifecycle and ordering guarantee being modified (including teardown, reentrancy, and failure paths **when those are part of the affected contract**). Prefer deterministic tests at the smallest useful layer. Regression tests and production implementation remain **separate issues**, as defined in the GitHub workflow guide.
+
+Compilation and static review do not imply runtime correctness. Do not claim an edge case is fixed without test or proof; likewise, do not repeatedly request code changes for unproven edge cases.
+
+
+## 24. Convention Summary
 
 | Category | Standard |
 |---|---|
