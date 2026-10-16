@@ -54,17 +54,61 @@ Unless an issue explicitly identifies defective or temporary prototype behaviour
 
 Mechanical cleanup must remain mechanical.
 
-## 2.4 One focused commit per issue
+## 2.4 One focused change per issue; commit authority
 
-Each issue should result in one focused commit on `dev`.
+Each issue should result in **one focused change set** on `dev`. When a GitHub commit is expressly authorized by the owner, prefer one focused commit per issue and stop for validation afterward.
 
-Codex must stop after that commit and report the validation required. It must not automatically proceed into the next issue.
+**`AGENTS.md` currently prohibits Codex from committing or pushing by default.** Without explicit owner permission to commit, Codex must prepare and validate the focused change without committing/pushing, then report the diff and manual validation required. This guide never overrides `AGENTS.md` or grants commit permission merely by defining a workflow. Do not automatically proceed to the next issue.
 
 ## 2.5 Third-party code protection (mandatory for every issue)
 
 **Mandatory third-party boundary:** Third-party code is read-only unless the user explicitly requests a change to the specific third-party code. This includes imported packages, plugins, SDKs, tools, and externally authored source anywhere in the repository (including `Assets/` and `Assets/Editor/`). **Never modify third-party namespaces**, identifiers, files, assembly definitions, metadata, or vendor-owned assets. Do not restyle, rename, relocate, patch, reformat, or regenerate them. Follow `AGENTS.md`; if the task requires a third-party change, stop and request explicit permission. GitHub issues, plans, general refactor requests, and coding standards do not grant that permission.
 
 Every issue must be implemented without changing third-party code or its namespace. Issue scope, labels, and `ai-safe` status never override this rule. Review changed paths and ownership before claiming completion.
+
+## 2.6 Small, atomic implementation scope (mandatory)
+
+A production implementation issue must have **one directly testable behavioural invariant or mechanical change**. A roadmap workstream spanning spell casting, cooldowns, aura management, actor lifecycle and ECS scheduling is a **tracking issue**, not a single Codex implementation assignment.
+
+Default planning target (not a hard line-count quota): **one primary subsystem, one to three production files, and about 150 or fewer net new production lines**. Treat multiple authoritative state owners, new queues/maps, and changes exceeding that target as mandatory scope-review triggers even if the diff is short.
+
+Before starting an oversized issue, split it into ordered child implementation issues, each with specific methods, input/precondition, expected output or event ordering, non-goals, and a discrete validation gate. Mark the parent **TRACKER — DO NOT IMPLEMENT DIRECTLY** and link the children. Do not assign an umbrella task directly to Codex. If decomposition would break an indivisible correctness invariant, explain why and obtain explicit owner approval before implementing the larger scope. Do not meet size targets by minifying code or omitting essential comments.
+
+## 2.7 Defect evidence and test-first investigation
+
+Classify every review finding before requiring a production revision:
+
+1. **Confirmed defect:** reproducible failure, directly proven incorrect execution path, or conflict with a stated approved contract. Include concrete reproduction or code proof, expected versus actual behaviour, and the narrowest affected method(s). Require a targeted fix.
+2. **Potential defect:** plausible but unverified edge case, inferred race, or unclear semantics. **Investigate or add a focused regression test first** (test-only issue); do not demand production changes or add defensive state based on possibility alone.
+3. **Future concern:** improvement outside the current acceptance criteria. Record it independently when actionable; otherwise do not create work.
+
+Avoid review ping-pong: a review must distinguish evidence from conjecture, acknowledge when an earlier concern was only hypothetical, and refrain from repeatedly expanding code to cover conceivable failures. A test that exposes real incorrect behaviour justifies a subsequent narrow production fix. A test that confirms existing behaviour does not justify new infrastructure.
+
+The separation of production and regression-test issues in §2.2 still applies: “test first” means a **separate test-only issue/commit**, not mixing tests and runtime edits in one issue.
+
+## 2.8 Issue specificity and acceptance criteria
+
+Every Codex-executable issue must answer:
+
+- **Why / observed state:** exact failing scenario, directly evidenced deficiency, or explicitly approved requirement (not “make X robust”).
+- **Where:** named project-owned file(s), method(s), and current entry/exit boundary, based on reading latest `dev`.
+- **What changes:** exact invariant or state transition, including the minimal change required; explicitly preserve other behaviour.
+- **How to prove completion:** objective assertions of expected callback order/state and required static checks; distinguish actual tool-tested results from Unity/manual tests still needed.
+- **What is excluded:** neighbouring functionality and speculative abstractions, with any larger work linked to a separate issue.
+
+Reject vague or bundled assignments such as “fix all timing,” “improve ECS safety,” “refactor the combat managers,” or a checklist of unrelated subsystem migrations. A description can be long and **still be too broad**: precision of each item does not make several different changes one atomic issue.
+
+## 2.9 Changes discovered during implementation and review
+
+If an unforeseen requirement spans another owner/subsystem or needs a new production state store, **stop and reassess scope before coding**. Prefer a separate issue with a verified dependency. Do not add dictionaries, caches, mutation queues, managers, compatibility fallbacks, or lifecycle layers solely to anticipate theoretical cases.
+
+Reviewers should distinguish:
+- **Acceptance blocker:** confirmed defect of the current issue's required invariant.
+- **Regression-test candidate:** plausible scenario whose outcome is unknown.
+- **Out-of-scope follow-up:** separate behaviour or optimisation.
+
+A broad Phase 1.x tracker may describe the future end-state, but its linked implementation children must each be small enough for a single focused review and validation pass.
+
 
 # 3. Issue Title Format
 
@@ -443,7 +487,7 @@ Every phased implementation issue requires user validation before the next depen
 
 At minimum:
 
-1. Codex completes one focused commit;
+1. Codex prepares one focused change set (and commits **only when explicitly authorized** under §2.4);
 2. automated/static validation passes;
 3. the issue enters Project status `Validation`;
 4. the user performs the stated manual checks;
@@ -537,7 +581,7 @@ Unless an issue has a stricter protocol, use the following.
 9. Do not fix unrelated findings. Report them separately.
 10. Do not add speculative abstractions, compatibility fallbacks or new gameplay-design decisions.
 11. Run every static, automated and manual-preparation validation listed by the issue.
-12. Produce one focused commit on `dev`, then stop for user validation.
+12. Prepare one focused change set on `dev`; commit only with explicit user authorization consistent with `AGENTS.md`, then stop for user validation.
 13. If the issue conflicts with an authoritative design/style/implementation document, stop and report the conflict rather than improvising.
 14. Do not modify ANY third-party code or namespaces unless explicitly requested by the user for that third-party code; verify the final diff contains no unauthorized third-party changes. If required, stop and ask.
 ```
@@ -556,6 +600,13 @@ Do not add, remove or modify regression tests in this issue.
 ```
 
 For a non-`ai-safe` issue, also include the strict manual-validation section from section 9.
+
+### 11.1 Minimal-diff implementation and validation reporting
+
+Before writing production code, Codex must list the **specific behaviour/invariant it will change**, the existing owner(s) it will reuse, the intended files/methods, and whether a new state container/helper is truly necessary. Do not convert every reviewer hypothesis into a production edit.
+
+At completion, report net new production lines, changed production files, new persistent/runtime state owners, and the actual static/unit/manual checks performed. If the diff substantially exceeds the approved small scope, stop for owner scope review rather than claiming success because it compiles. Avoid repeated corrective revisions without a demonstrated regression or contract violation.
+
 
 # 12. Issue Readiness Checklist
 
@@ -578,7 +629,7 @@ An issue is `Ready` only when:
 
 An issue is `Done` only when:
 
-- implementation is committed to `dev`;
+- the focused change is on `dev` (committed only when permitted by §2.4);
 - the change is limited to the issue scope;
 - all automated/static validation passes;
 - required user manual validation passes;
@@ -587,6 +638,13 @@ An issue is `Done` only when:
 - `needs-validation` has been cleared;
 - relevant documentation is updated when the issue explicitly owns that documentation;
 - dependent work may safely proceed.
+
+## 13.1 Review-evidence completion gate
+
+Do not hold an otherwise compliant implementation open **solely** on speculative edge cases. Those belong in focused regression tests or investigation issues. Confirmed failures of an explicit acceptance criterion remain blockers; unresolved design decisions remain `needs-design`.
+
+Before closing a production issue, ensure its *owned* invariants are proven with the available tests/static evidence and the user's stated manual checks. A wider phase gate or follow-on test-only issue may still be pending without inventing additional runtime requirements for the production issue.
+
 
 # 14. Example Issue Skeleton
 
