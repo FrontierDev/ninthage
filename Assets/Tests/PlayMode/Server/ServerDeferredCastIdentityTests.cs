@@ -127,6 +127,7 @@ namespace Game.Runtime.Tests.Server
             Assert.That(stateAfterRejectedReplacement.Enabled, Is.True);
 
             RunSimulationTick(4);
+            RunSimulationTick(5);
 
             CollectionAssert.AreEqual(new[] { originalCastID, originalCastID }, tickCastIDs);
             CollectionAssert.AreEqual(new[] { "tick", "tick", "complete" }, callbackOrder);
@@ -150,7 +151,9 @@ namespace Game.Runtime.Tests.Server
 
                 replacementRequested = true;
                 ActorEndpoint.onServerSpellCastStarted?.Invoke(_actor, spell);
+                ActorEndpoint.onServerSpellCastCompleted -= _completionHandler;
                 ActorEndpoint.onServerSpellCastCompleted?.Invoke(actorID, spellID);
+                ActorEndpoint.onServerSpellCastCompleted += _completionHandler;
                 ActorEndpoint.onServerSpellCastInterrupted?.Invoke(actorID, spellID);
             };
             _completionHandler = (actorID, spellID) => _completedCastIDs.Add(GetCurrentSimulationEventCastID());
@@ -176,6 +179,7 @@ namespace Game.Runtime.Tests.Server
             RunSimulationTick(4);
             RunSimulationTick(5);
             RunSimulationTick(6);
+            RunSimulationTick(7);
 
             CollectionAssert.AreEqual(new[] { replacementCastID }, _completedCastIDs);
             Assert.That(GetCastState(out var completedState).Enabled, Is.False);
