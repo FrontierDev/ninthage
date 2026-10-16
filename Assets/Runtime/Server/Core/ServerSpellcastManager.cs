@@ -30,7 +30,7 @@ namespace Game.Server.Core
         // Store active spell casts by actor ID for quick access during ticks and completion.
         private readonly Dictionary<Guid, SpellContext> _activeSpellCasts = new();
         private readonly Dictionary<Guid, long> _activeCastIDs = new();
-        private readonly List<(float RemainingTime, Action onCallback)> _pendingActions = new();
+        private readonly List<PendingAction> _pendingActions = new();
         private readonly ServerSimulationMutationQueue<SpellMutation> _pendingMutations = new();
         private readonly Dictionary<long, SpellMutation> _pendingStarts = new();
         private readonly Dictionary<Guid, List<long>> _pendingStartIDsByActor = new();
@@ -38,6 +38,9 @@ namespace Game.Server.Core
         private readonly Dictionary<Guid, long> _pendingInterruptIDsByActor = new();
         private SpellMutation[] _commitSnapshot;
         private long _nextCastID;
+        private Guid _delayedActionActorID;
+        private long _delayedActionCastID;
+        private bool _hasDelayedActionContext;
 
         private enum SpellMutationKind : byte
         {
@@ -74,6 +77,21 @@ namespace Game.Server.Core
             internal long CastID { get; }
         }
 
+        private sealed class PendingAction
+        {
+            internal PendingAction(Guid actorID, long castID, Action callback)
+            {
+                ActorID = actorID;
+                CastID = castID;
+                Callback = callback;
+            }
+
+            internal readonly Guid ActorID;
+            internal readonly long CastID;
+            internal readonly Action Callback;
+            internal ServerSimulationRegistrationHandle Registration;
+        }
+
 
         private void Awake()
         {
@@ -100,26 +118,11 @@ namespace Game.Server.Core
             _initialized = true;
         }
 
-        private void Update()
-        {
-            for (int i = _pendingActions.Count - 1; i >= 0; i--)
-            {
-                var (time, callback) = _pendingActions[i];
-                time -= Time.deltaTime;
-                if (time <= 0f)
-                {
-                    _pendingActions.RemoveAt(i);
-                    callback?.Invoke();
-                }
-                else
-                {
-                    _pendingActions[i] = (time, callback);
-                }
-            }
-        }
-
         private void OnDestroy()
         {
+            foreach (PendingAction pendingAction in _pendingActions)
+                pendingAction.Registration.Cancel();
+
             _activeSpellCasts.Clear();
             _activeCastIDs.Clear();
             _pendingActions.Clear();
@@ -152,6 +155,7 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
+            CancelPendingActions(actor.ID);
             _activeSpellCasts.Remove(actor.ID);
             _activeCastIDs.Remove(actor.ID);
             CancelPendingStarts(actor.ID);
@@ -371,7 +375,7 @@ namespace Game.Server.Core
             {
                 if (component.CastPhase == SpellCastPhase.OnChannelTick)
                 {
-                    ApplySpellEffect(ctx, component);
+                    ApplySpellEffect(ctx, component, castID);
                     // Cast may have been interrupted by target evaluation
                     if (!IsCurrentCast(actorID, spellID, castID, ctx)) return;
                 }
@@ -408,7 +412,50 @@ namespace Game.Server.Core
         /// <param name="action"></param>
         private void OnSpellCastDelayedAction(float delay, Action action)
         {
-            _pendingActions.Add((delay, action));
+            if (action == null)
+                return;
+
+            if (!ServerSimulationClock.IsRunning)
+                throw new InvalidOperationException("Delayed spell actions require a running server simulation clock.");
+
+            float tickDuration = GameConfigurationManager.Config.ServerSimulationTickDuration;
+            if (float.IsNaN(delay) || float.IsInfinity(delay) || delay < 0f)
+                throw new ArgumentOutOfRangeException(nameof(delay), "A delayed spell action requires a finite, non-negative delay.");
+
+            long delayTicks = checked((long)Math.Ceiling((double)delay / tickDuration));
+            delayTicks = Math.Max(1L, delayTicks);
+            long dueTickID = checked(ServerSimulationClock.CurrentTickID + delayTicks);
+
+            Guid actorID = default;
+            long castID = 0;
+            if (_hasDelayedActionContext)
+            {
+                actorID = _delayedActionActorID;
+                castID = _delayedActionCastID;
+            }
+            else if (ServerECSManager.TryGetCurrentSimulationEvent(out var simulationEvent)
+                && (simulationEvent.Kind == ServerSimulationEventKind.SpellCastTick
+                    || simulationEvent.Kind == ServerSimulationEventKind.SpellCastCompleted)
+                && simulationEvent.CastID > 0)
+            {
+                actorID = simulationEvent.ActorID;
+                castID = simulationEvent.CastID;
+            }
+
+            PendingAction pendingAction = new(actorID, castID, action);
+            pendingAction.Registration = ServerSimulationClock.RegisterDue(
+                dueTickID,
+                _ => ExecutePendingAction(pendingAction));
+            _pendingActions.Add(pendingAction);
+        }
+
+        private void ExecutePendingAction(PendingAction pendingAction)
+        {
+            if (!_pendingActions.Remove(pendingAction))
+                return;
+
+            pendingAction.Registration.Cancel();
+            pendingAction.Callback.Invoke();
         }
 
         /// <summary>
@@ -425,6 +472,7 @@ namespace Game.Server.Core
             if (!TryGetCurrentCast(actorID, spellID, castID, out var ctx))
                 return;
 
+            CancelPendingActions(actorID, castID);
             if (ServerECSManager.IsMutationBoundaryActive)
             {
                 QueuePendingInterrupt(actorID, spellID, castID, ctx);
@@ -454,6 +502,7 @@ namespace Game.Server.Core
                     return;
                 }
 
+                CancelPendingActions(actorID, castID);
                 InvalidateActiveCast(actorID);
             }
 
@@ -526,7 +575,7 @@ namespace Game.Server.Core
             foreach (var component in ctx.Spell.Components)
             {
                 if (component.CastPhase == SpellCastPhase.OnCastEnd)
-                    ApplySpellEffect(ctx, component);
+                    ApplySpellEffect(ctx, component, castID);
             }
 
             // Start individual spell cooldown if defined (channelled spells already started theirs at cast start).
@@ -770,6 +819,22 @@ namespace Game.Server.Core
             return cancelled;
         }
 
+        private void CancelPendingActions(Guid actorID, long castID = 0)
+        {
+            for (int i = _pendingActions.Count - 1; i >= 0; i--)
+            {
+                PendingAction pendingAction = _pendingActions[i];
+                if (pendingAction.ActorID != actorID
+                    || (castID > 0 && pendingAction.CastID != castID))
+                {
+                    continue;
+                }
+
+                pendingAction.Registration.Cancel();
+                _pendingActions.RemoveAt(i);
+            }
+        }
+
         private void InvalidateActiveCast(Guid actorID)
         {
             _activeSpellCasts.Remove(actorID);
@@ -837,11 +902,28 @@ namespace Game.Server.Core
 
         #endregion
 
-        private void ApplySpellEffect(SpellContext ctx, SpellComponent component)
+        private void ApplySpellEffect(SpellContext ctx, SpellComponent component, long castID)
         {
             List<Actor> targets = component.TargetDefinition.Evaluate(ctx);
             foreach (var target in targets)
-                component.EffectDefinition.Execute(ctx, target);
+            {
+                Guid previousActorID = _delayedActionActorID;
+                long previousCastID = _delayedActionCastID;
+                bool hadDelayedActionContext = _hasDelayedActionContext;
+                _delayedActionActorID = ctx.Caster.ID;
+                _delayedActionCastID = castID;
+                _hasDelayedActionContext = true;
+                try
+                {
+                    component.EffectDefinition.Execute(ctx, target);
+                }
+                finally
+                {
+                    _delayedActionActorID = previousActorID;
+                    _delayedActionCastID = previousCastID;
+                    _hasDelayedActionContext = hadDelayedActionContext;
+                }
+            }
         }
 
         /// <summary>Determines whether an actor currently has an active spell cast.</summary>
