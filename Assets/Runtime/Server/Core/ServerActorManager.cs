@@ -216,6 +216,7 @@ namespace Game.Server.Core
 
         // Maps actor ID -> Actor MonoBehaviour so LateUpdate can push ECS WorldPositionD -> transform.
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
+        private readonly Dictionary<Guid, Entity> _actorEntities = new();
 
         // Update and LateUpdate each scan the same ECS query. They are aggregated into one
         // per-frame observation so both real contributions remain represented in the value.
@@ -229,6 +230,12 @@ namespace Game.Server.Core
         /// <param name="actor">Receives the actor when found.</param>
         /// <returns><see langword="true"/> when an actor was found.</returns>
         public bool TryGetActor(Guid actorID, out Actor actor) => _actorObjects.TryGetValue(actorID, out actor);
+
+        /// <summary>Finds the authoritative ECS entity associated with an actor identifier.</summary>
+        /// <param name="actorID">The actor identifier to find.</param>
+        /// <param name="entity">Receives the authoritative ECS entity when found.</param>
+        /// <returns><see langword="true"/> when the actor has a live authoritative entity.</returns>
+        internal bool TryGetActorEntity(Guid actorID, out Entity entity) => _actorEntities.TryGetValue(actorID, out entity);
 
         // Player tracking for validation.
         private readonly Dictionary<PlayerID, Actor> _playerActors = new();
@@ -282,6 +289,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorInterestChanged -= OnActorInterestChanged;
 
             _actorObjects.Clear();
+            _actorEntities.Clear();
             _playerActors.Clear();
             _lastValidatedPositions.Clear();
             _validationTimers.Clear();
@@ -378,6 +386,7 @@ namespace Game.Server.Core
 
         private void OnActorSpawned(Actor actor)
         {
+            ServerECSManager.ClearActorSimulationEventCancellation(actor.ID);
             var wp = actor.WorldPos;
             var entity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(entity, new Systems.ActorComponent
@@ -407,6 +416,7 @@ namespace Game.Server.Core
             }
 
             _actorObjects[actor.ID] = actor;
+            _actorEntities[actor.ID] = entity;
 
             if (actor.Owner != null)
             {
@@ -460,6 +470,8 @@ namespace Game.Server.Core
                 return;
 
             _actorObjects.Remove(actor.ID);
+            _actorEntities.Remove(actor.ID);
+            ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
         }
 
         private void OnActorOwnerChanged(Actor actor)

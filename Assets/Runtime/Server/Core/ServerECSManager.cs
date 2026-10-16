@@ -214,6 +214,18 @@ namespace Game.Server.Core
             return _hasCurrentSimulationEvent;
         }
 
+        /// <summary>Rejects buffered events for an actor whose authoritative lifetime ended.</summary>
+        internal static void InvalidateActorSimulationEvents(Guid actorID)
+        {
+            SIMULATION_EVENT_BUFFER.CancelActor(actorID);
+        }
+
+        /// <summary>Allows a newly authoritative actor identity to use the event buffer again.</summary>
+        internal static void ClearActorSimulationEventCancellation(Guid actorID)
+        {
+            SIMULATION_EVENT_BUFFER.ClearActorCancellation(actorID);
+        }
+
         private static void CommitPendingMutations()
         {
             _mutationCommitActive = true;
@@ -308,6 +320,16 @@ namespace Game.Server.Core
         {
             if (DefaultWorld == null || !DefaultWorld.IsCreated)
                 return false;
+
+            if (ServerActorManager.Instance == null
+                || !ServerActorManager.Instance.TryGetActor(simulationEvent.ActorID, out var actor)
+                || actor == null
+                || actor.ID != simulationEvent.ActorID
+                || !ServerActorManager.Instance.TryGetActorEntity(simulationEvent.ActorID, out Entity authoritativeEntity)
+                || authoritativeEntity != simulationEvent.SourceEntity)
+            {
+                return false;
+            }
 
             EntityManager entityManager = DefaultWorld.EntityManager;
             if (!entityManager.Exists(simulationEvent.SourceEntity)

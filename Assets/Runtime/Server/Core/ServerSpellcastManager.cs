@@ -32,6 +32,10 @@ namespace Game.Server.Core
         private readonly Dictionary<Guid, long> _activeCastIDs = new();
         private readonly List<(float RemainingTime, Action onCallback)> _pendingActions = new();
         private readonly ServerSimulationMutationQueue<SpellMutation> _pendingMutations = new();
+        private readonly Dictionary<long, SpellMutation> _pendingStarts = new();
+        private readonly Dictionary<Guid, List<long>> _pendingStartIDsByActor = new();
+        private readonly Dictionary<long, SpellMutation> _pendingInterrupts = new();
+        private readonly Dictionary<Guid, long> _pendingInterruptIDsByActor = new();
         private SpellMutation[] _commitSnapshot;
         private long _nextCastID;
 
@@ -120,6 +124,10 @@ namespace Game.Server.Core
             _activeCastIDs.Clear();
             _pendingActions.Clear();
             _pendingMutations.Clear();
+            _pendingStarts.Clear();
+            _pendingStartIDsByActor.Clear();
+            _pendingInterrupts.Clear();
+            _pendingInterruptIDsByActor.Clear();
             _commitSnapshot = null;
 
             ActorEndpoint.onServerSpellCastStarted -= OnSpellCastStarted;
@@ -146,6 +154,8 @@ namespace Game.Server.Core
 
             _activeSpellCasts.Remove(actor.ID);
             _activeCastIDs.Remove(actor.ID);
+            CancelPendingStarts(actor.ID, null);
+            RemovePendingInterrupt(actor.ID);
         }
 
         internal void PreparePendingMutations()
@@ -162,24 +172,23 @@ namespace Game.Server.Core
                 switch (mutation.Kind)
                 {
                     case SpellMutationKind.Start:
-                        if (mutation.Caster == null
+                        if (!TryTakePendingStart(mutation, out SpellMutation pendingStart))
+                            continue;
+
+                        if (pendingStart.Caster == null
                             || ServerActorManager.Instance == null
-                            || !ServerActorManager.Instance.TryGetActor(mutation.ActorID, out var currentCaster)
-                            || currentCaster != mutation.Caster)
+                            || !ServerActorManager.Instance.TryGetActor(pendingStart.ActorID, out var currentCaster)
+                            || currentCaster != pendingStart.Caster)
                         {
-                            Debug.Warning($"Discarding spell start for retired actor {mutation.ActorID}.");
+                            Debug.Warning($"Discarding spell start for retired actor {pendingStart.ActorID}.");
                             continue;
                         }
 
-                        if (!OnSpellCastStartedNow(currentCaster, mutation.Spell)
-                            && mutation.Context != null
-                            && !_activeSpellCasts.ContainsKey(mutation.ActorID))
-                        {
-                            RestoreActiveCast(mutation.ActorID, mutation.Context, mutation.CastID);
-                        }
+                        OnSpellCastStartedNow(currentCaster, pendingStart.Spell, pendingStart.CastID);
                         break;
                     case SpellMutationKind.Interrupt:
-                        CompleteDeferredInterrupt(mutation);
+                        if (TryTakePendingInterrupt(mutation, out SpellMutation pendingInterrupt))
+                            CompleteDeferredInterrupt(pendingInterrupt);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(mutation.Kind), mutation.Kind, "Unknown spell mutation kind.");
@@ -222,27 +231,18 @@ namespace Game.Server.Core
             if (caster == null || spell == null)
                 return;
 
-            if (ServerECSManager.IsMutationBoundaryActive)
+            if (ServerECSManager.IsMutationBoundaryActive
+                || _pendingStartIDsByActor.ContainsKey(caster.ID)
+                || _pendingInterruptIDsByActor.ContainsKey(caster.ID))
             {
-                _activeSpellCasts.TryGetValue(caster.ID, out var previousContext);
-                _activeCastIDs.TryGetValue(caster.ID, out var previousCastID);
-                InvalidateActiveCast(caster.ID);
-                _pendingMutations.Enqueue(
-                    new SpellMutation(
-                        SpellMutationKind.Start,
-                        caster.ID,
-                        caster,
-                        spell,
-                        previousContext,
-                        null,
-                        previousCastID));
+                QueuePendingStart(caster, spell);
                 return;
             }
 
             OnSpellCastStartedNow(caster, spell);
         }
 
-        private bool OnSpellCastStartedNow(Actor caster, SpellOverride spell)
+        private bool OnSpellCastStartedNow(Actor caster, SpellOverride spell, long requestedCastID = 0)
         {
             if (!IsValidated(caster, spell)) return false;
 
@@ -257,7 +257,7 @@ namespace Game.Server.Core
                     // Create the spell context here.
                     SpellContext ctx = new(spell, caster, caster.Target);
                     ctx.PositionTarget = spell.PositionTarget;
-                    long castID = checked(++_nextCastID);
+                    long castID = requestedCastID > 0 ? requestedCastID : checked(++_nextCastID);
                     InvalidateActiveCast(caster.ID);
                     _activeSpellCasts[caster.ID] = ctx;
                     _activeCastIDs[caster.ID] = castID;
@@ -266,6 +266,17 @@ namespace Game.Server.Core
                     // - just complete the cast immediately.
                     if (ctx.IsInstantCast())
                     {
+                        _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
+                        {
+                            SpellID = spell.BaseDefinition.DefinitionID,
+                            CastID = castID,
+                            RemainingCastTime = 0f,
+                            TotalCastTime = 0f,
+                            TotalTicks = 0f,
+                            TimeSinceLastTick = 0f
+                        });
+                        _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
+
                         // Trigger GCD for instant casts.
                         if (spell.BaseDefinition.TriggersGCD)
                             ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
@@ -408,22 +419,15 @@ namespace Game.Server.Core
         /// <param name="spellID"></param>
         private void OnSpellCastInterrupted(Guid actorID, string spellID)
         {
+            CancelPendingStarts(actorID, spellID);
+
             if (!TryResolveInterruptCast(actorID, spellID, out long castID)
                 || !TryGetCurrentCast(actorID, spellID, castID, out var ctx))
                 return;
 
             if (ServerECSManager.IsMutationBoundaryActive)
             {
-                InvalidateActiveCast(actorID);
-                _pendingMutations.Enqueue(
-                    new SpellMutation(
-                        SpellMutationKind.Interrupt,
-                        actorID,
-                        null,
-                        null,
-                        ctx,
-                        spellID,
-                        castID));
+                QueuePendingInterrupt(actorID, spellID, castID, ctx);
                 return;
             }
 
@@ -432,11 +436,9 @@ namespace Game.Server.Core
 
         private void CompleteDeferredInterrupt(SpellMutation mutation)
         {
-            if (_activeCastIDs.TryGetValue(mutation.ActorID, out long activeCastID)
-                && activeCastID != mutation.CastID)
-            {
+            if (!TryGetCurrentCast(mutation.ActorID, mutation.SpellID, mutation.CastID, out var context)
+                || context != mutation.Context)
                 return;
-            }
 
             InterruptCastNow(mutation.ActorID, mutation.SpellID, mutation.CastID, mutation.Context);
         }
@@ -623,6 +625,8 @@ namespace Game.Server.Core
             if (!_activeSpellCasts.TryGetValue(actorID, out context)
                 || !_activeCastIDs.TryGetValue(actorID, out long activeCastID)
                 || activeCastID != castID
+                || (_pendingInterruptIDsByActor.TryGetValue(actorID, out long pendingInterruptID)
+                    && pendingInterruptID == castID)
                 || context?.Spell?.BaseDefinition?.DefinitionID != spellID)
             {
                 context = null;
@@ -638,23 +642,144 @@ namespace Game.Server.Core
                 && currentContext == context;
         }
 
+        private void QueuePendingInterrupt(Guid actorID, string spellID, long castID, SpellContext context)
+        {
+            if (_pendingInterruptIDsByActor.ContainsKey(actorID))
+                return;
+
+            SpellMutation mutation = new(
+                SpellMutationKind.Interrupt,
+                actorID,
+                null,
+                null,
+                context,
+                spellID,
+                castID);
+
+            _pendingInterrupts.Add(castID, mutation);
+            _pendingInterruptIDsByActor.Add(actorID, castID);
+            try
+            {
+                _pendingMutations.Enqueue(mutation);
+            }
+            catch
+            {
+                RemovePendingInterrupt(actorID);
+                throw;
+            }
+        }
+
+        private bool TryTakePendingInterrupt(SpellMutation mutation, out SpellMutation pendingInterrupt)
+        {
+            if (!_pendingInterrupts.TryGetValue(mutation.CastID, out pendingInterrupt)
+                || pendingInterrupt.ActorID != mutation.ActorID
+                || pendingInterrupt.Context != mutation.Context
+                || pendingInterrupt.SpellID != mutation.SpellID)
+            {
+                pendingInterrupt = default;
+                return false;
+            }
+
+            RemovePendingInterrupt(mutation.ActorID);
+            return true;
+        }
+
+        private void RemovePendingInterrupt(Guid actorID)
+        {
+            if (!_pendingInterruptIDsByActor.Remove(actorID, out long castID))
+                return;
+
+            _pendingInterrupts.Remove(castID);
+        }
+
+        private void QueuePendingStart(Actor caster, SpellOverride spell)
+        {
+            long castID = checked(++_nextCastID);
+            SpellMutation mutation = new(
+                SpellMutationKind.Start,
+                caster.ID,
+                caster,
+                spell,
+                null,
+                null,
+                castID);
+
+            _pendingStarts.Add(castID, mutation);
+            if (!_pendingStartIDsByActor.TryGetValue(caster.ID, out var pendingIDs))
+            {
+                pendingIDs = new List<long>();
+                _pendingStartIDsByActor.Add(caster.ID, pendingIDs);
+            }
+
+            pendingIDs.Add(castID);
+            try
+            {
+                _pendingMutations.Enqueue(mutation);
+            }
+            catch
+            {
+                RemovePendingStart(castID);
+                throw;
+            }
+        }
+
+        private bool TryTakePendingStart(SpellMutation mutation, out SpellMutation pendingStart)
+        {
+            if (!_pendingStarts.TryGetValue(mutation.CastID, out pendingStart)
+                || pendingStart.ActorID != mutation.ActorID
+                || pendingStart.Caster != mutation.Caster
+                || pendingStart.Spell != mutation.Spell)
+            {
+                pendingStart = default;
+                return false;
+            }
+
+            RemovePendingStart(mutation.CastID);
+            return true;
+        }
+
+        private void RemovePendingStart(long castID)
+        {
+            if (!_pendingStarts.Remove(castID, out var pendingStart))
+                return;
+
+            if (!_pendingStartIDsByActor.TryGetValue(pendingStart.ActorID, out var pendingIDs))
+                return;
+
+            pendingIDs.Remove(castID);
+            if (pendingIDs.Count == 0)
+                _pendingStartIDsByActor.Remove(pendingStart.ActorID);
+        }
+
+        private bool CancelPendingStarts(Guid actorID, string spellID)
+        {
+            if (!_pendingStartIDsByActor.TryGetValue(actorID, out var pendingIDs))
+                return false;
+
+            bool cancelled = false;
+            long[] pendingIDSnapshot = pendingIDs.ToArray();
+            foreach (long castID in pendingIDSnapshot)
+            {
+                if (!_pendingStarts.TryGetValue(castID, out var pendingStart))
+                    continue;
+
+                if (spellID != null
+                    && pendingStart.Spell?.BaseDefinition?.DefinitionID != spellID)
+                {
+                    continue;
+                }
+
+                RemovePendingStart(castID);
+                cancelled = true;
+            }
+
+            return cancelled;
+        }
+
         private void InvalidateActiveCast(Guid actorID)
         {
             _activeSpellCasts.Remove(actorID);
             _activeCastIDs.Remove(actorID);
-        }
-
-        private void RestoreActiveCast(Guid actorID, SpellContext context, long castID)
-        {
-            _activeSpellCasts[actorID] = context;
-            _activeCastIDs[actorID] = castID;
-
-            if (castID <= 0 || !TryFindActorEntity(actorID, out Entity entity))
-                return;
-
-            var component = _entityManager.GetComponentData<Systems.SpellCastComponent>(entity);
-            if (component.CastID == castID)
-                _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, true);
         }
 
         private void DisableCastComponent(Guid actorID, long castID)
@@ -733,13 +858,14 @@ namespace Game.Server.Core
             return _activeSpellCasts.ContainsKey(actorID);
         }
 
-        /// <summary>Attempts to interrupt an actor's active spell cast.</summary>
+        /// <summary>Attempts to interrupt an actor's active spell cast or cancel a pending start.</summary>
         /// <param name="actorID">The actor identifier.</param>
-        /// <returns><see langword="true"/> when an active cast was interrupted.</returns>
+        /// <returns><see langword="true"/> when an active cast was interrupted or a pending start was cancelled.</returns>
         public bool TryInterruptCast(Guid actorID)
         {
+            bool cancelledPendingStart = CancelPendingStarts(actorID, null);
             if (!_activeSpellCasts.TryGetValue(actorID, out var ctx))
-                return false;
+                return cancelledPendingStart;
 
             ActorEndpoint.onServerSpellCastInterrupted?.Invoke(actorID, ctx.Spell.BaseDefinition.DefinitionID);
             return true;

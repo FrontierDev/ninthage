@@ -73,6 +73,7 @@ namespace Game.Server.Core
         private const int MAX_EVENTS_PER_TICK = 4096;
         private readonly List<ServerSimulationEvent> _events = new();
         private readonly List<ServerSimulationEvent> _stagedEvents = new();
+        private readonly HashSet<Guid> _cancelledActorIDs = new();
         private long _nextSequence;
         private long _tickID;
         private bool _active;
@@ -173,7 +174,10 @@ namespace Game.Server.Core
             try
             {
                 for (int i = 0; i < snapshot.Length && _active; i++)
-                    dispatcher(snapshot[i]);
+                {
+                    if (!_cancelledActorIDs.Contains(snapshot[i].ActorID))
+                        dispatcher(snapshot[i]);
+                }
             }
             finally
             {
@@ -193,9 +197,31 @@ namespace Game.Server.Core
         {
             _events.Clear();
             _stagedEvents.Clear();
+            _cancelledActorIDs.Clear();
             _nextSequence = 0;
             _tickID = 0;
             _active = false;
+        }
+
+        internal void CancelActor(Guid actorID)
+        {
+            _cancelledActorIDs.Add(actorID);
+            RemoveActorEvents(_events, actorID);
+            RemoveActorEvents(_stagedEvents, actorID);
+        }
+
+        internal void ClearActorCancellation(Guid actorID)
+        {
+            _cancelledActorIDs.Remove(actorID);
+        }
+
+        private static void RemoveActorEvents(List<ServerSimulationEvent> events, Guid actorID)
+        {
+            for (int i = events.Count - 1; i >= 0; i--)
+            {
+                if (events[i].ActorID == actorID)
+                    events.RemoveAt(i);
+            }
         }
 
         private static int CompareEvents(ServerSimulationEvent left, ServerSimulationEvent right)
