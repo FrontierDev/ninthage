@@ -1,3 +1,4 @@
+using Game.Server.Core;
 using Game.Shared.Performance;
 using Unity.Entities;
 
@@ -36,10 +37,17 @@ namespace Game.Server.Systems
             int cooldownEntryCount = 0;
             float fixedDeltaTime = SystemAPI.Time.DeltaTime;
 
-            foreach (var (_, entity) in
-                SystemAPI.Query<DynamicBuffer<CooldownElement>>()
+            foreach (var (_, actor, entity) in
+                SystemAPI.Query<DynamicBuffer<CooldownElement>, RefRO<ActorComponent>>()
                          .WithEntityAccess())
             {
+                if (ServerActorManager.Instance == null
+                    || !ServerActorManager.Instance.TryGetActorEntity(actor.ValueRO.ActorID, out Entity authoritativeEntity)
+                    || authoritativeEntity != entity)
+                {
+                    continue;
+                }
+
                 var buffer = SystemAPI.GetBuffer<CooldownElement>(entity);
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {

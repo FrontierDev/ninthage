@@ -3,7 +3,6 @@ using Game.Shared;
 using Game.Shared.Networking;
 using System;
 using System.Collections.Generic;
-using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
@@ -108,7 +107,7 @@ namespace Game.Server.Core
             if (!TryGetAuthoritativeActorEntity(actorID, out Entity entity))
                 return;
 
-            var fixedSpellID = new FixedString64Bytes(spellID);
+            var fixedSpellID = new Unity.Collections.FixedString64Bytes(spellID);
             var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity);
 
             // Update existing entry or append a new one.
@@ -155,7 +154,7 @@ namespace Game.Server.Core
             if (!TryGetAuthoritativeActorEntity(actorID, out Entity entity))
                 return 0f;
 
-            var fixedSpellID = new FixedString64Bytes(spellID);
+            var fixedSpellID = new Unity.Collections.FixedString64Bytes(spellID);
             float pendingCooldown = _pendingCooldowns.TryGetValue((actorID, spellID), out float pending)
                 ? pending
                 : 0f;
