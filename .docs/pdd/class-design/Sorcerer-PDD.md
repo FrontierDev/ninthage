@@ -167,6 +167,8 @@ Magic school assignment follows ability mechanics; specialisation theme is **not
 
 The benchmark consists of **Chaos Bolt** (diagonal projectile), **Crystallise** (ice-themed defensive barrier), **Winds of Wisdom** (calm air/intellect party buff) and **Dimensional Rift** (narrow vertical tear through space). Each must be recognisable independently at 32, 40, 48 and 64 pixels without its label. **Crystallise must read as protection rather than crystal summoning; Nullify as spell interruption rather than a destructive explosion; Dimensional Rift as a planar tear rather than a scenic portal.**
 
+**Voidbrand-specific continuity:** use the accepted **Chaos Bolt** and **Brand** icon images as mandatory painterly anchors. Phase Shift, Control Rift: Riftwalk and Superposition should share their restrained near-black/plum, violet and magenta brushwork and contrast, with bright blue/cyan subordinate. Riftwalk must portray a **compact figure entering an existing narrow rift**, not a detailed hero scene, giant portal or multiple competing neon trails. Each Voidbrand icon must be judged beside both reference icons at 40×40. The previously generated, more elaborate Riftwalk direction is **not approved as a style reference**; see [Spell Icon Art Direction PDD](../Spell-Icon-Art-Direction-PDD.md#32-sorcerer--voidbrand-continuity-rule).
+
 Art briefs and differentiation guidance for all sixteen agreed Sorcerer spells are maintained centrally in the Spell Icon Art Direction PDD. Those art briefs do not fix unapproved school, mana, cooldown or damage values.
 
 ## 9. Phase 2 vertical-slice goals and verification
