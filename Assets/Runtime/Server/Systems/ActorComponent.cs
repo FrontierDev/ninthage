@@ -61,6 +61,8 @@ namespace Game.Server.Systems
         public FixedString64Bytes SpellID;
         /// <summary>The unique cast generation associated with this active cast.</summary>
         public long CastID;
+        /// <summary>The authoritative tick on which this cast completes.</summary>
+        public long CompletionTickID;
         /// <summary>The remaining cast time.</summary>
         public float RemainingCastTime;
         /// <summary>The total cast duration.</summary>

@@ -66,6 +66,9 @@ namespace Game.Server.Core
         /// <summary>Gets whether the server ECS world has been initialized.</summary>
         public static bool Initialized => _initialized;
 
+        /// <summary>Gets the authoritative tick currently being simulated.</summary>
+        internal static long CurrentSimulationTickID => _currentSimulationTickID;
+
         /// <summary>Gets the server's default ECS world.</summary>
         public static World DefaultWorld { get; private set; }
 

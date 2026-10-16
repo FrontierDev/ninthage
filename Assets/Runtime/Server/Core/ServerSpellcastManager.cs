@@ -275,6 +275,7 @@ namespace Game.Server.Core
                         {
                             SpellID = spell.BaseDefinition.DefinitionID,
                             CastID = castID,
+                            CompletionTickID = 0,
                             RemainingCastTime = 0f,
                             TotalCastTime = 0f,
                             TotalTicks = 0f,
@@ -296,6 +297,7 @@ namespace Game.Server.Core
                         {
                             SpellID = spell.BaseDefinition.DefinitionID,
                             CastID = castID,
+                            CompletionTickID = 0,
                             RemainingCastTime = spell.CastTime,
                             TotalCastTime = spell.CastTime,
                             TotalTicks = spell.TotalTicks,
