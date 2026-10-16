@@ -23,7 +23,7 @@ Radiant Slate's *interface chrome* is neutral, dark and deliberately restrained.
 5. **Bold, distinct silhouettes:** neighbouring abilities must differ in *shape and composition*, not just in colour. A projectile, melee impact, protective shield, cancelling glyph, planar tear and area explosion must not share the same swirling-circle motif.
 6. **Controlled palette and light:** each icon should usually use two or three dominant hues/value families with **one principal focal highlight**. Colours support the spell's fantasy and mechanical meaning; magical-school assignments do not force a colour formula. Background values remain supportive. **An effect filling most of the canvas with maximum brightness is not acceptable.**
 7. **Simplified, painterly fantasy rendering:** allow visible hand-painted form, deliberate broad strokes, compact highlights and moderate material cues. Do not substitute splash art, photorealistic scenery, rendered concept art, dense simulation effects or isolated pictograms. **Match the rendering density, brushwork and contrast of the class's approved visual anchors.**
-8. **Avoid interchangeable magical noise:** overused concentric vortices, floating crystals, bright cyan/violet ribbons, excess fragments, excessive bloom and uniformly neon rendering are not an acceptable default visual grammar.
+8. **Avoid interchangeable magical noise:** overused concentric vortices, floating crystals, bright cyan/violet ribbons, excess fragments, excessive bloom and uniformly neon rendering are not an acceptable default visual grammar. **Humanoid/hooded silhouettes, floating rocks, stray fragments and cosmetic debris are not default spell-icon subjects**; only use them when genuinely essential to the spell's approved visual meaning. Never add them to fill space.
 9. **Visual impact belongs at working size:** the icon should still read at **32×32**, the standard **40×40** action-bar slot (100% UI scale), **48×48** and **64×64**. Reviewing only the full-resolution image is insufficient.
 10. **No other-purpose content:** do not introduce scenic architecture, unrelated characters, generic portals, random runes or effects merely to make an icon elaborate. Objects must reinforce the intended ability action.
 
@@ -63,6 +63,20 @@ The accepted **Chaos Bolt** and **Brand** icons are the **primary painterly styl
 **Control Rift: Riftwalk correction:** depict a **single compact, dark moving figure visibly entering a narrow, established dimensional tear**, with the tear serving as the destination rather than dominating the entire image. The gesture, silhouette and violet/magenta brushwork should be legible beside Chaos Bolt and Brand. **Avoid the previous direction of a detailed humanoid action scene with a large blue-lit portal and competing pink energy streams.** That treatment is **not an approved style anchor** and must be revised before asset approval.
 
 This palette guidance is specific to **Voidbrand** and does not require Fluxweaver (ice/protection/healing) or Cataclyst (fire/high-Instability damage) to use violet/magenta palettes.
+
+### 3.3 Cross-palette painterly consistency and Cataclyst fire/earth treatment
+
+**Shared style is not shared colour.** A different magical school or material must preserve the approved painterly **mark-making, simplification, contour hierarchy, controlled lighting and background depth** without introducing the anchor icon's hues. When comparing icons from different palettes, judge those formal properties rather than their RGB similarity.
+
+- **Brushwork scale:** construct the action from a few broad, directionally coherent strokes and clearly separated masses. Edge texture and material cracks are subordinate, not the structure of the image. Dense micro-fractures, repeated tiny fragments, speckled ash and procedural texture break continuity even if the palette is correct.
+- **Value hierarchy:** use a substantial painted dark region and **one small, dominant hot highlight**. Keep secondary flames, reflections, impact sprays and background atmosphere noticeably darker; the icon must not be uniformly bright or saturated edge to edge.
+- **One unambiguous silhouette:** the primary effect occupies the centre of attention at 40 px. Do not substitute a field of small projectiles or sparks for a single forceful action, or a scenic battle-scale eruption for an action-bar icon.
+- **Material treatment:** fire, molten earth, ice, shadow and raw Chaos must be painted with the *same simplification and broad-brush treatment* despite their different physical textures. Do not use finely photographed lava surfaces or ultra-detailed rock simulations next to abstract brush-painted magic.
+- **No filler subjects:** avoid humanoids, floating stones, loose debris, decorative rune rings and shards except when explicitly justified by the spell. Grounded molten/charred material integral to a fire-and-earth spell is legitimate; **separate flying rock fragments are not automatically legitimate**.
+
+**Pyroclasm locked art brief (Cataclyst):** a **single heavy, concentrated mass of destructive molten fire and earth** moving or erupting with unmistakable force, rendered through **broad, bold strokes**. Palette is **white-hot yellow at a small focal core, molten orange, deep red, charcoal/blackened earth**, with a fully painted dark, smoky red/umber background. **No magenta, pink or violet** in Pyroclasm's palette. Show the earth/fire identity through a **large cohesive charred/magma form**, not lots of tiny individual stones. Keep negative space around the dominant action. **Do not depict a meteor shower, multiple parallel fireballs (Molten Barrage), a bright all-over impact cloud, ornate rune circle, floating rock fragments or decorative crystal shards**. Differentiation from **Surge** is compositional and mechanical: Pyroclasm is a weighty fire/earth destructive mass; Surge is a volatile raw-magic release. They may share broad painterly techniques **without sharing colour schemes or silhouettes**.
+
+**Required cross-palette review:** compare Pyroclasm with the approved painterly **Surge** and **Chaos Bolt/Brand** images at 40 px for brush scale, edge density, single-light hierarchy, silhouette and painted background treatment. Do **not** import their magenta/Chaos colours to make the comparison pass. If those references are unavailable, mark the generated candidate unverified rather than declaring approval.
 
 ## 4. Relationship to Radiant Slate UI
 
@@ -108,7 +122,7 @@ The primary subjects below are icon design directions only, not new gameplay eff
 | **Superposition** | Several aligned/offset outlines of **a visible** caster | **Voidbrand palette:** dark plum/violet with restrained magenta; visible figure/afterimages must not imply true invisibility; render in the same simplified painterly treatment as Brand |
 | **Dissipate** | Instability energy released into gentle outward healing pulses | Quiet teal/sea-green movement, controlled and restorative |
 | **Rewind** | A single reversing temporal path restoring the subject | Blue-grey with muted gold direction accent; avoid dense decorative clockwork |
-| **Pyroclasm** | Heavy descending/compressed mass of destructive flame | Black-red/bright molten orange, distinct from rapid multi-shot Molten Barrage |
+| **Pyroclasm** | **One cohesive heavy molten fire/earth mass**, sharply separated from a dark painted backdrop | **Yellow-white core, orange, dark red, charred brown/black; strictly no magenta/purple**. Broad brushstrokes, restrained lava cracks, no meteor shower, no detached rocks, distinct from Molten Barrage and Surge |
 | **Surge** | Focused magical discharge immediately exhausting its source | Sharp white-hot central release against hot red/purple-black backdrop; not another rift explosion |
 
 **A palette or silhouette in this table can be revised after side-by-side testing**, but the core requirement—distinctive, readable, coherent painted art—is not provisional.
@@ -123,6 +137,9 @@ Reject a spell icon when any of the following are true:
 - Multiple icons have the same dominant swirl, shard halo, purple/cyan palette and focal point.
 - An icon deviates substantially from approved class anchors in **brushwork, composition complexity, highlight concentration, shadow values or colour balance**, even if its mechanics and broad colours are correct.
 - A Voidbrand icon is overwhelmed by electric blue/cyan, high-luminance magenta, detailed humanoid staging, a large sci-fi portal or multiple competing energy streams instead of the restrained Chaos Bolt/Brand style.
+- A spell icon uses **humanoids, floating rocks, loose fragments or decorative rune rings as filler** rather than a mechanically justified primary subject.
+- A fire/earth icon contains many tiny lava cracks, disconnected rock fragments, uniformly bright flames or photographic material detail, failing to match the broader approved painterly brush scale.
+- **Pyroclasm** includes magenta/purple, a swarm of meteors/rock fragments, multiple competing fire trails or an oversized scene that cannot read as one heavy destructive molten mass at 40×40.
 - Atmospheric/detail effects overpower the spell's function.
 - An ice **shield** reads as an offensive ice projectile, or an **interrupt** reads as an explosion.
 - The artwork is an oversized splash painting or scenic portal rather than compact painted fantasy iconography.
