@@ -35,7 +35,7 @@ namespace Game.Server.Systems
             using var markerScope = SPELL_CAST_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int activeCastCount = 0;
-            float dt = SystemAPI.Time.DeltaTime;
+            float fixedDeltaTime = SystemAPI.Time.DeltaTime;
 
             foreach (var (spellCast, actor, entity) in
                 SystemAPI.Query<RefRW<SpellCastComponent>, RefRO<ActorComponent>>()
@@ -43,29 +43,44 @@ namespace Game.Server.Systems
             {
                 if (telemetryEnabled)
                     activeCastCount++;
-                spellCast.ValueRW.RemainingCastTime -= dt;
+
+                float remainingCastTimeBeforeUpdate = spellCast.ValueRO.RemainingCastTime;
+                float remainingCastTime = remainingCastTimeBeforeUpdate - fixedDeltaTime;
+                spellCast.ValueRW.RemainingCastTime = remainingCastTime;
 
                 // Channel tick logic
                 if (spellCast.ValueRO.TotalTicks > 0f)
                 {
                     float tickInterval = spellCast.ValueRO.TotalCastTime / spellCast.ValueRO.TotalTicks;
-                    spellCast.ValueRW.TimeSinceLastTick += dt;
-
-                    if (spellCast.ValueRO.TimeSinceLastTick >= tickInterval)
+                    if (tickInterval > 0f)
                     {
-                        spellCast.ValueRW.TimeSinceLastTick -= tickInterval;
+                        float channelDelta = remainingCastTimeBeforeUpdate > 0f
+                            ? remainingCastTimeBeforeUpdate < fixedDeltaTime
+                                ? remainingCastTimeBeforeUpdate
+                                : fixedDeltaTime
+                            : 0f;
+                        float timeSinceLastTick = spellCast.ValueRO.TimeSinceLastTick + channelDelta;
 
-                        ServerECSManager.QueueSimulationEvent(
-                            ServerSimulationEventKind.SpellCastTick,
-                            actor.ValueRO.ActorID,
-                            entity,
-                            spellCast.ValueRO.SpellID,
-                            castID: spellCast.ValueRO.CastID);
+                        while (timeSinceLastTick >= tickInterval)
+                        {
+                            timeSinceLastTick -= tickInterval;
+
+                            ServerECSManager.QueueSimulationEvent(
+                                ServerSimulationEventKind.SpellCastTick,
+                                actor.ValueRO.ActorID,
+                                entity,
+                                spellCast.ValueRO.SpellID,
+                                castID: spellCast.ValueRO.CastID);
+                        }
+
+                        spellCast.ValueRW.TimeSinceLastTick = timeSinceLastTick;
                     }
                 }
 
-                if (spellCast.ValueRO.RemainingCastTime <= 0f)
+                if (remainingCastTime <= 0f)
                 {
+                    spellCast.ValueRW.RemainingCastTime = 0f;
+
                     // Disable the component (cast finished)
                     state.EntityManager.SetComponentEnabled<SpellCastComponent>(entity, false);
 

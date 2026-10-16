@@ -852,6 +852,22 @@ namespace Game.Server.Core
             return _activeSpellCasts.ContainsKey(actorID);
         }
 
+        /// <summary>Gets the remaining authoritative cast time for an actor.</summary>
+        /// <param name="actorID">The actor to query.</param>
+        /// <returns>The remaining cast time in seconds, or zero when no cast is active.</returns>
+        public float GetRemainingCastTime(Guid actorID)
+        {
+            if (!TryFindActorEntity(actorID, out Entity entity)
+                || !_entityManager.IsComponentEnabled<Systems.SpellCastComponent>(entity))
+            {
+                return 0f;
+            }
+
+            return Mathf.Max(
+                0f,
+                _entityManager.GetComponentData<Systems.SpellCastComponent>(entity).RemainingCastTime);
+        }
+
         /// <summary>Attempts to interrupt an actor's active spell cast or cancel a pending start.</summary>
         /// <param name="actorID">The actor identifier.</param>
         /// <returns><see langword="true"/> when an active cast was interrupted or a pending start was cancelled.</returns>
