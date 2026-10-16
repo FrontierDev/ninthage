@@ -154,7 +154,7 @@ namespace Game.Server.Core
 
             _activeSpellCasts.Remove(actor.ID);
             _activeCastIDs.Remove(actor.ID);
-            CancelPendingStarts(actor.ID, null);
+            CancelPendingStarts(actor.ID);
             RemovePendingInterrupt(actor.ID);
         }
 
@@ -419,10 +419,12 @@ namespace Game.Server.Core
         /// <param name="spellID"></param>
         private void OnSpellCastInterrupted(Guid actorID, string spellID)
         {
-            CancelPendingStarts(actorID, spellID);
+            if (!TryResolveInterruptCast(actorID, spellID, out long castID))
+                return;
 
-            if (!TryResolveInterruptCast(actorID, spellID, out long castID)
-                || !TryGetCurrentCast(actorID, spellID, castID, out var ctx))
+            // A spell-specific interrupt may only cancel a pending operation with the same generation.
+            CancelPendingStart(actorID, spellID, castID);
+            if (!TryGetCurrentCast(actorID, spellID, castID, out var ctx))
                 return;
 
             if (ServerECSManager.IsMutationBoundaryActive)
@@ -751,7 +753,7 @@ namespace Game.Server.Core
                 _pendingStartIDsByActor.Remove(pendingStart.ActorID);
         }
 
-        private bool CancelPendingStarts(Guid actorID, string spellID)
+        private bool CancelPendingStarts(Guid actorID)
         {
             if (!_pendingStartIDsByActor.TryGetValue(actorID, out var pendingIDs))
                 return false;
@@ -760,20 +762,27 @@ namespace Game.Server.Core
             long[] pendingIDSnapshot = pendingIDs.ToArray();
             foreach (long castID in pendingIDSnapshot)
             {
-                if (!_pendingStarts.TryGetValue(castID, out var pendingStart))
+                if (!_pendingStarts.ContainsKey(castID))
                     continue;
-
-                if (spellID != null
-                    && pendingStart.Spell?.BaseDefinition?.DefinitionID != spellID)
-                {
-                    continue;
-                }
 
                 RemovePendingStart(castID);
                 cancelled = true;
             }
 
             return cancelled;
+        }
+
+        private bool CancelPendingStart(Guid actorID, string spellID, long castID)
+        {
+            if (!_pendingStarts.TryGetValue(castID, out var pendingStart)
+                || pendingStart.ActorID != actorID
+                || pendingStart.Spell?.BaseDefinition?.DefinitionID != spellID)
+            {
+                return false;
+            }
+
+            RemovePendingStart(castID);
+            return true;
         }
 
         private void InvalidateActiveCast(Guid actorID)
@@ -863,7 +872,8 @@ namespace Game.Server.Core
         /// <returns><see langword="true"/> when an active cast was interrupted or a pending start was cancelled.</returns>
         public bool TryInterruptCast(Guid actorID)
         {
-            bool cancelledPendingStart = CancelPendingStarts(actorID, null);
+            // This public actor-level cancellation intentionally cancels every pending start first.
+            bool cancelledPendingStart = CancelPendingStarts(actorID);
             if (!_activeSpellCasts.TryGetValue(actorID, out var ctx))
                 return cancelledPendingStart;
 
