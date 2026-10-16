@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using Game.Shared.Data;
 using Game.Shared.Runtime.Actors;
+using System;
+using System.Collections.Generic;
 
 namespace Game.Shared.Runtime.Spellcasting
 {
