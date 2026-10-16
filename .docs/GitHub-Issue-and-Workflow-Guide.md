@@ -110,6 +110,27 @@ Reviewers should distinguish:
 A broad Phase 1.x tracker may describe the future end-state, but its linked implementation children must each be small enough for a single focused review and validation pass.
 
 
+## 2.10 Test value and critical-coverage gate (mandatory)
+
+**Do not add tests for the sake of tests, coverage percentages or an automatic test-per-issue rule.** Before creating a regression-test issue or adding a test to an existing one, establish that **all four** conditions hold:
+
+1. **Critical behaviour:** It protects an important gameplay outcome, server-authority/security boundary, networking or persistence contract, or authoritative timing/lifecycle invariant.
+2. **Credible failure:** The test would catch an observed regression, a realistic failure introduced by the affected change, or a particularly sensitive integration boundary. State the concrete failure mode; speculative permutations do not qualify on their own.
+3. **Unique coverage:** Existing tests and reliable assertions do not already adequately guard this behaviour. Reuse existing fixtures and coverage instead of cloning a fixed-tick, render-FPS, restart or cast-identity test into every subsystem.
+4. **Meaningful assertion:** The test checks an observable authoritative state, event identity/order/count, rejected action or other user-relevant result. Merely invoking a method without exception, testing a trivial getter, or asserting an implementation detail without a gameplay consequence does not qualify.
+
+**Every executable test issue must explicitly specify for each required test:**
+- the critical invariant and concrete failure it detects;
+- why existing coverage is insufficient;
+- the preconditions/fixture, triggering operation and relevant timing or lifecycle boundary;
+- the expected **observable** result (including exact order/count/tick when important);
+- the intended test-only file/owner, and what validation can actually be executed versus what needs owner/Unity validation.
+
+**Minimise test count and fixture cost.** Prefer a small number of high-value integration/regression tests where a system boundary is the risk. Avoid duplicated assertions, giant end-to-end fixtures, exhaustive frame-rate or numerical edge-case matrices, trivial property tests, testing currently unimplemented mechanics, and synthetic failure scenarios without a credible production path. When foundational clock/event tests already prove generic cadence or lifecycle, gameplay tests should assert only the new gameplay-specific consequence. Add a further case only when it protects a distinct uncovered critical failure.
+
+A tracker may record broader possible coverage, but **candidates are not mandatory tests**. Reassess each child against the four conditions when the corresponding production implementation exists. Remove or downgrade unjustified candidates to optional investigation/manual smoke checks; do not require an entire checklist simply because it was drafted. A discovered defect still requires evidence-first classification under §2.7. Keep test-only work separate from production changes under §2.2.
+
+
 # 3. Issue Title Format
 
 Roadmap work uses:
