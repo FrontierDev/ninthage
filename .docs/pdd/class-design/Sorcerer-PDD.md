@@ -2,7 +2,7 @@
 
 **Status:** Active design baseline — agreed level 1–10 kit and specialisation identity; values not yet fully balanced or implemented  
 **Project:** Ninth Age  
-**Last updated:** 2026-10-15  
+**Last updated:** 2026-10-16  
 **Scope:** Class-first Sorcerer toolkit, Instability, level-10 playable slice, roles, specialisation talent milestones and unresolved balance
 
 ## 1. Authority and implementation status
@@ -66,6 +66,30 @@ Crystallise **talents** may reduce its cast time and increase shield absorption;
 Start with Chaos Bolt for ranged pressure and Instability generation; use Brand when close-quarters action and Attack Power suppression are advantageous. Choose when to cast Crystallise to reduce Instability and absorb damage. Use Nullify for enemy casts. At level 10, create a rift and decide when to sacrifice it using Control Rift: Nova.
 
 No level-1–10 ability should be tuned as an opening nuke that removes most of a normal enemy's health; high-powered burst/very long casts belong later in progression. A meaningful early toolkit is preferable to an overloaded one.
+
+### 3.3 Level 20 — Hailstorm (shared class progression)
+
+**Hailstorm** is a **level-20 class-trainer spell** available to **all three Sorcerer specialisations**. It is learned **after** the level-10 class baseline and specialisation introductions and therefore **does not count toward or change** the agreed level-10 ability budget. It is **not** a Cataclyst-only spell or a talent-tree spell.
+
+| Property | Intended behaviour |
+|---|---|
+| **Name** | **Hailstorm** |
+| **Unlock** | **Level 20**, class trainer |
+| **School/theme** | **Water damage**, visually expressed as falling hail and ice |
+| **Targeting** | Ground-targeted area chosen by the Sorcerer, not a single hostile target |
+| **Execution** | **Channeled** spell; delivers Water damage at authored intervals to hostile units inside the selected area |
+| **Instability** | **Proposed:** modest Instability generation per **channel tick**, independent of the number of enemies struck; exact generation and cap interactions to be balanced |
+| **Movement** | Stationary channel by default, consistent with ordinary combat-system channel rules |
+| **Cooldown** | **Proposed:** no additional ability cooldown beyond ordinary channel/action rules |
+| **Control** | No baseline slow, freeze or other crowd control. A later talent could add slowing, but this is not part of the base spell |
+
+**Placeholder tooltip:** "Summon a violent hailstorm at the target location, dealing periodic Water damage to enemies within its area."
+
+**Gameplay purpose:** Hailstorm introduces a sustained **area-damage** option independent of the Dimensional Rift system. Unlike **Control Rift: Nova**, it **does not require or consume a rift**. Unlike **Molten Barrage**, it is an area-focused Water channel rather than a high-Instability Fire accelerator. Damage per target should be balanced for multiple-target use, not make it the best single-target filler or a routine opening nuke.
+
+**Channelling contract:** channel ticks damage currently eligible enemies within the stationary ground area. When interrupted or cancelled, **future ticks stop**; Hailstorm does not continue as an independent damaging ground aura by default. Moving targets may enter or leave its area during the channel.
+
+**Unresolved tuning:** channel duration, tick interval, radius, cast/range restrictions, Mana cost, coefficients, spell-rank scaling, Instability generated per tick and whether actual enemy hits are required for a generation tick. These require separate balance approval before implementation. The no-cooldown and per-tick Instability proposals are design defaults rather than fixed balance numbers.
 
 ## 4. Level 10 — initial specialisation abilities
 
@@ -139,7 +163,7 @@ Dimensional Rift is a **single shared class anchor** (one active at a time). Con
 
 ## 7. Role coverage and capability matrix adjustments
 
-Sorcerer class-wide access includes a ranged damaging spell, melee weapon-scaling magical attack, a defensive absorption shield, an interrupt, party Intelligence utility, Instability management and the Rift/Nova pair. Other controls, dispels, and AoE options remain possible later but are **not automatically part of the level-10 kit** merely because the provisional cross-class matrix lists their type.
+Sorcerer class-wide access at level 10 includes a ranged damaging spell, melee weapon-scaling magical attack, a defensive absorption shield, an interrupt, party Intelligence utility, Instability management and the Rift/Nova pair. **At level 20, Hailstorm adds a conventional ground-targeted channeled Water AoE** without requiring a rift. Other controls, dispels and further AoE options remain possible later but are **not automatically part of the level-10 kit** merely because the provisional cross-class matrix lists their type.
 
 **Role responsibilities:**
 
@@ -153,7 +177,7 @@ Sorcerer class-wide access includes a ranged damaging spell, melee weapon-scalin
 
 ## 8. Magical schools and equipment
 
-**Confirmed:** Chaos Bolt and Brand deal **Chaos** damage. Molten Barrage deals **Fire** damage. The precise magical school/mitigation handling of Crystallise, Winds of Wisdom, Nullify, Dimensional Rift, Control Rift effects, Locus and advanced talent spells needs a separate mechanics-first review.
+**Confirmed:** Chaos Bolt and Brand deal **Chaos** damage. Molten Barrage deals **Fire** damage. Level-20 Hailstorm deals **Water** damage (ice-themed). The precise magical school/mitigation handling of Crystallise, Winds of Wisdom, Nullify, Dimensional Rift, Control Rift effects, Locus and advanced talent spells needs a separate mechanics-first review.
 
 **Equipment direction:** a Sorcerer may be an ordinary light-armour spellcaster, but **Voidbrand must be able to use a melee weapon** for Brand and future melee spells. Exact weapon choices, class equipment rules and damage coefficients are open.
 
@@ -196,6 +220,7 @@ Later talent-tree spells are *design targets*, **not Phase 2 prerequisites**. Ch
 7. Specify Rewind's damage history, dead-target rules and health-only rollback semantics; do not infer rewind of non-health game state.
 8. Design Overload self-damage calculation, type/school, interactions with cooldowns, death and Locus, and no-generation enforcement across all Instability sources.
 9. Resolve Class asset discrepancies (**Riftwalker → Voidbrand**, deprecated `surge` stat / old rift ability names) when implementation work is authorised, not in this documentation change.
+10. Balance level-20 **Hailstorm**: channel duration, radius, Water tick damage, Mana cost and Instability gain per tick; preserve distinction from Rift/Nova and Molten Barrage.
 
 ## 11. Design acceptance criteria
 
