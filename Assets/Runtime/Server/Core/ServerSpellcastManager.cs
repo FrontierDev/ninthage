@@ -422,8 +422,6 @@ namespace Game.Server.Core
             if (!TryResolveInterruptCast(actorID, spellID, out long castID))
                 return;
 
-            // A spell-specific interrupt may only cancel a pending operation with the same generation.
-            CancelPendingStart(actorID, spellID, castID);
             if (!TryGetCurrentCast(actorID, spellID, castID, out var ctx))
                 return;
 
@@ -770,19 +768,6 @@ namespace Game.Server.Core
             }
 
             return cancelled;
-        }
-
-        private bool CancelPendingStart(Guid actorID, string spellID, long castID)
-        {
-            if (!_pendingStarts.TryGetValue(castID, out var pendingStart)
-                || pendingStart.ActorID != actorID
-                || pendingStart.Spell?.BaseDefinition?.DefinitionID != spellID)
-            {
-                return false;
-            }
-
-            RemovePendingStart(castID);
-            return true;
         }
 
         private void InvalidateActiveCast(Guid actorID)

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Game.Shared.Data;
-
 using Game.Shared.Runtime.Actors;
+
 namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>

@@ -1,7 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Systems;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
-using Game.Server.Systems;
 using System;
 using Unity.Collections;
 using Unity.Core;
