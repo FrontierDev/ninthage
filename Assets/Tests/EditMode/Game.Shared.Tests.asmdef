@@ -2,7 +2,10 @@
     "name": "Game.Shared.Tests",
     "rootNamespace": "",
     "references": [
-        "GUID:59f8dc0912e4f8743b9d94199c53f968"
+        "GUID:59f8dc0912e4f8743b9d94199c53f968",
+        "GUID:2e25a007dc1bf254d9dea43d7fe2cb46",
+        "Unity.Collections",
+        "Unity.Entities"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"
