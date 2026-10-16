@@ -439,9 +439,9 @@ namespace Game.Server.Core
             delayTicks = Math.Max(1L, delayTicks);
             long dueTickID = checked(ServerSimulationClock.CurrentTickID + delayTicks);
 
-            // ApplySpellEffect supplies the source cast. Without that context or a current spell event,
-            // this endpoint has no safe authoritative identity. Such actions remain unscoped and are
-            // canceled only during teardown.
+            // ApplySpellEffect or the current spell event supplies the source cast. Without either,
+            // actorID remains Guid.Empty and castID remains 0, so actor/cast cancellation cannot match
+            // the action; it remains unscoped and can only be canceled during teardown.
             Guid actorID = default;
             long castID = 0;
             if (_hasDelayedActionContext)
