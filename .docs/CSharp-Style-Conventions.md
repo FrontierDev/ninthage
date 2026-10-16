@@ -544,7 +544,25 @@ For simulation, ECS, networking, and persistence changes, validate the specific 
 Compilation and static review do not imply runtime correctness. Do not claim an edge case is fixed without test or proof; likewise, do not repeatedly request code changes for unproven edge cases.
 
 
-## 24. Convention Summary
+## 24. Numeric Types and Precision
+
+Choose numeric types according to **value semantics, range, required precision, and storage/transfer cost**. Do not routinely select the smallest or largest type, and do not change an existing serialized, networked, persisted, or gameplay-facing value type without an explicitly scoped compatibility review.
+
+| Type | Size | Preferred use |
+|---|---:|---|
+| `int` | 4 bytes | Exact discrete counts, array indices, stack counts, and integer gameplay quantities where the existing contract uses whole units. |
+| `long` | 8 bytes | Exact simulation tick IDs, due-tick deadlines, and counters that may exceed `int` range. |
+| `float` | 4 bytes | Local movement/physics/rendering values, fractional combat modifiers, and authored gameplay durations when the existing data contract is single-precision. Approximately 6–7 significant decimal digits. |
+| `double` | 8 bytes | Authoritative absolute world coordinates and elapsed-time calculations that genuinely require additional precision. Approximately 15–16 significant decimal digits. |
+| `decimal` | 16 bytes | Explicitly required exact **decimal** quantities (for example, monetary accounting); not a default for combat, ECS simulation, or graphics. |
+
+**Simulation time:** Use `long` tick IDs and integer due-tick deadlines for authoritative scheduling, not accumulated `float` or `double` countdowns. Authorable seconds may remain `float` as required by existing definitions; convert to ticks once using the approved non-shortening rounding contract from [Performance and Simulation Architecture](Performance-and-Simulation-Architecture.md#33-one-clock-owner-identity-lifecycle-and-configuration--proposed). Binary floating-point cannot represent many simple decimal fractions exactly: test nominal tick multiples and values on either side of deadlines; do not silently invent a conversion epsilon or change gameplay durations.
+
+**Coordinates:** Preserve `double`/`double3` for server-authoritative absolute world positions and `float`/`float3`/`Vector3` for Unity-local physics and rendering, as defined in [C# Architecture](CSharp-Architecture.md#16-floating-origin-and-position-architecture). Do not make large-world positions authoritative in local `float` space.
+
+**Costs:** `int` and `float` each occupy 4 bytes; `long` and `double` each occupy 8 bytes. This matters for dense ECS data, cache use, network payloads, and memory bandwidth. Both `float` and `double` are ordinarily efficient on modern CPUs, but `double` generally costs more storage and can be substantially more expensive than `float` on graphics hardware. Choose for correctness first; benchmark hotspots before type-based performance rewrites. Use checked integer arithmetic where tick/deadline overflow could violate scheduling correctness.
+
+## 25. Convention Summary
 
 | Category | Standard |
 |---|---|
@@ -558,6 +576,7 @@ Compilation and static review do not imply runtime correctness. Do not claim an 
 | Tests/prototypes | `Test_Foo` |
 | Local typing | Prefer `var` when obvious |
 | Construction | Prefer target-typed `new()` |
+| Numeric types | Choose for exactness, precision, range and data-layout cost; authoritative deadlines use `long` ticks |
 | `using` directives | Alphabetical |
 | Namespaces | Mirror folders |
 | RPCs | `Server_Foo`, `Client_Foo`, `Observers_Foo` |

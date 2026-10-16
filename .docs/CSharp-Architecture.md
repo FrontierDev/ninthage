@@ -52,6 +52,16 @@ The project is therefore neither a completely duplicated client/server codebase 
 
 The runtime also uses a hybrid GameObject/MonoBehaviour and Unity Entities model. Network-visible actors are represented by PurrNet `NetworkBehaviour` GameObjects, while selected authoritative simulation state is mirrored into server ECS entities and buffers for system-driven ticking and processing.
 
+### 2.1 Numeric Representation Boundaries
+
+The project-wide numeric-type selection guidance (including size, precision, and memory costs) is defined in [C# Style and Naming Conventions](CSharp-Style-Conventions.md#24-numeric-types-and-precision). The architectural boundaries are:
+
+- **Authoritative world positions:** use double precision (`double`/`double3`) for absolute coordinates; use float precision (`float`/`float3`/`Vector3`) for local Unity rendering and physics. See Sections 15–16.
+- **Authoritative time:** represent simulation identity and due deadlines as integer `long` ticks; use the server clock's fixed delta and higher-precision elapsed-time calculations only where needed. Authored `float` durations are converted once to tick deadlines under the approved policy; see [Performance and Simulation Architecture](Performance-and-Simulation-Architecture.md#33-one-clock-owner-identity-lifecycle-and-configuration--proposed).
+- **Discrete and fractional gameplay values:** prefer exact integer types (`int` or `long` as range requires) for counts and IDs, and `float` for fractional quantities where the existing gameplay schema defines them. Do not silently change resource/stat units or balancing formulas.
+
+These are type-selection boundaries, not a mandate to rewrite existing serialized fields, ECS components, persistence formats, or network contracts.
+
 ## 3. Source Layout
 
 At this revision, the project contains 386 C# files under `Assets`.
