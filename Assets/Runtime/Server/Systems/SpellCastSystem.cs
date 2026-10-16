@@ -1,4 +1,4 @@
-using Game.Shared.Networking;
+using Game.Server.Core;
 using Game.Shared.Performance;
 using Unity.Entities;
 
@@ -55,9 +55,11 @@ namespace Game.Server.Systems
                     {
                         spellCast.ValueRW.TimeSinceLastTick -= tickInterval;
 
-                        ActorEndpoint.onServerSpellCastTick?.Invoke(
+                        ServerECSManager.QueueSimulationEvent(
+                            ServerSimulationEventKind.SpellCastTick,
                             actor.ValueRO.ActorID,
-                            spellCast.ValueRO.SpellID.ToString());
+                            entity,
+                            spellCast.ValueRO.SpellID);
                     }
                 }
 
@@ -66,10 +68,12 @@ namespace Game.Server.Systems
                     // Disable the component (cast finished)
                     state.EntityManager.SetComponentEnabled<SpellCastComponent>(entity, false);
 
-                    // Fire an event so the MonoBehaviour layer can resolve the spell
-                    ActorEndpoint.onServerSpellCastCompleted?.Invoke(
+                    // Queue an event so the MonoBehaviour layer can resolve the spell after this traversal.
+                    ServerECSManager.QueueSimulationEvent(
+                        ServerSimulationEventKind.SpellCastCompleted,
                         actor.ValueRO.ActorID,
-                        spellCast.ValueRO.SpellID.ToString());
+                        entity,
+                        spellCast.ValueRO.SpellID);
                 }
             }
             if (telemetryEnabled)

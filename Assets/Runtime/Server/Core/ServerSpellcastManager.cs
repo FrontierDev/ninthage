@@ -52,6 +52,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerSpellCastDelayedAction += OnSpellCastDelayedAction;
             ActorEndpoint.onServerSpellCastInterrupted += OnSpellCastInterrupted;
             ActorEndpoint.onServerRequestSpellCastCancel += OnSpellCastCancelRequested;
+            ActorEndpoint.onServerActorDespawned += OnActorDespawned;
 
             _initialized = true;
         }
@@ -77,6 +78,7 @@ namespace Game.Server.Core
         private void OnDestroy()
         {
             _activeSpellCasts.Clear();
+            _pendingActions.Clear();
 
             ActorEndpoint.onServerSpellCastStarted -= OnSpellCastStarted;
             ActorEndpoint.onServerSpellCastTick -= OnSpellCastTick;
@@ -84,6 +86,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerSpellCastInterrupted -= OnSpellCastInterrupted;
             ActorEndpoint.onServerSpellCastDelayedAction -= OnSpellCastDelayedAction;
             ActorEndpoint.onServerRequestSpellCastCancel -= OnSpellCastCancelRequested;
+            ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
 
             _instance = null;
             _initialized = false;
@@ -92,6 +95,14 @@ namespace Game.Server.Core
         private void OnSpellCastCancelRequested(Actor actor)
         {
             TryInterruptCast(actor.ID);
+        }
+
+        private void OnActorDespawned(Actor actor)
+        {
+            if (actor == null)
+                return;
+
+            _activeSpellCasts.Remove(actor.ID);
         }
 
         #region Spell Cast Lifecycle

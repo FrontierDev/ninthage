@@ -53,6 +53,7 @@ namespace Game.Server.Systems
                     var cmd = ecb.CreateEntity();
                     ecb.AddComponent(cmd, new SpawnCommand
                     {
+                        SpawnPointGUID = spawnPoint.ValueRO.SpawnPointGUID,
                         Position = spawnPoint.ValueRO.Position,
                         PrefabIndex = spawnPoint.ValueRO.PrefabIndex,
                         SceneIndex = spawnPoint.ValueRO.SceneIndex,

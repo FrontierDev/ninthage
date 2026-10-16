@@ -204,18 +204,25 @@ namespace Game.Server.Core
         {
             if (!_tickers.TryGetValue(tickerID, out var reg)) return;
 
-            if (reg.onExpire != null && ServerActorManager.Instance.TryGetActor(actorID, out var actor))
-                reg.onExpire(actor);
-
             if (reg.Tag != null)
                 _tagIndex.Remove((actorID, reg.Tag));
             if (_actorTickerIDs.TryGetValue(actorID, out var list))
+            {
                 list.Remove(tickerID);
+                if (list.Count == 0)
+                    _actorTickerIDs.Remove(actorID);
+            }
             _tickers.Remove(tickerID);
+
+            if (reg.onExpire != null && ServerActorManager.Instance.TryGetActor(actorID, out var actor))
+                reg.onExpire(actor);
         }
 
         private void OnActorDespawned(Actor actor)
         {
+            if (actor == null)
+                return;
+
             if (!_actorTickerIDs.TryGetValue(actor.ID, out var list)) return;
 
             // Copy to avoid modifying the list while iterating.

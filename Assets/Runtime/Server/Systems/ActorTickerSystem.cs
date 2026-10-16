@@ -1,4 +1,4 @@
-using Game.Shared.Networking;
+using Game.Server.Core;
 using Game.Shared.Performance;
 using Unity.Entities;
 
@@ -54,18 +54,21 @@ namespace Game.Server.Systems
                     {
                         entry.TimeSinceLastTick -= entry.TickInterval;
 
-                        ActorEndpoint.onServerActorTick?.Invoke(
+                        ServerECSManager.QueueSimulationEvent(
+                            ServerSimulationEventKind.ActorTickerTick,
                             actor.ValueRO.ActorID,
-                            entry.TickerID);
+                            entity,
+                            operationID: entry.TickerID);
                     }
 
                     if (entry.RemainingDuration != float.MaxValue && entry.RemainingDuration <= 0f)
                     {
-                        ActorEndpoint.onServerActorTickerExpired?.Invoke(
-                            actor.ValueRO.ActorID,
-                            entry.TickerID);
-
                         buffer.RemoveAt(i);
+                        ServerECSManager.QueueSimulationEvent(
+                            ServerSimulationEventKind.ActorTickerExpired,
+                            actor.ValueRO.ActorID,
+                            entity,
+                            operationID: entry.TickerID);
                     }
                     else
                     {

@@ -1,7 +1,9 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Networking;
 using Game.Shared.Performance;
 using Game.Server.Systems;
 using System;
+using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
 using UnityEngine;
@@ -55,7 +57,9 @@ namespace Game.Server.Core
             "fixed_tick");
         private static readonly PerformanceMarker ECS_INITIALIZATION_MARKER = new(ECS_INITIALIZATION_DURATION_METRIC, "Server.ECS.Initialization");
         private static SimulationSystemGroup _simulationSystemGroup;
+        private static readonly ServerSimulationEventBuffer SIMULATION_EVENT_BUFFER = new();
         private static bool _initialized = false;
+        private static long _currentSimulationTickID;
         /// <summary>Gets whether the server ECS world has been initialized.</summary>
         public static bool Initialized => _initialized;
 
@@ -84,6 +88,8 @@ namespace Game.Server.Core
                 throw new InvalidOperationException("The game configuration must be initialized before the server ECS world.");
 
             ServerSimulationClock.ValidateConfiguration(Game.Shared.GameConfigurationManager.Config);
+            SIMULATION_EVENT_BUFFER.Clear();
+            _currentSimulationTickID = 0;
 
             using var markerScope = ECS_INITIALIZATION_MARKER.Begin();
             World world = null;
@@ -116,6 +122,9 @@ namespace Game.Server.Core
                 var actorTickerSystem = world.GetOrCreateSystem<ActorTickerSystem>();
                 systemGroup.AddSystemToUpdateList(actorTickerSystem);
 
+                // Apply the explicit phase dependencies before the first simulation tick.
+                systemGroup.SortSystems();
+
                 DefaultWorld = world;
                 _simulationSystemGroup = systemGroup;
                 _initialized = true;
@@ -134,8 +143,77 @@ namespace Game.Server.Core
             if (!_initialized || DefaultWorld == null || _simulationSystemGroup == null)
                 throw new InvalidOperationException("The server ECS world is not ready for simulation.");
 
-            DefaultWorld.SetTime(new TimeData(tick.ElapsedTime, tick.DeltaTime));
-            _simulationSystemGroup.Update();
+            SIMULATION_EVENT_BUFFER.BeginTick(tick.TickID);
+            _currentSimulationTickID = tick.TickID;
+            try
+            {
+                DefaultWorld.SetTime(new TimeData(tick.ElapsedTime, tick.DeltaTime));
+                _simulationSystemGroup.Update();
+                SIMULATION_EVENT_BUFFER.Dispatch(DispatchSimulationEvent);
+            }
+            finally
+            {
+                SIMULATION_EVENT_BUFFER.Clear();
+                _currentSimulationTickID = 0;
+            }
+        }
+
+        /// <summary>Queues one immutable ECS-to-domain event for the current authoritative tick.</summary>
+        internal static void QueueSimulationEvent(
+            ServerSimulationEventKind kind,
+            Guid actorID,
+            Entity sourceEntity,
+            FixedString64Bytes definitionID = default,
+            int operationID = 0)
+        {
+            if (!_initialized || _currentSimulationTickID <= 0)
+                throw new InvalidOperationException("Server simulation events require an active authoritative tick.");
+
+            SIMULATION_EVENT_BUFFER.Enqueue(kind, actorID, sourceEntity, definitionID, operationID);
+        }
+
+        private static void DispatchSimulationEvent(ServerSimulationEvent simulationEvent)
+        {
+            switch (simulationEvent.Kind)
+            {
+                case ServerSimulationEventKind.SpellCastTick:
+                    ActorEndpoint.onServerSpellCastTick?.Invoke(
+                        simulationEvent.ActorID,
+                        simulationEvent.DefinitionID.ToString());
+                    break;
+                case ServerSimulationEventKind.SpellCastCompleted:
+                    ActorEndpoint.onServerSpellCastCompleted?.Invoke(
+                        simulationEvent.ActorID,
+                        simulationEvent.DefinitionID.ToString());
+                    break;
+                case ServerSimulationEventKind.AuraTick:
+                    ActorEndpoint.onServerAuraTick?.Invoke(
+                        simulationEvent.ActorID,
+                        simulationEvent.DefinitionID.ToString(),
+                        simulationEvent.OperationID);
+                    break;
+                case ServerSimulationEventKind.AuraExpired:
+                    ActorEndpoint.onServerAuraExpired?.Invoke(
+                        simulationEvent.ActorID,
+                        simulationEvent.DefinitionID.ToString(),
+                        simulationEvent.OperationID);
+                    break;
+                case ServerSimulationEventKind.ActorTickerTick:
+                    ActorEndpoint.onServerActorTick?.Invoke(
+                        simulationEvent.ActorID,
+                        simulationEvent.OperationID);
+                    break;
+                case ServerSimulationEventKind.ActorTickerExpired:
+                    ActorEndpoint.onServerActorTickerExpired?.Invoke(
+                        simulationEvent.ActorID,
+                        simulationEvent.OperationID);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(simulationEvent.Kind),
+                        simulationEvent.Kind,
+                        "Unknown server simulation event kind.");
+            }
         }
 
         /// <summary>Records the measured CPU duration of one complete authoritative tick.</summary>
@@ -172,6 +250,8 @@ namespace Game.Server.Core
         /// <summary>Stops the simulation clock owner and disposes the dedicated server ECS world.</summary>
         internal static void Shutdown()
         {
+            SIMULATION_EVENT_BUFFER.Clear();
+            _currentSimulationTickID = 0;
             World world = DefaultWorld;
             DefaultWorld = null;
             _simulationSystemGroup = null;

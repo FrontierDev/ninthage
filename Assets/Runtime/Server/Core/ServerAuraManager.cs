@@ -46,6 +46,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerAuraTick += OnAuraTick;
             ActorEndpoint.onServerAuraExpired += OnAuraExpired;
             ActorEndpoint.onServerAuraDispelled += OnAuraDispelled;
+            ActorEndpoint.onServerActorDespawned += OnActorDespawned;
 
             _initialized = true;
         }
@@ -56,10 +57,31 @@ namespace Game.Server.Core
             ActorEndpoint.onServerAuraTick -= OnAuraTick;
             ActorEndpoint.onServerAuraExpired -= OnAuraExpired;
             ActorEndpoint.onServerAuraDispelled -= OnAuraDispelled;
+            ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
 
             _activeAuras.Clear();
             _instance = null;
             _initialized = false;
+        }
+
+        private void OnActorDespawned(Actor actor)
+        {
+            if (actor == null)
+                return;
+
+            var cancelledInstanceIDs = new List<int>();
+            foreach (var pair in _activeAuras)
+            {
+                AuraContext context = pair.Value;
+                if ((context.Caster != null && context.Caster.ID == actor.ID)
+                    || (context.Target != null && context.Target.ID == actor.ID))
+                {
+                    cancelledInstanceIDs.Add(pair.Key);
+                }
+            }
+
+            foreach (int instanceID in cancelledInstanceIDs)
+                _activeAuras.Remove(instanceID);
         }
 
         private void OnApplyAuraRequest(AuraDefinition definition, Actor caster, Actor target, int stacks)

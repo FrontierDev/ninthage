@@ -1,4 +1,4 @@
-using Game.Shared.Networking;
+using Game.Server.Core;
 using Game.Shared.Performance;
 using Unity.Entities;
 
@@ -53,20 +53,23 @@ namespace Game.Server.Systems
                     {
                         entry.TimeSinceLastTick -= entry.TickInterval;
 
-                        ActorEndpoint.onServerAuraTick?.Invoke(
+                        ServerECSManager.QueueSimulationEvent(
+                            ServerSimulationEventKind.AuraTick,
                             actor.ValueRO.ActorID,
-                            entry.AuraDefinitionID.ToString(),
+                            entity,
+                            entry.AuraDefinitionID,
                             entry.InstanceID);
                     }
 
                     if (entry.RemainingDuration <= 0f)
                     {
-                        ActorEndpoint.onServerAuraExpired?.Invoke(
-                            actor.ValueRO.ActorID,
-                            entry.AuraDefinitionID.ToString(),
-                            entry.InstanceID);
-
                         buffer.RemoveAt(i);
+                        ServerECSManager.QueueSimulationEvent(
+                            ServerSimulationEventKind.AuraExpired,
+                            actor.ValueRO.ActorID,
+                            entity,
+                            entry.AuraDefinitionID,
+                            entry.InstanceID);
                     }
                     else
                     {
