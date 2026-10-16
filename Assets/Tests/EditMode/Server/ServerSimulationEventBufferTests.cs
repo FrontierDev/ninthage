@@ -176,12 +176,12 @@ namespace Game.Shared.Tests.Server
 
             internal BufferHarness()
             {
-                ConstructorInfo constructor = BUFFER_TYPE.GetConstructor(
-                    BindingFlags.Instance | BindingFlags.NonPublic,
+                _buffer = Activator.CreateInstance(
+                    BUFFER_TYPE,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                     binder: null,
-                    types: Type.EmptyTypes,
-                    modifiers: null);
-                _buffer = constructor.Invoke(null);
+                    args: null,
+                    culture: null);
             }
 
             internal void BeginTick(long tickID) => Invoke(BEGIN_TICK_METHOD, tickID);
