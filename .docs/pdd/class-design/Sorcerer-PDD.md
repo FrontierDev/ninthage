@@ -38,7 +38,7 @@ All seven of these are **class-wide spells**, available to Cataclyst, Fluxweaver
 | Level | Spell | Theme | Mechanical design / known parameters |
 |---|---|---|---|
 | **1** | **Chaos Bolt** | Cataclyst | Baseline ranged **Chaos** damage; generates Instability. First resource-building offensive spell. |
-| **2** | **Brand** | Voidbrand | **Melee-range Chaos** damage based on weapon damage; reduces target **Attack Power for 6 sec**, generates Instability; **6-sec cooldown**. |
+| **2** | **Brand** | Voidbrand | **Melee-range Chaos** damage based on weapon damage; reduces target **Attack Power for 6 sec**, generates Instability; **6-sec cooldown**. From level 10, receives an **additional damage effect when cast while Phase Shift or Superposition is active**; baseline effect remains available to every Sorcerer. Magnitude TBD. |
 | **4** | **Crystallise** | Fluxweaver | **1-sec cast**, **6-sec cooldown**; costs Mana, reduces Instability and grants a **small absorption shield**. |
 | **6** | **Winds of Wisdom** | General class utility | **Party-wide Intelligence buff**; exact magnitude, duration and cost undecided. |
 | **8** | **Nullify** | Voidbrand | **Interrupt**, **moderate range**, **15-sec cooldown** (the common interrupt cadence). Precise range and any lockout duration undecided. |
@@ -112,6 +112,24 @@ Locus is initially **one marked ally**, potentially including the caster; exact 
 **Duellist:** stealth establishes an opening advantage; its ordinary rotation continues largely **out of stealth**.
 
 **Voidbrand:** invisibility or stealth-qualifying states recur **throughout combat**. High Instability interferes with re-entering actual invisibility; the re-entry threshold and other stealth-break conditions are not yet numerically set. Out-of-combat duration is **unlimited**, not a timed buff.
+
+### 4.3 Shared spells enhanced by Voidbrand stealth states
+
+**Design principle (approved):** Voidbrand's repeated stealth-state combat should **modify selected shared Sorcerer spells**, not depend exclusively on new spec-locked attack buttons. An ability identified with the Voidbrand theme may be learned by *every* Sorcerer, preserve its full baseline effects for Cataclyst and Fluxweaver, and gain an additional authored effect **while the caster has actual Phase Shift invisibility or the stealth-qualifying Superposition state**. The conditional effects are part of the Voidbrand combat identity; they are **not** restrictions on acquiring the class-wide spell.
+
+**Confirmed first example — Brand:** When cast from **Phase Shift or Superposition**, Brand deals **additional damage**, on top of its normal weapon-scaled Chaos damage, six-second Attack Power reduction and Instability generation. The extra damage coefficient or formula is undecided. This interaction must be available with **Phase Shift at level 10**; it must **not require a later talent** to make Voidbrand's first ten levels feel complete. Superposition provides a later alternate way to access that same conditional bonus while **remaining visible**.
+
+**Spell-state contract:**
+
+- **Phase Shift** is the level-10 **automatically granted active-specialisation spell**, *not* a talent-tree spell. **Superposition** is separately a talent-granted spell that counts as stealthed for conditional spell eligibility for five seconds but does not confer actual invisibility.
+- Check the relevant state **at the start of the ability's authorised cast/use** (before any stealth break or damage resolution resulting from that ability). If Phase Shift normally breaks upon making an attack, this must **not cancel a valid from-stealth Brand bonus**.
+- Either Phase Shift or Superposition qualifies; if both are active, **apply the defined conditional bonus once**, not twice. The two states must remain distinct for visibility, targeting and Instability re-entry mechanics.
+- Effects must be **explicitly authored per spell** rather than applying a generic stealth damage multiplier to every Sorcerer spell. Not all Voidbrand-themed shared abilities need an enhancement, and no non-Voidbrand class-wide spell gains one automatically.
+- Resolve the extra effect under normal server-authoritative cast and damage rules. Casting Brand without a qualifying state **still performs the original baseline effect**, including for all other Sorcerer specialisations.
+
+**Further candidates:** Nullify is another Voidbrand-themed spell shared by every Sorcerer, but any additional stealth-state effect is **not yet decided**. New shared melee or disruptive spells can be designed with the same pattern, choosing conditional **damage, control or resource interaction** according to their existing toolkit purpose rather than duplicating Brand.
+
+**Balance and authoring still open:** extra Brand damage amount and scaling, whether it counts as a separate damage component, exact stealth-break timing, eligibility if a cast is interrupted, interactions with damage events/Instability and potential future differing bonuses for actual invisibility versus Superposition. Neither conditional use nor re-entering Phase Shift should bypass the established Instability restrictions.
 
 ## 5. Specialisation milestone philosophy
 
@@ -202,7 +220,7 @@ Phase 2's **Core Playable Vertical Slice** should demonstrate the **Sorcerer lev
 1. Train/acquire class abilities at the intended levels and verify they persist.
 2. Experience meaningful early choices between Instability generation, close-range Brand, shielding, Nullify and Rift/Nova timing.
 3. Choose Cataclyst, Fluxweaver or Voidbrand at level 10 and verify **Molten Barrage**, **Locus** or **Phase Shift** is granted as appropriate and replaced on spec change, without incorrectly modifying shared class abilities.
-4. Demonstrate Cataclyst's ability to accelerate Instability, Fluxweaver's Locus-based healing and Voidbrand's out-of-combat sustained invisibility and Instability-governed in-combat re-entry.
+4. Demonstrate Cataclyst's ability to accelerate Instability, Fluxweaver's Locus-based healing and Voidbrand's out-of-combat sustained invisibility and Instability-governed in-combat re-entry; **Brand cast from Phase Shift must receive its additional damage**, whereas ordinary Brand does not. (Superposition is a later talent ability, not a Phase 2 prerequisite.)
 5. Verify shared rifts enforce **one active at a time**, and Nova requires and destroys the active rift.
 6. Verify the authoritative server owns Instability changes, health/shield events, time-window damage history (when Rewind is implemented), cast interrupt validation and visibility/stealth eligibility.
 7. Verify level-10 play is engaging **before** advanced talents, and no class-specific group utility becomes mandatory.
@@ -221,6 +239,7 @@ Later talent-tree spells are *design targets*, **not Phase 2 prerequisites**. Ch
 8. Design Overload self-damage calculation, type/school, interactions with cooldowns, death and Locus, and no-generation enforcement across all Instability sources.
 9. Resolve Class asset discrepancies (**Riftwalker → Voidbrand**, deprecated `surge` stat / old rift ability names) when implementation work is authorised, not in this documentation change.
 10. Balance level-20 **Hailstorm**: channel duration, radius, Water tick damage, Mana cost and Instability gain per tick; preserve distinction from Rift/Nova and Molten Barrage.
+11. Define the numerical **Brand from Phase Shift/Superposition bonus** and the precise state-check/stealth-break contract; decide whether other shared Voidbrand spells (for example Nullify) acquire conditional effects.
 
 ## 11. Design acceptance criteria
 
