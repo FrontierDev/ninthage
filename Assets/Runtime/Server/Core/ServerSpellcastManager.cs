@@ -409,8 +409,8 @@ namespace Game.Server.Core
         /// occurs when a spell has a projectile and when we want the damage to occur when the
         /// impact occurs rather than at cast completion.
         /// </summary>
-        /// <param name="delay"></param>
-        /// <param name="action"></param>
+        /// <param name="delay">The delay in seconds before the action becomes due.</param>
+        /// <param name="action">The action to invoke at the authoritative due tick.</param>
         private void OnSpellCastDelayedAction(float delay, Action action)
         {
             if (action == null)
@@ -434,9 +434,14 @@ namespace Game.Server.Core
                 NumberStyles.Float,
                 CultureInfo.InvariantCulture);
             long delayTicks = checked((long)Math.Ceiling(delaySeconds / tickDurationSeconds));
+            // Even zero-delay work waits for the next simulation boundary; it never runs during
+            // the current dispatch.
             delayTicks = Math.Max(1L, delayTicks);
             long dueTickID = checked(ServerSimulationClock.CurrentTickID + delayTicks);
 
+            // ApplySpellEffect supplies the source cast. Without that context or a current spell event,
+            // this endpoint has no safe authoritative identity. Such actions remain unscoped and are
+            // canceled only during teardown.
             Guid actorID = default;
             long castID = 0;
             if (_hasDelayedActionContext)
@@ -465,6 +470,8 @@ namespace Game.Server.Core
             if (!_pendingActions.Remove(pendingAction))
                 return;
 
+            // Remove and cancel before user/effect code to guarantee one delivery and isolate
+            // callback-triggered registrations or cancellations from the current dispatch.
             pendingAction.Registration.Cancel();
             pendingAction.Callback.Invoke();
         }
@@ -832,6 +839,8 @@ namespace Game.Server.Core
 
         private void CancelPendingActions(Guid actorID, long castID = 0)
         {
+            // A zero cast ID retires all delayed actions for the actor; a positive ID targets
+            // only that cast generation. Successful completion intentionally does not call this.
             for (int i = _pendingActions.Count - 1; i >= 0; i--)
             {
                 PendingAction pendingAction = _pendingActions[i];
@@ -918,6 +927,8 @@ namespace Game.Server.Core
             List<Actor> targets = component.TargetDefinition.Evaluate(ctx);
             foreach (var target in targets)
             {
+                // Scope source identity across effect execution, including OnCastEnd after the active
+                // cast has been invalidated; finally restores any nested scope safely.
                 Guid previousActorID = _delayedActionActorID;
                 long previousCastID = _delayedActionCastID;
                 bool hadDelayedActionContext = _hasDelayedActionContext;
