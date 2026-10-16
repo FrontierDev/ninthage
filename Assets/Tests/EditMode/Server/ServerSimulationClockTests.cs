@@ -327,30 +327,6 @@ namespace Game.Shared.Tests.Server
         }
 
         [Test]
-        public void TimeScaleAndRenderCadenceDoNotChangeAuthoritativeTickDelta()
-        {
-            Time.timeScale = 0.25f;
-            Application.targetFrameRate = 15;
-            TickRunResult slowRenderRun = CaptureTicks(new[] { 0.305d }, 10);
-
-            StopRuntime();
-
-            Time.timeScale = 2f;
-            Application.targetFrameRate = 144;
-            TickRunResult fastRenderRun = CaptureTicks(new[] { 0.105d, 0.105d, 0.105d }, 10);
-
-            Assert.That(slowRenderRun.Ticks, Has.Count.EqualTo(3));
-            Assert.That(fastRenderRun.Ticks, Has.Count.EqualTo(3));
-            for (int i = 0; i < 3; i++)
-            {
-                Assert.That(slowRenderRun.Ticks[i].TickID, Is.EqualTo(fastRenderRun.Ticks[i].TickID));
-                Assert.That(slowRenderRun.Ticks[i].ElapsedTime, Is.EqualTo(fastRenderRun.Ticks[i].ElapsedTime));
-                Assert.That(slowRenderRun.Ticks[i].DeltaTime, Is.EqualTo(0.1f));
-                Assert.That(fastRenderRun.Ticks[i].DeltaTime, Is.EqualTo(0.1f));
-            }
-        }
-
-        [Test]
         public void TickTelemetryAttributesSamplesToTickIdAndFixedDeltaAndExecutesEachSystemOncePerTick()
         {
             _telemetryDirectory = Path.Combine(

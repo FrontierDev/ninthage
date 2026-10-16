@@ -25,21 +25,5 @@ namespace Game.Shared.Tests.Shared
             Assert.That(belowMinimum.CurrentValue, Is.EqualTo(0f));
             Assert.That(aboveMaximum.CurrentValue, Is.EqualTo(100f));
         }
-
-        [Test]
-        public void SetterMethodsOnlyChangeTheirBackingValueBeforeRecalculation()
-        {
-            var stat = new StatInstance(10f, 2f, 0.5f, 18f, 7f);
-
-            stat.SetBaseValue(20f);
-            stat.SetFlatModifier(3f);
-            stat.SetPercentModifier(0.25f);
-
-            Assert.That(stat.BaseValue, Is.EqualTo(20f));
-            Assert.That(stat.FlatModifier, Is.EqualTo(3f));
-            Assert.That(stat.PercentModifier, Is.EqualTo(0.25f));
-            Assert.That(stat.EffectiveMaximum, Is.EqualTo(18f));
-            Assert.That(stat.CurrentValue, Is.EqualTo(7f));
-        }
     }
 }

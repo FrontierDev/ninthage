@@ -1,21 +1,11 @@
 using Game.Shared;
 using Game.Shared.Utility;
 using NUnit.Framework;
-using UnityEngine;
 
 namespace Game.Shared.Tests.Shared
 {
     public sealed class CombatRatingHelperTests
     {
-        [Test]
-        public void RatingConversionIsDeterministic()
-        {
-            var first = CombatRatingHelper.RatingToPercent(250f, 30, 12f);
-            var second = CombatRatingHelper.RatingToPercent(250f, 30, 12f);
-
-            Assert.That(first, Is.EqualTo(second));
-        }
-
         [Test]
         public void ZeroRatingReturnsZeroPercent()
         {

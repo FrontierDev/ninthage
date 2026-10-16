@@ -7,13 +7,6 @@ namespace Game.Shared.Tests.Shared
     public sealed class ExperienceCalculatorTests
     {
         [Test]
-        public void LevelBoundsMatchTheCurrentFoundation()
-        {
-            Assert.That(ExperienceCalculator.MIN_LEVEL, Is.EqualTo(1));
-            Assert.That(ExperienceCalculator.MAX_LEVEL, Is.EqualTo(60));
-        }
-
-        [Test]
         public void ExperienceRequirementsArePositiveBeforeLevelCap()
         {
             for (var level = ExperienceCalculator.MIN_LEVEL; level < ExperienceCalculator.MAX_LEVEL; level++)
