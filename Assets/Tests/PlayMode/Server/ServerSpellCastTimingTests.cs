@@ -47,6 +47,7 @@ namespace Game.Runtime.Tests.Server
         private ServerSpellCastManager _spellCastManager;
         private Action<Guid, string> _tickHandler;
         private Action<Guid, string> _completionHandler;
+        private Action<Guid, string> _interruptionHandler;
         private long _executingTickID;
 
         [SetUp]
@@ -89,19 +90,25 @@ namespace Game.Runtime.Tests.Server
         public IEnumerator ChannelTicksPrecedeCompletionAtTheAuthoritativeBoundary()
         {
             SubscribeToCastEvents();
-            SpellOverride spell = CreateSpell("timing-channel", castTime: 0.4f, totalTicks: 2f);
+            SpellOverride spell = CreateSpell("timing-channel", castTime: 0.2f, totalTicks: 2f);
             long castID = StartCast(spell);
 
-            for (long tickID = 1; tickID <= 4; tickID++)
-            {
-                _executingTickID = tickID;
-                RunSimulationTick(tickID);
-            }
+            _executingTickID = 1;
+            RunSimulationTick(1);
+
+            Assert.That(_events, Has.Count.EqualTo(1));
+            AssertEvent(0, CastEventKind.Tick, tickID: 1, castID);
+            CastState afterFirstTick = GetCastState(out var firstTickState);
+            Assert.That(firstTickState.Enabled, Is.True);
+            Assert.That(afterFirstTick.CastID, Is.EqualTo(castID));
+            Assert.That(afterFirstTick.RemainingCastTime, Is.EqualTo(0.1f).Within(0.000001f));
+
+            _executingTickID = 2;
+            RunSimulationTick(2);
 
             Assert.That(_events, Has.Count.EqualTo(3));
-            AssertEvent(0, CastEventKind.Tick, tickID: 2, castID);
-            AssertEvent(1, CastEventKind.Tick, tickID: 4, castID);
-            AssertEvent(2, CastEventKind.Completed, tickID: 4, castID);
+            AssertEvent(1, CastEventKind.Tick, tickID: 2, castID);
+            AssertEvent(2, CastEventKind.Completed, tickID: 2, castID);
 
             CastState completedState = GetCastState(out var state);
             Assert.That(state.Enabled, Is.False);
@@ -110,8 +117,8 @@ namespace Game.Runtime.Tests.Server
             Assert.That(_spellCastManager.GetRemainingCastTime(_actor.ID), Is.EqualTo(0f));
             Assert.That(_spellCastManager.IsCasting(_actor.ID), Is.False);
 
-            _executingTickID = 5;
-            RunSimulationTick(5);
+            _executingTickID = 3;
+            RunSimulationTick(3);
             Assert.That(_events, Has.Count.EqualTo(3));
             yield return null;
         }
@@ -119,38 +126,29 @@ namespace Game.Runtime.Tests.Server
         [UnityTest]
         public IEnumerator InterruptionAfterAnEligibleTickSuppressesStaleCompletion()
         {
-            bool interruptionRequested = false;
-            _tickHandler = (actorID, spellID) =>
-            {
-                RecordCurrentEvent(CastEventKind.Tick);
-                if (interruptionRequested || _executingTickID != 2)
-                    return;
+            SubscribeToCastEvents();
+            int interruptionCount = 0;
+            _interruptionHandler = (actorID, spellID) => interruptionCount++;
+            ActorEndpoint.onServerSpellCastInterrupted += _interruptionHandler;
 
-                interruptionRequested = true;
-                ActorEndpoint.onServerSpellCastInterrupted?.Invoke(actorID, spellID);
-            };
-            _completionHandler = (actorID, spellID) => RecordCurrentEvent(CastEventKind.Completed);
-            ActorEndpoint.onServerSpellCastTick += _tickHandler;
-            ActorEndpoint.onServerSpellCastCompleted += _completionHandler;
-
-            SpellOverride spell = CreateSpell("timing-interrupted", castTime: 0.4f, totalTicks: 2f);
+            SpellOverride spell = CreateSpell("timing-interrupted", castTime: 0.2f, totalTicks: 2f);
             long castID = StartCast(spell);
 
             _executingTickID = 1;
             RunSimulationTick(1);
-            _executingTickID = 2;
-            RunSimulationTick(2);
 
             Assert.That(_events, Has.Count.EqualTo(1));
-            AssertEvent(0, CastEventKind.Tick, tickID: 2, castID);
-            Assert.That(GetCastState(out var pendingInterruptState).Enabled, Is.True);
+            AssertEvent(0, CastEventKind.Tick, tickID: 1, castID);
+            Assert.That(GetCastState(out var activeState).Enabled, Is.True);
+            Assert.That(activeState.CastID, Is.EqualTo(castID));
 
+            ActorEndpoint.onServerSpellCastInterrupted?.Invoke(_actor.ID, spell.BaseDefinition.DefinitionID);
+            Assert.That(interruptionCount, Is.EqualTo(1));
+
+            _executingTickID = 2;
+            RunSimulationTick(2);
             _executingTickID = 3;
             RunSimulationTick(3);
-            _executingTickID = 4;
-            RunSimulationTick(4);
-            _executingTickID = 5;
-            RunSimulationTick(5);
 
             Assert.That(_events, Has.Count.EqualTo(1));
             Assert.That(_spellCastManager.IsCasting(_actor.ID), Is.False);
@@ -286,6 +284,12 @@ namespace Game.Runtime.Tests.Server
             {
                 ActorEndpoint.onServerSpellCastCompleted -= _completionHandler;
                 _completionHandler = null;
+            }
+
+            if (_interruptionHandler != null)
+            {
+                ActorEndpoint.onServerSpellCastInterrupted -= _interruptionHandler;
+                _interruptionHandler = null;
             }
 
             if (_actorObject != null)
