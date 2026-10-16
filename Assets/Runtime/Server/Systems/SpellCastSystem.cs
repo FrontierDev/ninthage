@@ -6,6 +6,7 @@ namespace Game.Server.Systems
 {
     /// <summary>Advances active spell casts and invokes spell callbacks.</summary>
     [DisableAutoCreation]
+    [UpdateAfter(typeof(ResourceRegenSystem))]
     public partial struct SpellCastSystem : ISystem
     {
         private static readonly PerformanceMetricDefinition SPELL_CAST_DURATION_METRIC = new(

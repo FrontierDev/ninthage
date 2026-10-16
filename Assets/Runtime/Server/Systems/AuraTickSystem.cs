@@ -6,6 +6,7 @@ namespace Game.Server.Systems
 {
     /// <summary>Advances active aura durations and invokes aura callbacks.</summary>
     [DisableAutoCreation]
+    [UpdateAfter(typeof(CooldownTickSystem))]
     public partial struct AuraTickSystem : ISystem
     {
         private static readonly PerformanceMetricDefinition AURA_TICK_DURATION_METRIC = new(

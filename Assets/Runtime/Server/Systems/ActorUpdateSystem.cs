@@ -7,6 +7,7 @@ namespace Game.Server.Systems
 {
     /// <summary>Updates authoritative server actor movement and gravity.</summary>
     [DisableAutoCreation]
+    [UpdateAfter(typeof(WorldSpawnSystem))]
     public partial struct ActorUpdateSystem : ISystem
     {
         private static readonly PerformanceMetricDefinition ACTOR_UPDATE_METRIC = new(

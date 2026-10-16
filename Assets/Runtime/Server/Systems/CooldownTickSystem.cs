@@ -5,6 +5,7 @@ namespace Game.Server.Systems
 {
     /// <summary>Advances and removes server actor cooldown entries.</summary>
     [DisableAutoCreation]
+    [UpdateAfter(typeof(SpellCastSystem))]
     public partial struct CooldownTickSystem : ISystem
     {
         private static readonly PerformanceMetricDefinition COOLDOWN_TICK_DURATION_METRIC = new(

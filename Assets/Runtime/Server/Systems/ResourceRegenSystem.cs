@@ -6,6 +6,7 @@ namespace Game.Server.Systems
 {
     /// <summary>Processes server-side resource regeneration.</summary>
     [DisableAutoCreation]
+    [UpdateAfter(typeof(ActorUpdateSystem))]
     public partial struct ResourceRegenSystem : ISystem
     {
         private static readonly PerformanceMetricDefinition RESOURCE_REGEN_DURATION_METRIC = new(

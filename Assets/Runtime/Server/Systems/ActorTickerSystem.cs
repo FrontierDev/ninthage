@@ -6,6 +6,7 @@ namespace Game.Server.Systems
 {
     /// <summary>Processes time-based actor ticker callbacks.</summary>
     [DisableAutoCreation]
+    [UpdateAfter(typeof(AuraTickSystem))]
     public partial struct ActorTickerSystem : ISystem
     {
         private static readonly PerformanceMetricDefinition ACTOR_TICKER_DURATION_METRIC = new(
