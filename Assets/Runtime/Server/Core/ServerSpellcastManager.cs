@@ -7,6 +7,7 @@ using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
@@ -422,7 +423,17 @@ namespace Game.Server.Core
             if (float.IsNaN(delay) || float.IsInfinity(delay) || delay < 0f)
                 throw new ArgumentOutOfRangeException(nameof(delay), "A delayed spell action requires a finite, non-negative delay.");
 
-            long delayTicks = checked((long)Math.Ceiling((double)delay / tickDuration));
+            // Use each float's invariant round-trip decimal representation so nominal authored
+            // tick multiples remain exact while distinct values around a boundary remain distinct.
+            decimal delaySeconds = decimal.Parse(
+                delay.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            decimal tickDurationSeconds = decimal.Parse(
+                tickDuration.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            long delayTicks = checked((long)Math.Ceiling(delaySeconds / tickDurationSeconds));
             delayTicks = Math.Max(1L, delayTicks);
             long dueTickID = checked(ServerSimulationClock.CurrentTickID + delayTicks);
 
