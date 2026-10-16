@@ -33,7 +33,7 @@ namespace Game.Server.Systems
             using var markerScope = COOLDOWN_TICK_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int cooldownEntryCount = 0;
-            float dt = UnityEngine.Time.deltaTime;
+            float dt = SystemAPI.Time.DeltaTime;
 
             foreach (var (_, entity) in
                 SystemAPI.Query<DynamicBuffer<CooldownElement>>()

@@ -17,7 +17,10 @@ namespace Game.Server.Core
     public static class ServerInitialization
     {
         private static MonoBehaviour _host;
+        private static GameObject _networkManagerObject;
         private static bool _forceCleanServer;
+        private static Coroutine _initializationCoroutine;
+        private static bool _initializationSucceeded;
 
         /// <summary>
         /// Registers project-owned server metrics for an already active telemetry session.
@@ -47,40 +50,55 @@ namespace Game.Server.Core
         /// <param name="host">The component that owns the initialization coroutine.</param>
         public static void Begin(MonoBehaviour host)
         {
+            if (host == null)
+                throw new ArgumentNullException(nameof(host));
+            if (_initializationCoroutine != null || ServerECSManager.Initialized || ServerSimulationClock.IsRunning)
+                throw new InvalidOperationException("The server initialization sequence is already active.");
+
             _host = host;
-            _host.StartCoroutine(InitializationProcess());
+            _initializationSucceeded = false;
+            _initializationCoroutine = _host.StartCoroutine(InitializationProcess());
         }
 
         private static IEnumerator InitializationProcess()
         {
-            Debug.Log("Server Initialization started.");
-            yield return null;
+            try
+            {
+                Debug.Log("Server Initialization started.");
+                yield return null;
 
-            // Step 1: Initialize addressables.
-            yield return InitializeAddressables();
+                // Step 1: Initialize addressables.
+                yield return InitializeAddressables();
 
-            // Step 2: Load game configuration.
-            yield return LoadGameConfiguration();
+                // Step 2: Load game configuration.
+                yield return LoadGameConfiguration();
 
-            // Step 3: Initialize networking.
-            yield return ServerInitializeNetworking();
+                // Step 3: Initialize networking.
+                yield return ServerInitializeNetworking();
 
-            // Step 4: ECS Worlds after network initialized.
-            yield return ServerInitializeECSWorlds();
+                // Step 4: ECS Worlds after network initialized.
+                yield return ServerInitializeECSWorlds();
 
-            // Step 5: Start server simulation loop.
-            yield return ServerStartSimulation();
+                // Step 5: Start server simulation loop.
+                yield return ServerStartSimulation();
 
-            // Step 6: Initialise server-side bindings for RPC handlers.
-            yield return ServerInitializeBindings();
+                // Step 6: Initialise server-side bindings for RPC handlers.
+                yield return ServerInitializeBindings();
 
-            // Step 7: Load player database.
-            yield return ServerInitializePlayerDatabase();
+                // Step 7: Load player database.
+                yield return ServerInitializePlayerDatabase();
 
-            // Step 8: Load world scene through PurrNet so that it is tracked and ready for networked spawning.
-            yield return ServerLoadWorldScene();
+                // Step 8: Load world scene through PurrNet so that it is tracked and ready for networked spawning.
+                yield return ServerLoadWorldScene();
 
-            // Step 9: Unload initialization scene to free up resources, leaving only the networked world scene active.            
+                _initializationSucceeded = true;
+            }
+            finally
+            {
+                _initializationCoroutine = null;
+                if (!_initializationSucceeded)
+                    Stop();
+            }
         }
 
         /// <summary>
@@ -106,7 +124,13 @@ namespace Game.Server.Core
 
             // Tell the game configuration manager to load.
             Game.Shared.GameConfigurationManager.Initialize();
-            yield return new WaitUntil(() => Game.Shared.GameConfigurationManager.IsInitialized);
+            if (!Game.Shared.GameConfigurationManager.IsInitialized
+                || Game.Shared.GameConfigurationManager.Config == null)
+            {
+                throw new InvalidOperationException("Server initialization could not load GameConfiguration.");
+            }
+
+            yield return null;
 
             // Check to see if the server should clear player data on start,
             // which is useful for testing character creation, etc.
@@ -127,14 +151,17 @@ namespace Game.Server.Core
             if (networkManagerPrefab == null)
             {
                 Debug.Error(" ✗ Failed to load NetworkManager prefab from Resources/NetworkManager");
-                yield break;
+                throw new InvalidOperationException("Failed to load NetworkManager prefab from Resources/NetworkManager.");
             }
 
             // Instantiate NetworkManager
             var networkManagerObj = GameObject.Instantiate(networkManagerPrefab);
+            _networkManagerObject = networkManagerObj;
             networkManagerObj.name = "[Server] NetworkManager";
             GameObject.DontDestroyOnLoad(networkManagerObj);
             var networkManager = networkManagerObj.GetComponent<NetworkManager>();
+            if (networkManager == null)
+                throw new InvalidOperationException("The NetworkManager prefab has no NetworkManager component.");
 
             // Disable auto-start; we'll manage it explicitly
             networkManager.startServerFlags = StartFlags.None;
@@ -145,7 +172,7 @@ namespace Game.Server.Core
             if (transport == null)
             {
                 Debug.Error(" ✗ Failed to find UDPTransport.");
-                yield break;
+                throw new InvalidOperationException("The NetworkManager prefab has no UDPTransport component.");
             }
 
             // Give NetworkManager time to initialize
@@ -156,9 +183,6 @@ namespace Game.Server.Core
             Debug.Log(" - Server started (listening on port 8888).");
             networkManagerObj.AddComponent<ServerConnectionManager>();
             Debug.Log(" - Initialised the server connection manager.");
-
-            // Monitor server connection state
-            networkManager.onServerConnectionState += (state) => Debug.Log($" - Server connection state: {state}.");
 
             yield return null;
             Debug.Log(" ✓ Step 3: Networking initialized successfully.");
@@ -178,10 +202,52 @@ namespace Game.Server.Core
         {
             Debug.Log(" - Step 5: Starting server simulation loop...");
 
-            // Start the main server simulation loop here, e.g. by enabling a ServerSimulationManager component that runs the ECS systems.
+            if (!ServerECSManager.Initialized)
+                throw new InvalidOperationException("The server ECS world must be ready before starting simulation.");
 
+            ServerSimulationClock.Start(_host);
             yield return null;
-            Debug.Warning(" ✓ Step 5: Server simulation loop not yet implemented.");
+            if (!ServerSimulationClock.IsRunning)
+                throw new InvalidOperationException("The server simulation clock stopped during startup.");
+
+            Debug.Log(" ✓ Step 5: Server simulation loop started successfully.");
+        }
+
+        /// <summary>Stops server initialization, the simulation clock and the owned ECS world.</summary>
+        public static void Stop()
+        {
+            if (_initializationCoroutine != null && _host != null)
+                _host.StopCoroutine(_initializationCoroutine);
+
+            _initializationCoroutine = null;
+            ServerSimulationClock.Stop();
+            ServerECSManager.Shutdown();
+            DestroyNetworkManager();
+            _initializationSucceeded = false;
+            _host = null;
+        }
+
+        /// <summary>Aborts a still-running initialization coroutine when its server host is destroyed.</summary>
+        internal static void AbortInitialization()
+        {
+            if (_initializationCoroutine != null && _host != null)
+                _host.StopCoroutine(_initializationCoroutine);
+
+            _initializationCoroutine = null;
+            ServerSimulationClock.Stop();
+            ServerECSManager.Shutdown();
+            DestroyNetworkManager();
+            _initializationSucceeded = false;
+            _host = null;
+        }
+
+        private static void DestroyNetworkManager()
+        {
+            if (_networkManagerObject == null)
+                return;
+
+            GameObject.Destroy(_networkManagerObject);
+            _networkManagerObject = null;
         }
 
         private static IEnumerator ServerInitializeBindings()

@@ -73,6 +73,14 @@ namespace Game.Shared
         /// <summary>Gets or sets the global cooldown duration.</summary>
         public float GlobalCooldownDuration = 1.0f;
 
+        [Header("Server Simulation Settings")]
+        [SerializeField]
+        /// <summary>Gets or sets the authoritative server simulation tick duration in seconds.</summary>
+        public float ServerSimulationTickDuration = 0.05f;
+        [SerializeField]
+        /// <summary>Gets or sets the maximum number of overdue simulation ticks executed in one Unity frame.</summary>
+        public int ServerSimulationMaxCatchUpTicks = 4;
+
         [Header("Item Quality Colors")]
         /// <summary>Gets or sets the poor item color.</summary>
         public Color PoorColor = new(0.62f, 0.62f, 0.62f, 1f);

@@ -49,7 +49,7 @@ namespace Game.Server.Systems
             var groundDetectionRadius = Game.Shared.GameConfigurationManager.Config.GroundDetectionRadius;
             var groundLayerName = Game.Shared.GameConfigurationManager.Config.GroundDetectionMaskName;
             var groundLayerMask = LayerMask.GetMask(groundLayerName);
-            var deltaTime = UnityEngine.Time.deltaTime;
+            var deltaTime = SystemAPI.Time.DeltaTime;
 
             foreach (var (actor, motion, groundCheck) in
                 SystemAPI.Query<RefRW<ActorComponent>, RefRW<MotionStateComponent>, RefRW<GroundDetectionComponent>>())

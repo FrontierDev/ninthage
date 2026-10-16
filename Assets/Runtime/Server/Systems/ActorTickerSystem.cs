@@ -34,7 +34,7 @@ namespace Game.Server.Systems
             using var markerScope = ACTOR_TICKER_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int tickerEntryCount = 0;
-            float dt = UnityEngine.Time.deltaTime;
+            float dt = SystemAPI.Time.DeltaTime;
 
             foreach (var (actor, entity) in
                 SystemAPI.Query<RefRO<ActorComponent>>().WithEntityAccess())

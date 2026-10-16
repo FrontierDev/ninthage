@@ -35,6 +35,8 @@ MonoBehaviour:
   CritChancePerLevelPenalty: 1
   CritDamageMultiplier: 1.5
   GlobalCooldownDuration: 1
+  ServerSimulationTickDuration: 0.05
+  ServerSimulationMaxCatchUpTicks: 4
   PoorColor: {r: 0.62, g: 0.62, b: 0.62, a: 1}
   CommonColor: {r: 1, g: 1, b: 1, a: 1}
   UncommonColor: {r: 0.12, g: 1, b: 0, a: 1}

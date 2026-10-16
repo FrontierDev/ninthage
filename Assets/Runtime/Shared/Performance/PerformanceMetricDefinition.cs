@@ -101,6 +101,10 @@ namespace Game.Shared.Performance
         public const string SERVER_ECS_TICKER_ENTRY_COUNT = "server.ecs.ticker_entry_count";
         public const string SERVER_SIMULATION_TICK_DURATION = "server.simulation.tick_duration";
         public const string SERVER_SIMULATION_TICK_BACKLOG = "server.simulation.tick_backlog";
+        public const string SERVER_SIMULATION_TICKS_SCHEDULED = "server.simulation.ticks_scheduled";
+        public const string SERVER_SIMULATION_TICKS_EXECUTED = "server.simulation.ticks_executed";
+        public const string SERVER_SIMULATION_DEADLINE_MISS_COUNT = "server.simulation.deadline_miss_count";
+        public const string SERVER_SIMULATION_CATCH_UP_CAP_HIT_COUNT = "server.simulation.catch_up_cap_hit_count";
         public const string SERVER_ACTORS_DORMANT_COUNT = "server.actors.dormant_count";
         public const string SERVER_SPATIAL_CANDIDATE_COUNT = "server.spatial.candidate_count";
         public const string SERVER_NETWORK_PAYLOAD_BYTES = "server.network.payload_bytes";

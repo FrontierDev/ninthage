@@ -34,7 +34,7 @@ namespace Game.Server.Systems
             using var markerScope = AURA_TICK_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int auraEntryCount = 0;
-            float dt = UnityEngine.Time.deltaTime;
+            float dt = SystemAPI.Time.DeltaTime;
 
             foreach (var (_, actor, entity) in
                 SystemAPI.Query<DynamicBuffer<AuraElement>, RefRO<ActorComponent>>()

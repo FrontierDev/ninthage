@@ -34,7 +34,7 @@ namespace Game.Server.Systems
             using var markerScope = SPELL_CAST_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int activeCastCount = 0;
-            float dt = UnityEngine.Time.deltaTime;
+            float dt = SystemAPI.Time.DeltaTime;
 
             foreach (var (spellCast, actor, entity) in
                 SystemAPI.Query<RefRW<SpellCastComponent>, RefRO<ActorComponent>>()
