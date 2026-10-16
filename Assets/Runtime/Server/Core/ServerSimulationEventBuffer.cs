@@ -29,6 +29,7 @@ namespace Game.Server.Core
             Entity sourceEntity,
             FixedString64Bytes definitionID,
             int operationID,
+            long castID,
             long sequence)
         {
             TickID = tickID;
@@ -37,6 +38,7 @@ namespace Game.Server.Core
             SourceEntity = sourceEntity;
             DefinitionID = definitionID;
             OperationID = operationID;
+            CastID = castID;
             Sequence = sequence;
         }
 
@@ -58,6 +60,9 @@ namespace Game.Server.Core
         /// <summary>Gets the aura instance or ticker identity, when applicable.</summary>
         internal int OperationID { get; }
 
+        /// <summary>Gets the unique spell-cast generation, when applicable.</summary>
+        internal long CastID { get; }
+
         /// <summary>Gets the stable registration sequence used as the final tie-break.</summary>
         internal long Sequence { get; }
     }
@@ -65,11 +70,15 @@ namespace Game.Server.Core
     /// <summary>Buffers one authoritative tick's ECS-to-domain events until ECS traversal completes.</summary>
     internal sealed class ServerSimulationEventBuffer
     {
+        private const int MAX_EVENTS_PER_TICK = 4096;
         private readonly List<ServerSimulationEvent> _events = new();
+        private readonly List<ServerSimulationEvent> _stagedEvents = new();
         private long _nextSequence;
         private long _tickID;
         private bool _active;
         private bool _dispatching;
+
+        internal bool IsDispatching => _dispatching;
 
         internal void BeginTick(long tickID)
         {
@@ -81,7 +90,15 @@ namespace Game.Server.Core
                 throw new ArgumentOutOfRangeException(nameof(tickID), "A simulation event tick ID must be positive.");
 
             _events.Clear();
-            _nextSequence = 0;
+            for (int i = _stagedEvents.Count - 1; i >= 0; i--)
+            {
+                if (_stagedEvents[i].TickID <= tickID)
+                {
+                    _events.Add(_stagedEvents[i]);
+                    _stagedEvents.RemoveAt(i);
+                }
+            }
+
             _tickID = tickID;
             _active = true;
         }
@@ -91,22 +108,53 @@ namespace Game.Server.Core
             Guid actorID,
             Entity sourceEntity,
             FixedString64Bytes definitionID,
-            int operationID)
+            int operationID,
+            long castID,
+            bool nextTick)
         {
             if (!_active)
                 throw new InvalidOperationException("A server simulation event cannot be queued outside an authoritative tick.");
-            if (_dispatching)
-                throw new InvalidOperationException("A server simulation event cannot be queued during domain event delivery.");
 
-            _events.Add(
+            List<ServerSimulationEvent> destination = nextTick || _dispatching ? _stagedEvents : _events;
+            long eventTickID = nextTick || _dispatching ? checked(_tickID + 1) : _tickID;
+            if (_events.Count + _stagedEvents.Count >= MAX_EVENTS_PER_TICK)
+            {
+                throw new InvalidOperationException(
+                    $"The server simulation event limit of {MAX_EVENTS_PER_TICK} was exceeded for tick {_tickID}.");
+            }
+
+            destination.Add(
                 new ServerSimulationEvent(
-                    _tickID,
+                    eventTickID,
                     kind,
                     actorID,
                     sourceEntity,
                     definitionID,
                     operationID,
+                    castID,
                     checked(++_nextSequence)));
+        }
+
+        internal void Enqueue(
+            ServerSimulationEventKind kind,
+            Guid actorID,
+            Entity sourceEntity,
+            FixedString64Bytes definitionID,
+            int operationID,
+            long castID)
+        {
+            Enqueue(kind, actorID, sourceEntity, definitionID, operationID, castID, nextTick: false);
+        }
+
+        internal void EnqueueForNextTick(
+            ServerSimulationEventKind kind,
+            Guid actorID,
+            Entity sourceEntity,
+            FixedString64Bytes definitionID,
+            int operationID,
+            long castID)
+        {
+            Enqueue(kind, actorID, sourceEntity, definitionID, operationID, castID, nextTick: true);
         }
 
         internal void Dispatch(Action<ServerSimulationEvent> dispatcher)
@@ -119,22 +167,32 @@ namespace Game.Server.Core
                 throw new InvalidOperationException("Server simulation event delivery is already in progress.");
 
             _events.Sort(CompareEvents);
+            ServerSimulationEvent[] snapshot = _events.ToArray();
+            _events.Clear();
             _dispatching = true;
             try
             {
-                for (int i = 0; i < _events.Count; i++)
-                    dispatcher(_events[i]);
+                for (int i = 0; i < snapshot.Length && _active; i++)
+                    dispatcher(snapshot[i]);
             }
             finally
             {
                 _dispatching = false;
-                Clear();
+                EndTick();
             }
+        }
+
+        internal void EndTick()
+        {
+            _events.Clear();
+            _tickID = 0;
+            _active = false;
         }
 
         internal void Clear()
         {
             _events.Clear();
+            _stagedEvents.Clear();
             _nextSequence = 0;
             _tickID = 0;
             _active = false;
@@ -217,6 +275,36 @@ namespace Game.Server.Core
                 ServerSimulationEventKind.ActorTickerExpired => 1,
                 _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown server simulation event kind."),
             };
+        }
+    }
+
+    /// <summary>Provides a bounded next-boundary queue for one server-owned mutation type.</summary>
+    internal sealed class ServerSimulationMutationQueue<T> where T : struct
+    {
+        private const int MAX_PENDING_MUTATIONS = 4096;
+        private readonly List<T> _pending = new();
+
+        internal void Enqueue(T mutation)
+        {
+            if (_pending.Count >= MAX_PENDING_MUTATIONS)
+            {
+                throw new InvalidOperationException(
+                    $"The server simulation mutation limit of {MAX_PENDING_MUTATIONS} was exceeded.");
+            }
+
+            _pending.Add(mutation);
+        }
+
+        internal T[] TakeSnapshot()
+        {
+            T[] snapshot = _pending.ToArray();
+            _pending.Clear();
+            return snapshot;
+        }
+
+        internal void Clear()
+        {
+            _pending.Clear();
         }
     }
 }

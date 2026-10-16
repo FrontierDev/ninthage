@@ -26,14 +26,39 @@ namespace Game.Server.Core
         private readonly Dictionary<int, TickerRegistration> _tickers = new();
         private readonly Dictionary<(Guid, string), int> _tagIndex = new();
         private readonly Dictionary<Guid, List<int>> _actorTickerIDs = new();
+        private readonly HashSet<int> _pendingTickerIDs = new();
+        private readonly ServerSimulationMutationQueue<TickerMutation> _pendingMutations = new();
+        private TickerMutation[] _commitSnapshot;
         private int _nextTickerID;
 
         private struct TickerRegistration
         {
             public Guid ActorID;
             public string Tag;
+            public float TickInterval;
+            public float Duration;
             public Action<Actor> onTick;
             public Action<Actor> onExpire;
+        }
+
+        private enum TickerMutationKind : byte
+        {
+            Add,
+            Remove,
+        }
+
+        private readonly struct TickerMutation
+        {
+            internal TickerMutation(TickerMutationKind kind, Guid actorID, int tickerID)
+            {
+                Kind = kind;
+                ActorID = actorID;
+                TickerID = tickerID;
+            }
+
+            internal TickerMutationKind Kind { get; }
+            internal Guid ActorID { get; }
+            internal int TickerID { get; }
         }
 
         private void Awake()
@@ -70,8 +95,48 @@ namespace Game.Server.Core
             _tickers.Clear();
             _tagIndex.Clear();
             _actorTickerIDs.Clear();
+            _pendingTickerIDs.Clear();
+            _pendingMutations.Clear();
+            _commitSnapshot = null;
             _instance = null;
             _initialized = false;
+        }
+
+        internal void PreparePendingMutations()
+        {
+            _commitSnapshot = _pendingMutations.TakeSnapshot();
+        }
+
+        internal void CommitPendingMutations()
+        {
+            TickerMutation[] mutations = _commitSnapshot ?? _pendingMutations.TakeSnapshot();
+            _commitSnapshot = null;
+            foreach (TickerMutation mutation in mutations)
+            {
+                switch (mutation.Kind)
+                {
+                    case TickerMutationKind.Add:
+                        if (!_pendingTickerIDs.Remove(mutation.TickerID)
+                            || !_tickers.TryGetValue(mutation.TickerID, out var registration)
+                            || registration.ActorID != mutation.ActorID)
+                        {
+                            continue;
+                        }
+
+                        if (!TryAddTickerNow(mutation.ActorID, mutation.TickerID))
+                        {
+                            Debug.Warning($"Discarding ticker {mutation.TickerID} for retired actor {mutation.ActorID}.");
+                            RemoveRegistration(mutation.TickerID);
+                            continue;
+                        }
+                        break;
+                    case TickerMutationKind.Remove:
+                        RemoveTickerNow(mutation.ActorID, mutation.TickerID);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mutation.Kind), mutation.Kind, "Unknown ticker mutation kind.");
+                }
+            }
         }
 
         // ── Public API (for direct callers in Game.Server) ──────────────────────────
@@ -87,44 +152,127 @@ namespace Game.Server.Core
         public int AddTicker(Actor actor, float tickInterval, float duration = float.MaxValue,
             Action<Actor> onTick = null, Action<Actor> onExpire = null, string tag = null)
         {
+            if (actor == null || !TryFindActorEntity(actor.ID, out _))
+            {
+                if (actor != null)
+                    Debug.Warning($"Could not find ECS entity for actor {actor.Name} (ID: {actor.ID})");
+                return -1;
+            }
+
+            // If a tag is supplied and a ticker with that tag already exists, skip (idempotent).
+            if (tag != null && _tagIndex.ContainsKey((actor.ID, tag)))
+                return -1;
+
+            int tickerID = checked(_nextTickerID++);
+            _tickers[tickerID] = new TickerRegistration
+            {
+                ActorID = actor.ID,
+                Tag = tag,
+                TickInterval = tickInterval,
+                Duration = duration,
+                onTick = onTick,
+                onExpire = onExpire
+            };
+            if (tag != null)
+                _tagIndex[(actor.ID, tag)] = tickerID;
+            if (!_actorTickerIDs.TryGetValue(actor.ID, out var list))
+                _actorTickerIDs[actor.ID] = list = new List<int>();
+            list.Add(tickerID);
+
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                _pendingTickerIDs.Add(tickerID);
+                try
+                {
+                    _pendingMutations.Enqueue(new TickerMutation(TickerMutationKind.Add, actor.ID, tickerID));
+                }
+                catch
+                {
+                    RemoveRegistration(tickerID);
+                    throw;
+                }
+
+                return tickerID;
+            }
+
+            if (!TryAddTickerNow(actor.ID, tickerID))
+            {
+                RemoveRegistration(tickerID);
+                Debug.Warning($"Could not add ticker {tickerID} to actor {actor.Name} (ID: {actor.ID})");
+                return -1;
+            }
+
+            return tickerID;
+        }
+
+        private bool TryAddTickerNow(Guid actorID, int tickerID)
+        {
+            if (!_tickers.TryGetValue(tickerID, out var registration)
+                || registration.ActorID != actorID
+                || !TryFindActorEntity(actorID, out var entity)
+                || !_entityManager.HasBuffer<Systems.TickerElement>(entity))
+            {
+                return false;
+            }
+
+            _entityManager.GetBuffer<Systems.TickerElement>(entity).Add(new Systems.TickerElement
+            {
+                TickerID = tickerID,
+                RemainingDuration = registration.Duration,
+                TickInterval = registration.TickInterval,
+                TimeSinceLastTick = 0f
+            });
+            return true;
+        }
+
+        private void RemoveTickerNow(Guid actorID, int tickerID)
+        {
+            if (TryFindActorEntity(actorID, out var entity)
+                && _entityManager.HasBuffer<Systems.TickerElement>(entity))
+            {
+                var buffer = _entityManager.GetBuffer<Systems.TickerElement>(entity);
+                for (int i = buffer.Length - 1; i >= 0; i--)
+                {
+                    if (buffer[i].TickerID == tickerID)
+                        buffer.RemoveAt(i);
+                }
+            }
+
+            if (_tickers.TryGetValue(tickerID, out var registration)
+                && registration.ActorID == actorID)
+            {
+                RemoveRegistration(tickerID);
+            }
+        }
+
+        private void RemoveRegistration(int tickerID)
+        {
+            _pendingTickerIDs.Remove(tickerID);
+            if (!_tickers.Remove(tickerID, out var registration))
+                return;
+
+            if (registration.Tag != null)
+                _tagIndex.Remove((registration.ActorID, registration.Tag));
+            if (_actorTickerIDs.TryGetValue(registration.ActorID, out var list))
+            {
+                list.Remove(tickerID);
+                if (list.Count == 0)
+                    _actorTickerIDs.Remove(registration.ActorID);
+            }
+        }
+
+        private bool TryFindActorEntity(Guid actorID, out Entity actorEntity)
+        {
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
                 foreach (var entity in entities)
                 {
-                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (component.ActorID != actor.ID) continue;
+                    if (_entityManager.GetComponentData<Systems.ActorComponent>(entity).ActorID != actorID)
+                        continue;
 
-                    // If a tag is supplied and a ticker with that tag already exists, skip (idempotent).
-                    if (tag != null && _tagIndex.ContainsKey((actor.ID, tag)))
-                        return -1;
-
-                    int tickerID = _nextTickerID++;
-
-                    _entityManager.GetBuffer<Systems.TickerElement>(entity).Add(new Systems.TickerElement
-                    {
-                        TickerID = tickerID,
-                        RemainingDuration = duration,
-                        TickInterval = tickInterval,
-                        TimeSinceLastTick = 0f
-                    });
-
-                    _tickers[tickerID] = new TickerRegistration
-                    {
-                        ActorID = actor.ID,
-                        Tag = tag,
-                        onTick = onTick,
-                        onExpire = onExpire
-                    };
-
-                    if (tag != null)
-                        _tagIndex[(actor.ID, tag)] = tickerID;
-
-                    if (!_actorTickerIDs.TryGetValue(actor.ID, out var list))
-                        _actorTickerIDs[actor.ID] = list = new List<int>();
-                    list.Add(tickerID);
-
-                    return tickerID;
+                    actorEntity = entity;
+                    return true;
                 }
             }
             finally
@@ -132,8 +280,8 @@ namespace Game.Server.Core
                 entities.Dispose();
             }
 
-            Debug.Warning($"Could not find ECS entity for actor {actor.Name} (ID: {actor.ID})");
-            return -1;
+            actorEntity = Entity.Null;
+            return false;
         }
 
         /// <summary>Removes a ticker from an actor.</summary>
@@ -141,34 +289,22 @@ namespace Game.Server.Core
         /// <param name="tickerID">The ticker identifier.</param>
         public void RemoveTicker(Actor actor, int tickerID)
         {
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            try
+            if (actor == null
+                || !_tickers.TryGetValue(tickerID, out var registration)
+                || registration.ActorID != actor.ID)
             {
-                foreach (var entity in entities)
-                {
-                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (component.ActorID != actor.ID) continue;
-
-                    var buffer = _entityManager.GetBuffer<Systems.TickerElement>(entity);
-                    for (int i = buffer.Length - 1; i >= 0; i--)
-                    {
-                        if (buffer[i].TickerID == tickerID)
-                            buffer.RemoveAt(i);
-                    }
-
-                    if (_tickers.TryGetValue(tickerID, out var reg))
-                    {
-                        if (reg.Tag != null)
-                            _tagIndex.Remove((actor.ID, reg.Tag));
-                        _tickers.Remove(tickerID);
-                    }
-                    return;
-                }
+                return;
             }
-            finally
+
+            if (ServerECSManager.IsMutationBoundaryActive)
             {
-                entities.Dispose();
+                _pendingTickerIDs.Remove(tickerID);
+                RemoveRegistration(tickerID);
+                _pendingMutations.Enqueue(new TickerMutation(TickerMutationKind.Remove, actor.ID, tickerID));
+                return;
             }
+
+            RemoveTickerNow(actor.ID, tickerID);
         }
 
         /// <summary>Removes the ticker with a tag from an actor.</summary>
@@ -176,6 +312,9 @@ namespace Game.Server.Core
         /// <param name="tag">The ticker tag.</param>
         public void RemoveTickerByTag(Actor actor, string tag)
         {
+            if (actor == null || tag == null)
+                return;
+
             if (_tagIndex.TryGetValue((actor.ID, tag), out int tickerID))
                 RemoveTicker(actor, tickerID);
         }
@@ -193,28 +332,23 @@ namespace Game.Server.Core
 
         private void OnActorTick(Guid actorID, int tickerID)
         {
-            if (!_tickers.TryGetValue(tickerID, out var reg)) return;
+            if (!_tickers.TryGetValue(tickerID, out var reg) || reg.ActorID != actorID) return;
             if (reg.onTick == null) return;
-            if (!ServerActorManager.Instance.TryGetActor(actorID, out var actor)) return;
+            if (ServerActorManager.Instance == null
+                || !ServerActorManager.Instance.TryGetActor(actorID, out var actor)) return;
 
             reg.onTick(actor);
         }
 
         private void OnActorTickerExpired(Guid actorID, int tickerID)
         {
-            if (!_tickers.TryGetValue(tickerID, out var reg)) return;
+            if (!_tickers.TryGetValue(tickerID, out var reg) || reg.ActorID != actorID) return;
 
-            if (reg.Tag != null)
-                _tagIndex.Remove((actorID, reg.Tag));
-            if (_actorTickerIDs.TryGetValue(actorID, out var list))
-            {
-                list.Remove(tickerID);
-                if (list.Count == 0)
-                    _actorTickerIDs.Remove(actorID);
-            }
-            _tickers.Remove(tickerID);
+            RemoveRegistration(tickerID);
 
-            if (reg.onExpire != null && ServerActorManager.Instance.TryGetActor(actorID, out var actor))
+            if (reg.onExpire != null
+                && ServerActorManager.Instance != null
+                && ServerActorManager.Instance.TryGetActor(actorID, out var actor))
                 reg.onExpire(actor);
         }
 
@@ -228,14 +362,7 @@ namespace Game.Server.Core
             // Copy to avoid modifying the list while iterating.
             var ids = new List<int>(list);
             foreach (var tickerID in ids)
-            {
-                if (_tickers.TryGetValue(tickerID, out var reg))
-                {
-                    if (reg.Tag != null)
-                        _tagIndex.Remove((actor.ID, reg.Tag));
-                    _tickers.Remove(tickerID);
-                }
-            }
+                RemoveRegistration(tickerID);
             _actorTickerIDs.Remove(actor.ID);
         }
 

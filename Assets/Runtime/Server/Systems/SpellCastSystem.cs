@@ -59,7 +59,8 @@ namespace Game.Server.Systems
                             ServerSimulationEventKind.SpellCastTick,
                             actor.ValueRO.ActorID,
                             entity,
-                            spellCast.ValueRO.SpellID);
+                            spellCast.ValueRO.SpellID,
+                            castID: spellCast.ValueRO.CastID);
                     }
                 }
 
@@ -73,7 +74,8 @@ namespace Game.Server.Systems
                         ServerSimulationEventKind.SpellCastCompleted,
                         actor.ValueRO.ActorID,
                         entity,
-                        spellCast.ValueRO.SpellID);
+                        spellCast.ValueRO.SpellID,
+                        castID: spellCast.ValueRO.CastID);
                 }
             }
             if (telemetryEnabled)

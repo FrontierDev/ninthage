@@ -29,7 +29,46 @@ namespace Game.Server.Core
 
         // Store active spell casts by actor ID for quick access during ticks and completion.
         private readonly Dictionary<Guid, SpellContext> _activeSpellCasts = new();
+        private readonly Dictionary<Guid, long> _activeCastIDs = new();
         private readonly List<(float RemainingTime, Action onCallback)> _pendingActions = new();
+        private readonly ServerSimulationMutationQueue<SpellMutation> _pendingMutations = new();
+        private SpellMutation[] _commitSnapshot;
+        private long _nextCastID;
+
+        private enum SpellMutationKind : byte
+        {
+            Start,
+            Interrupt,
+        }
+
+        private readonly struct SpellMutation
+        {
+            internal SpellMutation(
+                SpellMutationKind kind,
+                Guid actorID,
+                Actor caster,
+                SpellOverride spell,
+                SpellContext context,
+                string spellID,
+                long castID)
+            {
+                Kind = kind;
+                ActorID = actorID;
+                Caster = caster;
+                Spell = spell;
+                Context = context;
+                SpellID = spellID;
+                CastID = castID;
+            }
+
+            internal SpellMutationKind Kind { get; }
+            internal Guid ActorID { get; }
+            internal Actor Caster { get; }
+            internal SpellOverride Spell { get; }
+            internal SpellContext Context { get; }
+            internal string SpellID { get; }
+            internal long CastID { get; }
+        }
 
 
         private void Awake()
@@ -78,7 +117,10 @@ namespace Game.Server.Core
         private void OnDestroy()
         {
             _activeSpellCasts.Clear();
+            _activeCastIDs.Clear();
             _pendingActions.Clear();
+            _pendingMutations.Clear();
+            _commitSnapshot = null;
 
             ActorEndpoint.onServerSpellCastStarted -= OnSpellCastStarted;
             ActorEndpoint.onServerSpellCastTick -= OnSpellCastTick;
@@ -103,6 +145,46 @@ namespace Game.Server.Core
                 return;
 
             _activeSpellCasts.Remove(actor.ID);
+            _activeCastIDs.Remove(actor.ID);
+        }
+
+        internal void PreparePendingMutations()
+        {
+            _commitSnapshot = _pendingMutations.TakeSnapshot();
+        }
+
+        internal void CommitPendingMutations()
+        {
+            SpellMutation[] mutations = _commitSnapshot ?? _pendingMutations.TakeSnapshot();
+            _commitSnapshot = null;
+            foreach (SpellMutation mutation in mutations)
+            {
+                switch (mutation.Kind)
+                {
+                    case SpellMutationKind.Start:
+                        if (mutation.Caster == null
+                            || ServerActorManager.Instance == null
+                            || !ServerActorManager.Instance.TryGetActor(mutation.ActorID, out var currentCaster)
+                            || currentCaster != mutation.Caster)
+                        {
+                            Debug.Warning($"Discarding spell start for retired actor {mutation.ActorID}.");
+                            continue;
+                        }
+
+                        if (!OnSpellCastStartedNow(currentCaster, mutation.Spell)
+                            && mutation.Context != null
+                            && !_activeSpellCasts.ContainsKey(mutation.ActorID))
+                        {
+                            RestoreActiveCast(mutation.ActorID, mutation.Context, mutation.CastID);
+                        }
+                        break;
+                    case SpellMutationKind.Interrupt:
+                        CompleteDeferredInterrupt(mutation);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mutation.Kind), mutation.Kind, "Unknown spell mutation kind.");
+                }
+            }
         }
 
         #region Spell Cast Lifecycle
@@ -137,7 +219,32 @@ namespace Game.Server.Core
         /// </summary>
         private void OnSpellCastStarted(Actor caster, SpellOverride spell)
         {
-            if (!IsValidated(caster, spell)) return;
+            if (caster == null || spell == null)
+                return;
+
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                _activeSpellCasts.TryGetValue(caster.ID, out var previousContext);
+                _activeCastIDs.TryGetValue(caster.ID, out var previousCastID);
+                InvalidateActiveCast(caster.ID);
+                _pendingMutations.Enqueue(
+                    new SpellMutation(
+                        SpellMutationKind.Start,
+                        caster.ID,
+                        caster,
+                        spell,
+                        previousContext,
+                        null,
+                        previousCastID));
+                return;
+            }
+
+            OnSpellCastStartedNow(caster, spell);
+        }
+
+        private bool OnSpellCastStartedNow(Actor caster, SpellOverride spell)
+        {
+            if (!IsValidated(caster, spell)) return false;
 
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
@@ -150,7 +257,10 @@ namespace Game.Server.Core
                     // Create the spell context here.
                     SpellContext ctx = new(spell, caster, caster.Target);
                     ctx.PositionTarget = spell.PositionTarget;
+                    long castID = checked(++_nextCastID);
+                    InvalidateActiveCast(caster.ID);
                     _activeSpellCasts[caster.ID] = ctx;
+                    _activeCastIDs[caster.ID] = castID;
 
                     // Skip ECS and event invocation if the cast time is 0 or less 
                     // - just complete the cast immediately.
@@ -161,14 +271,15 @@ namespace Game.Server.Core
                             ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
 
                         // Instant cast - skip straight to completion.
-                        OnSpellCastCompleted(caster.ID, spell.BaseDefinition.DefinitionID);
-                        return;
+                        CompleteCastNow(caster.ID, spell.BaseDefinition.DefinitionID, castID, ctx);
+                        return true;
                     }
                     else
                     {
                         _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
                         {
                             SpellID = spell.BaseDefinition.DefinitionID,
+                            CastID = castID,
                             RemainingCastTime = spell.CastTime,
                             TotalCastTime = spell.CastTime,
                             TotalTicks = spell.TotalTicks,
@@ -219,7 +330,7 @@ namespace Game.Server.Core
                             statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
                     }
 
-                    return;
+                    return true;
                 }
             }
             finally
@@ -228,6 +339,7 @@ namespace Game.Server.Core
             }
 
             Debug.Warning($"Could not find ECS entity for actor {caster.Name} (ID: {caster.ID})");
+            return false;
         }
 
         /// <summary>
@@ -238,7 +350,8 @@ namespace Game.Server.Core
         /// <param name="spellID"></param>
         private void OnSpellCastTick(Guid actorID, string spellID)
         {
-            if (!_activeSpellCasts.TryGetValue(actorID, out var ctx))
+            if (!TryResolveCastEvent(actorID, spellID, out long castID)
+                || !TryGetCurrentCast(actorID, spellID, castID, out var ctx))
                 return;
 
             ctx.Phase = SpellCastPhase.OnChannelTick;
@@ -249,7 +362,7 @@ namespace Game.Server.Core
                 {
                     ApplySpellEffect(ctx, component);
                     // Cast may have been interrupted by target evaluation
-                    if (!_activeSpellCasts.ContainsKey(actorID)) return;
+                    if (!IsCurrentCast(actorID, spellID, castID, ctx)) return;
                 }
             }
 
@@ -270,7 +383,8 @@ namespace Game.Server.Core
                     statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
             }
 
-            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observers_TickSpellCast(spellID);
+            if (IsCurrentCast(actorID, spellID, castID, ctx))
+                ctx.Caster.GetComponent<ActorSpellcaster>()?.Observers_TickSpellCast(spellID);
         }
 
         /// <summary>
@@ -294,24 +408,61 @@ namespace Game.Server.Core
         /// <param name="spellID"></param>
         private void OnSpellCastInterrupted(Guid actorID, string spellID)
         {
-            if (!_activeSpellCasts.Remove(actorID, out var ctx))
+            if (!TryResolveInterruptCast(actorID, spellID, out long castID)
+                || !TryGetCurrentCast(actorID, spellID, castID, out var ctx))
                 return;
 
-            // Disable the ECS timer
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            try
+            if (ServerECSManager.IsMutationBoundaryActive)
             {
-                foreach (var entity in entities)
-                {
-                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (component.ActorID != actorID) continue;
-                    _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
-                    break;
-                }
+                InvalidateActiveCast(actorID);
+                _pendingMutations.Enqueue(
+                    new SpellMutation(
+                        SpellMutationKind.Interrupt,
+                        actorID,
+                        null,
+                        null,
+                        ctx,
+                        spellID,
+                        castID));
+                return;
             }
-            finally
+
+            InterruptCastNow(actorID, spellID, castID, ctx);
+        }
+
+        private void CompleteDeferredInterrupt(SpellMutation mutation)
+        {
+            if (_activeCastIDs.TryGetValue(mutation.ActorID, out long activeCastID)
+                && activeCastID != mutation.CastID)
             {
-                entities.Dispose();
+                return;
+            }
+
+            InterruptCastNow(mutation.ActorID, mutation.SpellID, mutation.CastID, mutation.Context);
+        }
+
+        private void InterruptCastNow(Guid actorID, string spellID, long castID, SpellContext ctx)
+        {
+            if (_activeCastIDs.TryGetValue(actorID, out long activeCastID))
+            {
+                if (activeCastID != castID
+                    || !_activeSpellCasts.TryGetValue(actorID, out var activeContext)
+                    || activeContext != ctx)
+                {
+                    return;
+                }
+
+                InvalidateActiveCast(actorID);
+            }
+
+            DisableCastComponent(actorID, castID);
+
+            if (ctx?.Caster == null
+                || ServerActorManager.Instance == null
+                || !ServerActorManager.Instance.TryGetActor(actorID, out var currentCaster)
+                || currentCaster != ctx.Caster)
+            {
+                return;
             }
 
             // Refund resources based on RefundOnInterrupt
@@ -331,11 +482,39 @@ namespace Game.Server.Core
         /// <param name="spellID"></param>
         private void OnSpellCastCompleted(Guid actorID, string spellID)
         {
-            if (!_activeSpellCasts.Remove(actorID, out var ctx))
+            if (!TryResolveCastEvent(actorID, spellID, out long castID)
+                || !TryGetCurrentCast(actorID, spellID, castID, out var ctx))
+                return;
+
+            if (ServerECSManager.TryGetCurrentSimulationEvent(out var currentEvent)
+                && (currentEvent.Kind != ServerSimulationEventKind.SpellCastCompleted
+                    || currentEvent.ActorID != actorID
+                    || currentEvent.CastID != castID))
             {
-                Debug.Warning($"Spell cast completed but no active context found (ID: {actorID})");
+                QueueCompletionForNextBoundary(actorID, spellID, castID, currentEvent.SourceEntity);
                 return;
             }
+
+            if (ServerECSManager.IsMutationBoundaryActive
+                && !ServerECSManager.TryGetCurrentSimulationEvent(out currentEvent))
+            {
+                if (TryFindActorEntity(actorID, out Entity sourceEntity))
+                    QueueCompletionForNextBoundary(actorID, spellID, castID, sourceEntity);
+                return;
+            }
+
+            CompleteCastNow(actorID, spellID, castID, ctx);
+        }
+
+        private void CompleteCastNow(Guid actorID, string spellID, long castID, SpellContext ctx)
+        {
+            if (!TryGetCurrentCast(actorID, spellID, castID, out var activeContext)
+                || activeContext != ctx)
+            {
+                return;
+            }
+
+            InvalidateActiveCast(actorID);
 
             // Set the current cast phase to OnCastEnd.
             ctx.Phase = SpellCastPhase.OnCastEnd;
@@ -402,6 +581,141 @@ namespace Game.Server.Core
             ctx.Caster.GetComponent<ActorEvents>()?.onServerSpellCastComplete?.Invoke(ctx);
             Debug.Log($"Spell cast completed: {ctx.Caster.Name} finished '{spellID}'");
         }
+
+        private bool TryResolveCastEvent(Guid actorID, string spellID, out long castID)
+        {
+            if (ServerECSManager.TryGetCurrentSimulationEvent(out var simulationEvent))
+            {
+                if ((simulationEvent.Kind != ServerSimulationEventKind.SpellCastTick
+                        && simulationEvent.Kind != ServerSimulationEventKind.SpellCastCompleted)
+                    || simulationEvent.ActorID != actorID
+                    || simulationEvent.DefinitionID.ToString() != spellID
+                    || simulationEvent.CastID <= 0)
+                {
+                    castID = 0;
+                    return false;
+                }
+
+                castID = simulationEvent.CastID;
+                return true;
+            }
+
+            return _activeCastIDs.TryGetValue(actorID, out castID) && castID > 0;
+        }
+
+        private bool TryResolveInterruptCast(Guid actorID, string spellID, out long castID)
+        {
+            if (ServerECSManager.TryGetCurrentSimulationEvent(out var simulationEvent)
+                && (simulationEvent.Kind == ServerSimulationEventKind.SpellCastTick
+                    || simulationEvent.Kind == ServerSimulationEventKind.SpellCastCompleted)
+                && simulationEvent.ActorID == actorID
+                && simulationEvent.DefinitionID.ToString() == spellID)
+            {
+                castID = simulationEvent.CastID;
+                return castID > 0;
+            }
+
+            return _activeCastIDs.TryGetValue(actorID, out castID) && castID > 0;
+        }
+
+        private bool TryGetCurrentCast(Guid actorID, string spellID, long castID, out SpellContext context)
+        {
+            if (!_activeSpellCasts.TryGetValue(actorID, out context)
+                || !_activeCastIDs.TryGetValue(actorID, out long activeCastID)
+                || activeCastID != castID
+                || context?.Spell?.BaseDefinition?.DefinitionID != spellID)
+            {
+                context = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsCurrentCast(Guid actorID, string spellID, long castID, SpellContext context)
+        {
+            return TryGetCurrentCast(actorID, spellID, castID, out var currentContext)
+                && currentContext == context;
+        }
+
+        private void InvalidateActiveCast(Guid actorID)
+        {
+            _activeSpellCasts.Remove(actorID);
+            _activeCastIDs.Remove(actorID);
+        }
+
+        private void RestoreActiveCast(Guid actorID, SpellContext context, long castID)
+        {
+            _activeSpellCasts[actorID] = context;
+            _activeCastIDs[actorID] = castID;
+
+            if (castID <= 0 || !TryFindActorEntity(actorID, out Entity entity))
+                return;
+
+            var component = _entityManager.GetComponentData<Systems.SpellCastComponent>(entity);
+            if (component.CastID == castID)
+                _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, true);
+        }
+
+        private void DisableCastComponent(Guid actorID, long castID)
+        {
+            if (castID <= 0)
+                return;
+
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var entity in entities)
+                {
+                    var actor = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                    if (actor.ActorID != actorID)
+                        continue;
+
+                    var component = _entityManager.GetComponentData<Systems.SpellCastComponent>(entity);
+                    if (component.CastID == castID)
+                        _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
+                    break;
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+            }
+        }
+
+        private bool TryFindActorEntity(Guid actorID, out Entity actorEntity)
+        {
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var entity in entities)
+                {
+                    if (_entityManager.GetComponentData<Systems.ActorComponent>(entity).ActorID != actorID)
+                        continue;
+
+                    actorEntity = entity;
+                    return true;
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+            }
+
+            actorEntity = Entity.Null;
+            return false;
+        }
+
+        private void QueueCompletionForNextBoundary(Guid actorID, string spellID, long castID, Entity sourceEntity)
+        {
+            ServerECSManager.QueueSimulationEvent(
+                ServerSimulationEventKind.SpellCastCompleted,
+                actorID,
+                sourceEntity,
+                spellID,
+                castID: castID);
+        }
+
         #endregion
 
         private void ApplySpellEffect(SpellContext ctx, SpellComponent component)

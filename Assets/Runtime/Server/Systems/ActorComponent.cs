@@ -59,6 +59,8 @@ namespace Game.Server.Systems
     {
         /// <summary>The spell identifier being cast.</summary>
         public FixedString64Bytes SpellID;
+        /// <summary>The unique cast generation associated with this active cast.</summary>
+        public long CastID;
         /// <summary>The remaining cast time.</summary>
         public float RemainingCastTime;
         /// <summary>The total cast duration.</summary>

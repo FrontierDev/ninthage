@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Game.Shared.Data;
 
@@ -13,6 +14,8 @@ namespace Game.Shared.Runtime.Spellcasting
     {
         /// <summary>Gets or sets the caster that applied the stack.</summary>
         public Actor Caster;
+        /// <summary>Gets the stable identifier of the caster that applied the stack.</summary>
+        public Guid CasterID;
         /// <summary>Gets or sets the remaining stack duration.</summary>
         public float Duration; // Only used by Condition (independent durations). Ignored by Condition_Extend.
 
@@ -20,6 +23,7 @@ namespace Game.Shared.Runtime.Spellcasting
         public ConditionStack(Actor caster, float duration)
         {
             Caster = caster;
+            CasterID = caster != null ? caster.ID : Guid.Empty;
             Duration = duration;
         }
     }
@@ -34,8 +38,12 @@ namespace Game.Shared.Runtime.Spellcasting
         public AuraDefinition Definition;
         /// <summary>Gets or sets the actor that applied the aura.</summary>
         public Actor Caster;
+        /// <summary>Gets the stable identifier of the actor that applied the aura.</summary>
+        public Guid CasterID;
         /// <summary>Gets or sets the actor affected by the aura.</summary>
         public Actor Target;
+        /// <summary>Gets the stable identifier of the actor affected by the aura.</summary>
+        public Guid TargetID;
 
         // Mutable copies from AuraDefinition
         /// <summary>Gets or sets the current duration.</summary>
@@ -58,7 +66,9 @@ namespace Game.Shared.Runtime.Spellcasting
         {
             Definition = definition;
             Caster = caster;
+            CasterID = caster != null ? caster.ID : Guid.Empty;
             Target = target;
+            TargetID = target != null ? target.ID : Guid.Empty;
             Duration = definition.BaseDuration;
             TickInterval = definition.BaseTickInterval;
             Stacks = 1;

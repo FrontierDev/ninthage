@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Networking;
 using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -23,6 +24,23 @@ namespace Game.Server.Core
 
         private EntityManager _entityManager;
         private EntityQuery _actorComponentQuery;
+        private readonly ServerSimulationMutationQueue<CooldownMutation> _pendingMutations = new();
+        private readonly Dictionary<(Guid ActorID, string SpellID), float> _pendingCooldowns = new();
+        private CooldownMutation[] _commitSnapshot;
+
+        private readonly struct CooldownMutation
+        {
+            internal CooldownMutation(Guid actorID, string spellID, float duration)
+            {
+                ActorID = actorID;
+                SpellID = spellID;
+                Duration = duration;
+            }
+
+            internal Guid ActorID { get; }
+            internal string SpellID { get; }
+            internal float Duration { get; }
+        }
 
         private void Awake()
         {
@@ -47,8 +65,25 @@ namespace Game.Server.Core
         {
             ActorEndpoint.onServerStartCooldown -= StartCooldown;
 
+            _pendingMutations.Clear();
+            _pendingCooldowns.Clear();
+            _commitSnapshot = null;
             _instance = null;
             _initialized = false;
+        }
+
+        internal void PreparePendingMutations()
+        {
+            _commitSnapshot = _pendingMutations.TakeSnapshot();
+            _pendingCooldowns.Clear();
+        }
+
+        internal void CommitPendingMutations()
+        {
+            CooldownMutation[] mutations = _commitSnapshot ?? _pendingMutations.TakeSnapshot();
+            _commitSnapshot = null;
+            foreach (CooldownMutation mutation in mutations)
+                StartCooldownNow(mutation.ActorID, mutation.SpellID, mutation.Duration);
         }
 
         /// <summary>Starts or refreshes a cooldown for an actor.</summary>
@@ -56,6 +91,18 @@ namespace Game.Server.Core
         /// <param name="spellID">The spell or cooldown identifier.</param>
         /// <param name="duration">The cooldown duration in seconds.</param>
         public void StartCooldown(Guid actorID, string spellID, float duration)
+        {
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                _pendingCooldowns[(actorID, spellID)] = duration;
+                _pendingMutations.Enqueue(new CooldownMutation(actorID, spellID, duration));
+                return;
+            }
+
+            StartCooldownNow(actorID, spellID, duration);
+        }
+
+        private void StartCooldownNow(Guid actorID, string spellID, float duration)
         {
             var fixedSpellID = new FixedString64Bytes(spellID);
 
@@ -119,6 +166,9 @@ namespace Game.Server.Core
         public float GetRemainingCooldown(Guid actorID, string spellID)
         {
             var fixedSpellID = new FixedString64Bytes(spellID);
+            float pendingCooldown = _pendingCooldowns.TryGetValue((actorID, spellID), out float pending)
+                ? pending
+                : 0f;
 
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
@@ -132,10 +182,10 @@ namespace Game.Server.Core
                     for (int i = 0; i < buffer.Length; i++)
                     {
                         if (buffer[i].SpellID == fixedSpellID)
-                            return buffer[i].RemainingCooldown;
+                            return Mathf.Max(buffer[i].RemainingCooldown, pendingCooldown);
                     }
 
-                    return 0f;
+                    return pendingCooldown;
                 }
             }
             finally
@@ -143,7 +193,7 @@ namespace Game.Server.Core
                 entities.Dispose();
             }
 
-            return 0f;
+            return pendingCooldown;
         }
     }
 }

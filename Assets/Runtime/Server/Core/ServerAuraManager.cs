@@ -26,7 +26,46 @@ namespace Game.Server.Core
         private EntityQuery _actorComponentQuery;
 
         private readonly Dictionary<int, AuraContext> _activeAuras = new();
+        private readonly ServerSimulationMutationQueue<AuraMutation> _pendingMutations = new();
+        private readonly HashSet<int> _pendingRemovalInstanceIDs = new();
+        private AuraMutation[] _commitSnapshot;
         private int _nextInstanceID;
+
+        private enum AuraMutationKind : byte
+        {
+            Apply,
+            Dispel,
+            RemoveAll,
+        }
+
+        private readonly struct AuraMutation
+        {
+            internal AuraMutation(
+                AuraMutationKind kind,
+                AuraDefinition definition,
+                Actor caster,
+                Actor target,
+                Guid targetID,
+                int instanceID,
+                int stacks)
+            {
+                Kind = kind;
+                Definition = definition;
+                Caster = caster;
+                Target = target;
+                TargetID = targetID;
+                InstanceID = instanceID;
+                Stacks = stacks;
+            }
+
+            internal AuraMutationKind Kind { get; }
+            internal AuraDefinition Definition { get; }
+            internal Actor Caster { get; }
+            internal Actor Target { get; }
+            internal Guid TargetID { get; }
+            internal int InstanceID { get; }
+            internal int Stacks { get; }
+        }
 
         private void Awake()
         {
@@ -60,6 +99,9 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
 
             _activeAuras.Clear();
+            _pendingMutations.Clear();
+            _pendingRemovalInstanceIDs.Clear();
+            _commitSnapshot = null;
             _instance = null;
             _initialized = false;
         }
@@ -69,23 +111,82 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
+            Entity targetEntity = Entity.Null;
+            bool hasTargetEntity = TryFindActorEntity(actor.ID, out targetEntity);
+
             var cancelledInstanceIDs = new List<int>();
             foreach (var pair in _activeAuras)
             {
                 AuraContext context = pair.Value;
-                if ((context.Caster != null && context.Caster.ID == actor.ID)
-                    || (context.Target != null && context.Target.ID == actor.ID))
+                if (context.TargetID == actor.ID)
                 {
                     cancelledInstanceIDs.Add(pair.Key);
                 }
             }
 
+            var cancelledContexts = new List<AuraContext>();
             foreach (int instanceID in cancelledInstanceIDs)
-                _activeAuras.Remove(instanceID);
+            {
+                if (!_activeAuras.Remove(instanceID, out var context))
+                    continue;
+
+                _pendingRemovalInstanceIDs.Remove(instanceID);
+                cancelledContexts.Add(context);
+            }
+
+            if (hasTargetEntity && _entityManager.HasBuffer<Systems.AuraElement>(targetEntity))
+            {
+                var buffer = _entityManager.GetBuffer<Systems.AuraElement>(targetEntity);
+                buffer.Clear();
+            }
+
+            foreach (AuraContext context in cancelledContexts)
+                context.Definition?.AuraBehaviour?.OnRemoved(context.Caster, context.Target ?? actor);
+        }
+
+        internal void PreparePendingMutations()
+        {
+            _commitSnapshot = _pendingMutations.TakeSnapshot();
+        }
+
+        internal void CommitPendingMutations()
+        {
+            AuraMutation[] mutations = _commitSnapshot ?? _pendingMutations.TakeSnapshot();
+            _commitSnapshot = null;
+            foreach (AuraMutation mutation in mutations)
+            {
+                switch (mutation.Kind)
+                {
+                    case AuraMutationKind.Apply:
+                        if (!TryGetCurrentActor(mutation.TargetID, mutation.Target, out var target)
+                            || mutation.Caster == null
+                            || !TryGetCurrentActor(mutation.Caster.ID, mutation.Caster, out _))
+                        {
+                            Debug.Warning($"Discarding aura application for retired target {mutation.TargetID}.");
+                            continue;
+                        }
+
+                        ApplyAuraNow(mutation.Definition, mutation.Caster, target, mutation.Stacks);
+                        break;
+                    case AuraMutationKind.Dispel:
+                        _pendingRemovalInstanceIDs.Remove(mutation.InstanceID);
+                        if (TryGetCurrentActor(mutation.TargetID, mutation.Target, out target))
+                            DispelAuraNow(target, mutation.InstanceID);
+                        break;
+                    case AuraMutationKind.RemoveAll:
+                        RemoveAllAurasNow(mutation.TargetID);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mutation.Kind), mutation.Kind, "Unknown aura mutation kind.");
+                }
+            }
         }
 
         private void OnApplyAuraRequest(AuraDefinition definition, Actor caster, Actor target, int stacks)
         {
+            if (definition == null || caster == null || target == null)
+                return;
+
             Debug.Log($"Received request to apply aura '{definition.DisplayName}' from {caster.Name} to {target.Name}");
             ApplyAura(definition, caster, target, stacks);
         }
@@ -97,6 +198,34 @@ namespace Game.Server.Core
         /// <param name="stacks">The number of stacks to apply.</param>
         /// <returns><see langword="true"/> when the aura was applied.</returns>
         public bool ApplyAura(AuraDefinition definition, Actor caster, Actor target, int stacks = 1)
+        {
+            if (definition == null || caster == null || target == null)
+                return false;
+
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                if (!TryGetCurrentActor(target.ID, target, out _))
+                    return false;
+
+                _pendingMutations.Enqueue(
+                    new AuraMutation(
+                        AuraMutationKind.Apply,
+                        definition,
+                        caster,
+                        target,
+                        target.ID,
+                        0,
+                        stacks));
+                return true;
+            }
+
+            if (!TryGetCurrentActor(target.ID, target, out _))
+                return false;
+
+            return ApplyAuraNow(definition, caster, target, stacks);
+        }
+
+        private bool ApplyAuraNow(AuraDefinition definition, Actor caster, Actor target, int stacks)
         {
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
@@ -274,10 +403,14 @@ namespace Game.Server.Core
 
         private void OnAuraTick(Guid targetActorID, string auraDefID, int instanceID)
         {
-            if (!_activeAuras.TryGetValue(instanceID, out var ctx))
+            if (_pendingRemovalInstanceIDs.Contains(instanceID)
+                || !_activeAuras.TryGetValue(instanceID, out var ctx)
+                || ctx.TargetID != targetActorID
+                || ctx.Definition == null
+                || ctx.Definition.DefinitionID != auraDefID)
                 return;
 
-            if (!ServerActorManager.Instance.TryGetActor(targetActorID, out var target))
+            if (!TryGetCurrentActor(targetActorID, null, out var target))
                 return;
 
             // For Condition auras, tick down individual stack durations and remove expired stacks.
@@ -306,10 +439,16 @@ namespace Game.Server.Core
 
         private void OnAuraExpired(Guid targetActorID, string auraDefID, int instanceID)
         {
-            if (!_activeAuras.Remove(instanceID, out var ctx))
+            if (!_activeAuras.TryGetValue(instanceID, out var ctx)
+                || ctx.TargetID != targetActorID
+                || ctx.Definition == null
+                || ctx.Definition.DefinitionID != auraDefID
+                || !_activeAuras.Remove(instanceID))
                 return;
 
-            if (!ServerActorManager.Instance.TryGetActor(targetActorID, out var target))
+            _pendingRemovalInstanceIDs.Remove(instanceID);
+
+            if (!TryGetCurrentActor(targetActorID, null, out var target))
                 return;
 
             ctx.Phase = AuraPhase.OnExpire;
@@ -327,10 +466,16 @@ namespace Game.Server.Core
 
         private void OnAuraDispelled(Guid targetActorID, string auraDefID, int instanceID)
         {
-            if (!_activeAuras.Remove(instanceID, out var ctx))
+            if (!_activeAuras.TryGetValue(instanceID, out var ctx)
+                || ctx.TargetID != targetActorID
+                || ctx.Definition == null
+                || ctx.Definition.DefinitionID != auraDefID
+                || !_activeAuras.Remove(instanceID))
                 return;
 
-            if (!ServerActorManager.Instance.TryGetActor(targetActorID, out var target))
+            _pendingRemovalInstanceIDs.Remove(instanceID);
+
+            if (!TryGetCurrentActor(targetActorID, null, out var target))
                 return;
 
             ctx.Phase = AuraPhase.OnDispel;
@@ -361,6 +506,37 @@ namespace Game.Server.Core
         /// <param name="instanceID">The aura instance identifier.</param>
         /// <returns><see langword="true"/> when the aura was dispelled.</returns>
         public bool DispelAura(Actor target, int instanceID)
+        {
+            if (target == null
+                || !_activeAuras.TryGetValue(instanceID, out var context)
+                || context.TargetID != target.ID
+                || _pendingRemovalInstanceIDs.Contains(instanceID))
+            {
+                return false;
+            }
+
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                if (!TryGetCurrentActor(target.ID, target, out _))
+                    return false;
+
+                _pendingRemovalInstanceIDs.Add(instanceID);
+                _pendingMutations.Enqueue(
+                    new AuraMutation(
+                        AuraMutationKind.Dispel,
+                        null,
+                        null,
+                        target,
+                        target.ID,
+                        instanceID,
+                        0));
+                return true;
+            }
+
+            return DispelAuraNow(target, instanceID);
+        }
+
+        private bool DispelAuraNow(Actor target, int instanceID)
         {
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
@@ -396,6 +572,34 @@ namespace Game.Server.Core
         /// <param name="actorID">The actor identifier.</param>
         public void RemoveAllAuras(Guid actorID)
         {
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                if (!TryGetCurrentActor(actorID, null, out _))
+                    return;
+
+                foreach (var pair in _activeAuras)
+                {
+                    if (pair.Value.TargetID == actorID)
+                        _pendingRemovalInstanceIDs.Add(pair.Key);
+                }
+
+                _pendingMutations.Enqueue(
+                    new AuraMutation(
+                        AuraMutationKind.RemoveAll,
+                        null,
+                        null,
+                        null,
+                        actorID,
+                        0,
+                        0));
+                return;
+            }
+
+            RemoveAllAurasNow(actorID);
+        }
+
+        private void RemoveAllAurasNow(Guid actorID)
+        {
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
             {
@@ -410,7 +614,8 @@ namespace Game.Server.Core
                         var entry = buffer[i];
                         if (_activeAuras.Remove(entry.InstanceID, out var ctx))
                         {
-                            if (ServerActorManager.Instance.TryGetActor(actorID, out var target))
+                            _pendingRemovalInstanceIDs.Remove(entry.InstanceID);
+                            if (TryGetCurrentActor(actorID, null, out var target))
                             {
                                 ctx.Phase = AuraPhase.OnExpire;
                                 foreach (var auraComponent in ctx.Definition.Components)
@@ -429,6 +634,43 @@ namespace Game.Server.Core
             {
                 entities.Dispose();
             }
+        }
+
+        private bool TryGetCurrentActor(Guid actorID, Actor expectedActor, out Actor currentActor)
+        {
+            if (ServerActorManager.Instance == null
+                || !ServerActorManager.Instance.TryGetActor(actorID, out currentActor)
+                || currentActor == null
+                || (expectedActor != null && currentActor != expectedActor))
+            {
+                currentActor = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryFindActorEntity(Guid actorID, out Entity actorEntity)
+        {
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                foreach (var entity in entities)
+                {
+                    if (_entityManager.GetComponentData<Systems.ActorComponent>(entity).ActorID != actorID)
+                        continue;
+
+                    actorEntity = entity;
+                    return true;
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+            }
+
+            actorEntity = Entity.Null;
+            return false;
         }
 
         /// <summary>Determines whether an actor has an aura definition active.</summary>

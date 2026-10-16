@@ -386,9 +386,10 @@ namespace Game.Server.Core
             });
         }
 
-        private void Update()
+        /// <summary>Commits the ECS spawn-command snapshot at the authoritative tick boundary.</summary>
+        internal void CommitSpawnCommands()
         {
-            // Drain spawn commands from ECS
+            // The authoritative simulation owns this snapshot and invokes it after all ECS systems finish.
             using var markerScope = UPDATE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             if (_spawnCommandQuery.IsEmpty)

@@ -59,7 +59,10 @@ namespace Game.Server.Core
         private static SimulationSystemGroup _simulationSystemGroup;
         private static readonly ServerSimulationEventBuffer SIMULATION_EVENT_BUFFER = new();
         private static bool _initialized = false;
+        private static bool _mutationCommitActive;
         private static long _currentSimulationTickID;
+        private static bool _hasCurrentSimulationEvent;
+        private static ServerSimulationEvent _currentSimulationEvent;
         /// <summary>Gets whether the server ECS world has been initialized.</summary>
         public static bool Initialized => _initialized;
 
@@ -89,7 +92,10 @@ namespace Game.Server.Core
 
             ServerSimulationClock.ValidateConfiguration(Game.Shared.GameConfigurationManager.Config);
             SIMULATION_EVENT_BUFFER.Clear();
+            _mutationCommitActive = false;
             _currentSimulationTickID = 0;
+            _hasCurrentSimulationEvent = false;
+            _currentSimulationEvent = default;
 
             using var markerScope = ECS_INITIALIZATION_MARKER.Begin();
             World world = null;
@@ -145,16 +151,28 @@ namespace Game.Server.Core
 
             SIMULATION_EVENT_BUFFER.BeginTick(tick.TickID);
             _currentSimulationTickID = tick.TickID;
+            bool tickCompleted = false;
             try
             {
+                CommitPendingMutations();
                 DefaultWorld.SetTime(new TimeData(tick.ElapsedTime, tick.DeltaTime));
                 _simulationSystemGroup.Update();
+                // ECS structural work is complete; domain lifecycle work is committed once
+                // from this tick-owned boundary before deferred event delivery.
+                CommitSpawnCommands();
                 SIMULATION_EVENT_BUFFER.Dispatch(DispatchSimulationEvent);
+                tickCompleted = true;
             }
             finally
             {
-                SIMULATION_EVENT_BUFFER.Clear();
+                if (tickCompleted)
+                    SIMULATION_EVENT_BUFFER.EndTick();
+                else
+                    SIMULATION_EVENT_BUFFER.Clear();
+                _mutationCommitActive = false;
                 _currentSimulationTickID = 0;
+                _hasCurrentSimulationEvent = false;
+                _currentSimulationEvent = default;
             }
         }
 
@@ -164,56 +182,155 @@ namespace Game.Server.Core
             Guid actorID,
             Entity sourceEntity,
             FixedString64Bytes definitionID = default,
-            int operationID = 0)
+            int operationID = 0,
+            long castID = 0)
         {
             if (!_initialized || _currentSimulationTickID <= 0)
                 throw new InvalidOperationException("Server simulation events require an active authoritative tick.");
 
-            SIMULATION_EVENT_BUFFER.Enqueue(kind, actorID, sourceEntity, definitionID, operationID);
+            if (_mutationCommitActive)
+            {
+                SIMULATION_EVENT_BUFFER.EnqueueForNextTick(
+                    kind,
+                    actorID,
+                    sourceEntity,
+                    definitionID,
+                    operationID,
+                    castID);
+            }
+            else
+            {
+                SIMULATION_EVENT_BUFFER.Enqueue(kind, actorID, sourceEntity, definitionID, operationID, castID);
+            }
+        }
+
+        /// <summary>Gets whether callbacks must hand off ECS mutations to the next commit boundary.</summary>
+        internal static bool IsMutationBoundaryActive => _mutationCommitActive || SIMULATION_EVENT_BUFFER.IsDispatching;
+
+        /// <summary>Gets the event currently being delivered, when domain delivery is active.</summary>
+        internal static bool TryGetCurrentSimulationEvent(out ServerSimulationEvent simulationEvent)
+        {
+            simulationEvent = _currentSimulationEvent;
+            return _hasCurrentSimulationEvent;
+        }
+
+        private static void CommitPendingMutations()
+        {
+            _mutationCommitActive = true;
+            try
+            {
+                ServerSpellCastManager.Instance?.PreparePendingMutations();
+                ServerAuraManager.Instance?.PreparePendingMutations();
+                ServerTickerManager.Instance?.PreparePendingMutations();
+                ServerCooldownManager.Instance?.PreparePendingMutations();
+                ServerCooldownManager.Instance?.CommitPendingMutations();
+                ServerSpellCastManager.Instance?.CommitPendingMutations();
+                ServerAuraManager.Instance?.CommitPendingMutations();
+                ServerTickerManager.Instance?.CommitPendingMutations();
+            }
+            finally
+            {
+                _mutationCommitActive = false;
+            }
+        }
+
+        private static void CommitSpawnCommands()
+        {
+            _mutationCommitActive = true;
+            try
+            {
+                ServerSpawnManager.Instance?.CommitSpawnCommands();
+            }
+            finally
+            {
+                _mutationCommitActive = false;
+            }
         }
 
         private static void DispatchSimulationEvent(ServerSimulationEvent simulationEvent)
         {
-            switch (simulationEvent.Kind)
+            if (!IsLiveSimulationEvent(simulationEvent))
+                return;
+
+            _currentSimulationEvent = simulationEvent;
+            _hasCurrentSimulationEvent = true;
+            try
             {
-                case ServerSimulationEventKind.SpellCastTick:
-                    ActorEndpoint.onServerSpellCastTick?.Invoke(
-                        simulationEvent.ActorID,
-                        simulationEvent.DefinitionID.ToString());
-                    break;
-                case ServerSimulationEventKind.SpellCastCompleted:
-                    ActorEndpoint.onServerSpellCastCompleted?.Invoke(
-                        simulationEvent.ActorID,
-                        simulationEvent.DefinitionID.ToString());
-                    break;
-                case ServerSimulationEventKind.AuraTick:
-                    ActorEndpoint.onServerAuraTick?.Invoke(
-                        simulationEvent.ActorID,
-                        simulationEvent.DefinitionID.ToString(),
-                        simulationEvent.OperationID);
-                    break;
-                case ServerSimulationEventKind.AuraExpired:
-                    ActorEndpoint.onServerAuraExpired?.Invoke(
-                        simulationEvent.ActorID,
-                        simulationEvent.DefinitionID.ToString(),
-                        simulationEvent.OperationID);
-                    break;
-                case ServerSimulationEventKind.ActorTickerTick:
-                    ActorEndpoint.onServerActorTick?.Invoke(
-                        simulationEvent.ActorID,
-                        simulationEvent.OperationID);
-                    break;
-                case ServerSimulationEventKind.ActorTickerExpired:
-                    ActorEndpoint.onServerActorTickerExpired?.Invoke(
-                        simulationEvent.ActorID,
-                        simulationEvent.OperationID);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(
-                        nameof(simulationEvent.Kind),
-                        simulationEvent.Kind,
-                        "Unknown server simulation event kind.");
+                switch (simulationEvent.Kind)
+                {
+                    case ServerSimulationEventKind.SpellCastTick:
+                        ActorEndpoint.onServerSpellCastTick?.Invoke(
+                            simulationEvent.ActorID,
+                            simulationEvent.DefinitionID.ToString());
+                        break;
+                    case ServerSimulationEventKind.SpellCastCompleted:
+                        ActorEndpoint.onServerSpellCastCompleted?.Invoke(
+                            simulationEvent.ActorID,
+                            simulationEvent.DefinitionID.ToString());
+                        break;
+                    case ServerSimulationEventKind.AuraTick:
+                        ActorEndpoint.onServerAuraTick?.Invoke(
+                            simulationEvent.ActorID,
+                            simulationEvent.DefinitionID.ToString(),
+                            simulationEvent.OperationID);
+                        break;
+                    case ServerSimulationEventKind.AuraExpired:
+                        ActorEndpoint.onServerAuraExpired?.Invoke(
+                            simulationEvent.ActorID,
+                            simulationEvent.DefinitionID.ToString(),
+                            simulationEvent.OperationID);
+                        break;
+                    case ServerSimulationEventKind.ActorTickerTick:
+                        ActorEndpoint.onServerActorTick?.Invoke(
+                            simulationEvent.ActorID,
+                            simulationEvent.OperationID);
+                        break;
+                    case ServerSimulationEventKind.ActorTickerExpired:
+                        ActorEndpoint.onServerActorTickerExpired?.Invoke(
+                            simulationEvent.ActorID,
+                            simulationEvent.OperationID);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(
+                            nameof(simulationEvent.Kind),
+                            simulationEvent.Kind,
+                            "Unknown server simulation event kind.");
+                }
             }
+            finally
+            {
+                _hasCurrentSimulationEvent = false;
+                _currentSimulationEvent = default;
+            }
+        }
+
+        private static bool IsLiveSimulationEvent(ServerSimulationEvent simulationEvent)
+        {
+            if (DefaultWorld == null || !DefaultWorld.IsCreated)
+                return false;
+
+            EntityManager entityManager = DefaultWorld.EntityManager;
+            if (!entityManager.Exists(simulationEvent.SourceEntity)
+                || !entityManager.HasComponent<ActorComponent>(simulationEvent.SourceEntity))
+            {
+                return false;
+            }
+
+            if (entityManager.GetComponentData<ActorComponent>(simulationEvent.SourceEntity).ActorID != simulationEvent.ActorID)
+                return false;
+
+            if (simulationEvent.Kind == ServerSimulationEventKind.SpellCastTick
+                || simulationEvent.Kind == ServerSimulationEventKind.SpellCastCompleted)
+            {
+                if (!entityManager.HasComponent<SpellCastComponent>(simulationEvent.SourceEntity))
+                    return false;
+
+                var spellCast = entityManager.GetComponentData<SpellCastComponent>(simulationEvent.SourceEntity);
+                return spellCast.CastID == simulationEvent.CastID
+                    && spellCast.SpellID == simulationEvent.DefinitionID;
+            }
+
+            return true;
         }
 
         /// <summary>Records the measured CPU duration of one complete authoritative tick.</summary>
@@ -251,7 +368,10 @@ namespace Game.Server.Core
         internal static void Shutdown()
         {
             SIMULATION_EVENT_BUFFER.Clear();
+            _mutationCommitActive = false;
             _currentSimulationTickID = 0;
+            _hasCurrentSimulationEvent = false;
+            _currentSimulationEvent = default;
             World world = DefaultWorld;
             DefaultWorld = null;
             _simulationSystemGroup = null;

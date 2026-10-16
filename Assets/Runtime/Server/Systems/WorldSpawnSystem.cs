@@ -64,6 +64,8 @@ namespace Game.Server.Systems
                 }
             }
 
+            // This is the ECS structural half of spawning. ServerECSManager commits the
+            // resulting domain spawn commands after the complete simulation group update.
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
             if (telemetryEnabled)
