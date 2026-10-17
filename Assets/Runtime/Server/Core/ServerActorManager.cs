@@ -250,7 +250,6 @@ namespace Game.Server.Core
             public NPCBehavior Behavior;
             public NavMeshAgent Agent;
             public Actor PendingTarget;
-            public long PendingStartTickID;
             public long PendingAcquisitionTickID;
         }
         private readonly Dictionary<Guid, NPCAggroState> _npcAggroStates = new();
@@ -547,7 +546,6 @@ namespace Game.Server.Core
                 Behavior = behavior,
                 Agent = actor.GetComponent<NavMeshAgent>(),
                 PendingTarget = null,
-                PendingStartTickID = 0,
                 PendingAcquisitionTickID = 0
             };
         }
@@ -555,7 +553,6 @@ namespace Game.Server.Core
         private static void ClearPendingAggro(ref NPCAggroState state)
         {
             state.PendingTarget = null;
-            state.PendingStartTickID = 0;
             state.PendingAcquisitionTickID = 0;
         }
 
@@ -746,7 +743,6 @@ namespace Game.Server.Core
                 if (state.PendingTarget != closest)
                 {
                     state.PendingTarget = closest;
-                    state.PendingStartTickID = tick.TickID;
                     long delayTicks = GetNonShorteningAggroDelayTicks(state.Behavior.AggroDelay);
                     state.PendingAcquisitionTickID = delayTicks == 0
                         ? tick.TickID
