@@ -632,7 +632,7 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Samples and validates player movement for one authoritative simulation tick.
+        /// Validates player movement and synchronizes NPC positions before one authoritative ECS simulation tick.
         /// </summary>
         internal void ProcessAuthoritativeTick(ServerSimulationTick tick)
         {
@@ -645,9 +645,7 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Samples enabled NavMesh-driven NPC transforms before the ECS simulation step.
-        /// The resolved movement owner is stored in MotionStateComponent so ActorUpdateSystem
-        /// either owns gravity for this tick or leaves movement to the NavMeshAgent.
+        /// Projects ECS-owned NPC positions to their GameObject transforms after the authoritative ECS simulation step.
         /// </summary>
         internal void ProcessAuthoritativeTickCompleted()
         {
