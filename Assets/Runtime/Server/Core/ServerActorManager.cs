@@ -480,8 +480,7 @@ namespace Game.Server.Core
         {
             // Components remain attached when ownership returns to a player; the owner checks in
             // ActorUpdateSystem and both movement bridges keep player movement out of this path.
-            var agent = actor.GetComponent<NavMeshAgent>();
-            bool hasEnabledAgent = agent != null && agent.enabled;
+            bool hasEnabledAgent = HasEnabledNavMeshAgent(actor);
 
             if (_entityManager.HasComponent<Systems.MotionStateComponent>(entity))
             {
@@ -508,6 +507,12 @@ namespace Game.Server.Core
                     lastGroundCheck = new Unity.Mathematics.float3(0, -1, 0)
                 });
             }
+        }
+
+        private static bool HasEnabledNavMeshAgent(Actor actor)
+        {
+            var agent = actor.GetComponent<NavMeshAgent>();
+            return agent != null && agent.enabled;
         }
 
         private void OnActorInterestChanged(Actor actor, SceneID sceneID)
@@ -654,73 +659,82 @@ namespace Game.Server.Core
 
         private void SynchronizeNPCPositionsToECS()
         {
-            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int syncCount = 0;
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            int fullScanCount = entities.Length;
-            foreach (var entity in entities)
-            {
-                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                if (component.Owner != default)
-                    continue;
-
-                if (!_actorObjects.TryGetValue(component.ActorID, out var actorObj) || actorObj == null)
-                    continue;
-
-                var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
-                var agent = actorObj.GetComponent<NavMeshAgent>();
-                bool hasEnabledAgent = agent != null && agent.enabled;
-                if (motion.UsesNavMeshAgent != hasEnabledAgent)
-                {
-                    motion.UsesNavMeshAgent = hasEnabledAgent;
-                    _entityManager.SetComponentData(entity, motion);
-                }
-
-                if (!hasEnabledAgent)
-                    continue;
-
-                var pos = actorObj.transform.position;
-                component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
-                _entityManager.SetComponentData(entity, component);
-                if (telemetryEnabled)
-                    syncCount++;
-            }
-            entities.Dispose();
-            if (telemetryEnabled)
-                RecordFrameSyncContribution(fullScanCount, syncCount, Time.frameCount);
+            TraverseNPCMovementEntities(SynchronizeNPCPositionToECS);
         }
 
         private void SynchronizeNPCTransformsFromECS()
+        {
+            TraverseNPCMovementEntities(SynchronizeNPCTransformFromECS);
+        }
+
+        private void TraverseNPCMovementEntities(
+            Func<Entity, Systems.ActorComponent, Actor, bool> synchronize)
         {
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int syncCount = 0;
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             int fullScanCount = entities.Length;
-            foreach (var entity in entities)
+            try
             {
-                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                if (component.Owner != default)
-                    continue;
+                foreach (var entity in entities)
+                {
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                    if (component.Owner != default)
+                        continue;
 
-                if (!_actorObjects.TryGetValue(component.ActorID, out var actorObj) || actorObj == null)
-                    continue;
+                    if (!_actorObjects.TryGetValue(component.ActorID, out var actorObj) || actorObj == null)
+                        continue;
 
-                // The pre-tick bridge resolved ownership for this tick. A NavMesh agent remains
-                // the sole transform writer; ECS-owned NPCs receive the completed simulation state.
-                if (_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
-                    continue;
-
-                actorObj.transform.position = new Vector3(
-                    (float)component.WorldPositionD.x,
-                    (float)component.WorldPositionD.y,
-                    (float)component.WorldPositionD.z
-                );
-                if (telemetryEnabled)
-                    syncCount++;
+                    if (synchronize(entity, component, actorObj) && telemetryEnabled)
+                        syncCount++;
+                }
             }
-            entities.Dispose();
+            finally
+            {
+                entities.Dispose();
+            }
             if (telemetryEnabled)
                 RecordFrameSyncContribution(fullScanCount, syncCount, Time.frameCount);
+        }
+
+        private bool SynchronizeNPCPositionToECS(
+            Entity entity,
+            Systems.ActorComponent component,
+            Actor actorObj)
+        {
+            var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
+            bool hasEnabledAgent = HasEnabledNavMeshAgent(actorObj);
+            if (motion.UsesNavMeshAgent != hasEnabledAgent)
+            {
+                motion.UsesNavMeshAgent = hasEnabledAgent;
+                _entityManager.SetComponentData(entity, motion);
+            }
+
+            if (!hasEnabledAgent)
+                return false;
+
+            var pos = actorObj.transform.position;
+            component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
+            _entityManager.SetComponentData(entity, component);
+            return true;
+        }
+
+        private bool SynchronizeNPCTransformFromECS(
+            Entity entity,
+            Systems.ActorComponent component,
+            Actor actorObj)
+        {
+            // The pre-tick bridge resolved ownership for this tick. A NavMesh agent remains
+            // the sole transform writer; ECS-owned NPCs receive the completed simulation state.
+            if (_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
+                return false;
+
+            actorObj.transform.position = new Vector3(
+                (float)component.WorldPositionD.x,
+                (float)component.WorldPositionD.y,
+                (float)component.WorldPositionD.z
+            );
+            return true;
         }
 
         /// <summary>
