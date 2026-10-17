@@ -29,7 +29,6 @@ namespace Game.Server.Core
         private readonly Dictionary<int, AuraContext> _activeAuras = new();
         private readonly ServerSimulationMutationQueue<AuraMutation> _pendingMutations = new();
         private readonly HashSet<int> _pendingRemovalInstanceIDs = new();
-        private readonly HashSet<int> _pendingRefreshInstanceIDs = new();
         private AuraMutation[] _commitSnapshot;
         private int _nextInstanceID;
 
@@ -103,7 +102,6 @@ namespace Game.Server.Core
             _activeAuras.Clear();
             _pendingMutations.Clear();
             _pendingRemovalInstanceIDs.Clear();
-            _pendingRefreshInstanceIDs.Clear();
             _commitSnapshot = null;
             _instance = null;
             _initialized = false;
@@ -134,7 +132,6 @@ namespace Game.Server.Core
                     continue;
 
                 _pendingRemovalInstanceIDs.Remove(instanceID);
-                _pendingRefreshInstanceIDs.Remove(instanceID);
                 cancelledContexts.Add(context);
             }
 
@@ -162,7 +159,6 @@ namespace Game.Server.Core
                 switch (mutation.Kind)
                 {
                     case AuraMutationKind.Apply:
-                        _pendingRefreshInstanceIDs.Remove(mutation.InstanceID);
                         if (!TryGetCurrentActor(mutation.TargetID, mutation.Target, out var target)
                             || mutation.Caster == null
                             || !TryGetCurrentActor(mutation.Caster.ID, mutation.Caster, out _))
@@ -171,7 +167,21 @@ namespace Game.Server.Core
                             continue;
                         }
 
-                        ApplyAuraNow(mutation.Definition, mutation.Caster, target, mutation.Stacks);
+                        if (mutation.InstanceID != 0
+                            && (!_activeAuras.TryGetValue(mutation.InstanceID, out var activeAura)
+                                || activeAura.TargetID != mutation.TargetID
+                                || activeAura.Definition == null
+                                || activeAura.Definition.DefinitionID != mutation.Definition.DefinitionID))
+                        {
+                            Debug.Warning($"Discarding deferred aura refresh for retired instance {mutation.InstanceID}.");
+                            continue;
+                        }
+
+                        if (!ApplyAuraNow(mutation.Definition, mutation.Caster, target, mutation.Stacks, mutation.InstanceID)
+                            && mutation.InstanceID != 0)
+                        {
+                            Debug.Warning($"Discarding deferred aura refresh for instance {mutation.InstanceID} because its ECS entry is no longer active.");
+                        }
                         break;
                     case AuraMutationKind.Dispel:
                         _pendingRemovalInstanceIDs.Remove(mutation.InstanceID);
@@ -212,31 +222,18 @@ namespace Game.Server.Core
                 if (!TryGetCurrentActor(target.ID, target, out _))
                     return false;
 
-                int refreshedInstanceID = 0;
-                if (TryFindActiveAuraInstance(target.ID, definition.DefinitionID, out int activeInstanceID))
-                {
-                    refreshedInstanceID = activeInstanceID;
-                    _pendingRefreshInstanceIDs.Add(activeInstanceID);
-                }
-
-                try
-                {
-                    _pendingMutations.Enqueue(
-                        new AuraMutation(
-                            AuraMutationKind.Apply,
-                            definition,
-                            caster,
-                            target,
-                            target.ID,
-                            refreshedInstanceID,
-                            stacks));
-                }
-                catch
-                {
-                    if (refreshedInstanceID != 0)
-                        _pendingRefreshInstanceIDs.Remove(refreshedInstanceID);
-                    throw;
-                }
+                int refreshedInstanceID = TryFindActiveAuraInstance(target.ID, definition.DefinitionID, out int activeInstanceID)
+                    ? activeInstanceID
+                    : 0;
+                _pendingMutations.Enqueue(
+                    new AuraMutation(
+                        AuraMutationKind.Apply,
+                        definition,
+                        caster,
+                        target,
+                        target.ID,
+                        refreshedInstanceID,
+                        stacks));
                 return true;
             }
 
@@ -246,7 +243,12 @@ namespace Game.Server.Core
             return ApplyAuraNow(definition, caster, target, stacks);
         }
 
-        private bool ApplyAuraNow(AuraDefinition definition, Actor caster, Actor target, int stacks)
+        private bool ApplyAuraNow(
+            AuraDefinition definition,
+            Actor caster,
+            Actor target,
+            int stacks,
+            int expectedInstanceID = 0)
         {
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
@@ -265,6 +267,7 @@ namespace Game.Server.Core
                             entity,
                             stacks,
                             firstProgressTickID,
+                            expectedInstanceID,
                             out instanceID))
                         return false;
 
@@ -304,6 +307,7 @@ namespace Game.Server.Core
             Entity entity,
             int stacksToApply,
             long firstProgressTickID,
+            int expectedInstanceID,
             out int instanceID)
         {
             var buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
@@ -319,6 +323,7 @@ namespace Game.Server.Core
                         {
                             var entry = buffer[i];
                             if (entry.AuraDefinitionID.ToString() != definition.DefinitionID) continue;
+                            if (expectedInstanceID != 0 && entry.InstanceID != expectedInstanceID) continue;
                             if (!_activeAuras.TryGetValue(entry.InstanceID, out var existing)) continue;
 
                             // Extend duration for entire aura.
@@ -348,6 +353,9 @@ namespace Game.Server.Core
                             return true;
                         }
 
+                        if (expectedInstanceID != 0)
+                            return false;
+
                         // First application — create new instance with condition tracking.
                         instanceID = CreateConditionAuraInstance(
                             definition,
@@ -367,6 +375,7 @@ namespace Game.Server.Core
                         {
                             var entry = buffer[i];
                             if (entry.AuraDefinitionID.ToString() != definition.DefinitionID) continue;
+                            if (expectedInstanceID != 0 && entry.InstanceID != expectedInstanceID) continue;
                             if (!_activeAuras.TryGetValue(entry.InstanceID, out var existing)) continue;
 
                             // Add multiple stacks
@@ -396,6 +405,9 @@ namespace Game.Server.Core
                             instanceID = entry.InstanceID;
                             return true;
                         }
+
+                        if (expectedInstanceID != 0)
+                            return false;
 
                         // First application.
                         instanceID = CreateConditionAuraInstance(
@@ -497,7 +509,6 @@ namespace Game.Server.Core
         private void OnAuraTick(Guid targetActorID, string auraDefID, int instanceID)
         {
             if (_pendingRemovalInstanceIDs.Contains(instanceID)
-                || _pendingRefreshInstanceIDs.Contains(instanceID)
                 || !_activeAuras.TryGetValue(instanceID, out var ctx)
                 || ctx.TargetID != targetActorID
                 || ctx.Definition == null
@@ -542,7 +553,6 @@ namespace Game.Server.Core
                 return;
 
             _pendingRemovalInstanceIDs.Remove(instanceID);
-            _pendingRefreshInstanceIDs.Remove(instanceID);
 
             if (!TryGetCurrentActor(targetActorID, null, out var target))
                 return;
@@ -570,7 +580,6 @@ namespace Game.Server.Core
                 return;
 
             _pendingRemovalInstanceIDs.Remove(instanceID);
-            _pendingRefreshInstanceIDs.Remove(instanceID);
 
             if (!TryGetCurrentActor(targetActorID, null, out var target))
                 return;
@@ -739,7 +748,6 @@ namespace Game.Server.Core
             {
                 _activeAuras.Remove(instanceID);
                 _pendingRemovalInstanceIDs.Remove(instanceID);
-                _pendingRefreshInstanceIDs.Remove(instanceID);
             }
 
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
