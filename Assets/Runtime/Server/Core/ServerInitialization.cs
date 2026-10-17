@@ -21,6 +21,10 @@ namespace Game.Server.Core
         private static bool _forceCleanServer;
         private static Coroutine _initializationCoroutine;
         private static bool _initializationSucceeded;
+        private static ServerTimeAuthority _timeAuthority;
+
+        /// <summary>Gets the current server-lifetime UTC authority, or <c>null</c> when the server is stopped.</summary>
+        public static ServerTimeAuthority TimeAuthority => _timeAuthority;
 
         /// <summary>
         /// Registers project-owned server metrics for an already active telemetry session.
@@ -55,9 +59,19 @@ namespace Game.Server.Core
             if (_initializationCoroutine != null || ServerECSManager.Initialized || ServerSimulationClock.IsRunning)
                 throw new InvalidOperationException("The server initialization sequence is already active.");
 
+            _timeAuthority = new ServerTimeAuthority();
             _host = host;
             _initializationSucceeded = false;
-            _initializationCoroutine = _host.StartCoroutine(InitializationProcess());
+            try
+            {
+                _initializationCoroutine = _host.StartCoroutine(InitializationProcess());
+            }
+            catch
+            {
+                _timeAuthority = null;
+                _host = null;
+                throw;
+            }
         }
 
         private static IEnumerator InitializationProcess()
@@ -216,6 +230,7 @@ namespace Game.Server.Core
         /// <summary>Stops server initialization, the simulation clock and the owned ECS world.</summary>
         public static void Stop()
         {
+            _timeAuthority = null;
             if (_initializationCoroutine != null && _host != null)
                 _host.StopCoroutine(_initializationCoroutine);
 
@@ -230,6 +245,7 @@ namespace Game.Server.Core
         /// <summary>Aborts a still-running initialization coroutine when its server host is destroyed.</summary>
         internal static void AbortInitialization()
         {
+            _timeAuthority = null;
             if (_initializationCoroutine != null && _host != null)
                 _host.StopCoroutine(_initializationCoroutine);
 
