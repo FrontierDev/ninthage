@@ -131,6 +131,25 @@ A broad Phase 1.x tracker may describe the future end-state, but its linked impl
 A tracker may record broader possible coverage, but **candidates are not mandatory tests**. Reassess each child against the four conditions when the corresponding production implementation exists. Remove or downgrade unjustified candidates to optional investigation/manual smoke checks; do not require an entire checklist simply because it was drafted. A discovered defect still requires evidence-first classification under §2.7. Keep test-only work separate from production changes under §2.2.
 
 
+## 2.11 One consolidated review comment per issue revision (mandatory)
+
+When the owner asks for a GitHub issue comment containing review findings or required fixes, post **exactly one comprehensive top-level comment per reviewed issue revision** (including the initial implementation). Identify the revision by its commit SHA on the intended branch. **Do not split correctness defects, duplicated code, styling issues, documentation corrections or other required changes into separate comments for the same revision.** Review the complete relevant diff, owning methods and previous review findings **before posting**, so the comment is one self-contained corrective task rather than fragmented instructions.
+
+The single comment must be specific enough to implement like a focused GitHub issue, and contain:
+
+1. **Revision and disposition:** issue number, branch, exact reviewed commit SHA/link, acceptance/blocker status, and which previous findings are resolved versus still outstanding.
+2. **Evidence and exact locations:** for each finding, project-owned file path, type, method/member, relevant execution or lifecycle boundary (and line/diff reference when useful), observed versus expected behaviour, and evidence class per §2.7 (confirmed defect, unverified concern, or future work).
+3. **Required fixes:** precise minimal edits and expected invariants for every confirmed problem, named existing project owners/helpers to reuse, permitted files/methods, and required callback/tick/ownership ordering. Do not use vague instructions such as "refactor this".
+4. **Explicit non-fixes / preserved behaviour:** concrete adjacent files, systems, methods, gameplay values, network/DTO/serialization contracts, timing, third-party boundaries, and unrelated optimisations that **must remain unchanged**. Link deferred architectural work, tests and independent issues rather than silently expanding scope.
+5. **Acceptance and validation:** objective source/static/compilation assertions, focused tests where justified, exact owner-only Unity/multiplayer checks, what is still unverified, and the conditions for removing blockers or closing the issue.
+
+Combine all relevant items into **one structured comment** with separate numbered corrective sections as needed. The one-comment rule does **not** authorise bundling unrelated implementation scopes or mixing production changes with regression tests. If a concern belongs to another issue, record the dependency/non-fix in the same comment, not a second review comment.
+
+**Follow-up revisions:** after a *new* revision is pushed, issue at most one new consolidated review comment for the new SHA and explicitly state which earlier requirements were met. If an omission is discovered **after posting** for the *same* revision, edit the existing review comment rather than posting another; if editing is unavailable, tell the owner and do not silently create a second top-level review comment. Do not repeatedly request changes already satisfied.
+
+**Preferred comment outline:** Revision/commit and assessment → resolved prior findings → exact locations and required corrections (with evidence) → non-fixes and preservation constraints → static/runtime validation and closure criteria.
+
+
 # 3. Issue Title Format
 
 Roadmap work uses:
