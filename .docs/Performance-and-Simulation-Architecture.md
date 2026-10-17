@@ -1,14 +1,14 @@
 # Ninth Age — Performance and Simulation Architecture
 
-**Status:** Proposed architecture contract — requires manual validation of [Issue #41](https://github.com/FrontierDev/ninthage/issues/41)
-**Scope:** Phase 1.0 runtime ownership and integration boundaries; **documentation only**
-**Code baseline reviewed:** `dev` at `f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f`
-**Review date:** 2026-10-13
+**Status:** Stage 1.1 implemented; owner confirms all required validation completed on 17 October 2026. Subsequent Phase 1 contracts remain future work.
+**Scope:** Historical Phase 1.0 baseline, Stage 1.1 as-built simulation/time integration, and forward-looking Phase 1 technical contracts.
+**Source baseline:** Original `f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f`; Stage 1.1 reviewed on `dev` through `4db4aed1e18c7d7fbd92421f160d4d982d22f53c` (#106 rev 1).
+**Updated:** 2026-10-17
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose, authority and interpretation
 
-This document records **what the existing runtime does** and separately defines **the intended performance-oriented ownership contracts** for Phase 1. It does not create classes, methods, gameplay rules, supported population limits, implementation permission or a claim that proposed systems already exist.
+This document distinguishes historical source observations, **implemented Stage 1.1 authoritative scheduling and UTC boundaries**, and separately the intended requirements for later Phase 1 stages. Retained pre-Stage-1.1 proposals are historical unless explicitly described as implemented. No unsupported game population, headless server capacity or later gameplay feature is implied.
 
 Authority follows [MMORPG Master PDD](MMORPG-Master-PDD.md): the Master PDD defines project-wide principles; subsystem PDDs own player-facing behaviour; this document owns technical integration decisions subordinate to those PDDs; the [Project Roadmap](Plans/Project-Roadmap.md) and [Phase 1 Implementation Plan](Plans/Phase-1-Implementation-Plan.md) own sequence and delivery. Follow [C# Architecture](CSharp-Architecture.md), [C# Style Conventions](CSharp-Style-Conventions.md), [GitHub Issue and Workflow Guide](GitHub-Issue-and-Workflow-Guide.md) and `AGENTS.md` for all implementation work. **Third-party source, namespaces, packages and vendor assets are read-only without specific user authorisation.** Project-owned PurrNet integrations may evolve; PurrNet itself may not be modified under this contract.
 
@@ -33,9 +33,9 @@ The current [C# Architecture](CSharp-Architecture.md) is a descriptive snapshot 
 | Area | Current source and behaviour | Contract gap (not implemented by this document) |
 | --- | --- | --- |
 | Process selection | `Assets/Runtime/Core/GameBootstrapper.cs::Awake` selects `ServerInitialization.Begin` for batch mode/no graphics/forced mode, otherwise `ClientInitialization.Begin`. | Dedicated benchmark modes and unambiguous test-client selection are Stage 1.0 tooling work. |
-| ECS clock | `ServerECSManager.ServerInitializeECSWorlds` creates a Unity Entities `World`, registers seven systems in `SimulationSystemGroup` and appends it to the player loop. Spell, aura, cooldown and ticker systems use `UnityEngine.Time.deltaTime`; `ServerInitialization.ServerStartSimulation` is a placeholder. | No single configured authoritative simulation tick/order/catch-up contract (Stage 1.1). |
-| GameObject actor and ECS state | `Actor` is a PurrNet `NetworkBehaviour`; `ServerActorManager.OnActorSpawned` creates its `ActorComponent` and buffers. `ServerActorManager.Update` synchronises client-owner transforms into ECS and `LateUpdate` synchronises NPC positions conditionally. | No demonstrated single writer for double-precision spatial state, stable actor–Entity reverse mapping/lifecycle, or job-safe bridge (Stage 1.3). |
-| Movement | Owner-controlled PurrNet transform updates feed server transform; `ValidatePlayerPositions` samples float positions and may send correction; `SyncPlayerECS` converts server float transform to `double3`. | The PDD-required absolute-position reconstruction/validation and automatic spatial-interest update are incomplete (Stages 1.1–1.3). |
+| ECS clock | **Stage 1.1:** `ServerSimulationClock` advances the seven-system server ECS group manually with a fixed 0.05 s tick (20 Hz), deferred domain callbacks, four-tick catch-up and observable backlog metrics. | Full bounded PurrNet ingress admission, sustained-overload readiness operations and measured headless/networked capacity remain outside the implemented Stage 1.1 boundary. |
+| GameObject actor and ECS state | `Actor` remains a PurrNet `NetworkBehaviour`; Stage 1.1 moves actor/ECS gameplay bridge and player-position validation into authoritative pre-/post-ECS tick boundaries. | Full per-field single-writer ownership, spatial indexing and job-safe bridges remain Stages 1.2–1.3. |
+| Movement | Existing PurrNet owner-controlled movement remains responsive; server speed validation and approved movement projection occur at authoritative tick boundaries. | Further absolute-position and spatial-interest integration remain Stages 1.2–1.3. |
 | World content | `ServerWorldManager.EnsureChunkLoaded` loads `World_X_Y` via PurrNet Addressable additive scenes; `UnloadChunk` unloads. `ServerInterestManager` uses a 3×3 neighbouring scene set. | Origin-cell, streamed world-tile and instance qualifications are not yet separate in all implementation paths (Stages 1.2 and 1.6). |
 | Actor interest | `ChunkSubscriptions` indexes actors/NetworkIdentities by scene-name strings; `ChunkVisibilityRule.CanSee` checks subscribed actors; changed-chunk identity re-evaluation is targeted in `ServerInterestManager.OnInterestRequest`. | Does not implement general instance-aware double-precision distance relevance or spatial queries (Stages 1.2 and 1.5). |
 | Scene and actor lifetime | `ServerSpawnManager` instantiates runtime actors into the persistent `global_actors` scene; `Actor.OnDestroy` emits `onServerActorDespawned`; `ServerSpawnManager` observes that event for spawn-point bookkeeping. | Complete actor ECS/index/replication cleanup and autonomous persistence lifetime must be defined/implemented (Stages 1.3–1.4 and 1.8). |
@@ -46,16 +46,13 @@ These observations are **not** an instruction to change the named implementation
 
 ## 3. Authoritative time and simulation scheduling
 
-**Status — Issue #64:** **PROPOSED ENGINEERING CONTRACT; NOT IMPLEMENTED OR OWNER-APPROVED.** This section is the Phase 1.1 design candidate for review. All proposed numerical parameters and ordering choices below require explicit owner approval before #65–#78 proceed. Existing code is described separately; this documentation does not change Unity, PurrNet, combat, movement, AI or persistence behaviour.
+**Stage 1.1 status: implemented, owner-confirmed validated.** The actual runtime baseline uses 20 Hz (0.05 s ticks), 4 maximum catch-up ticks/driver iteration, a single monotonic clock, manually ordered ECS simulation, deferred domain events and a separate server UTC authority. All critical regressions, including the now-committed #106 PlayMode UTC/cooldown isolation, are owner-reported validated. Earlier 30 Hz and seven-phase proposals below are *historical design targets*, not assertions about the exact implemented values/sequence. The bounded generic network-ingress quota and full operational overload readiness policy remain future work.
 
-### 3.1 Current implementation (verified source, not proposed behaviour)
+### 3.1 Historical pre-Stage-1.1 baseline, superseded
 
-- `Assets/Runtime/Server/Core/ServerECSManager.cs::ServerInitializeECSWorlds()` creates the server Entities world and `SimulationSystemGroup`, registers seven systems, then calls `ScriptBehaviourUpdateOrder.AppendWorldToCurrentPlayerLoop(DefaultWorld)`. Unity's player loop, **not** a server-authoritative fixed-step driver, currently executes those systems.
-- `Assets/Runtime/Server/Core/ServerInitialization.cs::ServerStartSimulation()` is a placeholder. The server startup pipeline does not yet start a coherent simulation tick scheduler.
-- `ActorUpdateSystem`, `SpellCastSystem`, `CooldownTickSystem`, `AuraTickSystem` and `ActorTickerSystem` use `UnityEngine.Time.deltaTime` for authoritative state. `ResourceRegenSystem.OnUpdate()` currently has **no regeneration implementation**; migrating its scheduling must not invent one.
-- `ServerActorManager.Update()/LateUpdate()` perform NPC aggro, player-position validation and actor/ECS synchronisation; NPC aggro and movement-validation accumulation use frame `Time.deltaTime`. `ServerSpawnManager.Update()` drains ECS spawn commands. `ServerSpellcastManager.Update()` counts down `_pendingActions` with frame delta. `ServerAutoAttackManager.Update()` runs active attacks in the ordinary frame loop.
-- ECS cast/aura/ticker systems presently invoke `ActorEndpoint.onServer...` callbacks during system-buffer traversal, allowing downstream managers to modify gameplay state and potentially the collections under iteration. These are exactly the cross-domain boundaries #67–#72 must reconcile.
-- `ServerECSManager` declares simulation-tick duration/backlog metric definitions, but their presence is **not evidence** that authoritative fixed ticks or accurate backlog accounting already run. The existing `GlobalCooldownDuration = 1.0f` is a gameplay setting, not a server tick setting. Client `Actor.Update`-driven presentation cannot be a gameplay clock.
+The initial baseline had a Unity player-loop-driven seven-system ECS world, a placeholder `ServerStartSimulation()`, render-frame authoritative time advancement and direct cast/aura/ticker domain callbacks during ECS-buffer traversal. Simulation backlog declarations were not evidence of an active clock. **These observations no longer describe `dev`.**
+
+Stage 1.1 introduces `ServerSimulationClock.ExecuteTick()`, which executes the server's fixed-time `ServerECSManager.UpdateSimulation()` before registered callbacks; ECS commits pending domain mutations, validates/bridges actor movement, runs the ordered seven systems, commits spawn outcomes and dispatches buffered domain events. Existing `ResourceRegenSystem.OnUpdate()` remains intentionally inert. Unity/PurrNet rendering and transport still have their own non-authoritative frame-based work.
 
 ### 3.2 Stage 1.0 evidence and limits on choosing values
 
@@ -63,7 +60,9 @@ The Phase 1.0 baseline/budgets use five-second measured windows in Unity Editor 
 
 No qualified standalone/headless, networked combat, real-player, backlog-recovery or long-running tick-capacity measurement exists yet; the other Phase 1.0 profiles remain blocked/unmeasured as recorded in `.docs/Plans/Phase-1-Performance-Budgets.md`. Consequently, the following settings are **bounded initial engineering proposals**, not measured production recommendations, pass/fail tick CPU budgets or supported concurrency claims. Stage 1.1 tests must measure their consequences; an owner decision may change them without changing PDD-owned gameplay durations.
 
-### 3.3 One clock owner, identity, lifecycle and configuration — proposed
+### 3.3 One clock owner, identity, lifecycle and configuration — implementation and historical proposal
+
+**As implemented:** `GameConfiguration.ServerSimulationTickDuration = 0.05f` (20 Hz) and `ServerSimulationMaxCatchUpTicks = 4`. `ServerSimulationClock` validates settings, advances one server ECS system group, and offers `RegisterEachTick`, `RegisterLowerRate` and `RegisterDue`. The original 30 Hz starting point in item 2 below was not adopted; the numbered design text remains as historical rationale, not an exact as-built manifest.
 
 1. **Ownership:** a single server-owned `ServerSimulationClock` (implementation location proposed in `Assets/Runtime/Server/Core`) drives both the ECS system group and registered server-domain work. `ServerECSManager` owns world/system composition and must cease automatic Unity player-loop simulation updates before manual scheduler-driven group updates begin; **never run both**. PurrNet remains the transport owner, not the simulation clock.
 2. **Proposed initial frequency:** **30 authoritative ticks/second**, with `fixedDeltaSeconds = 1 / 30` (~33.333 ms) and an integer `long` tick ID. The first completed tick is ID 1; ID 0 is the initial state. All gameplay clock reads use the current tick and fixed delta; future deadlines are represented as integer due-tick values. Configure the frequency on the existing server configuration path, not in individual managers.
@@ -73,11 +72,13 @@ No qualified standalone/headless, networked combat, real-player, backlog-recover
 6. **Lifecycle:** initialise after configuration/authoritative-world creation and before simulation starts; run only once per live server runtime; stop accepting new tick work during shutdown; drain or cancel outstanding work according to its owner, complete ECS jobs, detach the old ECS player-loop update, unsubscribe manager/domain registrations and dispose/reset runtime scheduling state. New process/runtime instance starts with tick 0. A local simulated tick is **not** a persistent global ID; durable temporal records use UTC as defined in §3.9. A shutdown/reinitialisation must not execute the old scheduler, callbacks or world a second time.
 7. **Responsibilities:** project-owned managers must register scheduled operations with this owner rather than create competing `Update` clocks. Client UI/prediction, Unity rendering and PurrNet transport may still update per frame; those frames must not commit authoritative gameplay time. Actors without game-state ownership must not schedule their own authoritative clock.
 
-**Why 30 Hz is proposed:** at the prototype stage this gives ~33 ms authoritative cadence for movement/validation while retaining 30 integer steps per existing 1.0 s GCD. It makes less frequent decision schedules possible as integer tick multiples. The five-second Editor-only baseline does **not** prove a 30 Hz headless-server budget. **Owner decision required:** accept/replace 30 Hz, the 10–60 Hz validation band, and exact duration-rounding semantics.
+**Historical 30 Hz rationale (superseded by the 20 Hz configured runtime):** at the prototype stage this gives ~33 ms authoritative cadence for movement/validation while retaining 30 integer steps per existing 1.0 s GCD. It makes less frequent decision schedules possible as integer tick multiples. The five-second Editor-only baseline does **not** prove a 30 Hz headless-server budget. **Implemented choice:** the owner has accepted the current 20 Hz engineering baseline; positive authored durations use non-shortening tick conversion. Any future frequency change requires its own qualification.
 
-### 3.4 Fixed per-tick phase order and legal writes — proposed
+### 3.4 Fixed per-tick phase order — implemented boundaries versus historical target
 
-Each completed authoritative tick executes the **following ordered stages exactly once**, after consuming the corresponding monotonic accumulator interval. All stages operate on the same tick ID:
+**Implemented order:** pending mutation commit → pre-ECS actor movement validation/bridge → fixed seven-system ECS simulation → post-ECS actor synchronisation → spawn-command commit → buffered/deferred domain callbacks → scheduler callbacks. The table below is the **original conceptual target**, not an exact implementation trace: notably generic bounded PurrNet ingress/admission, its phase-5-before-phase-6 conceptual ordering and a separate phase-7 snapshot publisher are not implemented verbatim. These differences do not invalidate the actual deferred ECS callback safety boundary.
+
+**Historical target phase table:**
 
 | Phase | Name / operation | Permitted authoritative writes and barrier |
 | --- | --- | --- |
@@ -96,9 +97,11 @@ Each completed authoritative tick executes the **following ordered stages exactl
 
 **System ordering:** project-owned registration must explicitly order `WorldSpawnSystem`, `ActorUpdateSystem`, `ResourceRegenSystem`, `SpellCastSystem`, `CooldownTickSystem`, `AuraTickSystem` and `ActorTickerSystem` within their assigned stages. The phase-4 relative order of cast/cooldown/aura/ticker work is as listed; if tests show an existing gameplay-relevant different ordering, stop for owner adjudication instead of silently changing it. Structural ECB playback remains at phase 6; the ECS group must not be auto-updated a second time by Unity.
 
-### 3.5 Unified scheduling and equal-deadline semantics — proposed
+### 3.5 Unified scheduling and equal-deadline semantics — implemented scheduling core
 
-The scheduler supports **four registration classes**, not four independently advancing clocks:
+**Current APIs:** the server clock provides *three* callback registration forms (each tick, lower rate, due tick) and cancellable handles. Urgent gameplay/domain events use existing callbacks and deferred ECS event buffering, not a new fourth generic scheduler API. Clock callbacks have stable registration ordering; buffered ECS events are sorted by tick/phase/system/actor/entity/operation/sequence, rather than only the abstract key below.
+
+The original design distinguishes **four conceptual work classes**, not four independently advancing clocks:
 
 1. **Every-tick simulation:** deterministic high-frequency ECS/domain work on every authoritative tick, including authoritative movement-related state.
 2. **Lower-frequency actor/NPC decisions:** integer tick strides relative to the common clock (for example, `decisionStrideTicks`), configured centrally or by later AI/activity scheduling. This is an engineering execution cadence, **not** a new NPC threat, target, aggro, pathfinding or combat rule; the AI PDD leaves its numeric frequency to the approved engineering policy below. A due lower-rate decision must not run twice after a stall.
@@ -128,21 +131,21 @@ The scheduler supports **four registration classes**, not four independently adv
 **Validation gate.** #100 and #101 must retain owner PlayMode/headless checks for first detection and authorable aggro delay, candidate departure/reacquisition, attack readiness while casting/out of range/on cooldown, moving-target chase, target death/despawn, stop/restart, and multiple catch-up ticks within one render frame. Verify no early aggro or duplicate swing; inspect actual elapsed tick IDs, stable actor cancellation and existing metric scope. These are source/design acceptance checks, **not** claims of completed runtime testing. Any #76 regression-test child must separately satisfy the workflow's four-part critical-coverage gate. Do not add Stage 1.2 spatial indexing, Stage 1.4 simulation LOD/dormancy, new AI rules, gameplay/RPC/protocol changes or third-party modifications.
 
 
-**Ordering key:** `(dueTick, phasePriority, actorIdentity, registrationSequence)` for independent due callbacks, all compared stably. Ordering *within* an actor's authored effect chain retains its existing explicit effect order. Global registration sequence is monotonic for the scheduler lifetime, and handles include a generation or otherwise prevent a recycled registration identifier from inheriting stale events. Where an actor has no ID, a stable registered operation identity is required; memory addresses/hash-map enumeration are not tie-breakers.
+**Historical target key:** `(dueTick, phasePriority, actorIdentity, registrationSequence)`; the actual clock uses registered callback order and buffered ECS events use their own explicit comparator. Do not treat this abstract key as the literal comparator of both implementations. Ordering *within* an actor's authored effect chain retains its existing explicit effect order. Global registration sequence is monotonic for the scheduler lifetime, and handles include a generation or otherwise prevent a recycled registration identifier from inheriting stale events. Where an actor has no ID, a stable registered operation identity is required; memory addresses/hash-map enumeration are not tie-breakers.
 
 **Cancellation and reentrancy:** cancellation or actor despawn invalidates its pending registrations before subsequent dispatch. Each callback is marked claimed before invocation, exactly once; a duplicate completion, dispel, expiry or auto-attack command must not retrigger it. A callback that schedules another callback for a phase already being drained (including a zero-delay one) executes **no earlier than the next tick**, avoiding unbounded same-tick recursion. A callback scheduled before its target phase can run in that phase during the current tick where the authored timing permits. Additions/removals during dispatch are staged and committed after traversal. Exceptions are surfaced with tick/actor/registration context and must not silently discard unrelated due events.
 
 **Ownership and cleanup:** actor-specific registrations follow the authoritative actor lifetime, not the Unity scene lifetime. Cancel on actual actor retirement and runtime teardown, **not** simply when an environment tile unloads or a PurrNet connection drops. A still-authoritative disconnected character continues due combat/timed events as required by the Persistence PDD.
 
-### 3.6 Bounded catch-up and overload — proposed
+### 3.6 Bounded catch-up — implemented debt; later operational overload response
 
-- **Proposed default:** maximum **4 authoritative simulation ticks per Unity driver iteration/frame**, configurable in the server runtime configuration with proposed valid bound **1–8**. This caps the *number* of catch-up steps, **not** the CPU duration spent in any single step. The initial 4-step ceiling corresponds to up to ~133 ms of simulation time at 30 Hz, not a 133 ms CPU budget.
+- **Current configured cap:** 4 ticks per Unity driver iteration, at 20 Hz: up to **200 ms of owed simulation time** executed per iteration (not a 200 ms CPU budget). `ServerSimulationClock` retains backlog and reports scheduled/executed counts, per-tick time, overdue callbacks and cap hits; the original 30 Hz/~133 ms illustration is superseded.
 - Always add the *full* elapsed monotonic duration to accumulator/debt; do **not** discard accumulated time, change `fixedDeltaSeconds`, compress multiple gameplay ticks into one, or jump tick IDs to make the backlog look healthy. Consume at most the cap per driver iteration and leave the remainder pending. If backlog remains when a frame ends, resume from the oldest unprocessed tick on the next iteration; during spare capacity, drain debt at the permitted cap until caught up.
 - Record at least: `currentTickID`, executed ticks/iteration, elapsed tick execution time, pending whole ticks, pending simulation seconds, age of oldest due event, ingress/deferred queue depths, deferred/due/processed/cancelled counts, missed wall-clock deadlines and consecutive overloaded iterations. A deliberately delayed event remains a **late event**, not a completed-on-time or dropped event.
 - Classify **normal** (no whole-tick backlog), **catching up** (positive backlog but decreasing), **overloaded** (backlog persists or increases across successive driver iterations), and **sustained overload** (bounded rolling observation confirms continued growth). Classification windows and alert thresholds are operational configuration to be validated with real load tests; do not invent a production acceptance threshold from a five-second Editor run.
 - During overload, the server must preserve authoritative simulation/event order and expiry semantics. It may reduce *non-authoritative* work, such as redundant presentation snapshots or optional diagnostics, while maintaining required PurrNet control and correction traffic. It must not skip ticks, teleport timers to current wall time, discard combat/AI obligations, give players an advantageous cooldown, or auto-despawn actors to conceal overload.
 - Under sustained overload, mark health/readiness visibly degraded, publish rate-limited diagnostics and require operator/load-test investigation or an explicitly approved capacity/admission policy; do not silently introduce disconnects, gameplay-rate slowing, or automatic shard migration. If incoming commands exceed the bounded admission quota, retain ordered backlog and expose its age/size, with **no silent loss**.
-- **Remaining open numerical choice:** the safe per-tick input-admission quota and sustained-overload threshold need qualified headless/multiplayer measurements. The proposed 30 Hz / 4 catch-up values are subject to owner review and benchmarking. If the server cannot keep up, the documented outcome is growing debt and a visible failure of the performance gate, not a false claim that timers ran on time.
+- **Deferred operations:** bounded general PurrNet input-admission quotas, sustained-overload health/readiness alerts and operator thresholds require separately qualified headless/networked tests and later implementation. The Stage 1.1 scheduler exposes debt but does not claim a complete operational response or production player-capacity budget.
 
 ### 3.7 Mapping existing owners to stages — implementation hand-off
 
@@ -178,23 +181,22 @@ Do not conflate tick frequency with how frequently PurrNet transports packets or
 
 ### 3.10 Reproducibility, instrumentation and required tests
 
-Within one server with the same admitted input/event sequence, all gameplay-affecting phases and same-deadline callbacks have a stable order. This is **not** a promise of bitwise physics determinism or identical simulation across CPU architectures/Unity builds. Never sort by an accidental ECS chunk order or unordered map traversal.
+Same-tick and equal-deadline behaviour is ordered within one server; cross-platform bitwise physics determinism is not promised. Focused Stage 1.1 regression tests (#66, #68, #70, #72, #74, #76, #78) cover fixed ECS time/order, cancellation/reentrancy, cast/cooldown/aura/ticker/delayed actions, movement, spawn and NPC/auto-attack eligibility.
 
-Issues #66, #68, #70, #72, #74, #76 and #78 own **separate test-only** regressions: 30/60/144 render-FPS parity; clock start/stop/reinitialisation; integer due-tick conversion; zero/one/long deadline, periodic remainder and terminal expiry; same-deadline order; cancellation; callback reentrancy; one-time spawn/despawn; NPC/auto-attack timing; controlled frame stalls and bounded catch-up without dropped combat events; visible telemetry debt; UTC wall-clock changes that do not advance active simulation; disconnected active-actor continuity and invalid UTC restoration. Compare against Phase 1.0 evidence only with matching fixtures, hardware and qualification. No tests or runtime changes are made by Issue #64.
+**#106 (rev 1, `4db4aed1`):** `Assets/Tests/PlayMode/Server/ServerTimeSeparationTests.cs` implements `UtcObservationDiscontinuitiesDoNotAdvanceClockOrCooldown()`: a real clock and ECS cooldown do not progress during injected server UTC jumps, but do progress by one real tick. **#107:** `Assets/Tests/EditMode/Server/ServerTimeAuthorityTests.cs` implements `ReconciliationValidatesElapsedTimeAndRejectsInvalidCredit()`: permitted/frozen offline-time rules and invalid future/source/over-credit rejection. The **owner reports all Stage 1.1 validation completed**; this documentation edit does not claim an independently reproduced XML test report or headless benchmark.
 
-### 3.11 Issue #64 owner approval checklist — **PENDING**
+### 3.11 Stage 1.1 closure and owner validation — completed
 
-- [ ] **Frequency:** explicitly accept/replace proposed **30 Hz**, allowed **10–60 Hz**, integer tick ID and positive-delay rounding policy. Benchmark any changed choice.
-- [ ] **Catch-up:** accept/replace **4 ticks/driver iteration**, permitted **1–8**, debt conservation, slow-recovery and persistent-overload reporting; confirm separately measured admission/alert parameters remain gating items.
-- [ ] **Phase order:** approve phases 0–7, the seven named ECS systems' relative order, first-next-tick incoming input eligibility and cross-domain write barriers.
-- [ ] **Same-deadline/callback:** approve stable (due tick, phase, actor identity, registration sequence) ordering, exact-once/cancellation, earliest eligible phase and next-tick reentrant rule; require observed behaviour equivalence.
-- [ ] **Lifecycle:** approve a single `ServerSimulationClock` owner, elimination of automatic ECS player-loop double updates, ECS/job/world teardown and registration disposal.
-- [ ] **Time split/inactivity:** approve monotonic active simulation versus process uptime versus server UTC, disconnected active-actor continuity, and per-domain-only offline reconciliation.
-- [ ] **Evidence:** acknowledge that existing five-second Editor-only baselines do **not** justify a standalone production tick/overload budget; keep unmeasured headless/networked profiles and later-gameplay decisions open.
-- [ ] **Scope review:** inspect the documentation-only diff; confirm **zero** changes to `Assets/`, tests, configuration, vendor code, metadata or gameplay rules.
+The Issue #64 pre-implementation design approval is superseded by the committed Stage 1.1 implementation and **owner-confirmed** completion:
 
-**Gate:** #65 and all dependent Stage 1.1 runtime changes remain **blocked pending explicit owner approval of this contract**. If any checklist item is rejected or unsettled, update the proposal and retain `needs-design` / `needs-validation`; do not report #64 complete solely because this document was committed. No Unity compile, Play Mode, server load test or performance claim is implied by this documentation update.
+- [x] Single 20 Hz monotonic server clock; integer tick identity, non-shortening time conversion, controlled startup/shutdown and four-tick catch-up cap.
+- [x] Fixed ECS update and safe deferred cross-domain event/structural boundaries; movement validation, NPC bridge, spawn outcomes, casts, cooldowns, auras and tickers use authoritative time. Unimplemented resource regeneration remains inert.
+- [x] Shared each-tick, lower-rate and due-tick scheduling; approved 200 ms NPC perception and every-tick auto-attack eligibility.
+- [x] Separate server UTC observations and pure caller-rule reconciliation; no UTC-driven live cooldown progression.
+- [x] Required critical tests, including #106/#107; owner attests that Unity/runtime/manual validation has been completed; [#78](https://github.com/FrontierDev/ninthage/issues/78) is closed.
+- [x] Qualification boundary retained: short Editor-only baselines do not establish headless/networked production capacity.
 
+**Stage 1.1 exit:** owner-confirmed complete. General PurrNet ingress quotas, sustained-overload operational alerts, activity tiers, disconnect grace and actual persistence/reconnect integration remain separate later-stage deliverables.
 
 ## 4. Actor, gameplay and network identity
 
@@ -436,7 +438,7 @@ This table is a **responsibility specification**, not a new named C# API declara
 | Stage | Intended integration responsibilities | Not presently claimed |
 | --- | --- | --- |
 | **1.0** | Define ownership/context contracts, stress profiles, measurable invariants, baseline instrumentation/evidence. | No gameplay optimisation or benchmark result is implied by this document. |
-| **1.1** | **Issue #64 proposed, awaiting owner approval:** 30 Hz/10–60 range, maximum 4 catch-up ticks/iteration (1–8), phases 0–7, stable deadline/callback order, cancellation/reentrancy and monotonic versus UTC/inactive boundaries (§3). Implementation/tests remain #65–#78. | **Documentation only:** existing ECS still auto-updates via Unity player loop, frame deltas/managers remain; no fixed-clock driver, validated overload policy or approved headless budget yet. |
+| **1.1** | **Implemented and owner-confirmed validated:** 20 Hz single fixed clock, four-step catch-up/debt metrics, seven-system ECS, buffered domain delivery, authoritative movement/spawn/combat/NPC scheduling and UTC/reconciliation boundary; critical tests through #107. | Generic bounded PurrNet ingress quotas, sustained-overload operational action policy, headless capacity qualification, activity tiers, disconnect grace and durable gameplay-state reconciliation remain later work. |
 | **1.2** | World/map/instance-qualified double-precision spatial membership, query and visibility candidate interface; event-driven insert/move/remove/context transfer; independent world-content streaming interest. | `ChunkSubscriptions` is not a fully general spatial index; no range-qualified instance isolation yet. |
 | **1.3** | Exact single-writer per-field ownership, actor ID ↔ ECS Entity mapping, batched managed/ECS bridge, job/main-thread boundaries, safe teardown. | GameObject/ECS mirror is not yet governed by this contract. |
 | **1.4** | Relevance/activity states, scheduling of NPC perception and decisions, sleep/wake continuity, representation demand and activation spikes. | Dormant/near/engaged simulation tiers not currently established. |
@@ -458,7 +460,7 @@ Stage 1.0 issue [#42](https://github.com/FrontierDev/ninthage/issues/42) and sub
 | Floating-origin and world-tile independence | Origin shift count, distinct tile load count, stable absolute position/instance and unchanged combat range during shifts. |
 | Instance isolation | Cross-instance candidates, visibility recipients and forbidden target/damage events = **zero** under overlapping coordinates. |
 | Bounded relevance queries | Eligible local candidate count, examined candidates and query time versus total server population across density sweeps. |
-| Scheduled authoritative work correctness | Expiry/tick/command counts, update order and missed/deferred event counts, with backlog explicitly **unavailable until Stage 1.1**. |
+| Scheduled authoritative work correctness | Stage 1.1 records simulation tick duration, scheduled/executed counts, retained backlog and deadline lateness; critical tests check tick/event identity and lifetime. Qualified headless/networked capacity remains unmeasured. |
 | Dormancy without state exploits | Active/near/dormant population and wake-up state/timing; **unavailable until Stage 1.4**. |
 | Actor/scene/handle teardown | Spawn/despawn balance, ECS entity counts, stale memberships, memory retention after unload/churn, Addressables handle release evidence where observable. |
 | Legitimate reconnect continuity | Same authoritative actor/character and continuing combat/timers during required grace; current implementation is known to lack the PDD behaviour. |
@@ -471,17 +473,17 @@ Stage 1.0 issue [#42](https://github.com/FrontierDev/ninthage/issues/42) and sub
 
 The following **remain open on purpose**:
 
-- **Stage 1.1 — proposed, not approved (#64):** §3 specifies candidate 30 Hz (valid 10–60), at most 4 catch-up ticks/iteration (valid 1–8), phases 0–7, queue/deadline ordering and the simulation/UTC/inactivity boundary. **Owner must approve** each choice before #65. No measured standalone server tick CPU budget, bounded ingress quota, sustained-overload observation/alert thresholds or numeric AI-decision interval is established by the five-second Editor baseline; these remain explicitly gated by further engineering evidence. Offline-resource/aura/cooldown policy remains with the appropriate PDD.
+- **Stage 1.1 — implemented, owner-confirmed validated:** §3 records 20 Hz fixed ticks, a four-tick catch-up cap, deferred domain delivery, 200 ms NPC perception, every-tick auto-attacks and UTC/reconciliation primitives. Bounded general PurrNet input admission and full sustained-overload operational response are **future** integration tasks; qualified headless capacity remains unmeasured. Real offline resource/aura/cooldown restoration belongs to Stages 1.7–1.8.
 - **Stage 1.2:** Spatial-index strategy/cell size, range/hysteresis thresholds, concrete world/map/instance identifiers, membership event API, scene interest radius. These are not fixed by the World Runtime PDD.
 - **Stage 1.3:** Canonical physical storage for accepted absolute position, per-actor ECS mapping implementation, managed/Jobs/Burst boundaries, entity representation under dormancy.
-- **Stage 1.4:** AI decision frequencies and simplified simulation detail; AI PDD explicitly leaves numeric update frequencies unspecified.
+- **Stage 1.4:** relevance-/dormancy-specific AI frequency and simulation LOD remain undecided. The initial global **200 ms NPC perception** cadence was already approved under Stage 1.1 (#99); it is not an activity-tier policy.
 - **Stage 1.5–1.6:** PurrNet-supported replication features, per-connection budgets, asset LOD thresholds, streaming concurrency and pooling strategy.
 - **Stages 1.7–1.8:** Database decomposition/checkpoint cadence, session duplicate-login UX, exact cleanup sequencing and valid instance-reentry policy as assigned to the relevant PDDs.
 - **Other product decisions:** Combat tuning, instance scope, NPC respawn policy, housing/dungeon UX and invalid-location recovery must follow their owning PDDs. Technical implementation cannot silently decide them.
 
-### Approval gate for Issue #64
+### Stage 1.1 acceptance and Stage 1.2 handoff
 
-Review §3.11 and record the owner's explicit approvals/rejections in Issue [#64](https://github.com/FrontierDev/ninthage/issues/64). This documentation proposal alone does **not** satisfy the approval gate; #65–#78 remain blocked until the accepted parameters and timing policy are recorded. The Stage 1.0 Editor-only benchmarks remain provisional, and no simulation code or test change has been made under #64.
+Issue [#64](https://github.com/FrontierDev/ninthage/issues/64) and Stage 1.1 exit tracker [#78](https://github.com/FrontierDev/ninthage/issues/78) are closed; the owner confirms the implementation and validation gates are completed. Begin Stage 1.2 as a separate spatial-index contract. Unimplemented generic ingress quotas, operational sustained-overload interventions and later persistence/reconnect requirements are explicitly **not** claimed as Stage 1.1 functionality. Prior Phase 1.0 Editor-only performance baselines remain qualified to their existing workloads, not generalized server capacity.
 
 ### Acceptance for Issue #41
 
