@@ -2,6 +2,7 @@ using Game.Shared;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using UnityEngine;
 
 namespace Game.Server.Core
@@ -264,6 +265,29 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     $"ServerSimulationMaxCatchUpTicks must be between 1 and {MAX_SAFE_CATCH_UP_TICKS}.");
             }
+        }
+
+        /// <summary>
+        /// Converts an already validated authored seconds value to a non-shortening fixed-step tick count.
+        /// Callers retain ownership of subsystem-specific duration and tick-duration validation.
+        /// </summary>
+        /// <param name="seconds">The authored duration or interval in seconds.</param>
+        /// <param name="fixedDeltaTime">The configured fixed simulation tick duration.</param>
+        /// <returns>The minimum positive number of authoritative ticks covering the seconds value.</returns>
+        internal static long GetNonShorteningTickCount(float seconds, float fixedDeltaTime)
+        {
+            // Round-trip float values through decimal before ceiling so a nominal multiple is not
+            // pushed to a later tick by binary noise, while a just-above-boundary duration is not shortened.
+            decimal secondsDecimal = decimal.Parse(
+                seconds.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            decimal tickDurationDecimal = decimal.Parse(
+                fixedDeltaTime.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            long tickCount = checked((long)Math.Ceiling(secondsDecimal / tickDurationDecimal));
+            return Math.Max(1L, tickCount);
         }
 
         private static ServerSimulationClock RequireActive()

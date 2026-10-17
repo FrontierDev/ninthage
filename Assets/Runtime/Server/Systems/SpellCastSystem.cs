@@ -1,7 +1,6 @@
 using Game.Server.Core;
 using Game.Shared.Performance;
 using System;
-using System.Globalization;
 using Unity.Entities;
 
 namespace Game.Server.Systems
@@ -119,18 +118,7 @@ namespace Game.Server.Systems
             if (float.IsNaN(fixedDeltaTime) || float.IsInfinity(fixedDeltaTime) || fixedDeltaTime <= 0f)
                 throw new InvalidOperationException("Spell casts require a finite positive simulation tick duration.");
 
-            // Round-trip float values through decimal before ceiling so a nominal multiple is not
-            // pushed to a later tick by binary noise, while a just-above-boundary duration is not shortened.
-            decimal durationSeconds = decimal.Parse(
-                duration.ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture);
-            decimal tickDurationSeconds = decimal.Parse(
-                fixedDeltaTime.ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture);
-            long durationTicks = checked((long)Math.Ceiling(durationSeconds / tickDurationSeconds));
-            return Math.Max(1L, durationTicks);
+            return ServerSimulationClock.GetNonShorteningTickCount(duration, fixedDeltaTime);
         }
     }
 }

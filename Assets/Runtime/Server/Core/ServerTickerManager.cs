@@ -4,7 +4,6 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -467,18 +466,7 @@ namespace Game.Server.Core
                     nameof(seconds),
                     "The actor ticker timing value cannot be represented by an authoritative tick deadline.");
 
-            // Round-trip float values through decimal before ceiling so a nominal multiple is not
-            // pushed to a later tick by binary noise, while a just-above-boundary duration is not shortened.
-            decimal secondsDecimal = decimal.Parse(
-                seconds.ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture);
-            decimal tickDurationDecimal = decimal.Parse(
-                fixedDeltaTime.ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture);
-            long tickCount = checked((long)Math.Ceiling(secondsDecimal / tickDurationDecimal));
-            return Math.Max(1L, tickCount);
+            return ServerSimulationClock.GetNonShorteningTickCount(seconds, fixedDeltaTime);
         }
 
         // ── Cross-assembly bridge (Game.Shared callers via ActorEndpoint events) ──────

@@ -8,7 +8,6 @@ using Game.Shared.Utility;
 using PurrNet;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -777,17 +776,7 @@ namespace Game.Server.Core
                     nameof(VALIDATION_INTERVAL),
                     "The player position validation interval cannot be represented by an authoritative tick deadline.");
 
-            // Round-trip float values through decimal before ceiling so a nominal multiple is not
-            // pushed to a later tick by binary noise, while a just-above-boundary duration is not shortened.
-            decimal interval = decimal.Parse(
-                VALIDATION_INTERVAL.ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture);
-            decimal tickDuration = decimal.Parse(
-                fixedDeltaTime.ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture);
-            return Math.Max(1L, checked((long)Math.Ceiling(interval / tickDuration)));
+            return ServerSimulationClock.GetNonShorteningTickCount(VALIDATION_INTERVAL, fixedDeltaTime);
         }
 
         private void RecordFrameSyncContribution(int fullScanCount, int gameObjectSyncCount, int frameOrTick)

@@ -6,7 +6,6 @@ using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -845,17 +844,7 @@ namespace Game.Server.Core
             if (float.IsNaN(fixedDeltaTime) || float.IsInfinity(fixedDeltaTime) || fixedDeltaTime <= 0f)
                 throw new InvalidOperationException("Aura timing requires a finite positive simulation tick duration.");
 
-            // Preserve the approved non-shortening conversion used by authoritative spell timing.
-            decimal secondsDecimal = decimal.Parse(
-                seconds.ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture);
-            decimal tickDurationDecimal = decimal.Parse(
-                fixedDeltaTime.ToString("R", CultureInfo.InvariantCulture),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture);
-            long tickCount = checked((long)Math.Ceiling(secondsDecimal / tickDurationDecimal));
-            return Math.Max(1L, tickCount);
+            return ServerSimulationClock.GetNonShorteningTickCount(seconds, fixedDeltaTime);
         }
 
         private bool TryFindActiveAuraInstance(Guid targetID, string auraDefinitionID, out int instanceID)
