@@ -117,13 +117,13 @@ namespace Game.Server.Core
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "actor_manager",
-            "server_frame");
+            "server_tick");
         private static readonly PerformanceMetricDefinition GAMEOBJECT_SYNC_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_ECS_GAMEOBJECT_SYNC_COUNT,
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "actor_manager",
-            "server_frame");
+            "server_tick");
         private static readonly PerformanceMetricDefinition OWNER_CHANGE_ENTITY_SCAN_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_OWNER_CHANGE_ENTITY_SCAN_COUNT,
             PerformanceMetricUnit.Count,
@@ -165,7 +165,7 @@ namespace Game.Server.Core
         private static readonly PerformanceMarker NPC_AGGRO_MARKER = new(NPC_AGGRO_DURATION_METRIC, "Server.ActorManager.UpdateNPCAggro");
         private static readonly PerformanceMarker POSITION_VALIDATION_MARKER = new(POSITION_VALIDATION_DURATION_METRIC, "Server.ActorManager.ValidatePlayerPositions");
         private static readonly PerformanceMarker PLAYER_ECS_SYNC_MARKER = new(PLAYER_ECS_SYNC_DURATION_METRIC, "Server.ActorManager.SyncPlayerECS");
-        private const int FRAME_ENTITY_SCAN_SAMPLE_CAPACITY = PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC;
+        private const int TICK_ENTITY_SCAN_SAMPLE_CAPACITY = PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC;
         private const int ACTOR_EVENT_SCAN_SAMPLE_CAPACITY = 1024;
 
         private static ServerActorManager _instance;
@@ -192,8 +192,8 @@ namespace Game.Server.Core
             PerformanceTelemetry.RegisterMetric(GC_GEN2_COLLECTION_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(OVERLAP_SEARCH_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(COLLIDER_CANDIDATE_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
-            PerformanceTelemetry.RegisterMetric(FULL_ENTITY_SCAN_COUNT_METRIC, FRAME_ENTITY_SCAN_SAMPLE_CAPACITY);
-            PerformanceTelemetry.RegisterMetric(GAMEOBJECT_SYNC_COUNT_METRIC, FRAME_ENTITY_SCAN_SAMPLE_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(FULL_ENTITY_SCAN_COUNT_METRIC, TICK_ENTITY_SCAN_SAMPLE_CAPACITY);
+            PerformanceTelemetry.RegisterMetric(GAMEOBJECT_SYNC_COUNT_METRIC, TICK_ENTITY_SCAN_SAMPLE_CAPACITY);
             PerformanceTelemetry.RegisterMetric(OWNER_CHANGE_ENTITY_SCAN_COUNT_METRIC, ACTOR_EVENT_SCAN_SAMPLE_CAPACITY);
             PerformanceTelemetry.RegisterMetric(INTEREST_CHANGE_ENTITY_SCAN_COUNT_METRIC, ACTOR_EVENT_SCAN_SAMPLE_CAPACITY);
             PerformanceTelemetry.RegisterMetric(ALLOC_HEAVY_OPERATION_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
@@ -218,12 +218,11 @@ namespace Game.Server.Core
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
         private readonly Dictionary<Guid, Entity> _actorEntities = new();
 
-        // Authoritative movement bridges can run more than once per render frame. They are
-        // aggregated into one per-frame observation so all real contributions remain represented.
-        private int _pendingFrameOrTick = -1;
-        private int _pendingFrameEntityScanCount;
-        private int _pendingFrameGameObjectSyncCount;
-        private bool _hasPendingFrameSyncContribution;
+        // Authoritative movement bridges contribute to one observation for each simulation tick.
+        private long _pendingTickID = -1;
+        private int _pendingTickEntityScanCount;
+        private int _pendingTickGameObjectSyncCount;
+        private bool _hasPendingTickSyncContribution;
 
         /// <summary>Finds the server actor associated with an actor identifier.</summary>
         /// <param name="actorID">The actor identifier to find.</param>
@@ -297,10 +296,10 @@ namespace Game.Server.Core
             _nextValidationTickIDs.Clear();
             _violationCounters.Clear();
             _npcAggroStates.Clear();
-            _pendingFrameOrTick = -1;
-            _pendingFrameEntityScanCount = 0;
-            _pendingFrameGameObjectSyncCount = 0;
-            _hasPendingFrameSyncContribution = false;
+            _pendingTickID = -1;
+            _pendingTickEntityScanCount = 0;
+            _pendingTickGameObjectSyncCount = 0;
+            _hasPendingTickSyncContribution = false;
             _instance = null;
             _initialized = false;
         }
@@ -310,7 +309,6 @@ namespace Game.Server.Core
             if (!_initialized) return;
             using var markerScope = UPDATE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            FlushPendingFrameSyncContributionIfFrameChanged(telemetryEnabled);
             UpdateNPCAggro();
             if (telemetryEnabled)
             {
@@ -341,8 +339,7 @@ namespace Game.Server.Core
         {
             if (!_initialized || !PerformanceTelemetry.IsEnabled) return;
             using var markerScope = LATE_UPDATE_MARKER.Begin();
-            if (_hasPendingFrameSyncContribution)
-                FlushPendingFrameSyncContribution();
+            // Tick-scoped bridge telemetry is flushed by ProcessAuthoritativeTickCompleted.
         }
 
         private void OnActorSpawned(Actor actor)
@@ -671,6 +668,7 @@ namespace Game.Server.Core
                 return;
 
             SynchronizeNPCTransformsFromECS();
+            FlushPendingTickSyncContribution();
         }
 
         private void SynchronizeNPCPositionsToECS()
@@ -710,7 +708,12 @@ namespace Game.Server.Core
                 entities.Dispose();
             }
             if (telemetryEnabled)
-                RecordFrameSyncContribution(fullScanCount, syncCount, Time.frameCount);
+            {
+                RecordTickSyncContribution(
+                    fullScanCount,
+                    syncCount,
+                    ServerECSManager.CurrentSimulationTickID);
+            }
         }
 
         private bool SynchronizeNPCPositionToECS(
@@ -849,7 +852,10 @@ namespace Game.Server.Core
             entities.Dispose();
             if (telemetryEnabled)
             {
-                RecordFrameSyncContribution(fullScanCount, syncCount, Time.frameCount);
+                RecordTickSyncContribution(
+                    fullScanCount,
+                    syncCount,
+                    ServerECSManager.CurrentSimulationTickID);
             }
         }
 
@@ -880,47 +886,49 @@ namespace Game.Server.Core
             return ServerSimulationClock.GetNonShorteningTickCount(VALIDATION_INTERVAL, fixedDeltaTime);
         }
 
-        private void RecordFrameSyncContribution(int fullScanCount, int gameObjectSyncCount, int frameOrTick)
+        private void RecordTickSyncContribution(int fullScanCount, int gameObjectSyncCount, long tickID)
         {
-            if (_hasPendingFrameSyncContribution && _pendingFrameOrTick != frameOrTick)
-                FlushPendingFrameSyncContribution();
+            if (tickID <= 0)
+                throw new InvalidOperationException("Actor bridge telemetry requires an active authoritative simulation tick.");
 
-            if (!_hasPendingFrameSyncContribution)
+            if (_hasPendingTickSyncContribution && _pendingTickID != tickID)
+                throw new InvalidOperationException("Actor bridge telemetry contributions crossed authoritative simulation ticks before the previous tick was flushed.");
+
+            if (!_hasPendingTickSyncContribution)
             {
-                _pendingFrameOrTick = frameOrTick;
-                _pendingFrameEntityScanCount = 0;
-                _pendingFrameGameObjectSyncCount = 0;
-                _hasPendingFrameSyncContribution = true;
+                _pendingTickID = tickID;
+                _pendingTickEntityScanCount = 0;
+                _pendingTickGameObjectSyncCount = 0;
+                _hasPendingTickSyncContribution = true;
             }
 
-            _pendingFrameEntityScanCount += fullScanCount;
-            _pendingFrameGameObjectSyncCount += gameObjectSyncCount;
+            _pendingTickEntityScanCount += fullScanCount;
+            _pendingTickGameObjectSyncCount += gameObjectSyncCount;
         }
 
-        private void FlushPendingFrameSyncContributionIfFrameChanged(bool telemetryEnabled)
+        private void FlushPendingTickSyncContribution()
         {
-            if (telemetryEnabled
-                && _hasPendingFrameSyncContribution
-                && _pendingFrameOrTick != Time.frameCount)
+            if (!_hasPendingTickSyncContribution)
+                return;
+
+            try
             {
-                FlushPendingFrameSyncContribution();
+                PerformanceTelemetry.TryRecord(
+                    FULL_ENTITY_SCAN_COUNT_METRIC,
+                    _pendingTickEntityScanCount,
+                    _pendingTickID);
+                PerformanceTelemetry.TryRecord(
+                    GAMEOBJECT_SYNC_COUNT_METRIC,
+                    _pendingTickGameObjectSyncCount,
+                    _pendingTickID);
             }
-        }
-
-        private void FlushPendingFrameSyncContribution()
-        {
-            PerformanceTelemetry.TryRecord(
-                FULL_ENTITY_SCAN_COUNT_METRIC,
-                _pendingFrameEntityScanCount,
-                _pendingFrameOrTick);
-            PerformanceTelemetry.TryRecord(
-                GAMEOBJECT_SYNC_COUNT_METRIC,
-                _pendingFrameGameObjectSyncCount,
-                _pendingFrameOrTick);
-            _pendingFrameOrTick = -1;
-            _pendingFrameEntityScanCount = 0;
-            _pendingFrameGameObjectSyncCount = 0;
-            _hasPendingFrameSyncContribution = false;
+            finally
+            {
+                _pendingTickID = -1;
+                _pendingTickEntityScanCount = 0;
+                _pendingTickGameObjectSyncCount = 0;
+                _hasPendingTickSyncContribution = false;
+            }
         }
     }
 }
