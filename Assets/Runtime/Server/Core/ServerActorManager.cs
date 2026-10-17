@@ -8,6 +8,7 @@ using Game.Shared.Utility;
 using PurrNet;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -240,7 +241,8 @@ namespace Game.Server.Core
         // Player tracking for validation.
         private readonly Dictionary<PlayerID, Actor> _playerActors = new();
         private readonly Dictionary<PlayerID, Vector3> _lastValidatedPositions = new();
-        private readonly Dictionary<PlayerID, float> _validationTimers = new();
+        private readonly Dictionary<PlayerID, long> _lastValidationTickIDs = new();
+        private readonly Dictionary<PlayerID, long> _nextValidationTickIDs = new();
         private readonly Dictionary<PlayerID, int> _violationCounters = new();
 
         // NPC aggro tracking.
@@ -292,7 +294,8 @@ namespace Game.Server.Core
             _actorEntities.Clear();
             _playerActors.Clear();
             _lastValidatedPositions.Clear();
-            _validationTimers.Clear();
+            _lastValidationTickIDs.Clear();
+            _nextValidationTickIDs.Clear();
             _violationCounters.Clear();
             _npcAggroStates.Clear();
             _pendingFrameOrTick = -1;
@@ -419,10 +422,7 @@ namespace Game.Server.Core
             if (actor.Owner != null)
             {
                 var owner = actor.Owner.Value;
-                _playerActors[owner] = actor;
-                _lastValidatedPositions[owner] = actor.transform.position;
-                _validationTimers[owner] = 0f;
-                _violationCounters[owner] = 0;
+                InitializePlayerValidationState(owner, actor);
             }
 
             // Add the spellcasting component on the actor.
@@ -477,7 +477,8 @@ namespace Game.Server.Core
                 {
                     _playerActors.Remove(owner);
                     _lastValidatedPositions.Remove(owner);
-                    _validationTimers.Remove(owner);
+                    _lastValidationTickIDs.Remove(owner);
+                    _nextValidationTickIDs.Remove(owner);
                     _violationCounters.Remove(owner);
                 }
             }
@@ -504,17 +505,13 @@ namespace Game.Server.Core
                     {
                         _playerActors.Remove(previousOwner);
                         _lastValidatedPositions.Remove(previousOwner);
-                        _validationTimers.Remove(previousOwner);
+                        _lastValidationTickIDs.Remove(previousOwner);
+                        _nextValidationTickIDs.Remove(previousOwner);
                         _violationCounters.Remove(previousOwner);
                     }
 
                     if (actor.Owner != null && component.Owner != default)
-                    {
-                        _playerActors[component.Owner] = actor;
-                        _lastValidatedPositions[component.Owner] = actor.transform.position;
-                        _validationTimers[component.Owner] = 0f;
-                        _violationCounters[component.Owner] = 0;
-                    }
+                        InitializePlayerValidationState(component.Owner, actor);
 
                     Debug.Log("Actor owner changed on server: " + actor.Name + " (ID: " + actor.ID + ")");
                     break;
@@ -652,7 +649,7 @@ namespace Game.Server.Core
             if (!_initialized)
                 return;
 
-            ValidatePlayerPositions(tick.DeltaTime);
+            ValidatePlayerPositions(tick);
             SyncPlayerECS();
         }
 
@@ -661,7 +658,7 @@ namespace Game.Server.Core
         /// NetworkTransform (owner-auth) pushes the client position to
         /// the server actor's transform automatically; we just read it.
         /// </summary>
-        private void ValidatePlayerPositions(float deltaTime)
+        private void ValidatePlayerPositions(ServerSimulationTick tick)
         {
             using var markerScope = POSITION_VALIDATION_MARKER.Begin();
             foreach (var kvp in _playerActors)
@@ -670,16 +667,19 @@ namespace Game.Server.Core
                 var actor = kvp.Value;
                 if (actor == null) continue;
 
-                if (!_validationTimers.TryGetValue(playerID, out var validationTimer)) continue;
+                if (!_nextValidationTickIDs.TryGetValue(playerID, out var nextValidationTickID)) continue;
+                if (!_lastValidationTickIDs.TryGetValue(playerID, out var lastValidationTickID)) continue;
                 if (!_lastValidatedPositions.TryGetValue(playerID, out var lastValidatedPosition)) continue;
 
                 var proposedPosition = actor.transform.position;
-                validationTimer += deltaTime;
-                _validationTimers[playerID] = validationTimer;
-                if (validationTimer < VALIDATION_INTERVAL) continue;
+                if (tick.TickID < nextValidationTickID) continue;
 
-                float elapsed = validationTimer;
-                _validationTimers[playerID] = 0f;
+                long validationIntervalTicks = checked(nextValidationTickID - lastValidationTickID);
+                long elapsedTickCount = checked(tick.TickID - lastValidationTickID);
+                if (validationIntervalTicks <= 0 || elapsedTickCount <= 0)
+                    throw new InvalidOperationException("Player position validation deadline state is invalid.");
+
+                float elapsed = (float)(elapsedTickCount * (double)tick.DeltaTime);
 
                 // Speed check: horizontal distance / elapsed time.
                 var horizontalDelta = new Vector3(
@@ -688,6 +688,9 @@ namespace Game.Server.Core
                     proposedPosition.z - lastValidatedPosition.z);
                 float speed = horizontalDelta.magnitude / elapsed;
 
+                // The existing three-strike policy provisionally admits proposals between validation
+                // deadlines to tolerate network jitter. At the threshold, the proposal is rejected
+                // by restoring both the accepted position and the server-side transform before ECS sync.
                 var acceptedPosition = proposedPosition;
 
                 if (speed > MAX_ALLOWED_SPEED)
@@ -713,12 +716,14 @@ namespace Game.Server.Core
                 }
 
                 _lastValidatedPositions[playerID] = acceptedPosition;
+                _lastValidationTickIDs[playerID] = tick.TickID;
+                _nextValidationTickIDs[playerID] = checked(tick.TickID + validationIntervalTicks);
             }
         }
 
         /// <summary>
-        /// Pushes the client-authoritative transform position (received via
-        /// NetworkTransform) into ECS so game systems have up-to-date data.
+        /// Pushes the accepted or provisionally admitted client-authoritative transform position
+        /// (received via NetworkTransform) into ECS so game systems have up-to-date data.
         /// </summary>
         private void SyncPlayerECS()
         {
@@ -746,6 +751,43 @@ namespace Game.Server.Core
             {
                 RecordFrameSyncContribution(fullScanCount, syncCount, Time.frameCount);
             }
+        }
+
+        private void InitializePlayerValidationState(PlayerID owner, Actor actor)
+        {
+            long currentTickID = ServerSimulationClock.CurrentTickID;
+            long validationIntervalTicks = GetValidationIntervalTicks();
+            _playerActors[owner] = actor;
+            _lastValidatedPositions[owner] = actor.transform.position;
+            _lastValidationTickIDs[owner] = currentTickID;
+            _nextValidationTickIDs[owner] = checked(currentTickID + validationIntervalTicks);
+            _violationCounters[owner] = 0;
+        }
+
+        private static long GetValidationIntervalTicks()
+        {
+            if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
+                throw new InvalidOperationException("Player position validation requires initialized server simulation configuration.");
+
+            ServerSimulationClock.ValidateConfiguration(GameConfigurationManager.Config);
+            float fixedDeltaTime = GameConfigurationManager.Config.ServerSimulationTickDuration;
+            double tickCountEstimate = VALIDATION_INTERVAL / (double)fixedDeltaTime;
+            if (double.IsInfinity(tickCountEstimate) || tickCountEstimate > long.MaxValue)
+                throw new ArgumentOutOfRangeException(
+                    nameof(VALIDATION_INTERVAL),
+                    "The player position validation interval cannot be represented by an authoritative tick deadline.");
+
+            // Round-trip float values through decimal before ceiling so a nominal multiple is not
+            // pushed to a later tick by binary noise, while a just-above-boundary duration is not shortened.
+            decimal interval = decimal.Parse(
+                VALIDATION_INTERVAL.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            decimal tickDuration = decimal.Parse(
+                fixedDeltaTime.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            return Math.Max(1L, checked((long)Math.Ceiling(interval / tickDuration)));
         }
 
         private void RecordFrameSyncContribution(int fullScanCount, int gameObjectSyncCount, int frameOrTick)
