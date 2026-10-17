@@ -80,6 +80,9 @@ namespace Game.Shared
         [SerializeField]
         /// <summary>Gets or sets the maximum number of overdue simulation ticks executed in one Unity frame.</summary>
         public int ServerSimulationMaxCatchUpTicks = 4;
+        [SerializeField]
+        /// <summary>Gets or sets the lower-rate NPC proximity and aggro decision interval in seconds.</summary>
+        public float NPCAggroDecisionIntervalSeconds = 0.2f;
 
         [Header("Item Quality Colors")]
         /// <summary>Gets or sets the poor item color.</summary>

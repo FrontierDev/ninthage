@@ -39,7 +39,7 @@ namespace Game.Server.Core
             PerformanceMetricUnit.Milliseconds,
             PerformanceMetricSide.Server,
             "actor_manager",
-            "server_update");
+            "server_schedule");
         private static readonly PerformanceMetricDefinition POSITION_VALIDATION_DURATION_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_MANAGER_POSITION_VALIDATION_DURATION,
             PerformanceMetricUnit.Milliseconds,
@@ -105,13 +105,13 @@ namespace Game.Server.Core
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "actor_manager.npc_aggro",
-            "server_update");
+            "server_schedule");
         private static readonly PerformanceMetricDefinition COLLIDER_CANDIDATE_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_COLLIDER_CANDIDATE_COUNT,
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "actor_manager.npc_aggro",
-            "server_update");
+            "server_schedule");
         private static readonly PerformanceMetricDefinition FULL_ENTITY_SCAN_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_FULL_ENTITY_SCAN_COUNT,
             PerformanceMetricUnit.Count,
@@ -141,7 +141,7 @@ namespace Game.Server.Core
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "actor_manager.npc_aggro",
-            "server_update");
+            "server_schedule");
         private static readonly PerformanceMetricDefinition SPAWN_EVENT_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_SPAWN_EVENT_COUNT,
             PerformanceMetricUnit.Count,
@@ -162,7 +162,7 @@ namespace Game.Server.Core
             "server_update");
         private static readonly PerformanceMarker UPDATE_MARKER = new(UPDATE_DURATION_METRIC, "Server.ActorManager.Update");
         private static readonly PerformanceMarker LATE_UPDATE_MARKER = new(LATE_UPDATE_DURATION_METRIC, "Server.ActorManager.LateUpdate");
-        private static readonly PerformanceMarker NPC_AGGRO_MARKER = new(NPC_AGGRO_DURATION_METRIC, "Server.ActorManager.UpdateNPCAggro");
+        private static readonly PerformanceMarker NPC_AGGRO_MARKER = new(NPC_AGGRO_DURATION_METRIC, "Server.ActorManager.ScheduledNPCAggro");
         private static readonly PerformanceMarker POSITION_VALIDATION_MARKER = new(POSITION_VALIDATION_DURATION_METRIC, "Server.ActorManager.ValidatePlayerPositions");
         private static readonly PerformanceMarker PLAYER_ECS_SYNC_MARKER = new(PLAYER_ECS_SYNC_DURATION_METRIC, "Server.ActorManager.SyncPlayerECS");
         private const int TICK_ENTITY_SCAN_SAMPLE_CAPACITY = PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC;
@@ -250,9 +250,12 @@ namespace Game.Server.Core
             public NPCBehavior Behavior;
             public NavMeshAgent Agent;
             public Actor PendingTarget;
-            public float AggroTimer;
+            public long PendingStartTickID;
+            public long PendingAcquisitionTickID;
         }
         private readonly Dictionary<Guid, NPCAggroState> _npcAggroStates = new();
+        private ServerSimulationRegistrationHandle _npcAggroSchedule;
+        private int _npcAggroDecisionIntervalTicks;
 
         // Generous speed cap: moveSpeed(5) * sqrt(2) diagonal * 2 headroom for latency bursts.
         private const float MAX_ALLOWED_SPEED = 15f;
@@ -267,26 +270,33 @@ namespace Game.Server.Core
                 Debug.Error("ServerActorManager is already initialized!");
                 return;
             }
+            _npcAggroDecisionIntervalTicks = GetNPCAggroDecisionIntervalTicks();
             _instance = this;
 
             ActorEndpoint.onServerActorSpawned += OnActorSpawned;
             ActorEndpoint.onServerActorDespawned += OnActorDespawned;
             ActorEndpoint.onServerActorOwnerChanged += OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
+            ActorEndpoint.onActorDeath += OnActorDeath;
 
             var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
             _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             _initialized = true;
+            EnsureNPCAggroScheduleRegistered();
         }
 
         private void OnDestroy()
         {
+            _npcAggroSchedule.Cancel();
+            _npcAggroSchedule = default;
+
             ActorEndpoint.onServerActorSpawned -= OnActorSpawned;
             ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
             ActorEndpoint.onServerActorOwnerChanged -= OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged -= OnActorInterestChanged;
+            ActorEndpoint.onActorDeath -= OnActorDeath;
 
             _actorObjects.Clear();
             _actorEntities.Clear();
@@ -307,9 +317,9 @@ namespace Game.Server.Core
         private void Update()
         {
             if (!_initialized) return;
+            EnsureNPCAggroScheduleRegistered();
             using var markerScope = UPDATE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            UpdateNPCAggro();
             if (telemetryEnabled)
             {
                 PerformanceTelemetry.TryRecord(ECS_ACTOR_COUNT_METRIC, _actorComponentQuery.CalculateEntityCount());
@@ -333,6 +343,64 @@ namespace Game.Server.Core
                     GC_GEN2_COLLECTION_COUNT_METRIC,
                     GC.CollectionCount(2));
             }
+        }
+
+        private void EnsureNPCAggroScheduleRegistered()
+        {
+            if (!ServerSimulationClock.IsRunning)
+            {
+                if (_npcAggroSchedule.IsValid)
+                {
+                    _npcAggroSchedule.Cancel();
+                    _npcAggroSchedule = default;
+                }
+
+                return;
+            }
+
+            if (!_npcAggroSchedule.IsValid)
+            {
+                _npcAggroSchedule = ServerSimulationClock.RegisterLowerRate(
+                    _npcAggroDecisionIntervalTicks,
+                    UpdateNPCAggro);
+            }
+        }
+
+        private static int GetNPCAggroDecisionIntervalTicks()
+        {
+            if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
+                throw new InvalidOperationException("NPC aggro scheduling requires initialized server simulation configuration.");
+
+            var configuration = GameConfigurationManager.Config;
+            ServerSimulationClock.ValidateConfiguration(configuration);
+
+            float intervalSeconds = configuration.NPCAggroDecisionIntervalSeconds;
+            if (float.IsNaN(intervalSeconds)
+                || float.IsInfinity(intervalSeconds)
+                || intervalSeconds <= 0f)
+            {
+                throw new InvalidOperationException(
+                    "NPCAggroDecisionIntervalSeconds must be finite and strictly positive.");
+            }
+
+            float fixedDeltaTime = configuration.ServerSimulationTickDuration;
+            double tickCountEstimate = intervalSeconds / (double)fixedDeltaTime;
+            if (double.IsInfinity(tickCountEstimate) || tickCountEstimate > int.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    "NPCAggroDecisionIntervalSeconds cannot be represented by a positive integer tick stride.");
+            }
+
+            long intervalTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                intervalSeconds,
+                fixedDeltaTime);
+            if (intervalTicks <= 0 || intervalTicks > int.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    "NPCAggroDecisionIntervalSeconds must convert to a positive integer tick stride.");
+            }
+
+            return checked((int)intervalTicks);
         }
 
         private void LateUpdate()
@@ -381,25 +449,7 @@ namespace Game.Server.Core
             // Add ticker buffer for generic time-based callbacks.
             _entityManager.AddBuffer<Systems.TickerElement>(entity);
 
-            // Track NPCs with aggro behavior for proximity-based targeting.
-            if (actor.Owner == null && actor.isDead == false)
-            {
-                var behavior = actor.GetComponent<NPCBehavior>();
-                if (behavior != null)
-                {
-                    if (behavior.AggroRange > 0)
-                    {
-                        _npcAggroStates[actor.ID] = new NPCAggroState
-                        {
-                            NPC = actor,
-                            Behavior = behavior,
-                            Agent = actor.GetComponent<NavMeshAgent>(),
-                            PendingTarget = null,
-                            AggroTimer = 0f
-                        };
-                    }
-                }
-            }
+            TrackNPCForAggro(actor);
 
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(SPAWN_EVENT_COUNT_METRIC, 1);
@@ -447,6 +497,68 @@ namespace Game.Server.Core
             ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
         }
 
+        private void OnActorDeath(Actor actor)
+        {
+            if (actor == null)
+                return;
+
+            if (_npcAggroStates.TryGetValue(actor.ID, out var state))
+            {
+                ClearPendingAggro(ref state);
+                _npcAggroStates[actor.ID] = state;
+            }
+
+            var keys = new List<Guid>(_npcAggroStates.Keys);
+            foreach (var id in keys)
+            {
+                if (!_npcAggroStates.TryGetValue(id, out state)
+                    || state.PendingTarget != actor)
+                    continue;
+
+                ClearPendingAggro(ref state);
+                _npcAggroStates[id] = state;
+            }
+        }
+
+        private void TrackNPCForAggro(Actor actor)
+        {
+            if (actor == null)
+                return;
+
+            if (actor.Owner != null || actor.isDead)
+            {
+                _npcAggroStates.Remove(actor.ID);
+                return;
+            }
+
+            var behavior = actor.GetComponent<NPCBehavior>();
+            if (behavior == null || behavior.AggroRange <= 0f)
+            {
+                _npcAggroStates.Remove(actor.ID);
+                return;
+            }
+
+            if (_npcAggroStates.ContainsKey(actor.ID))
+                return;
+
+            _npcAggroStates[actor.ID] = new NPCAggroState
+            {
+                NPC = actor,
+                Behavior = behavior,
+                Agent = actor.GetComponent<NavMeshAgent>(),
+                PendingTarget = null,
+                PendingStartTickID = 0,
+                PendingAcquisitionTickID = 0
+            };
+        }
+
+        private static void ClearPendingAggro(ref NPCAggroState state)
+        {
+            state.PendingTarget = null;
+            state.PendingStartTickID = 0;
+            state.PendingAcquisitionTickID = 0;
+        }
+
         private void OnActorOwnerChanged(Actor actor)
         {
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
@@ -489,6 +601,8 @@ namespace Game.Server.Core
                     entities.Length,
                     Time.frameCount);
             entities.Dispose();
+
+            TrackNPCForAggro(actor);
         }
 
         private void EnsureNPCMovementComponents(Entity entity, Actor actor)
@@ -557,27 +671,41 @@ namespace Game.Server.Core
             entities.Dispose();
         }
 
-        /// <summary>
-        /// Scans for nearby players and starts aggro timers on NPCs.
-        /// Once the delay expires the NPC acquires a target and begins auto-attacking.
-        /// </summary>
-        private void UpdateNPCAggro()
+        /// <summary>Runs the lower-rate authoritative NPC proximity and aggro decision pass.</summary>
+        private void UpdateNPCAggro(ServerSimulationTick tick)
         {
             using var markerScope = NPC_AGGRO_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int overlapSearchCount = 0;
             int colliderCandidateCount = 0;
             int allocHeavyOperationCount = telemetryEnabled ? 1 : 0;
-            float dt = Time.deltaTime;
             var keys = new List<Guid>(_npcAggroStates.Keys);
 
             foreach (var id in keys)
             {
-                var state = _npcAggroStates[id];
-                if (state.NPC == null || state.NPC.isDead) continue;
+                if (!_npcAggroStates.TryGetValue(id, out var state))
+                    continue;
+
+                if (state.NPC == null || state.Behavior == null)
+                {
+                    _npcAggroStates.Remove(id);
+                    continue;
+                }
+
+                if (state.NPC.isDead)
+                {
+                    ClearPendingAggro(ref state);
+                    _npcAggroStates[id] = state;
+                    continue;
+                }
 
                 // Already locked on a target — nothing to do.
-                if (state.NPC.Target != null) continue;
+                if (state.NPC.Target != null)
+                {
+                    ClearPendingAggro(ref state);
+                    _npcAggroStates[id] = state;
+                    continue;
+                }
 
                 // Find the nearest player within aggro range via physics query.
                 float aggroRange = state.Behavior.AggroRange;
@@ -609,31 +737,36 @@ namespace Game.Server.Core
                 if (closest == null)
                 {
                     // No player in range — reset any pending aggro.
-                    if (state.PendingTarget != null)
-                    {
-                        state.PendingTarget = null;
-                        state.AggroTimer = 0f;
-                        _npcAggroStates[id] = state;
-                    }
+                    ClearPendingAggro(ref state);
+                    _npcAggroStates[id] = state;
                     continue;
                 }
 
-                // Player detected — start or continue aggro timer.
+                // Player detected — start or continue the authoritative pending deadline.
                 if (state.PendingTarget != closest)
                 {
                     state.PendingTarget = closest;
-                    state.AggroTimer = 0f;
+                    state.PendingStartTickID = tick.TickID;
+                    long delayTicks = GetNonShorteningAggroDelayTicks(state.Behavior.AggroDelay);
+                    state.PendingAcquisitionTickID = delayTicks == 0
+                        ? tick.TickID
+                        : checked(tick.TickID + delayTicks);
                 }
 
-                state.AggroTimer += dt;
-
-                if (state.AggroTimer >= state.Behavior.AggroDelay)
+                if (tick.TickID >= state.PendingAcquisitionTickID)
                 {
                     Debug.Log($"NPC '{state.NPC.Name}' aggroed player '{closest.Name}'.");
                     state.NPC.SetTargetFromServer(closest);
                     ActorEndpoint.onServerStartAutoAttack?.Invoke(state.NPC);
-                    state.PendingTarget = null;
-                    state.AggroTimer = 0f;
+
+                    if (!_actorObjects.TryGetValue(id, out var currentActor)
+                        || currentActor != state.NPC)
+                    {
+                        _npcAggroStates.Remove(id);
+                        continue;
+                    }
+
+                    ClearPendingAggro(ref state);
                 }
 
                 _npcAggroStates[id] = state;
@@ -644,6 +777,34 @@ namespace Game.Server.Core
                 PerformanceTelemetry.TryRecord(COLLIDER_CANDIDATE_COUNT_METRIC, colliderCandidateCount);
                 PerformanceTelemetry.TryRecord(ALLOC_HEAVY_OPERATION_COUNT_METRIC, allocHeavyOperationCount);
             }
+        }
+
+        private static long GetNonShorteningAggroDelayTicks(float delaySeconds)
+        {
+            if (float.IsNaN(delaySeconds)
+                || float.IsInfinity(delaySeconds)
+                || delaySeconds < 0f)
+            {
+                throw new InvalidOperationException(
+                    "NPCBehavior.AggroDelay must be finite and non-negative.");
+            }
+
+            if (delaySeconds == 0f)
+                return 0;
+
+            if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
+                throw new InvalidOperationException("NPC aggro timing requires initialized server simulation configuration.");
+
+            float fixedDeltaTime = GameConfigurationManager.Config.ServerSimulationTickDuration;
+            ServerSimulationClock.ValidateConfiguration(GameConfigurationManager.Config);
+            double tickCountEstimate = delaySeconds / (double)fixedDeltaTime;
+            if (double.IsInfinity(tickCountEstimate) || tickCountEstimate > long.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    "NPCBehavior.AggroDelay cannot be represented by an authoritative tick deadline.");
+            }
+
+            return ServerSimulationClock.GetNonShorteningTickCount(delaySeconds, fixedDeltaTime);
         }
 
         /// <summary>
