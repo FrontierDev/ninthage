@@ -12,39 +12,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c65b3c87d0c702438dd0f0e6a6b6d5a, type: 3}
   m_Name: Spell_rift
   m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.SpellDefinition
-  definitionId: rift
-  displayName: Rift
-  spellName: 
-  description: 
-  icon: {fileID: 21300000, guid: 21aa258127d64f64b8a116048296da4a, type: 3}
-  tags:
+  _definitionID: rift
+  _displayName: Dimensional Rift
+  _spellName: 
+  _description: 
+  _icon: {fileID: 21300000, guid: 6d3585081dffc704bb0d87f796a02dc3, type: 3}
+  _tags:
   - instability
-  internalTags:
+  _internalTags:
   - costs_mana
-  baseCastTime: 1
-  baseCooldown: 0
-  baseCharges: 0
-  useCooldownCharges: 0
-  cooldownScalesWithHaste: 0
-  triggersGCD: 1
-  baseRange: 30
-  isChanneled: 0
-  canMoveWhileCasting: 0
-  baseTotalTicks: 0
-  baseResourceCosts:
+  _baseCastTime: 1
+  _baseCooldown: 0
+  _baseCharges: 0
+  _useCooldownCharges: 0
+  _cooldownScalesWithHaste: 0
+  _triggersGCD: 1
+  _baseRange: 30
+  _isChanneled: 0
+  _canMoveWhileCasting: 0
+  _baseTotalTicks: 0
+  _baseResourceCosts:
   - ResourceType: {fileID: 11400000, guid: d56b3b172700e1549ba687e29d38fb8f, type: 2}
     CastPhase: 1
     RefundOnInterrupt: 0
     Amount: 5
-  baseComponents:
-  - Guid: 39030cd4-1db5-4e5a-8a3b-d169ba33d424
+  _baseComponents:
+  - GUID: 39030cd4-1db5-4e5a-8a3b-d169ba33d424
     CastPhase: 1
     EffectDefinition:
       rid: 5229246757690409036
     TargetDefinition:
       rid: 5229246757690409035
-  racialVariants: []
-  associatedClasses: []
+  _racialVariants: []
+  _sfxCastingLoop: 
+  _associatedClasses:
+  - {fileID: 11400000, guid: 3a0f616adc9ef8e4f93647ff46807b6f, type: 2}
   references:
     version: 2
     RefIds:
@@ -60,5 +62,5 @@ MonoBehaviour:
         Radius: 5
         Duration: 30
         RiftPrefabAddressablePath: VFX_SorcererRiftZone
-        casterEvents: 
-        targetEvents: 
+        _casterEvents: 
+        _targetEvents: 

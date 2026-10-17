@@ -4,6 +4,7 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -37,6 +38,8 @@ namespace Game.Server.Core
             public string Tag;
             public float TickInterval;
             public float Duration;
+            public long TickIntervalTicks;
+            public long DurationTicks;
             public Action<Actor> onTick;
             public Action<Actor> onExpire;
         }
@@ -123,11 +126,19 @@ namespace Game.Server.Core
                             continue;
                         }
 
-                        if (!TryAddTickerNow(mutation.ActorID, mutation.TickerID))
+                        try
                         {
-                            Debug.Warning($"Discarding ticker {mutation.TickerID} for retired actor {mutation.ActorID}.");
+                            if (!TryAddTickerNow(mutation.ActorID, mutation.TickerID))
+                            {
+                                Debug.Warning($"Discarding ticker {mutation.TickerID} for retired actor {mutation.ActorID}.");
+                                RemoveRegistration(mutation.TickerID);
+                                continue;
+                            }
+                        }
+                        catch
+                        {
                             RemoveRegistration(mutation.TickerID);
-                            continue;
+                            throw;
                         }
                         break;
                     case TickerMutationKind.Remove:
@@ -163,6 +174,10 @@ namespace Game.Server.Core
             if (tag != null && _tagIndex.ContainsKey((actor.ID, tag)))
                 return -1;
 
+            float fixedDeltaTime = GetConfiguredSimulationTickDuration();
+            long tickIntervalTicks = GetNonShorteningIntervalTicks(tickInterval, fixedDeltaTime);
+            long durationTicks = GetNonShorteningDurationTicks(duration, fixedDeltaTime);
+
             int tickerID = checked(_nextTickerID++);
             _tickers[tickerID] = new TickerRegistration
             {
@@ -170,6 +185,8 @@ namespace Game.Server.Core
                 Tag = tag,
                 TickInterval = tickInterval,
                 Duration = duration,
+                TickIntervalTicks = tickIntervalTicks,
+                DurationTicks = durationTicks,
                 onTick = onTick,
                 onExpire = onExpire
             };
@@ -195,11 +212,19 @@ namespace Game.Server.Core
                 return tickerID;
             }
 
-            if (!TryAddTickerNow(actor.ID, tickerID))
+            try
+            {
+                if (!TryAddTickerNow(actor.ID, tickerID))
+                {
+                    RemoveRegistration(tickerID);
+                    Debug.Warning($"Could not add ticker {tickerID} to actor {actor.Name} (ID: {actor.ID})");
+                    return -1;
+                }
+            }
+            catch
             {
                 RemoveRegistration(tickerID);
-                Debug.Warning($"Could not add ticker {tickerID} to actor {actor.Name} (ID: {actor.ID})");
-                return -1;
+                throw;
             }
 
             return tickerID;
@@ -215,12 +240,23 @@ namespace Game.Server.Core
                 return false;
             }
 
+            long firstProgressTickID = GetFirstTickerProgressTickID();
+            long expiryTickID = registration.DurationTicks == 0
+                ? 0
+                : checked(firstProgressTickID + registration.DurationTicks - 1L);
+            long nextTickID = registration.TickIntervalTicks == 0
+                ? 0
+                : checked(firstProgressTickID + registration.TickIntervalTicks - 1L);
+
             _entityManager.GetBuffer<Systems.TickerElement>(entity).Add(new Systems.TickerElement
             {
                 TickerID = tickerID,
                 RemainingDuration = registration.Duration,
                 TickInterval = registration.TickInterval,
-                TimeSinceLastTick = 0f
+                TimeSinceLastTick = 0f,
+                ExpiryTickID = expiryTickID,
+                NextTickID = nextTickID,
+                TickIntervalTicks = registration.TickIntervalTicks
             });
             return true;
         }
@@ -251,8 +287,12 @@ namespace Game.Server.Core
             if (!_tickers.Remove(tickerID, out var registration))
                 return;
 
-            if (registration.Tag != null)
+            if (registration.Tag != null
+                && _tagIndex.TryGetValue((registration.ActorID, registration.Tag), out int indexedTickerID)
+                && indexedTickerID == tickerID)
+            {
                 _tagIndex.Remove((registration.ActorID, registration.Tag));
+            }
             if (_actorTickerIDs.TryGetValue(registration.ActorID, out var list))
             {
                 list.Remove(tickerID);
@@ -298,9 +338,8 @@ namespace Game.Server.Core
 
             if (ServerECSManager.IsMutationBoundaryActive)
             {
-                _pendingTickerIDs.Remove(tickerID);
-                RemoveRegistration(tickerID);
                 _pendingMutations.Enqueue(new TickerMutation(TickerMutationKind.Remove, actor.ID, tickerID));
+                RemoveRegistration(tickerID);
                 return;
             }
 
@@ -325,7 +364,10 @@ namespace Game.Server.Core
         /// <returns><see langword="true"/> when a matching ticker exists.</returns>
         public bool HasTicker(Guid actorID, string tag)
         {
-            return _tagIndex.ContainsKey((actorID, tag));
+            return _tagIndex.TryGetValue((actorID, tag), out int tickerID)
+                && _tickers.TryGetValue(tickerID, out var registration)
+                && registration.ActorID == actorID
+                && registration.Tag == tag;
         }
 
         // ── ECS event handlers ───────────────────────────────────────────────────────
@@ -357,13 +399,86 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
-            if (!_actorTickerIDs.TryGetValue(actor.ID, out var list)) return;
-
-            // Copy to avoid modifying the list while iterating.
-            var ids = new List<int>(list);
-            foreach (var tickerID in ids)
-                RemoveRegistration(tickerID);
+            if (_actorTickerIDs.TryGetValue(actor.ID, out var list))
+            {
+                // Copy to avoid modifying the list while iterating.
+                var ids = new List<int>(list);
+                foreach (var tickerID in ids)
+                    RemoveRegistration(tickerID);
+            }
             _actorTickerIDs.Remove(actor.ID);
+
+            if (TryFindActorEntity(actor.ID, out var entity)
+                && _entityManager.HasBuffer<Systems.TickerElement>(entity))
+            {
+                _entityManager.GetBuffer<Systems.TickerElement>(entity).Clear();
+            }
+        }
+
+        private static long GetFirstTickerProgressTickID()
+        {
+            long currentSimulationTickID = ServerECSManager.CurrentSimulationTickID;
+            if (currentSimulationTickID > 0)
+                return currentSimulationTickID;
+
+            return checked(ServerSimulationClock.CurrentTickID + 1L);
+        }
+
+        private static float GetConfiguredSimulationTickDuration()
+        {
+            if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
+                throw new InvalidOperationException("Actor ticker timing requires initialized server simulation configuration.");
+
+            ServerSimulationClock.ValidateConfiguration(GameConfigurationManager.Config);
+            return GameConfigurationManager.Config.ServerSimulationTickDuration;
+        }
+
+        private static long GetNonShorteningDurationTicks(float duration, float fixedDeltaTime)
+        {
+            if (duration == float.MaxValue)
+                return 0;
+            if (float.IsNaN(duration) || float.IsInfinity(duration) || duration < 0f)
+                throw new ArgumentOutOfRangeException(
+                    nameof(duration),
+                    "An actor ticker duration must be finite and non-negative, or float.MaxValue for indefinite duration.");
+
+            return GetCeilingTickCount(duration, fixedDeltaTime);
+        }
+
+        private static long GetNonShorteningIntervalTicks(float interval, float fixedDeltaTime)
+        {
+            if (float.IsNaN(interval) || float.IsInfinity(interval) || interval < 0f)
+                throw new ArgumentOutOfRangeException(
+                    nameof(interval),
+                    "An actor ticker interval must be finite and non-negative.");
+            if (interval == 0f)
+                return 0;
+
+            return GetCeilingTickCount(interval, fixedDeltaTime);
+        }
+
+        private static long GetCeilingTickCount(float seconds, float fixedDeltaTime)
+        {
+            if (float.IsNaN(fixedDeltaTime) || float.IsInfinity(fixedDeltaTime) || fixedDeltaTime <= 0f)
+                throw new InvalidOperationException("Actor ticker timing requires a finite positive simulation tick duration.");
+            double tickCountEstimate = seconds / (double)fixedDeltaTime;
+            if (double.IsInfinity(tickCountEstimate) || tickCountEstimate > long.MaxValue)
+                throw new ArgumentOutOfRangeException(
+                    nameof(seconds),
+                    "The actor ticker timing value cannot be represented by an authoritative tick deadline.");
+
+            // Round-trip float values through decimal before ceiling so a nominal multiple is not
+            // pushed to a later tick by binary noise, while a just-above-boundary duration is not shortened.
+            decimal secondsDecimal = decimal.Parse(
+                seconds.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            decimal tickDurationDecimal = decimal.Parse(
+                fixedDeltaTime.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            long tickCount = checked((long)Math.Ceiling(secondsDecimal / tickDurationDecimal));
+            return Math.Max(1L, tickCount);
         }
 
         // ── Cross-assembly bridge (Game.Shared callers via ActorEndpoint events) ──────

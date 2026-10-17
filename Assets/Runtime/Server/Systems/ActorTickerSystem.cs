@@ -1,10 +1,11 @@
 using Game.Server.Core;
 using Game.Shared.Performance;
+using System;
 using Unity.Entities;
 
 namespace Game.Server.Systems
 {
-    /// <summary>Processes time-based actor ticker callbacks.</summary>
+    /// <summary>Processes authoritative actor ticker deadlines and queues callbacks.</summary>
     [DisableAutoCreation]
     [UpdateAfter(typeof(AuraTickSystem))]
     public partial struct ActorTickerSystem : ISystem
@@ -29,13 +30,19 @@ namespace Game.Server.Systems
             PerformanceTelemetry.RegisterMetric(TICKER_ENTRY_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
-        /// <summary>Advances active actor tickers and invokes their callbacks.</summary>
+        /// <summary>Advances active actor ticker deadlines and queues their callbacks.</summary>
         public void OnUpdate(ref SystemState state)
         {
             using var markerScope = ACTOR_TICKER_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int tickerEntryCount = 0;
-            float dt = SystemAPI.Time.DeltaTime;
+            long currentTickID = ServerECSManager.CurrentSimulationTickID;
+            if (currentTickID <= 0)
+                throw new InvalidOperationException("Actor ticker timing requires an active authoritative simulation tick.");
+
+            float fixedDeltaTime = SystemAPI.Time.DeltaTime;
+            if (float.IsNaN(fixedDeltaTime) || float.IsInfinity(fixedDeltaTime) || fixedDeltaTime <= 0f)
+                throw new InvalidOperationException("Actor ticker timing requires a finite positive simulation tick duration.");
 
             foreach (var (actor, entity) in
                 SystemAPI.Query<RefRO<ActorComponent>>().WithEntityAccess())
@@ -45,23 +52,39 @@ namespace Game.Server.Systems
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     var entry = buffer[i];
-                    entry.TimeSinceLastTick += dt;
-
-                    if (entry.RemainingDuration != float.MaxValue)
-                        entry.RemainingDuration -= dt;
-
-                    if (entry.TickInterval > 0f && entry.TimeSinceLastTick >= entry.TickInterval)
+                    if (entry.RemainingDuration == float.MaxValue)
                     {
-                        entry.TimeSinceLastTick -= entry.TickInterval;
+                        if (entry.ExpiryTickID != 0)
+                            throw new InvalidOperationException(
+                                $"Ticker {entry.TickerID} on actor {actor.ValueRO.ActorID} has an expiry deadline despite being indefinite.");
+                    }
+                    else if (entry.ExpiryTickID <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Ticker {entry.TickerID} on actor {actor.ValueRO.ActorID} has no authoritative expiry deadline.");
+                    }
+                    if (entry.TickIntervalTicks < 0
+                        || entry.TickIntervalTicks == 0 && entry.NextTickID != 0
+                        || entry.TickIntervalTicks > 0 && entry.NextTickID <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Ticker {entry.TickerID} on actor {actor.ValueRO.ActorID} has invalid authoritative tick state.");
+                    }
 
+                    while (entry.TickIntervalTicks > 0
+                        && entry.NextTickID <= currentTickID
+                        && (entry.ExpiryTickID == 0 || entry.NextTickID <= entry.ExpiryTickID))
+                    {
                         ServerECSManager.QueueSimulationEvent(
                             ServerSimulationEventKind.ActorTickerTick,
                             actor.ValueRO.ActorID,
                             entity,
                             operationID: entry.TickerID);
+
+                        entry.NextTickID = checked(entry.NextTickID + entry.TickIntervalTicks);
                     }
 
-                    if (entry.RemainingDuration != float.MaxValue && entry.RemainingDuration <= 0f)
+                    if (entry.ExpiryTickID != 0 && currentTickID >= entry.ExpiryTickID)
                     {
                         buffer.RemoveAt(i);
                         ServerECSManager.QueueSimulationEvent(
@@ -72,6 +95,29 @@ namespace Game.Server.Systems
                     }
                     else
                     {
+                        if (entry.RemainingDuration != float.MaxValue)
+                        {
+                            long remainingTicks = checked(entry.ExpiryTickID - currentTickID);
+                            entry.RemainingDuration = (float)(remainingTicks * (double)fixedDeltaTime);
+                        }
+
+                        if (entry.TickIntervalTicks == 0)
+                        {
+                            entry.TimeSinceLastTick = 0f;
+                        }
+                        else
+                        {
+                            long lastTickBoundary = checked(entry.NextTickID - entry.TickIntervalTicks);
+                            long elapsedTicks = checked(currentTickID - lastTickBoundary);
+                            if (elapsedTicks < 0 || elapsedTicks >= entry.TickIntervalTicks)
+                            {
+                                throw new InvalidOperationException(
+                                    $"Ticker {entry.TickerID} on actor {actor.ValueRO.ActorID} has inconsistent tick progress.");
+                            }
+
+                            entry.TimeSinceLastTick = (float)(elapsedTicks * (double)fixedDeltaTime);
+                        }
+
                         buffer[i] = entry;
                     }
                 }

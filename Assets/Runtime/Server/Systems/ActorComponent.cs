@@ -95,6 +95,12 @@ namespace Game.Server.Systems
         public float TickInterval;
         /// <summary>The time since the last aura tick.</summary>
         public float TimeSinceLastTick;
+        /// <summary>The authoritative tick on which the aura expires.</summary>
+        public long ExpiryTickID;
+        /// <summary>The next authoritative tick on which the aura ticks.</summary>
+        public long NextTickID;
+        /// <summary>The fixed-tick interval between aura ticks.</summary>
+        public long TickIntervalTicks;
     }
 
     /// <summary>Stores a generic time-based callback entry for an actor.</summary>
@@ -108,5 +114,11 @@ namespace Game.Server.Systems
         public float TickInterval;
         /// <summary>The time since the last ticker callback.</summary>
         public float TimeSinceLastTick;
+        /// <summary>The authoritative tick on which the ticker expires, or zero for indefinite tickers.</summary>
+        public long ExpiryTickID;
+        /// <summary>The next authoritative tick on which the ticker ticks, or zero when disabled.</summary>
+        public long NextTickID;
+        /// <summary>The fixed-tick interval between ticker callbacks.</summary>
+        public long TickIntervalTicks;
     }
 }
