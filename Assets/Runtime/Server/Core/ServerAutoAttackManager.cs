@@ -19,14 +19,16 @@ namespace Game.Server.Core
             PerformanceMetricUnit.Milliseconds,
             PerformanceMetricSide.Server,
             "auto_attack",
-            "server_update");
+            "server_schedule");
         private static readonly PerformanceMetricDefinition ATTACKER_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_AUTO_ATTACKER_COUNT,
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "auto_attack",
-            "server_update");
-        private static readonly PerformanceMarker UPDATE_MARKER = new(UPDATE_DURATION_METRIC, "Server.AutoAttack.Update");
+            "server_schedule");
+        private static readonly PerformanceMarker SCHEDULE_MARKER = new(
+            UPDATE_DURATION_METRIC,
+            "Server.AutoAttack.Scheduled");
         private static ServerAutoAttackManager _instance;
         /// <summary>Gets the active server auto-attack manager.</summary>
         public static ServerAutoAttackManager Instance => _instance;
@@ -50,6 +52,7 @@ namespace Game.Server.Core
 
         private readonly Dictionary<Guid, AutoAttackState> _activeAutoAttackers = new();
         private readonly List<Guid> _toRemove = new();
+        private ServerSimulationRegistrationHandle _autoAttackSchedule;
 
         private void Awake()
         {
@@ -67,16 +70,25 @@ namespace Game.Server.Core
 
             ActorEndpoint.onServerStartAutoAttack += OnStartAutoAttack;
             ActorEndpoint.onServerStopAutoAttack += OnStopAutoAttack;
+            ActorEndpoint.onServerActorDespawned += OnActorDespawned;
+            ActorEndpoint.onActorDeath += OnActorDeath;
 
             _initialized = true;
+            EnsureScheduleRegistered();
         }
 
         private void OnDestroy()
         {
+            _autoAttackSchedule.Cancel();
+            _autoAttackSchedule = default;
+
             ActorEndpoint.onServerStartAutoAttack -= OnStartAutoAttack;
             ActorEndpoint.onServerStopAutoAttack -= OnStopAutoAttack;
+            ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
+            ActorEndpoint.onActorDeath -= OnActorDeath;
 
             _activeAutoAttackers.Clear();
+            _toRemove.Clear();
 
             _instance = null;
             _initialized = false;
@@ -84,8 +96,8 @@ namespace Game.Server.Core
 
         private void OnStartAutoAttack(Actor actor)
         {
-            if (_autoAttackSpell == null) return;
-            if (actor.Target == null) return;
+            if (_autoAttackSpell == null || actor == null || actor.isDead) return;
+            if (actor.Target == null || actor.Target.isDead) return;
 
             _activeAutoAttackers[actor.ID] = new AutoAttackState
             {
@@ -96,19 +108,63 @@ namespace Game.Server.Core
 
         private void OnStopAutoAttack(Actor actor)
         {
+            if (actor == null)
+                return;
+
             _activeAutoAttackers.Remove(actor.ID);
+        }
+
+        private void OnActorDespawned(Actor actor)
+        {
+            RemoveActorAndTarget(actor);
+        }
+
+        private void OnActorDeath(Actor actor)
+        {
+            RemoveActorAndTarget(actor);
+        }
+
+        private void RemoveActorAndTarget(Actor actor)
+        {
+            if (ReferenceEquals(actor, null))
+                return;
+
+            _activeAutoAttackers.Remove(actor.ID);
+
+            foreach (var kvp in new List<KeyValuePair<Guid, AutoAttackState>>(_activeAutoAttackers))
+            {
+                var trackedActor = kvp.Value.Actor;
+                if (trackedActor == null)
+                    continue;
+
+                if (ReferenceEquals(trackedActor, actor)
+                    || ReferenceEquals(trackedActor.Target, actor))
+                    _activeAutoAttackers.Remove(kvp.Key);
+            }
+        }
+
+        private void EnsureScheduleRegistered()
+        {
+            if (!ServerSimulationClock.IsRunning)
+            {
+                if (_autoAttackSchedule.IsValid)
+                {
+                    _autoAttackSchedule.Cancel();
+                    _autoAttackSchedule = default;
+                }
+
+                return;
+            }
+
+            if (!_autoAttackSchedule.IsValid)
+                _autoAttackSchedule = ServerSimulationClock.RegisterEachTick(ProcessAuthoritativeTick);
         }
 
         private void Update()
         {
-            using var markerScope = UPDATE_MARKER.Begin();
-            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            EnsureScheduleRegistered();
             if (_autoAttackSpell == null)
-            {
-                if (telemetryEnabled)
-                    PerformanceTelemetry.TryRecord(ATTACKER_COUNT_METRIC, _activeAutoAttackers.Count);
                 return;
-            }
 
             _toRemove.Clear();
 
@@ -117,13 +173,13 @@ namespace Game.Server.Core
                 var actorID = kvp.Key;
                 var state = kvp.Value;
 
-                if (state.Actor == null)
+                if (state.Actor == null || state.Actor.isDead)
                 {
                     _toRemove.Add(actorID);
                     continue;
                 }
 
-                if (state.Actor.Target == null)
+                if (state.Actor.Target == null || state.Actor.Target.isDead)
                 {
                     _toRemove.Add(actorID);
                     continue;
@@ -135,6 +191,39 @@ namespace Game.Server.Core
                     state.Agent.stoppingDistance = _autoAttackSpell.BaseRange
                         + state.Actor.HitboxRadius + state.Actor.Target.HitboxRadius;
                     state.Agent.SetDestination(state.Actor.Target.transform.position);
+                }
+            }
+
+            RemoveQueuedAutoAttackers();
+        }
+
+        private void ProcessAuthoritativeTick(ServerSimulationTick tick)
+        {
+            using var markerScope = SCHEDULE_MARKER.Begin();
+            if (_autoAttackSpell == null)
+                return;
+
+            _toRemove.Clear();
+
+            foreach (var kvp in new List<KeyValuePair<Guid, AutoAttackState>>(_activeAutoAttackers))
+            {
+                var actorID = kvp.Key;
+                var state = kvp.Value;
+
+                if (!_activeAutoAttackers.TryGetValue(actorID, out var currentState)
+                    || currentState.Actor != state.Actor)
+                    continue;
+
+                if (state.Actor == null || state.Actor.isDead)
+                {
+                    _toRemove.Add(actorID);
+                    continue;
+                }
+
+                if (state.Actor.Target == null || state.Actor.Target.isDead)
+                {
+                    _toRemove.Add(actorID);
+                    continue;
                 }
 
                 // Pause auto-attack while casting an ability.
@@ -154,10 +243,15 @@ namespace Game.Server.Core
                     ?.ServerOnly_RequestSpellCast(_autoAttackSpell.DefinitionID);
             }
 
+            RemoveQueuedAutoAttackers();
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ATTACKER_COUNT_METRIC, _activeAutoAttackers.Count);
+        }
+
+        private void RemoveQueuedAutoAttackers()
+        {
             for (int i = 0; i < _toRemove.Count; i++)
                 _activeAutoAttackers.Remove(_toRemove[i]);
-            if (telemetryEnabled)
-                PerformanceTelemetry.TryRecord(ATTACKER_COUNT_METRIC, _activeAutoAttackers.Count);
         }
     }
 }
