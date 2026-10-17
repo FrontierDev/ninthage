@@ -2,6 +2,8 @@ using Game.Server.Core;
 using Game.Server.Systems;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Data.SpellEffectDefinitions;
+using Game.Shared.Data.SpellTargetDefinitions;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using NUnit.Framework;
@@ -41,8 +43,11 @@ namespace Game.Runtime.Tests.Server
 
         private readonly List<AuraDefinition> _auraDefinitions = new();
         private readonly List<Test_TrackingAuraBehaviour> _auraBehaviours = new();
+        private readonly List<SpellDefinition> _spellDefinitions = new();
         private GameObject _actorManagerObject;
         private GameObject _auraManagerObject;
+        private GameObject _cooldownManagerObject;
+        private GameObject _spellCastManagerObject;
         private GameObject _tickerManagerObject;
         private GameObject _networkManagerObject;
         private GameObject _actorPrefab;
@@ -77,6 +82,12 @@ namespace Game.Runtime.Tests.Server
 
             _auraManagerObject = new GameObject("ServerDeferredAuraTickerAuraManager");
             _auraManager = _auraManagerObject.AddComponent<ServerAuraManager>();
+
+            _cooldownManagerObject = new GameObject("ServerDeferredAuraTickerCooldownManager");
+            _cooldownManagerObject.AddComponent<ServerCooldownManager>();
+
+            _spellCastManagerObject = new GameObject("ServerDeferredAuraTickerSpellCastManager");
+            _spellCastManagerObject.AddComponent<ServerSpellCastManager>();
 
             _tickerManagerObject = new GameObject("ServerDeferredAuraTickerTickerManager");
             _tickerManager = _tickerManagerObject.AddComponent<ServerTickerManager>();
@@ -126,14 +137,14 @@ namespace Game.Runtime.Tests.Server
 
             firstTickerID = _tickerManager.AddTicker(
                 _target,
-                tickInterval: 0.1f,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                 duration: 1f,
                 onTick: actor =>
                 {
                     callbackSequence.Add($"first:{GetCurrentSimulationEventTickID()}");
                     addedTickerID = _tickerManager.AddTicker(
                         actor,
-                        tickInterval: 0.1f,
+                        tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                         duration: float.MaxValue,
                         onTick: addedActor => callbackSequence.Add($"added:{GetCurrentSimulationEventTickID()}"),
                         tag: "deferred-added");
@@ -143,7 +154,7 @@ namespace Game.Runtime.Tests.Server
                 tag: "deferred-first");
             removedTickerID = _tickerManager.AddTicker(
                 _target,
-                tickInterval: 0.1f,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                 duration: 1f,
                 onTick: actor => callbackSequence.Add($"removed:{GetCurrentSimulationEventTickID()}"),
                 tag: "deferred-removed");
@@ -174,9 +185,17 @@ namespace Game.Runtime.Tests.Server
         public IEnumerator AuraTickCallbacksDeferDispelAndApplyUntilTheNextTick()
         {
             Test_TrackingAuraBehaviour originalBehaviour;
-            AuraDefinition originalAura = CreateAura("deferred-aura-original", 0.5f, 0.1f, out originalBehaviour);
+            AuraDefinition originalAura = CreateAura(
+                "deferred-aura-original",
+                0.5f,
+                GameConfigurationManager.Config.ServerSimulationTickDuration,
+                out originalBehaviour);
             Test_TrackingAuraBehaviour replacementBehaviour;
-            AuraDefinition replacementAura = CreateAura("deferred-aura-replacement", 0.5f, 0.1f, out replacementBehaviour);
+            AuraDefinition replacementAura = CreateAura(
+                "deferred-aura-replacement",
+                0.5f,
+                GameConfigurationManager.Config.ServerSimulationTickDuration,
+                out replacementBehaviour);
 
             Assert.That(_auraManager.ApplyAura(originalAura, _caster, _target), Is.True);
             int originalInstanceID = GetAuraEntries(_target)[0].InstanceID;
@@ -218,10 +237,213 @@ namespace Game.Runtime.Tests.Server
         }
 
         [UnityTest]
+        public IEnumerator AuraPeriodicTicksOnceAndExpiresOnItsDueBoundary()
+        {
+            float tickDuration = GameConfigurationManager.Config.ServerSimulationTickDuration;
+            Test_TrackingAuraBehaviour auraBehaviour;
+            AuraDefinition aura = CreateAura(
+                "scheduled-aura-expiry",
+                tickDuration * 3f,
+                tickDuration,
+                out auraBehaviour);
+
+            Assert.That(_auraManager.ApplyAura(aura, _caster, _target), Is.True);
+            int instanceID = GetAuraEntries(_target)[0].InstanceID;
+            var callbackSequence = new List<string>();
+            _auraTickHandler = (targetID, definitionID, callbackInstanceID) =>
+            {
+                callbackSequence.Add($"{GetCurrentSimulationEventTickID()}:{definitionID}:{callbackInstanceID}");
+            };
+            ActorEndpoint.onServerAuraTick += _auraTickHandler;
+
+            RunSimulationTick(1);
+            RunSimulationTick(2);
+            RunSimulationTick(3);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    $"1:{aura.DefinitionID}:{instanceID}",
+                    $"2:{aura.DefinitionID}:{instanceID}",
+                    $"3:{aura.DefinitionID}:{instanceID}",
+                },
+                callbackSequence);
+            Assert.That(auraBehaviour.AppliedCount, Is.EqualTo(1));
+            Assert.That(auraBehaviour.RemovedCount, Is.EqualTo(1));
+            Assert.That(_auraManager.HasAura(_target.ID, aura.DefinitionID), Is.False);
+            Assert.That(GetAuraEntries(_target), Is.Empty);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator DispelledAuraDoesNotTickAgainBeforeItsNextDueBoundary()
+        {
+            float tickDuration = GameConfigurationManager.Config.ServerSimulationTickDuration;
+            Test_TrackingAuraBehaviour auraBehaviour;
+            AuraDefinition aura = CreateAura(
+                "scheduled-aura-dispel",
+                tickDuration * 4f,
+                tickDuration * 2f,
+                out auraBehaviour);
+
+            Assert.That(_auraManager.ApplyAura(aura, _caster, _target), Is.True);
+            int instanceID = GetAuraEntries(_target)[0].InstanceID;
+            var callbackSequence = new List<string>();
+            _auraTickHandler = (targetID, definitionID, callbackInstanceID) =>
+            {
+                callbackSequence.Add($"{GetCurrentSimulationEventTickID()}:{definitionID}:{callbackInstanceID}");
+            };
+            ActorEndpoint.onServerAuraTick += _auraTickHandler;
+
+            RunSimulationTick(1);
+            Assert.That(callbackSequence, Is.Empty);
+            Assert.That(_auraManager.DispelAura(_target, instanceID), Is.True);
+
+            RunSimulationTick(2);
+            RunSimulationTick(3);
+
+            Assert.That(callbackSequence, Is.Empty);
+            Assert.That(auraBehaviour.AppliedCount, Is.EqualTo(1));
+            Assert.That(auraBehaviour.RemovedCount, Is.EqualTo(1));
+            Assert.That(_auraManager.HasAura(_target.ID, aura.DefinitionID), Is.False);
+            Assert.That(GetAuraEntries(_target), Is.Empty);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator TickerTicksOnceThenCancellationPreventsLaterCallbacks()
+        {
+            var callbackSequence = new List<string>();
+            int tickerID = _tickerManager.AddTicker(
+                _target,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
+                duration: GameConfigurationManager.Config.ServerSimulationTickDuration * 4f,
+                onTick: actor => callbackSequence.Add($"{GetCurrentSimulationEventTickID()}:{actor.ID}"),
+                tag: "scheduled-cancellable");
+
+            Assert.That(tickerID, Is.GreaterThanOrEqualTo(0));
+
+            RunSimulationTick(1);
+
+            CollectionAssert.AreEqual(new[] { $"1:{_target.ID}" }, callbackSequence);
+            _tickerManager.RemoveTicker(_target, tickerID);
+            Assert.That(_tickerManager.HasTicker(_target.ID, "scheduled-cancellable"), Is.False);
+            Assert.That(GetTickerIDs(_target), Is.Empty);
+
+            RunSimulationTick(2);
+            RunSimulationTick(3);
+
+            CollectionAssert.AreEqual(new[] { $"1:{_target.ID}" }, callbackSequence);
+            Assert.That(_tickerManager.HasTicker(_target.ID, "scheduled-cancellable"), Is.False);
+            Assert.That(GetTickerIDs(_target), Is.Empty);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator SpellCompletionRefreshesDueAuraAfterItsTick()
+        {
+            float tickDuration = GameConfigurationManager.Config.ServerSimulationTickDuration;
+            Test_TrackingAuraBehaviour auraBehaviour;
+            AuraDefinition aura = CreateAura(
+                "same-tick-aura-refresh",
+                tickDuration * 3f,
+                tickDuration,
+                out auraBehaviour);
+
+            Assert.That(_auraManager.ApplyAura(aura, _caster, _target), Is.True);
+            AuraElement initialEntry = GetAuraEntries(_target)[0];
+            int instanceID = initialEntry.InstanceID;
+            var callbackSequence = new List<string>();
+            _auraTickHandler = (targetID, definitionID, callbackInstanceID) =>
+            {
+                callbackSequence.Add($"{GetCurrentSimulationEventTickID()}:{definitionID}:{callbackInstanceID}");
+            };
+            ActorEndpoint.onServerAuraTick += _auraTickHandler;
+
+            SetPrivateField(_caster, "_target", _target);
+            SpellOverride refreshSpell = CreateAuraRefreshSpell(aura);
+            ActorEndpoint.onServerSpellCastStarted?.Invoke(_caster, refreshSpell);
+
+            RunSimulationTick(1, tickDuration);
+
+            CollectionAssert.AreEqual(
+                new[] { $"1:{aura.DefinitionID}:{instanceID}" },
+                callbackSequence);
+            AuraElement beforeCommitEntry = GetAuraEntries(_target)[0];
+            Assert.That(beforeCommitEntry.InstanceID, Is.EqualTo(instanceID));
+            Assert.That(beforeCommitEntry.ExpiryTickID, Is.EqualTo(initialEntry.ExpiryTickID));
+            Assert.That(auraBehaviour.AppliedCount, Is.EqualTo(1));
+
+            RunSimulationTick(2, tickDuration);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    $"1:{aura.DefinitionID}:{instanceID}",
+                    $"2:{aura.DefinitionID}:{instanceID}",
+                },
+                callbackSequence);
+            AuraElement refreshedEntry = GetAuraEntries(_target)[0];
+            Assert.That(refreshedEntry.InstanceID, Is.EqualTo(instanceID));
+            Assert.That(refreshedEntry.ExpiryTickID, Is.EqualTo(initialEntry.ExpiryTickID + 1));
+            Assert.That(refreshedEntry.NextTickID, Is.EqualTo(3));
+            Assert.That(auraBehaviour.AppliedCount, Is.EqualTo(2));
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator SameTickAuraExpiryWinsOverDeferredRefresh()
+        {
+            float tickDuration = GameConfigurationManager.Config.ServerSimulationTickDuration;
+            Test_TrackingAuraBehaviour auraBehaviour;
+            AuraDefinition aura = CreateAura(
+                "same-tick-aura-expiry",
+                tickDuration,
+                tickDuration,
+                out auraBehaviour);
+
+            Assert.That(_auraManager.ApplyAura(aura, _caster, _target), Is.True);
+            int instanceID = GetAuraEntries(_target)[0].InstanceID;
+            var callbackSequence = new List<string>();
+            _auraTickHandler = (targetID, definitionID, callbackInstanceID) =>
+            {
+                callbackSequence.Add($"{GetCurrentSimulationEventTickID()}:{definitionID}:{callbackInstanceID}");
+            };
+            ActorEndpoint.onServerAuraTick += _auraTickHandler;
+
+            SetPrivateField(_caster, "_target", _target);
+            SpellOverride refreshSpell = CreateAuraRefreshSpell(aura);
+            ActorEndpoint.onServerSpellCastStarted?.Invoke(_caster, refreshSpell);
+
+            RunSimulationTick(1, tickDuration);
+
+            CollectionAssert.AreEqual(
+                new[] { $"1:{aura.DefinitionID}:{instanceID}" },
+                callbackSequence);
+            Assert.That(auraBehaviour.RemovedCount, Is.EqualTo(1));
+            Assert.That(_auraManager.HasAura(_target.ID, aura.DefinitionID), Is.False);
+            Assert.That(GetAuraEntries(_target), Is.Empty);
+
+            RunSimulationTick(2, tickDuration);
+
+            CollectionAssert.AreEqual(
+                new[] { $"1:{aura.DefinitionID}:{instanceID}" },
+                callbackSequence);
+            Assert.That(auraBehaviour.RemovedCount, Is.EqualTo(1));
+            Assert.That(_auraManager.HasAura(_target.ID, aura.DefinitionID), Is.False);
+            Assert.That(GetAuraEntries(_target), Is.Empty);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator AuraOnSurvivingTargetRemainsWhenCasterDespawns()
         {
             Test_TrackingAuraBehaviour auraBehaviour;
-            AuraDefinition aura = CreateAura("deferred-aura-surviving-target", 0.5f, 0.1f, out auraBehaviour);
+            AuraDefinition aura = CreateAura(
+                "deferred-aura-surviving-target",
+                0.5f,
+                GameConfigurationManager.Config.ServerSimulationTickDuration,
+                out auraBehaviour);
             Assert.That(_auraManager.ApplyAura(aura, _caster, _target), Is.True);
             int instanceID = GetAuraEntries(_target)[0].InstanceID;
 
@@ -285,6 +507,38 @@ namespace Game.Runtime.Tests.Server
             return definition;
         }
 
+        private SpellOverride CreateAuraRefreshSpell(AuraDefinition aura)
+        {
+            var definition = ScriptableObject.CreateInstance<SpellDefinition>();
+            SetPrivateField(definition, "_definitionID", "same-tick-aura-refresh-spell");
+            SetPrivateField(definition, "_displayName", "same-tick-aura-refresh-spell");
+            SetPrivateField(definition, "_spellName", "same-tick-aura-refresh-spell");
+            SetPrivateField(definition, "_baseCastTime", GameConfigurationManager.Config.ServerSimulationTickDuration);
+            SetPrivateField(definition, "_baseCooldown", 0f);
+            SetPrivateField(definition, "_baseRange", 1f);
+            SetPrivateField(definition, "_baseTotalTicks", 0f);
+            SetPrivateField(definition, "_isChanneled", false);
+            SetPrivateField(definition, "_triggersGCD", false);
+            SetPrivateField(
+                definition,
+                "_baseComponents",
+                new List<SpellComponent>
+                {
+                    new()
+                    {
+                        CastPhase = SpellCastPhase.OnCastEnd,
+                        TargetDefinition = new SpellTarget_Single(),
+                        EffectDefinition = new SpellEffect_ApplyAura
+                        {
+                            Aura = aura,
+                            Stacks = 1,
+                        },
+                    },
+                });
+            _spellDefinitions.Add(definition);
+            return new SpellOverride(definition);
+        }
+
         private List<int> GetAuraInstanceIDs(Actor actor)
         {
             var instanceIDs = new List<int>();
@@ -336,7 +590,12 @@ namespace Game.Runtime.Tests.Server
             return Convert.ToInt64(CURRENT_EVENT_TICK_ID_PROPERTY.GetValue(simulationEvent));
         }
 
-        private static void RunSimulationTick(long tickID, float deltaTime = 0.1f)
+        private static void RunSimulationTick(long tickID)
+        {
+            RunSimulationTick(tickID, GameConfigurationManager.Config.ServerSimulationTickDuration);
+        }
+
+        private static void RunSimulationTick(long tickID, float deltaTime)
         {
             Assert.That(UPDATE_SIMULATION_METHOD, Is.Not.Null);
             Assert.That(SIMULATION_TICK_CONSTRUCTOR, Is.Not.Null);
@@ -414,6 +673,18 @@ namespace Game.Runtime.Tests.Server
                 _tickerManagerObject = null;
             }
 
+            if (_spellCastManagerObject != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_spellCastManagerObject);
+                _spellCastManagerObject = null;
+            }
+
+            if (_cooldownManagerObject != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_cooldownManagerObject);
+                _cooldownManagerObject = null;
+            }
+
             if (_auraManagerObject != null)
             {
                 UnityEngine.Object.DestroyImmediate(_auraManagerObject);
@@ -458,6 +729,13 @@ namespace Game.Runtime.Tests.Server
 
             _auraDefinitions.Clear();
             _auraBehaviours.Clear();
+
+            foreach (SpellDefinition definition in _spellDefinitions)
+            {
+                if (definition != null)
+                    UnityEngine.Object.DestroyImmediate(definition);
+            }
+            _spellDefinitions.Clear();
 
             if (_testAuraLibrary != null)
             {

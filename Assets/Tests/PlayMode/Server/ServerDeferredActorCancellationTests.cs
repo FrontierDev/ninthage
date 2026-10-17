@@ -65,17 +65,17 @@ namespace Game.Runtime.Tests.Server
             var callbackSequence = new List<string>();
             int actorAFirstTickerID = _tickerManager.AddTicker(
                 _actorA,
-                tickInterval: 0.1f,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                 duration: float.MaxValue,
                 tag: "actor-a-first");
             int actorASecondTickerID = _tickerManager.AddTicker(
                 _actorA,
-                tickInterval: 0.1f,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                 duration: float.MaxValue,
                 tag: "actor-a-second");
             int actorBTickerID = _tickerManager.AddTicker(
                 _actorB,
-                tickInterval: 0.1f,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                 duration: float.MaxValue,
                 tag: "actor-b");
             Entity actorAEntity = GetActorEntity(_actorA);
@@ -141,7 +141,7 @@ namespace Game.Runtime.Tests.Server
             ActorEndpoint.onServerActorTick += _actorTickHandler;
             int newTickerID = _tickerManager.AddTicker(
                 _actorA,
-                tickInterval: 0.1f,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                 duration: float.MaxValue,
                 tag: "restarted-actor");
 
@@ -161,12 +161,12 @@ namespace Game.Runtime.Tests.Server
             var callbackSequence = new List<string>();
             int actorATickerID = _tickerManager.AddTicker(
                 _actorA,
-                tickInterval: 0.1f,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                 duration: float.MaxValue,
                 tag: "throwing-actor-a");
             int actorBTickerID = _tickerManager.AddTicker(
                 _actorB,
-                tickInterval: 0.1f,
+                tickInterval: GameConfigurationManager.Config.ServerSimulationTickDuration,
                 duration: float.MaxValue,
                 tag: "throwing-actor-b");
             _actorTickHandler = (actorID, tickerID) =>
@@ -271,11 +271,12 @@ namespace Game.Runtime.Tests.Server
             }
         }
 
-        private static void RunSimulationTick(long tickID, float deltaTime = 0.1f)
+        private static void RunSimulationTick(long tickID)
         {
             Assert.That(UPDATE_SIMULATION_METHOD, Is.Not.Null);
             Assert.That(SIMULATION_TICK_CONSTRUCTOR, Is.Not.Null);
 
+            float deltaTime = GameConfigurationManager.Config.ServerSimulationTickDuration;
             object tick = SIMULATION_TICK_CONSTRUCTOR.Invoke(new object[]
             {
                 tickID,
