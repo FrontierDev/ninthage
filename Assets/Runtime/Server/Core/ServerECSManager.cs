@@ -161,6 +161,7 @@ namespace Game.Server.Core
                 ServerActorManager.Instance?.ProcessAuthoritativeTick(tick);
                 DefaultWorld.SetTime(new TimeData(tick.ElapsedTime, tick.DeltaTime));
                 _simulationSystemGroup.Update();
+                ServerActorManager.Instance?.ProcessAuthoritativeTickCompleted();
                 // ECS structural work is complete; domain lifecycle work is committed once
                 // from this tick-owned boundary before deferred event delivery.
                 CommitSpawnCommands();

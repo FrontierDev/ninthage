@@ -214,12 +214,12 @@ namespace Game.Server.Core
         private EntityManager _entityManager;
         private EntityQuery _actorComponentQuery;
 
-        // Maps actor ID -> Actor MonoBehaviour so LateUpdate can push ECS WorldPositionD -> transform.
+        // Maps actor ID -> Actor MonoBehaviour for authoritative movement bridges.
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
         private readonly Dictionary<Guid, Entity> _actorEntities = new();
 
-        // Update and LateUpdate each scan the same ECS query. They are aggregated into one
-        // per-frame observation so both real contributions remain represented in the value.
+        // Authoritative movement bridges can run more than once per render frame. They are
+        // aggregated into one per-frame observation so all real contributions remain represented.
         private int _pendingFrameOrTick = -1;
         private int _pendingFrameEntityScanCount;
         private int _pendingFrameGameObjectSyncCount;
@@ -339,49 +339,10 @@ namespace Game.Server.Core
 
         private void LateUpdate()
         {
-            if (!_initialized) return;
+            if (!_initialized || !PerformanceTelemetry.IsEnabled) return;
             using var markerScope = LATE_UPDATE_MARKER.Begin();
-            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int syncCount = 0;
-
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            int fullScanCount = entities.Length;
-            foreach (var entity in entities)
-            {
-                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                if (component.Owner != default) continue;
-
-                if (_actorObjects.TryGetValue(component.ActorID, out var actorObj) && actorObj != null)
-                {
-                    var agent = actorObj.GetComponent<NavMeshAgent>();
-                    if (agent != null && agent.enabled)
-                    {
-                        // NavMeshAgent owns movement — read transform into ECS.
-                        var pos = actorObj.transform.position;
-                        component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
-                        _entityManager.SetComponentData(entity, component);
-                        if (telemetryEnabled)
-                            syncCount++;
-                    }
-                    else
-                    {
-                        // ECS gravity owns movement — write ECS to transform.
-                        actorObj.transform.position = new Vector3(
-                            (float)component.WorldPositionD.x,
-                            (float)component.WorldPositionD.y,
-                            (float)component.WorldPositionD.z
-                        );
-                        if (telemetryEnabled)
-                            syncCount++;
-                    }
-                }
-            }
-            entities.Dispose();
-            if (telemetryEnabled)
-            {
-                RecordFrameSyncContribution(fullScanCount, syncCount, Time.frameCount);
+            if (_hasPendingFrameSyncContribution)
                 FlushPendingFrameSyncContribution();
-            }
         }
 
         private void OnActorSpawned(Actor actor)
@@ -400,13 +361,14 @@ namespace Game.Server.Core
 
             if (actor.Owner == null)
             {
-                bool hasAgent = actor.GetComponent<NavMeshAgent>() != null;
+                var agent = actor.GetComponent<NavMeshAgent>();
+                bool hasEnabledAgent = agent != null && agent.enabled;
                 _entityManager.AddComponentData(entity, new Systems.MotionStateComponent
                 {
                     VerticalVelocity = 0f,
                     IsGrounded = true,
                     TimeSinceLastGround = 0f,
-                    UsesNavMeshAgent = hasAgent
+                    UsesNavMeshAgent = hasEnabledAgent
                 });
                 _entityManager.AddComponentData(entity, new Systems.GroundDetectionComponent
                 {
@@ -650,6 +612,91 @@ namespace Game.Server.Core
 
             ValidatePlayerPositions(tick);
             SyncPlayerECS();
+            SynchronizeNPCPositionsToECS();
+        }
+
+        /// <summary>
+        /// Samples enabled NavMesh-driven NPC transforms before the ECS simulation step.
+        /// The resolved movement owner is stored in MotionStateComponent so ActorUpdateSystem
+        /// either owns gravity for this tick or leaves movement to the NavMeshAgent.
+        /// </summary>
+        internal void ProcessAuthoritativeTickCompleted()
+        {
+            if (!_initialized)
+                return;
+
+            SynchronizeNPCTransformsFromECS();
+        }
+
+        private void SynchronizeNPCPositionsToECS()
+        {
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int syncCount = 0;
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
+            int fullScanCount = entities.Length;
+            foreach (var entity in entities)
+            {
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                if (component.Owner != default)
+                    continue;
+
+                if (!_actorObjects.TryGetValue(component.ActorID, out var actorObj) || actorObj == null)
+                    continue;
+
+                var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
+                var agent = actorObj.GetComponent<NavMeshAgent>();
+                bool hasEnabledAgent = agent != null && agent.enabled;
+                if (motion.UsesNavMeshAgent != hasEnabledAgent)
+                {
+                    motion.UsesNavMeshAgent = hasEnabledAgent;
+                    _entityManager.SetComponentData(entity, motion);
+                }
+
+                if (!hasEnabledAgent)
+                    continue;
+
+                var pos = actorObj.transform.position;
+                component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
+                _entityManager.SetComponentData(entity, component);
+                if (telemetryEnabled)
+                    syncCount++;
+            }
+            entities.Dispose();
+            if (telemetryEnabled)
+                RecordFrameSyncContribution(fullScanCount, syncCount, Time.frameCount);
+        }
+
+        private void SynchronizeNPCTransformsFromECS()
+        {
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int syncCount = 0;
+            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
+            int fullScanCount = entities.Length;
+            foreach (var entity in entities)
+            {
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                if (component.Owner != default)
+                    continue;
+
+                if (!_actorObjects.TryGetValue(component.ActorID, out var actorObj) || actorObj == null)
+                    continue;
+
+                // The pre-tick bridge resolved ownership for this tick. A NavMesh agent remains
+                // the sole transform writer; ECS-owned NPCs receive the completed simulation state.
+                if (_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
+                    continue;
+
+                actorObj.transform.position = new Vector3(
+                    (float)component.WorldPositionD.x,
+                    (float)component.WorldPositionD.y,
+                    (float)component.WorldPositionD.z
+                );
+                if (telemetryEnabled)
+                    syncCount++;
+            }
+            entities.Dispose();
+            if (telemetryEnabled)
+                RecordFrameSyncContribution(fullScanCount, syncCount, Time.frameCount);
         }
 
         /// <summary>
