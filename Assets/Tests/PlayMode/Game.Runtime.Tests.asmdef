@@ -8,7 +8,8 @@
         "GUID:2e25a007dc1bf254d9dea43d7fe2cb46",
         "GUID:9ea0ba44cb9d26741aac9c853910d4ba",
         "Unity.Collections",
-        "Unity.Entities"
+        "Unity.Entities",
+        "Unity.Mathematics"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"
