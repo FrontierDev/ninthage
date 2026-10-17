@@ -360,22 +360,7 @@ namespace Game.Server.Core
             });
 
             if (actor.Owner == null)
-            {
-                var agent = actor.GetComponent<NavMeshAgent>();
-                bool hasEnabledAgent = agent != null && agent.enabled;
-                _entityManager.AddComponentData(entity, new Systems.MotionStateComponent
-                {
-                    VerticalVelocity = 0f,
-                    IsGrounded = true,
-                    TimeSinceLastGround = 0f,
-                    UsesNavMeshAgent = hasEnabledAgent
-                });
-                _entityManager.AddComponentData(entity, new Systems.GroundDetectionComponent
-                {
-                    groundDetectionRadius = GameConfigurationManager.Config.GroundDetectionRadius,
-                    lastGroundCheck = new Unity.Mathematics.float3(0, -1, 0)
-                });
-            }
+                EnsureNPCMovementComponents(entity, actor);
 
             _actorObjects[actor.ID] = actor;
             _actorEntities[actor.ID] = entity;
@@ -459,6 +444,11 @@ namespace Game.Server.Core
                     component.Owner = actor.Owner ?? default;
                     _entityManager.SetComponentData(entity, component);
 
+                    // An unowned actor must have the same movement state as a newly registered NPC
+                    // before the next authoritative movement bridge runs.
+                    if (component.Owner == default)
+                        EnsureNPCMovementComponents(entity, actor);
+
                     if (previousOwner != default
                         && previousOwner != component.Owner
                         && _playerActors.TryGetValue(previousOwner, out var previousActor)
@@ -484,6 +474,40 @@ namespace Game.Server.Core
                     entities.Length,
                     Time.frameCount);
             entities.Dispose();
+        }
+
+        private void EnsureNPCMovementComponents(Entity entity, Actor actor)
+        {
+            // Components remain attached when ownership returns to a player; the owner checks in
+            // ActorUpdateSystem and both movement bridges keep player movement out of this path.
+            var agent = actor.GetComponent<NavMeshAgent>();
+            bool hasEnabledAgent = agent != null && agent.enabled;
+
+            if (_entityManager.HasComponent<Systems.MotionStateComponent>(entity))
+            {
+                var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
+                motion.UsesNavMeshAgent = hasEnabledAgent;
+                _entityManager.SetComponentData(entity, motion);
+            }
+            else
+            {
+                _entityManager.AddComponentData(entity, new Systems.MotionStateComponent
+                {
+                    VerticalVelocity = 0f,
+                    IsGrounded = true,
+                    TimeSinceLastGround = 0f,
+                    UsesNavMeshAgent = hasEnabledAgent
+                });
+            }
+
+            if (!_entityManager.HasComponent<Systems.GroundDetectionComponent>(entity))
+            {
+                _entityManager.AddComponentData(entity, new Systems.GroundDetectionComponent
+                {
+                    groundDetectionRadius = GameConfigurationManager.Config.GroundDetectionRadius,
+                    lastGroundCheck = new Unity.Mathematics.float3(0, -1, 0)
+                });
+            }
         }
 
         private void OnActorInterestChanged(Actor actor, SceneID sceneID)
