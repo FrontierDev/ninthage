@@ -41,33 +41,39 @@ namespace Game.Server.Systems
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int spawnCommandCount = 0;
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
-
-            foreach (var (spawnPoint, entity) in
-                SystemAPI.Query<RefRW<SpawnPointComponent>>().WithEntityAccess())
+            try
             {
-                if (spawnPoint.ValueRO.Pending)
+                foreach (var (spawnPoint, entity) in
+                    SystemAPI.Query<RefRW<SpawnPointComponent>>().WithEntityAccess())
                 {
-                    if (telemetryEnabled)
-                        spawnCommandCount++;
-                    // Create a spawn command entity for the bridge to consume
-                    var cmd = ecb.CreateEntity();
-                    ecb.AddComponent(cmd, new SpawnCommand
+                    if (spawnPoint.ValueRO.Pending)
                     {
-                        SpawnPointGUID = spawnPoint.ValueRO.SpawnPointGUID,
-                        Position = spawnPoint.ValueRO.Position,
-                        PrefabIndex = spawnPoint.ValueRO.PrefabIndex,
-                        SceneIndex = spawnPoint.ValueRO.SceneIndex,
-                        SceneName = spawnPoint.ValueRO.SceneName,
-                    });
+                        if (telemetryEnabled)
+                            spawnCommandCount++;
+                        // Create a spawn command entity for the bridge to consume
+                        var cmd = ecb.CreateEntity();
+                        ecb.AddComponent(cmd, new SpawnCommand
+                        {
+                            SpawnPointGUID = spawnPoint.ValueRO.SpawnPointGUID,
+                            Position = spawnPoint.ValueRO.Position,
+                            PrefabIndex = spawnPoint.ValueRO.PrefabIndex,
+                            SceneIndex = spawnPoint.ValueRO.SceneIndex,
+                            SceneName = spawnPoint.ValueRO.SceneName,
+                        });
 
-                    spawnPoint.ValueRW.Pending = false;
+                        spawnPoint.ValueRW.Pending = false;
+                    }
                 }
+
+                // This is the ECS structural half of spawning. ServerECSManager commits the
+                // resulting domain spawn commands after the complete simulation group update.
+                ecb.Playback(state.EntityManager);
+            }
+            finally
+            {
+                ecb.Dispose();
             }
 
-            // This is the ECS structural half of spawning. ServerECSManager commits the
-            // resulting domain spawn commands after the complete simulation group update.
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
             if (telemetryEnabled)
                 PerformanceTelemetry.TryRecord(SPAWN_COMMAND_COUNT_METRIC, spawnCommandCount);
         }

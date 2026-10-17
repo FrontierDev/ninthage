@@ -368,7 +368,21 @@ namespace Game.Server.Core
         /// <param name="owner">The player that owns the spawned actor.</param>
         public void SpawnAt(string sceneName, Vector3 position, GameObject prefab, SceneID sceneID, PlayerID owner)
         {
-            if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
+            if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
+            {
+                Debug.Error($"Cannot queue spawn for scene '{sceneName}' because network scene '{sceneID}' is not available.");
+                return;
+            }
+            if (!state.scene.IsValid() || !state.scene.isLoaded)
+            {
+                Debug.Error($"Cannot queue spawn for scene '{sceneName}' because scene '{state.scene.name}' is not loaded.");
+                return;
+            }
+            if (prefab == null)
+            {
+                Debug.Error($"Cannot queue spawn for scene '{sceneName}' because the prefab is null.");
+                return;
+            }
 
             int prefabIndex = RegisterPrefab(prefab);
             int sceneIndex = RegisterScene(state.scene);
@@ -399,112 +413,159 @@ namespace Game.Server.Core
                 return;
             }
 
-            var entities = _spawnCommandQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
-            var commands = _spawnCommandQuery.ToComponentDataArray<Systems.SpawnCommand>(Unity.Collections.Allocator.Temp);
-
-            if (telemetryEnabled)
-                PerformanceTelemetry.TryRecord(SPAWN_COMMAND_COUNT_METRIC, commands.Length);
-
-            for (int i = 0; i < commands.Length; i++)
+            NativeArray<Entity> entities = _spawnCommandQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            try
             {
-                var cmd = commands[i];
-                var prefab = _prefabRegistry[cmd.PrefabIndex];
-                var scene = _sceneRegistry[cmd.SceneIndex];
-                var sceneName = cmd.SceneName.ToString();
-                var spawnPointGUID = cmd.SpawnPointGUID;
-                bool spawnSucceeded = false;
-
+                NativeArray<Systems.SpawnCommand> commands = default;
                 try
                 {
-                    // Use PurrNet's Instantiate proxy — handles scene placement,
-                    // hierarchy registration, spawn, and replication in one call.
-                    var go = PurrNet.UnityProxy.Instantiate(prefab, cmd.Position, Quaternion.identity, scene);
-                    Debug.Log($"Spawned '{prefab.name}' at {cmd.Position} in scene '{scene.name}'.");
+                    commands = _spawnCommandQuery.ToComponentDataArray<Systems.SpawnCommand>(Unity.Collections.Allocator.Temp);
 
-                    var actor = go.GetComponent<Game.Shared.Runtime.Actors.Actor>();
-                    if (actor == null)
+                    if (telemetryEnabled)
+                        PerformanceTelemetry.TryRecord(SPAWN_COMMAND_COUNT_METRIC, commands.Length);
+
+                    for (int i = 0; i < commands.Length; i++)
                     {
-                        Debug.Error($"Prefab '{prefab.name}' is missing an Actor component. Add it to the prefab in the editor.");
-                        continue;
-                    }
-                    else
-                    {
-                        actor.CurrentChunk = sceneName;
-                        actor.WorldPos = Game.Shared.Utility.WorldPosition.FromChunkLocal(
-                            new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y),
-                            new Vector3(cmd.Position.x, cmd.Position.y, cmd.Position.z));
-                        actor.Initialize(actor.ID, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefab.name);
-                        actor.SetSpawnPointGUID(spawnPointGUID);
+                        var cmd = commands[i];
+                        string prefabName = $"registry index {cmd.PrefabIndex}";
+                        string sceneName = cmd.SceneName.ToString();
+                        string sceneNameForLog = $"registry index {cmd.SceneIndex}";
+                        GameObject prefab = null;
+                        GameObject spawnedObject = null;
+                        NetworkIdentity registeredIdentity = null;
+                        bool spawnSucceeded = false;
 
-                        // Register the root identity for targeted visibility re-evaluation.
-                        NetworkIdentity identity = go.GetComponent<NetworkIdentity>();
-                        if (identity != null)
-                            Game.Shared.Networking.ChunkSubscriptions.RegisterIdentity(sceneName, identity);
-
-                        // Set ownership and register player actor cache.
-                        if (identity != null && cmd.Owner != default)
+                        try
                         {
-                            identity.GiveOwnership(cmd.Owner);
-                            actor.SetOwner(cmd.Owner);
-                            Game.Shared.Networking.ChunkSubscriptions.RegisterPlayerActor(cmd.Owner, actor);
-                            go.name = $"Player{cmd.Owner}";
+                            if (cmd.PrefabIndex < 0 || cmd.PrefabIndex >= _prefabRegistry.Count)
+                                throw new InvalidOperationException($"Prefab registry index {cmd.PrefabIndex} is invalid.");
 
-                            // Add a disabled NavMeshAgent for server-driven movement (charge spells, etc.).
-                            if (go.GetComponent<UnityEngine.AI.NavMeshAgent>() == null)
+                            prefab = _prefabRegistry[cmd.PrefabIndex];
+                            if (prefab == null)
+                                throw new InvalidOperationException($"Prefab registry entry {cmd.PrefabIndex} is null or has been destroyed.");
+                            prefabName = prefab.name;
+
+                            if (!_sceneRegistry.TryGetValue(cmd.SceneIndex, out var scene))
+                                throw new InvalidOperationException($"Scene registry index {cmd.SceneIndex} is invalid.");
+                            if (!scene.IsValid() || !scene.isLoaded)
+                                throw new InvalidOperationException($"Scene registry entry {cmd.SceneIndex} is no longer loaded.");
+                            sceneNameForLog = scene.name;
+
+                            // Use PurrNet's Instantiate proxy — handles scene placement,
+                            // hierarchy registration, spawn, and replication in one call.
+                            spawnedObject = PurrNet.UnityProxy.Instantiate(prefab, cmd.Position, Quaternion.identity, scene);
+                            if (spawnedObject == null)
+                                throw new InvalidOperationException("PurrNet returned a null spawned object.");
+                            Debug.Log($"Spawned '{prefabName}' at {cmd.Position} in scene '{sceneNameForLog}'.");
+
+                            var actor = spawnedObject.GetComponent<Game.Shared.Runtime.Actors.Actor>();
+                            if (actor == null)
+                                throw new InvalidOperationException($"Prefab '{prefabName}' is missing an Actor component. Add it to the prefab in the editor.");
+
+                            actor.CurrentChunk = sceneName;
+                            actor.WorldPos = Game.Shared.Utility.WorldPosition.FromChunkLocal(
+                                new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y),
+                                new Vector3(cmd.Position.x, cmd.Position.y, cmd.Position.z));
+                            actor.Initialize(actor.ID, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefabName);
+                            actor.SetSpawnPointGUID(cmd.SpawnPointGUID);
+
+                            // Register the root identity for targeted visibility re-evaluation.
+                            NetworkIdentity identity = spawnedObject.GetComponent<NetworkIdentity>();
+                            if (identity != null)
                             {
-                                var playerAgent = go.AddComponent<UnityEngine.AI.NavMeshAgent>();
-                                playerAgent.radius = 0.25f;
-                                playerAgent.height = 2f;
-                                playerAgent.enabled = false;
+                                Game.Shared.Networking.ChunkSubscriptions.RegisterIdentity(sceneName, identity);
+                                registeredIdentity = identity;
+                            }
+
+                            // Set ownership and register player actor cache.
+                            if (identity != null && cmd.Owner != default)
+                            {
+                                identity.GiveOwnership(cmd.Owner);
+                                actor.SetOwner(cmd.Owner);
+                                Game.Shared.Networking.ChunkSubscriptions.RegisterPlayerActor(cmd.Owner, actor);
+                                spawnedObject.name = $"Player{cmd.Owner}";
+
+                                // Add a disabled NavMeshAgent for server-driven movement (charge spells, etc.).
+                                if (spawnedObject.GetComponent<UnityEngine.AI.NavMeshAgent>() == null)
+                                {
+                                    var playerAgent = spawnedObject.AddComponent<UnityEngine.AI.NavMeshAgent>();
+                                    playerAgent.radius = 0.25f;
+                                    playerAgent.height = 2f;
+                                    playerAgent.enabled = false;
+                                }
+                            }
+
+                            // Initialize NPC stats (NPCs have no owner, so this must be outside the owner block).
+                            if (!actor.IsPlayer)
+                            {
+                                ServerStatManager.Instance.InitializeNPCStats(actor);
+                                ServerStatManager.Instance.RegisterActor(actor);
+
+                                // Teach NPCs the auto-attack spell so they can swing.
+                                var autoAttack = GameConfigurationManager.Config.AutoAttackSpell;
+                                if (autoAttack != null)
+                                    spawnedObject.GetComponent<ActorSpellcaster>()?.LearnSpell(autoAttack.DefinitionID);
+                            }
+
+                            // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
+                            Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
+
+                            // Link the actor to the player's session data for disconnect cleanup.
+                            if (cmd.Owner != default)
+                            {
+                                var session = ServerConnectionManager.Instance.GetSessionData(cmd.Owner);
+                                if (session != null)
+                                    session.SetPlayerActor(actor);
+                            }
+
+                            spawnSucceeded = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.Error($"Failed to consume spawn command for prefab '{prefabName}' in scene '{sceneNameForLog}' (spawn point {cmd.SpawnPointGUID}): {ex.Message}\n{ex.StackTrace}");
+                        }
+                        finally
+                        {
+                            if (!spawnSucceeded && spawnedObject != null)
+                            {
+                                if (registeredIdentity != null)
+                                    Game.Shared.Networking.ChunkSubscriptions.UnregisterIdentity(sceneName, registeredIdentity);
+
+                                try
+                                {
+                                    PurrNet.UnityProxy.Destroy(spawnedObject);
+                                }
+                                catch (Exception cleanupException)
+                                {
+                                    Debug.Error($"Failed to clean up rejected spawn object for prefab '{prefabName}' in scene '{sceneNameForLog}': {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                }
+                            }
+
+                            // Always destroy the entity so it doesn't retry.
+                            if (_entityManager.Exists(entities[i]))
+                                _entityManager.DestroyEntity(entities[i]);
+
+                            if (telemetryEnabled)
+                            {
+                                PerformanceTelemetry.TryRecord(
+                                    spawnSucceeded ? SPAWN_SUCCESS_COUNT_METRIC : SPAWN_FAILURE_COUNT_METRIC,
+                                    1);
                             }
                         }
-
-                        // Initialize NPC stats (NPCs have no owner, so this must be outside the owner block).
-                        if (!actor.IsPlayer)
-                        {
-                            ServerStatManager.Instance.InitializeNPCStats(actor);
-                            ServerStatManager.Instance.RegisterActor(actor);
-
-                            // Teach NPCs the auto-attack spell so they can swing.
-                            var autoAttack = GameConfigurationManager.Config.AutoAttackSpell;
-                            if (autoAttack != null)
-                                go.GetComponent<ActorSpellcaster>()?.LearnSpell(autoAttack.DefinitionID);
-                        }
-
-                        // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
-                        Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
-
-                        // Link the actor to the player's session data for disconnect cleanup.
-                        if (cmd.Owner != default)
-                        {
-                            var session = ServerConnectionManager.Instance.GetSessionData(cmd.Owner);
-                            if (session != null)
-                                session.SetPlayerActor(actor);
-                        }
-
-                        spawnSucceeded = true;
                     }
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.Error($"Failed to spawn prefab '{prefab.name}': {ex.Message}\n{ex.StackTrace}");
+
                 }
                 finally
                 {
-                    if (telemetryEnabled)
-                    {
-                        PerformanceTelemetry.TryRecord(
-                            spawnSucceeded ? SPAWN_SUCCESS_COUNT_METRIC : SPAWN_FAILURE_COUNT_METRIC,
-                            1);
-                    }
-
-                    // Always destroy the entity so it doesn't retry
-                    _entityManager.DestroyEntity(entities[i]);
+                    if (commands.IsCreated)
+                        commands.Dispose();
                 }
             }
-
-            entities.Dispose();
-            commands.Dispose();
+            finally
+            {
+                if (entities.IsCreated)
+                    entities.Dispose();
+            }
         }
         private int RegisterPrefab(GameObject scenePrefab)
         {
