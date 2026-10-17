@@ -40,6 +40,7 @@ namespace Game.Runtime.Tests.Server
         private NetworkManager _networkManager;
         private GameObject _clockHostObject;
         private GameObject _actorManagerObject;
+        private GameObject _groundObject;
         private GameObject _npcObject;
         private GameObject _playerObject;
         private ServerSimulationClock _clock;
@@ -102,6 +103,7 @@ namespace Game.Runtime.Tests.Server
 
             DestroyObject(_npcObject);
             DestroyObject(_playerObject);
+            DestroyObject(_groundObject);
             DestroyObject(_actorManagerObject);
 
             if (_networkManagerObject != null)
@@ -129,6 +131,7 @@ namespace Game.Runtime.Tests.Server
             _npc = null;
             _player = null;
             _playerCollider = null;
+            _groundObject = null;
             _actorManager = null;
             _clock = null;
         }
@@ -182,6 +185,7 @@ namespace Game.Runtime.Tests.Server
             _playerCollider.enabled = true;
             _playerObject.transform.position = new Vector3(1f, 0f, 0f);
             Physics.SyncTransforms();
+            AssertPlayerColliderInAggroOverlap();
 
             AdvanceTicks(4);
             Assert.That(_clock.LastExecutedTickID, Is.EqualTo(17));
@@ -196,11 +200,13 @@ namespace Game.Runtime.Tests.Server
             Assert.That(_npc.Target, Is.SameAs(_player));
             Assert.That(_startAutoAttackCount, Is.EqualTo(1));
             CollectionAssert.AreEqual(new Actor[] { _npc }, _startAutoAttackActors);
+            Assert.That(_npc.transform.position.y, Is.EqualTo(0f).Within(0.01f));
 
             AdvanceTicks(4);
             Assert.That(_clock.LastExecutedTickID, Is.EqualTo(29));
             Assert.That(_npc.Target, Is.SameAs(_player));
             Assert.That(_startAutoAttackCount, Is.EqualTo(1));
+            Assert.That(_npc.transform.position.y, Is.EqualTo(0f).Within(0.01f));
         }
 
         private void CreateActors()
@@ -208,6 +214,7 @@ namespace Game.Runtime.Tests.Server
             Assert.That(NPC_AGGRO_RANGE_FIELD, Is.Not.Null);
             Assert.That(NPC_AGGRO_DELAY_FIELD, Is.Not.Null);
             Assert.That(ACTOR_OWNER_FIELD, Is.Not.Null);
+            CreateGround();
 
             _npcObject = new GameObject("Server NPC Aggro Decision NPC");
             _npcObject.transform.position = Vector3.zero;
@@ -224,8 +231,46 @@ namespace Game.Runtime.Tests.Server
             ACTOR_OWNER_FIELD.SetValue(_player, (PlayerID?)PLAYER_OWNER_ID);
             _playerCollider = _playerObject.AddComponent<SphereCollider>();
 
+            _networkManager.Spawn(_npcObject);
+            _networkManager.Spawn(_playerObject);
+            Assert.That(_npc.isServer, Is.True);
+            Assert.That(_player.isServer, Is.True);
             ActorEndpoint.onServerActorSpawned?.Invoke(_npc);
             ActorEndpoint.onServerActorSpawned?.Invoke(_player);
+        }
+
+        private void CreateGround()
+        {
+            string groundLayerName = _configuration.GroundDetectionMaskName;
+            int groundLayer = LayerMask.NameToLayer(groundLayerName);
+            Assert.That(groundLayer, Is.GreaterThanOrEqualTo(0),
+                $"Configured ground layer '{groundLayerName}' does not exist.");
+
+            _groundObject = new GameObject("Server NPC Aggro Decision Ground");
+            _groundObject.layer = groundLayer;
+            BoxCollider groundCollider = _groundObject.AddComponent<BoxCollider>();
+            groundCollider.size = new Vector3(100f, 1f, 100f);
+            groundCollider.center = new Vector3(0f, -0.5f, 0f);
+
+            Physics.SyncTransforms();
+            Assert.That(groundCollider.bounds.max.y, Is.EqualTo(0f).Within(0.001f));
+        }
+
+        private void AssertPlayerColliderInAggroOverlap()
+        {
+            Assert.That(_playerCollider.enabled, Is.True);
+
+            bool playerFound = false;
+            foreach (Collider collider in Physics.OverlapSphere(_npc.transform.position, 3f))
+            {
+                if (collider.GetComponentInParent<PlayerActor>() == _player)
+                {
+                    playerFound = true;
+                    break;
+                }
+            }
+
+            Assert.That(playerFound, Is.True);
         }
 
         private void AdvanceTicks(int count)
@@ -239,6 +284,7 @@ namespace Game.Runtime.Tests.Server
             Assert.That(_npc.Target, Is.Null);
             Assert.That(_startAutoAttackCount, Is.EqualTo(0));
             Assert.That(_startAutoAttackActors, Is.Empty);
+            Assert.That(_npc.transform.position.y, Is.EqualTo(0f).Within(0.01f));
         }
 
         private static int SimulateFrame(ServerSimulationClock clock, double elapsedSeconds)

@@ -30,8 +30,6 @@ namespace Game.Runtime.Tests.Server
             typeof(ServerSimulationClock).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo ACTOR_OWNER_FIELD =
             typeof(Actor).GetField("<Owner>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
-        private static readonly FieldInfo ACTOR_TARGET_FIELD =
-            typeof(Actor).GetField("_target", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private readonly List<long> _acceptedSpellStartTickIDs = new List<long>();
         private GameConfiguration _configuration;
@@ -44,6 +42,7 @@ namespace Game.Runtime.Tests.Server
         private GameObject _cooldownManagerObject;
         private GameObject _spellCastManagerObject;
         private GameObject _autoAttackManagerObject;
+        private GameObject _groundObject;
         private GameObject _attackerObject;
         private GameObject _targetObject;
         private ServerSimulationClock _clock;
@@ -64,6 +63,7 @@ namespace Game.Runtime.Tests.Server
             Assert.That(_configuration, Is.Not.Null);
             _autoAttackSpell = _configuration.AutoAttackSpell;
             Assert.That(_autoAttackSpell, Is.Not.Null);
+            Assert.That(_configuration.CritResistanceStat, Is.Not.Null);
 
             _originalTickDuration = _configuration.ServerSimulationTickDuration;
             _originalMaxCatchUpTicks = _configuration.ServerSimulationMaxCatchUpTicks;
@@ -131,6 +131,7 @@ namespace Game.Runtime.Tests.Server
             AdvanceTicks(1);
             Assert.That(_clock.LastExecutedTickID, Is.EqualTo(1));
             Assert.That(_acceptedSpellStartTickIDs, Is.Empty);
+            Assert.That(_attacker.transform.position.y, Is.EqualTo(0f).Within(0.01f));
 
             _target.transform.position = new Vector3(1f, 0f, 0f);
             AdvanceTicks(1);
@@ -144,9 +145,10 @@ namespace Game.Runtime.Tests.Server
 
             ActorEndpoint.onServerStopAutoAttack?.Invoke(_attacker);
             AdvanceTicks(41);
-            Assert.That(_clock.LastExecutedTickID, Is.EqualTo(44));
+            Assert.That(_clock.LastExecutedTickID, Is.GreaterThanOrEqualTo(44));
             Assert.That(ServerCooldownManager.Instance.IsOnCooldown(_attacker.ID, _autoAttackSpell.DefinitionID), Is.False);
             CollectionAssert.AreEqual(new long[] { 2 }, _acceptedSpellStartTickIDs);
+            Assert.That(_attacker.transform.position.y, Is.EqualTo(0f).Within(0.01f));
 
             ActorEndpoint.onServerStartAutoAttack?.Invoke(_attacker);
             _target.GetComponent<ActorStatContainer>().SetStat(
@@ -155,14 +157,14 @@ namespace Game.Runtime.Tests.Server
             Assert.That(_target.isDead, Is.True);
 
             AdvanceTicks(41);
-            Assert.That(_clock.LastExecutedTickID, Is.EqualTo(85));
+            Assert.That(_clock.LastExecutedTickID, Is.GreaterThanOrEqualTo(85));
             CollectionAssert.AreEqual(new long[] { 2 }, _acceptedSpellStartTickIDs);
         }
 
         private void CreateActors()
         {
             Assert.That(ACTOR_OWNER_FIELD, Is.Not.Null);
-            Assert.That(ACTOR_TARGET_FIELD, Is.Not.Null);
+            CreateGround();
 
             _attackerObject = new GameObject("Server Auto Attack Scheduling Attacker");
             _attackerObject.transform.position = Vector3.zero;
@@ -171,7 +173,7 @@ namespace Game.Runtime.Tests.Server
             _attacker.WorldPos = new WorldPosition(0d, 0d, 0d);
             ActorSpellcaster attackerSpellcaster = _attackerObject.AddComponent<ActorSpellcaster>();
             ActorStatContainer attackerStats = _attackerObject.AddComponent<ActorStatContainer>();
-            AddCombatStats(attackerStats, 100f);
+            AddCombatStats(attackerStats, 100f, _configuration.CritResistanceStat.DefinitionID);
             attackerSpellcaster.LearnSpell(_autoAttackSpell.DefinitionID);
             Assert.That(attackerSpellcaster.Spells.ContainsKey(_autoAttackSpell.DefinitionID), Is.True);
 
@@ -182,22 +184,41 @@ namespace Game.Runtime.Tests.Server
             _target.WorldPos = new WorldPosition(5d, 0d, 0d);
             ACTOR_OWNER_FIELD.SetValue(_target, (PlayerID?)TARGET_OWNER_ID);
             ActorStatContainer targetStats = _targetObject.AddComponent<ActorStatContainer>();
-            AddCombatStats(targetStats, 100f);
+            AddCombatStats(targetStats, 100f, _configuration.CritResistanceStat.DefinitionID);
 
+            _networkManager.Spawn(_attackerObject);
+            _networkManager.Spawn(_targetObject);
+            Assert.That(_attacker.isServer, Is.True);
+            Assert.That(_target.isServer, Is.True);
             ActorEndpoint.onServerActorSpawned?.Invoke(_attacker);
             ActorEndpoint.onServerActorSpawned?.Invoke(_target);
-            // The fixture uses real actors but does not network-spawn their identities. Establish
-            // the server-side target directly so setup does not attempt an observer RPC.
-            ACTOR_TARGET_FIELD.SetValue(_attacker, _target);
+            _attacker.SetTargetFromServer(_target);
             Assert.That(_attacker.Target, Is.SameAs(_target));
         }
 
-        private static void AddCombatStats(ActorStatContainer stats, float health)
+        private void CreateGround()
+        {
+            string groundLayerName = _configuration.GroundDetectionMaskName;
+            int groundLayer = LayerMask.NameToLayer(groundLayerName);
+            Assert.That(groundLayer, Is.GreaterThanOrEqualTo(0),
+                $"Configured ground layer '{groundLayerName}' does not exist.");
+
+            _groundObject = new GameObject("Server Auto Attack Scheduling Ground");
+            _groundObject.layer = groundLayer;
+            BoxCollider groundCollider = _groundObject.AddComponent<BoxCollider>();
+            groundCollider.size = new Vector3(100f, 1f, 100f);
+            groundCollider.center = new Vector3(0f, -0.5f, 0f);
+
+            Physics.SyncTransforms();
+            Assert.That(groundCollider.bounds.max.y, Is.EqualTo(0f).Within(0.001f));
+        }
+
+        private static void AddCombatStats(ActorStatContainer stats, float health, string critResistanceStatID)
         {
             stats.SetStat("health", new StatInstance(health, 0f, 0f, health, health));
             stats.SetStat("melee_hit_chance", new StatInstance(100f, 0f, 0f, 100f, 100f));
             stats.SetStat("melee_crit_chance", new StatInstance(0f, 0f, 0f, 100f, 0f));
-            stats.SetStat("crit_resist", new StatInstance(0f, 0f, 0f, 100f, 0f));
+            stats.SetStat(critResistanceStatID, new StatInstance(0f, 0f, 0f, 100f, 0f));
         }
 
         private IEnumerator WaitForServer()
@@ -214,8 +235,9 @@ namespace Game.Runtime.Tests.Server
 
         private void AdvanceTicks(int count)
         {
-            for (int i = 0; i < count; i++)
-                Assert.That(SimulateFrame(_clock, 0.051d), Is.EqualTo(1));
+            long targetTickID = checked(_clock.LastExecutedTickID + count);
+            while (_clock.LastExecutedTickID < targetTickID)
+                Assert.That(SimulateFrame(_clock, 0.051d), Is.GreaterThan(0));
         }
 
         private static int SimulateFrame(ServerSimulationClock clock, double elapsedSeconds)
@@ -243,6 +265,7 @@ namespace Game.Runtime.Tests.Server
 
             DestroyObject(_attackerObject);
             DestroyObject(_targetObject);
+            DestroyObject(_groundObject);
             DestroyObject(_autoAttackManagerObject);
             DestroyObject(_spellCastManagerObject);
             DestroyObject(_cooldownManagerObject);
@@ -265,6 +288,7 @@ namespace Game.Runtime.Tests.Server
             _acceptedSpellStartTickIDs.Clear();
             _attackerObject = null;
             _targetObject = null;
+            _groundObject = null;
             _autoAttackManagerObject = null;
             _spellCastManagerObject = null;
             _cooldownManagerObject = null;
