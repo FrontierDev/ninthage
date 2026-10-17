@@ -158,6 +158,7 @@ namespace Game.Server.Core
             try
             {
                 CommitPendingMutations();
+                ServerActorManager.Instance?.ProcessAuthoritativeTick(tick);
                 DefaultWorld.SetTime(new TimeData(tick.ElapsedTime, tick.DeltaTime));
                 _simulationSystemGroup.Update();
                 // ECS structural work is complete; domain lifecycle work is committed once

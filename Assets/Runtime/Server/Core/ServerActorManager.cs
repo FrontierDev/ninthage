@@ -310,8 +310,6 @@ namespace Game.Server.Core
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             FlushPendingFrameSyncContributionIfFrameChanged(telemetryEnabled);
             UpdateNPCAggro();
-            ValidatePlayerPositions();
-            SyncPlayerECS();
             if (telemetryEnabled)
             {
                 PerformanceTelemetry.TryRecord(ECS_ACTOR_COUNT_METRIC, _actorComponentQuery.CalculateEntityCount());
@@ -424,6 +422,7 @@ namespace Game.Server.Core
                 _playerActors[owner] = actor;
                 _lastValidatedPositions[owner] = actor.transform.position;
                 _validationTimers[owner] = 0f;
+                _violationCounters[owner] = 0;
             }
 
             // Add the spellcasting component on the actor.
@@ -471,6 +470,18 @@ namespace Game.Server.Core
 
             _actorObjects.Remove(actor.ID);
             _actorEntities.Remove(actor.ID);
+            if (actor.Owner.HasValue)
+            {
+                var owner = actor.Owner.Value;
+                if (_playerActors.TryGetValue(owner, out var playerActor) && playerActor == actor)
+                {
+                    _playerActors.Remove(owner);
+                    _lastValidatedPositions.Remove(owner);
+                    _validationTimers.Remove(owner);
+                    _violationCounters.Remove(owner);
+                }
+            }
+            _npcAggroStates.Remove(actor.ID);
             ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
         }
 
@@ -486,12 +497,23 @@ namespace Game.Server.Core
                     component.Owner = actor.Owner ?? default;
                     _entityManager.SetComponentData(entity, component);
 
-                    if (actor.Owner == null && previousOwner != default)
+                    if (previousOwner != default
+                        && previousOwner != component.Owner
+                        && _playerActors.TryGetValue(previousOwner, out var previousActor)
+                        && previousActor == actor)
                     {
                         _playerActors.Remove(previousOwner);
                         _lastValidatedPositions.Remove(previousOwner);
                         _validationTimers.Remove(previousOwner);
                         _violationCounters.Remove(previousOwner);
+                    }
+
+                    if (actor.Owner != null && component.Owner != default)
+                    {
+                        _playerActors[component.Owner] = actor;
+                        _lastValidatedPositions[component.Owner] = actor.transform.position;
+                        _validationTimers[component.Owner] = 0f;
+                        _violationCounters[component.Owner] = 0;
                     }
 
                     Debug.Log("Actor owner changed on server: " + actor.Name + " (ID: " + actor.ID + ")");
@@ -623,11 +645,23 @@ namespace Game.Server.Core
         }
 
         /// <summary>
+        /// Samples and validates player movement for one authoritative simulation tick.
+        /// </summary>
+        internal void ProcessAuthoritativeTick(ServerSimulationTick tick)
+        {
+            if (!_initialized)
+                return;
+
+            ValidatePlayerPositions(tick.DeltaTime);
+            SyncPlayerECS();
+        }
+
+        /// <summary>
         /// Periodically checks that player positions are legal.
         /// NetworkTransform (owner-auth) pushes the client position to
         /// the server actor's transform automatically; we just read it.
         /// </summary>
-        private void ValidatePlayerPositions()
+        private void ValidatePlayerPositions(float deltaTime)
         {
             using var markerScope = POSITION_VALIDATION_MARKER.Begin();
             foreach (var kvp in _playerActors)
@@ -636,23 +670,25 @@ namespace Game.Server.Core
                 var actor = kvp.Value;
                 if (actor == null) continue;
 
-                if (!_validationTimers.ContainsKey(playerID)) continue;
-                _validationTimers[playerID] += Time.deltaTime;
-                if (_validationTimers[playerID] < VALIDATION_INTERVAL) continue;
+                if (!_validationTimers.TryGetValue(playerID, out var validationTimer)) continue;
+                if (!_lastValidatedPositions.TryGetValue(playerID, out var lastValidatedPosition)) continue;
 
-                float elapsed = _validationTimers[playerID];
+                var proposedPosition = actor.transform.position;
+                validationTimer += deltaTime;
+                _validationTimers[playerID] = validationTimer;
+                if (validationTimer < VALIDATION_INTERVAL) continue;
+
+                float elapsed = validationTimer;
                 _validationTimers[playerID] = 0f;
 
-                var currentPos = actor.transform.position;
-                var lastPos = _lastValidatedPositions[playerID];
-
                 // Speed check: horizontal distance / elapsed time.
-                var horizontalDelta = new Vector3(currentPos.x - lastPos.x, 0f, currentPos.z - lastPos.z);
+                var horizontalDelta = new Vector3(
+                    proposedPosition.x - lastValidatedPosition.x,
+                    0f,
+                    proposedPosition.z - lastValidatedPosition.z);
                 float speed = horizontalDelta.magnitude / elapsed;
 
-                // Always advance the last-known position to prevent cascading
-                // false positives when network updates arrive in bursts.
-                _lastValidatedPositions[playerID] = currentPos;
+                var acceptedPosition = proposedPosition;
 
                 if (speed > MAX_ALLOWED_SPEED)
                 {
@@ -661,12 +697,13 @@ namespace Game.Server.Core
                     if (_violationCounters[playerID] >= VIOLATION_THRESHOLD)
                     {
                         Debug.Warning("Player " + playerID + " exceeded max speed (" + speed.ToString("F1") + " m/s) " + _violationCounters[playerID] + " times. Correcting.");
-                        var worldPos = new WorldPosition(lastPos.x, lastPos.y, lastPos.z);
+                        acceptedPosition = lastValidatedPosition;
+                        var worldPos = new WorldPosition(acceptedPosition.x, acceptedPosition.y, acceptedPosition.z);
                         var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(worldPos);
                         MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
 
-                        // Reset after correction — give the snap time to take effect.
-                        _lastValidatedPositions[playerID] = lastPos;
+                        // Keep the server-side bridge on the accepted position until the owner receives the snap.
+                        actor.transform.position = acceptedPosition;
                         _violationCounters[playerID] = 0;
                     }
                 }
@@ -674,6 +711,8 @@ namespace Game.Server.Core
                 {
                     _violationCounters[playerID] = 0;
                 }
+
+                _lastValidatedPositions[playerID] = acceptedPosition;
             }
         }
 
