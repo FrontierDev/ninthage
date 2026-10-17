@@ -1,4 +1,5 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Performance;
@@ -432,7 +433,20 @@ namespace Game.Server.Core
                         string sceneNameForLog = $"registry index {cmd.SceneIndex}";
                         GameObject prefab = null;
                         GameObject spawnedObject = null;
+                        Actor spawnedActor = null;
                         NetworkIdentity registeredIdentity = null;
+                        Actor spawnPointReservation = null;
+                        bool hasSpawnPointReservation = _spawnPointActorMap.TryGetValue(
+                            cmd.SpawnPointGUID,
+                            out spawnPointReservation);
+                        bool playerActorRegistered = false;
+                        bool hadPreviousPlayerActor = false;
+                        Actor previousPlayerActor = null;
+                        PlayerSessionData session = null;
+                        Actor previousSessionActor = null;
+                        bool sessionActorRegistered = false;
+                        bool npcStatsRegistered = false;
+                        bool actorSpawnEventStarted = false;
                         bool spawnSucceeded = false;
 
                         try
@@ -461,6 +475,7 @@ namespace Game.Server.Core
                             var actor = spawnedObject.GetComponent<Game.Shared.Runtime.Actors.Actor>();
                             if (actor == null)
                                 throw new InvalidOperationException($"Prefab '{prefabName}' is missing an Actor component. Add it to the prefab in the editor.");
+                            spawnedActor = actor;
 
                             actor.CurrentChunk = sceneName;
                             actor.WorldPos = Game.Shared.Utility.WorldPosition.FromChunkLocal(
@@ -482,7 +497,11 @@ namespace Game.Server.Core
                             {
                                 identity.GiveOwnership(cmd.Owner);
                                 actor.SetOwner(cmd.Owner);
+                                hadPreviousPlayerActor = Game.Shared.Networking.ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(
+                                    cmd.Owner,
+                                    out previousPlayerActor);
                                 Game.Shared.Networking.ChunkSubscriptions.RegisterPlayerActor(cmd.Owner, actor);
+                                playerActorRegistered = true;
                                 spawnedObject.name = $"Player{cmd.Owner}";
 
                                 // Add a disabled NavMeshAgent for server-driven movement (charge spells, etc.).
@@ -500,6 +519,7 @@ namespace Game.Server.Core
                             {
                                 ServerStatManager.Instance.InitializeNPCStats(actor);
                                 ServerStatManager.Instance.RegisterActor(actor);
+                                npcStatsRegistered = true;
 
                                 // Teach NPCs the auto-attack spell so they can swing.
                                 var autoAttack = GameConfigurationManager.Config.AutoAttackSpell;
@@ -508,14 +528,19 @@ namespace Game.Server.Core
                             }
 
                             // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
+                            actorSpawnEventStarted = true;
                             Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
 
                             // Link the actor to the player's session data for disconnect cleanup.
                             if (cmd.Owner != default)
                             {
-                                var session = ServerConnectionManager.Instance.GetSessionData(cmd.Owner);
+                                session = ServerConnectionManager.Instance.GetSessionData(cmd.Owner);
                                 if (session != null)
+                                {
+                                    previousSessionActor = session.PlayerActor;
                                     session.SetPlayerActor(actor);
+                                    sessionActorRegistered = true;
+                                }
                             }
 
                             spawnSucceeded = true;
@@ -526,18 +551,89 @@ namespace Game.Server.Core
                         }
                         finally
                         {
-                            if (!spawnSucceeded && spawnedObject != null)
+                            if (!spawnSucceeded)
                             {
-                                if (registeredIdentity != null)
-                                    Game.Shared.Networking.ChunkSubscriptions.UnregisterIdentity(sceneName, registeredIdentity);
-
                                 try
                                 {
-                                    PurrNet.UnityProxy.Destroy(spawnedObject);
+                                    if (sessionActorRegistered && session != null && session.PlayerActor == spawnedActor)
+                                        session.SetPlayerActor(previousSessionActor);
                                 }
                                 catch (Exception cleanupException)
                                 {
-                                    Debug.Error($"Failed to clean up rejected spawn object for prefab '{prefabName}' in scene '{sceneNameForLog}': {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                    Debug.Error($"Failed to restore the player session after rejecting spawn point {cmd.SpawnPointGUID}: {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                }
+
+                                try
+                                {
+                                    if (playerActorRegistered
+                                        && Game.Shared.Networking.ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(cmd.Owner, out var currentPlayerActor)
+                                        && currentPlayerActor == spawnedActor)
+                                    {
+                                        if (hadPreviousPlayerActor)
+                                            Game.Shared.Networking.ChunkSubscriptions.PLAYER_ACTORS[cmd.Owner] = previousPlayerActor;
+                                        else
+                                            Game.Shared.Networking.ChunkSubscriptions.UnregisterPlayerActor(cmd.Owner);
+                                    }
+                                }
+                                catch (Exception cleanupException)
+                                {
+                                    Debug.Error($"Failed to restore player actor subscriptions after rejecting spawn point {cmd.SpawnPointGUID}: {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                }
+
+                                try
+                                {
+                                    if (npcStatsRegistered && ServerStatManager.IsInitialized)
+                                        ServerStatManager.Instance.UnregisterActor(spawnedActor);
+                                }
+                                catch (Exception cleanupException)
+                                {
+                                    Debug.Error($"Failed to unregister NPC stats after rejecting spawn point {cmd.SpawnPointGUID}: {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                }
+
+                                try
+                                {
+                                    if (actorSpawnEventStarted && spawnedActor != null && ServerActorManager.IsInitialized)
+                                        ServerActorManager.Instance.RollbackActorSpawn(spawnedActor);
+                                }
+                                catch (Exception cleanupException)
+                                {
+                                    Debug.Error($"Failed to roll back ECS actor state after rejecting spawn point {cmd.SpawnPointGUID}: {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                }
+
+                                try
+                                {
+                                    if (hasSpawnPointReservation
+                                        && _spawnPointActorMap.TryGetValue(cmd.SpawnPointGUID, out var currentReservation)
+                                        && ReferenceEquals(currentReservation, spawnPointReservation))
+                                    {
+                                        _spawnPointActorMap.Remove(cmd.SpawnPointGUID);
+                                    }
+                                }
+                                catch (Exception cleanupException)
+                                {
+                                    Debug.Error($"Failed to release the spawn-point reservation for {cmd.SpawnPointGUID}: {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                }
+
+                                try
+                                {
+                                    if (registeredIdentity != null)
+                                        Game.Shared.Networking.ChunkSubscriptions.UnregisterIdentity(sceneName, registeredIdentity);
+                                }
+                                catch (Exception cleanupException)
+                                {
+                                    Debug.Error($"Failed to unregister the rejected spawn identity for {cmd.SpawnPointGUID}: {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                }
+
+                                if (spawnedObject != null)
+                                {
+                                    try
+                                    {
+                                        PurrNet.UnityProxy.Destroy(spawnedObject);
+                                    }
+                                    catch (Exception cleanupException)
+                                    {
+                                        Debug.Error($"Failed to clean up rejected spawn object for prefab '{prefabName}' in scene '{sceneNameForLog}': {cleanupException.Message}\n{cleanupException.StackTrace}");
+                                    }
                                 }
                             }
 

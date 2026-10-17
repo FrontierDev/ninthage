@@ -409,6 +409,24 @@ namespace Game.Server.Core
             Debug.Log("Actor spawned on server: " + actor.Name + " (ID: " + actor.ID + ")");
         }
 
+        /// <summary>Rolls back actor and ECS state created by a rejected spawn attempt.</summary>
+        /// <param name="actor">The actor whose spawn was rejected.</param>
+        internal void RollbackActorSpawn(Actor actor)
+        {
+            if (actor == null)
+                return;
+
+            try
+            {
+                if (TryGetActorEntity(actor.ID, out var entity) && _entityManager.Exists(entity))
+                    _entityManager.DestroyEntity(entity);
+            }
+            finally
+            {
+                OnActorDespawned(actor);
+            }
+        }
+
         private void OnActorDespawned(Actor actor)
         {
             if (actor == null)
