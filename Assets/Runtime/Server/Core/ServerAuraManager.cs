@@ -23,6 +23,8 @@ namespace Game.Server.Core
         /// <summary>Gets whether the aura manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
+        // Instance ID 0 is valid; negative means a deferred apply has no refresh target.
+        private const int NO_EXPECTED_AURA_INSTANCE_ID = -1;
         private EntityManager _entityManager;
         private EntityQuery _actorComponentQuery;
 
@@ -167,7 +169,7 @@ namespace Game.Server.Core
                             continue;
                         }
 
-                        if (mutation.InstanceID != 0
+                        if (mutation.InstanceID != NO_EXPECTED_AURA_INSTANCE_ID
                             && (!_activeAuras.TryGetValue(mutation.InstanceID, out var activeAura)
                                 || activeAura.TargetID != mutation.TargetID
                                 || activeAura.Definition == null
@@ -178,7 +180,7 @@ namespace Game.Server.Core
                         }
 
                         if (!ApplyAuraNow(mutation.Definition, mutation.Caster, target, mutation.Stacks, mutation.InstanceID)
-                            && mutation.InstanceID != 0)
+                            && mutation.InstanceID != NO_EXPECTED_AURA_INSTANCE_ID)
                         {
                             Debug.Warning($"Discarding deferred aura refresh for instance {mutation.InstanceID} because its ECS entry is no longer active.");
                         }
@@ -224,7 +226,7 @@ namespace Game.Server.Core
 
                 int refreshedInstanceID = TryFindActiveAuraInstance(target.ID, definition.DefinitionID, out int activeInstanceID)
                     ? activeInstanceID
-                    : 0;
+                    : NO_EXPECTED_AURA_INSTANCE_ID;
                 _pendingMutations.Enqueue(
                     new AuraMutation(
                         AuraMutationKind.Apply,
@@ -248,7 +250,7 @@ namespace Game.Server.Core
             Actor caster,
             Actor target,
             int stacks,
-            int expectedInstanceID = 0)
+            int expectedInstanceID = NO_EXPECTED_AURA_INSTANCE_ID)
         {
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
             try
@@ -323,7 +325,7 @@ namespace Game.Server.Core
                         {
                             var entry = buffer[i];
                             if (entry.AuraDefinitionID.ToString() != definition.DefinitionID) continue;
-                            if (expectedInstanceID != 0 && entry.InstanceID != expectedInstanceID) continue;
+                            if (expectedInstanceID != NO_EXPECTED_AURA_INSTANCE_ID && entry.InstanceID != expectedInstanceID) continue;
                             if (!_activeAuras.TryGetValue(entry.InstanceID, out var existing)) continue;
 
                             // Extend duration for entire aura.
@@ -353,7 +355,7 @@ namespace Game.Server.Core
                             return true;
                         }
 
-                        if (expectedInstanceID != 0)
+                        if (expectedInstanceID != NO_EXPECTED_AURA_INSTANCE_ID)
                             return false;
 
                         // First application — create new instance with condition tracking.
@@ -375,7 +377,7 @@ namespace Game.Server.Core
                         {
                             var entry = buffer[i];
                             if (entry.AuraDefinitionID.ToString() != definition.DefinitionID) continue;
-                            if (expectedInstanceID != 0 && entry.InstanceID != expectedInstanceID) continue;
+                            if (expectedInstanceID != NO_EXPECTED_AURA_INSTANCE_ID && entry.InstanceID != expectedInstanceID) continue;
                             if (!_activeAuras.TryGetValue(entry.InstanceID, out var existing)) continue;
 
                             // Add multiple stacks
@@ -406,7 +408,7 @@ namespace Game.Server.Core
                             return true;
                         }
 
-                        if (expectedInstanceID != 0)
+                        if (expectedInstanceID != NO_EXPECTED_AURA_INSTANCE_ID)
                             return false;
 
                         // First application.
