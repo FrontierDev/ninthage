@@ -15,6 +15,9 @@ MonoBehaviour:
   PlayerDataFilePath: player_data.json
   ClearPlayerDataOnStart: 0
   ChunkSize: 100
+  SpatialIndexCellWidth: 64
+  ActorVisibilityEntryRadius: 80
+  ActorVisibilityExitRadius: 96
   Gravity: -9.81
   GroundDetectionRadius: 0.05
   GroundDetectionMaskName: Terrain

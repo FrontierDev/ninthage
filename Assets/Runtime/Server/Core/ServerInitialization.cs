@@ -144,6 +144,9 @@ namespace Game.Server.Core
                 throw new InvalidOperationException("Server initialization could not load GameConfiguration.");
             }
 
+            // Perform validation on game configuration to ensure all required settings are correctly set.
+            Game.Shared.GameConfigurationManager.Config.ValidateSpatialConfiguration();
+
             yield return null;
 
             // Check to see if the server should clear player data on start,

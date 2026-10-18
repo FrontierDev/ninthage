@@ -1,3 +1,4 @@
+using System;
 using Game.Shared.Data;
 using UnityEngine;
 
@@ -22,6 +23,17 @@ namespace Game.Shared
         [SerializeField]
         /// <summary>Gets or sets the world chunk size.</summary>
         public int ChunkSize = 100;
+
+        [Header("Spatial Index Settings")]
+        [SerializeField]
+        /// <summary>Gets or sets the independent broad-phase spatial-index cell width in metres.</summary>
+        public float SpatialIndexCellWidth = 64f;
+        [SerializeField]
+        /// <summary>Gets or sets the actor visibility entry radius in metres.</summary>
+        public float ActorVisibilityEntryRadius = 80f;
+        [SerializeField]
+        /// <summary>Gets or sets the actor visibility exit radius in metres.</summary>
+        public float ActorVisibilityExitRadius = 96f;
 
         [Header("Physics Settings")]
         [SerializeField]
@@ -109,5 +121,32 @@ namespace Game.Shared
         [SerializeField]
         /// <summary>Gets or sets the server port.</summary>
         public ushort ServerPort = 8888;
+
+        /// <summary>
+        /// Validates the spatial-index and actor-visibility settings required by the authoritative server.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a spatial setting is non-finite, non-positive, or has an exit radius below the entry radius.
+        /// </exception>
+        public void ValidateSpatialConfiguration()
+        {
+            ValidatePositiveFinite(SpatialIndexCellWidth, nameof(SpatialIndexCellWidth));
+            ValidatePositiveFinite(ActorVisibilityEntryRadius, nameof(ActorVisibilityEntryRadius));
+            ValidatePositiveFinite(ActorVisibilityExitRadius, nameof(ActorVisibilityExitRadius));
+
+            if (ActorVisibilityExitRadius < ActorVisibilityEntryRadius)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ActorVisibilityExitRadius)} must be greater than or equal to {nameof(ActorVisibilityEntryRadius)}.");
+            }
+        }
+
+        private static void ValidatePositiveFinite(float value, string settingName)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value) || value <= 0f)
+            {
+                throw new InvalidOperationException($"{settingName} must be finite and strictly positive.");
+            }
+        }
     }
 }
