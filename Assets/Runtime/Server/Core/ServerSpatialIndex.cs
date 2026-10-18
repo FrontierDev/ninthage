@@ -76,7 +76,8 @@ namespace Game.Server.Core
         /// </exception>
         /// <exception cref="KeyNotFoundException">Thrown when the actor is not currently indexed.</exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the existing membership is inconsistent with its cell bucket.
+        /// Thrown when the supplied context differs from the existing context, or when the existing membership
+        /// is inconsistent with its cell bucket.
         /// </exception>
         public void Move(Guid actorID, ActorSpatialContext context, WorldPosition acceptedPosition)
         {
@@ -86,6 +87,13 @@ namespace Game.Server.Core
             if (!_cellByActorID.TryGetValue(actorID, out var currentCell))
             {
                 throw new KeyNotFoundException($"Actor '{actorID}' is not registered in the spatial index.");
+            }
+
+            if (!currentCell.Context.Equals(context))
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{actorID}' cannot move to a different spatial context; "
+                    + "context transfers require the dedicated transfer operation.");
             }
 
             if (currentCell.Equals(destinationCell))
