@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Persistent worlds, world streaming, spatial partitioning, floating origin, actor visibility, seamless interiors, instanced spaces, map transitions and runtime scene authoring  
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-18
 
 ---
 
@@ -764,6 +764,28 @@ Persistent world
 Code must not assume that two players viewing content originating from the same `.unity` scene are necessarily in the same gameplay instance.
 
 Similarly, two additive scenes may form part of one runtime instance.
+
+### 18.1 Authoritative spatial-identity contract
+
+The authoritative spatial context of an actor or spatial query is the complete `(WorldID, MapID, InstanceID)` value. **This is the approved Stage 1.2 identifier contract**, independent of `WorldPosition` and scene/content identities.
+
+| Identifier | C# representation | Meaning and lifetime |
+| --- | --- | --- |
+| `WorldID` | `System.Guid` | Stable, persistent identity of a player-selectable world. Distinct worlds have distinct identities even when they use the same authored map content. It is not an account's `HomeWorldID` relationship, server process ID or scene ID. |
+| `MapID` | `string` | Stable, case-sensitive logical map definition/coordinate-space identity. One map can contain many additive scenes and can be used in multiple worlds or runtime instances. It is **not** a chunk name, scene path or PurrNet `SceneID`. |
+| `InstanceID` | `System.Guid` | Identity of a particular **private runtime simulation instance**, issued by a trusted server instance owner. Different live private instances must have distinct nonempty IDs even when they share coordinates, `MapID` and scene assets. |
+
+A **public-world instance** means the common non-private simulation for one specific `WorldID` and `MapID`. It is represented by **`InstanceID == Guid.Empty`**, deliberately reserved for the public context rather than allocated to a private instance. The public context is **not globally shared**: `(World A, Main Map, Guid.Empty)` and `(World B, Main Map, Guid.Empty)` are separate, as are public contexts on two maps of one world. An ordinary shared cave or public interior on the same logical map retains the same public context despite changing environment scenes. A seamless private interior uses a nonempty instance ID even if it shares the exterior's map.
+
+### 18.2 Validity, equality and compatibility
+
+- `WorldID == Guid.Empty` is invalid/unassigned. A `MapID` that is `null`, empty or whitespace-only is invalid/unassigned. A default-initialised spatial-context value is therefore invalid. **`InstanceID == Guid.Empty` by itself is valid** when the other two identifiers are valid, and means *public*.
+- Construct valid contexts explicitly through named operations such as `CreatePublic(worldID, mapID)` and `CreateInstanced(worldID, mapID, instanceID)`. Both reject an invalid world or map; the latter also rejects `Guid.Empty` as a private instance ID. Do not silently substitute a prototype world, main map or public instance when supplied identity is missing.
+- `ActorSpatialContext` is an immutable C# `readonly struct` implementing `IEquatable<ActorSpatialContext>`, with `IsValid`, value equality and matching hash semantics. Equality compares **all three** fields; map comparison and hashing use `StringComparer.Ordinal`, without culture-sensitive or case-insensitive matching. Map IDs are issued in their canonical authored form rather than guessed or normalised from scene names.
+- **Compatibility** for spatial lookup, replication, targeting, interaction, aggro and combat requires **both contexts valid and all three identifiers exactly equal**. Even if two default/invalid structs are equal as values, they are *not compatible for gameplay*. Reject or report attempts to use invalid contexts at server authority boundaries; never let invalid contexts populate a shared spatial bucket.
+- Actor location is the combination of this logical context **and** authoritative double-precision world position within its map. Float transforms, origin cells, world tiles, `Actor.CurrentChunk`, `ActorComponent.CurrentScene`, `NetworkIdentity`, `GameObject.scene` and scene asset names cannot supply or replace any member of the identity triple.
+
+Stage 1.2 first introduces this value contract in Shared code. A separate server-owned lifecycle/spawn integration must later resolve and assign the actor's **real authoritative context** before publishing it. This section **does not** approve a default world allocation, session-to-world resolver, private-instance service, new persistence record, or client-supplied context authority; those remain separate implementation responsibilities.
 
 ---
 
