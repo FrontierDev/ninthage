@@ -14,6 +14,7 @@ namespace Game.Server.Core
 
         private readonly Dictionary<SpatialCellKey, HashSet<Guid>> _actorIDsByCell = new();
         private readonly Dictionary<Guid, SpatialCellKey> _cellByActorID = new();
+        private int _activeQueryCount;
 
         /// <summary>
         /// Initializes a server spatial index with the configured horizontal cell width.
@@ -48,9 +49,12 @@ namespace Game.Server.Core
         /// <exception cref="ArgumentOutOfRangeException">
         /// Thrown when the position cannot be represented by the index's integral cell coordinates.
         /// </exception>
-        /// <exception cref="InvalidOperationException">Thrown when the actor already has a membership.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the actor already has a membership or a query is active.
+        /// </exception>
         public void Insert(Guid actorID, ActorSpatialContext context, WorldPosition acceptedPosition)
         {
+            EnsureNoActiveQuery();
             ValidateActorID(actorID);
             var cell = CreateCellKey(context, acceptedPosition);
 
@@ -77,10 +81,11 @@ namespace Game.Server.Core
         /// <exception cref="KeyNotFoundException">Thrown when the actor is not currently indexed.</exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown when the supplied context differs from the existing context, or when the existing membership
-        /// is inconsistent with its cell bucket.
+        /// is inconsistent with its cell bucket, or when a query is active.
         /// </exception>
         public void Move(Guid actorID, ActorSpatialContext context, WorldPosition acceptedPosition)
         {
+            EnsureNoActiveQuery();
             ValidateActorID(actorID);
             var destinationCell = CreateCellKey(context, acceptedPosition);
 
@@ -112,10 +117,11 @@ namespace Game.Server.Core
         /// <exception cref="ArgumentException">Thrown when the actor ID is empty.</exception>
         /// <exception cref="KeyNotFoundException">Thrown when the actor is not currently indexed.</exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the existing membership is inconsistent with its cell bucket.
+        /// Thrown when the existing membership is inconsistent with its cell bucket or a query is active.
         /// </exception>
         public void Remove(Guid actorID)
         {
+            EnsureNoActiveQuery();
             ValidateActorID(actorID);
 
             if (!_cellByActorID.TryGetValue(actorID, out var cell))
@@ -126,6 +132,101 @@ namespace Game.Server.Core
             var bucket = GetExistingBucket(cell, actorID);
             RemoveActorFromBucket(cell, bucket, actorID);
             _cellByActorID.Remove(actorID);
+        }
+
+        /// <summary>
+        /// Appends actor IDs from context-qualified cells intersecting the horizontal query radius.
+        /// </summary>
+        /// <param name="context">The authoritative world, map and instance context to query.</param>
+        /// <param name="center">The double-precision absolute query centre.</param>
+        /// <param name="radius">The non-negative horizontal broad-phase radius in metres.</param>
+        /// <param name="resultBuffer">
+        /// A caller-owned reusable buffer. This method appends to it and does not clear it; entries are actor IDs,
+        /// not Unity objects.
+        /// </param>
+        /// <param name="examinedCandidateCount">Receives the number of actor IDs examined in matching buckets.</param>
+        /// <param name="predicate">
+        /// An optional caller-owned filter applied after context and cell screening. Query result order is unspecified.
+        /// </param>
+        /// <returns>The number of actor IDs appended to <paramref name="resultBuffer"/>.</returns>
+        /// <remarks>
+        /// Call this synchronously at the authoritative tick boundary. Membership mutations are rejected while the
+        /// query is active; consumers requiring deterministic order must sort by actor ID.
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when the context or centre is invalid.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="resultBuffer"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when the radius is invalid or too large to index.</exception>
+        public int QueryCandidates(
+            ActorSpatialContext context,
+            WorldPosition center,
+            double radius,
+            ICollection<Guid> resultBuffer,
+            out int examinedCandidateCount,
+            Predicate<Guid> predicate = null)
+        {
+            return QueryBuckets(
+                context,
+                center,
+                radius,
+                resultBuffer,
+                null,
+                false,
+                predicate,
+                false,
+                out examinedCandidateCount);
+        }
+
+        /// <summary>
+        /// Appends actor IDs within an exact double-precision radius after broad-phase cell screening.
+        /// </summary>
+        /// <param name="context">The authoritative world, map and instance context to query.</param>
+        /// <param name="center">The double-precision absolute query centre.</param>
+        /// <param name="radius">The non-negative exact range in metres.</param>
+        /// <param name="resultBuffer">
+        /// A caller-owned reusable buffer. This method appends to it and does not clear it; entries are actor IDs,
+        /// not Unity objects.
+        /// </param>
+        /// <param name="acceptedPositionResolver">
+        /// Resolves each candidate's accepted position from the same authoritative tick snapshot as the query.
+        /// </param>
+        /// <param name="examinedCandidateCount">Receives the number of actor IDs examined after bucket screening.</param>
+        /// <param name="includeVerticalDistance">
+        /// When true, applies a 3D squared-distance check; when false, applies horizontal X/Z squared distance only.
+        /// </param>
+        /// <param name="predicate">An optional caller-owned filter applied after the exact distance check.</param>
+        /// <returns>The number of actor IDs appended to <paramref name="resultBuffer"/>.</returns>
+        /// <remarks>
+        /// Call this synchronously at the authoritative tick boundary. Membership mutations are rejected while any
+        /// query is active, and result ordering is unspecified; consumers requiring deterministic order must sort by actor ID.
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when the context, centre or resolved position is invalid.</exception>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="resultBuffer"/> or <paramref name="acceptedPositionResolver"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when the radius is invalid or too large to index.</exception>
+        public int QueryInRange(
+            ActorSpatialContext context,
+            WorldPosition center,
+            double radius,
+            ICollection<Guid> resultBuffer,
+            Func<Guid, WorldPosition> acceptedPositionResolver,
+            out int examinedCandidateCount,
+            bool includeVerticalDistance = true,
+            Predicate<Guid> predicate = null)
+        {
+            if (acceptedPositionResolver == null)
+                throw new ArgumentNullException(nameof(acceptedPositionResolver));
+
+            return QueryBuckets(
+                context,
+                center,
+                radius,
+                resultBuffer,
+                acceptedPositionResolver,
+                includeVerticalDistance,
+                predicate,
+                true,
+                out examinedCandidateCount);
         }
 
         private static void ValidateActorID(Guid actorID)
@@ -156,6 +257,142 @@ namespace Game.Server.Core
                 throw new ArgumentException(
                     "An accepted position must have finite x, y and z coordinates.",
                     nameof(position));
+            }
+        }
+
+        private int QueryBuckets(
+            ActorSpatialContext context,
+            WorldPosition center,
+            double radius,
+            ICollection<Guid> resultBuffer,
+            Func<Guid, WorldPosition> acceptedPositionResolver,
+            bool includeVerticalDistance,
+            Predicate<Guid> predicate,
+            bool exactRange,
+            out int examinedCandidateCount)
+        {
+            if (resultBuffer == null)
+                throw new ArgumentNullException(nameof(resultBuffer));
+
+            var bounds = GetQueryBounds(context, center, radius);
+            double radiusSquared = 0d;
+            if (exactRange)
+            {
+                radiusSquared = radius * radius;
+                if (double.IsInfinity(radiusSquared))
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(radius),
+                        radius,
+                        "Query radius is too large for a finite squared-distance comparison.");
+                }
+            }
+
+            examinedCandidateCount = 0;
+            int returnedCount = 0;
+            _activeQueryCount++;
+            try
+            {
+                for (long cellX = bounds.MinCellX; ; cellX++)
+                {
+                    for (long cellZ = bounds.MinCellZ; ; cellZ++)
+                    {
+                        var cell = new SpatialCellKey(context, cellX, cellZ);
+                        if (_actorIDsByCell.TryGetValue(cell, out var bucket))
+                        {
+                            foreach (var actorID in bucket)
+                            {
+                                examinedCandidateCount++;
+
+                                if (exactRange
+                                    && !IsWithinRange(
+                                        center,
+                                        acceptedPositionResolver(actorID),
+                                        radiusSquared,
+                                        includeVerticalDistance))
+                                {
+                                    continue;
+                                }
+
+                                if (predicate != null && !predicate(actorID))
+                                    continue;
+
+                                resultBuffer.Add(actorID);
+                                returnedCount++;
+                            }
+                        }
+
+                        if (cellZ == bounds.MaxCellZ)
+                            break;
+                    }
+
+                    if (cellX == bounds.MaxCellX)
+                        break;
+                }
+            }
+            finally
+            {
+                _activeQueryCount--;
+            }
+
+            return returnedCount;
+        }
+
+        private CellBounds GetQueryBounds(ActorSpatialContext context, WorldPosition center, double radius)
+        {
+            var centerCell = CreateCellKey(context, center);
+            long cellSpan = GetCellSpan(radius);
+            return new CellBounds(centerCell.CellX, centerCell.CellZ, cellSpan);
+        }
+
+        private long GetCellSpan(double radius)
+        {
+            if (double.IsNaN(radius) || double.IsInfinity(radius) || radius < 0d)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(radius),
+                    radius,
+                    "Query radius must be finite and non-negative.");
+            }
+
+            double cellSpan = Math.Ceiling(radius / CellWidth);
+            if (double.IsInfinity(cellSpan) || cellSpan >= MAX_CELL_COORDINATE_EXCLUSIVE)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(radius),
+                    radius,
+                    "Query radius is too large for bounded spatial cell enumeration.");
+            }
+
+            return checked((long)cellSpan);
+        }
+
+        private static bool IsWithinRange(
+            WorldPosition center,
+            WorldPosition candidate,
+            double radiusSquared,
+            bool includeVerticalDistance)
+        {
+            ValidatePosition(candidate);
+
+            double deltaX = candidate.x - center.x;
+            double deltaZ = candidate.z - center.z;
+            double distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+            if (includeVerticalDistance)
+            {
+                double deltaY = candidate.y - center.y;
+                distanceSquared += deltaY * deltaY;
+            }
+
+            return distanceSquared <= radiusSquared;
+        }
+
+        private void EnsureNoActiveQuery()
+        {
+            if (_activeQueryCount > 0)
+            {
+                throw new InvalidOperationException(
+                    "Spatial membership cannot change while a spatial query is active.");
             }
         }
 
@@ -209,6 +446,31 @@ namespace Game.Server.Core
 
             if (bucket.Count == 0)
                 _actorIDsByCell.Remove(cell);
+        }
+
+        private readonly struct CellBounds
+        {
+            public CellBounds(long centerCellX, long centerCellZ, long cellSpan)
+            {
+                if (centerCellX < long.MinValue + cellSpan || centerCellX > long.MaxValue - cellSpan
+                    || centerCellZ < long.MinValue + cellSpan || centerCellZ > long.MaxValue - cellSpan)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(cellSpan),
+                        cellSpan,
+                        "The query radius exceeds the representable spatial cell range.");
+                }
+
+                MinCellX = centerCellX - cellSpan;
+                MaxCellX = centerCellX + cellSpan;
+                MinCellZ = centerCellZ - cellSpan;
+                MaxCellZ = centerCellZ + cellSpan;
+            }
+
+            public long MinCellX { get; }
+            public long MaxCellX { get; }
+            public long MinCellZ { get; }
+            public long MaxCellZ { get; }
         }
 
         private readonly struct SpatialCellKey : IEquatable<SpatialCellKey>
