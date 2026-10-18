@@ -337,9 +337,7 @@ An actor should only be replicated to a player when:
 1. the actor is within a spatial region relevant to that player; and
 2. the authoritative double-precision distance between the player and actor is within the applicable actor-visibility range.
 
-The exact default visibility distance is not currently implemented and is therefore not numerically specified in this PDD.
-
-The value must be configurable rather than embedded throughout gameplay code.
+The owner-approved initial actor-visibility entry and exit distances are specified in §8.6. They are configurable engineering defaults, not immutable gameplay or capacity limits. The values must not be embedded throughout gameplay code.
 
 ### 8.3 Precision
 
@@ -351,7 +349,7 @@ Client-local float transforms are not authoritative for these checks.
 
 The implementation should support a small difference between visibility-entry and visibility-exit thresholds where required to prevent an actor repeatedly appearing and disappearing while moving around a range boundary.
 
-The exact values are implementation tuning.
+The initial entry/exit thresholds are recorded in §8.6 and remain subject to later performance and gameplay tuning.
 
 ### 8.5 Dynamic membership
 
@@ -360,6 +358,21 @@ Actor spatial membership must update when an actor moves.
 An actor that crosses a spatial boundary must not remain permanently registered against its spawn region.
 
 Visibility indexes and other spatial registries must follow the actor's authoritative current location.
+
+### 8.6 Approved Stage 1.2 spatial-index and actor-visibility defaults
+
+The following **owner-approved initial engineering defaults** are the starting configuration for Stage 1.2:
+
+| Configuration setting | Initial value | Meaning |
+| --- | --- | --- |
+| Spatial-index cell width | **64 m** | Independent horizontal broad-phase spatial-index cell width. |
+| Actor visibility entry radius | **80 m** | A previously non-visible actor may enter an observer's replication interest at or within this exact authoritative distance, subject to valid matching world/map/instance context and other interest rules. |
+| Actor visibility exit radius | **96 m** | An already-visible actor remains within distance-based interest until its authoritative distance exceeds this radius, subject to continued valid matching context and other interest rules. |
+| Visibility hysteresis | **16 m** | The difference between exit and entry radii; helps avoid rapid visibility toggling around the boundary. |
+
+All three primary settings must be **independently configurable** through the existing `GameConfiguration` authority. Require a finite, positive cell width; finite, positive entry and exit radii; and **exit radius >= entry radius** (equal radii may disable hysteresis). Use authoritative double-precision distance calculations, even if the Inspector-authored configuration fields use `float`. Do not infer these values from, or change, the **100 m origin-cell grid**, **256 m terrain tile grid** or current **3×3 environment-scene subscription grid**.
+
+These values affect **actor spatial candidate indexing and network visibility**, not spell range, combat reach, NPC aggro/perception rules, world streaming distance, PurrNet transport settings or world capacity. Relevance and visibility must still respect the complete logical spatial context from §§18.1–18.2. The initial defaults are provisional engineering choices to be revisited using Stage 1.2 representative multiplayer/density measurements; they are **not validated performance guarantees**.
 
 ---
 
@@ -978,8 +991,6 @@ This PDD depends on or constrains:
 
 The following are deliberately not assigned arbitrary values by this PDD because the current implementation does not yet provide an approved value:
 
-- exact actor replication/visibility distance;
-- visibility hysteresis distance;
 - final terrain LOD distances;
 - maximum players per persistent world;
 - maximum players per particular instance type;
