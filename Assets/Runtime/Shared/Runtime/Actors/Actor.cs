@@ -80,6 +80,28 @@ namespace Game.Shared.Runtime.Actors
         /// </summary>
         public WorldPosition WorldPos { get; set; }
 
+        private ActorSpatialContext _spatialContext;
+        /// <summary>Gets the server-assigned authoritative world, map and instance context.</summary>
+        public ActorSpatialContext SpatialContext => _spatialContext;
+
+        /// <summary>Assigns the actor's authoritative spatial context on the server.</summary>
+        /// <param name="context">The valid server-owned world, map and instance context.</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when called outside the server or after a context has already been assigned.
+        /// </exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="context"/> is invalid.</exception>
+        public void SetAuthoritativeSpatialContext(ActorSpatialContext context)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may assign an actor spatial context.");
+            if (!context.IsValid)
+                throw new ArgumentException("A valid actor spatial context is required.", nameof(context));
+            if (_spatialContext.IsValid)
+                throw new InvalidOperationException("The actor already has an authoritative spatial context.");
+
+            _spatialContext = context;
+        }
+
         [SerializeField, FormerlySerializedAs("target")] private Actor _target;
         /// <summary>Gets the actor's current target.</summary>
         public Actor Target => _target;
