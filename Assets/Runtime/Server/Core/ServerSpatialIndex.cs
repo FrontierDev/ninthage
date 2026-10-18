@@ -141,14 +141,14 @@ namespace Game.Server.Core
         /// <param name="center">The double-precision absolute query centre.</param>
         /// <param name="radius">The non-negative horizontal broad-phase radius in metres.</param>
         /// <param name="resultBuffer">
-        /// A caller-owned reusable buffer. This method appends to it and does not clear it; entries are actor IDs,
+        /// A caller-owned reusable list. This method appends to it and does not clear it; entries are actor IDs,
         /// not Unity objects.
         /// </param>
         /// <param name="examinedCandidateCount">Receives the number of actor IDs examined in matching buckets.</param>
         /// <param name="predicate">
         /// An optional caller-owned filter applied after context and cell screening. Query result order is unspecified.
         /// </param>
-        /// <returns>The number of actor IDs appended to <paramref name="resultBuffer"/>.</returns>
+        /// <returns>The number of actor IDs added to <paramref name="resultBuffer"/> by this invocation.</returns>
         /// <remarks>
         /// Call this synchronously at the authoritative tick boundary. Membership mutations are rejected while the
         /// query is active; consumers requiring deterministic order must sort by actor ID.
@@ -160,7 +160,7 @@ namespace Game.Server.Core
             ActorSpatialContext context,
             WorldPosition center,
             double radius,
-            ICollection<Guid> resultBuffer,
+            List<Guid> resultBuffer,
             out int examinedCandidateCount,
             Predicate<Guid> predicate = null)
         {
@@ -183,7 +183,7 @@ namespace Game.Server.Core
         /// <param name="center">The double-precision absolute query centre.</param>
         /// <param name="radius">The non-negative exact range in metres.</param>
         /// <param name="resultBuffer">
-        /// A caller-owned reusable buffer. This method appends to it and does not clear it; entries are actor IDs,
+        /// A caller-owned reusable list. This method appends to it and does not clear it; entries are actor IDs,
         /// not Unity objects.
         /// </param>
         /// <param name="acceptedPositionResolver">
@@ -194,7 +194,7 @@ namespace Game.Server.Core
         /// When true, applies a 3D squared-distance check; when false, applies horizontal X/Z squared distance only.
         /// </param>
         /// <param name="predicate">An optional caller-owned filter applied after the exact distance check.</param>
-        /// <returns>The number of actor IDs appended to <paramref name="resultBuffer"/>.</returns>
+        /// <returns>The number of actor IDs added to <paramref name="resultBuffer"/> by this invocation.</returns>
         /// <remarks>
         /// Call this synchronously at the authoritative tick boundary. Membership mutations are rejected while any
         /// query is active, and result ordering is unspecified; consumers requiring deterministic order must sort by actor ID.
@@ -208,7 +208,7 @@ namespace Game.Server.Core
             ActorSpatialContext context,
             WorldPosition center,
             double radius,
-            ICollection<Guid> resultBuffer,
+            List<Guid> resultBuffer,
             Func<Guid, WorldPosition> acceptedPositionResolver,
             out int examinedCandidateCount,
             bool includeVerticalDistance = true,
@@ -264,7 +264,7 @@ namespace Game.Server.Core
             ActorSpatialContext context,
             WorldPosition center,
             double radius,
-            ICollection<Guid> resultBuffer,
+            List<Guid> resultBuffer,
             Func<Guid, WorldPosition> acceptedPositionResolver,
             bool includeVerticalDistance,
             Predicate<Guid> predicate,
@@ -340,12 +340,20 @@ namespace Game.Server.Core
 
         private CellBounds GetQueryBounds(ActorSpatialContext context, WorldPosition center, double radius)
         {
-            var centerCell = CreateCellKey(context, center);
-            long cellSpan = GetCellSpan(radius);
-            return new CellBounds(centerCell.CellX, centerCell.CellZ, cellSpan);
+            if (!context.IsValid)
+                throw new ArgumentException("A valid world, map and instance context is required.", nameof(context));
+
+            ValidatePosition(center);
+            ValidateRadius(radius);
+
+            return new CellBounds(
+                GetCellCoordinate(center.x - radius, nameof(center.x)),
+                GetCellCoordinate(center.x + radius, nameof(center.x)),
+                GetCellCoordinate(center.z - radius, nameof(center.z)),
+                GetCellCoordinate(center.z + radius, nameof(center.z)));
         }
 
-        private long GetCellSpan(double radius)
+        private static void ValidateRadius(double radius)
         {
             if (double.IsNaN(radius) || double.IsInfinity(radius) || radius < 0d)
             {
@@ -354,17 +362,6 @@ namespace Game.Server.Core
                     radius,
                     "Query radius must be finite and non-negative.");
             }
-
-            double cellSpan = Math.Ceiling(radius / CellWidth);
-            if (double.IsInfinity(cellSpan) || cellSpan >= MAX_CELL_COORDINATE_EXCLUSIVE)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(radius),
-                    radius,
-                    "Query radius is too large for bounded spatial cell enumeration.");
-            }
-
-            return checked((long)cellSpan);
         }
 
         private static bool IsWithinRange(
@@ -399,7 +396,8 @@ namespace Game.Server.Core
         private long GetCellCoordinate(double coordinate, string coordinateName)
         {
             double cellCoordinate = Math.Floor(coordinate / CellWidth);
-            if (cellCoordinate < long.MinValue || cellCoordinate >= MAX_CELL_COORDINATE_EXCLUSIVE)
+            if (double.IsNaN(cellCoordinate) || double.IsInfinity(cellCoordinate)
+                || cellCoordinate < long.MinValue || cellCoordinate >= MAX_CELL_COORDINATE_EXCLUSIVE)
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(coordinate),
@@ -450,21 +448,19 @@ namespace Game.Server.Core
 
         private readonly struct CellBounds
         {
-            public CellBounds(long centerCellX, long centerCellZ, long cellSpan)
+            public CellBounds(long minCellX, long maxCellX, long minCellZ, long maxCellZ)
             {
-                if (centerCellX < long.MinValue + cellSpan || centerCellX > long.MaxValue - cellSpan
-                    || centerCellZ < long.MinValue + cellSpan || centerCellZ > long.MaxValue - cellSpan)
+                if (minCellX > maxCellX || minCellZ > maxCellZ)
                 {
                     throw new ArgumentOutOfRangeException(
-                        nameof(cellSpan),
-                        cellSpan,
-                        "The query radius exceeds the representable spatial cell range.");
+                        nameof(minCellX),
+                        "The query bounds are not ordered within the representable spatial cell range.");
                 }
 
-                MinCellX = centerCellX - cellSpan;
-                MaxCellX = centerCellX + cellSpan;
-                MinCellZ = centerCellZ - cellSpan;
-                MaxCellZ = centerCellZ + cellSpan;
+                MinCellX = minCellX;
+                MaxCellX = maxCellX;
+                MinCellZ = minCellZ;
+                MaxCellZ = maxCellZ;
             }
 
             public long MinCellX { get; }
