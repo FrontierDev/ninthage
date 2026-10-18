@@ -25,8 +25,6 @@ namespace Game.Server.Core
     /// <summary>Coordinates authoritative actor spawning and scene placement.</summary>
     public sealed class ServerSpawnManager : MonoBehaviour
     {
-        private const string WORLD_ARGUMENT = "--world";
-        private const string MAIN_MAP_ID = "main-world";
         private static readonly PerformanceMetricDefinition UPDATE_DURATION_METRIC = new(
             PerformanceMetricIds.SERVER_SPAWN_UPDATE_DURATION,
             PerformanceMetricUnit.Milliseconds,
@@ -94,10 +92,6 @@ namespace Game.Server.Core
 
         private EntityManager _entityManager;
         private EntityQuery _spawnCommandQuery;
-        private ActorSpatialContext _currentRuntimeContext;
-
-        /// <summary>Gets the server-owned public runtime context for this server lifetime.</summary>
-        public ActorSpatialContext CurrentRuntimeContext => _currentRuntimeContext;
 
         /// <summary>Initializes server spawn manager state and subscriptions.</summary>
         public void Awake()
@@ -108,13 +102,7 @@ namespace Game.Server.Core
                 return;
             }
 
-            string launchWorldName = ResolveLaunchWorldName();
-            var runtimeContext = ActorSpatialContext.CreatePublic(Guid.NewGuid(), MAIN_MAP_ID);
             _instance = this;
-            _currentRuntimeContext = runtimeContext;
-            Debug.Log(
-                $"Server world '{launchWorldName}' initialized with world ID '{_currentRuntimeContext.WorldID}' "
-                + $"and map '{_currentRuntimeContext.MapID}'.");
 
             _networkManager = NetworkManager.main;
             _networkManager.sceneModule.onPostSceneLoaded += OnPostSceneLoaded;
@@ -137,42 +125,6 @@ namespace Game.Server.Core
 
             _instance = null;
             _initialized = false;
-            _currentRuntimeContext = default;
-        }
-
-        private static string ResolveLaunchWorldName()
-        {
-            string launchWorldName = null;
-            string[] commandLineArguments = Environment.GetCommandLineArgs();
-            for (int i = 0; i < commandLineArguments.Length; i++)
-            {
-                if (!string.Equals(commandLineArguments[i], WORLD_ARGUMENT, StringComparison.Ordinal))
-                    continue;
-
-                if (launchWorldName != null)
-                {
-                    throw new InvalidOperationException(
-                        $"Server launch argument '{WORLD_ARGUMENT}' was supplied more than once.");
-                }
-
-                if (i + 1 >= commandLineArguments.Length
-                    || string.IsNullOrWhiteSpace(commandLineArguments[i + 1])
-                    || commandLineArguments[i + 1].StartsWith("-", StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException(
-                        $"Server launch argument '{WORLD_ARGUMENT}' requires a nonempty world name.");
-                }
-
-                launchWorldName = commandLineArguments[++i];
-            }
-
-            if (launchWorldName == null)
-            {
-                throw new InvalidOperationException(
-                    $"Server startup requires an explicit '{WORLD_ARGUMENT} <world-name>' launch argument.");
-            }
-
-            return launchWorldName;
         }
 
         private void OnPostSceneLoaded(SceneID sceneID, bool asServer)
@@ -526,7 +478,10 @@ namespace Game.Server.Core
                                 throw new InvalidOperationException($"Prefab '{prefabName}' is missing an Actor component. Add it to the prefab in the editor.");
                             spawnedActor = actor;
 
-                            ActorSpatialContext runtimeContext = CurrentRuntimeContext;
+                            if (ServerWorldManager.Instance == null)
+                                throw new InvalidOperationException("The server world manager is not initialized.");
+
+                            ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
                             if (!runtimeContext.IsValid)
                                 throw new InvalidOperationException("The server runtime spatial context is not initialized.");
 

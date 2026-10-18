@@ -16,6 +16,7 @@ namespace Game.Server.Core
     /// <summary>Coordinates startup of the dedicated server runtime.</summary>
     public static class ServerInitialization
     {
+        private const string WORLD_ARGUMENT = "--world";
         private static MonoBehaviour _host;
         private static GameObject _networkManagerObject;
         private static bool _forceCleanServer;
@@ -62,16 +63,64 @@ namespace Game.Server.Core
             _timeAuthority = new ServerTimeAuthority();
             _host = host;
             _initializationSucceeded = false;
+            bool runtimeContextInitialized = false;
             try
             {
+                InitializeWorldRuntimeContext();
+                runtimeContextInitialized = true;
                 _initializationCoroutine = _host.StartCoroutine(InitializationProcess());
             }
             catch
             {
+                if (runtimeContextInitialized)
+                    ServerWorldManager.ClearRuntimeContext();
                 _timeAuthority = null;
                 _host = null;
                 throw;
             }
+        }
+
+        private static void InitializeWorldRuntimeContext()
+        {
+            string launchWorldName = ResolveLaunchWorldName();
+            Guid worldID = Guid.NewGuid();
+            ServerWorldManager.InitializeRuntimeContext(worldID);
+            Debug.Log($"Server world '{launchWorldName}' initialized with world ID '{worldID}'.");
+        }
+
+        private static string ResolveLaunchWorldName()
+        {
+            string launchWorldName = null;
+            string[] commandLineArguments = Environment.GetCommandLineArgs();
+            for (int i = 0; i < commandLineArguments.Length; i++)
+            {
+                if (!string.Equals(commandLineArguments[i], WORLD_ARGUMENT, StringComparison.Ordinal))
+                    continue;
+
+                if (launchWorldName != null)
+                {
+                    throw new InvalidOperationException(
+                        $"Server launch argument '{WORLD_ARGUMENT}' was supplied more than once.");
+                }
+
+                if (i + 1 >= commandLineArguments.Length
+                    || string.IsNullOrWhiteSpace(commandLineArguments[i + 1])
+                    || commandLineArguments[i + 1].StartsWith("-", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        $"Server launch argument '{WORLD_ARGUMENT}' requires a nonempty world name.");
+                }
+
+                launchWorldName = commandLineArguments[++i];
+            }
+
+            if (launchWorldName == null)
+            {
+                throw new InvalidOperationException(
+                    $"Server startup requires an explicit '{WORLD_ARGUMENT} <world-name>' launch argument.");
+            }
+
+            return launchWorldName;
         }
 
         private static IEnumerator InitializationProcess()
@@ -240,6 +289,7 @@ namespace Game.Server.Core
             _initializationCoroutine = null;
             ServerSimulationClock.Stop();
             ServerECSManager.Shutdown();
+            ServerWorldManager.ClearRuntimeContext();
             DestroyNetworkManager();
             _initializationSucceeded = false;
             _host = null;
@@ -255,6 +305,7 @@ namespace Game.Server.Core
             _initializationCoroutine = null;
             ServerSimulationClock.Stop();
             ServerECSManager.Shutdown();
+            ServerWorldManager.ClearRuntimeContext();
             DestroyNetworkManager();
             _initializationSucceeded = false;
             _host = null;

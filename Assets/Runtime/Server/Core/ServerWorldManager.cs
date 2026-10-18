@@ -18,6 +18,7 @@ namespace Game.Server.Core
     /// </summary>
     public sealed class ServerWorldManager : MonoBehaviour
     {
+        private const string MAIN_MAP_ID = "main-world";
         private const int MAX_PENDING_TELEMETRY_OPERATIONS = 256;
         private static readonly PerformanceMetricDefinition SCENE_LOAD_DURATION_METRIC = new(
             PerformanceMetricIds.SERVER_WORLD_SCENE_LOAD_DURATION,
@@ -44,6 +45,23 @@ namespace Game.Server.Core
         /// <summary>Gets whether the world manager is initialized.</summary>
         public static bool IsInitialized => _initialized;
 
+        private static ActorSpatialContext _runtimeContext;
+
+        /// <summary>Initializes the authoritative public context for the current server lifetime.</summary>
+        internal static void InitializeRuntimeContext(Guid worldID)
+        {
+            if (_runtimeContext.IsValid)
+                throw new InvalidOperationException("The server world runtime context is already initialized.");
+
+            _runtimeContext = ActorSpatialContext.CreatePublic(worldID, MAIN_MAP_ID);
+        }
+
+        /// <summary>Clears the authoritative public context during server teardown.</summary>
+        internal static void ClearRuntimeContext()
+        {
+            _runtimeContext = default;
+        }
+
         private NetworkManager _networkManager;
         private PurrSceneSettings _worldSceneSettings;
 
@@ -64,6 +82,8 @@ namespace Game.Server.Core
         public SceneID GlobalActorsSceneID => _globalActorsSceneID;
         /// <summary>Gets whether the global actor scene has loaded.</summary>
         public bool IsGlobalActorsSceneLoaded => _globalActorsSceneID != default;
+        /// <summary>Gets the authoritative public context for the current server lifetime.</summary>
+        public ActorSpatialContext CurrentRuntimeContext => _runtimeContext;
 
         internal static void RegisterPerformanceMetrics()
         {
@@ -79,6 +99,8 @@ namespace Game.Server.Core
                 Debug.Error("ServerWorldManager is already initialized!");
                 return;
             }
+            if (!_runtimeContext.IsValid)
+                throw new InvalidOperationException("The server world runtime context must be initialized before the world manager.");
             _instance = this;
 
             _networkManager = NetworkManager.main;
@@ -107,6 +129,7 @@ namespace Game.Server.Core
             {
                 _instance = null;
                 _initialized = false;
+                ClearRuntimeContext();
             }
         }
 
