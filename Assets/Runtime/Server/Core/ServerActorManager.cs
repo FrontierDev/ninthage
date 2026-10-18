@@ -217,6 +217,7 @@ namespace Game.Server.Core
         // Maps actor ID -> Actor MonoBehaviour for authoritative movement bridges.
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
         private readonly Dictionary<Guid, Entity> _actorEntities = new();
+        private ServerSpatialIndex _spatialIndex;
 
         // Authoritative movement bridges contribute to one observation for each simulation tick.
         private long _pendingTickID = -1;
@@ -229,6 +230,46 @@ namespace Game.Server.Core
         /// <param name="actor">Receives the actor when found.</param>
         /// <returns><see langword="true"/> when an actor was found.</returns>
         public bool TryGetActor(Guid actorID, out Actor actor) => _actorObjects.TryGetValue(actorID, out actor);
+
+        /// <summary>Queries candidate actor identifiers from the owned spatial index.</summary>
+        public int QuerySpatialCandidates(
+            ActorSpatialContext context,
+            WorldPosition center,
+            double radius,
+            List<Guid> resultBuffer,
+            out int examinedCandidateCount,
+            Predicate<Guid> predicate = null)
+        {
+            return GetSpatialIndex().QueryCandidates(
+                context,
+                center,
+                radius,
+                resultBuffer,
+                out examinedCandidateCount,
+                predicate);
+        }
+
+        /// <summary>Queries actor identifiers within an exact range from the owned spatial index.</summary>
+        public int QuerySpatialInRange(
+            ActorSpatialContext context,
+            WorldPosition center,
+            double radius,
+            List<Guid> resultBuffer,
+            Func<Guid, WorldPosition> acceptedPositionResolver,
+            out int examinedCandidateCount,
+            bool includeVerticalDistance = true,
+            Predicate<Guid> predicate = null)
+        {
+            return GetSpatialIndex().QueryInRange(
+                context,
+                center,
+                radius,
+                resultBuffer,
+                acceptedPositionResolver,
+                out examinedCandidateCount,
+                includeVerticalDistance,
+                predicate);
+        }
 
         /// <summary>Finds the authoritative ECS entity associated with an actor identifier.</summary>
         /// <param name="actorID">The actor identifier to find.</param>
@@ -269,7 +310,11 @@ namespace Game.Server.Core
                 Debug.Error("ServerActorManager is already initialized!");
                 return;
             }
+            if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
+                throw new InvalidOperationException("Server spatial indexing requires initialized game configuration.");
+
             _npcAggroDecisionIntervalTicks = GetNPCAggroDecisionIntervalTicks();
+            _spatialIndex = new ServerSpatialIndex(GameConfigurationManager.Config.SpatialIndexCellWidth);
             _instance = this;
 
             ActorEndpoint.onServerActorSpawned += OnActorSpawned;
@@ -309,8 +354,17 @@ namespace Game.Server.Core
             _pendingTickEntityScanCount = 0;
             _pendingTickGameObjectSyncCount = 0;
             _hasPendingTickSyncContribution = false;
+            _spatialIndex = null;
             _instance = null;
             _initialized = false;
+        }
+
+        private ServerSpatialIndex GetSpatialIndex()
+        {
+            if (_spatialIndex == null)
+                throw new InvalidOperationException("The server spatial index is not initialized.");
+
+            return _spatialIndex;
         }
 
         private void Update()
@@ -411,8 +465,23 @@ namespace Game.Server.Core
 
         private void OnActorSpawned(Actor actor)
         {
+            if (actor == null || !_initialized || _spatialIndex == null)
+                return;
+
+            bool hasExistingObject = _actorObjects.TryGetValue(actor.ID, out var existingActor);
+            bool hasExistingEntity = _actorEntities.ContainsKey(actor.ID);
+            if (hasExistingObject || hasExistingEntity)
+            {
+                if (hasExistingObject && hasExistingEntity && ReferenceEquals(existingActor, actor))
+                    return;
+
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' is already registered with the server actor manager.");
+            }
+
             ServerECSManager.ClearActorSimulationEventCancellation(actor.ID);
             var wp = actor.WorldPos;
+            _spatialIndex.Insert(actor.ID, actor.SpatialContext, wp);
             var entity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(entity, new Systems.ActorComponent
             {
@@ -462,6 +531,13 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
+            if (_actorObjects.TryGetValue(actor.ID, out var registeredActor)
+                && !ReferenceEquals(registeredActor, actor))
+            {
+                return;
+            }
+
+            RemoveSpatialMembership(actor.ID);
             try
             {
                 if (TryGetActorEntity(actor.ID, out var entity) && _entityManager.Exists(entity))
@@ -478,6 +554,7 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
+            RemoveSpatialMembership(actor.ID);
             _actorObjects.Remove(actor.ID);
             _actorEntities.Remove(actor.ID);
             if (actor.Owner.HasValue)
@@ -494,6 +571,21 @@ namespace Game.Server.Core
             }
             _npcAggroStates.Remove(actor.ID);
             ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
+        }
+
+        private void RemoveSpatialMembership(Guid actorID)
+        {
+            if (_spatialIndex == null || actorID == Guid.Empty)
+                return;
+
+            try
+            {
+                _spatialIndex.Remove(actorID);
+            }
+            catch (KeyNotFoundException)
+            {
+                // Rollback and repeated despawn notifications are intentionally idempotent.
+            }
         }
 
         private void OnActorDeath(Actor actor)
