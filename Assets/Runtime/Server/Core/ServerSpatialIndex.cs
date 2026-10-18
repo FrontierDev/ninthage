@@ -89,6 +89,7 @@ namespace Game.Server.Core
                 throw new KeyNotFoundException($"Actor '{actorID}' is not registered in the spatial index.");
             }
 
+            // Ensure the actor is not attempting to move to a different spatial context.
             if (!currentCell.Context.Equals(context))
             {
                 throw new InvalidOperationException(
@@ -96,6 +97,7 @@ namespace Game.Server.Core
                     + "context transfers require the dedicated transfer operation.");
             }
 
+            // If the actor is already in the destination cell, no movement is necessary.
             if (currentCell.Equals(destinationCell))
                 return;
 
