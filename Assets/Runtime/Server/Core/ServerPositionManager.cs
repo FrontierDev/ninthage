@@ -104,7 +104,6 @@ namespace Game.Server.Core
         private const int DEFAULT_SLOT_GRID_WIDTH = 16;
         private const int DEFAULT_SLOT_GRID_HEIGHT = 16;
         private const float DEFAULT_SLOT_PITCH = 512f;
-        private const float DEFAULT_ENVIRONMENT_TILE_SIZE = 256f;
         private const double TILE_BOUNDARY_EPSILON = 0.000001d;
 
         private static ServerPositionManager _instance;
@@ -117,7 +116,6 @@ namespace Game.Server.Core
         [SerializeField] private int _slotGridWidth = DEFAULT_SLOT_GRID_WIDTH;
         [SerializeField] private int _slotGridHeight = DEFAULT_SLOT_GRID_HEIGHT;
         [SerializeField] private float _slotPitch = DEFAULT_SLOT_PITCH;
-        [SerializeField] private float _environmentTileSize = DEFAULT_ENVIRONMENT_TILE_SIZE;
 
         private int[] _slotGenerations;
         private readonly Dictionary<WorldChunkKey, FrameRecord> _framesByKey = new();
@@ -131,10 +129,10 @@ namespace Game.Server.Core
         public int SlotCapacity => checked(_slotGridWidth * _slotGridHeight);
         /// <summary>Gets the distance between physical slot anchors in metres.</summary>
         public float SlotPitch => _slotPitch;
-        /// <summary>Gets the authored environment tile footprint in metres.</summary>
-        public float EnvironmentTileSize => _environmentTileSize;
+        /// <summary>Gets the canonical environment tile footprint in metres.</summary>
+        public float EnvironmentTileSize => GetEnvironmentTileSize();
         /// <summary>Gets the guaranteed horizontal gap between full-size tile footprints.</summary>
-        public float MinimumSlotGap => _slotPitch - _environmentTileSize;
+        public float MinimumSlotGap => _slotPitch - EnvironmentTileSize;
 
         private void Awake()
         {
@@ -175,7 +173,7 @@ namespace Game.Server.Core
         /// The returned frame is not physics-visible until <see cref="MarkFrameReady"/> is called.
         /// </summary>
         /// <param name="context">The full authoritative world, map and instance context.</param>
-        /// <param name="tileCoordinate">The 256 metre environment tile coordinate.</param>
+        /// <param name="tileCoordinate">The canonical environment tile coordinate.</param>
         /// <returns>The immutable token for the reserved frame.</returns>
         /// <exception cref="ArgumentException">Thrown when <paramref name="context"/> is invalid.</exception>
         /// <exception cref="InvalidOperationException">
@@ -206,10 +204,11 @@ namespace Game.Server.Core
                 slotCoordinate.x * _slotPitch,
                 0f,
                 slotCoordinate.y * _slotPitch);
+            float environmentTileSize = EnvironmentTileSize;
             WorldPosition tileOrigin = new(
-                (double)tileCoordinate.x * _environmentTileSize,
+                (double)tileCoordinate.x * environmentTileSize,
                 0d,
-                (double)tileCoordinate.y * _environmentTileSize);
+                (double)tileCoordinate.y * environmentTileSize);
             var frame = new ServerPhysicsFrame(
                 context,
                 tileCoordinate,
@@ -286,21 +285,22 @@ namespace Game.Server.Core
 
         /// <summary>
         /// Acquires a lifetime reference for geometry, NavMeshData, a collider, actor, agent or
-        /// in-flight physics operation. Every acquisition must be paired with a release.
+        /// in-flight physics operation. Reserved frames accept only in-flight placement references;
+        /// Ready frames accept normal physics references. Every acquisition must be paired with a release.
         /// </summary>
         public void AcquireFrameReference(ServerPhysicsFrame frame)
         {
             FrameRecord record = GetRecord(frame);
-            if (record.State != ServerPhysicsFrameState.Ready)
+            if (record.State == ServerPhysicsFrameState.Retiring)
             {
                 throw new InvalidOperationException(
-                    $"Physics frame {frame.SlotIndex} cannot acquire a reference from state {record.State}.");
+                    $"Physics frame {frame.SlotIndex} cannot acquire a reference while retiring.");
             }
 
             record.ReferenceCount = checked(record.ReferenceCount + 1);
         }
 
-        /// <summary>Releases one lifetime reference previously acquired from a ready frame.</summary>
+        /// <summary>Releases one lifetime reference previously acquired from a reserved or ready frame.</summary>
         public void ReleaseFrameReference(ServerPhysicsFrame frame)
         {
             FrameRecord record = GetRecord(frame);
@@ -355,7 +355,7 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Validates authored horizontal tile bounds against the configured 256 metre footprint
+        /// Validates authored horizontal tile bounds against the canonical environment footprint
         /// and the positive inter-slot gap. Call this before making scene geometry physics-visible.
         /// </summary>
         /// <param name="tileMin">The tile-local minimum bounds.</param>
@@ -368,19 +368,26 @@ namespace Game.Server.Core
             if (tileMax.x <= tileMin.x || tileMax.z <= tileMin.z)
                 throw new ArgumentException("Environment tile bounds must have positive X and Z extents.");
 
+            float environmentTileSize = EnvironmentTileSize;
             double width = (double)tileMax.x - tileMin.x;
             double depth = (double)tileMax.z - tileMin.z;
-            if (width > _environmentTileSize || depth > _environmentTileSize)
+            if (tileMin.x < 0f || tileMin.z < 0f
+                || tileMax.x > environmentTileSize || tileMax.z > environmentTileSize)
+            {
+                throw new InvalidOperationException(
+                    $"Environment tile bounds must lie within the local [0, {environmentTileSize}] footprint.");
+            }
+            if (width > environmentTileSize || depth > environmentTileSize)
             {
                 throw new InvalidOperationException(
                     $"Environment tile bounds ({width}m x {depth}m) exceed the configured "
-                    + $"{_environmentTileSize}m footprint.");
+                    + $"{environmentTileSize}m footprint.");
             }
             if (MinimumSlotGap <= 0f)
             {
                 throw new InvalidOperationException(
                     $"The configured slot pitch {_slotPitch}m leaves no positive gap around the "
-                    + $"{_environmentTileSize}m environment tile footprint.");
+                    + $"{environmentTileSize}m environment tile footprint.");
             }
         }
 
@@ -451,19 +458,31 @@ namespace Game.Server.Core
                 "Server physics does not support process-wide origin rebasing. Reserve and bind a context-qualified frame instead.");
         }
 
+        private static float GetEnvironmentTileSize()
+        {
+            Game.Shared.GameConfiguration configuration = Game.Shared.GameConfigurationManager.Config;
+            if (configuration == null)
+                throw new InvalidOperationException("Game configuration must be initialized before server physics frames.");
+            if (configuration.ChunkSize <= 0)
+                throw new InvalidOperationException("GameConfiguration.ChunkSize must be strictly positive.");
+
+            return configuration.ChunkSize;
+        }
+
         private void ValidateLayout()
         {
             if (_slotGridWidth <= 0 || _slotGridHeight <= 0)
                 throw new InvalidOperationException("Server physics slot grid dimensions must be positive.");
-            if (!IsFinite(_slotPitch) || !IsFinite(_environmentTileSize))
+            if (!IsFinite(_slotPitch))
                 throw new InvalidOperationException("Server physics slot dimensions must be finite.");
-            if (_slotPitch <= 0f || _environmentTileSize <= 0f)
+            float environmentTileSize = EnvironmentTileSize;
+            if (_slotPitch <= 0f || environmentTileSize <= 0f)
                 throw new InvalidOperationException("Server physics slot dimensions must be positive.");
-            if (_slotPitch <= _environmentTileSize)
+            if (_slotPitch <= environmentTileSize)
             {
                 throw new InvalidOperationException(
                     $"Server physics slot pitch {_slotPitch}m must exceed the environment tile footprint "
-                    + $"{_environmentTileSize}m.");
+                    + $"{environmentTileSize}m.");
             }
             double maximumSlotAnchor = Math.Max(_slotGridWidth - 1, _slotGridHeight - 1) * (double)_slotPitch;
             if (maximumSlotAnchor > float.MaxValue)
@@ -541,7 +560,7 @@ namespace Game.Server.Core
 
         private void ValidateTileOffset(ServerPhysicsFrame frame, double offsetX, double offsetZ)
         {
-            double tileSize = _environmentTileSize;
+            double tileSize = EnvironmentTileSize;
             if (offsetX < -TILE_BOUNDARY_EPSILON || offsetX > tileSize + TILE_BOUNDARY_EPSILON
                 || offsetZ < -TILE_BOUNDARY_EPSILON || offsetZ > tileSize + TILE_BOUNDARY_EPSILON)
             {
