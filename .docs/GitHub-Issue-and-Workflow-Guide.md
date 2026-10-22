@@ -38,7 +38,7 @@ An issue must be one of the following:
 
 Do not combine production changes and new regression tests in the same issue.
 
-If a production change requires regression coverage, create a separate regression-test issue before or after it as appropriate to the dependency order.
+If a production change requires critical uncovered regression coverage, **first reuse an existing regression-test issue/fixture**. Keep test-only changesets separate from production changes; create a distinct test issue only when the owner approves a genuinely uncovered separate test deliverable. Avoid generating tickets for every change or speculative edge case.
 
 ## 2.3 Preserve working behaviour
 
@@ -56,7 +56,7 @@ Mechanical cleanup must remain mechanical.
 
 ## 2.4 One focused change per issue; commit authority
 
-Each issue should result in **one focused change set** on `dev`. When a GitHub commit is expressly authorized by the owner, prefer one focused commit per issue and stop for validation afterward.
+Each ordinary implementation issue should result in **one focused change set** on `dev`. When a GitHub commit is expressly authorized by the owner, prefer one focused commit per issue and stop for validation afterward. **For an explicitly owner-approved multi-subsystem implementation within one existing issue, use separately reviewable phases/changesets and an owner validation gate after each; do not require one large all-at-once diff or generate one child ticket per changeset.** A reviewable phase is a work unit within the same issue, not a new architecture owner.
 
 **`AGENTS.md` currently prohibits Codex from committing or pushing by default.** Without explicit owner permission to commit, Codex must prepare and validate the focused change without committing/pushing, then report the diff and manual validation required. This guide never overrides `AGENTS.md` or grants commit permission merely by defining a workflow. Do not automatically proceed to the next issue.
 
@@ -72,7 +72,7 @@ A production implementation issue must have **one directly testable behavioural 
 
 Default planning target (not a hard line-count quota): **one primary subsystem, one to three production files, and about 150 or fewer net new production lines**. Treat multiple authoritative state owners, new queues/maps, and changes exceeding that target as mandatory scope-review triggers even if the diff is short.
 
-Before starting an oversized issue, split it into ordered child implementation issues, each with specific methods, input/precondition, expected output or event ordering, non-goals, and a discrete validation gate. Mark the parent **TRACKER — DO NOT IMPLEMENT DIRECTLY** and link the children. Do not assign an umbrella task directly to Codex. If decomposition would break an indivisible correctness invariant, explain why and obtain explicit owner approval before implementing the larger scope. Do not meet size targets by minifying code or omitting essential comments.
+Before starting an oversized issue, **first check for an existing issue that already owns the work** and whether the owner has approved implementing it in multiple internal phases. Do **not** automatically create child tickets or mark the parent unimplementable. When one coherent approved architecture spans several production owners, keep **one existing issue** with ordered internal phases, each naming exact methods, state transitions, prerequisites, non-goals, separately reviewable changesets and owner validation gates. Implement one phase per review cycle, continuing the same issue only after validation. Create a separate issue **only** for a distinct, independently owned deliverable that cannot reasonably stay in the existing issue, and only with explicit owner approval. The default 1–3 files/~150 net new lines is a review guideline **per changeset**, not a hard total-issue limit. Do not meet targets by minifying code or omitting needed lifecycle handling.
 
 ## 2.7 Defect evidence and test-first investigation
 
@@ -100,14 +100,14 @@ Reject vague or bundled assignments such as “fix all timing,” “improve ECS
 
 ## 2.9 Changes discovered during implementation and review
 
-If an unforeseen requirement spans another owner/subsystem or needs a new production state store, **stop and reassess scope before coding**. Prefer a separate issue with a verified dependency. Do not add dictionaries, caches, mutation queues, managers, compatibility fallbacks, or lifecycle layers solely to anticipate theoretical cases.
+If an unforeseen requirement spans another owner/subsystem or needs a new production state store, **stop and reassess scope before coding**. Check the approved PDD and existing issues before deciding if the requirement is a missing internal phase, a genuine separate issue or an unapproved design change. **Do not automatically create issues**; require owner approval for issue creation or genuinely new authoritative state. Do not add dictionaries, caches, mutation queues, managers, compatibility fallbacks or lifecycle layers solely to anticipate theoretical cases.
 
 Reviewers should distinguish:
 - **Acceptance blocker:** confirmed defect of the current issue's required invariant.
 - **Regression-test candidate:** plausible scenario whose outcome is unknown.
 - **Out-of-scope follow-up:** separate behaviour or optimisation.
 
-A broad Phase 1.x tracker may describe the future end-state, but its linked implementation children must each be small enough for a single focused review and validation pass.
+A broad Phase 1.x tracker may describe the future end-state. **If the owner authorizes staged implementation in that same issue (e.g. #134), its named internal phases replace a child-issue hierarchy** and each phase must fit a focused review and validation pass.
 
 
 ## 2.10 Test value and critical-coverage gate (mandatory)
@@ -527,12 +527,14 @@ Every phased implementation issue requires user validation before the next depen
 
 At minimum:
 
-1. Codex prepares one focused change set (and commits **only when explicitly authorized** under §2.4);
+1. Codex prepares one focused change set **or one focused approved internal phase** (and commits **only when explicitly authorized** under §2.4);
 2. automated/static validation passes;
-3. the issue enters Project status `Validation`;
-4. the user performs the stated manual checks;
-5. `needs-validation` is removed only after approval;
-6. the issue can then move to `Done`.
+3. the issue/phase is marked for review (`Validation` Project status where appropriate);
+4. the user performs the stated manual checks or explicitly records that checks remain pending;
+5. `needs-validation` is removed **only when the relevant required owner validation is complete**;
+6. the issue enters `Done` only once its whole agreed acceptance gate is met. **If the owner explicitly closes a code-complete issue before live validation (as with #131), keep `needs-validation`, record the exact outstanding runtime gate in the closure, and do not treat GitHub `closed` alone as evidence a downstream prerequisite has passed.**
+
+For a phased **single** issue, keep it open while internal phases progress; record phase completion/review in a short issue checklist or existing issue discussion, not new tickets. Preserve stable issue numbers and avoid Project status churn per internal phase. Do not open child issues as a proxy for checkpoint bookkeeping.
 
 The exact validation burden depends on whether the issue is `ai-safe`.
 
