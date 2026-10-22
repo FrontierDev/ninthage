@@ -685,9 +685,9 @@ For each live actor, the server stores one accepted absolute double-precision po
 The source-specific handoff is fixed as follows:
 
 - Player movement uses one project-owned PurrNet position RPC, replacing only the gameplay position part of `NetworkTransform`. After `CharacterController.Move`, the client uses its current `ClientPositionManager.OriginChunk` and `LocalToChunkRelative`, reuses `PackWorldPosition`, and sends a monotonically increasing sequence scoped to the ownership epoch. The server authenticates the owner binding and resolves `ActorSpatialContext`; client context is never authoritative. `MovementEndpoint.Server_RequestChunkInterest` remains interest bookkeeping. A rejected, stale, reordered or old-epoch proposal does not modify accepted state.
-- `NetworkTransform` position sync is disabled only by #136 after the server-authored observer path is ready. Rotation and other suitable properties may remain on it. Observers receive one server-authored accepted `WorldPosition` update with tick/proposal sequence, and clients project it through their own floating origin. Smoothing is presentation-only and never writes back to ECS.
-- NavMesh movement uses #134's unique stable local slot for each active context-qualified environment tile: initially 16 × 16 slots at 512 m pitch for 256 m tile footprints, with explicit extent validation and fail-closed capacity exhaustion. The mapping is `slot anchor + (absolute double position - absolute tile origin)` and its double-precision inverse. #135 routes through absolute tile gateways, prepares the next tile/slot, rebinds the agent and recalculates the next local segment without a logical teleport. Cross-slot targets use canonical absolute position, not a remote transform. #132 owns local-to-absolute pre-ECS commit and absolute-to-local post-ECS projection.
-- ECS-driven NPC motion writes the canonical ECS component during the authoritative ECS step. Its physics queries and GameObject projection also use the assigned local slot; a GameObject transform never becomes a new source of truth.
+- `NetworkTransform` position sync is disabled only after the server-authored observer path is ready. Rotation and other suitable properties may remain on it. Observers receive one server-authored accepted `WorldPosition` update with tick/proposal sequence, and clients project it through their own floating origin. Smoothing is presentation-only and never writes back to ECS.
+- NavMesh movement uses the actor's verified **simulation-region frame**. Many adjacent 256 m environment tiles share that one contiguous local frame, so ordinary tile crossings remain normal NavMesh movement and never require a physics-frame rebind or agent warp. Region-local positions are reconstructed to absolute double precision before authoritative ECS commit.
+- ECS-driven NPC motion writes the canonical ECS component during the authoritative ECS step. Physics queries and GameObject projection convert through the actor's simulation-region frame; a GameObject transform never becomes a new source of truth.
 
 All three sources converge at the fixed-tick boundary:
 
@@ -699,7 +699,7 @@ source proposal/result and provenance
     -> ECS, GameObject, replication and interest projections
 ```
 
-The index publication is #114's responsibility. It may retain same-cell membership, but exact-range queries and observer updates must resolve the latest precise position from the canonical ECS component. A rejection must not publish or later overwrite a newer accepted commit. A player origin shift reconstructing the same absolute position is accepted at most once with zero displacement; it does not increment speed violations or change spatial state.
+The spatial-index publication occurs only after the accepted commit. It may retain same-cell membership, but exact-range queries and observer updates must resolve the latest precise position from the canonical ECS component. A rejection must not publish or later overwrite a newer accepted commit. A player origin shift reconstructing the same absolute position is accepted at most once with zero displacement; it does not increment speed violations or change spatial state.
 
 Conceptually:
 
@@ -717,17 +717,27 @@ server validation
 authoritative actor spatial state
 ```
 
-### 20.3.1 Verified server physics frame and NPC movement ownership
+### 20.3.1 Simulation-region frame and NPC movement ownership
 
-A server physics slot is keyed by full `ActorSpatialContext` **and 256 m environment tile**, not by client origin cell, `GameObject.scene` or current subscription. #134 establishes one authoritative active-slot mapping with checked double-precision absolute ↔ physics-local conversion, placement and lifetime. Its implementation must make physically distant populations coexist in compact non-overlapping Unity coordinates, rejecting missing/exhausted frame assignments rather than defaulting to origin zero. The server's sole mutable accepted absolute actor position remains `ActorComponent.WorldPositionD` (#131); `ServerActorManager.RegisterSpawnedActor(actor, spawnPosition)` seeds it at spawn. `Actor.WorldPos` must not be restored as a second source.
+A server simulation region is keyed by full `ActorSpatialContext` plus a coarse region identity and contains **multiple adjacent 256 m environment tiles** in one contiguous local Unity coordinate frame. Environment tile boundaries are streaming/content boundaries only; crossing one must not change the actor's physics frame, warp a `NavMeshAgent`, or create a navigation gateway.
+
+`ServerPhysicsManager` is the sole owner of active simulation-region physical state. It owns region creation/retirement, region-local physical coordinate conversion, physical isolation/placement, collider/NavMesh binding and physics-query execution. `ServerWorldManager` only owns environment scene streaming/identity, and `ServerPositionManager` only owns general position/network encoding conversions. Neither manager may retain a second region registry or physical-frame lifetime.
+
+The sole mutable accepted absolute actor position remains `ActorComponent.WorldPositionD`. Spawn registration seeds that canonical value from an already resolved absolute position. `Actor.WorldPos` must not be restored as a second mutable position source, and `ServerPhysicsManager` must not cache another authoritative absolute actor position.
 
 The existing tick ownership boundary is retained:
 
-- **Enabled NavMesh agent:** #135 supplies verified current slot/agent binding and gateway handoff; #132 converts its post-navigation slot-local pose to absolute `WorldPositionD` in the existing pre-ECS NPC bridge. ECS gravity does not advance this NPC.
-- **Disabled or absent NavMesh agent:** ECS owns vertical movement; #134 makes `ActorUpdateSystem.OnUpdate`'s physics ray origin slot-local and converts the full physics-local hit point back into an absolute double before updating ECS Y. Keep gravity, ground test and velocity rules unchanged. #132 subsequently projects the canonical ECS result into the NPC's local Unity transform at the existing post-ECS boundary.
-- **All NPCs:** actor ID and server-owned logical context identify the correct slot; per-actor frame bindings must be verified and retired safely as geometry/agents unload. Neither slot handoff nor client origin shift changes logical context or accepted absolute position. #114 publishes changes to spatial membership *after* committed ECS state. #136 owns observer/networked presentation; no extra transform-driven position stream.
+- **Enabled NavMesh agent:** the agent moves continuously inside the current simulation region. The pre-ECS NPC bridge obtains the verified region from `ServerPhysicsManager`, converts the region-local pose to absolute double precision and commits that value to `WorldPositionD`. ECS gravity does not advance this NPC.
+- **Disabled or absent NavMesh agent:** ECS owns vertical movement. Ground/physics queries are executed through `ServerPhysicsManager`, which converts `WorldPositionD` into the verified region-local frame before querying Unity physics and returns/reconstructs results in absolute double precision before authoritative ECS state changes. The post-ECS projection uses the same verified region frame.
+- **All NPCs:** actor identity and server-owned logical context resolve the current simulation region through the physical-simulation owner. The region association is representation state, not another accepted-position store. Client origin shifts and streamed tile load/unload do not alter it.
 
-The **#134 implementation must be staged inside the same GitHub issue; do not create child issues**, because the approved frame registry, streamed scene/NavMeshData placement, spawn/frame binding and ECS ground-query integration span multiple runtime owners. Four focused, sequential changesets within #134 have separate source and owner-only runtime validation gates (including adjacent and two far-separated populated regions, negative coordinates, slot retirement/reuse and elevated-ground raycast results). The owner authorizes the expanded cross-file scope for that single staged issue; the small-change guideline applies per phase. #135 then proves navigation continuation across tile gateways; #132 consumes their validated frame interfaces. #131 source/test acceptance does not constitute live multiplayer correction, ownership-transfer or floating-origin runtime sign-off; that check remains outstanding.
+A **simulation-region boundary** is the only physical-frame transition. Such transitions are intentionally much coarser than 256 m tiles. `ServerPhysicsManager` owns physical detach/rebind, while movement/navigation logic preserves canonical absolute position, velocity/navigation intent and logical context unless gameplay explicitly performs a world/map/instance transition. The concrete handoff may remain in-process or move to another server worker; either way, it is not an ordinary environment-streaming operation.
+
+Region dimensions must be configurable and aligned to whole environment tiles. Initial dimensions and concurrent-region capacity are selected through representative server measurements before region integration is considered complete; they are not inferred from client origin cells, spatial-index cells or scene names.
+
+NavMesh physical data belongs to `ServerPhysicsManager` because it shares the region-local physical frame. Do not create a separate navigation manager in Stage 1.2 unless later route-planning responsibilities independently justify one.
+
+The previous per-tile packed-slot/gateway design is superseded and must not be used as the basis for new movement code.
 
 ### 20.4 Movement-driven spatial updates
 

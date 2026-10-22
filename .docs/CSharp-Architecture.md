@@ -292,13 +292,14 @@ Create ServerWorldManager
     ↓
 Load global_actors scene
     ↓
-Create interest, position, spawn and gameplay managers
+Create interest, position, physics, spawn and gameplay managers
 ```
 
-The gameplay/world managers attached after world setup are currently:
+The gameplay/world manager architecture is:
 
 - `ServerInterestManager`;
 - `ServerPositionManager`;
+- `ServerPhysicsManager` (Stage 1.2 target owner; introduced during the simulation-region migration);
 - `ServerSpawnManager`;
 - `ServerActorManager`;
 - `ServerStatManager`;
@@ -535,7 +536,9 @@ The main server managers are MonoBehaviour-based, process-wide components create
 
 `ServerInterestManager` owns player interest in world chunks and coordinates subscriptions with `ServerWorldManager`.
 
-`ServerPositionManager` owns server-side position-related processing.
+`ServerPositionManager` owns position/network coordinate conversion that is independent of active physical simulation. It must not own simulation-region, collider, NavMesh or physics-query lifetime.
+
+`ServerPhysicsManager` owns server-side physical simulation regions: region-local physical frames, physical placement/isolation, collider/NavMesh binding and physics-query coordinate conversion/execution. It consumes authoritative actor/world position but does not own canonical actor position or environment scene loading.
 
 `ServerSpawnManager` owns spawning flows.
 
@@ -756,13 +759,16 @@ World_<x>_<y>
 
 ### 15.2 Server world scenes
 
-`ServerWorldManager` is authoritative for world chunk scene loading/unloading. It maintains a mapping from chunk coordinates to PurrNet `SceneID` values and tracks asynchronous in-flight chunk loads.
+`ServerWorldManager` is authoritative for context-qualified world chunk scene loading/unloading. It maps logical context + environment tile identity to PurrNet `SceneID` values and tracks asynchronous in-flight chunk loads.
 
 World chunks are loaded through the PurrNet scene module as addressable additive scenes. The manager also loads a persistent `global_actors` scene used for actor GameObjects.
 
+Physical simulation is a separate responsibility. `ServerWorldManager` does not own simulation-region frames, collider/NavMesh placement or physics queries. Loaded environment content is physically bound to the appropriate simulation region by `ServerPhysicsManager`.
+
 This creates a distinction between:
 
-- terrain/world chunk scenes, which can be loaded and unloaded according to interest;
+- terrain/world chunk scenes, whose scene lifetime belongs to `ServerWorldManager`;
+- physical simulation-region representation, whose lifetime/placement belongs to `ServerPhysicsManager`;
 - `global_actors`, which acts as the persistent actor scene.
 
 ### 15.3 Interest management
@@ -1038,6 +1044,8 @@ Not every feature uses every stage, but this captures the principal direction of
 | Shared persistence DTOs | `Game.Shared.Persistence` |
 | Authoritative world loading | `Game.Server.Core.ServerWorldManager` |
 | Player chunk interest | `Game.Server.Core.ServerInterestManager` |
+| Position/network coordinate conversion | `Game.Server.Core.ServerPositionManager` |
+| Simulation-region physics/NavMesh representation | `Game.Server.Core.ServerPhysicsManager` |
 | Server actor/GameObject-ECS bridge | `Game.Server.Core.ServerActorManager` |
 | Server time-based simulation | `Game.Server.Systems` systems |
 | Authentication/account implementation | `Game.Server.Services` / `Game.Server.Persistence` |
