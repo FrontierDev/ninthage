@@ -28,6 +28,8 @@ namespace Game.Runtime.Tests.Server
             typeof(ServerActorManager).GetMethod("TryGetActorEntity", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
             typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ACTOR_SPATIAL_CONTEXT_FIELD =
+            typeof(Actor).GetField("_spatialContext", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private static readonly Guid ACTOR_ID =
             Guid.Parse("00000000-0000-0000-0000-000000000C01");
@@ -206,8 +208,11 @@ namespace Game.Runtime.Tests.Server
             var actorObject = new GameObject(objectName);
             actor = actorObject.AddComponent<Actor>();
             actor.Initialize(actorID, actorName);
-            actor.SetAuthoritativeSpatialContext(
+            Assert.That(ACTOR_SPATIAL_CONTEXT_FIELD, Is.Not.Null);
+            ACTOR_SPATIAL_CONTEXT_FIELD.SetValue(
+                actor,
                 ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
+            Assert.That(actor.SpatialContext.IsValid, Is.True);
             RegisterSpawnedActor(
                 actor,
                 new WorldPosition(

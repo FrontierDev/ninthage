@@ -27,6 +27,8 @@ namespace Game.Runtime.Tests.Server
             typeof(ServerActorManager).GetMethod("TryGetActorEntity", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
             typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ACTOR_SPATIAL_CONTEXT_FIELD =
+            typeof(Actor).GetField("_spatialContext", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly ConstructorInfo SIMULATION_TICK_CONSTRUCTOR =
             typeof(ServerSimulationTick).GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
@@ -78,8 +80,11 @@ namespace Game.Runtime.Tests.Server
             _actorObject = new GameObject("ServerSpellCastTimingActor");
             _actor = _actorObject.AddComponent<Actor>();
             _actor.Initialize(Guid.Parse("00000000-0000-0000-0000-000000000902"), "Spell Cast Timing Test Actor");
-            _actor.SetAuthoritativeSpatialContext(
+            Assert.That(ACTOR_SPATIAL_CONTEXT_FIELD, Is.Not.Null);
+            ACTOR_SPATIAL_CONTEXT_FIELD.SetValue(
+                _actor,
                 ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
+            Assert.That(_actor.SpatialContext.IsValid, Is.True);
             RegisterSpawnedActor(_actor, new WorldPosition(0d, 0d, 0d));
             ActorEndpoint.onServerActorSpawned?.Invoke(_actor);
 

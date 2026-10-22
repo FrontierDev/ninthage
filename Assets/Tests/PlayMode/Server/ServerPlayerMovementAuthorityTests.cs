@@ -48,6 +48,8 @@ namespace Game.Runtime.Tests.Server
             typeof(ServerActorManager).GetField("_nextValidationTickIDs", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
             typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo ACTOR_SPATIAL_CONTEXT_FIELD =
+            typeof(Actor).GetField("_spatialContext", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private GameConfiguration _configuration;
         private float _originalTickDuration;
@@ -86,8 +88,11 @@ namespace Game.Runtime.Tests.Server
             _actor = _actorObject.AddComponent<Actor>();
             _actor.Initialize(ACTOR_ID, "Server Player Movement Authority Actor");
             ACTOR_OWNER_FIELD.SetValue(_actor, (PlayerID?)OWNER_ID);
-            _actor.SetAuthoritativeSpatialContext(
+            Assert.That(ACTOR_SPATIAL_CONTEXT_FIELD, Is.Not.Null);
+            ACTOR_SPATIAL_CONTEXT_FIELD.SetValue(
+                _actor,
                 ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
+            Assert.That(_actor.SpatialContext.IsValid, Is.True);
             RegisterSpawnedActor(_actor, new WorldPosition(0d, 0d, 0d));
             ActorEndpoint.onServerActorSpawned?.Invoke(_actor);
         }
