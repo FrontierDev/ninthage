@@ -73,6 +73,9 @@ namespace Game.Client
             _cc = GetComponent<CharacterController>();
             _instance = this;
             MovementEndpoint.onServerCorrection += OnServerCorrection;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            FormattedDebug.Log($"[Movement/Ownership] actor={actor.ID} epoch={_ownershipEpoch} proposal state reset.");
+#endif
             enabled = true;
         }
 
@@ -149,7 +152,9 @@ namespace Game.Client
                     "Cannot submit a movement proposal before ClientPositionManager is initialized.");
             }
 
-            var (chunk, localPosition) = ClientPositionManager.Instance.LocalToChunkRelative(transform.position);
+            var positionManager = ClientPositionManager.Instance;
+            var originChunk = positionManager.OriginChunk;
+            var (chunk, localPosition) = positionManager.LocalToChunkRelative(transform.position);
             var position = WorldPosition.FromChunkLocal(chunk, localPosition);
             bool positionChanged = !_hasSentPositionProposal || !IsSamePosition(position, _lastTransmittedPosition);
             bool heartbeatDue = !_hasSentPositionProposal
@@ -157,12 +162,21 @@ namespace Game.Client
             if (!positionChanged && !heartbeatDue)
                 return;
 
+            string sendReason = !_hasSentPositionProposal
+                ? "initial"
+                : positionChanged ? "moved" : "heartbeat";
             var proposalSequence = checked(++_proposalSequence);
 
             MovementEndpoint.Server_SubmitPositionProposal(
                 position,
                 _ownershipEpoch,
                 proposalSequence);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            FormattedDebug.Log(
+                $"[Movement/Send] epoch={_ownershipEpoch} sequence={proposalSequence} "
+                + $"origin=({originChunk.x},{originChunk.y}) "
+                + $"absolute=({position.x:F6},{position.y:F6},{position.z:F6}) reason={sendReason}.");
+#endif
 
             _lastTransmittedPosition = position;
             _lastPositionProposalTime = proposalTime;

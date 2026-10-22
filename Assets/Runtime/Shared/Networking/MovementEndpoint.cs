@@ -36,6 +36,12 @@ namespace Game.Shared.Networking
             long proposalSequence,
             RPCInfo rpcInfo = default)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            FormattedDebug.Log(
+                $"[Movement/Receive] sender={rpcInfo.sender} epoch={ownershipEpoch} "
+                + $"sequence={proposalSequence} "
+                + $"absolute=({position.x:F6},{position.y:F6},{position.z:F6}) receipt only.");
+#endif
             onServerPositionProposal?.Invoke(
                 rpcInfo.sender,
                 position,

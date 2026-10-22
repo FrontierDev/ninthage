@@ -1,3 +1,4 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.Performance;
 using Game.Shared.Performance;
 using PurrNet;
@@ -68,6 +69,7 @@ namespace Game.Client
         /// </summary>
         public void SetOriginChunk(Vector2Int newChunk)
         {
+            Vector2Int previousOrigin = OriginChunk;
             Vector2Int delta = newChunk - OriginChunk;
             if (delta == Vector2Int.zero)
                 return;
@@ -93,6 +95,14 @@ namespace Game.Client
                 rootCount += ShiftSceneRoots(globalActors, shift);
 
             OriginChunk = newChunk;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            var appliedLocalShift = -shift;
+            Debug.Log(
+                $"[Movement/Origin] old=({previousOrigin.x},{previousOrigin.y}) "
+                + $"new=({newChunk.x},{newChunk.y}) "
+                + $"localShift=({appliedLocalShift.x:F3},{appliedLocalShift.y:F3},{appliedLocalShift.z:F3}).");
+#endif
 
             if (PerformanceTelemetry.IsEnabled)
             {
