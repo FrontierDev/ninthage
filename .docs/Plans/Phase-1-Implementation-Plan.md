@@ -2,7 +2,7 @@
 
 **Phase:** 1 — Core Runtime and Production Infrastructure  
 **Branch:** `dev`  
-**Status:** In progress — stages 1.0/1.1 issues closed; Stage 1.2 partially implemented, manual gates and downstream work remain  
+**Status:** In progress — Stages 1.0/1.1 complete; Stage 1.2 foundations are partially implemented and the server simulation-region redesign is pending  
 **Last updated:** 2026-10-22  
 **Parent roadmap:** [Project Roadmap](Project-Roadmap.md)  
 **Implementation baseline:** Existing Phase 0 runtime; not a greenfield replacement
@@ -110,41 +110,146 @@ Names above identify the **current baseline**, not a requirement to preserve eve
 
 **Gate:** Equivalent combat/timed-state outcomes across variable render frame rates; fixed server tick behaviour under controlled load; tick ordering and catch-up tests; no duplicate/missing expiry or regeneration events; visible overload metrics.
 
-### Stage 1.2 — Instance-aware spatial indexing and interest foundations
+### Stage 1.2 — Instance-aware spatial indexing, simulation regions and interest foundations
 
-**Prerequisite:** 1.1 (timing contract) and existing World Runtime PDD.  
-**Unblocks:** NPC activity tiers, scalable perception/combat queries and replication.
+**Prerequisite:** Stage 1.1 authoritative timing contract and the World Runtime/Movement PDDs.  
+**Unblocks:** NPC activity tiers, scalable perception/combat queries, authoritative actor relevance and later replication scaling.
 
-**Implement:**
+#### Stage 1.2 exit guarantee
 
-- Define an authoritative spatial membership/index contract keyed by compatible **world, map and runtime instance**, with double-precision positions. Keep these separate from client floating-origin cells, environment-streaming tiles and `GameObject.scene`.
-- Support insertion, movement, removal, teleports/transfers, despawn, restart/rebuild and instance teardown with no stale memberships.
-- Expose allocation-conscious candidate and exact-range query paths for AI perception, nearby players, AoE/combat target lookup, spawning and proximity interactions; support filters and reliable double-precision distance checks.
-- Integrate with the current chunk/scene subscription system and PurrNet visibility, retaining configured environment scene interest while adding distance-based actor interest and optional hysteresis.
-- Make broad-phase spatial cell dimensions and actor visibility radii configurable independently from the **256 m world tile** and origin-cell grid.
-- Prevent cross-instance visibility, targeting, combat, aggro and subscription leakage even when world coordinates overlap. Define ordering/ownership when an actor changes runtime context.
-- Replace applicable repeated global scans and unnecessary per-actor physics candidate searches with spatially constrained, player-centric/event-driven evaluation. Keep actual line-of-sight/physics checks where gameplay requires them.
+At Stage 1.2 completion:
 
-**Gate:** Correctness tests for movement across cell/tile/origin boundaries, range hysteresis, simultaneous instances at identical coordinates and actor cleanup; query cost grows with relevant local candidates rather than total world actor count in representative workloads.
+- every live actor has one valid server-owned `ActorSpatialContext` and one canonical accepted absolute double-precision position;
+- the spatial index is context-qualified and updated from accepted movement, teleports/transfers and lifecycle changes without stale membership;
+- environment streaming tiles, client origin cells, spatial-index cells and server simulation regions are separate concepts;
+- many adjacent 256 m environment tiles share a contiguous simulation-region physics/NavMesh frame;
+- normal tile crossings do not warp/rebind NPC navigation or change the actor's simulation frame;
+- actor visibility, targeting, aggro, AoE and proximity queries cannot cross incompatible world/map/instance contexts;
+- observer relevance and world-content interest derive from server-accepted position, not client interest claims or local transforms;
+- query and update cost scale with relevant local candidates rather than total world actor count for representative workloads;
+- no superseded per-environment-tile physics-slot or gateway architecture remains active.
 
-#### Stage 1.2 — Actual implementation status and revised dependency gates (22 October 2026)
+#### Existing implementation baseline to preserve
 
-**This section supersedes the original chronological issue assumptions above where they conflict; it does not change the Stage 1.2 exit guarantee.** GitHub issue states are implementation records, **not** evidence that all owner-only Unity/headless/multiplayer runtime checks passed.
+The current `dev` branch already contains useful Stage 1.2 foundations that should not be rewritten without a demonstrated correctness problem:
 
-**Implemented/closed source prerequisites:** #108–#113 established spatial context/config/index/query/spawn membership; #129 approved the selected movement and server-physics design; #130 introduced the origin-qualified client proposal; #131 implemented the accepted absolute-double ECS player position and removed writable `Actor.WorldPos`. #131's PlayMode suite was reported passing by the owner, but real network correction, client rebases, ownership changes and reconnect runtime validation remain outstanding. No later stage should claim that runtime gate has passed merely because #131 is closed. Historic issue descriptions may still describe older source snapshots: read current `dev` first.
+- immutable `ActorSpatialContext (WorldID, MapID, InstanceID)`;
+- independent spatial-index/visibility configuration, initially 64 m index cells with 80 m entry and 96 m exit visibility radii;
+- `ServerSpatialIndex` insertion/removal, candidate query and exact-range query foundations;
+- server actor spawn context and initial spatial membership integration;
+- origin-qualified player movement proposals;
+- `ActorComponent.WorldPositionD` as the sole mutable accepted absolute actor position, with redundant writable `Actor.WorldPos` removed;
+- fixed authoritative movement/tick boundaries established by Stage 1.1;
+- context-qualified environment tile keys introduced in `ServerWorldManager`.
 
-**Approved current architecture:** live server `ActorComponent.WorldPositionD` is the only mutable canonical accepted absolute position. Environment tiles are 256 m, client origin cells 100 m, actor spatial-index cells independently configured, and server Physics/NavMesh uses an initial **16 × 16 non-overlapping local slot pool at 512 m pitch**, keyed by `(WorldID, MapID, InstanceID, environment tile)` (#129). No global physics origin rebase or origin-zero fallback. #134 owns slot mapping, scene/collider/NavMesh placement, spawn/frame binding and frame-aware `ActorUpdateSystem.OnUpdate` gravity raycasts. #135 owns absolute gateway routing and agent transitions; #132 owns enabled NavMesh pre-ECS absolute acceptance and ECS-owned post-ECS projection; #136 owns observer replication and NetworkTransform position-sync cutover; #114 alone publishes accepted positions to the index.
+The per-256 m tile physics/NavMesh slot prototype in `ServerPositionManager` / `ServerWorldManager` is **not** part of the preserved baseline. It is superseded by the simulation-region architecture in the PDDs.
 
-**Revised immediate execution/dependency order (reuse existing issues; no new issues):**
+#### Remaining implementation sequence — execute strictly in this order
 
-1. **#133 — Player origin-rebase regression coverage:** after closed #130/#131; **independent of #132**. Validate the actual proposal→ECS origin-qualified contract, separately track live client/server runtime checks.
-2. **#128 — Context-qualified environment scene ownership:** move before #134's scene-slot integration. #128 must prove that the installed project-owned PurrNet/Addressables integration can maintain independent loaded-scene instances and in-flight callbacks for the same authored tile under different logical contexts. **Do not wait for #115 context-transfer gameplay or #116 actor subscription refactor** merely to define server-owned environment load identity. If the PurrNet scene API cannot support this, stop for an explicit design/asset-scoping review before #134's multi-context placement.
-3. **#134 — Server physics frames:** **one existing issue, four internal implementation phases, not child issues**: A. context/tile slot registry + verified local↔absolute conversion; B. scene/physics/NavMeshData placement and safe retirement (consumes #128); C. authoritative actor spawn and frame binding; D. ECS-ground raycast conversion (double world origin→slot-local ray, local hit→absolute ECS Y). Expand the total multi-file scope as approved, keep each phase a manageable separately reviewed change set, and obtain the owner's runtime/scene validation before the next phase.
-4. **#135 → #132 → #136:** first validate long-distance NavMesh traversal over already verified packed slots; then accept enabled NavMesh pose into the canonical ECS component and project ECS-owned NPCs back to the same local frame; finally deploy one server-authored observer position stream and disable unqualified NetworkTransform position syncing only in the coordinated, functional client/server cutover.
-5. **#114 — Accepted-position spatial-index Move:** only after #133 and the #134/#135/#132/#136 implementation and relevant owner runtime gates. Retain same-cell exact-position query truth and publish no rejected position.
-6. **#115–#128 remaining consumers:** #115 context transfer, #116 subscription qualification, #117 visibility, #118 observer reevaluation, #119–#124 combat/AI candidate/range consumers, #125 despawn registrations, #126 accepted movement-driven interest, #127 stale async scene cleanup. Sequence according to each actual data owner and validated prerequisites, not solely original issue-number order. #128 is pulled earlier because it is a **prerequisite for** #134's context-qualified scene placement, not a post-#115 feature.
+1. **Lock player accepted-position correctness and publish player spatial movement.**
+   - Add/retain focused regression coverage proving a client origin rebase cannot change the accepted absolute position or trigger false speed correction.
+   - Publish accepted player `WorldPositionD` changes to the existing `ServerSpatialIndex.Move` boundary immediately after the authoritative commit.
+   - Rejected/stale movement must not mutate the index; same-cell movement keeps the bucket but exact queries use the current ECS value.
+   - Complete the owner runtime checks for correction, ownership changes, reconnect and positive/negative origin crossings.
 
-**Issue/workflow policy:** The default ~1–3 files/~150 net lines is **per focused reviewable changeset**, not a hard cap that makes approved cross-owner infrastructure impossible. #134 remains one open issue containing ordered phases with individually recorded acceptance, not a tracker with extra child tickets. Only the owner authorizes creation of new GitHub issues or unapproved new state/asset designs; do not automatically split to inflate issue count. Keep production and high-value regression-test changes separate. Repo `AGENTS.md` prohibits Codex commits/pushes without explicit approval. **Phase 1.2 sign-off remains blocked** until client/server and two simultaneously distant NPC populations, negative coordinates, physics/NavMesh scene lifecycle, gravity raycasts, context isolation and performance-sensitive spatial consumers have owner-validated evidence.
+2. **Remove the superseded per-tile physics-slot prototype.**
+   - Remove/rework `ServerPhysicsFrame` behaviour that allocates a distinct physical frame for every 256 m streamed tile.
+   - Remove tile-slot reservation, 16×16/512 m layout assumptions, tile-level frame reference counting and tile-boundary gateway/handoff requirements.
+   - Restore successful ordinary context-qualified environment loading while preserving fail-fast async cleanup and the canonical absolute actor position.
+   - Do not reintroduce global absolute-float transforms or an origin-zero fallback.
+
+3. **Complete context-qualified environment scene ownership independently of physics placement.**
+   - Key loaded and in-flight environment scenes by full logical context plus environment tile.
+   - Correlate each request to its own returned PurrNet `SceneID`; terminal success/failure must clean pending callbacks, ownership state and telemetry exactly once.
+   - Prove two compatible-but-distinct logical contexts can load the same authored tile without sharing scene identity/subscribers. If the installed PurrNet/Addressables path cannot do this, stop for a design decision rather than sharing runtime state.
+
+4. **Introduce the server simulation-region model and configuration.**
+   - Define one immutable context-qualified simulation-region key/descriptor and one server owner for region-local coordinate conversion/lifetime.
+   - Region dimensions must be whole multiples of the 256 m environment tile size and configurable independently from origin/index/visibility settings.
+   - Benchmark representative candidate dimensions and concurrent-region counts; choose initial values before activating region placement. The values are engineering tuning, not gameplay rules.
+   - A region may contain many adjacent streamed tiles; a tile is never a region by default.
+
+5. **Bind streamed environment content to simulation-region frames.**
+   - Map every loaded tile to its containing region and place all tiles in that region with one shared local offset so authored adjacency is preserved.
+   - Loading/unloading a tile must not move actors or other already loaded tiles in the region.
+   - Establish a supported scene/physics/NavMesh activation seam so content cannot briefly become active in the wrong coordinate frame.
+   - Region retirement occurs only when its content/actors/physics users no longer require it.
+
+6. **Make spawning and physics queries region-aware.**
+   - Resolve authored spawn points to absolute doubles using the verified source region/tile, then instantiate actor GameObjects in region-local coordinates.
+   - Seed `ActorComponent.WorldPositionD` from the original absolute position; never reconstruct authority from the instantiated float transform.
+   - Bind actors to a verified simulation region as representation state only.
+   - Convert ECS-driven ground/physics queries absolute → region-local before querying Unity, then convert full results region-local → absolute before modifying ECS.
+
+7. **Restore continuous server NavMesh movement inside a simulation region.**
+   - Adjacent streamed tiles in one region must form normal continuous navigation space.
+   - NPC movement across a 256 m tile boundary must not warp/rebind an agent or change its simulation frame.
+   - Navigation content load/unload around moving NPCs must preserve valid local paths and prevent stale NavMesh/collider references.
+
+8. **Implement coarse simulation-region transitions.**
+   - Only a simulation-region boundary can require a physical-frame handoff.
+   - Preserve canonical absolute position, logical context, velocity/navigation intent and route target during the handoff.
+   - Keep this separate from logical world/map/private-instance transfer.
+   - The implementation must remain compatible with a future inter-worker region handoff; do not make same-process Unity placement a permanent protocol assumption.
+
+9. **Complete NPC accepted-position bridging and spatial publication.**
+   - Enabled NavMesh NPC: convert region-local navigation result to absolute `WorldPositionD` before ECS consumers.
+   - ECS-driven NPC: project accepted ECS position back to the verified region-local GameObject transform after simulation.
+   - Publish changed accepted NPC positions to `ServerSpatialIndex.Move` once at the correct tick boundary.
+   - No transform-driven second accepted-position stream.
+
+10. **Cut observer position replication over to the canonical server position.**
+    - Send one server-authored accepted `WorldPosition` stream to eligible observers with sufficient ordering identity.
+    - Clients project received positions through their own floating origin and smooth presentation locally.
+    - Disable `NetworkTransform` position synchronization only after the replacement is functioning; retain suitable rotation/other transform synchronization.
+    - Validate player/NPC observation across client origin shifts and region boundaries.
+
+11. **Implement atomic logical-context transfer.**
+    - Validate destination context/position, preload/admit required runtime state, then atomically update actor context, canonical position and spatial membership.
+    - A failed transfer leaves the old context/membership intact.
+    - Provide explicit context teardown without stale indexed actors.
+    - A simulation-region transition inside the same logical context must not use this path.
+
+12. **Qualify actor/identity subscription registries by logical context.**
+    - Replace bare scene-name keys for actor/network-identity registries with context-qualified region/tile identity where the registry represents gameplay visibility.
+    - Remove stale registrations on actor despawn, rollback, disconnect and context transfer.
+    - Preserve the persistent `global_actors` representation separately from streamed environment content.
+
+13. **Enforce server-approved context and range for actor visibility.**
+    - Use the configured 80 m entry / 96 m exit hysteresis over accepted double-precision positions.
+    - Visibility requires compatible `ActorSpatialContext` before distance is considered.
+    - PurrNet observer state is the delivery mechanism, not the gameplay source of relevance truth.
+
+14. **Reevaluate only affected observers after authoritative movement/lifecycle changes.**
+    - Movement, spawn/despawn and context transfer should reevaluate nearby candidate observers/actors instead of rescanning the whole world.
+    - Use caller-owned/reusable buffers and the existing spatial index.
+    - Preserve deterministic gameplay where ordering matters; do not require deterministic ordering for unordered candidate enumeration.
+
+15. **Migrate AI, combat and proximity consumers onto context-qualified spatial candidates.**
+    - Replace applicable per-NPC physics overlap candidate searches and total-world actor scans with spatial-index candidates.
+    - Apply exact double-precision range and gameplay filters after broad-phase selection.
+    - Keep LOS/physics queries only where they represent actual gameplay obstruction.
+    - Cover player proximity/aggro, auto-attacks, spell recipient validation, cone targeting and ground-radius targeting without allowing cross-context recipients.
+
+16. **Drive environment interest from accepted player movement.**
+    - Compute required streamed tiles from the accepted authoritative position/context rather than client-supplied interest as gameplay truth.
+    - Keep environment streaming radius independent from actor visibility radius.
+    - Client requests may be hints/admission inputs but cannot authorize incompatible context or location.
+
+17. **Complete async scene release and stale-state cleanup.**
+    - Successful in-flight loads that become unnecessary before completion must be released after terminal completion.
+    - Unload only when no valid interest/region user remains.
+    - Remove scene, subscription, region and telemetry state exactly once on unload/failure/teardown.
+
+18. **Stage 1.2 final correctness and performance gate.**
+    - Validate positive/negative coordinates, origin-cell crossings, environment-tile crossings, spatial-index-cell crossings and simulation-region transitions.
+    - Validate two simultaneous logical contexts at identical absolute coordinates and the same authored environment tile with no visibility/physics/NavMesh leakage.
+    - Validate continuous NPC navigation across several tiles inside a region and a controlled region-boundary handoff.
+    - Validate player correction/reconnect/ownership changes and observer updates during origin rebases.
+    - Benchmark dense local populations and distant concurrent populations; candidate/query/update costs must correlate with relevant local actors rather than total world population.
+    - Confirm no active code or documentation still depends on the superseded per-tile packed-slot/gateway model.
+
+**Issue policy:** GitHub implementation issues are intentionally not defined in this plan. Create a new focused issue sequence only after this chronological plan and the updated PDD contracts have been reviewed; do not recreate the previous issue graph automatically.
 
 ### Stage 1.3 — ECS data ownership, batched hot paths and Jobs/Burst boundary
 
