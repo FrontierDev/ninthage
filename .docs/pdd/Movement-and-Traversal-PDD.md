@@ -680,6 +680,26 @@ Movement must update the authoritative double-precision world position defined b
 
 The production movement system must not treat client-local floating-point transforms as globally authoritative coordinates.
 
+For each live actor, the server stores one accepted absolute double-precision position. The approved existing backing store is `ActorComponent.WorldPositionD` for the live ECS actor. `Actor.WorldPos` is not an independent movement store: its redundant writable storage is removed by the movement integration, while spawn construction hands its resolved position directly to ECS. A future Shared-side read, if proven necessary, is read-only and derived from the server authority.
+
+The source-specific handoff is:
+
+- Player movement continues to use the installed owner-auth `NetworkTransform` by default, but its current world-space compressed `Vector3` payload is not origin-qualified. Before production spatial publication, the transport integration must pair each proposal atomically with a valid origin-qualified `WorldPosition`, context and proposal sequence. The existing `MovementEndpoint.Server_RequestChunkInterest` is interest bookkeeping, not movement authority. A rejected, stale, reordered or context-mismatched proposal does not modify the accepted position.
+- NavMesh movement requires a server physics-local frame that maps every sampled agent pose to absolute logical coordinates. The current `ServerOriginChunk`/`RecentrePhysicsOrigin` path is scaffolding only. Stable per-region frames, streamed-region traversal, active agents, loaded colliders/NavMeshData and paths are dependencies #134 and #135; #132 then owns the accepted-position bridge. A zero-origin or bounded-distance fallback is not permitted.
+- ECS-driven NPC motion writes the canonical ECS component during the authoritative ECS step. The GameObject transform is a derived projection after that step and never becomes a new source of truth.
+
+All three sources converge at the fixed-tick boundary:
+
+```text
+source proposal/result and provenance
+    -> source validation/reconstruction
+    -> accepted WorldPosition -> ActorComponent.WorldPositionD
+    -> ServerSpatialIndex.Move once for the committed tick
+    -> ECS, GameObject, replication and interest projections
+```
+
+The index publication is #114's responsibility. It may retain same-cell membership, but exact-range queries must resolve the latest precise position from the canonical ECS component. A rejection must not publish or later overwrite a newer accepted commit.
+
 Conceptually:
 
 ```text
@@ -706,6 +726,8 @@ Ordinary movement must automatically drive any required updates to:
 - current spatial/instance context.
 
 Development-only manual interest controls must not be required in production.
+
+The update is emitted only after the accepted-position commit, never from a render update, client origin shift, `CurrentChunk`, scene identity or an unvalidated transform. The committed position and immutable `ActorSpatialContext` are passed together to the spatial index. World-content interest and actor visibility remain separate consumers: crossing an origin cell or streamed scene boundary alone does not change logical context, and a rejected movement candidate changes neither membership nor exact-range truth.
 
 ---
 

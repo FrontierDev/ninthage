@@ -241,6 +241,10 @@ A client-local `Vector3` must never be interpreted by the server as an absolute 
 
 Chunk/cell-relative position encoding may be used for transport, provided the resulting server position is reconstructed into authoritative double precision.
 
+The current installed transport does not yet meet this requirement. `Assets/Prefabs/PlayerPrefab.prefab` uses an unparented root `PurrNet.NetworkTransform` with world-position sync, owner authority and parent sync enabled. The project-owned PurrNet source stores its transform payload as `NetworkTransformData` containing compressed `Vector3` values; the owner-auth server path applies those values directly to the server transform. The implementation has no chunk/context field or verified origin-qualified position codec, and the prefab has no stable shared parent frame. The project-owned `PackWorldPosition` serializer and `ClientPositionManager.LocalToChunkRelative` can represent the needed chunk/local information, but neither is coupled to the NetworkTransform sample today.
+
+Therefore `NetworkTransform` remains the default movement transport, but it cannot be approved as the authoritative absolute-position handoff until #129 verifies an atomic origin-qualified integration using the exact installed API and prefab frame. If that gate fails, the owner must explicitly approve the smallest single PurrNet-compatible owner-movement integration that replaces the position payload without creating a competing asynchronous movement path. No vendor source is modified and no second gameplay movement RPC is assumed by this PDD.
+
 ---
 
 ## 6. Open-World Content Streaming
@@ -797,6 +801,8 @@ A **public-world instance** means the common non-private simulation for one spec
 - `ActorSpatialContext` is an immutable C# `readonly struct` implementing `IEquatable<ActorSpatialContext>`, with `IsValid`, value equality and matching hash semantics. Equality compares **all three** fields; map comparison and hashing use `StringComparer.Ordinal`, without culture-sensitive or case-insensitive matching. Map IDs are issued in their canonical authored form rather than guessed or normalised from scene names.
 - **Compatibility** for spatial lookup, replication, targeting, interaction, aggro and combat requires **both contexts valid and all three identifiers exactly equal**. Even if two default/invalid structs are equal as values, they are *not compatible for gameplay*. Reject or report attempts to use invalid contexts at server authority boundaries; never let invalid contexts populate a shared spatial bucket.
 - Actor location is the combination of this logical context **and** authoritative double-precision world position within its map. Float transforms, origin cells, world tiles, `Actor.CurrentChunk`, `ActorComponent.CurrentScene`, `NetworkIdentity`, `GameObject.scene` and scene asset names cannot supply or replace any member of the identity triple.
+
+The position authority is deliberately separate from this context identity. `Actor.SpatialContext` is the immutable server-assigned `(WorldID, MapID, InstanceID)` value; it is not inferred from a movement proposal, scene, chunk-interest request or floating-origin frame. The accepted position and context are published together at the authoritative tick boundary, and a proposal with missing or mismatched context is rejected rather than repaired from `CurrentChunk` or `SceneID`.
 
 Stage 1.2 first introduces this value contract in Shared code. Server-owned lifecycle/spawn integration resolves and assigns the actor's **real authoritative context** before publication. The approved *temporary single-world test-hosting contract* for this integration is defined below. No client-supplied context authority, implicit scene-derived identity or persistent-world allocation service is approved.
 
