@@ -104,6 +104,12 @@ namespace Game.Server.Core
         private const int DEFAULT_SLOT_GRID_WIDTH = 16;
         private const int DEFAULT_SLOT_GRID_HEIGHT = 16;
         private const float DEFAULT_SLOT_PITCH = 512f;
+        /// <summary>
+        /// Server physics environment-tile footprint. This remains distinct from
+        /// GameConfiguration.ChunkSize, which is the 100 metre client/network coordinate cell,
+        /// until a canonical world-tile configuration exists.
+        /// </summary>
+        private const float ENVIRONMENT_TILE_SIZE = 256f;
         private const double TILE_BOUNDARY_EPSILON = 0.000001d;
 
         private static ServerPositionManager _instance;
@@ -129,8 +135,8 @@ namespace Game.Server.Core
         public int SlotCapacity => checked(_slotGridWidth * _slotGridHeight);
         /// <summary>Gets the distance between physical slot anchors in metres.</summary>
         public float SlotPitch => _slotPitch;
-        /// <summary>Gets the canonical environment tile footprint in metres.</summary>
-        public float EnvironmentTileSize => GetEnvironmentTileSize();
+        /// <summary>Gets the server environment tile footprint in metres.</summary>
+        public float EnvironmentTileSize => ENVIRONMENT_TILE_SIZE;
         /// <summary>Gets the guaranteed horizontal gap between full-size tile footprints.</summary>
         public float MinimumSlotGap => _slotPitch - EnvironmentTileSize;
 
@@ -355,7 +361,7 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Validates authored horizontal tile bounds against the canonical environment footprint
+        /// Validates authored horizontal tile bounds against the server environment footprint
         /// and the positive inter-slot gap. Call this before making scene geometry physics-visible.
         /// </summary>
         /// <param name="tileMin">The tile-local minimum bounds.</param>
@@ -458,31 +464,19 @@ namespace Game.Server.Core
                 "Server physics does not support process-wide origin rebasing. Reserve and bind a context-qualified frame instead.");
         }
 
-        private static float GetEnvironmentTileSize()
-        {
-            Game.Shared.GameConfiguration configuration = Game.Shared.GameConfigurationManager.Config;
-            if (configuration == null)
-                throw new InvalidOperationException("Game configuration must be initialized before server physics frames.");
-            if (configuration.ChunkSize <= 0)
-                throw new InvalidOperationException("GameConfiguration.ChunkSize must be strictly positive.");
-
-            return configuration.ChunkSize;
-        }
-
         private void ValidateLayout()
         {
             if (_slotGridWidth <= 0 || _slotGridHeight <= 0)
                 throw new InvalidOperationException("Server physics slot grid dimensions must be positive.");
             if (!IsFinite(_slotPitch))
                 throw new InvalidOperationException("Server physics slot dimensions must be finite.");
-            float environmentTileSize = EnvironmentTileSize;
-            if (_slotPitch <= 0f || environmentTileSize <= 0f)
+            if (_slotPitch <= 0f || ENVIRONMENT_TILE_SIZE <= 0f)
                 throw new InvalidOperationException("Server physics slot dimensions must be positive.");
-            if (_slotPitch <= environmentTileSize)
+            if (_slotPitch <= ENVIRONMENT_TILE_SIZE)
             {
                 throw new InvalidOperationException(
                     $"Server physics slot pitch {_slotPitch}m must exceed the environment tile footprint "
-                    + $"{environmentTileSize}m.");
+                    + $"{ENVIRONMENT_TILE_SIZE}m.");
             }
             double maximumSlotAnchor = Math.Max(_slotGridWidth - 1, _slotGridHeight - 1) * (double)_slotPitch;
             if (maximumSlotAnchor > float.MaxValue)

@@ -1,11 +1,13 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using PurrNet;
 using PurrNet.Modules;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceProviders;
@@ -129,6 +131,8 @@ namespace Game.Server.Core
         // Chunks currently being loaded asynchronously.
         private readonly Dictionary<WorldChunkKey, List<Action<bool, SceneID>>> _pendingLoads = new();
         private readonly Dictionary<SceneID, WorldChunkKey> _pendingSceneOwners = new();
+        private readonly Dictionary<WorldChunkKey, ServerPhysicsFrame> _pendingFrames = new();
+        private readonly Dictionary<SceneID, ServerPhysicsFrame> _sceneFrames = new();
         private Dictionary<WorldChunkKey, long> _pendingLoadTimestamps;
         private Dictionary<SceneID, long> _pendingUnloadTimestamps;
         private long _globalActorsLoadTimestamp;
@@ -169,6 +173,7 @@ namespace Game.Server.Core
             };
 
             _networkManager.sceneModule.onSceneLoaded += OnChunkSceneLoaded;
+            _networkManager.sceneModule.onPreSceneLoaded += OnChunkScenePreLoaded;
             _networkManager.sceneModule.onSceneUnloaded += OnChunkSceneUnloaded;
 
             _initialized = true;
@@ -179,14 +184,88 @@ namespace Game.Server.Core
             if (_networkManager != null && _networkManager.sceneModule != null)
             {
                 _networkManager.sceneModule.onSceneLoaded -= OnChunkSceneLoaded;
+                _networkManager.sceneModule.onPreSceneLoaded -= OnChunkScenePreLoaded;
                 _networkManager.sceneModule.onSceneUnloaded -= OnChunkSceneUnloaded;
             }
+
+            foreach (var sceneFrame in _sceneFrames)
+            {
+                if (_networkManager != null
+                    && _networkManager.sceneModule != null
+                    && _networkManager.sceneModule.TryGetSceneState(sceneFrame.Key, out var state))
+                    DetachSceneFromFrame(state.scene);
+                RetireFrame(sceneFrame.Value.Context, sceneFrame.Value.TileCoordinate, sceneFrame.Value);
+            }
+            _sceneFrames.Clear();
+
+            foreach (var pendingFrame in _pendingFrames)
+                RetireFrame(pendingFrame.Value.Context, pendingFrame.Value.TileCoordinate, pendingFrame.Value);
+            _pendingFrames.Clear();
 
             if (_instance == this)
             {
                 _instance = null;
                 _initialized = false;
                 ClearRuntimeContext();
+            }
+        }
+
+        private void OnChunkScenePreLoaded(SceneID sceneID, bool asServer)
+        {
+            if (!asServer || !_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
+                return;
+
+            string sceneName = state.scene.name;
+            if (sceneName == "global_actors" || !sceneName.StartsWith("World"))
+                return;
+
+            if (!_pendingSceneOwners.TryGetValue(sceneID, out var chunkKey)
+                || !_pendingLoads.ContainsKey(chunkKey)
+                || !_pendingFrames.TryGetValue(chunkKey, out var frame))
+            {
+                Debug.Error($"World scene '{sceneName}' loaded with SceneID {sceneID} without a pending physics frame.");
+                return;
+            }
+
+            Vector2Int sceneTile;
+            try
+            {
+                sceneTile = ParseChunkCoordinate(sceneName);
+            }
+            catch (Exception exception)
+            {
+                FailLoadedChunk(
+                    sceneID,
+                    chunkKey,
+                    frame,
+                    $"World scene '{sceneName}' could not be parsed for pending SceneID {sceneID}: {exception.Message}");
+                return;
+            }
+
+            if (sceneTile != chunkKey.ChunkCoord)
+            {
+                FailLoadedChunk(
+                    sceneID,
+                    chunkKey,
+                    frame,
+                    $"World scene '{sceneName}' does not match requested tile {chunkKey.ChunkCoord}.");
+                return;
+            }
+
+            try
+            {
+                BindSceneToFrame(state.scene, frame);
+                ServerPositionManager.Instance.MarkFrameReady(frame);
+                _sceneFrames.Add(sceneID, frame);
+                _pendingFrames.Remove(chunkKey);
+            }
+            catch (Exception exception)
+            {
+                FailLoadedChunk(
+                    sceneID,
+                    chunkKey,
+                    frame,
+                    $"World scene '{sceneName}' could not be bound to physics frame {frame.SlotIndex}: {exception.Message}");
             }
         }
 
@@ -238,6 +317,22 @@ namespace Game.Server.Core
                     Debug.Error($"World scene '{sceneName}' does not match requested tile {chunkKey.ChunkCoord}.");
                     return;
                 }
+                if (!_sceneFrames.ContainsKey(sceneID))
+                {
+                    if (_pendingFrames.TryGetValue(chunkKey, out var unboundFrame))
+                    {
+                        FailLoadedChunk(
+                            sceneID,
+                            chunkKey,
+                            unboundFrame,
+                            $"World scene '{sceneName}' loaded without verified physics placement.");
+                    }
+                    else
+                    {
+                        Debug.Error($"World scene '{sceneName}' loaded without verified physics placement.");
+                    }
+                    return;
+                }
                 if (_pendingLoadTimestamps != null
                     && _pendingLoadTimestamps.TryGetValue(chunkKey, out long startedTimestamp))
                 {
@@ -260,6 +355,32 @@ namespace Game.Server.Core
         {
             if (!asServer)
                 return;
+
+            if (_sceneFrames.TryGetValue(sceneID, out var frame))
+            {
+                _sceneFrames.Remove(sceneID);
+                if (_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
+                    DetachSceneFromFrame(state.scene);
+                RetireFrame(frame.Context, frame.TileCoordinate, frame);
+            }
+
+            WorldChunkKey unloadedKey = default;
+            bool hasLoadedKey = false;
+            foreach (var loadedChunk in _loadedChunks)
+            {
+                if (loadedChunk.Value != sceneID)
+                    continue;
+
+                unloadedKey = loadedChunk.Key;
+                hasLoadedKey = true;
+                break;
+            }
+            if (hasLoadedKey)
+                _loadedChunks.Remove(unloadedKey);
+
+            if (_globalActorsSceneID == sceneID)
+                _globalActorsSceneID = default;
+
             if (_pendingUnloadTimestamps == null)
                 return;
             if (!_pendingUnloadTimestamps.TryGetValue(sceneID, out long startedTimestamp))
@@ -351,6 +472,14 @@ namespace Game.Server.Core
                 return;
             }
 
+            ServerPositionManager positionManager = ServerPositionManager.Instance;
+            if (positionManager == null || !ServerPositionManager.IsInitialized)
+                throw new InvalidOperationException("ServerPositionManager must be initialized before loading world scenes.");
+
+            ServerPhysicsFrame frame = positionManager.ReserveFrame(context, chunkCoord);
+            positionManager.AcquireFrameReference(frame);
+            _pendingFrames.Add(chunkKey, frame);
+
             _pendingLoads[chunkKey] = new() { onCompleted };
             if (PerformanceTelemetry.IsEnabled)
             {
@@ -369,6 +498,7 @@ namespace Game.Server.Core
             }
             catch (Exception exception)
             {
+                RetirePendingFrame(chunkKey, frame);
                 CompletePendingChunkLoad(
                     chunkKey,
                     default,
@@ -380,6 +510,7 @@ namespace Game.Server.Core
 
             if (!loadHandle.IsValid())
             {
+                RetirePendingFrame(chunkKey, frame);
                 CompletePendingChunkLoad(
                     chunkKey,
                     default,
@@ -392,6 +523,7 @@ namespace Game.Server.Core
             SceneID requestedSceneID = _networkManager.sceneModule.lastSceneId;
             if (requestedSceneID == default)
             {
+                RetirePendingFrame(chunkKey, frame);
                 CompletePendingChunkLoad(
                     chunkKey,
                     default,
@@ -403,6 +535,7 @@ namespace Game.Server.Core
             if (!_pendingSceneOwners.TryAdd(requestedSceneID, chunkKey))
             {
                 string errorMessage = $"PurrNet reused SceneID {requestedSceneID} for world scene '{address}'.";
+                RetirePendingFrame(chunkKey, frame);
                 CompletePendingChunkLoad(chunkKey, requestedSceneID, false, errorMessage, null);
                 throw new InvalidOperationException(errorMessage);
             }
@@ -425,6 +558,7 @@ namespace Game.Server.Core
                     false,
                     $"Addressables failed to load chunk {chunkKey}: {exceptionMessage}",
                     UnsubscribeLoadHandlers);
+                RetirePendingFrame(chunkKey, frame);
             }
 
             void OnLoaded(SceneID loadedSceneID, bool asServer)
@@ -457,6 +591,7 @@ namespace Game.Server.Core
             }
             catch (Exception exception)
             {
+                RetirePendingFrame(chunkKey, frame);
                 CompletePendingChunkLoad(
                     chunkKey,
                     requestedSceneID,
@@ -482,6 +617,9 @@ namespace Game.Server.Core
             {
                 _pendingSceneOwners.Remove(sceneID);
             }
+
+            if (!succeeded && _pendingFrames.TryGetValue(chunkKey, out var frame))
+                RetirePendingFrame(chunkKey, frame);
 
             if (!_pendingLoads.TryGetValue(chunkKey, out var callbacks))
             {
@@ -514,6 +652,13 @@ namespace Game.Server.Core
                 return;
 
             _loadedChunks.Remove(chunkKey);
+            if (_sceneFrames.TryGetValue(sceneID, out var frame))
+            {
+                _sceneFrames.Remove(sceneID);
+                if (_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
+                    DetachSceneFromFrame(state.scene);
+                RetireFrame(frame.Context, frame.TileCoordinate, frame);
+            }
             if (PerformanceTelemetry.IsEnabled)
             {
                 if (_pendingUnloadTimestamps == null)
@@ -523,9 +668,188 @@ namespace Game.Server.Core
             }
             _networkManager.sceneModule.UnloadSceneAsync(sceneID);
             RecordPendingSceneOperations();
-            if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
-            string sceneName = state.scene.name;
+            if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var sceneState)) return;
+            string sceneName = sceneState.scene.name;
             Debug.Log($"Unloaded chunk {chunkCoord} (no remaining subscribers).");
+        }
+
+        private void BindSceneToFrame(Scene scene, ServerPhysicsFrame frame)
+        {
+            GameObject[] roots = scene.GetRootGameObjects();
+            if (roots.Length == 0)
+                throw new InvalidOperationException("World scene contains no root GameObjects.");
+
+            var surfaces = new List<NavMeshSurface>();
+            var colliders = new List<Collider>();
+            Bounds authoredBounds = default;
+            bool hasBounds = false;
+
+            foreach (var root in roots)
+            {
+                surfaces.AddRange(root.GetComponentsInChildren<NavMeshSurface>(true));
+                colliders.AddRange(root.GetComponentsInChildren<Collider>(true));
+            }
+
+            foreach (var collider in colliders)
+            {
+                if (!collider.enabled)
+                    continue;
+                if (!hasBounds)
+                {
+                    authoredBounds = collider.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    authoredBounds.Encapsulate(collider.bounds);
+                }
+            }
+
+            foreach (var surface in surfaces)
+            {
+                if (surface.navMeshData == null)
+                    continue;
+
+                EncapsulateAuthoredBounds(
+                    ref authoredBounds,
+                    ref hasBounds,
+                    surface.transform,
+                    surface.navMeshData.sourceBounds);
+            }
+
+            if (!hasBounds)
+                throw new InvalidOperationException("World scene contains no enabled collider or NavMeshData geometry.");
+
+            ValidateAuthoredBounds(frame, authoredBounds);
+
+            foreach (var surface in surfaces)
+                surface.RemoveData();
+
+            foreach (var root in roots)
+                root.transform.position = ToFrameLocalRootPosition(root.transform.position, frame);
+
+            foreach (var surface in surfaces)
+                surface.AddData();
+        }
+
+        private void DetachSceneFromFrame(Scene scene)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
+                return;
+
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                foreach (var surface in root.GetComponentsInChildren<NavMeshSurface>(true))
+                    surface.RemoveData();
+                root.SetActive(false);
+            }
+        }
+
+        private void ValidateAuthoredBounds(ServerPhysicsFrame frame, Bounds authoredBounds)
+        {
+            Vector3 localMin = ToFrameLocalPoint(authoredBounds.min, frame);
+            Vector3 localMax = ToFrameLocalPoint(authoredBounds.max, frame);
+            ServerPositionManager.Instance.ValidateEnvironmentTileExtents(localMin, localMax);
+        }
+
+        private static void EncapsulateAuthoredBounds(
+            ref Bounds bounds,
+            ref bool hasBounds,
+            Transform surfaceTransform,
+            Bounds sourceBounds)
+        {
+            for (int x = 0; x < 2; x++)
+            {
+                for (int y = 0; y < 2; y++)
+                {
+                    for (int z = 0; z < 2; z++)
+                    {
+                        Vector3 corner = new(
+                            x == 0 ? sourceBounds.min.x : sourceBounds.max.x,
+                            y == 0 ? sourceBounds.min.y : sourceBounds.max.y,
+                            z == 0 ? sourceBounds.min.z : sourceBounds.max.z);
+                        Vector3 authoredPoint = surfaceTransform.TransformPoint(corner);
+                        if (!hasBounds)
+                        {
+                            bounds = new Bounds(authoredPoint, Vector3.zero);
+                            hasBounds = true;
+                        }
+                        else
+                        {
+                            bounds.Encapsulate(authoredPoint);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static Vector3 ToFrameLocalRootPosition(Vector3 authoredPosition, ServerPhysicsFrame frame)
+        {
+            double localX = (double)frame.SlotAnchor.x + authoredPosition.x - frame.TileOrigin.x;
+            double localY = (double)frame.SlotAnchor.y + authoredPosition.y - frame.TileOrigin.y;
+            double localZ = (double)frame.SlotAnchor.z + authoredPosition.z - frame.TileOrigin.z;
+            if (localX < -float.MaxValue || localX > float.MaxValue
+                || localY < -float.MaxValue || localY > float.MaxValue
+                || localZ < -float.MaxValue || localZ > float.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    $"World scene root cannot be represented in physics frame {frame.SlotIndex}.");
+            }
+
+            return new Vector3((float)localX, (float)localY, (float)localZ);
+        }
+
+        private Vector3 ToFrameLocalPoint(Vector3 authoredPosition, ServerPhysicsFrame frame)
+        {
+            WorldPosition authoredWorldPosition = new(
+                authoredPosition.x,
+                authoredPosition.y,
+                authoredPosition.z);
+            return ServerPositionManager.Instance.ToPhysicsLocal(frame, authoredWorldPosition);
+        }
+
+        private void FailLoadedChunk(
+            SceneID sceneID,
+            WorldChunkKey chunkKey,
+            ServerPhysicsFrame frame,
+            string failureMessage)
+        {
+            Debug.Error(failureMessage);
+            _sceneFrames.Remove(sceneID);
+            if (_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
+                DetachSceneFromFrame(state.scene);
+            _pendingFrames.Remove(chunkKey);
+            RetireFrame(frame.Context, frame.TileCoordinate, frame);
+            CompletePendingChunkLoad(chunkKey, sceneID, false, failureMessage, null);
+            _networkManager.sceneModule.UnloadSceneAsync(sceneID);
+        }
+
+        private void RetirePendingFrame(WorldChunkKey chunkKey, ServerPhysicsFrame frame)
+        {
+            if (!_pendingFrames.Remove(chunkKey))
+                return;
+
+            RetireFrame(frame.Context, frame.TileCoordinate, frame);
+        }
+
+        private void RetireFrame(ActorSpatialContext context, Vector2Int chunkCoord, ServerPhysicsFrame frame)
+        {
+            ServerPositionManager positionManager = ServerPositionManager.Instance;
+            if (positionManager == null || !ServerPositionManager.IsInitialized)
+                return;
+
+            try
+            {
+                positionManager.BeginFrameRetirement(frame);
+                if (positionManager.GetFrameReferenceCount(frame) > 0)
+                    positionManager.ReleaseFrameReference(frame);
+                positionManager.ReleaseFrame(frame);
+            }
+            catch (InvalidOperationException exception)
+            {
+                Debug.Error(
+                    $"Could not retire physics frame for context '{context.MapID}' tile {chunkCoord}: {exception.Message}");
+            }
         }
 
         private void RecordPendingSceneOperations()
