@@ -1,3 +1,4 @@
+using Game.Client;
 using Game.Server.Core;
 using Game.Server.Systems;
 using Game.Shared;
@@ -50,6 +51,10 @@ namespace Game.Runtime.Tests.Server
             typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo ACTOR_SPATIAL_CONTEXT_FIELD =
             typeof(Actor).GetField("_spatialContext", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo CLIENT_POSITION_MANAGER_INSTANCE_FIELD =
+            typeof(ClientPositionManager).GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic);
+        private static readonly FieldInfo CLIENT_POSITION_MANAGER_INITIALIZED_FIELD =
+            typeof(ClientPositionManager).GetField("_initialized", BindingFlags.Static | BindingFlags.NonPublic);
 
         private GameConfiguration _configuration;
         private float _originalTickDuration;
@@ -57,6 +62,8 @@ namespace Game.Runtime.Tests.Server
         private GameObject _positionManagerObject;
         private GameObject _clockHostObject;
         private GameObject _actorObject;
+        private GameObject _clientWorldManagerObject;
+        private GameObject _clientPositionManagerObject;
         private Actor _actor;
 
         [SetUp]
@@ -191,6 +198,53 @@ namespace Game.Runtime.Tests.Server
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator OriginRebasePreservesAcceptedPositionAndCrossCellMovementCommits()
+        {
+            Entity actorEntity = GetActorEntity();
+            CreateClientOriginFixture();
+
+            var positionManager = ClientPositionManager.Instance;
+            var initialAbsolutePosition = new WorldPosition(-100.25d, 4d, -50.5d);
+            var movedAbsolutePosition = new WorldPosition(-99.25d, 4d, -50.5d);
+
+            positionManager.SetOriginChunk(new Vector2Int(-2, -1));
+            Assert.That(positionManager.OriginChunk, Is.EqualTo(new Vector2Int(-2, -1)));
+            WorldPosition initialProposal = EncodeFromClientOrigin(
+                positionManager,
+                initialAbsolutePosition,
+                out Vector3 initialLocalRepresentation);
+            Assert.That(initialProposal.Chunk, Is.EqualTo(new Vector2Int(-2, -1)));
+            Assert.That(initialLocalRepresentation.x, Is.EqualTo(99.75f).Within(0.0001f));
+            SubmitPosition(initialProposal, 1L);
+            RunSimulationTick(1);
+            AssertECSPosition(actorEntity, initialAbsolutePosition);
+
+            positionManager.SetOriginChunk(new Vector2Int(-1, -1));
+            Assert.That(positionManager.OriginChunk, Is.EqualTo(new Vector2Int(-1, -1)));
+            WorldPosition rebasedProposal = EncodeFromClientOrigin(
+                positionManager,
+                initialAbsolutePosition,
+                out Vector3 rebasedLocalRepresentation);
+            Assert.That(rebasedLocalRepresentation.x, Is.EqualTo(-0.25f).Within(0.0001f));
+            Assert.That(rebasedLocalRepresentation.x, Is.Not.EqualTo(initialLocalRepresentation.x));
+            AssertWorldPosition(rebasedProposal, initialAbsolutePosition);
+            SubmitPosition(rebasedProposal, 2L);
+            RunSimulationTick(2);
+            AssertECSPosition(actorEntity, initialAbsolutePosition);
+
+            WorldPosition movedProposal = EncodeFromClientOrigin(
+                positionManager,
+                movedAbsolutePosition,
+                out _);
+            Assert.That(movedProposal.Chunk, Is.EqualTo(new Vector2Int(-1, -1)));
+            SubmitPosition(movedProposal, 3L);
+            RunSimulationTick(3);
+            AssertECSPosition(actorEntity, movedAbsolutePosition);
+
+            yield return null;
+        }
+
         private Entity GetActorEntity()
         {
             Assert.That(TRY_GET_ACTOR_ENTITY_METHOD, Is.Not.Null);
@@ -206,6 +260,21 @@ namespace Game.Runtime.Tests.Server
             Assert.That(position.x, Is.EqualTo(expectedX).Within(0.0001d));
             Assert.That(position.y, Is.EqualTo(0d).Within(0.0001d));
             Assert.That(position.z, Is.EqualTo(0d).Within(0.0001d));
+        }
+
+        private static void AssertECSPosition(Entity actorEntity, WorldPosition expectedPosition)
+        {
+            var position = GetECSPosition(actorEntity);
+            Assert.That(position.x, Is.EqualTo(expectedPosition.x).Within(0.000000001d));
+            Assert.That(position.y, Is.EqualTo(expectedPosition.y).Within(0.000000001d));
+            Assert.That(position.z, Is.EqualTo(expectedPosition.z).Within(0.000000001d));
+        }
+
+        private static void AssertWorldPosition(WorldPosition actual, WorldPosition expected)
+        {
+            Assert.That(actual.x, Is.EqualTo(expected.x).Within(0.000000001d));
+            Assert.That(actual.y, Is.EqualTo(expected.y).Within(0.000000001d));
+            Assert.That(actual.z, Is.EqualTo(expected.z).Within(0.000000001d));
         }
 
         private static Unity.Mathematics.double3 GetECSPosition(Entity actorEntity)
@@ -234,11 +303,36 @@ namespace Game.Runtime.Tests.Server
 
         private static void SubmitPosition(double x, long sequence)
         {
-            MovementEndpoint.onServerPositionProposal?.Invoke(
-                OWNER_ID,
-                new WorldPosition(x, 0d, 0d),
-                1L,
-                sequence);
+            SubmitPosition(new WorldPosition(x, 0d, 0d), sequence);
+        }
+
+        private static void SubmitPosition(WorldPosition position, long sequence)
+        {
+            MovementEndpoint.onServerPositionProposal?.Invoke(OWNER_ID, position, 1L, sequence);
+        }
+
+        private static WorldPosition EncodeFromClientOrigin(
+            ClientPositionManager positionManager,
+            WorldPosition absolutePosition,
+            out Vector3 localRepresentation)
+        {
+            // Mirrors the client producer's local-frame reconstruction before handing the
+            // resulting origin-qualified WorldPosition to the server receive seam.
+            localRepresentation = positionManager.ChunkToLocal(
+                absolutePosition.Chunk,
+                absolutePosition.LocalPosition);
+            var (chunk, localPosition) = positionManager.LocalToChunkRelative(localRepresentation);
+            return WorldPosition.FromChunkLocal(chunk, localPosition);
+        }
+
+        private void CreateClientOriginFixture()
+        {
+            _clientWorldManagerObject = new GameObject("ServerPlayerMovementAuthorityClientWorldManager");
+            _clientWorldManagerObject.AddComponent<ClientWorldManager>();
+
+            _clientPositionManagerObject = new GameObject("ServerPlayerMovementAuthorityClientPositionManager");
+            _clientPositionManagerObject.AddComponent<ClientPositionManager>();
+            Assert.That(ClientPositionManager.Initialized, Is.True);
         }
 
         private static void RegisterSpawnedActor(Actor actor, WorldPosition position)
@@ -293,6 +387,18 @@ namespace Game.Runtime.Tests.Server
                 _positionManagerObject = null;
             }
 
+            if (_clientPositionManagerObject != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_clientPositionManagerObject);
+                _clientPositionManagerObject = null;
+            }
+
+            if (_clientWorldManagerObject != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_clientWorldManagerObject);
+                _clientWorldManagerObject = null;
+            }
+
             ServerInitialization.Stop();
 
             if (_clockHostObject != null)
@@ -309,12 +415,19 @@ namespace Game.Runtime.Tests.Server
 
             _actor = null;
             ResetPositionManagerStatics();
+            ResetClientPositionManagerStatics();
         }
 
         private static void ResetPositionManagerStatics()
         {
             POSITION_MANAGER_INSTANCE_FIELD.SetValue(null, null);
             POSITION_MANAGER_INITIALIZED_FIELD.SetValue(null, false);
+        }
+
+        private static void ResetClientPositionManagerStatics()
+        {
+            CLIENT_POSITION_MANAGER_INSTANCE_FIELD.SetValue(null, null);
+            CLIENT_POSITION_MANAGER_INITIALIZED_FIELD.SetValue(null, false);
         }
 
         private sealed class ClockTestHost : MonoBehaviour
