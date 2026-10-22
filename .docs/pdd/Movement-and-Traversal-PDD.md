@@ -717,6 +717,18 @@ server validation
 authoritative actor spatial state
 ```
 
+### 20.3.1 Verified server physics frame and NPC movement ownership
+
+A server physics slot is keyed by full `ActorSpatialContext` **and 256 m environment tile**, not by client origin cell, `GameObject.scene` or current subscription. #134 establishes one authoritative active-slot mapping with checked double-precision absolute ↔ physics-local conversion, placement and lifetime. Its implementation must make physically distant populations coexist in compact non-overlapping Unity coordinates, rejecting missing/exhausted frame assignments rather than defaulting to origin zero. The server's sole mutable accepted absolute actor position remains `ActorComponent.WorldPositionD` (#131); `ServerActorManager.RegisterSpawnedActor(actor, spawnPosition)` seeds it at spawn. `Actor.WorldPos` must not be restored as a second source.
+
+The existing tick ownership boundary is retained:
+
+- **Enabled NavMesh agent:** #135 supplies verified current slot/agent binding and gateway handoff; #132 converts its post-navigation slot-local pose to absolute `WorldPositionD` in the existing pre-ECS NPC bridge. ECS gravity does not advance this NPC.
+- **Disabled or absent NavMesh agent:** ECS owns vertical movement; #134 makes `ActorUpdateSystem.OnUpdate`'s physics ray origin slot-local and converts the full physics-local hit point back into an absolute double before updating ECS Y. Keep gravity, ground test and velocity rules unchanged. #132 subsequently projects the canonical ECS result into the NPC's local Unity transform at the existing post-ECS boundary.
+- **All NPCs:** actor ID and server-owned logical context identify the correct slot; per-actor frame bindings must be verified and retired safely as geometry/agents unload. Neither slot handoff nor client origin shift changes logical context or accepted absolute position. #114 publishes changes to spatial membership *after* committed ECS state. #136 owns observer/networked presentation; no extra transform-driven position stream.
+
+The **#134 implementation must be staged**, because the approved frame registry, streamed scene/NavMeshData placement, spawn/frame binding and ECS ground-query integration span multiple runtime owners. The stages have separate source/owner runtime validation gates (including adjacent and two far-separated populated regions, negative coordinates, slot retirement/reuse and elevated-ground raycast results). #135 then proves navigation continuation across tile gateways; #132 consumes their validated frame interfaces. #131 source/test acceptance does not constitute live multiplayer correction, ownership-transfer or floating-origin runtime sign-off; that check remains outstanding.
+
 ### 20.4 Movement-driven spatial updates
 
 Ordinary movement must automatically drive any required updates to:
