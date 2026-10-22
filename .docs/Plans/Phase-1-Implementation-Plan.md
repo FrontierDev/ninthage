@@ -2,8 +2,8 @@
 
 **Phase:** 1 — Core Runtime and Production Infrastructure  
 **Branch:** `dev`  
-**Status:** Planned; dependency-ordered implementation guidance  
-**Last updated:** 2026-10-13  
+**Status:** In progress — stages 1.0/1.1 issues closed; Stage 1.2 partially implemented, manual gates and downstream work remain  
+**Last updated:** 2026-10-22  
 **Parent roadmap:** [Project Roadmap](Project-Roadmap.md)  
 **Implementation baseline:** Existing Phase 0 runtime; not a greenfield replacement
 
@@ -126,6 +126,25 @@ Names above identify the **current baseline**, not a requirement to preserve eve
 - Replace applicable repeated global scans and unnecessary per-actor physics candidate searches with spatially constrained, player-centric/event-driven evaluation. Keep actual line-of-sight/physics checks where gameplay requires them.
 
 **Gate:** Correctness tests for movement across cell/tile/origin boundaries, range hysteresis, simultaneous instances at identical coordinates and actor cleanup; query cost grows with relevant local candidates rather than total world actor count in representative workloads.
+
+#### Stage 1.2 — Actual implementation status and revised dependency gates (22 October 2026)
+
+**This section supersedes the original chronological issue assumptions above where they conflict; it does not change the Stage 1.2 exit guarantee.** GitHub issue states are implementation records, **not** evidence that all owner-only Unity/headless/multiplayer runtime checks passed.
+
+**Implemented/closed source prerequisites:** #108–#113 established spatial context/config/index/query/spawn membership; #129 approved the selected movement and server-physics design; #130 introduced the origin-qualified client proposal; #131 implemented the accepted absolute-double ECS player position and removed writable `Actor.WorldPos`. #131's PlayMode suite was reported passing by the owner, but real network correction, client rebases, ownership changes and reconnect runtime validation remain outstanding. No later stage should claim that runtime gate has passed merely because #131 is closed. Historic issue descriptions may still describe older source snapshots: read current `dev` first.
+
+**Approved current architecture:** live server `ActorComponent.WorldPositionD` is the only mutable canonical accepted absolute position. Environment tiles are 256 m, client origin cells 100 m, actor spatial-index cells independently configured, and server Physics/NavMesh uses an initial **16 × 16 non-overlapping local slot pool at 512 m pitch**, keyed by `(WorldID, MapID, InstanceID, environment tile)` (#129). No global physics origin rebase or origin-zero fallback. #134 owns slot mapping, scene/collider/NavMesh placement, spawn/frame binding and frame-aware `ActorUpdateSystem.OnUpdate` gravity raycasts. #135 owns absolute gateway routing and agent transitions; #132 owns enabled NavMesh pre-ECS absolute acceptance and ECS-owned post-ECS projection; #136 owns observer replication and NetworkTransform position-sync cutover; #114 alone publishes accepted positions to the index.
+
+**Revised immediate execution/dependency order (reuse existing issues; no new issues):**
+
+1. **#133 — Player origin-rebase regression coverage:** after closed #130/#131; **independent of #132**. Validate the actual proposal→ECS origin-qualified contract, separately track live client/server runtime checks.
+2. **#128 — Context-qualified environment scene ownership:** move before #134's scene-slot integration. #128 must prove that the installed project-owned PurrNet/Addressables integration can maintain independent loaded-scene instances and in-flight callbacks for the same authored tile under different logical contexts. **Do not wait for #115 context-transfer gameplay or #116 actor subscription refactor** merely to define server-owned environment load identity. If the PurrNet scene API cannot support this, stop for an explicit design/asset-scoping review before #134's multi-context placement.
+3. **#134 — Server physics frames:** **one existing issue, four internal implementation phases, not child issues**: A. context/tile slot registry + verified local↔absolute conversion; B. scene/physics/NavMeshData placement and safe retirement (consumes #128); C. authoritative actor spawn and frame binding; D. ECS-ground raycast conversion (double world origin→slot-local ray, local hit→absolute ECS Y). Expand the total multi-file scope as approved, keep each phase a manageable separately reviewed change set, and obtain the owner's runtime/scene validation before the next phase.
+4. **#135 → #132 → #136:** first validate long-distance NavMesh traversal over already verified packed slots; then accept enabled NavMesh pose into the canonical ECS component and project ECS-owned NPCs back to the same local frame; finally deploy one server-authored observer position stream and disable unqualified NetworkTransform position syncing only in the coordinated, functional client/server cutover.
+5. **#114 — Accepted-position spatial-index Move:** only after #133 and the #134/#135/#132/#136 implementation and relevant owner runtime gates. Retain same-cell exact-position query truth and publish no rejected position.
+6. **#115–#128 remaining consumers:** #115 context transfer, #116 subscription qualification, #117 visibility, #118 observer reevaluation, #119–#124 combat/AI candidate/range consumers, #125 despawn registrations, #126 accepted movement-driven interest, #127 stale async scene cleanup. Sequence according to each actual data owner and validated prerequisites, not solely original issue-number order. #128 is pulled earlier because it is a **prerequisite for** #134's context-qualified scene placement, not a post-#115 feature.
+
+**Issue/workflow policy:** The default ~1–3 files/~150 net lines is **per focused reviewable changeset**, not a hard cap that makes approved cross-owner infrastructure impossible. #134 remains one open issue containing ordered phases with individually recorded acceptance, not a tracker with extra child tickets. Only the owner authorizes creation of new GitHub issues or unapproved new state/asset designs; do not automatically split to inflate issue count. Keep production and high-value regression-test changes separate. Repo `AGENTS.md` prohibits Codex commits/pushes without explicit approval. **Phase 1.2 sign-off remains blocked** until client/server and two simultaneously distant NPC populations, negative coordinates, physics/NavMesh scene lifecycle, gravity raycasts, context isolation and performance-sensitive spatial consumers have owner-validated evidence.
 
 ### Stage 1.3 — ECS data ownership, batched hot paths and Jobs/Burst boundary
 
