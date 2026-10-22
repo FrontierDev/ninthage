@@ -133,6 +133,8 @@ namespace Game.Server.Core
         private readonly Dictionary<SceneID, WorldChunkKey> _pendingSceneOwners = new();
         private readonly Dictionary<WorldChunkKey, ServerPhysicsFrame> _pendingFrames = new();
         private readonly Dictionary<SceneID, ServerPhysicsFrame> _sceneFrames = new();
+        private readonly Dictionary<WorldChunkKey, Action> _pendingLoadCleanup = new();
+        private readonly HashSet<SceneID> _scenesAwaitingUnload = new();
         private Dictionary<WorldChunkKey, long> _pendingLoadTimestamps;
         private Dictionary<SceneID, long> _pendingUnloadTimestamps;
         private long _globalActorsLoadTimestamp;
@@ -202,6 +204,11 @@ namespace Game.Server.Core
                 RetireFrame(pendingFrame.Value.Context, pendingFrame.Value.TileCoordinate, pendingFrame.Value);
             _pendingFrames.Clear();
 
+            foreach (var cleanup in _pendingLoadCleanup.Values)
+                cleanup?.Invoke();
+            _pendingLoadCleanup.Clear();
+            _scenesAwaitingUnload.Clear();
+
             if (_instance == this)
             {
                 _instance = null;
@@ -210,8 +217,28 @@ namespace Game.Server.Core
             }
         }
 
+        private void LateUpdate()
+        {
+            // PurrNet registers completed Addressables scene handles after its scene callbacks.
+            // Defer failure cleanup until LateUpdate so UnloadSceneAsync uses that owned handle.
+            if (_scenesAwaitingUnload.Count == 0
+                || _networkManager == null
+                || _networkManager.sceneModule == null)
+                return;
+
+            foreach (SceneID sceneID in _scenesAwaitingUnload)
+            {
+                if (_networkManager.sceneModule.TryGetSceneState(sceneID, out _))
+                    _networkManager.sceneModule.UnloadSceneAsync(sceneID);
+            }
+
+            _scenesAwaitingUnload.Clear();
+        }
+
         private void OnChunkScenePreLoaded(SceneID sceneID, bool asServer)
         {
+            // The installed PurrNet callback is post-activation. It is intentionally a
+            // fail-closed boundary until an owner-approved pre-activation seam exists.
             if (!asServer || !_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
                 return;
 
@@ -223,50 +250,19 @@ namespace Game.Server.Core
                 || !_pendingLoads.ContainsKey(chunkKey)
                 || !_pendingFrames.TryGetValue(chunkKey, out var frame))
             {
-                Debug.Error($"World scene '{sceneName}' loaded with SceneID {sceneID} without a pending physics frame.");
+                FailUnownedWorldScene(
+                    sceneID,
+                    state.scene,
+                    $"World scene '{sceneName}' loaded with SceneID {sceneID} without a pending physics frame.");
                 return;
             }
 
-            Vector2Int sceneTile;
-            try
-            {
-                sceneTile = ParseChunkCoordinate(sceneName);
-            }
-            catch (Exception exception)
-            {
-                FailLoadedChunk(
-                    sceneID,
-                    chunkKey,
-                    frame,
-                    $"World scene '{sceneName}' could not be parsed for pending SceneID {sceneID}: {exception.Message}");
-                return;
-            }
-
-            if (sceneTile != chunkKey.ChunkCoord)
-            {
-                FailLoadedChunk(
-                    sceneID,
-                    chunkKey,
-                    frame,
-                    $"World scene '{sceneName}' does not match requested tile {chunkKey.ChunkCoord}.");
-                return;
-            }
-
-            try
-            {
-                BindSceneToFrame(state.scene, frame);
-                ServerPositionManager.Instance.MarkFrameReady(frame);
-                _sceneFrames.Add(sceneID, frame);
-                _pendingFrames.Remove(chunkKey);
-            }
-            catch (Exception exception)
-            {
-                FailLoadedChunk(
-                    sceneID,
-                    chunkKey,
-                    frame,
-                    $"World scene '{sceneName}' could not be bound to physics frame {frame.SlotIndex}: {exception.Message}");
-            }
+            FailLoadedChunk(
+                sceneID,
+                chunkKey,
+                frame,
+                $"World scene '{sceneName}' cannot be placed safely: the installed PurrNet Addressables path activates the scene before onPreSceneLoaded. "
+                + "Phase B requires an owner-approved pre-activation or physics-isolation integration before this scene can become physics-visible.");
         }
 
         private void OnChunkSceneLoaded(SceneID sceneID, bool asServer)
@@ -291,63 +287,25 @@ namespace Game.Server.Core
 
             if (sceneName.StartsWith("World"))
             {
-                if (!_pendingSceneOwners.TryGetValue(sceneID, out var chunkKey))
-                {
-                    Debug.Error($"World scene '{sceneName}' loaded with SceneID {sceneID} but has no pending context owner.");
+                if (_scenesAwaitingUnload.Contains(sceneID))
                     return;
-                }
-                if (!_pendingLoads.ContainsKey(chunkKey))
-                {
-                    Debug.Error($"World scene '{sceneName}' loaded for context key {chunkKey.ChunkCoord}, but its load is no longer pending.");
-                    return;
-                }
 
-                Vector2Int chunkCoord;
-                try
+                if (_pendingSceneOwners.TryGetValue(sceneID, out var chunkKey)
+                    && _pendingLoads.ContainsKey(chunkKey)
+                    && _pendingFrames.TryGetValue(chunkKey, out var frame))
                 {
-                    chunkCoord = ParseChunkCoordinate(sceneName);
-                }
-                catch (Exception exception)
-                {
-                    Debug.Error($"World scene '{sceneName}' could not be parsed for pending SceneID {sceneID}: {exception.Message}");
+                    FailLoadedChunk(
+                        sceneID,
+                        chunkKey,
+                        frame,
+                        $"World scene '{sceneName}' loaded without verified physics placement. "
+                        + "The installed PurrNet Addressables path does not provide a pre-activation placement seam.");
                     return;
                 }
-                if (chunkCoord != chunkKey.ChunkCoord)
-                {
-                    Debug.Error($"World scene '{sceneName}' does not match requested tile {chunkKey.ChunkCoord}.");
-                    return;
-                }
-                if (!_sceneFrames.ContainsKey(sceneID))
-                {
-                    if (_pendingFrames.TryGetValue(chunkKey, out var unboundFrame))
-                    {
-                        FailLoadedChunk(
-                            sceneID,
-                            chunkKey,
-                            unboundFrame,
-                            $"World scene '{sceneName}' loaded without verified physics placement.");
-                    }
-                    else
-                    {
-                        Debug.Error($"World scene '{sceneName}' loaded without verified physics placement.");
-                    }
-                    return;
-                }
-                if (_pendingLoadTimestamps != null
-                    && _pendingLoadTimestamps.TryGetValue(chunkKey, out long startedTimestamp))
-                {
-                    _pendingLoadTimestamps.Remove(chunkKey);
-                    RecordSceneDuration(SCENE_LOAD_DURATION_METRIC, startedTimestamp);
-                }
-                if (_loadedChunks.ContainsKey(chunkKey))
-                {
-                    Debug.Error($"World scene '{sceneName}' loaded twice for tile {chunkCoord} in the same context.");
-                    return;
-                }
-
-                _loadedChunks.Add(chunkKey, sceneID);
-                Debug.Log($"Scene '{sceneName}' loaded.");
-                RecordPendingSceneOperations();
+                FailUnownedWorldScene(
+                    sceneID,
+                    state.scene,
+                    $"World scene '{sceneName}' loaded with SceneID {sceneID} without a pending context owner.");
             }
         }
 
@@ -584,6 +542,7 @@ namespace Game.Server.Core
                 CompletePendingChunkLoad(chunkKey, requestedSceneID, true, null, UnsubscribeLoadHandlers);
             }
 
+            _pendingLoadCleanup[chunkKey] = UnsubscribeLoadHandlers;
             try
             {
                 _networkManager.sceneModule.onSceneLoaded += OnLoaded;
@@ -609,7 +568,10 @@ namespace Game.Server.Core
             string failureMessage,
             Action unsubscribe)
         {
-            unsubscribe?.Invoke();
+            if (_pendingLoadCleanup.Remove(chunkKey, out var registeredCleanup))
+                registeredCleanup?.Invoke();
+            else if (unsubscribe != null && _pendingLoads.ContainsKey(chunkKey))
+                unsubscribe?.Invoke();
 
             if (sceneID != default
                 && _pendingSceneOwners.TryGetValue(sceneID, out WorldChunkKey owner)
@@ -686,7 +648,11 @@ namespace Game.Server.Core
 
             foreach (var root in roots)
             {
-                surfaces.AddRange(root.GetComponentsInChildren<NavMeshSurface>(true));
+                foreach (var surface in root.GetComponentsInChildren<NavMeshSurface>(true))
+                {
+                    if (surface.isActiveAndEnabled)
+                        surfaces.Add(surface);
+                }
                 colliders.AddRange(root.GetComponentsInChildren<Collider>(true));
             }
 
@@ -708,7 +674,10 @@ namespace Game.Server.Core
             foreach (var surface in surfaces)
             {
                 if (surface.navMeshData == null)
-                    continue;
+                {
+                    throw new InvalidOperationException(
+                        $"Active NavMeshSurface '{surface.name}' has no baked NavMeshData.");
+                }
 
                 EncapsulateAuthoredBounds(
                     ref authoredBounds,
@@ -730,6 +699,15 @@ namespace Game.Server.Core
 
             foreach (var surface in surfaces)
                 surface.AddData();
+
+            foreach (var surface in surfaces)
+            {
+                if (!NavMeshSurface.activeSurfaces.Contains(surface))
+                {
+                    throw new InvalidOperationException(
+                        $"Active NavMeshSurface '{surface.name}' was not registered after placement.");
+                }
+            }
         }
 
         private void DetachSceneFromFrame(Scene scene)
@@ -747,8 +725,8 @@ namespace Game.Server.Core
 
         private void ValidateAuthoredBounds(ServerPhysicsFrame frame, Bounds authoredBounds)
         {
-            Vector3 localMin = ToFrameLocalPoint(authoredBounds.min, frame);
-            Vector3 localMax = ToFrameLocalPoint(authoredBounds.max, frame);
+            Vector3 localMin = ToTileLocalPoint(authoredBounds.min, frame);
+            Vector3 localMax = ToTileLocalPoint(authoredBounds.max, frame);
             ServerPositionManager.Instance.ValidateEnvironmentTileExtents(localMin, localMax);
         }
 
@@ -799,13 +777,23 @@ namespace Game.Server.Core
             return new Vector3((float)localX, (float)localY, (float)localZ);
         }
 
-        private Vector3 ToFrameLocalPoint(Vector3 authoredPosition, ServerPhysicsFrame frame)
+        private static Vector3 ToTileLocalPoint(Vector3 authoredPosition, ServerPhysicsFrame frame)
         {
-            WorldPosition authoredWorldPosition = new(
-                authoredPosition.x,
-                authoredPosition.y,
-                authoredPosition.z);
-            return ServerPositionManager.Instance.ToPhysicsLocal(frame, authoredWorldPosition);
+            double localX = (double)authoredPosition.x - frame.TileOrigin.x;
+            double localY = (double)authoredPosition.y - frame.TileOrigin.y;
+            double localZ = (double)authoredPosition.z - frame.TileOrigin.z;
+            if (double.IsNaN(localX) || double.IsInfinity(localX)
+                || double.IsNaN(localY) || double.IsInfinity(localY)
+                || double.IsNaN(localZ) || double.IsInfinity(localZ)
+                || localX < -float.MaxValue || localX > float.MaxValue
+                || localY < -float.MaxValue || localY > float.MaxValue
+                || localZ < -float.MaxValue || localZ > float.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    $"Authored bounds cannot be represented in tile {frame.TileCoordinate}.");
+            }
+
+            return new Vector3((float)localX, (float)localY, (float)localZ);
         }
 
         private void FailLoadedChunk(
@@ -814,14 +802,31 @@ namespace Game.Server.Core
             ServerPhysicsFrame frame,
             string failureMessage)
         {
-            Debug.Error(failureMessage);
+            if (_scenesAwaitingUnload.Contains(sceneID))
+                return;
+
             _sceneFrames.Remove(sceneID);
             if (_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
                 DetachSceneFromFrame(state.scene);
             _pendingFrames.Remove(chunkKey);
             RetireFrame(frame.Context, frame.TileCoordinate, frame);
             CompletePendingChunkLoad(chunkKey, sceneID, false, failureMessage, null);
-            _networkManager.sceneModule.UnloadSceneAsync(sceneID);
+            QueueSceneUnload(sceneID);
+        }
+
+        private void FailUnownedWorldScene(SceneID sceneID, Scene scene, string failureMessage)
+        {
+            if (_scenesAwaitingUnload.Contains(sceneID))
+                return;
+
+            Debug.Error(failureMessage);
+            DetachSceneFromFrame(scene);
+            QueueSceneUnload(sceneID);
+        }
+
+        private void QueueSceneUnload(SceneID sceneID)
+        {
+            _scenesAwaitingUnload.Add(sceneID);
         }
 
         private void RetirePendingFrame(WorldChunkKey chunkKey, ServerPhysicsFrame frame)
