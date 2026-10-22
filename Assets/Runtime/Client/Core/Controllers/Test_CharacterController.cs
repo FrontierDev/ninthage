@@ -183,12 +183,6 @@ namespace Game.Client
                 position,
                 _ownershipEpoch,
                 proposalSequence);
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            FormattedDebug.Log(
-                $"[Movement/Send] epoch={_ownershipEpoch} sequence={proposalSequence} "
-                + $"origin=({originChunk.x},{originChunk.y}) "
-                + $"absolute=({position.x:F6},{position.y:F6},{position.z:F6}) reason={sendReason}.");
-#endif
 
             _lastTransmittedPosition = position;
             _lastPositionProposalTime = proposalTime;
