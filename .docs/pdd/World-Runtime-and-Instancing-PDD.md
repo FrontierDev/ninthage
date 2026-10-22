@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Persistent worlds, world streaming, spatial partitioning, floating origin, actor visibility, seamless interiors, instanced spaces, map transitions and runtime scene authoring  
-**Last updated:** 2026-10-18
+**Last updated:** 2026-10-22
 
 ---
 
@@ -246,6 +246,23 @@ The inspected installed transport does not meet this requirement by itself. `Ass
 The fixed solution is one project-owned PurrNet position RPC/serialization path. After `CharacterController.Move`, the client uses its current `ClientPositionManager.OriginChunk` and `LocalToChunkRelative`, then reuses `PackWorldPosition` to send chunk/local `WorldPosition` plus a monotonically increasing ownership-epoch proposal sequence. The server authenticates the sender and actor binding, resolves `ActorSpatialContext` itself, orders and validates the proposal at the authoritative tick, and commits the resulting absolute double position to the ECS component. A client origin shift reconstructs the same absolute position and is zero displacement. `MovementEndpoint.Server_RequestChunkInterest` remains interest bookkeeping, not movement authority.
 
 The project-owned path replaces only `NetworkTransform` position. `NetworkTransform` remains available for rotation and other suitable properties, and its position sync is set to `No` only in the coordinated #136 cutover after server-authored observer position updates and client-origin projection are functional. No vendor source is modified and no competing gameplay position stream is retained. #130 owns proposal sending/serialization; #131 owns validation and canonical commit; #136 owns observer updates and the cutover.
+
+### 5.5 Server-local physics/NavMesh frames (approved Stage 1.2 contract)
+
+Client floating-origin cells (100 m), environment tiles (256 m), server physics slots and logical `ActorSpatialContext` are four distinct concepts. The server uses one shared Unity Physics/NavMesh world with **16 × 16 non-overlapping physical slots at 512 m pitch** initially, subject to validated authored extents. Each live slot represents precisely one `(WorldID, MapID, InstanceID, environment tile)` key; the authoritative slot owner is `ServerPositionManager` (#134). Slot keys must not be inferred from `CurrentChunk`, Unity scene names, origin cells or PurrNet scene identity. The slot is a temporary physical representation, **never an alternative position or logical-instance authority**.
+
+Slot registration owns a verified association of context/tile, absolute double-precision tile origin, local float slot anchor, assigned geometry/NavMeshData, resident physics actors/agents and lifetime. A tile's slot must be reserved **before** its authored scene colliders, NavMeshData, actors and physics queries become active. All use the same placement and conversion:
+
+```text
+physics-local float = slot anchor + (absolute double position - absolute double tile origin)
+absolute double position = absolute double tile origin + (physics-local float - slot anchor)
+```
+
+The subtraction/inverse reconstruction is performed in double precision before conversion at the slot boundary; never cast large absolute world coordinates directly to Unity floats. A physical-slot change must preserve `ActorComponent.WorldPositionD` and `ActorSpatialContext`; it is not a teleport. Slots are stable while referenced; a slot cannot be reused until scene geometry, colliders, NavMeshData, actor/agent bindings and in-flight physics use are safely retired. Missing, stale, conflicting or exhausted slots fail explicitly rather than aliasing another tile or falling back to global-origin coordinates. Frame lookup for ECS code uses authoritative actor ID/context binding without introducing another mutable absolute position.
+
+**#134 also owns frame-aware ECS ground detection.** `ActorUpdateSystem.OnUpdate` currently casts `ActorComponent.WorldPositionD` directly to a `Vector3` ray origin and writes `Physics.Raycast`'s local `hit.point.y` back to absolute ECS Y. For gravity-owned NPCs, the query origin must be converted into the actor's verified slot; the entire hit point must be reconstructed into absolute doubles through that *same frame* before changing `WorldPositionD.y`. Preserve the existing ground mask, distances, velocity, grounded-state and gravity rules, including the exclusion of players and enabled NavMesh agents. #132 consumes the established frames for enabled NavMesh-agent pre-ECS position acceptance and disabled-agent post-ECS projection; #135 owns route gateways and agent handoff. #114 alone publishes accepted ECS positions to the spatial index.
+
+**Implementation sequencing:** the full frame system crosses manager/scene/ECS owners and is intentionally **not** one three-file/~150-line changeset. #134 is a tracking issue whose ordered, narrowly scoped children establish (1) frame registry and conversion, (2) environment geometry/NavMesh slot placement and retirement, (3) actor spawn/frame association, and (4) ECS ground-raycast integration. Each stage requires source review and owner-only Unity/headless validation before advancing. Changes that require new state owners, vendor edits or asset-layout decisions outside the approved design remain separate approval gates; no speculative workaround or partial origin-zero sign-off is permitted.
 
 ---
 
