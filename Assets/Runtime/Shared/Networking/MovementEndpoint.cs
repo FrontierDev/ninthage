@@ -1,3 +1,4 @@
+using Game.Shared.Utility;
 using PurrNet;
 using System;
 using UnityEngine;
@@ -17,9 +18,30 @@ namespace Game.Shared.Networking
         /// <summary>Raised when a player requests a chunk-interest update.</summary>
         public static Action<PlayerID, Vector2Int> onInterestRequest;
 
+        /// <summary>Raised when an owner submits an origin-qualified movement proposal.</summary>
+        public static Action<PlayerID, WorldPosition, long, long> onServerPositionProposal;
+
         // Server correction callback (cheat detection only).
         /// <summary>Raised when the server corrects a client's position.</summary>
         public static Action<Vector2Int, Vector3> onServerCorrection;
+
+        /// <summary>
+        /// Receives an owner's movement proposal. Server-side validation and
+        /// authoritative commit are handled by the movement validation system.
+        /// </summary>
+        [ServerRpc]
+        public static void Server_SubmitPositionProposal(
+            WorldPosition position,
+            long ownershipEpoch,
+            long proposalSequence,
+            RPCInfo rpcInfo = default)
+        {
+            onServerPositionProposal?.Invoke(
+                rpcInfo.sender,
+                position,
+                ownershipEpoch,
+                proposalSequence);
+        }
 
         /// <summary>Requests a chunk-interest update from the server.</summary>
         [ServerRpc]

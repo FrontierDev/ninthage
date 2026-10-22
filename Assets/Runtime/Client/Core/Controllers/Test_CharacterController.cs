@@ -2,7 +2,9 @@
 using Game.Shared.Movement;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using PurrNet;
+using System;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -30,6 +32,8 @@ namespace Game.Client
 
         private Vector2 _currentMovementInput = Vector2.zero;
         private bool _jumpRequested = false;
+        private long _ownershipEpoch;
+        private long _proposalSequence;
 
         private void Awake()
         {
@@ -51,6 +55,8 @@ namespace Game.Client
             _actorMotor = actor.GetComponent<ActorMotor>();
             if (_actorMotor == null) return;
 
+            _ownershipEpoch = checked(_ownershipEpoch + 1);
+            _proposalSequence = 0;
             _cc = GetComponent<CharacterController>();
             _instance = this;
             MovementEndpoint.onServerCorrection += OnServerCorrection;
@@ -100,6 +106,7 @@ namespace Game.Client
                 _actorMotor.horizontalVelocity = hVel;
 
             _cc.Move(delta);
+            SubmitPositionProposal();
 
             _actorMotor.isGrounded = _cc.isGrounded;
             if (_cc.isGrounded && _actorMotor.verticalVelocity < 0)
@@ -111,6 +118,24 @@ namespace Game.Client
                 animator.SetInteger("Forward", (int)_currentMovementInput.y);
                 animator.SetInteger("Right", (int)_currentMovementInput.x);
             }
+        }
+
+        private void SubmitPositionProposal()
+        {
+            if (!ClientPositionManager.Initialized || ClientPositionManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Cannot submit a movement proposal before ClientPositionManager is initialized.");
+            }
+
+            var (chunk, localPosition) = ClientPositionManager.Instance.LocalToChunkRelative(transform.position);
+            var position = WorldPosition.FromChunkLocal(chunk, localPosition);
+            var proposalSequence = checked(++_proposalSequence);
+
+            MovementEndpoint.Server_SubmitPositionProposal(
+                position,
+                _ownershipEpoch,
+                proposalSequence);
         }
 
         /// <summary>
