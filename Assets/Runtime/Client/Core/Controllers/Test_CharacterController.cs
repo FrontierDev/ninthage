@@ -123,6 +123,18 @@ namespace Game.Client
                 _actorMotor.horizontalVelocity = hVel;
 
             _cc.Move(delta);
+            // Recenter after movement so the next proposal uses the updated origin frame.
+            if (!ClientPositionManager.Initialized || ClientPositionManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Cannot update the floating origin before ClientPositionManager is initialized.");
+            }
+
+            var positionManager = ClientPositionManager.Instance;
+            var chunk = positionManager.LocalToChunkRelative(transform.position).chunk;
+            if (chunk.x != positionManager.OriginChunk.x || chunk.y != positionManager.OriginChunk.y)
+                positionManager.SetOriginChunk(chunk);
+
             TrySubmitPositionProposal();
 
             _actorMotor.isGrounded = _cc.isGrounded;
