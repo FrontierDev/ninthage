@@ -16,6 +16,12 @@ namespace Game.Client
     [RequireComponent(typeof(CharacterController))]
     public class Test_CharacterController : MonoBehaviour
     {
+        // Match the server's 20 Hz cadence while leaving movement frame-responsive.
+        private const float POSITION_PROPOSAL_INTERVAL_SECONDS = 0.05f;
+        // A 1-second heartbeat keeps stationary owners observable without adding
+        // meaningful traffic between ordinary movement proposals.
+        private const float POSITION_HEARTBEAT_INTERVAL_SECONDS = 1f;
+
         private static Test_CharacterController _instance;
         /// <summary>
         /// Gets the shared client-side instance.
@@ -34,6 +40,9 @@ namespace Game.Client
         private bool _jumpRequested = false;
         private long _ownershipEpoch;
         private long _proposalSequence;
+        private bool _hasSentPositionProposal;
+        private float _lastPositionProposalTime;
+        private WorldPosition _lastTransmittedPosition;
 
         private void Awake()
         {
@@ -57,6 +66,7 @@ namespace Game.Client
 
             _ownershipEpoch = checked(_ownershipEpoch + 1);
             _proposalSequence = 0;
+            ResetPositionProposalState();
             _cc = GetComponent<CharacterController>();
             _instance = this;
             MovementEndpoint.onServerCorrection += OnServerCorrection;
@@ -67,6 +77,7 @@ namespace Game.Client
         {
             ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
             MovementEndpoint.onServerCorrection -= OnServerCorrection;
+            ResetPositionProposalState();
 
             if (ClientInputController.Instance != null)
             {
@@ -106,7 +117,7 @@ namespace Game.Client
                 _actorMotor.horizontalVelocity = hVel;
 
             _cc.Move(delta);
-            SubmitPositionProposal();
+            TrySubmitPositionProposal();
 
             _actorMotor.isGrounded = _cc.isGrounded;
             if (_cc.isGrounded && _actorMotor.verticalVelocity < 0)
@@ -120,8 +131,13 @@ namespace Game.Client
             }
         }
 
-        private void SubmitPositionProposal()
+        private void TrySubmitPositionProposal()
         {
+            float proposalTime = Time.time;
+            if (_hasSentPositionProposal
+                && proposalTime - _lastPositionProposalTime < POSITION_PROPOSAL_INTERVAL_SECONDS)
+                return;
+
             if (!ClientPositionManager.Initialized || ClientPositionManager.Instance == null)
             {
                 throw new InvalidOperationException(
@@ -130,12 +146,34 @@ namespace Game.Client
 
             var (chunk, localPosition) = ClientPositionManager.Instance.LocalToChunkRelative(transform.position);
             var position = WorldPosition.FromChunkLocal(chunk, localPosition);
+            bool positionChanged = !_hasSentPositionProposal || !IsSamePosition(position, _lastTransmittedPosition);
+            bool heartbeatDue = !_hasSentPositionProposal
+                || proposalTime - _lastPositionProposalTime >= POSITION_HEARTBEAT_INTERVAL_SECONDS;
+            if (!positionChanged && !heartbeatDue)
+                return;
+
             var proposalSequence = checked(++_proposalSequence);
 
             MovementEndpoint.Server_SubmitPositionProposal(
                 position,
                 _ownershipEpoch,
                 proposalSequence);
+
+            _lastTransmittedPosition = position;
+            _lastPositionProposalTime = proposalTime;
+            _hasSentPositionProposal = true;
+        }
+
+        private void ResetPositionProposalState()
+        {
+            _hasSentPositionProposal = false;
+            _lastPositionProposalTime = 0f;
+            _lastTransmittedPosition = default;
+        }
+
+        private static bool IsSamePosition(WorldPosition left, WorldPosition right)
+        {
+            return left.x == right.x && left.y == right.y && left.z == right.z;
         }
 
         /// <summary>
