@@ -1166,9 +1166,9 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Consumes the latest authenticated owner proposal for this tick. Proposals are committed
-        /// every tick, while the periodic speed check compares against a dedicated anti-cheat
-        /// baseline and never treats the networked transform as an absolute coordinate source.
+        /// Admits the latest authenticated owner proposal for this tick and independently performs
+        /// any due periodic speed check against the committed ECS position. The networked transform
+        /// is never treated as an absolute coordinate source.
         /// </summary>
         private void ValidatePlayerPositions(ServerSimulationTick tick)
         {
@@ -1202,29 +1202,27 @@ namespace Game.Server.Core
                     continue;
                 }
 
-                if (!_pendingPositionProposals.TryGetValue(playerID, out var proposal))
-                {
-                    if (validationDue)
-                        AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
-                    continue;
-                }
-
-                _pendingPositionProposals.Remove(playerID);
-                if (proposal.ActorID != actor.ID
-                    || !proposal.SpatialContext.IsCompatibleWith(actor.SpatialContext)
-                    || proposal.OwnershipEpoch <= 0
-                    || proposal.ProposalSequence <= 0
-                    || !proposal.Position.IsFinite)
-                {
-                    if (validationDue)
-                        AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
-                    continue;
-                }
-
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                bool hasEligibleProposal = false;
+                WorldPosition candidatePosition = default;
+                if (_pendingPositionProposals.TryGetValue(playerID, out var proposal))
+                {
+                    _pendingPositionProposals.Remove(playerID);
+                    if (proposal.ActorID == actor.ID
+                        && proposal.SpatialContext.IsCompatibleWith(actor.SpatialContext)
+                        && proposal.OwnershipEpoch > 0
+                        && proposal.ProposalSequence > 0
+                        && proposal.Position.IsFinite)
+                    {
+                        hasEligibleProposal = true;
+                        candidatePosition = proposal.Position;
+                    }
+                }
+
                 if (!validationDue)
                 {
-                    CommitPlayerPosition(entity, component, proposal.Position);
+                    if (hasEligibleProposal)
+                        CommitPlayerPosition(entity, component, candidatePosition);
                     continue;
                 }
 
@@ -1240,15 +1238,20 @@ namespace Game.Server.Core
                     throw new InvalidOperationException(
                         $"Player '{playerID}' has an invalid periodic position validation baseline.");
 
+                if (!hasEligibleProposal)
+                {
+                    // A missing or rejected proposal does not bypass the due check; validate the
+                    // position already admitted to the canonical ECS component.
+                    candidatePosition = currentAcceptedPosition;
+                }
+
                 double elapsed = elapsedTickCount * (double)tick.DeltaTime;
                 if (elapsed <= 0d || double.IsNaN(elapsed) || double.IsInfinity(elapsed))
                     throw new InvalidOperationException("Player position validation elapsed time is invalid.");
 
-                double deltaX = proposal.Position.x - baselinePosition.x;
-                double deltaZ = proposal.Position.z - baselinePosition.z;
+                double deltaX = candidatePosition.x - baselinePosition.x;
+                double deltaZ = candidatePosition.z - baselinePosition.z;
                 double speed = Math.Sqrt(deltaX * deltaX + deltaZ * deltaZ) / elapsed;
-                var acceptedPosition = proposal.Position;
-                bool proposalAccepted = true;
 
                 if (speed > MAX_ALLOWED_SPEED)
                 {
@@ -1257,30 +1260,40 @@ namespace Game.Server.Core
                     if (_violationCounters[playerID] >= VIOLATION_THRESHOLD)
                     {
                         Debug.Warning("Player " + playerID + " exceeded max speed (" + speed.ToString("F1") + " m/s) " + _violationCounters[playerID] + " times. Correcting.");
-                        // Keep the latest position already admitted to ECS; the periodic baseline
-                        // is intentionally not a second gameplay authority for correction.
-                        acceptedPosition = currentAcceptedPosition;
-                        proposalAccepted = false;
-                        var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(acceptedPosition);
+                        bool candidateAlreadyCommitted = !hasEligibleProposal
+                            || (candidatePosition.x == currentAcceptedPosition.x
+                                && candidatePosition.y == currentAcceptedPosition.y
+                                && candidatePosition.z == currentAcceptedPosition.z);
+                        var correctionPosition = candidateAlreadyCommitted
+                            ? baselinePosition
+                            : currentAcceptedPosition;
+                        if (candidateAlreadyCommitted)
+                            CommitPlayerPosition(entity, component, correctionPosition);
+
+                        var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(correctionPosition);
                         MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
 
                         // This is a presentation/correction projection only. ECS remains authoritative.
                         actor.transform.position = new Vector3(
-                            (float)acceptedPosition.x,
-                            (float)acceptedPosition.y,
-                            (float)acceptedPosition.z);
+                            (float)correctionPosition.x,
+                            (float)correctionPosition.y,
+                            (float)correctionPosition.z);
+                        _periodicValidationBaselines[playerID] = correctionPosition;
                         _violationCounters[playerID] = 0;
+                    }
+                    else
+                    {
+                        if (hasEligibleProposal)
+                            CommitPlayerPosition(entity, component, candidatePosition);
+                        _periodicValidationBaselines[playerID] = candidatePosition;
                     }
                 }
                 else
                 {
                     _violationCounters[playerID] = 0;
-                }
-
-                if (proposalAccepted)
-                {
-                    CommitPlayerPosition(entity, component, acceptedPosition);
-                    _periodicValidationBaselines[playerID] = acceptedPosition;
+                    if (hasEligibleProposal)
+                        CommitPlayerPosition(entity, component, candidatePosition);
+                    _periodicValidationBaselines[playerID] = candidatePosition;
                 }
 
                 AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
