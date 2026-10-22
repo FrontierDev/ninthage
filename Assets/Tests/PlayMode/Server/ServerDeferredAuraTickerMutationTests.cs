@@ -6,6 +6,7 @@ using Game.Shared.Data.SpellEffectDefinitions;
 using Game.Shared.Data.SpellTargetDefinitions;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -20,6 +21,8 @@ namespace Game.Runtime.Tests.Server
     /// <summary>Verifies aura and ticker callbacks defer buffer mutations to the next tick boundary.</summary>
     public sealed class ServerDeferredAuraTickerMutationTests
     {
+        private static readonly Guid TEST_WORLD_ID =
+            Guid.Parse("00000000-0000-0000-0000-000000000A23");
         private static readonly MethodInfo UPDATE_SIMULATION_METHOD =
             typeof(ServerECSManager).GetMethod("UpdateSimulation", BindingFlags.Static | BindingFlags.NonPublic);
         private static readonly ConstructorInfo SIMULATION_TICK_CONSTRUCTOR =
@@ -30,6 +33,8 @@ namespace Game.Runtime.Tests.Server
                 modifiers: null);
         private static readonly MethodInfo TRY_GET_ACTOR_ENTITY_METHOD =
             typeof(ServerActorManager).GetMethod("TryGetActorEntity", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
+            typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo CURRENT_SIMULATION_EVENT_FIELD =
             typeof(ServerECSManager).GetField("_currentSimulationEvent", BindingFlags.Static | BindingFlags.NonPublic);
         private static readonly FieldInfo HAS_CURRENT_SIMULATION_EVENT_FIELD =
@@ -471,8 +476,16 @@ namespace Game.Runtime.Tests.Server
             var actor = actorObject.GetComponent<Actor>();
             Assert.That(actor, Is.Not.Null);
             actor.Initialize(actorID, actorName);
+            actor.SetAuthoritativeSpatialContext(
+                ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
             actorObject.SetActive(true);
             Assert.That(actor.isSpawned, Is.True);
+            RegisterSpawnedActor(
+                actor,
+                new WorldPosition(
+                    actor.transform.position.x,
+                    actor.transform.position.y,
+                    actor.transform.position.z));
             ActorEndpoint.onServerActorSpawned?.Invoke(actor);
 
             if (_caster == null)
@@ -481,6 +494,15 @@ namespace Game.Runtime.Tests.Server
                 _target = actor;
 
             return actorObject;
+        }
+
+        private static void RegisterSpawnedActor(Actor actor, WorldPosition position)
+        {
+            Assert.That(REGISTER_SPAWNED_ACTOR_METHOD, Is.Not.Null);
+            Assert.That(ServerActorManager.Instance, Is.Not.Null);
+            REGISTER_SPAWNED_ACTOR_METHOD.Invoke(
+                ServerActorManager.Instance,
+                new object[] { actor, position });
         }
 
         private AuraDefinition CreateAura(

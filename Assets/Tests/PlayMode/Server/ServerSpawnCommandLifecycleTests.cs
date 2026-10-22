@@ -22,6 +22,8 @@ namespace Game.Runtime.Tests.Server
     {
         private const string TEST_PREFAB_NAME = "Test Spawnable Object";
         private const string TEST_SCENE_NAME = "World_0_0";
+        private static readonly Guid TEST_WORLD_ID =
+            Guid.Parse("00000000-0000-0000-0000-000000000917");
         private static readonly MethodInfo UPDATE_SIMULATION_METHOD =
             typeof(ServerECSManager).GetMethod("UpdateSimulation", BindingFlags.Static | BindingFlags.NonPublic);
         private static readonly ConstructorInfo SIMULATION_TICK_CONSTRUCTOR =
@@ -32,6 +34,8 @@ namespace Game.Runtime.Tests.Server
                 modifiers: null);
         private static readonly MethodInfo TRY_GET_ACTOR_ENTITY_METHOD =
             typeof(ServerActorManager).GetMethod("TryGetActorEntity", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo INITIALIZE_RUNTIME_CONTEXT_METHOD =
+            typeof(ServerWorldManager).GetMethod("InitializeRuntimeContext", BindingFlags.Static | BindingFlags.NonPublic);
         private static readonly FieldInfo ACTOR_OBJECTS_FIELD =
             typeof(ServerActorManager).GetField("_actorObjects", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo ACTOR_ENTITIES_FIELD =
@@ -177,6 +181,9 @@ namespace Game.Runtime.Tests.Server
                     Assert.Fail("The test NetworkManager did not become a server within 120 frames.");
                 yield return null;
             }
+
+            Assert.That(INITIALIZE_RUNTIME_CONTEXT_METHOD, Is.Not.Null);
+            INITIALIZE_RUNTIME_CONTEXT_METHOD.Invoke(null, new object[] { TEST_WORLD_ID });
 
             _worldManagerObject = new GameObject("ServerSpawnCommandLifecycleWorldManager");
             _worldManagerObject.AddComponent<ServerWorldManager>();

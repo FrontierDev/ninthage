@@ -3,6 +3,7 @@ using Game.Server.Systems;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -25,9 +26,13 @@ namespace Game.Runtime.Tests.Server
             typeof(ServerInitialization).GetField("_timeAuthority", BindingFlags.Static | BindingFlags.NonPublic);
         private static readonly MethodInfo TRY_GET_ACTOR_ENTITY_METHOD =
             typeof(ServerActorManager).GetMethod("TryGetActorEntity", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
+            typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private static readonly Guid ACTOR_ID =
             Guid.Parse("00000000-0000-0000-0000-000000000C01");
+        private static readonly Guid TEST_WORLD_ID =
+            Guid.Parse("00000000-0000-0000-0000-000000000C02");
         private const string COOLDOWN_ID = "utc-separation-cooldown";
         private const float TICK_DURATION_SECONDS = 0.1f;
         private const long MONOTONIC_FREQUENCY = 1000L;
@@ -201,8 +206,25 @@ namespace Game.Runtime.Tests.Server
             var actorObject = new GameObject(objectName);
             actor = actorObject.AddComponent<Actor>();
             actor.Initialize(actorID, actorName);
+            actor.SetAuthoritativeSpatialContext(
+                ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
+            RegisterSpawnedActor(
+                actor,
+                new WorldPosition(
+                    actor.transform.position.x,
+                    actor.transform.position.y,
+                    actor.transform.position.z));
             ActorEndpoint.onServerActorSpawned?.Invoke(actor);
             return actorObject;
+        }
+
+        private static void RegisterSpawnedActor(Actor actor, WorldPosition position)
+        {
+            Assert.That(REGISTER_SPAWNED_ACTOR_METHOD, Is.Not.Null);
+            Assert.That(ServerActorManager.Instance, Is.Not.Null);
+            REGISTER_SPAWNED_ACTOR_METHOD.Invoke(
+                ServerActorManager.Instance,
+                new object[] { actor, position });
         }
 
         private static int SimulateFrame(ServerSimulationClock clock, double elapsedSeconds)

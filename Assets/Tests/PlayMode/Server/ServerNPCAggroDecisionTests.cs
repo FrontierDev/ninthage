@@ -2,6 +2,7 @@ using Game.Server.Core;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using NUnit.Framework;
 using PurrNet;
 using System;
@@ -30,7 +31,10 @@ namespace Game.Runtime.Tests.Server
 
         private static readonly Guid NPC_ID = Guid.Parse("00000000-0000-0000-0000-000000000914");
         private static readonly Guid PLAYER_ID = Guid.Parse("00000000-0000-0000-0000-000000000915");
+        private static readonly Guid TEST_WORLD_ID = Guid.Parse("00000000-0000-0000-0000-000000000916");
         private static readonly PlayerID PLAYER_OWNER_ID = new PlayerID(2UL, false);
+        private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
+            typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private GameConfiguration _configuration;
         private float _originalTickDuration;
@@ -220,6 +224,8 @@ namespace Game.Runtime.Tests.Server
             _npcObject.transform.position = Vector3.zero;
             _npc = _npcObject.AddComponent<NPCActor>();
             _npc.Initialize(NPC_ID, "Server NPC Aggro Decision NPC");
+            _npc.SetAuthoritativeSpatialContext(
+                ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
             NPCBehavior npcBehavior = _npcObject.AddComponent<NPCBehavior>();
             NPC_AGGRO_RANGE_FIELD.SetValue(npcBehavior, 3f);
             NPC_AGGRO_DELAY_FIELD.SetValue(npcBehavior, 0.4f);
@@ -229,14 +235,27 @@ namespace Game.Runtime.Tests.Server
             _player = _playerObject.AddComponent<PlayerActor>();
             _player.Initialize(PLAYER_ID, "Server NPC Aggro Decision Player");
             ACTOR_OWNER_FIELD.SetValue(_player, (PlayerID?)PLAYER_OWNER_ID);
+            _player.SetAuthoritativeSpatialContext(
+                ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
             _playerCollider = _playerObject.AddComponent<SphereCollider>();
 
             _networkManager.Spawn(_npcObject);
             _networkManager.Spawn(_playerObject);
             Assert.That(_npc.isServer, Is.True);
             Assert.That(_player.isServer, Is.True);
+            RegisterSpawnedActor(_npc, new WorldPosition(0d, 0d, 0d));
+            RegisterSpawnedActor(_player, new WorldPosition(1d, 0d, 0d));
             ActorEndpoint.onServerActorSpawned?.Invoke(_npc);
             ActorEndpoint.onServerActorSpawned?.Invoke(_player);
+        }
+
+        private static void RegisterSpawnedActor(Actor actor, WorldPosition position)
+        {
+            Assert.That(REGISTER_SPAWNED_ACTOR_METHOD, Is.Not.Null);
+            Assert.That(ServerActorManager.Instance, Is.Not.Null);
+            REGISTER_SPAWNED_ACTOR_METHOD.Invoke(
+                ServerActorManager.Instance,
+                new object[] { actor, position });
         }
 
         private void CreateGround()

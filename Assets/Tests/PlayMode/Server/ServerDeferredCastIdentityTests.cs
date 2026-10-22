@@ -4,6 +4,7 @@ using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -18,10 +19,14 @@ namespace Game.Runtime.Tests.Server
     /// <summary>Verifies deferred spell mutations preserve cast-generation identity.</summary>
     public sealed class ServerDeferredCastIdentityTests
     {
+        private static readonly Guid TEST_WORLD_ID =
+            Guid.Parse("00000000-0000-0000-0000-000000000903");
         private static readonly MethodInfo UPDATE_SIMULATION_METHOD =
             typeof(ServerECSManager).GetMethod("UpdateSimulation", BindingFlags.Static | BindingFlags.NonPublic);
         private static readonly MethodInfo TRY_GET_ACTOR_ENTITY_METHOD =
             typeof(ServerActorManager).GetMethod("TryGetActorEntity", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
+            typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly ConstructorInfo SIMULATION_TICK_CONSTRUCTOR =
             typeof(ServerSimulationTick).GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
@@ -71,6 +76,9 @@ namespace Game.Runtime.Tests.Server
             _actorObject = new GameObject("ServerDeferredCastIdentityActor");
             _actor = _actorObject.AddComponent<Actor>();
             _actor.Initialize(Guid.Parse("00000000-0000-0000-0000-000000000901"), "Deferred Cast Test Actor");
+            _actor.SetAuthoritativeSpatialContext(
+                ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
+            RegisterSpawnedActor(_actor, new WorldPosition(0d, 0d, 0d));
             ActorEndpoint.onServerActorSpawned?.Invoke(_actor);
 
             CastState initialState = GetCastState(out var state);
@@ -347,6 +355,15 @@ namespace Game.Runtime.Tests.Server
 
             Assert.That(field, Is.Not.Null, $"Expected field '{fieldName}' on {target.GetType().Name}.");
             field.SetValue(target, value);
+        }
+
+        private static void RegisterSpawnedActor(Actor actor, WorldPosition position)
+        {
+            Assert.That(REGISTER_SPAWNED_ACTOR_METHOD, Is.Not.Null);
+            Assert.That(ServerActorManager.Instance, Is.Not.Null);
+            REGISTER_SPAWNED_ACTOR_METHOD.Invoke(
+                ServerActorManager.Instance,
+                new object[] { actor, position });
         }
 
         private void StopRuntime()

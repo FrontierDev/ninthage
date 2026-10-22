@@ -3,6 +3,7 @@ using Game.Server.Systems;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using NUnit.Framework;
 using PurrNet;
 using System;
@@ -20,6 +21,8 @@ namespace Game.Runtime.Tests.Server
     {
         private static readonly Guid ACTOR_ID =
             Guid.Parse("00000000-0000-0000-0000-000000000913");
+        private static readonly Guid TEST_WORLD_ID =
+            Guid.Parse("00000000-0000-0000-0000-000000000918");
         private static readonly PlayerID OWNER_ID = new(1UL, false);
         private static readonly MethodInfo UPDATE_SIMULATION_METHOD =
             typeof(ServerECSManager).GetMethod("UpdateSimulation", BindingFlags.Static | BindingFlags.NonPublic);
@@ -39,10 +42,12 @@ namespace Game.Runtime.Tests.Server
             typeof(ServerPositionManager).GetField("_initialized", BindingFlags.Static | BindingFlags.NonPublic);
         private static readonly FieldInfo VIOLATION_COUNTERS_FIELD =
             typeof(ServerActorManager).GetField("_violationCounters", BindingFlags.Instance | BindingFlags.NonPublic);
-        private static readonly FieldInfo LAST_VALIDATED_POSITIONS_FIELD =
-            typeof(ServerActorManager).GetField("_lastValidatedPositions", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo PERIODIC_VALIDATION_BASELINES_FIELD =
+            typeof(ServerActorManager).GetField("_periodicValidationBaselines", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo NEXT_VALIDATION_TICK_IDS_FIELD =
             typeof(ServerActorManager).GetField("_nextValidationTickIDs", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
+            typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private GameConfiguration _configuration;
         private float _originalTickDuration;
@@ -81,6 +86,9 @@ namespace Game.Runtime.Tests.Server
             _actor = _actorObject.AddComponent<Actor>();
             _actor.Initialize(ACTOR_ID, "Server Player Movement Authority Actor");
             ACTOR_OWNER_FIELD.SetValue(_actor, (PlayerID?)OWNER_ID);
+            _actor.SetAuthoritativeSpatialContext(
+                ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
+            RegisterSpawnedActor(_actor, new WorldPosition(0d, 0d, 0d));
             ActorEndpoint.onServerActorSpawned?.Invoke(_actor);
         }
 
@@ -101,23 +109,34 @@ namespace Game.Runtime.Tests.Server
                 Is.EqualTo(OWNER_ID));
 
             // The fixture has no live PurrNet client transport. The TargetRpc delivery remains an
-            // owner manual check; this test intentionally uses only the server state boundary.
-            _actor.transform.position = new Vector3(5f, 0f, 0f);
+            // owner manual check; proposals are submitted through the server receive seam.
+            _actor.transform.position = new Vector3(500f, 0f, 0f);
+            SubmitPosition(1d, 1L);
+            RunSimulationTick(1);
+            AssertECSPosition(actorEntity, 1f);
+            Assert.That(_actor.transform.position.x, Is.EqualTo(500f).Within(0.0001f));
+
             RunSimulationTick(5);
-            AssertActorAndECSPosition(actorEntity, 5f);
-            AssertValidationState(expectedViolationCount: 0, expectedLastPosition: 5f, expectedNextTickID: 10);
+            AssertECSPosition(actorEntity, 1f);
+            AssertValidationState(expectedViolationCount: 0, expectedBaselinePosition: 1d, expectedNextTickID: 10);
 
-            _actor.transform.position = new Vector3(15f, 0f, 0f);
+            SubmitPosition(20d, 2L);
+            RunSimulationTick(6);
+            AssertECSPosition(actorEntity, 20f);
             RunSimulationTick(10);
-            AssertActorAndECSPosition(actorEntity, 15f);
-            AssertValidationState(expectedViolationCount: 1, expectedLastPosition: 15f, expectedNextTickID: 15);
+            AssertECSPosition(actorEntity, 20f);
+            AssertValidationState(expectedViolationCount: 1, expectedBaselinePosition: 20d, expectedNextTickID: 15);
 
-            _actor.transform.position = new Vector3(25f, 0f, 0f);
+            SubmitPosition(40d, 3L);
+            RunSimulationTick(11);
+            AssertECSPosition(actorEntity, 40f);
             RunSimulationTick(15);
-            AssertActorAndECSPosition(actorEntity, 25f);
-            AssertValidationState(expectedViolationCount: 2, expectedLastPosition: 25f, expectedNextTickID: 20);
+            AssertECSPosition(actorEntity, 40f);
+            AssertValidationState(expectedViolationCount: 2, expectedBaselinePosition: 40d, expectedNextTickID: 20);
 
-            _actor.transform.position = new Vector3(35f, 0f, 0f);
+            SubmitPosition(60d, 4L);
+            RunSimulationTick(16);
+            AssertECSPosition(actorEntity, 60f);
             bool previousIgnoreFailingMessages = LogAssert.ignoreFailingMessages;
             LogAssert.ignoreFailingMessages = true;
             try
@@ -130,15 +149,39 @@ namespace Game.Runtime.Tests.Server
             {
                 LogAssert.ignoreFailingMessages = previousIgnoreFailingMessages;
             }
-            Assert.That(_actor.transform.position.x, Is.EqualTo(25f).Within(0.0001f));
-            AssertECSPosition(actorEntity, 25f);
-            Assert.That(GetECSPosition(actorEntity).x, Is.Not.EqualTo(35d).Within(0.0001d));
-            AssertValidationState(expectedViolationCount: 0, expectedLastPosition: 25f, expectedNextTickID: 25);
+            Assert.That(_actor.transform.position.x, Is.EqualTo(40f).Within(0.0001f));
+            AssertECSPosition(actorEntity, 40f);
+            AssertValidationState(expectedViolationCount: 0, expectedBaselinePosition: 40d, expectedNextTickID: 25);
 
+            SubmitPosition(60d, 5L);
             RunSimulationTick(21);
-            Assert.That(_actor.transform.position.x, Is.EqualTo(25f).Within(0.0001f));
-            AssertECSPosition(actorEntity, 25f);
-            AssertValidationState(expectedViolationCount: 0, expectedLastPosition: 25f, expectedNextTickID: 25);
+            AssertECSPosition(actorEntity, 60f);
+            RunSimulationTick(25);
+            AssertECSPosition(actorEntity, 60f);
+            AssertValidationState(expectedViolationCount: 1, expectedBaselinePosition: 60d, expectedNextTickID: 30);
+
+            SubmitPosition(80d, 6L);
+            RunSimulationTick(26);
+            AssertECSPosition(actorEntity, 80f);
+            RunSimulationTick(30);
+            AssertECSPosition(actorEntity, 80f);
+            AssertValidationState(expectedViolationCount: 2, expectedBaselinePosition: 80d, expectedNextTickID: 35);
+
+            RunSimulationTick(31);
+            SubmitPosition(120d, 7L);
+            previousIgnoreFailingMessages = LogAssert.ignoreFailingMessages;
+            LogAssert.ignoreFailingMessages = true;
+            try
+            {
+                RunSimulationTick(35);
+            }
+            finally
+            {
+                LogAssert.ignoreFailingMessages = previousIgnoreFailingMessages;
+            }
+            Assert.That(_actor.transform.position.x, Is.EqualTo(80f).Within(0.0001f));
+            AssertECSPosition(actorEntity, 80f);
+            AssertValidationState(expectedViolationCount: 0, expectedBaselinePosition: 80d, expectedNextTickID: 40);
 
             yield return null;
         }
@@ -150,12 +193,6 @@ namespace Game.Runtime.Tests.Server
             bool found = (bool)TRY_GET_ACTOR_ENTITY_METHOD.Invoke(ServerActorManager.Instance, arguments);
             Assert.That(found, Is.True);
             return (Entity)arguments[1];
-        }
-
-        private void AssertActorAndECSPosition(Entity actorEntity, float expectedX)
-        {
-            Assert.That(_actor.transform.position.x, Is.EqualTo(expectedX).Within(0.0001f));
-            AssertECSPosition(actorEntity, expectedX);
         }
 
         private static void AssertECSPosition(Entity actorEntity, float expectedX)
@@ -172,16 +209,40 @@ namespace Game.Runtime.Tests.Server
             return component.WorldPositionD;
         }
 
-        private static void AssertValidationState(int expectedViolationCount, float expectedLastPosition, long expectedNextTickID)
+        private static void AssertValidationState(
+            int expectedViolationCount,
+            double expectedBaselinePosition,
+            long expectedNextTickID)
         {
             var manager = ServerActorManager.Instance;
             var violationCounters = (Dictionary<PlayerID, int>)VIOLATION_COUNTERS_FIELD.GetValue(manager);
-            var lastValidatedPositions = (Dictionary<PlayerID, Vector3>)LAST_VALIDATED_POSITIONS_FIELD.GetValue(manager);
+            var periodicValidationBaselines =
+                (Dictionary<PlayerID, WorldPosition>)PERIODIC_VALIDATION_BASELINES_FIELD.GetValue(manager);
             var nextValidationTickIDs = (Dictionary<PlayerID, long>)NEXT_VALIDATION_TICK_IDS_FIELD.GetValue(manager);
 
             Assert.That(violationCounters[OWNER_ID], Is.EqualTo(expectedViolationCount));
-            Assert.That(lastValidatedPositions[OWNER_ID].x, Is.EqualTo(expectedLastPosition).Within(0.0001f));
+            Assert.That(
+                periodicValidationBaselines[OWNER_ID].x,
+                Is.EqualTo(expectedBaselinePosition).Within(0.0001d));
             Assert.That(nextValidationTickIDs[OWNER_ID], Is.EqualTo(expectedNextTickID));
+        }
+
+        private static void SubmitPosition(double x, long sequence)
+        {
+            MovementEndpoint.onServerPositionProposal?.Invoke(
+                OWNER_ID,
+                new WorldPosition(x, 0d, 0d),
+                1L,
+                sequence);
+        }
+
+        private static void RegisterSpawnedActor(Actor actor, WorldPosition position)
+        {
+            Assert.That(REGISTER_SPAWNED_ACTOR_METHOD, Is.Not.Null);
+            Assert.That(ServerActorManager.Instance, Is.Not.Null);
+            REGISTER_SPAWNED_ACTOR_METHOD.Invoke(
+                ServerActorManager.Instance,
+                new object[] { actor, position });
         }
 
         private static void RunSimulationTick(long tickID)
