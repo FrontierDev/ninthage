@@ -1260,15 +1260,17 @@ namespace Game.Server.Core
                     if (_violationCounters[playerID] >= VIOLATION_THRESHOLD)
                     {
                         Debug.Warning("Player " + playerID + " exceeded max speed (" + speed.ToString("F1") + " m/s) " + _violationCounters[playerID] + " times. Correcting.");
-                        bool candidateAlreadyCommitted = !hasEligibleProposal
-                            || (candidatePosition.x == currentAcceptedPosition.x
-                                && candidatePosition.y == currentAcceptedPosition.y
-                                && candidatePosition.z == currentAcceptedPosition.z);
-                        var correctionPosition = candidateAlreadyCommitted
-                            ? baselinePosition
-                            : currentAcceptedPosition;
-                        if (candidateAlreadyCommitted)
-                            CommitPlayerPosition(entity, component, correctionPosition);
+                        double acceptedDeltaX = currentAcceptedPosition.x - baselinePosition.x;
+                        double acceptedDeltaZ = currentAcceptedPosition.z - baselinePosition.z;
+                        double acceptedSpeed = Math.Sqrt(
+                            acceptedDeltaX * acceptedDeltaX
+                            + acceptedDeltaZ * acceptedDeltaZ) / elapsed;
+
+                        var correctionPosition = acceptedSpeed <= MAX_ALLOWED_SPEED
+                            ? currentAcceptedPosition
+                            : baselinePosition;
+                        // Ensure ECS is corrected when an earlier tick already admitted illegal movement.
+                        CommitPlayerPosition(entity, component, correctionPosition);
 
                         var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(correctionPosition);
                         MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
