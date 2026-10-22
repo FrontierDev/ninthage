@@ -333,6 +333,8 @@ namespace Game.Server.Core
 
         private void OnDestroy()
         {
+            _initialized = false;
+
             _npcAggroSchedule.Cancel();
             _npcAggroSchedule = default;
 
@@ -341,6 +343,15 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorOwnerChanged -= OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged -= OnActorInterestChanged;
             ActorEndpoint.onActorDeath -= OnActorDeath;
+
+            foreach (var actorID in _actorObjects.Keys)
+                RemoveSpatialMembership(actorID);
+
+            foreach (var actorID in _actorEntities.Keys)
+            {
+                if (!_actorObjects.ContainsKey(actorID))
+                    RemoveSpatialMembership(actorID);
+            }
 
             _actorObjects.Clear();
             _actorEntities.Clear();
@@ -356,7 +367,6 @@ namespace Game.Server.Core
             _hasPendingTickSyncContribution = false;
             _spatialIndex = null;
             _instance = null;
-            _initialized = false;
         }
 
         private ServerSpatialIndex GetSpatialIndex()
@@ -482,46 +492,57 @@ namespace Game.Server.Core
             ServerECSManager.ClearActorSimulationEventCancellation(actor.ID);
             var wp = actor.WorldPos;
             _spatialIndex.Insert(actor.ID, actor.SpatialContext, wp);
-            var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponentData(entity, new Systems.ActorComponent
+            bool spatialMembershipInserted = true;
+            try
             {
-                ActorID = actor.ID,
-                ActorName = actor.Name,
-                Owner = actor.Owner ?? default,
-                CurrentScene = default,
-                WorldPositionD = new Unity.Mathematics.double3(wp.x, wp.y, wp.z)
-            });
+                var entity = _entityManager.CreateEntity();
+                _entityManager.AddComponentData(entity, new Systems.ActorComponent
+                {
+                    ActorID = actor.ID,
+                    ActorName = actor.Name,
+                    Owner = actor.Owner ?? default,
+                    CurrentScene = default,
+                    WorldPositionD = new Unity.Mathematics.double3(wp.x, wp.y, wp.z)
+                });
 
-            if (actor.Owner == null)
-                EnsureNPCMovementComponents(entity, actor);
+                if (actor.Owner == null)
+                    EnsureNPCMovementComponents(entity, actor);
 
-            _actorObjects[actor.ID] = actor;
-            _actorEntities[actor.ID] = entity;
+                _actorObjects[actor.ID] = actor;
+                _actorEntities[actor.ID] = entity;
 
-            if (actor.Owner != null)
-            {
-                var owner = actor.Owner.Value;
-                InitializePlayerValidationState(owner, actor);
+                if (actor.Owner != null)
+                {
+                    var owner = actor.Owner.Value;
+                    InitializePlayerValidationState(owner, actor);
+                }
+
+                // Add the spellcasting component on the actor.
+                _entityManager.AddComponentData(entity, new Systems.SpellCastComponent());
+                _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
+
+                // Add cooldown buffer for per-spell cooldown tracking.
+                _entityManager.AddBuffer<Systems.CooldownElement>(entity);
+
+                // Add aura buffer for active aura tracking.
+                _entityManager.AddBuffer<Systems.AuraElement>(entity);
+
+                // Add ticker buffer for generic time-based callbacks.
+                _entityManager.AddBuffer<Systems.TickerElement>(entity);
+
+                TrackNPCForAggro(actor);
+
+                if (PerformanceTelemetry.IsEnabled)
+                    PerformanceTelemetry.TryRecord(SPAWN_EVENT_COUNT_METRIC, 1);
+                Debug.Log("Actor spawned on server: " + actor.Name + " (ID: " + actor.ID + ")");
             }
+            catch
+            {
+                if (spatialMembershipInserted)
+                    RemoveSpatialMembership(actor.ID);
 
-            // Add the spellcasting component on the actor.
-            _entityManager.AddComponentData(entity, new Systems.SpellCastComponent());
-            _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
-
-            // Add cooldown buffer for per-spell cooldown tracking.
-            _entityManager.AddBuffer<Systems.CooldownElement>(entity);
-
-            // Add aura buffer for active aura tracking.
-            _entityManager.AddBuffer<Systems.AuraElement>(entity);
-
-            // Add ticker buffer for generic time-based callbacks.
-            _entityManager.AddBuffer<Systems.TickerElement>(entity);
-
-            TrackNPCForAggro(actor);
-
-            if (PerformanceTelemetry.IsEnabled)
-                PerformanceTelemetry.TryRecord(SPAWN_EVENT_COUNT_METRIC, 1);
-            Debug.Log("Actor spawned on server: " + actor.Name + " (ID: " + actor.ID + ")");
+                throw;
+            }
         }
 
         /// <summary>Rolls back actor and ECS state created by a rejected spawn attempt.</summary>
@@ -551,7 +572,11 @@ namespace Game.Server.Core
 
         private void OnActorDespawned(Actor actor)
         {
-            if (actor == null)
+            if (actor == null || !_initialized)
+                return;
+
+            if (_actorObjects.TryGetValue(actor.ID, out var registeredActor)
+                && !ReferenceEquals(registeredActor, actor))
                 return;
 
             RemoveSpatialMembership(actor.ID);
