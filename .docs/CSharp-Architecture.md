@@ -295,7 +295,7 @@ Load global_actors scene
 Create interest, position, physics, spawn and gameplay managers
 ```
 
-The gameplay/world managers attached after world setup are currently:
+The gameplay/world manager architecture is:
 
 - `ServerInterestManager`;
 - `ServerPositionManager`;
