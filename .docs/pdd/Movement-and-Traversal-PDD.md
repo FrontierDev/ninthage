@@ -719,19 +719,23 @@ authoritative actor spatial state
 
 ### 20.3.1 Simulation-region frame and NPC movement ownership
 
-A server simulation region is keyed by full `ActorSpatialContext` plus a coarse server-owned region identity. It contains **multiple adjacent 256 m environment tiles** in one contiguous local Unity coordinate frame. Environment tile boundaries are streaming/content boundaries only; crossing one must not change the actor's physics frame, warp a `NavMeshAgent`, or create a navigation gateway.
+A server simulation region is keyed by full `ActorSpatialContext` plus a coarse region identity and contains **multiple adjacent 256 m environment tiles** in one contiguous local Unity coordinate frame. Environment tile boundaries are streaming/content boundaries only; crossing one must not change the actor's physics frame, warp a `NavMeshAgent`, or create a navigation gateway.
 
-The sole mutable accepted absolute actor position remains `ActorComponent.WorldPositionD`. Spawn registration seeds that canonical value from an already resolved absolute position. `Actor.WorldPos` must not be restored as a second mutable position source.
+`ServerPhysicsManager` is the sole owner of active simulation-region physical state. It owns region creation/retirement, region-local physical coordinate conversion, physical isolation/placement, collider/NavMesh binding and physics-query execution. `ServerWorldManager` only owns environment scene streaming/identity, and `ServerPositionManager` only owns general position/network encoding conversions. Neither manager may retain a second region registry or physical-frame lifetime.
+
+The sole mutable accepted absolute actor position remains `ActorComponent.WorldPositionD`. Spawn registration seeds that canonical value from an already resolved absolute position. `Actor.WorldPos` must not be restored as a second mutable position source, and `ServerPhysicsManager` must not cache another authoritative absolute actor position.
 
 The existing tick ownership boundary is retained:
 
-- **Enabled NavMesh agent:** the agent moves continuously inside the current simulation region. The pre-ECS NPC bridge converts its region-local pose to absolute double precision and commits that value to `WorldPositionD`. ECS gravity does not advance this NPC.
-- **Disabled or absent NavMesh agent:** ECS owns vertical movement. Ground/physics queries convert `WorldPositionD` to the verified region-local frame before querying Unity physics, convert the full hit point back to absolute doubles, then update authoritative ECS state. The post-ECS projection converts the accepted result back into the same region-local frame.
-- **All NPCs:** actor identity and server-owned logical context resolve the current simulation region. The region association is representation state, not another accepted-position store. Client origin shifts and streamed tile load/unload do not alter it.
+- **Enabled NavMesh agent:** the agent moves continuously inside the current simulation region. The pre-ECS NPC bridge obtains the verified region from `ServerPhysicsManager`, converts the region-local pose to absolute double precision and commits that value to `WorldPositionD`. ECS gravity does not advance this NPC.
+- **Disabled or absent NavMesh agent:** ECS owns vertical movement. Ground/physics queries are executed through `ServerPhysicsManager`, which converts `WorldPositionD` into the verified region-local frame before querying Unity physics and returns/reconstructs results in absolute double precision before authoritative ECS state changes. The post-ECS projection uses the same verified region frame.
+- **All NPCs:** actor identity and server-owned logical context resolve the current simulation region through the physical-simulation owner. The region association is representation state, not another accepted-position store. Client origin shifts and streamed tile load/unload do not alter it.
 
-A **simulation-region boundary** is the only physical-frame transition. Such transitions are intentionally much coarser than 256 m tiles and must preserve canonical absolute position, movement/navigation intent and logical context unless gameplay explicitly performs a world/map/instance transition. The concrete handoff may remain in-process or move to another server worker; either way, it is not an ordinary environment-streaming operation.
+A **simulation-region boundary** is the only physical-frame transition. Such transitions are intentionally much coarser than 256 m tiles. `ServerPhysicsManager` owns physical detach/rebind, while movement/navigation logic preserves canonical absolute position, velocity/navigation intent and logical context unless gameplay explicitly performs a world/map/instance transition. The concrete handoff may remain in-process or move to another server worker; either way, it is not an ordinary environment-streaming operation.
 
-Region dimensions must be configurable and aligned to whole environment tiles. Initial dimensions and concurrent-region capacity are selected through representative server measurements before the region integration is considered complete; they are not inferred from client origin cells, spatial-index cells or scene names.
+Region dimensions must be configurable and aligned to whole environment tiles. Initial dimensions and concurrent-region capacity are selected through representative server measurements before region integration is considered complete; they are not inferred from client origin cells, spatial-index cells or scene names.
+
+NavMesh physical data belongs to `ServerPhysicsManager` because it shares the region-local physical frame. Do not create a separate navigation manager in Stage 1.2 unless later route-planning responsibilities independently justify one.
 
 The previous per-tile packed-slot/gateway design is superseded and must not be used as the basis for new movement code.
 
