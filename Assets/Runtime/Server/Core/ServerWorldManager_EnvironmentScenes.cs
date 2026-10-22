@@ -218,6 +218,9 @@ namespace Game.Server.Core
                 _pendingSceneOwners.Remove(sceneID);
             }
 
+            if (!succeeded)
+                Debug.Error(failureMessage);
+
             if (!_pendingLoads.TryGetValue(chunkKey, out var callbacks))
             {
                 if (_pendingLoadTimestamps?.Remove(chunkKey) == true)
@@ -228,9 +231,6 @@ namespace Game.Server.Core
             _pendingLoads.Remove(chunkKey);
             _pendingLoadTimestamps?.Remove(chunkKey);
             RecordPendingSceneOperations();
-
-            if (!succeeded)
-                Debug.Error(failureMessage);
 
             SceneID callbackSceneID = succeeded ? sceneID : default;
             foreach (var callback in callbacks)

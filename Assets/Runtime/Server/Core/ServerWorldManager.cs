@@ -161,9 +161,13 @@ namespace Game.Server.Core
                 }
                 if (!_pendingLoads.ContainsKey(chunkKey))
                 {
-                    FailUnownedWorldScene(
+                    CompletePendingChunkLoad(
+                        chunkKey,
                         sceneID,
-                        $"World scene '{sceneName}' loaded for context key {chunkKey.ChunkCoord}, but its load is no longer pending.");
+                        false,
+                        $"World scene '{sceneName}' loaded for context key {chunkKey.ChunkCoord}, but its load is no longer pending.",
+                        null);
+                    QueueSceneUnload(sceneID);
                     return;
                 }
                 if (_loadedChunks.ContainsKey(chunkKey))
