@@ -30,12 +30,16 @@ namespace Game.Runtime.Tests.Server
             Guid.Parse("00000000-0000-0000-0000-000000000B03");
         private static readonly Guid RETIRED_TARGET_ID =
             Guid.Parse("00000000-0000-0000-0000-000000000B04");
+        private static readonly Guid TEST_WORLD_ID =
+            Guid.Parse("00000000-0000-0000-0000-000000000B05");
         private static readonly FieldInfo LAST_TIMESTAMP_FIELD =
             typeof(ServerSimulationClock).GetField("_lastTimestamp", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly MethodInfo UPDATE_CLOCK_METHOD =
             typeof(ServerSimulationClock).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly MethodInfo TRY_GET_ACTOR_ENTITY_METHOD =
             typeof(ServerActorManager).GetMethod("TryGetActorEntity", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
+            typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private readonly HashSet<Guid> _impactTargetIDs = new();
         private readonly List<ImpactObservation> _impactObservations = new();
@@ -358,9 +362,19 @@ namespace Game.Runtime.Tests.Server
             actor = actorObject.GetComponent<Actor>();
             Assert.That(actor, Is.Not.Null);
             actor.Initialize(actorID, actorName);
-            actor.WorldPos = new WorldPosition(position.x, position.y, position.z);
+            actor.SetAuthoritativeSpatialContext(
+                ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map"));
             actorObject.SetActive(true);
             Assert.That(actor.isSpawned, Is.True);
+            Assert.That(REGISTER_SPAWNED_ACTOR_METHOD, Is.Not.Null);
+            Assert.That(ServerActorManager.Instance, Is.Not.Null);
+            REGISTER_SPAWNED_ACTOR_METHOD.Invoke(
+                ServerActorManager.Instance,
+                new object[]
+                {
+                    actor,
+                    new WorldPosition(position.x, position.y, position.z)
+                });
             ActorEndpoint.onServerActorSpawned?.Invoke(actor);
             return actorObject;
         }

@@ -23,6 +23,8 @@ namespace Game.Runtime.Tests.Server
             Guid.Parse("00000000-0000-0000-0000-000000000A11");
         private static readonly Guid TARGET_ID =
             Guid.Parse("00000000-0000-0000-0000-000000000A12");
+        private static readonly Guid TEST_WORLD_ID =
+            Guid.Parse("00000000-0000-0000-0000-000000000A13");
         private static readonly PlayerID TARGET_OWNER_ID = new PlayerID(3UL, false);
         private static readonly FieldInfo LAST_TIMESTAMP_FIELD =
             typeof(ServerSimulationClock).GetField("_lastTimestamp", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -30,6 +32,8 @@ namespace Game.Runtime.Tests.Server
             typeof(ServerSimulationClock).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo ACTOR_OWNER_FIELD =
             typeof(Actor).GetField("<Owner>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
+            typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private readonly List<long> _acceptedSpellStartTickIDs = new List<long>();
         private GameConfiguration _configuration;
@@ -170,7 +174,6 @@ namespace Game.Runtime.Tests.Server
             _attackerObject.transform.position = Vector3.zero;
             _attacker = _attackerObject.AddComponent<NPCActor>();
             _attacker.Initialize(ATTACKER_ID, "Server Auto Attack Scheduling Attacker");
-            _attacker.WorldPos = new WorldPosition(0d, 0d, 0d);
             ActorSpellcaster attackerSpellcaster = _attackerObject.AddComponent<ActorSpellcaster>();
             ActorStatContainer attackerStats = _attackerObject.AddComponent<ActorStatContainer>();
             AddCombatStats(attackerStats, 100f, _configuration.CritResistanceStat.DefinitionID);
@@ -181,8 +184,10 @@ namespace Game.Runtime.Tests.Server
             _targetObject.transform.position = new Vector3(5f, 0f, 0f);
             _target = _targetObject.AddComponent<PlayerActor>();
             _target.Initialize(TARGET_ID, "Server Auto Attack Scheduling Target");
-            _target.WorldPos = new WorldPosition(5d, 0d, 0d);
             ACTOR_OWNER_FIELD.SetValue(_target, (PlayerID?)TARGET_OWNER_ID);
+            var testContext = ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map");
+            _attacker.SetAuthoritativeSpatialContext(testContext);
+            _target.SetAuthoritativeSpatialContext(testContext);
             ActorStatContainer targetStats = _targetObject.AddComponent<ActorStatContainer>();
             AddCombatStats(targetStats, 100f, _configuration.CritResistanceStat.DefinitionID);
 
@@ -190,10 +195,21 @@ namespace Game.Runtime.Tests.Server
             _networkManager.Spawn(_targetObject);
             Assert.That(_attacker.isServer, Is.True);
             Assert.That(_target.isServer, Is.True);
+            RegisterSpawnedActor(_attacker, new WorldPosition(0d, 0d, 0d));
+            RegisterSpawnedActor(_target, new WorldPosition(5d, 0d, 0d));
             ActorEndpoint.onServerActorSpawned?.Invoke(_attacker);
             ActorEndpoint.onServerActorSpawned?.Invoke(_target);
             _attacker.SetTargetFromServer(_target);
             Assert.That(_attacker.Target, Is.SameAs(_target));
+        }
+
+        private static void RegisterSpawnedActor(Actor actor, WorldPosition position)
+        {
+            Assert.That(REGISTER_SPAWNED_ACTOR_METHOD, Is.Not.Null);
+            Assert.That(ServerActorManager.Instance, Is.Not.Null);
+            REGISTER_SPAWNED_ACTOR_METHOD.Invoke(
+                ServerActorManager.Instance,
+                new object[] { actor, position });
         }
 
         private void CreateGround()
