@@ -105,6 +105,9 @@ namespace Game.Server.Core
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int visibilityEvaluationCount = 0;
             var actor = session.PlayerActor;
+            ActorSpatialContext actorContext = actor.SpatialContext;
+            if (!actorContext.IsValid)
+                throw new InvalidOperationException($"Actor {actor} has no valid server-owned spatial context.");
 
             var newSet = GetSceneGrid(centerChunk);
 
@@ -188,7 +191,7 @@ namespace Game.Server.Core
             }
 
             // Notify that the actor's scene (center chunk) changed.
-            if (ServerWorldManager.Instance.TryGetChunkSceneID(centerChunk, out var _centerSceneID))
+            if (ServerWorldManager.Instance.TryGetChunkSceneID(actorContext, centerChunk, out var _centerSceneID))
             {
                 Game.Shared.Networking.ActorEndpoint.onServerActorInterestChanged?.Invoke(actor, _centerSceneID);
             }
@@ -216,7 +219,8 @@ namespace Game.Server.Core
         /// <param name="onSubscribed">An optional callback invoked after subscription.</param>
         public void SubscribePlayerToChunk(Actor actor, Vector2Int chunkCoord, Action onSubscribed = null)
         {
-            ServerWorldManager.Instance.EnsureChunkLoaded(actor, chunkCoord, (sceneID) =>
+            ActorSpatialContext actorContext = actor.SpatialContext;
+            ServerWorldManager.Instance.EnsureChunkLoaded(actorContext, chunkCoord, (sceneID) =>
             {
                 // Guard: if the actor's interest changed while the chunk was loading, skip.
                 var chunkScene = $"World_{chunkCoord.x}_{chunkCoord.y}";
@@ -239,7 +243,8 @@ namespace Game.Server.Core
         /// <param name="chunkCoord">The chunk coordinate.</param>
         public void UnsubscribePlayerFromChunk(Actor actor, Vector2Int chunkCoord)
         {
-            if (!ServerWorldManager.Instance.TryGetChunkSceneID(chunkCoord, out SceneID sceneID))
+            ActorSpatialContext actorContext = actor.SpatialContext;
+            if (!ServerWorldManager.Instance.TryGetChunkSceneID(actorContext, chunkCoord, out SceneID sceneID))
                 return;
 
             if (actor.Owner != null)
@@ -250,12 +255,12 @@ namespace Game.Server.Core
             }
 
             // If no players remain subscribed and no loads are in-flight, unload the chunk.
-            if (ServerWorldManager.Instance.IsChunkLoadPending(chunkCoord))
+            if (ServerWorldManager.Instance.IsChunkLoadPending(actorContext, chunkCoord))
                 return;
 
             if (!_networkManager.scenePlayersModule.TryGetPlayersInScene(sceneID, out var players) || players.Count == 0)
             {
-                ServerWorldManager.Instance.UnloadChunk(chunkCoord);
+                ServerWorldManager.Instance.UnloadChunk(actorContext, chunkCoord);
             }
         }
 
@@ -266,10 +271,14 @@ namespace Game.Server.Core
         public void GetChunksByActor(Actor actor, out List<Vector2Int> subscribedChunks)
         {
             subscribedChunks = new();
+            ActorSpatialContext actorContext = actor.SpatialContext;
 
             foreach (var kvp in ServerWorldManager.Instance.LoadedChunks)
             {
-                Vector2Int chunkCoord = kvp.Key;
+                if (kvp.Key.Context != actorContext)
+                    continue;
+
+                Vector2Int chunkCoord = kvp.Key.ChunkCoord;
                 SceneID sceneID = kvp.Value;
 
                 if (actor.Owner != null)

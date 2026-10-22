@@ -194,7 +194,10 @@ namespace Game.Server.Core
 
             // Actively request the spawn chunk to load instead of passively waiting.
             bool chunkReady = false;
-            ServerWorldManager.Instance.EnsureChunkLoaded(null, spawnScene, (_) => chunkReady = true);
+            ServerWorldManager.Instance.EnsureChunkLoaded(
+                ServerWorldManager.Instance.CurrentRuntimeContext,
+                spawnScene,
+                (_) => chunkReady = true);
             yield return new WaitUntil(() => chunkReady);
 
             // Load the player prefab from Addressables
