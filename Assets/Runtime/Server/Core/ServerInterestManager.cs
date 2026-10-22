@@ -220,8 +220,11 @@ namespace Game.Server.Core
         public void SubscribePlayerToChunk(Actor actor, Vector2Int chunkCoord, Action onSubscribed = null)
         {
             ActorSpatialContext actorContext = actor.SpatialContext;
-            ServerWorldManager.Instance.EnsureChunkLoaded(actorContext, chunkCoord, (sceneID) =>
+            ServerWorldManager.Instance.EnsureChunkLoaded(actorContext, chunkCoord, (succeeded, sceneID) =>
             {
+                if (!succeeded)
+                    return;
+
                 // Guard: if the actor's interest changed while the chunk was loading, skip.
                 var chunkScene = $"World_{chunkCoord.x}_{chunkCoord.y}";
                 if (!_actorChunks.TryGetValue(actor, out var currentChunks) || !currentChunks.Contains(chunkScene))

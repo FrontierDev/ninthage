@@ -193,12 +193,31 @@ namespace Game.Server.Core
             var spawnScene = new Vector2Int(0, 0);
 
             // Actively request the spawn chunk to load instead of passively waiting.
-            bool chunkReady = false;
-            ServerWorldManager.Instance.EnsureChunkLoaded(
-                ServerWorldManager.Instance.CurrentRuntimeContext,
-                spawnScene,
-                (_) => chunkReady = true);
-            yield return new WaitUntil(() => chunkReady);
+            bool chunkLoadCompleted = false;
+            bool chunkLoadSucceeded = false;
+            try
+            {
+                ServerWorldManager.Instance.EnsureChunkLoaded(
+                    ServerWorldManager.Instance.CurrentRuntimeContext,
+                    spawnScene,
+                    (succeeded, _) =>
+                    {
+                        chunkLoadSucceeded = succeeded;
+                        chunkLoadCompleted = true;
+                    });
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Failed to start loading the player spawn chunk: {exception.Message}");
+                yield break;
+            }
+
+            yield return new WaitUntil(() => chunkLoadCompleted);
+            if (!chunkLoadSucceeded)
+            {
+                Debug.Error($"Failed to load the player spawn chunk for player {playerID}.");
+                yield break;
+            }
 
             // Load the player prefab from Addressables
             var handle = Addressables.LoadAssetAsync<GameObject>("PlayerPrefab"); // your addressable key

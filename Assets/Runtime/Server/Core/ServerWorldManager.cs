@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 
 namespace Game.Server.Core
@@ -125,7 +127,7 @@ namespace Game.Server.Core
         public IReadOnlyDictionary<WorldChunkKey, SceneID> LoadedChunks => _loadedChunks;
 
         // Chunks currently being loaded asynchronously.
-        private readonly Dictionary<WorldChunkKey, List<Action<SceneID>>> _pendingLoads = new();
+        private readonly Dictionary<WorldChunkKey, List<Action<bool, SceneID>>> _pendingLoads = new();
         private readonly Dictionary<SceneID, WorldChunkKey> _pendingSceneOwners = new();
         private Dictionary<WorldChunkKey, long> _pendingLoadTimestamps;
         private Dictionary<SceneID, long> _pendingUnloadTimestamps;
@@ -221,7 +223,16 @@ namespace Game.Server.Core
                     return;
                 }
 
-                Vector2Int chunkCoord = ParseChunkCoordinate(sceneName);
+                Vector2Int chunkCoord;
+                try
+                {
+                    chunkCoord = ParseChunkCoordinate(sceneName);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error($"World scene '{sceneName}' could not be parsed for pending SceneID {sceneID}: {exception.Message}");
+                    return;
+                }
                 if (chunkCoord != chunkKey.ChunkCoord)
                 {
                     Debug.Error($"World scene '{sceneName}' does not match requested tile {chunkKey.ChunkCoord}.");
@@ -319,26 +330,28 @@ namespace Game.Server.Core
         /// <summary>
         /// Ensures a chunk scene is loaded. If already loaded, invokes the callback immediately
         /// with the existing SceneID. Otherwise triggers an async load and invokes the callback
-        /// once the scene is ready.
+        /// once the scene succeeds or reaches a terminal failure.
         /// </summary>
         /// <param name="context">The authoritative runtime context that owns the chunk.</param>
-        public void EnsureChunkLoaded(ActorSpatialContext context, Vector2Int chunkCoord, Action<SceneID> onReady)
+        /// <param name="chunkCoord">The environment tile coordinate.</param>
+        /// <param name="onCompleted">Receives the terminal result and verified scene identifier on success.</param>
+        public void EnsureChunkLoaded(ActorSpatialContext context, Vector2Int chunkCoord, Action<bool, SceneID> onCompleted)
         {
             var chunkKey = new WorldChunkKey(context, chunkCoord);
             if (_loadedChunks.TryGetValue(chunkKey, out SceneID sceneID))
             {
-                onReady?.Invoke(sceneID);
+                onCompleted?.Invoke(true, sceneID);
                 return;
             }
 
             // If a load is already in-flight, just queue the callback.
             if (_pendingLoads.TryGetValue(chunkKey, out var callbacks))
             {
-                callbacks.Add(onReady);
+                callbacks.Add(onCompleted);
                 return;
             }
 
-            _pendingLoads[chunkKey] = new() { onReady };
+            _pendingLoads[chunkKey] = new() { onCompleted };
             if (PerformanceTelemetry.IsEnabled)
             {
                 if (_pendingLoadTimestamps == null)
@@ -349,25 +362,70 @@ namespace Game.Server.Core
             }
 
             var address = $"World_{chunkCoord.x}_{chunkCoord.y}";
-            var loadHandle = _networkManager.sceneModule.LoadAddressableSceneAsync(address, _worldSceneSettings);
+            AsyncOperationHandle<SceneInstance> loadHandle;
+            try
+            {
+                loadHandle = _networkManager.sceneModule.LoadAddressableSceneAsync(address, _worldSceneSettings);
+            }
+            catch (Exception exception)
+            {
+                CompletePendingChunkLoad(
+                    chunkKey,
+                    default,
+                    false,
+                    $"Chunk load threw before PurrNet could assign a scene ID for {chunkKey}: {exception.Message}",
+                    null);
+                throw;
+            }
+
             if (!loadHandle.IsValid())
             {
-                _pendingLoads.Remove(chunkKey);
-                _pendingLoadTimestamps?.Remove(chunkKey);
-                RecordPendingSceneOperations();
+                CompletePendingChunkLoad(
+                    chunkKey,
+                    default,
+                    false,
+                    $"Chunk load returned an invalid Addressables handle for {chunkKey}.",
+                    null);
                 throw new InvalidOperationException($"PurrNet returned an invalid load handle for world scene '{address}'.");
             }
 
             SceneID requestedSceneID = _networkManager.sceneModule.lastSceneId;
             if (requestedSceneID == default)
             {
-                _pendingLoads.Remove(chunkKey);
-                _pendingLoadTimestamps?.Remove(chunkKey);
-                RecordPendingSceneOperations();
+                CompletePendingChunkLoad(
+                    chunkKey,
+                    default,
+                    false,
+                    $"PurrNet did not assign a scene ID while loading chunk {chunkKey}.",
+                    null);
                 throw new InvalidOperationException($"PurrNet did not assign a SceneID for world scene '{address}'.");
             }
             if (!_pendingSceneOwners.TryAdd(requestedSceneID, chunkKey))
-                throw new InvalidOperationException($"PurrNet reused SceneID {requestedSceneID} for world scene '{address}'.");
+            {
+                string errorMessage = $"PurrNet reused SceneID {requestedSceneID} for world scene '{address}'.";
+                CompletePendingChunkLoad(chunkKey, requestedSceneID, false, errorMessage, null);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            void UnsubscribeLoadHandlers()
+            {
+                _networkManager.sceneModule.onSceneLoaded -= OnLoaded;
+                loadHandle.Completed -= OnAddressableLoadCompleted;
+            }
+
+            void OnAddressableLoadCompleted(AsyncOperationHandle<SceneInstance> completedHandle)
+            {
+                if (completedHandle.Status == AsyncOperationStatus.Succeeded)
+                    return;
+
+                string exceptionMessage = completedHandle.OperationException?.Message ?? "no exception details were provided";
+                CompletePendingChunkLoad(
+                    chunkKey,
+                    requestedSceneID,
+                    false,
+                    $"Addressables failed to load chunk {chunkKey}: {exceptionMessage}",
+                    UnsubscribeLoadHandlers);
+            }
 
             void OnLoaded(SceneID loadedSceneID, bool asServer)
             {
@@ -377,23 +435,71 @@ namespace Game.Server.Core
                     || loadedKey != chunkKey)
                     return;
 
-                _networkManager.sceneModule.onSceneLoaded -= OnLoaded;
-                _pendingSceneOwners.Remove(loadedSceneID);
-
                 if (!_loadedChunks.TryGetValue(chunkKey, out var chunkSceneID)
                     || chunkSceneID != loadedSceneID)
-                    return;
-
-                if (_pendingLoads.TryGetValue(chunkKey, out var pending))
                 {
-                    _pendingLoads.Remove(chunkKey);
-                    foreach (var cb in pending)
-                        cb?.Invoke(loadedSceneID);
+                    CompletePendingChunkLoad(
+                        chunkKey,
+                        requestedSceneID,
+                        false,
+                        $"PurrNet reported scene {loadedSceneID} for chunk {chunkKey}, but the verified loaded-chunk mapping was not created.",
+                        UnsubscribeLoadHandlers);
+                    return;
                 }
-                RecordPendingSceneOperations();
+
+                CompletePendingChunkLoad(chunkKey, requestedSceneID, true, null, UnsubscribeLoadHandlers);
             }
 
-            _networkManager.sceneModule.onSceneLoaded += OnLoaded;
+            try
+            {
+                _networkManager.sceneModule.onSceneLoaded += OnLoaded;
+                loadHandle.Completed += OnAddressableLoadCompleted;
+            }
+            catch (Exception exception)
+            {
+                CompletePendingChunkLoad(
+                    chunkKey,
+                    requestedSceneID,
+                    false,
+                    $"Chunk load event registration failed for {chunkKey}: {exception.Message}",
+                    UnsubscribeLoadHandlers);
+                throw;
+            }
+        }
+
+        private void CompletePendingChunkLoad(
+            WorldChunkKey chunkKey,
+            SceneID sceneID,
+            bool succeeded,
+            string failureMessage,
+            Action unsubscribe)
+        {
+            unsubscribe?.Invoke();
+
+            if (sceneID != default
+                && _pendingSceneOwners.TryGetValue(sceneID, out WorldChunkKey owner)
+                && owner == chunkKey)
+            {
+                _pendingSceneOwners.Remove(sceneID);
+            }
+
+            if (!_pendingLoads.TryGetValue(chunkKey, out var callbacks))
+            {
+                if (_pendingLoadTimestamps?.Remove(chunkKey) == true)
+                    RecordPendingSceneOperations();
+                return;
+            }
+
+            _pendingLoads.Remove(chunkKey);
+            _pendingLoadTimestamps?.Remove(chunkKey);
+            RecordPendingSceneOperations();
+
+            if (!succeeded)
+                Debug.Error(failureMessage);
+
+            SceneID callbackSceneID = succeeded ? sceneID : default;
+            foreach (var callback in callbacks)
+                callback?.Invoke(succeeded, callbackSceneID);
         }
 
         /// <summary>
