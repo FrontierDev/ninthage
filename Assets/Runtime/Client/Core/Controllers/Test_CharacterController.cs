@@ -21,6 +21,8 @@ namespace Game.Client
         // A 1-second heartbeat keeps stationary owners observable without adding
         // meaningful traffic between ordinary movement proposals.
         private const float POSITION_HEARTBEAT_INTERVAL_SECONDS = 1f;
+        // Tolerate up to 1 mm of float-origin round-trip error when suppressing sends.
+        private const double POSITION_COMPARISON_TOLERANCE_METRES = 0.001d;
 
         private static Test_CharacterController _instance;
         /// <summary>
@@ -57,6 +59,7 @@ namespace Game.Client
             }
         }
 
+        // Movement and proposal sequencing begin only after this object is the local actor owner.
         private void OnActorOwnershipTaken(Game.Shared.Runtime.Actors.Actor actor)
         {
             if (actor.gameObject != gameObject) return;
@@ -131,6 +134,8 @@ namespace Game.Client
             }
         }
 
+        // Samples the post-Move pose in the current floating-origin frame, then sends at most
+        // once per proposal interval when the absolute position changed or the heartbeat is due.
         private void TrySubmitPositionProposal()
         {
             float proposalTime = Time.time;
@@ -164,6 +169,7 @@ namespace Game.Client
             _hasSentPositionProposal = true;
         }
 
+        // Prevents a previous owner's cadence and position baseline from affecting this owner epoch.
         private void ResetPositionProposalState()
         {
             _hasSentPositionProposal = false;
@@ -171,9 +177,16 @@ namespace Game.Client
             _lastTransmittedPosition = default;
         }
 
+        // Treats small float-origin reconstruction differences as unchanged while preserving
+        // deliberate chunk transitions as movement.
         private static bool IsSamePosition(WorldPosition left, WorldPosition right)
         {
-            return left.x == right.x && left.y == right.y && left.z == right.z;
+            if (left.Chunk.x != right.Chunk.x || left.Chunk.y != right.Chunk.y)
+                return false;
+
+            return Math.Abs(left.x - right.x) <= POSITION_COMPARISON_TOLERANCE_METRES
+                && Math.Abs(left.y - right.y) <= POSITION_COMPARISON_TOLERANCE_METRES
+                && Math.Abs(left.z - right.z) <= POSITION_COMPARISON_TOLERANCE_METRES;
         }
 
         /// <summary>
