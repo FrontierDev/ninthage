@@ -215,7 +215,7 @@ An actor's identities have distinct owners and lifetimes:
 
 **Required contract:** One server actor-lifecycle authority reconciles its gameplay identity, ECS representation and PurrNet identity through spawn, ownership transfer, visibility change, dormancy, reconnect, despawn and shutdown. Exactly one authoritative runtime actor may represent a selected character in one gameplay session. Representation destruction must not implicitly erase persistent or still-live authoritative state.
 
-**Position ownership decision for the Stage 1.2 handoff:** Each live actor has exactly one stored, writable authoritative absolute double-precision position. The existing server ECS `ActorComponent.WorldPositionD` is the canonical position store for a live ECS actor. `Actor.WorldPos` is not a second live position authority: its redundant writable storage is removed by the follow-on integration, and the spawn position is handed directly into ECS actor creation. The source audit found only the current server spawn write and ECS-registration read; `Actor` is Shared code and cannot read `Game.Server`'s ECS component without reversing the assembly boundary. No Shared-side caller currently requires a live `Actor.WorldPos` read; a future proven Shared consumer may receive a read-only server projection, never another setter or mutable mirror. The broader Stage 1.3 decisions for actor-ID-to-Entity ownership, batching, Jobs/Burst boundaries and dormancy remain open.
+**Position ownership decision for the Stage 1.2 handoff:** Each live actor has exactly one stored, writable authoritative absolute double-precision position. The existing server ECS `ActorComponent.WorldPositionD` is the canonical position store for a live ECS actor. `Actor.WorldPos` is not a second live position authority: #131 removes its redundant writable storage, and the spawn position is handed directly into ECS actor creation. The source audit found only the current server spawn write and ECS-registration read; `Actor` is Shared code and cannot read `Game.Server`'s ECS component without reversing the assembly boundary. No Shared-side caller currently requires a live `Actor.WorldPos` read; a future proven Shared consumer may receive a read-only server projection, never another setter or mutable mirror. The broader Stage 1.3 decisions for actor-ID-to-Entity ownership, batching, Jobs/Burst boundaries and dormancy remain open.
 
 ## 5. Position ownership and synchronisation
 
@@ -226,7 +226,7 @@ An actor's identities have distinct owners and lifetimes:
 | `Actor.WorldPos` (`WorldPosition` doubles) | `ServerSpawnManager.Update` currently initialises it; `ServerActorManager.OnActorSpawned` currently reads it. No other runtime caller currently reads or updates it. | Remove the redundant live storage. Spawn construction hands its already-resolved `WorldPosition` directly to the canonical ECS component. If a future Shared consumer proves necessary, expose only a read-only projection from the server-owned authority. | No independent lifetime or writer. It must never be updated from a client/local-origin transform or maintained as a second mutable copy. |
 | `ActorComponent.WorldPositionD` (`double3`) | Spawn currently initialises it from `Actor.WorldPos`; `ServerActorManager.SyncPlayerECS` and `SynchronizeNPCPositionToECS` currently overwrite it from float transforms; `ActorUpdateSystem.OnUpdate` writes ECS-owned NPC motion. | Canonical writable position for every live ECS actor. One authoritative tick commit writes the accepted player or NavMesh result; the ECS simulation writes ECS-owned NPC motion in that same authority. All index queries and projections read this value. | Process-local entity lifetime; removed/recreated with the entity. Not a durable persistence identifier and invariant under client origin shifts. |
 | Server `Actor.transform.position` (`Vector3`) | PurrNet owner-authoritative movement updates player transform; enabled NPC `NavMeshAgent` drives its transform; ECS gravity writes other NPC transforms in `ServerActorManager.LateUpdate`. | Presentation/physics/NavMesh or received movement **candidate** in server-local coordinates; server validation/reconstruction precedes committing authoritative world state. After accepted movement, project canonical position back to Unity space where needed. | Exists only while GameObject is instantiated; float transform must not be treated as globally authoritative, particularly across wide-world positions. |
-| PurrNet owner movement / `NetworkTransform` state | Client sends movement according to owner authority; server reads resulting transform and may issue `MovementEndpoint.Client_ServerCorrection`. | Client remains responsive and can propose/predict motion; **server validation owns legality**. Accepted movement updates authoritative spatial state, then relevant network state/interest; corrections originate on server. Use supported PurrNet facilities, not a second competing transport. | Connection/visibility lifetime. A rejected candidate does not modify committed authoritative position, gameplay range or cross-instance membership. |
+| PurrNet owner movement / project-owned position RPC | The installed owner-auth `NetworkTransform` currently sends world-space compressed `Vector3` data to the server transform. | #130 replaces only the gameplay position stream with one project-owned PurrNet RPC carrying `WorldPosition` and an ownership-epoch proposal sequence. `NetworkTransform` retains rotation/other suitable properties and its position sync is disabled only during the coordinated #136 cutover. | One owner epoch and proposal sequence per actor. Server-authored accepted positions are the only observer gameplay position stream; interpolation is presentation-only. |
 | Client `Transform.position` / floating origin | `ClientPositionManager.SetOriginChunk`, `ShiftSceneRoots` and `NetworkToLocal` manage shifted local positions. | Client-local projection from absolute authoritative coordinate and that client's origin. Outgoing movement must carry enough origin/cell context for absolute reconstruction; client shifts never modify server absolute position. | Scene/presentation lifetime; a local origin shift is not gameplay motion or a teleport. |
 
 The **authority** in the table is the *server-accepted absolute spatial state*. The current server transform-to-`double3` bridge does not satisfy that contract: it loses origin/cell context after a client rebase and must not be retained as the position handoff. Stage 1.2 consumes the canonical ECS value only after the source-specific commit contract below is implemented.
@@ -243,27 +243,72 @@ The **authority** in the table is the *server-accepted absolute spatial state*. 
 
 ### 5.3 Stage 1.2 accepted-position handoff contract
 
-This contract resolves position storage for the dependent movement/index work. It does not introduce a second position registry, movement clock or transport. The `ServerSpatialIndex.Move` call remains owned by #114 and occurs once at the end of each accepted commit, after the canonical value is written.
+This is the selected contract for #129 and its dependent implementation issues. It does not introduce a second position registry or movement clock. `ActorComponent.WorldPositionD` is the only mutable stored absolute double position for a live ECS actor. `ServerSpatialIndex.Move` remains owned by #114 and occurs once after each accepted commit; its exact-position resolver reads the same ECS state even when the cell does not change.
 
-| Source and current evidence | Authoritative tick decision | Canonical write and downstream projections | Status |
-| --- | --- | --- | --- |
-| Player owner movement arrives through the prefab's PurrNet `NetworkTransform`. The prefab is root-level, unparented, owner-authenticated, world-position sync (`_syncPosition = World`), with parent sync enabled. Installed PurrNet `NetworkTransformData` stores `CompressedVector3` position and the module applies raw `Vector3` samples; it carries no `WorldPosition` chunk or origin identifier. | Retain `NetworkTransform` as the default owner movement transport. Before #114, #129 must either prove a stable shared parent/origin frame that is sampled and ordered with each transform, or obtain owner approval for the smallest PurrNet-compatible single movement integration that carries `(WorldPosition, spatial context, proposal sequence)` without a competing movement authority. `MovementEndpoint.Server_RequestChunkInterest` is not that proposal path. Missing, stale, reordered or context-mismatched proposals are rejected. | At `ProcessAuthoritativeTick`, `ValidatePlayerPositions` validates the origin-qualified proposal against the last accepted position and existing three-strike policy. Only an accepted/provisionally admitted proposal writes `ActorComponent.WorldPositionD`; rejection restores the canonical value and sends the existing correction projection. #114 then publishes that same committed value to the index and its exact-position resolver. | Current transform-only bridge is **not approved**. #129 transport evidence and owner approval remain required. |
-| NavMesh-driven NPC movement currently comes from `NavMeshAgent`/`Transform.position`; `SynchronizeNPCPositionToECS` copies that float directly. `ServerPositionManager.ToWorld` only combines an already-qualified chunk/local pair, while `ServerOriginChunk` starts at zero and `RecentrePhysicsOrigin` only logs/updates a field. | #134 must establish stable server-local physics frames and #135 must establish streamed-region navigation, including absolute-to-local mapping, active agents, loaded colliders/NavMeshData, paths and transitions between regions. A NavMesh sample is accepted only when that frame maps unambiguously to the actor's absolute logical position. No bounded zero-origin fallback or deferred long-distance NPC support is acceptable. | At the authoritative tick boundary, the validated NavMesh result writes `ActorComponent.WorldPositionD`; the GameObject transform is a derived physics/presentation projection. `SynchronizeNPCPositionToECS` may not write canonical state from an unqualified float. #132 owns this bridge; #114 publishes the resulting commit. | Blocked on #134, #135 and then #132. |
-| ECS-driven NPC motion already writes `ActorComponent.WorldPositionD` in `ActorUpdateSystem.OnUpdate`; `SynchronizeNPCTransformFromECS` converts it to a GameObject `Vector3` after the ECS step. | The ECS component remains the sole writer for this path. The post-tick transform projection cannot feed position back into ECS or overwrite a newer ECS result. | After the ECS commit, #114 publishes the component's accepted value to `ServerSpatialIndex.Move` once and resolves exact range from the same canonical component. Same-cell membership is retained while the resolver still observes the updated precise position. | Source and phase are present; #114 remains unimplemented. |
+#### Source-observed versus specified behaviour
 
-The fixed-tick sequence is therefore:
+| Source/path | Observed at the reviewed `dev` commit | Specified contract and owner |
+| --- | --- | --- |
+| Player prefab and PurrNet | `PlayerPrefab` has an unparented root `NetworkTransform`, world position sync, owner authority and parent sync. Installed `NetworkTransformData` carries compressed `Vector3` values without chunk/context. | #130 adds the sole project-owned owner position RPC/serializer. After `CharacterController.Move`, the client samples with its current `ClientPositionManager.OriginChunk`, serializes the existing `WorldPosition` chunk/local form with `PackWorldPosition`, and sends a monotonically increasing proposal sequence for the current ownership epoch. `RPCInfo.sender` is checked against the server player/actor binding; context is resolved by the server. `NetworkTransform` position sync is disabled only by #136 once observer updates are ready. |
+| `ServerActorManager.ProcessAuthoritativeTick` | Calls `ValidatePlayerPositions`, `SyncPlayerECS` and `SynchronizeNPCPositionsToECS` before ECS simulation. The current player and NavMesh bridges cast `Transform.position` to `double3`. | #131 consumes the latest valid ordered player proposal and performs validation/commit before ECS. #132 maps a validated NavMesh slot-local result to an absolute `WorldPosition` before ECS. No float transform cast is authoritative. |
+| Player validation and correction | `ValidatePlayerPositions` keeps float history and applies the existing three-strike policy; `MovementEndpoint` currently exposes interest and correction only. | #131 validates absolute accepted history: first two excessive proposals are provisionally admitted, the third is rejected and corrected through the existing chunk/local correction. An origin shift reconstructing the same absolute position has zero displacement and does not increment violations. Rejected, stale, reordered or old-epoch proposals never write ECS or the index. |
+| `ServerActorManager.ProcessAuthoritativeTickCompleted` | `SynchronizeNPCTransformsFromECS` projects ECS-owned NPC state to a float transform. | #132 keeps NavMesh transform projection slot-local; #136 sends one server-authored accepted `WorldPosition` update to eligible observers for players and NPCs. Interpolation never writes back to ECS or the server. |
+| Navigation and scenes | Actors are networked in persistent `global_actors`; `World_x_y` content is additive. `World_0_0` contains a `NavMeshSurface`, baked `NavMeshData` and terrain `MeshCollider`; current NPC chase uses `Target.transform.position`. | #134 assigns each active environment tile, qualified by `(WorldID, MapID, InstanceID, tile)`, one unique stable local physics/NavMesh slot. #135 routes across tile gateways and rebinds agents between slots while preserving the absolute ECS route. #132 owns local-to-absolute commit and double-to-local projection. |
+
+#### Fixed player transport
+
+The project-owned path is one PurrNet position RPC, not a side channel attached to `NetworkTransform`:
 
 ```text
-source proposal/result + provenance
-    -> source-specific validation/reconstruction
-    -> one accepted absolute double position write to ActorComponent.WorldPositionD
-    -> one ServerSpatialIndex.Move publication for the committed value
-    -> ECS/GameObject/replication projections
+CharacterController.Move
+    -> ClientPositionManager.LocalToChunkRelative(current local position)
+    -> PackWorldPosition + ownership-epoch proposal sequence
+    -> server validates RPC sender/actor binding and server-resolved context
+    -> latest ordered proposal consumed by ProcessAuthoritativeTick
+    -> absolute validation and three-strike policy
+    -> ActorComponent.WorldPositionD committed once
 ```
 
-Rejected proposals do not write the component or index. A later phase must bind each source sample to the current authoritative tick and discard stale samples before commit; no asynchronous transform callback, render `Update`, client origin shift, `CurrentChunk`, scene identity or `Actor.WorldPos` mirror may overwrite a newer commit. `ServerSpatialIndex` remains read-only for this design; its `acceptedPositionResolver` must read the canonical ECS component rather than a transform or a removed actor-side position copy.
+The current `MovementEndpoint.Server_RequestChunkInterest` remains interest bookkeeping. #130 owns the proposal representation and send path; #131 owns server validation, canonical ECS commit and removal of the redundant `Actor.WorldPos` storage at the spawn-to-ECS boundary. No second gameplay movement RPC or parallel authoritative `NetworkTransform` position stream is retained.
 
-The current NavMesh layout does not establish this policy: actors are spawned into the persistent `global_actors` scene, while `World_x_y` content is loaded additively. The inspected `World_0_0` test scene has a `NavMeshSurface` with baked `NavMeshData` and terrain `MeshCollider`, but no project-owned absolute-to-physics frame contract; NPC chase currently supplies `Target.transform.position` to `NavMeshAgent.SetDestination`. #134/#135 must define how each loaded region's surfaces, colliders, active agents and paths are placed and transitioned, including simultaneously separated regions, before #132 samples a result as accepted absolute state.
+After an accepted commit, #136 sends one server-authored observer position update carrying the accepted `WorldPosition` and tick/proposal sequence to actors eligible under the existing PurrNet observer path and later #117 visibility rules. Clients convert it with their own origin through `ClientPositionManager.NetworkToLocal`; smoothing is presentation-only. The owner keeps local prediction and receives the existing correction projection on a third-strike rejection.
+
+#### Fixed server physics/NavMesh slots
+
+`ServerPositionManager` owns the mapping from a full logical context plus active environment tile to a local physics/NavMesh slot. The initial bounded pool is **16 × 16 slots with 512 m pitch for 256 m tile footprints**, subject to explicit validation that authored collider/NavMesh extents fit with a gap. Slots are unique and stable while active, so two far-away tiles never overlap in Unity's default physics scene or the single default NavMesh world. Capacity exhaustion fails explicitly; active slots are never aliased or silently evicted. The model bounds concurrent physical simulation to roughly an 8 km horizontal extent while preserving arbitrary absolute logical coordinates.
+
+The mapping is:
+
+```text
+local physics float = slot anchor + (absolute double position - absolute tile origin)
+absolute position = absolute tile origin + (local physics float - slot anchor)
+```
+
+Tile scenes, `NavMeshSurface`/`NavMeshData`, colliders, agents and physics participants use the same assigned slot. `ServerPositionManager.RecentrePhysicsOrigin` must be replaced with this real mapping or retired if unused; it must not retain its current false rebase semantics. #134 owns allocation, placement, physics queries and conversions. #135 owns an absolute-tile gateway/adjacency route, loads or prepares the next tile and slot at a verified gateway, rebinds/warps the local agent, and recalculates the next tile-local segment. That physical slot change is not a logical teleport. Cross-slot targets use canonical absolute position and gateway routing, never `Target.transform.position` from another slot. A required next tile that is unavailable stops navigation explicitly.
+
+ECS-driven NPCs continue to write `ActorComponent.WorldPositionD`; their ground/physics queries and GameObject projections also use the assigned slot rather than casting arbitrary absolute doubles to Unity floats.
+
+#### Required cross-system examples
+
+- Logical tiles `(World A, Main, Public, (100000, 4))` and `(World A, Main, Public, (-200000, -7))` occupy distinct available slots, despite being far apart in absolute coordinates. Their ECS positions remain their absolute doubles.
+- A client at `(chunk, local)` shifts origin. `LocalToChunkRelative` produces the same absolute `WorldPosition` before and after the shift; the server accepts it once with zero displacement, and no spatial/index publication is generated for the origin shift alone.
+- One player proposal is consumed at most once for its `(ownership epoch, sequence)`. Valid proposals commit once; the third excessive proposal restores the last accepted ECS position and sends the existing chunk/local correction, with no rejected index publication.
+- An NPC reaches a verified gateway, changes from tile A's local slot to tile B's local slot, and continues toward the same absolute route target. Its ECS position remains continuous; only the physics projection changes.
+- Spatial membership, exact-range queries and observer position updates all read the committed `ActorComponent.WorldPositionD`; no transform or separate position mirror is consulted.
+
+#### Ownership and phase matrix
+
+| Phase/issue | Owns | Must not own |
+| --- | --- | --- |
+| #129 | This fixed documentation contract and source-observed/specification record. | Production transport, slot allocation or runtime state. |
+| #130 | Client proposal representation/sending and its `WorldPosition` serialization. | Server acceptance, logical context authority or observer output. |
+| #131 | Server player validation, ordered proposal consumption, canonical ECS commit, correction and `Actor.WorldPos` removal at spawn/ECS handoff. | A second accepted-position store or spatial-index publication. |
+| #132 | NavMesh local-to-absolute pre-ECS commit and absolute-to-local post-ECS projection. | Slot allocation, long-range route planning or a second position authority. |
+| #134 | Stable tile/context slot allocation, placement, physics queries and local/absolute conversion. | Long-range gateway route logic, movement transport or ECS position storage. |
+| #135 | Absolute tile gateway/adjacency routing and cross-tile NavMesh continuation. | Physics-slot identity, transport, observer updates or logical teleport semantics. |
+| #136 | Coordinated NetworkTransform position cutover, server-authored player/NPC observer updates and client-origin presentation. | A second authoritative stream or server gameplay position mutation. |
+| #114 | `ServerSpatialIndex.Move` after each changed accepted commit and same-cell exact-position truth. | Movement transport, slot mapping, route logic or context transfer. |
+| #115/#116/#117/#118/#126 | Context transfer, identity qualification, visibility authorization, observer reevaluation and environment-tile interest. | Position transport, slot mapping, gateways or another accepted-position store. |
 
 ## 6. Spatial coordinate and runtime-context model
 
@@ -342,11 +387,13 @@ Client-side chunk interest request
   -> PurrNet scene subscriptions / chunk visibility re-evaluation
 
 [REQUIRED, stages 1.1-1.3 / 1.5]
-Client movement + atomically paired absolute position context
-  -> server validates proposal provenance, context and legality
+Client CharacterController.Move
+  -> one project-owned PurrNet WorldPosition proposal + ownership-epoch sequence
+  -> server validates sender, ordering, trusted context and legality
   -> one accepted absolute double-precision ECS position commit
   -> one ServerSpatialIndex.Move publication (membership may remain in the same cell)
-  -> exact queries resolve the same ECS position
+  -> one server-authored observer position update through #136
+  -> exact queries and observers resolve the same ECS position
   -> world-content interest update (only if tile relevance changed)
   -> actor replication interest update (independent of scene interest)
   -> visible client representations / correction where needed
@@ -464,8 +511,8 @@ This table is a **responsibility specification**, not a new named C# API declara
 | --- | --- | --- |
 | **1.0** | Define ownership/context contracts, stress profiles, measurable invariants, baseline instrumentation/evidence. | No gameplay optimisation or benchmark result is implied by this document. |
 | **1.1** | **Implemented and owner-confirmed validated:** 20 Hz single fixed clock, four-step catch-up/debt metrics, seven-system ECS, buffered domain delivery, authoritative movement/spawn/combat/NPC scheduling and UTC/reconciliation boundary; critical tests through #107. | Generic bounded PurrNet ingress quotas, sustained-overload operational action policy, headless capacity qualification, activity tiers, disconnect grace and durable gameplay-state reconciliation remain later work. |
-| **1.2** | World/map/instance-qualified double-precision spatial membership, query and visibility candidate interface; event-driven insert/move/remove/context transfer; independent world-content streaming interest; the accepted-position handoff defined in §5.3. | `ChunkSubscriptions` is not a fully general spatial index; no range-qualified instance isolation yet. Movement publication remains dependent on #129, #134, #135 and #132. |
-| **1.3** | Exact single-writer per-field ownership, actor ID ↔ ECS Entity mapping, batched managed/ECS bridge, job/main-thread boundaries, safe teardown. The accepted live position owner is resolved here as `ActorComponent.WorldPositionD`; Stage 1.3 must implement the lifecycle/access boundary without adding a second mutable store. | The production handoff and GameObject/ECS bridge are not yet implemented. |
+| **1.2** | World/map/instance-qualified double-precision spatial membership, query and visibility candidate interface; event-driven insert/move/remove/context transfer; independent world-content streaming interest; the accepted-position handoff defined in §5.3. | `ChunkSubscriptions` is not a fully general spatial index; no range-qualified instance isolation yet. The fixed transport and slot contracts are owned by #130–#136. |
+| **1.3** | Exact single-writer per-field ownership, actor ID ↔ ECS Entity mapping, batched managed/ECS bridge, job/main-thread boundaries, safe teardown. The accepted live position owner is `ActorComponent.WorldPositionD`; #131 removes the redundant actor-side storage without reversing Shared → Server layering. | Dormancy and broader ECS mapping remain implementation work, but they must preserve the fixed position owner. |
 | **1.4** | Relevance/activity states, scheduling of NPC perception and decisions, sleep/wake continuity, representation demand and activation spikes. | Dormant/near/engaged simulation tiers not currently established. |
 | **1.5** | PurrNet-supported observer policy, prioritised update frequency, bandwidth/accounting and correct instance/range observer set. | Existing chunk visibility is not a network budget/priority implementation. |
 | **1.6** | Content streaming and renderer LOD/culling contracts, resource/Addressables lifetime budgets, client pooling policies and origin-shift performance. | No guarantees of GPU/object throughput without measurement. |
@@ -499,8 +546,8 @@ Stage 1.0 issue [#42](https://github.com/FrontierDev/ninthage/issues/42) and sub
 The following **remain open on purpose**:
 
 - **Stage 1.1 — implemented, owner-confirmed validated:** §3 records 20 Hz fixed ticks, a four-tick catch-up cap, deferred domain delivery, 200 ms NPC perception, every-tick auto-attacks and UTC/reconciliation primitives. Bounded general PurrNet input admission and full sustained-overload operational response are **future** integration tasks; qualified headless capacity remains unmeasured. Real offline resource/aura/cooldown restoration belongs to Stages 1.7–1.8.
-- **Stage 1.2:** Spatial-index strategy/cell size, range/hysteresis thresholds, membership event API and scene interest radius remain open. The accepted live position owner is resolved as `ActorComponent.WorldPositionD`; the source-specific player transport gate (#129), server physics frame (#134/#135) and NavMesh bridge (#132) must be cleared before #114 production work.
-- **Stage 1.3:** Per-actor ECS mapping implementation, managed/Jobs/Burst boundaries, entity representation under dormancy and the lifecycle/access boundary that removes mutable `Actor.WorldPos` storage. This stage must preserve the single canonical position decision above.
+- **Stage 1.2:** Spatial-index strategy/cell size, range/hysteresis thresholds, membership event API and scene interest radius remain implementation values. Position ownership, the single project-owned player transport, the 16 × 16 physics-slot model and absolute-tile gateway route are fixed by §5.3 and owned by #130–#136.
+- **Stage 1.3:** Per-actor ECS mapping implementation, managed/Jobs/Burst boundaries, entity representation under dormancy and the lifecycle/access boundary that removes mutable `Actor.WorldPos` storage. These implementations must preserve the single canonical position decision above.
 - **Stage 1.4:** relevance-/dormancy-specific AI frequency and simulation LOD remain undecided. The initial global **200 ms NPC perception** cadence was already approved under Stage 1.1 (#99); it is not an activity-tier policy.
 - **Stage 1.5–1.6:** PurrNet-supported replication features, per-connection budgets, asset LOD thresholds, streaming concurrency and pooling strategy.
 - **Stages 1.7–1.8:** Database decomposition/checkpoint cadence, session duplicate-login UX, exact cleanup sequencing and valid instance-reentry policy as assigned to the relevant PDDs.

@@ -682,11 +682,12 @@ The production movement system must not treat client-local floating-point transf
 
 For each live actor, the server stores one accepted absolute double-precision position. The approved existing backing store is `ActorComponent.WorldPositionD` for the live ECS actor. `Actor.WorldPos` is not an independent movement store: its redundant writable storage is removed by the movement integration, while spawn construction hands its resolved position directly to ECS. A future Shared-side read, if proven necessary, is read-only and derived from the server authority.
 
-The source-specific handoff is:
+The source-specific handoff is fixed as follows:
 
-- Player movement continues to use the installed owner-auth `NetworkTransform` by default, but its current world-space compressed `Vector3` payload is not origin-qualified. Before production spatial publication, the transport integration must pair each proposal atomically with a valid origin-qualified `WorldPosition`, context and proposal sequence. The existing `MovementEndpoint.Server_RequestChunkInterest` is interest bookkeeping, not movement authority. A rejected, stale, reordered or context-mismatched proposal does not modify the accepted position.
-- NavMesh movement requires a server physics-local frame that maps every sampled agent pose to absolute logical coordinates. The current `ServerOriginChunk`/`RecentrePhysicsOrigin` path is scaffolding only. Stable per-region frames, streamed-region traversal, active agents, loaded colliders/NavMeshData and paths are dependencies #134 and #135; #132 then owns the accepted-position bridge. A zero-origin or bounded-distance fallback is not permitted.
-- ECS-driven NPC motion writes the canonical ECS component during the authoritative ECS step. The GameObject transform is a derived projection after that step and never becomes a new source of truth.
+- Player movement uses one project-owned PurrNet position RPC, replacing only the gameplay position part of `NetworkTransform`. After `CharacterController.Move`, the client uses its current `ClientPositionManager.OriginChunk` and `LocalToChunkRelative`, reuses `PackWorldPosition`, and sends a monotonically increasing sequence scoped to the ownership epoch. The server authenticates the owner binding and resolves `ActorSpatialContext`; client context is never authoritative. `MovementEndpoint.Server_RequestChunkInterest` remains interest bookkeeping. A rejected, stale, reordered or old-epoch proposal does not modify accepted state.
+- `NetworkTransform` position sync is disabled only by #136 after the server-authored observer path is ready. Rotation and other suitable properties may remain on it. Observers receive one server-authored accepted `WorldPosition` update with tick/proposal sequence, and clients project it through their own floating origin. Smoothing is presentation-only and never writes back to ECS.
+- NavMesh movement uses #134's unique stable local slot for each active context-qualified environment tile: initially 16 × 16 slots at 512 m pitch for 256 m tile footprints, with explicit extent validation and fail-closed capacity exhaustion. The mapping is `slot anchor + (absolute double position - absolute tile origin)` and its double-precision inverse. #135 routes through absolute tile gateways, prepares the next tile/slot, rebinds the agent and recalculates the next local segment without a logical teleport. Cross-slot targets use canonical absolute position, not a remote transform. #132 owns local-to-absolute pre-ECS commit and absolute-to-local post-ECS projection.
+- ECS-driven NPC motion writes the canonical ECS component during the authoritative ECS step. Its physics queries and GameObject projection also use the assigned local slot; a GameObject transform never becomes a new source of truth.
 
 All three sources converge at the fixed-tick boundary:
 
@@ -698,7 +699,7 @@ source proposal/result and provenance
     -> ECS, GameObject, replication and interest projections
 ```
 
-The index publication is #114's responsibility. It may retain same-cell membership, but exact-range queries must resolve the latest precise position from the canonical ECS component. A rejection must not publish or later overwrite a newer accepted commit.
+The index publication is #114's responsibility. It may retain same-cell membership, but exact-range queries and observer updates must resolve the latest precise position from the canonical ECS component. A rejection must not publish or later overwrite a newer accepted commit. A player origin shift reconstructing the same absolute position is accepted at most once with zero displacement; it does not increment speed violations or change spatial state.
 
 Conceptually:
 
