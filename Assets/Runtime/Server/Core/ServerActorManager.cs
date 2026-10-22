@@ -279,7 +279,9 @@ namespace Game.Server.Core
 
         // Player tracking for validation.
         private readonly Dictionary<PlayerID, Actor> _playerActors = new();
-        private readonly Dictionary<PlayerID, WorldPosition> _lastValidatedPositions = new();
+        // This is an anti-cheat snapshot only; ActorComponent.WorldPositionD remains the
+        // authoritative accepted position and is updated on every authoritative tick.
+        private readonly Dictionary<PlayerID, WorldPosition> _periodicValidationBaselines = new();
         private readonly Dictionary<PlayerID, long> _lastValidationTickIDs = new();
         private readonly Dictionary<PlayerID, long> _nextValidationTickIDs = new();
         private readonly Dictionary<PlayerID, int> _violationCounters = new();
@@ -287,6 +289,7 @@ namespace Game.Server.Core
         private readonly Dictionary<PlayerID, PendingPositionProposal> _pendingPositionProposals = new();
         private readonly Dictionary<PlayerID, ProposalOrdering> _lastProposalOrder = new();
 
+        /// <summary>Stores the newest authenticated proposal waiting for the next authoritative tick.</summary>
         private readonly struct PendingPositionProposal
         {
             public PendingPositionProposal(
@@ -310,6 +313,7 @@ namespace Game.Server.Core
             public long ProposalSequence { get; }
         }
 
+        /// <summary>Identifies the latest proposal accepted for a player ownership epoch.</summary>
         private readonly struct ProposalOrdering
         {
             public ProposalOrdering(long ownershipEpoch, long proposalSequence)
@@ -396,7 +400,7 @@ namespace Game.Server.Core
             _actorObjects.Clear();
             _actorEntities.Clear();
             _playerActors.Clear();
-            _lastValidatedPositions.Clear();
+            _periodicValidationBaselines.Clear();
             _lastValidationTickIDs.Clear();
             _nextValidationTickIDs.Clear();
             _violationCounters.Clear();
@@ -515,24 +519,39 @@ namespace Game.Server.Core
             // Tick-scoped bridge telemetry is flushed by ProcessAuthoritativeTickCompleted.
         }
 
+        /// <summary>
+        /// Handles the spawn event after an explicit server spawn handoff has registered the
+        /// resolved absolute position.
+        /// </summary>
+        /// <param name="actor">The actor published by the server spawn lifecycle.</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the lifecycle publishes an actor without first supplying its resolved position.
+        /// </exception>
         private void OnActorSpawned(Actor actor)
         {
             if (actor == null || _actorObjects.ContainsKey(actor.ID) || _actorEntities.ContainsKey(actor.ID))
                 return;
 
-            // Production spawns use RegisterSpawnedActor so the resolved double position is handed
-            // directly to ECS. Keep the existing event path for isolated legacy test hosts.
-            OnActorSpawned(actor, actor.WorldPos);
+            throw new InvalidOperationException(
+                $"Actor '{actor.ID}' was published without its resolved authoritative spawn position. "
+                + "Register the spawn with ServerActorManager.RegisterSpawnedActor first.");
         }
 
         /// <summary>
-        /// Registers a server spawn with its already-resolved absolute position.
+        /// Registers a server spawn with its already-resolved absolute position before the spawn event.
         /// </summary>
+        /// <param name="actor">The actor being registered.</param>
+        /// <param name="spawnPosition">The server-resolved absolute position to hand to ECS.</param>
         internal void RegisterSpawnedActor(Actor actor, WorldPosition spawnPosition)
         {
             OnActorSpawned(actor, spawnPosition);
         }
 
+        /// <summary>
+        /// Creates the ECS actor state and spatial membership for a spawn handoff.
+        /// </summary>
+        /// <param name="actor">The actor being registered.</param>
+        /// <param name="spawnPosition">The resolved absolute position for the new actor.</param>
         private void OnActorSpawned(Actor actor, WorldPosition spawnPosition)
         {
             if (actor == null || !_initialized || _spatialIndex == null)
@@ -607,6 +626,14 @@ namespace Game.Server.Core
             }
         }
 
+        /// <summary>
+        /// Authenticates and coalesces the newest owner proposal for consumption by the next
+        /// authoritative tick; validation and ECS commitment occur at the simulation boundary.
+        /// </summary>
+        /// <param name="sender">The player that submitted the proposal.</param>
+        /// <param name="position">The proposed absolute world position.</param>
+        /// <param name="ownershipEpoch">The sender's current ownership epoch.</param>
+        /// <param name="proposalSequence">The monotonically increasing proposal sequence.</param>
         private void OnServerPositionProposal(
             PlayerID sender,
             WorldPosition position,
@@ -674,6 +701,8 @@ namespace Game.Server.Core
             }
         }
 
+        /// <summary>Removes an actor and all player proposal and validation state.</summary>
+        /// <param name="actor">The actor being removed.</param>
         private void OnActorDespawned(Actor actor)
         {
             if (actor == null || !_initialized)
@@ -773,6 +802,11 @@ namespace Game.Server.Core
             state.PendingAcquisitionTickID = 0;
         }
 
+        /// <summary>
+        /// Updates ECS ownership and reinitializes the periodic validation baseline after an
+        /// authoritative ownership transition.
+        /// </summary>
+        /// <param name="actor">The actor whose owner changed.</param>
         private void OnActorOwnerChanged(Actor actor)
         {
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
@@ -1022,7 +1056,8 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Validates player movement and synchronizes NPC positions before one authoritative ECS simulation tick.
+        /// Commits the newest authenticated player proposal before every authoritative ECS tick,
+        /// while applying the periodic speed check against its fixed validation baseline.
         /// </summary>
         internal void ProcessAuthoritativeTick(ServerSimulationTick tick)
         {
@@ -1131,9 +1166,9 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Consumes the latest authenticated owner proposal at the validation deadline.
-        /// The ECS component is the only mutable absolute player-position authority;
-        /// the networked transform is not used as an absolute coordinate source.
+        /// Consumes the latest authenticated owner proposal for this tick. Proposals are committed
+        /// every tick, while the periodic speed check compares against a dedicated anti-cheat
+        /// baseline and never treats the networked transform as an absolute coordinate source.
         /// </summary>
         private void ValidatePlayerPositions(ServerSimulationTick tick)
         {
@@ -1144,14 +1179,21 @@ namespace Game.Server.Core
                 var actor = kvp.Value;
                 if (actor == null) continue;
 
-                if (!_nextValidationTickIDs.TryGetValue(playerID, out var nextValidationTickID)) continue;
-                if (!_lastValidationTickIDs.TryGetValue(playerID, out var lastValidationTickID)) continue;
-                if (tick.TickID < nextValidationTickID) continue;
+                if (!_nextValidationTickIDs.TryGetValue(playerID, out var nextValidationTickID))
+                    continue;
+                if (!_lastValidationTickIDs.TryGetValue(playerID, out var lastValidationTickID))
+                    continue;
 
-                long validationIntervalTicks = checked(nextValidationTickID - lastValidationTickID);
-                long elapsedTickCount = checked(tick.TickID - lastValidationTickID);
-                if (validationIntervalTicks <= 0 || elapsedTickCount <= 0)
-                    throw new InvalidOperationException("Player position validation deadline state is invalid.");
+                bool validationDue = tick.TickID >= nextValidationTickID;
+                long validationIntervalTicks = 0;
+                long elapsedTickCount = 0;
+                if (validationDue)
+                {
+                    validationIntervalTicks = checked(nextValidationTickID - lastValidationTickID);
+                    elapsedTickCount = checked(tick.TickID - lastValidationTickID);
+                    if (validationIntervalTicks <= 0 || elapsedTickCount <= 0)
+                        throw new InvalidOperationException("Player position validation deadline state is invalid.");
+                }
 
                 if (!_actorEntities.TryGetValue(actor.ID, out var entity)
                     || !_entityManager.Exists(entity))
@@ -1162,7 +1204,8 @@ namespace Game.Server.Core
 
                 if (!_pendingPositionProposals.TryGetValue(playerID, out var proposal))
                 {
-                    AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
+                    if (validationDue)
+                        AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
                     continue;
                 }
 
@@ -1173,22 +1216,36 @@ namespace Game.Server.Core
                     || proposal.ProposalSequence <= 0
                     || !proposal.Position.IsFinite)
                 {
-                    AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
+                    if (validationDue)
+                        AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
                     continue;
                 }
 
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                var lastAcceptedPosition = ToWorldPosition(component.WorldPositionD);
-                if (!lastAcceptedPosition.IsFinite)
+                if (!validationDue)
+                {
+                    CommitPlayerPosition(entity, component, proposal.Position);
+                    continue;
+                }
+
+                var currentAcceptedPosition = ToWorldPosition(component.WorldPositionD);
+                if (!currentAcceptedPosition.IsFinite)
                     throw new InvalidOperationException(
                         $"Player '{playerID}' has an invalid canonical ECS position.");
+
+                if (!_periodicValidationBaselines.TryGetValue(playerID, out var baselinePosition))
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' has no periodic position validation baseline.");
+                if (!baselinePosition.IsFinite)
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' has an invalid periodic position validation baseline.");
 
                 double elapsed = elapsedTickCount * (double)tick.DeltaTime;
                 if (elapsed <= 0d || double.IsNaN(elapsed) || double.IsInfinity(elapsed))
                     throw new InvalidOperationException("Player position validation elapsed time is invalid.");
 
-                double deltaX = proposal.Position.x - lastAcceptedPosition.x;
-                double deltaZ = proposal.Position.z - lastAcceptedPosition.z;
+                double deltaX = proposal.Position.x - baselinePosition.x;
+                double deltaZ = proposal.Position.z - baselinePosition.z;
                 double speed = Math.Sqrt(deltaX * deltaX + deltaZ * deltaZ) / elapsed;
                 var acceptedPosition = proposal.Position;
                 bool proposalAccepted = true;
@@ -1200,7 +1257,9 @@ namespace Game.Server.Core
                     if (_violationCounters[playerID] >= VIOLATION_THRESHOLD)
                     {
                         Debug.Warning("Player " + playerID + " exceeded max speed (" + speed.ToString("F1") + " m/s) " + _violationCounters[playerID] + " times. Correcting.");
-                        acceptedPosition = lastAcceptedPosition;
+                        // Keep the latest position already admitted to ECS; the periodic baseline
+                        // is intentionally not a second gameplay authority for correction.
+                        acceptedPosition = currentAcceptedPosition;
                         proposalAccepted = false;
                         var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(acceptedPosition);
                         MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
@@ -1219,12 +1278,19 @@ namespace Game.Server.Core
                 }
 
                 if (proposalAccepted)
+                {
                     CommitPlayerPosition(entity, component, acceptedPosition);
-                _lastValidatedPositions[playerID] = acceptedPosition;
+                    _periodicValidationBaselines[playerID] = acceptedPosition;
+                }
+
                 AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
             }
         }
 
+        /// <summary>Writes one accepted absolute player position to the authoritative ECS component.</summary>
+        /// <param name="entity">The player's authoritative ECS entity.</param>
+        /// <param name="component">The current actor component value.</param>
+        /// <param name="position">The absolute position to commit.</param>
         private void CommitPlayerPosition(
             Entity entity,
             Systems.ActorComponent component,
@@ -1235,40 +1301,58 @@ namespace Game.Server.Core
             _entityManager.SetComponentData(entity, component);
         }
 
+        /// <summary>Moves a player's periodic validation window to the current authoritative tick.</summary>
+        /// <param name="playerID">The player whose deadline is advancing.</param>
+        /// <param name="tickID">The current authoritative tick.</param>
+        /// <param name="validationIntervalTicks">The configured validation interval in ticks.</param>
         private void AdvanceValidationDeadline(PlayerID playerID, long tickID, long validationIntervalTicks)
         {
             _lastValidationTickIDs[playerID] = tickID;
             _nextValidationTickIDs[playerID] = checked(tickID + validationIntervalTicks);
         }
 
+        /// <summary>
+        /// Initializes owner tracking, proposal ordering and the periodic anti-cheat baseline
+        /// from the already accepted ECS spawn or ownership-transition position.
+        /// </summary>
+        /// <param name="owner">The owning player.</param>
+        /// <param name="actor">The actor owned by the player.</param>
+        /// <param name="acceptedPosition">The current accepted absolute position.</param>
         private void InitializePlayerValidationState(PlayerID owner, Actor actor, WorldPosition acceptedPosition)
         {
             long currentTickID = ServerSimulationClock.CurrentTickID;
             long validationIntervalTicks = GetValidationIntervalTicks();
             RemovePendingPositionProposal(owner);
             _playerActors[owner] = actor;
-            _lastValidatedPositions[owner] = acceptedPosition;
+            _periodicValidationBaselines[owner] = acceptedPosition;
             _lastValidationTickIDs[owner] = currentTickID;
             _nextValidationTickIDs[owner] = checked(currentTickID + validationIntervalTicks);
             _violationCounters[owner] = 0;
         }
 
+        /// <summary>Removes all authoritative movement state associated with a player owner.</summary>
+        /// <param name="owner">The player whose movement state is being removed.</param>
         private void RemovePlayerValidationState(PlayerID owner)
         {
             _playerActors.Remove(owner);
-            _lastValidatedPositions.Remove(owner);
+            _periodicValidationBaselines.Remove(owner);
             _lastValidationTickIDs.Remove(owner);
             _nextValidationTickIDs.Remove(owner);
             _violationCounters.Remove(owner);
             RemovePendingPositionProposal(owner);
         }
 
+        /// <summary>Discards a player's pending proposal and ordering state.</summary>
+        /// <param name="owner">The player whose proposal state is being removed.</param>
         private void RemovePendingPositionProposal(PlayerID owner)
         {
             _pendingPositionProposals.Remove(owner);
             _lastProposalOrder.Remove(owner);
         }
 
+        /// <summary>Converts an ECS double-precision position to the shared world-position value.</summary>
+        /// <param name="position">The ECS position to convert.</param>
+        /// <returns>The equivalent absolute world position.</returns>
         private static WorldPosition ToWorldPosition(Unity.Mathematics.double3 position)
         {
             return new WorldPosition(position.x, position.y, position.z);

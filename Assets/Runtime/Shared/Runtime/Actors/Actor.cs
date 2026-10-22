@@ -1,7 +1,6 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Networking;
-using Game.Shared.Utility;
 using Game.Shared.Runtime.Spellcasting;
 using Guid = System.Guid;
 using PurrNet;
@@ -73,12 +72,6 @@ namespace Game.Shared.Runtime.Actors
             float raw = Vector3.Distance(transform.position, other.transform.position);
             return Mathf.Max(0f, raw - HitboxRadius - other.HitboxRadius);
         }
-
-        /// <summary>
-        /// Double-precision authoritative world position.
-        /// Server sets this; clients derive local transforms via floating origin.
-        /// </summary>
-        public WorldPosition WorldPos { get; set; }
 
         private ActorSpatialContext _spatialContext;
         /// <summary>Gets the server-assigned authoritative world, map and instance context.</summary>
