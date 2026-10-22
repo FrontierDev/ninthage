@@ -13,6 +13,11 @@ namespace Game.Shared.Utility
         /// <summary>Gets or sets the world Z coordinate.</summary>
         public double z;
 
+        /// <summary>Gets whether all world coordinates are finite.</summary>
+        public bool IsFinite => !double.IsNaN(x) && !double.IsInfinity(x)
+            && !double.IsNaN(y) && !double.IsInfinity(y)
+            && !double.IsNaN(z) && !double.IsInfinity(z);
+
         /// <summary>Initializes a world position.</summary>
         public WorldPosition(double x, double y, double z)
         {

@@ -486,7 +486,7 @@ namespace Game.Server.Core
                                 throw new InvalidOperationException("The server runtime spatial context is not initialized.");
 
                             actor.CurrentChunk = sceneName;
-                            actor.WorldPos = Game.Shared.Utility.WorldPosition.FromChunkLocal(
+                            var spawnPosition = Game.Shared.Utility.WorldPosition.FromChunkLocal(
                                 new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y),
                                 new Vector3(cmd.Position.x, cmd.Position.y, cmd.Position.z));
                             actor.SetAuthoritativeSpatialContext(runtimeContext);
@@ -538,6 +538,7 @@ namespace Game.Server.Core
 
                             // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
                             actorSpawnEventStarted = true;
+                            ServerActorManager.Instance?.RegisterSpawnedActor(actor, spawnPosition);
                             Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
 
                             // Link the actor to the player's session data for disconnect cleanup.
