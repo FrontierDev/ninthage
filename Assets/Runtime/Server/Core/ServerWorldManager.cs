@@ -189,13 +189,20 @@ namespace Game.Server.Core
                 }
                 catch (Exception exception)
                 {
-                    CompletePendingChunkLoad(
-                        chunkKey,
-                        sceneID,
-                        false,
-                        $"World scene '{sceneName}' failed physical binding for chunk {chunkKey} with SceneID {sceneID}: {exception.Message}",
-                        null);
-                    QueueSceneUnload(sceneID);
+                    try
+                    {
+                        CompletePendingChunkLoad(
+                            chunkKey,
+                            sceneID,
+                            false,
+                            $"World scene '{sceneName}' failed physical binding for chunk {chunkKey} with SceneID {sceneID}: {exception.Message}",
+                            null);
+                    }
+                    finally
+                    {
+                        QueueSceneUnload(sceneID);
+                    }
+
                     return;
                 }
 
