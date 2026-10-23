@@ -73,6 +73,120 @@ namespace Game.Server.Core
         }
 
         /// <summary>
+        /// Transitions an actor's physical membership to another already active simulation region.
+        /// </summary>
+        /// <param name="actorID">The nonempty actor identity.</param>
+        /// <param name="context">The authoritative context containing the accepted world position.</param>
+        /// <param name="worldPosition">The finite accepted absolute world position of the actor.</param>
+        /// <param name="previousRegion">Receives the actor's source region descriptor.</param>
+        /// <param name="currentRegion">Receives the actor's resulting region descriptor.</param>
+        /// <returns>
+        /// <see langword="true"/> when the actor's physical region binding changed;
+        /// otherwise, <see langword="false"/> when it remained in the same region.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when the actor ID, context or world position is invalid.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the existing binding is inconsistent, the context changes, the destination region is inactive,
+        /// or the membership transition cannot be completed atomically.
+        /// </exception>
+        public bool TransitionActorRegion(
+            Guid actorID,
+            ActorSpatialContext context,
+            WorldPosition worldPosition,
+            out SimulationRegionDescriptor previousRegion,
+            out SimulationRegionDescriptor currentRegion)
+        {
+            EnsureInitialized();
+
+            if (actorID == Guid.Empty)
+                throw new ArgumentException("A nonempty actor ID is required.", nameof(actorID));
+            if (!context.IsValid)
+            {
+                throw new ArgumentException(
+                    "The actor context must be valid.",
+                    nameof(context));
+            }
+            if (!worldPosition.IsFinite)
+                throw new ArgumentException("The actor world position must be finite.", nameof(worldPosition));
+            if (!_actorRegionBindings.TryGetValue(actorID, out SimulationRegionKey sourceKey))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} is not bound to a simulation region.");
+            }
+            if (!_activeRegions.TryGetValue(sourceKey, out ActiveSimulationRegion sourceRegion))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} references missing source simulation region {sourceKey}.");
+            }
+            if (!sourceRegion.BoundActors.Contains(actorID))
+            {
+                throw new InvalidOperationException(
+                    $"Source simulation region {sourceKey} does not contain actor {actorID}.");
+            }
+            if (!sourceKey.Context.IsCompatibleWith(context))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} cannot transition from context {sourceKey.Context} to {context}.");
+            }
+
+            previousRegion = sourceRegion.Descriptor;
+            var destinationKey = GetRegionKey(context, worldPosition.Chunk);
+            if (destinationKey == sourceKey)
+            {
+                ToRegionLocal(sourceRegion.Descriptor, worldPosition);
+                currentRegion = sourceRegion.Descriptor;
+                return false;
+            }
+
+            if (!_activeRegions.TryGetValue(destinationKey, out ActiveSimulationRegion destinationRegion))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot transition actor {actorID}: destination simulation region {destinationKey} is not active.");
+            }
+            if (!destinationKey.Context.IsCompatibleWith(context))
+            {
+                throw new InvalidOperationException(
+                    $"Destination simulation region {destinationKey} has an incompatible context for actor {actorID}.");
+            }
+
+            ToRegionLocal(destinationRegion.Descriptor, worldPosition);
+
+            if (!destinationRegion.BoundActors.Add(actorID))
+            {
+                throw new InvalidOperationException(
+                    $"Destination simulation region {destinationKey} already contains actor {actorID}.");
+            }
+
+            try
+            {
+                _actorRegionBindings[actorID] = destinationKey;
+                if (!sourceRegion.BoundActors.Remove(actorID))
+                {
+                    throw new InvalidOperationException(
+                        $"Source simulation region {sourceKey} did not contain actor {actorID} during transition.");
+                }
+            }
+            catch
+            {
+                _actorRegionBindings[actorID] = sourceKey;
+                sourceRegion.BoundActors.Add(actorID);
+                destinationRegion.BoundActors.Remove(actorID);
+                throw;
+            }
+
+            currentRegion = destinationRegion.Descriptor;
+            if (sourceRegion.BoundActors.Count == 0
+                && sourceRegion.BoundEnvironmentTiles.Count == 0)
+            {
+                RetireActiveRegion(sourceKey);
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Attempts to get the active simulation-region descriptor for a bound actor without creating a region.
         /// </summary>
         /// <param name="actorID">The nonempty actor identity.</param>

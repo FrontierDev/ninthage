@@ -9,7 +9,6 @@ using PurrNet;
 using System;
 using System.Collections.Generic;
 using Unity.Entities;
-using UnityEngine;
 
 namespace Game.Server.Core
 {
@@ -173,6 +172,11 @@ namespace Game.Server.Core
                 }
 
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                var currentAcceptedPosition = ToWorldPosition(component.WorldPositionD);
+                if (!currentAcceptedPosition.IsFinite)
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' has an invalid canonical ECS position.");
+
                 bool hasEligibleProposal = false;
                 WorldPosition candidatePosition = default;
                 if (_pendingPositionProposals.TryGetValue(playerID, out var proposal))
@@ -189,17 +193,19 @@ namespace Game.Server.Core
                     }
                 }
 
+                if (hasEligibleProposal && !CanAdmitPlayerRegionPosition(actor, candidatePosition))
+                {
+                    SendPlayerCorrection(playerID, actor, currentAcceptedPosition);
+                    hasEligibleProposal = false;
+                    candidatePosition = currentAcceptedPosition;
+                }
+
                 if (!validationDue)
                 {
                     if (hasEligibleProposal)
-                        CommitPlayerPosition(entity, component, actor.SpatialContext, candidatePosition);
+                        CommitPlayerPosition(entity, component, actor, candidatePosition);
                     continue;
                 }
-
-                var currentAcceptedPosition = ToWorldPosition(component.WorldPositionD);
-                if (!currentAcceptedPosition.IsFinite)
-                    throw new InvalidOperationException(
-                        $"Player '{playerID}' has an invalid canonical ECS position.");
 
                 if (!_periodicValidationBaselines.TryGetValue(playerID, out var baselinePosition))
                     throw new InvalidOperationException(
@@ -240,23 +246,15 @@ namespace Game.Server.Core
                             ? currentAcceptedPosition
                             : baselinePosition;
                         // Ensure ECS is corrected when an earlier tick already admitted illegal movement.
-                        CommitPlayerPosition(entity, component, actor.SpatialContext, correctionPosition);
-
-                        var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(correctionPosition);
-                        MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
-
-                        // This is a presentation/correction projection only. ECS remains authoritative.
-                        actor.transform.position = new Vector3(
-                            (float)correctionPosition.x,
-                            (float)correctionPosition.y,
-                            (float)correctionPosition.z);
+                        CommitPlayerPosition(entity, component, actor, correctionPosition);
+                        SendPlayerCorrection(playerID, actor, correctionPosition);
                         _periodicValidationBaselines[playerID] = correctionPosition;
                         _violationCounters[playerID] = 0;
                     }
                     else
                     {
                         if (hasEligibleProposal)
-                            CommitPlayerPosition(entity, component, actor.SpatialContext, candidatePosition);
+                            CommitPlayerPosition(entity, component, actor, candidatePosition);
                         _periodicValidationBaselines[playerID] = candidatePosition;
                     }
                 }
@@ -264,7 +262,7 @@ namespace Game.Server.Core
                 {
                     _violationCounters[playerID] = 0;
                     if (hasEligibleProposal)
-                        CommitPlayerPosition(entity, component, actor.SpatialContext, candidatePosition);
+                        CommitPlayerPosition(entity, component, actor, candidatePosition);
                     _periodicValidationBaselines[playerID] = candidatePosition;
                 }
 
@@ -275,18 +273,103 @@ namespace Game.Server.Core
         /// <summary>Writes one accepted absolute player position to the authoritative ECS component.</summary>
         /// <param name="entity">The player's authoritative ECS entity.</param>
         /// <param name="component">The current actor component value.</param>
-        /// <param name="spatialContext">The actor's authoritative spatial context.</param>
+        /// <param name="actor">The actor whose physical region must contain the position.</param>
         /// <param name="position">The absolute position to commit.</param>
         private void CommitPlayerPosition(
             Entity entity,
             Systems.ActorComponent component,
-            ActorSpatialContext spatialContext,
+            Actor actor,
             WorldPosition position)
         {
             using var markerScope = PLAYER_ECS_SYNC_MARKER.Begin();
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+                throw new InvalidOperationException("Player position commit requires initialized server physics manager.");
+
+            ServerPhysicsManager.Instance.TransitionActorRegion(
+                actor.ID,
+                actor.SpatialContext,
+                position,
+                out _,
+                out _);
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
             _entityManager.SetComponentData(entity, component);
-            GetSpatialIndex().Move(component.ActorID, spatialContext, position);
+            GetSpatialIndex().Move(component.ActorID, actor.SpatialContext, position);
+        }
+
+        /// <summary>Admits a player position only when its physical simulation region is ready.</summary>
+        private static bool CanAdmitPlayerRegionPosition(
+            Actor actor,
+            WorldPosition position)
+        {
+            if (actor == null)
+                return false;
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+                throw new InvalidOperationException("Player region admission requires initialized server physics manager.");
+            if (!position.IsFinite)
+                return false;
+
+            if (!ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out var currentRegion))
+            {
+                throw new InvalidOperationException(
+                    $"Player actor '{actor.ID}' has no active simulation-region binding.");
+            }
+            if (!currentRegion.Key.Context.IsCompatibleWith(actor.SpatialContext))
+            {
+                throw new InvalidOperationException(
+                    $"Player actor '{actor.ID}' simulation-region context is incompatible with its actor context.");
+            }
+
+            var destinationKey = ServerPhysicsManager.Instance.GetRegionKey(
+                actor.SpatialContext,
+                position.Chunk);
+            if (destinationKey == currentRegion.Key)
+            {
+                ServerPhysicsManager.Instance.ToRegionLocal(currentRegion, position);
+                return true;
+            }
+
+            var destinationChunk = new WorldChunkKey(actor.SpatialContext, position.Chunk);
+            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(
+                    destinationChunk,
+                    out var destinationRegion))
+            {
+                return false;
+            }
+            if (destinationRegion.Key != destinationKey)
+            {
+                throw new InvalidOperationException(
+                    $"Environment tile {destinationChunk.ChunkCoord} is bound to simulation region {destinationRegion.Key}, expected {destinationKey}.");
+            }
+
+            ServerPhysicsManager.Instance.ToRegionLocal(destinationRegion, position);
+            return true;
+        }
+
+        /// <summary>Sends a client correction and projects it into the actor's active physical frame.</summary>
+        private static void SendPlayerCorrection(
+            PlayerID playerID,
+            Actor actor,
+            WorldPosition correctionPosition)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (!ServerPositionManager.IsInitialized || ServerPositionManager.Instance == null)
+                throw new InvalidOperationException("Player correction requires initialized server position manager.");
+
+            var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(correctionPosition);
+            MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
+
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+                throw new InvalidOperationException("Player correction requires initialized server physics manager.");
+            if (!ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out var currentRegion))
+            {
+                throw new InvalidOperationException(
+                    $"Player actor '{actor.ID}' has no active simulation-region binding for correction.");
+            }
+
+            actor.transform.position = ServerPhysicsManager.Instance.ToRegionLocal(currentRegion, correctionPosition);
         }
 
         /// <summary>Moves a player's periodic validation window to the current authoritative tick.</summary>

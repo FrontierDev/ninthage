@@ -216,13 +216,61 @@ namespace Game.Server.Core
             if (_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
                 return false;
 
-            var region = GetVerifiedActorRegion(actorObj);
             var worldPosition = new WorldPosition(
                 component.WorldPositionD.x,
                 component.WorldPositionD.y,
                 component.WorldPositionD.z);
+            if (!worldPosition.IsFinite)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorObj.ID} has an invalid canonical ECS world position.");
+            }
+
+            var currentRegion = GetVerifiedActorRegion(actorObj);
+            var destinationKey = ServerPhysicsManager.Instance.GetRegionKey(
+                actorObj.SpatialContext,
+                worldPosition.Chunk);
+            if (destinationKey == currentRegion.Key)
+            {
+                actorObj.transform.position = ServerPhysicsManager.Instance.ToRegionLocal(
+                    currentRegion,
+                    worldPosition);
+                return true;
+            }
+
+            var destinationChunk = new WorldChunkKey(actorObj.SpatialContext, worldPosition.Chunk);
+            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(
+                    destinationChunk,
+                    out var destinationEnvironmentRegion))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorObj.ID} cannot synchronize to unavailable destination environment chunk {destinationChunk.ChunkCoord}.");
+            }
+            if (destinationEnvironmentRegion.Key != destinationKey)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorObj.ID} destination environment chunk {destinationChunk.ChunkCoord} is bound to simulation region {destinationEnvironmentRegion.Key}, expected {destinationKey}.");
+            }
+
+            ServerPhysicsManager.Instance.ToRegionLocal(
+                destinationEnvironmentRegion,
+                worldPosition);
+            var transitioned = ServerPhysicsManager.Instance.TransitionActorRegion(
+                actorObj.ID,
+                actorObj.SpatialContext,
+                worldPosition,
+                out var previousRegion,
+                out var destinationRegion);
+            if (!transitioned
+                || previousRegion.Key != currentRegion.Key
+                || destinationRegion.Key != destinationKey)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorObj.ID} did not transition from simulation region {currentRegion.Key} to destination region {destinationKey} as expected.");
+            }
+
             actorObj.transform.position = ServerPhysicsManager.Instance.ToRegionLocal(
-                region,
+                destinationRegion,
                 worldPosition);
             return true;
         }
