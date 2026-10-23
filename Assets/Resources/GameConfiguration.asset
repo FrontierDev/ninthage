@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Game.Shared::Game.Shared.GameConfiguration
   PlayerDataFilePath: player_data.json
   ClearPlayerDataOnStart: 0
-  ChunkSize: 100
+  ChunkSize: 256
   SpatialIndexCellWidth: 64
   ActorVisibilityEntryRadius: 80
   ActorVisibilityExitRadius: 96

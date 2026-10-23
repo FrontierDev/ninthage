@@ -685,6 +685,12 @@ namespace Game.Tests.Performance.Harness
                 yield break;
             }
 
+            if (_run.IsSimulationRegionSizing)
+            {
+                yield return ExecuteSimulationRegionSizingCore();
+                yield break;
+            }
+
             yield return WaitForServerReady();
             _run.RegisterServerMetrics();
             yield return LoadSelectedWorldFixture();
@@ -735,6 +741,29 @@ namespace Game.Tests.Performance.Harness
                 PerformanceRunStatus.CompleteMeasured,
                 "MEASUREMENT_COMPLETE",
                 "The requested data-only population was measured and cleaned up successfully.");
+        }
+
+        private IEnumerator ExecuteSimulationRegionSizingCore()
+        {
+            yield return WaitForServerReady();
+            _run.RegisterServerMetrics();
+            var probe = new Test_SimulationRegionSizingProbe();
+            yield return DriveNested(
+                probe.Execute(_run),
+                exception =>
+                {
+                    probe.RecordFailure(exception);
+                    RecordExecutionFailure(exception);
+                });
+            if (_pendingFailure != null)
+            {
+                yield return DriveNested(probe.CleanupAfterFailure(), RecordCleanupFailure);
+                yield break;
+            }
+            SetRequestedResult(
+                PerformanceRunStatus.CompleteMeasured,
+                "SIMULATION_REGION_SIZING_COMPLETE",
+                "The requested simulation-region sizing probe completed with qualified evidence and cleanup.");
         }
 
         private IEnumerator ExecuteGraphicalCore()

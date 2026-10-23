@@ -42,6 +42,34 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void SimulationRegionSizingUsesTheFixedCandidateMatrix()
+        {
+            var options = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.SimulationRegionSizing,
+            };
+
+            Assert.That(options.IsSimulationRegionSizing, Is.True);
+            Assert.That(options.IsSimulationRegionControl, Is.True);
+            Assert.That(options.EffectiveProfileID, Is.EqualTo(Test_PerformanceHarnessOptions.SIMULATION_REGION_PROFILE_ID));
+            Assert.That(options.ActorVariantID, Is.EqualTo(Test_PerformanceHarnessOptions.SIMULATION_REGION_PROFILE_ID));
+            Assert.That(options.SimulationRegionRepeatCount, Is.EqualTo(Test_PerformanceHarnessOptions.SIMULATION_REGION_REQUIRED_REPEAT_COUNT));
+            Assert.That(Test_PerformanceHarnessOptions.GetSimulationRegionTileSpanOptions(), Is.EqualTo(new[] { 1, 2, 4, 8, 16 }));
+            Assert.That(Test_PerformanceHarnessOptions.GetSimulationRegionCapacityOptions(), Is.EqualTo(new[] { 1, 2, 4, 8 }));
+
+            foreach (var tileSpan in new[] { 1, 2, 4, 8, 16 })
+                Assert.That(Test_PerformanceHarnessOptions.IsSupportedSimulationRegionTileSpan(tileSpan), Is.True);
+            foreach (var capacity in new[] { 1, 2, 4, 8 })
+                Assert.That(Test_PerformanceHarnessOptions.IsSupportedSimulationRegionCapacity(capacity), Is.True);
+
+            Assert.That(Test_PerformanceHarnessOptions.IsSupportedSimulationRegionTileSpan(3), Is.False);
+            Assert.That(Test_PerformanceHarnessOptions.IsSupportedSimulationRegionCapacity(3), Is.False);
+
+            options.SimulationRegionTileSpan = 2;
+            Assert.That(options.IsSimulationRegionControl, Is.False);
+        }
+
+        [Test]
         public void ActivityChurnIsMeasurementRelativeAndDeterministic()
         {
             var duration = Test_PerformanceRun.MEASUREMENT_SECONDS;

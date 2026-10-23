@@ -13,6 +13,7 @@ namespace Game.Tests.Performance.Harness
     {
         EcsDataOnlyMinimal,
         EcsDataOnlyActivity,
+        SimulationRegionSizing,
         FullNetworkedActors,
         StandaloneHeadlessServer,
         NetworkedClients,
@@ -23,6 +24,11 @@ namespace Game.Tests.Performance.Harness
     [Serializable]
     public sealed class Test_PerformanceHarnessOptions
     {
+        internal const string SIMULATION_REGION_PROFILE_ID = "P1-SIM-REGION-SIZING";
+        internal const int SIMULATION_REGION_REQUIRED_REPEAT_COUNT = 5;
+        private static readonly int[] SIMULATION_REGION_TILE_SPANS = { 1, 2, 4, 8, 16 };
+        private static readonly int[] SIMULATION_REGION_CAPACITIES = { 1, 2, 4, 8 };
+
         public string ProfileID = Test_ActorFixtureLayout.PROFILE_ID;
         public Test_WorldFixtureVariant WorldFixture = Test_WorldFixtureVariant.Outdoor;
         public Test_WorldFixtureDensityTier DensityTier = Test_WorldFixtureDensityTier.D1_Default;
@@ -33,6 +39,9 @@ namespace Game.Tests.Performance.Harness
         public Test_GraphicalActorDensity ActorDensity = Test_GraphicalActorDensity.None;
         public float WarmupSeconds = Test_GraphicalFixtureLayout.DEFAULT_WARMUP_SECONDS;
         public float MeasurementSeconds = Test_GraphicalFixtureLayout.DEFAULT_MEASUREMENT_SECONDS;
+        public int SimulationRegionTileSpan = 1;
+        public int SimulationRegionCapacity = 1;
+        public int SimulationRegionRepeatCount = SIMULATION_REGION_REQUIRED_REPEAT_COUNT;
 
         public Test_PerformanceHarnessOptions Clone()
         {
@@ -48,12 +57,23 @@ namespace Game.Tests.Performance.Harness
                 ActorDensity = ActorDensity,
                 WarmupSeconds = WarmupSeconds,
                 MeasurementSeconds = MeasurementSeconds,
+                SimulationRegionTileSpan = SimulationRegionTileSpan,
+                SimulationRegionCapacity = SimulationRegionCapacity,
+                SimulationRegionRepeatCount = SimulationRegionRepeatCount,
             };
         }
 
         public bool IsGraphicalClient => WorkloadMode == Test_PerformanceWorkloadMode.GraphicalClient;
 
-        public string EffectiveProfileID => IsGraphicalClient ? Test_GraphicalFixtureLayout.PROFILE_ID : ProfileID;
+        public bool IsSimulationRegionSizing => WorkloadMode == Test_PerformanceWorkloadMode.SimulationRegionSizing;
+
+        public bool IsSimulationRegionControl => IsSimulationRegionSizing
+            && SimulationRegionTileSpan == 1
+            && SimulationRegionCapacity == 1;
+
+        public string EffectiveProfileID => IsGraphicalClient
+            ? Test_GraphicalFixtureLayout.PROFILE_ID
+            : IsSimulationRegionSizing ? SIMULATION_REGION_PROFILE_ID : ProfileID;
 
         public bool IsServerOnlyDataMode => WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
             || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity;
@@ -64,6 +84,8 @@ namespace Game.Tests.Performance.Harness
             {
                 if (IsGraphicalClient)
                     return Test_GraphicalFixtureLayout.PROFILE_ID + "-I-GEOMETRY";
+                if (IsSimulationRegionSizing)
+                    return SIMULATION_REGION_PROFILE_ID;
                 return WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
                     || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity
                     ? "S04-I-DATA"
@@ -79,6 +101,9 @@ namespace Game.Tests.Performance.Harness
             diagnostic = null;
             worldPlan = null;
             actorProfile = null;
+
+            if (IsSimulationRegionSizing)
+                return TryValidateSimulationRegionSizing(out diagnostic, out worldPlan);
 
             if (IsGraphicalClient)
             {
@@ -167,6 +192,85 @@ namespace Game.Tests.Performance.Harness
                 default:
                     return "The selected workload mode is not supported by this test-only runner.";
             }
+        }
+
+        internal static bool IsSupportedSimulationRegionTileSpan(int tileSpan)
+        {
+            return Array.IndexOf(SIMULATION_REGION_TILE_SPANS, tileSpan) >= 0;
+        }
+
+        internal static bool IsSupportedSimulationRegionCapacity(int capacity)
+        {
+            return Array.IndexOf(SIMULATION_REGION_CAPACITIES, capacity) >= 0;
+        }
+
+        internal static int[] GetSimulationRegionTileSpanOptions()
+        {
+            return (int[])SIMULATION_REGION_TILE_SPANS.Clone();
+        }
+
+        internal static int[] GetSimulationRegionCapacityOptions()
+        {
+            return (int[])SIMULATION_REGION_CAPACITIES.Clone();
+        }
+
+        private bool TryValidateSimulationRegionSizing(out string diagnostic, out Test_WorldFixturePlan worldPlan)
+        {
+            diagnostic = null;
+            worldPlan = null;
+            if (SimulationRegionRepeatCount != SIMULATION_REGION_REQUIRED_REPEAT_COUNT)
+            {
+                return Fail(
+                    $"Simulation-region sizing requires exactly {SIMULATION_REGION_REQUIRED_REPEAT_COUNT} qualified repeats per probe.",
+                    out diagnostic);
+            }
+            if (!IsSupportedSimulationRegionTileSpan(SimulationRegionTileSpan))
+                return Fail("The selected simulation-region tile span is outside the fixed probe matrix: 1, 2, 4, 8 or 16.", out diagnostic);
+            if (!IsSupportedSimulationRegionCapacity(SimulationRegionCapacity))
+                return Fail("The selected concurrent-region count is outside the fixed probe matrix: 1, 2, 4 or 8.", out diagnostic);
+            if (Seed != Test_WorldFixtureLayout.DEFAULT_SEED)
+                return Fail("The sizing probe requires the tracked deterministic fixture seed 424242.", out diagnostic);
+            if (DensityTier != Test_WorldFixtureDensityTier.D1_Default)
+                return Fail("The sizing probe requires the tracked D1_Default fixture density.", out diagnostic);
+
+            var manifestPath = "Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json";
+            if (!File.Exists(manifestPath))
+                return Fail($"World fixture manifest is missing: {manifestPath}", out diagnostic);
+
+            var manifest = JsonUtility.FromJson<Test_WorldFixtureManifest>(File.ReadAllText(manifestPath));
+            if (manifest == null || manifest.Scenes == null)
+                return Fail($"World fixture manifest is malformed: {manifestPath}", out diagnostic);
+            if (manifest.WorldTileSizeMeters <= 0)
+                return Fail("The tracked world fixture manifest does not contain a positive tile size.", out diagnostic);
+
+            foreach (var plan in manifest.Scenes)
+            {
+                if (plan.Variant == WorldFixture.ToString())
+                {
+                    worldPlan = plan;
+                    break;
+                }
+            }
+
+            if (worldPlan == null)
+                return Fail($"World fixture variant '{WorldFixture}' is absent from {manifestPath}.", out diagnostic);
+            if (worldPlan.Status != "Ready")
+                return Fail($"World fixture variant '{WorldFixture}' is not ready: {worldPlan.BlockedReason}", out diagnostic);
+            if (!File.Exists(worldPlan.AssetPath) || AssetDatabase.LoadAssetAtPath<SceneAsset>(worldPlan.AssetPath) == null)
+                return Fail($"World fixture scene is missing or not imported: {worldPlan.AssetPath}", out diagnostic);
+            if (string.IsNullOrEmpty(worldPlan.MetaGUID)
+                || !string.Equals(AssetDatabase.AssetPathToGUID(worldPlan.AssetPath), worldPlan.MetaGUID, StringComparison.Ordinal))
+            {
+                return Fail($"World fixture scene identity mismatch for {worldPlan.AssetPath}.", out diagnostic);
+            }
+            if (worldPlan.ObjectCount <= 0 || worldPlan.CollisionObjectCount <= 0 || !worldPlan.IsNavigable)
+            {
+                return Fail(
+                    "The selected tracked fixture has no verified geometry, collider or navigable content for a sizing probe.",
+                    out diagnostic);
+            }
+
+            return true;
         }
 
         private static bool Fail(string message, out string diagnostic)
@@ -300,10 +404,34 @@ namespace Game.Tests.Performance.Harness
                 EditorGUILayout.LabelField("Profile", _options.EffectiveProfileID);
                 _options.WorldFixture = (Test_WorldFixtureVariant)EditorGUILayout.EnumPopup("World fixture", _options.WorldFixture);
                 _options.WorkloadMode = (Test_PerformanceWorkloadMode)EditorGUILayout.EnumPopup("Workload mode", _options.WorkloadMode);
-                _options.DensityTier = (Test_WorldFixtureDensityTier)EditorGUILayout.EnumPopup("Density tier", _options.DensityTier);
-                if (!_options.IsGraphicalClient)
+                if (_options.IsSimulationRegionSizing)
+                {
+                    var spanOptions = Test_PerformanceHarnessOptions.GetSimulationRegionTileSpanOptions();
+                    var capacityOptions = Test_PerformanceHarnessOptions.GetSimulationRegionCapacityOptions();
+                    EditorGUILayout.LabelField("Region tile span");
+                    _options.SimulationRegionTileSpan = EditorGUILayout.IntPopup(
+                        _options.SimulationRegionTileSpan,
+                        new[] { "1", "2", "4", "8", "16" },
+                        spanOptions);
+                    EditorGUILayout.LabelField("Concurrent regions");
+                    _options.SimulationRegionCapacity = EditorGUILayout.IntPopup(
+                        _options.SimulationRegionCapacity,
+                        new[] { "1", "2", "4", "8" },
+                        capacityOptions);
+                    if (_options.IsSimulationRegionControl)
+                        EditorGUILayout.HelpBox("1 x 1 is a control probe only and cannot be selected as a production default.", MessageType.Info);
+                    EditorGUILayout.LabelField("Repeat count", Test_PerformanceHarnessOptions.SIMULATION_REGION_REQUIRED_REPEAT_COUNT.ToString() + " (fixed minimum)");
+                    EditorGUILayout.LabelField("Fixture density", Test_WorldFixtureDensityTier.D1_Default.ToString() + " (fixed)");
+                    EditorGUILayout.LabelField("Fixture seed", Test_WorldFixtureLayout.DEFAULT_SEED.ToString() + " (fixed)");
+                }
+                else
+                {
+                    _options.DensityTier = (Test_WorldFixtureDensityTier)EditorGUILayout.EnumPopup("Density tier", _options.DensityTier);
+                }
+                if (!_options.IsGraphicalClient && !_options.IsSimulationRegionSizing)
                     _options.ActorCount = EditorGUILayout.IntField("Actor count", _options.ActorCount);
-                _options.Seed = EditorGUILayout.IntField("Seed", _options.Seed);
+                if (!_options.IsSimulationRegionSizing)
+                    _options.Seed = EditorGUILayout.IntField("Seed", _options.Seed);
 
                 if (_options.IsGraphicalClient)
                 {
@@ -323,7 +451,11 @@ namespace Game.Tests.Performance.Harness
                     : "2 s ramp / 2 s warmup / 5 s measurement / 1 s recovery");
             EditorGUILayout.LabelField(
                 "Population",
-                _options.IsGraphicalClient ? "World objects from the selected tracked scene; actors require a real supported client session." : "Fixture-defined 100 NPCs; selected count must remain 100");
+                _options.IsGraphicalClient
+                    ? "World objects from the selected tracked scene; actors require a real supported client session."
+                    : _options.IsSimulationRegionSizing
+                        ? "Tracked 256 m fixture geometry assembled into the selected region matrix."
+                        : "Fixture-defined 100 NPCs; selected count must remain 100");
 
             using (new EditorGUILayout.HorizontalScope())
             {

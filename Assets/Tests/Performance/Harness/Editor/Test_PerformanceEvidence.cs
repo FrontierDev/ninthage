@@ -350,6 +350,8 @@ namespace Game.Tests.Performance.Harness
 
         public bool IsGraphicalClient => Options.IsGraphicalClient;
 
+        public bool IsSimulationRegionSizing => Options.IsSimulationRegionSizing;
+
         public int RequestedActorCount => Options.ActorCount;
 
         public string FixtureHash => Test_PerformanceRunMetadata.HashFile(FixturePath);
@@ -530,6 +532,20 @@ namespace Game.Tests.Performance.Harness
                 return;
             }
 
+            if (options.IsSimulationRegionSizing)
+            {
+                actorProfile = null;
+                scenario = null;
+                var sizingManifest = Test_WorldFixtureLayout.BuildManifest(new Test_WorldFixtureOptions
+                {
+                    Seed = options.Seed,
+                    DensityTier = options.DensityTier,
+                    FixtureVersion = Test_WorldFixtureLayout.FIXTURE_VERSION,
+                });
+                worldPlan = FindWorldPlan(sizingManifest, options.WorldFixture.ToString());
+                return;
+            }
+
             var catalog = Test_ActorFixtureLayout.BuildCatalog(options.Seed);
             var scenarioCatalog = Test_ActorFixtureLayout.BuildScenarioCatalog(options.Seed);
             actorProfile = FindActorProfile(catalog, options.ActorVariantID);
@@ -569,7 +585,9 @@ namespace Game.Tests.Performance.Harness
                 BuildFlags = IsGraphicalClient
                     ? "test_only;ordinary_client_initialization;no_deep_profiling"
                     : "test_only;ordinary_server_initialization;no_deep_profiling",
-                ProfileRevision = IsGraphicalClient ? GraphicalPlan.ProfileRevision : ActorProfile.revision,
+                ProfileRevision = IsGraphicalClient
+                    ? GraphicalPlan.ProfileRevision
+                    : IsSimulationRegionSizing ? Test_SimulationRegionSizingProbe.SPEC_REVISION : ActorProfile.revision,
                 Seed = Options.Seed.ToString(CultureInfo.InvariantCulture),
                 Platform = Application.platform.ToString(),
                 GraphicsOptions = BuildGraphicsIdentity(),
@@ -818,8 +836,24 @@ namespace Game.Tests.Performance.Harness
             AppendLog("Requested data-only population applied: " + FixtureRuntime.DataOnlyEntityCount.ToString(CultureInfo.InvariantCulture));
         }
 
+        public void MarkSimulationRegionSizingWorkloadApplied()
+        {
+            if (!IsSimulationRegionSizing)
+                throw new InvalidOperationException("The selected run is not a simulation-region sizing workload.");
+            PerformanceTelemetry.MarkWorkloadApplied();
+            WorkloadApplied = true;
+            RampCompletedEntityCount = 0;
+            ObserveEntityCount(0);
+            AppendLog("Simulation-region sizing workload applied with tracked fixture geometry and isolated test-owned physical representations.");
+        }
+
         public void BeginPhase(PerformanceMeasurementPhase phase)
         {
+            if (IsSimulationRegionSizing && phase == PerformanceMeasurementPhase.Measurement)
+            {
+                if (!WorkloadApplied)
+                    throw new InvalidOperationException("The simulation-region sizing workload must be applied before measurement begins.");
+            }
             if (IsGraphicalClient && phase == PerformanceMeasurementPhase.Measurement)
             {
                 if (GraphicalRuntime == null || !WorldFixtureLoaded)
@@ -828,9 +862,9 @@ namespace Game.Tests.Performance.Harness
 
             if (phase == PerformanceMeasurementPhase.Measurement)
             {
-                if (!IsGraphicalClient && (FixtureRuntime == null || ActivityController == null))
+                if (!IsGraphicalClient && !IsSimulationRegionSizing && (FixtureRuntime == null || ActivityController == null))
                     throw new InvalidOperationException("The data-only fixture must exist before measurement begins.");
-                if (!IsGraphicalClient && FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
+                if (!IsGraphicalClient && !IsSimulationRegionSizing && FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
                 {
                     throw new InvalidOperationException(
                         $"Measurement cannot begin with {FixtureRuntime.DataOnlyEntityCount} ECS entities; expected {RequestedActorCount}.");
@@ -847,10 +881,12 @@ namespace Game.Tests.Performance.Harness
             phaseTiming.timing_known = true;
             if (phase == PerformanceMeasurementPhase.Measurement)
             {
-                if (!IsGraphicalClient)
+                if (!IsGraphicalClient && !IsSimulationRegionSizing)
                     ActivityController.BeginMeasurement();
                 MeasurementStarted = true;
-                MeasurementStartEntityCount = IsGraphicalClient ? GraphicalRuntime.ActualObjectCount : FixtureRuntime.DataOnlyEntityCount;
+                MeasurementStartEntityCount = IsGraphicalClient
+                    ? GraphicalRuntime.ActualObjectCount
+                    : IsSimulationRegionSizing ? 0 : FixtureRuntime.DataOnlyEntityCount;
                 ObserveEntityCount(MeasurementStartEntityCount);
                 _observability.measurement_frame_count = 0;
                 _observability.measurement_sample_count = 0;
@@ -985,6 +1021,12 @@ namespace Game.Tests.Performance.Harness
 
         public void MarkCleanupComplete()
         {
+            if (IsSimulationRegionSizing)
+            {
+                CleanupComplete = true;
+                AppendLog("Simulation-region sizing fixture cleanup completed.");
+                return;
+            }
             if (IsGraphicalClient)
             {
                 if (GraphicalRuntime == null || !GraphicalRuntime.CleanupComplete)
@@ -1003,6 +1045,14 @@ namespace Game.Tests.Performance.Harness
             CaptureCleanupReport(cleanupReport);
             CleanupComplete = true;
             AppendLog("Fixture cleanup returned to its captured baseline.");
+        }
+
+        public void MarkSimulationRegionSizingCleanupComplete()
+        {
+            if (!IsSimulationRegionSizing)
+                throw new InvalidOperationException("The selected run is not a simulation-region sizing workload.");
+            CleanupComplete = true;
+            AppendLog("Simulation-region sizing cleanup completed.");
         }
 
         public void CaptureCleanupReport(Test_ActorFixtureCleanupReport cleanupReport)
@@ -1074,7 +1124,15 @@ namespace Game.Tests.Performance.Harness
                     || !MeasurementStarted
                     || !GraphicalRuntime.RouteComplete
                     || !CleanupComplete);
-            var serverLifecycleIncomplete = !IsGraphicalClient
+            var simulationRegionSizingLifecycleIncomplete = IsSimulationRegionSizing
+                && (!WorkloadApplied
+                    || !RampCompleted
+                    || !WarmupCompleted
+                    || !MeasurementCompleted
+                    || !RecoveryCompleted
+                    || !MeasurementStarted
+                    || !CleanupComplete);
+            var serverLifecycleIncomplete = !IsGraphicalClient && !IsSimulationRegionSizing
                 && (!WorkloadApplied
                     || !RampCompleted
                     || !WarmupCompleted
@@ -1087,7 +1145,8 @@ namespace Game.Tests.Performance.Harness
                     || !MeasurementStarted
                     || !ActivitySnapshotCaptured
                     || !CleanupComplete);
-            if (status == PerformanceRunStatus.CompleteMeasured && (graphicalLifecycleIncomplete || serverLifecycleIncomplete))
+            if (status == PerformanceRunStatus.CompleteMeasured
+                && (graphicalLifecycleIncomplete || serverLifecycleIncomplete || simulationRegionSizingLifecycleIncomplete))
             {
                 status = PerformanceRunStatus.FailCorrectness;
                 finalReason = "INCOMPLETE_LIFECYCLE";
@@ -1362,7 +1421,9 @@ namespace Game.Tests.Performance.Harness
         {
             var fixtureJson = IsGraphicalClient
                 ? Test_PerformanceEvidence.BuildGraphicalFixtureJson(Options, GraphicalPlan, WorldPlan, _metadata)
-                : Test_PerformanceEvidence.BuildFixtureJson(Options, ActorProfile, Scenario, WorldPlan, _metadata);
+                : IsSimulationRegionSizing
+                    ? Test_PerformanceEvidence.BuildSimulationRegionSizingFixtureJson(Options, WorldPlan, _metadata)
+                    : Test_PerformanceEvidence.BuildFixtureJson(Options, ActorProfile, Scenario, WorldPlan, _metadata);
             File.WriteAllText(FixturePath, fixtureJson, new UTF8Encoding(false));
             var runJson = Test_PerformanceEvidence.BuildRunJson(this, projectRoot, _metadata);
             File.WriteAllText(RunPath, runJson, new UTF8Encoding(false));
@@ -1669,6 +1730,12 @@ namespace Game.Tests.Performance.Harness
             var samplePath = Path.Combine(ResultsDirectory, "samples.ndjson");
             if (File.Exists(samplePath))
                 files.Add(BuildRawFileEntry("samples.ndjson", samplePath));
+            if (IsSimulationRegionSizing)
+            {
+                var sizingEvidencePath = Path.Combine(ResultsDirectory, "simulation-region-sizing.json");
+                if (File.Exists(sizingEvidencePath))
+                    files.Add(BuildRawFileEntry("simulation-region-sizing.json", sizingEvidencePath));
+            }
             return "[" + string.Join(",", files) + "]";
         }
 
@@ -1702,6 +1769,11 @@ namespace Game.Tests.Performance.Harness
                     + ",\"route_waypoints_requested\":" + GraphicalPlan.Waypoints.Length + ",\"route_waypoints_reached\":" + routeWaypoints
                     + ",\"route_complete\":" + routeComplete.ToString().ToLowerInvariant() + ",\"requested_nameplates\":" + GraphicalPlan.RequestedNameplateCount
                     + ",\"requested_vfx\":" + GraphicalPlan.RequestedVFXCount + "}}";
+            }
+
+            if (IsSimulationRegionSizing)
+            {
+                return "{\"connected_players\":0,\"authenticated_players\":0,\"in_world_players\":0,\"npc_actors\":0,\"ecs_entities\":0,\"network_identities\":0,\"gameobjects\":null,\"scene_tiles_loaded\":null,\"renders_visible\":null,\"accepted_abilities\":0,\"simulation_region_sizing_evidence\":\"simulation-region-sizing.json\"}";
             }
 
             var measuredEntityCount = MeasurementStarted
@@ -1760,26 +1832,34 @@ namespace Game.Tests.Performance.Harness
                 builder.AppendLine("- Achieved graphical actors: `" + (GraphicalRuntime == null ? "unverified" : GraphicalRuntime.ActualActorCount.ToString(CultureInfo.InvariantCulture)) + "`");
                 builder.AppendLine("- Route coverage: `" + (GraphicalRuntime == null ? "unverified" : GraphicalRuntime.RouteWaypointsReached + "/" + GraphicalPlan.Waypoints.Length) + "` waypoints");
             }
+            else if (IsSimulationRegionSizing)
+            {
+                builder.AppendLine("- Simulation-region sizing evidence: `simulation-region-sizing.json`");
+                builder.AppendLine("- Production region capacity and defaults: `not selected by this test-only probe`");
+            }
             else
             {
                 builder.AppendLine("- Requested ECS entities: `" + RequestedActorCount + "`");
             }
-            builder.AppendLine("- Ramp-completed ECS entities: `" + RampCompletedEntityCount + "`");
-            builder.AppendLine("- Measurement-start ECS entities: `" + MeasurementStartEntityCount + "`");
-            builder.AppendLine("- Measurement-end ECS entities: `" + MeasurementEndEntityCount + "`");
-            builder.AppendLine("- Peak ECS entities observed: `" + PeakEntityCount + "`");
-            builder.AppendLine("- Post-cleanup fixture entities: `" + (PostCleanupObserved ? PostCleanupFixtureEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
-            builder.AppendLine("- Post-cleanup total actor entities: `" + (PostCleanupObserved ? PostCleanupActorEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
-            if (_activitySnapshot != null)
+            if (!IsSimulationRegionSizing)
             {
-                builder.AppendLine("- Measured activity snapshot (`" + _activitySnapshotPhase + "`, before teardown): idle=`" + _activitySnapshot.IdleCount + "`, patrolling=`" + _activitySnapshot.PatrollingCount + "`, combat=`" + _activitySnapshot.CombatCount + "`, wake surge=`" + _activitySnapshot.WakeSurgeCount + "`");
-                builder.AppendLine("- Measured activity events: spawn=`" + _activitySnapshot.SpawnEventCount + "`, despawn=`" + _activitySnapshot.DespawnEventCount + "`");
-                builder.AppendLine("- Total spawn events including ramp: `" + _activitySnapshot.TotalSpawnEventCount + "`");
-                builder.AppendLine("- Wake surge is included in combat and is not added as a disjoint population.");
-            }
-            else
-            {
-                builder.AppendLine("- Measured activity snapshot: `unverified` (measurement did not start or no pre-cleanup snapshot was captured)");
+                builder.AppendLine("- Ramp-completed ECS entities: `" + RampCompletedEntityCount + "`");
+                builder.AppendLine("- Measurement-start ECS entities: `" + MeasurementStartEntityCount + "`");
+                builder.AppendLine("- Measurement-end ECS entities: `" + MeasurementEndEntityCount + "`");
+                builder.AppendLine("- Peak ECS entities observed: `" + PeakEntityCount + "`");
+                builder.AppendLine("- Post-cleanup fixture entities: `" + (PostCleanupObserved ? PostCleanupFixtureEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
+                builder.AppendLine("- Post-cleanup total actor entities: `" + (PostCleanupObserved ? PostCleanupActorEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
+                if (_activitySnapshot != null)
+                {
+                    builder.AppendLine("- Measured activity snapshot (`" + _activitySnapshotPhase + "`, before teardown): idle=`" + _activitySnapshot.IdleCount + "`, patrolling=`" + _activitySnapshot.PatrollingCount + "`, combat=`" + _activitySnapshot.CombatCount + "`, wake surge=`" + _activitySnapshot.WakeSurgeCount + "`");
+                    builder.AppendLine("- Measured activity events: spawn=`" + _activitySnapshot.SpawnEventCount + "`, despawn=`" + _activitySnapshot.DespawnEventCount + "`");
+                    builder.AppendLine("- Total spawn events including ramp: `" + _activitySnapshot.TotalSpawnEventCount + "`");
+                    builder.AppendLine("- Wake surge is included in combat and is not added as a disjoint population.");
+                }
+                else
+                {
+                    builder.AppendLine("- Measured activity snapshot: `unverified` (measurement did not start or no pre-cleanup snapshot was captured)");
+                }
             }
             builder.AppendLine("- Report directory: `" + ResultsDirectory + "`");
             builder.AppendLine("- Measurement: " + BuildMeasurementDisplay());
@@ -1796,7 +1876,9 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine();
             builder.AppendLine(IsGraphicalClient
                 ? "This is an Editor Play Mode rendered-client measurement. It does not qualify authenticated player density, normal PurrNet world streaming, or multi-client network behavior."
-                : "This is an Editor Play Mode server measurement. It does not qualify standalone headless capacity, graphical client rendering, authentication throughput, or multi-client network behavior.");
+                : IsSimulationRegionSizing
+                    ? "This is an Editor Play Mode test-only simulation-region sizing probe. It records candidate geometry, physics and NavMesh evidence but does not select production region capacity or defaults."
+                    : "This is an Editor Play Mode server measurement. It does not qualify standalone headless capacity, graphical client rendering, authentication throughput, or multi-client network behavior.");
             if (status == PerformanceRunStatus.BlockedPrerequisite)
                 builder.AppendLine("No workload execution occurred.");
             if (!string.IsNullOrEmpty(ValidationDiagnostic))
@@ -2224,10 +2306,107 @@ namespace Game.Tests.Performance.Harness
             return JsonUtility.ToJson(document, true);
         }
 
+        public static string BuildSimulationRegionSizingFixtureJson(
+            Test_PerformanceHarnessOptions options,
+            Test_WorldFixturePlan world,
+            Test_PerformanceRunMetadata metadata)
+        {
+            if (world == null)
+                throw new ArgumentNullException(nameof(world));
+
+            var sourcePath = "Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json";
+            var sourceHash = Test_PerformanceRunMetadata.HashFile(Path.Combine(metadata.Repository, sourcePath));
+            var builder = new StringBuilder();
+            builder.AppendLine("{");
+            Property(builder, "schema_version", "benchmark-fixture/v1", true);
+            RawProperty(builder, "profile", $"{{\"id\":{Quote(Test_PerformanceHarnessOptions.SIMULATION_REGION_PROFILE_ID)},\"revision\":{Quote(Test_SimulationRegionSizingProbe.SPEC_REVISION)},\"spec_revision\":{Quote(Test_SimulationRegionSizingProbe.SPEC_REVISION)},\"variant\":{Quote(options.ActorVariantID)},\"tier\":\"engineering_probe\"}}", true);
+            RawProperty(builder, "random", $"{{\"master_seed\":{options.Seed},\"replicate_seed\":{options.Seed},\"replicate_index\":0,\"derivation\":\"tracked-fixture-plan-v1\",\"streams\":[\"world\",\"region\",\"physics\",\"navigation\"]}}", true);
+            RawProperty(builder, "provenance", $"{{\"fixture_generator\":{Quote(Test_WorldFixtureLayout.GENERATOR_NAME)},\"generator_revision\":{Quote(Test_WorldFixtureLayout.FIXTURE_VERSION)},\"input_path\":{Quote(sourcePath)},\"asset_manifest_path\":{Quote(sourcePath)},\"source_commit\":{Quote(metadata.Commit)},\"source_sha256\":{Quote(sourceHash)},\"asset_manifest_sha256\":{Quote(sourceHash)}}}", true);
+            RawProperty(builder, "required_features", "[\"tracked_256m_fixture_geometry\",\"shared_chunk_size_256m\",\"simulation_region_descriptor\",\"server_physics_conversion\",\"separate_physics_scene\",\"test_owned_navmesh_data\"]", true);
+            RawProperty(builder, "population", "{\"players\":{\"requested\":0,\"connection_kind\":\"none_data_only\",\"groups\":[]},\"npcs\":{\"requested\":0,\"representation\":\"none\",\"groups\":[]}}", true);
+            RawProperty(builder, "space", $"{{\"fixture_variant\":{Quote(options.WorldFixture.ToString())},\"fixture_scene\":{Quote(world.AssetPath)},\"shared_cell_size_metres\":\"unavailable_until_runtime_preflight\",\"selected_tile_span\":{options.SimulationRegionTileSpan},\"selected_concurrent_regions\":{options.SimulationRegionCapacity},\"control_only\":{options.IsSimulationRegionControl.ToString().ToLowerInvariant()}}}", true);
+            RawProperty(builder, "timing", $"{{\"preflight_timeout_s\":{Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS.ToString("R", CultureInfo.InvariantCulture)},\"qualified_repeat_count\":{options.SimulationRegionRepeatCount},\"measurement_s\":{Test_PerformanceRun.MEASUREMENT_SECONDS.ToString("R", CultureInfo.InvariantCulture)}}}", true);
+            RawProperty(builder, "stops", "{\"terminate_on_correctness_failure\":true,\"terminate_on_missing_fixture\":true,\"terminate_on_missing_required_telemetry\":true}", false);
+            builder.AppendLine("}");
+            return builder.ToString();
+        }
+
+        private static string BuildSimulationRegionSizingRunJson(Test_PerformanceRun run, Test_PerformanceRunMetadata metadata)
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine("{");
+            Property(builder, "schema_version", "benchmark-run/v1", true);
+            Property(builder, "run_id", run.RunID, true);
+            RawProperty(builder, "fixture", $"{{\"path\":{Test_PerformanceRun.Quote("fixture.json")},\"sha256\":{Test_PerformanceRun.Quote(run.FixtureHash)}}}", true);
+            RawProperty(builder, "git", $"{{\"repository\":{Test_PerformanceRun.Quote(metadata.Repository)},\"branch\":{Test_PerformanceRun.Quote(metadata.GitBranch)},\"branch_status\":{Test_PerformanceRun.Quote(metadata.GitBranchStatus)},\"branch_diagnostic\":{Test_PerformanceRun.Quote(metadata.GitBranchDiagnostic)},\"captured_utc\":{Test_PerformanceRun.Quote(metadata.CapturedUtc)},\"commit_sha\":{Test_PerformanceRun.Quote(metadata.Commit)},\"dirty\":{metadata.Dirty.ToString().ToLowerInvariant()},\"diff_sha256\":{Test_PerformanceRun.Quote(metadata.DiffSha256)}}}", true);
+            RawProperty(builder, "unity", $"{{\"version\":{Test_PerformanceRun.Quote(Application.unityVersion)},\"platform\":{Test_PerformanceRun.Quote(Application.platform.ToString())}}}", true);
+            RawProperty(builder, "packages", $"{{\"manifest_sha256\":{Test_PerformanceRun.Quote(metadata.PackagesSha256)},\"lock_sha256\":{Test_PerformanceRun.Quote(metadata.PackagesLockSha256)}}}", true);
+            RawProperty(builder, "hardware", $"{{\"host_id\":{Test_PerformanceRun.Quote(metadata.HostID)},\"description\":{Test_PerformanceRun.Quote(metadata.Hardware)},\"system_memory_bytes\":{metadata.MemoryBytes.ToString(CultureInfo.InvariantCulture)},\"graphics_device\":{Test_PerformanceRun.Quote(SystemInfo.graphicsDeviceName)}}}", true);
+            RawProperty(builder, "build", "{\"kind\":\"editor_playmode_server\",\"target\":\"Unity Editor\",\"subtarget\":\"test_only_simulation_region_sizing\",\"development\":true,\"deep_profiling\":false,\"executable\":null}", true);
+            RawProperty(builder, "execution", "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"production_regions_activated\":false,\"production_defaults_selected\":false}", true);
+            RawProperty(builder, "probe", $"{{\"phase\":{Quote(run.Options.SimulationRegionCapacity == 1 ? "A_size_sweep" : "B_concurrency_sweep")},\"tile_span\":{run.Options.SimulationRegionTileSpan},\"concurrent_regions\":{run.Options.SimulationRegionCapacity},\"qualified_repeat_requirement\":{run.Options.SimulationRegionRepeatCount},\"control_only\":{run.Options.IsSimulationRegionControl.ToString().ToLowerInvariant()}}}", false);
+            builder.AppendLine("}");
+            return builder.ToString();
+        }
+
+        internal static void WriteSimulationRegionSizingEvidence(string resultsDirectory, Test_SimulationRegionSizingEvidence evidence)
+        {
+            if (string.IsNullOrEmpty(resultsDirectory))
+                throw new ArgumentException("A sizing evidence directory is required.", nameof(resultsDirectory));
+            if (evidence == null)
+                throw new ArgumentNullException(nameof(evidence));
+
+            var builder = new StringBuilder();
+            builder.AppendLine("{");
+            Property(builder, "schema_version", Test_SimulationRegionSizingProbe.SPEC_REVISION, true);
+            Property(builder, "status", evidence.status, true);
+            Property(builder, "phase", evidence.phase, true);
+            RawProperty(builder, "selected", $"{{\"tile_span\":{evidence.tileSpan},\"region_width_metres\":{Quote(evidence.regionWidthMetres)},\"concurrent_regions\":{evidence.concurrentRegions},\"required_qualified_repeats\":{evidence.requiredQualifiedRepeats},\"control_only\":{(evidence.tileSpan == 1 && evidence.concurrentRegions == 1).ToString().ToLowerInvariant()}}}", true);
+            RawProperty(builder, "fixture", $"{{\"variant\":{Quote(evidence.fixtureVariant)},\"path\":{Quote(evidence.fixturePath)},\"shared_cell_size_metres\":{Quote(evidence.cellSizeMetres)}}}", true);
+            RawProperty(builder, "timing", $"{{\"setup_ms\":{Quote(evidence.setupDurationMilliseconds)},\"teardown_ms\":{Quote(evidence.teardownDurationMilliseconds)},\"navmesh_build_ms\":{Quote(GetInstanceMetric(evidence, instance => instance.navMeshBuildDurationMilliseconds))},\"navmesh_registration_ms\":{Quote(GetInstanceMetric(evidence, instance => instance.navMeshRegistrationDurationMilliseconds))},\"physics_query_ms\":{Quote(GetInstanceMetric(evidence, instance => instance.physicsQueryDurationMilliseconds))},\"navmesh_path_query_ms\":{Quote(GetInstanceMetric(evidence, instance => instance.navMeshPathQueryDurationMilliseconds))}}}", true);
+            RawProperty(builder, "memory", $"{{\"before_bytes\":{Quote(evidence.memoryBeforeBytes)},\"after_setup_bytes\":{Quote(evidence.memoryAfterSetupBytes)},\"delta_bytes\":{Quote(evidence.memoryDeltaBytes)}}}", true);
+            RawProperty(builder, "achieved", $"{{\"tile_count\":{GetInstanceCountJson(evidence, instance => instance.achievedTileCount)},\"object_count\":{GetInstanceCountJson(evidence, instance => instance.achievedObjectCount)},\"collider_count\":{GetInstanceCountJson(evidence, instance => instance.achievedColliderCount)},\"navmesh_data_count\":{GetInstanceCountJson(evidence, instance => instance.navMeshDataCount)}}}", true);
+            RawProperty(builder, "correctness", $"{{\"conversion_round_trip_error_x_metres\":{Quote(evidence.maxRoundTripErrorXMetres)},\"conversion_round_trip_error_y_metres\":{Quote(evidence.maxRoundTripErrorYMetres)},\"conversion_round_trip_error_z_metres\":{Quote(evidence.maxRoundTripErrorZMetres)},\"physics_isolation\":{Quote(evidence.physicsIsolation)},\"navmesh_internal_tile_continuity\":{Quote(evidence.navMeshInternalTileContinuity)},\"navmesh_cross_region_isolation\":{Quote(evidence.navMeshCrossRegionIsolation)},\"cleanup\":{Quote(evidence.cleanup)}}}", true);
+            Property(builder, "blocked_reason", evidence.blockedReason, true);
+            RawProperty(builder, "instances", BuildSizingInstancesJson(evidence.instances), false);
+            builder.AppendLine("}");
+            File.WriteAllText(Path.Combine(resultsDirectory, "simulation-region-sizing.json"), builder.ToString(), new UTF8Encoding(false));
+        }
+
+        private static string BuildSizingInstancesJson(List<Test_SimulationRegionSizingInstanceEvidence> instances)
+        {
+            var values = new List<string>();
+            foreach (var instance in instances)
+            {
+                values.Add($"{{\"tile_count\":{instance.achievedTileCount},\"object_count\":{instance.achievedObjectCount},\"collider_count\":{instance.achievedColliderCount},\"navmesh_data_count\":{instance.navMeshDataCount},\"navmesh_build_ms\":{Quote(instance.navMeshBuildDurationMilliseconds)},\"navmesh_registration_ms\":{Quote(instance.navMeshRegistrationDurationMilliseconds)},\"physics_query_ms\":{Quote(instance.physicsQueryDurationMilliseconds)},\"navmesh_path_query_ms\":{Quote(instance.navMeshPathQueryDurationMilliseconds)}}}");
+            }
+            return "[" + string.Join(",", values) + "]";
+        }
+
+        private static string GetInstanceCountJson(Test_SimulationRegionSizingEvidence evidence, Func<Test_SimulationRegionSizingInstanceEvidence, int> selector)
+        {
+            var total = 0;
+            foreach (var instance in evidence.instances)
+                total += selector(instance);
+            return evidence.instances.Count == 0 ? Quote("unavailable") : total.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static string GetInstanceMetric(Test_SimulationRegionSizingEvidence evidence, Func<Test_SimulationRegionSizingInstanceEvidence, string> selector)
+        {
+            if (evidence.instances.Count == 0)
+                return "unavailable";
+            var values = new List<string>();
+            foreach (var instance in evidence.instances)
+                values.Add(selector(instance));
+            return string.Join(",", values);
+        }
+
         public static string BuildRunJson(Test_PerformanceRun run, string projectRoot, Test_PerformanceRunMetadata metadata)
         {
             if (run.IsGraphicalClient)
                 return BuildGraphicalRunJson(run, metadata);
+            if (run.IsSimulationRegionSizing)
+                return BuildSimulationRegionSizingRunJson(run, metadata);
 
             var builder = new StringBuilder();
             builder.AppendLine("{");

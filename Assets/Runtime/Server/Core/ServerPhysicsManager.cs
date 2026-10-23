@@ -7,7 +7,7 @@ namespace Game.Server.Core
     /// Owns process-level server simulation-region physical state.
     /// Region functionality is introduced by subsequent Stage 1.2 work.
     /// </summary>
-    public sealed class ServerPhysicsManager : MonoBehaviour
+    public sealed partial class ServerPhysicsManager : MonoBehaviour
     {
         private static ServerPhysicsManager _instance;
         private static bool _initialized;

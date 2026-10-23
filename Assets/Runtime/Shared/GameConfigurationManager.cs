@@ -46,6 +46,8 @@ namespace Game.Shared
                 return;
             }
 
+            _config.ValidateWorldGridConfiguration();
+
             // Marked as initialized.
             _initialized = true;
         }

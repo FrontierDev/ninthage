@@ -21,8 +21,8 @@ namespace Game.Shared
 
         [Header("World Settings")]
         [SerializeField]
-        /// <summary>Gets or sets the world chunk size.</summary>
-        public int ChunkSize = 100;
+        /// <summary>Gets or sets the shared horizontal size in metres for origin/network position cells and authored environment tiles.</summary>
+        public int ChunkSize = 256;
 
         [Header("Spatial Index Settings")]
         [SerializeField]
@@ -121,6 +121,17 @@ namespace Game.Shared
         [SerializeField]
         /// <summary>Gets or sets the server port.</summary>
         public ushort ServerPort = 8888;
+
+        /// <summary>Validates the fixed shared 256 metre origin, network and authored environment grid.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when <see cref="ChunkSize"/> is not exactly 256.</exception>
+        public void ValidateWorldGridConfiguration()
+        {
+            if (ChunkSize != 256)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ChunkSize)} must be exactly 256 metres for the shared world grid.");
+            }
+        }
 
         /// <summary>
         /// Validates the spatial-index and actor-visibility settings required by the authoritative server.
