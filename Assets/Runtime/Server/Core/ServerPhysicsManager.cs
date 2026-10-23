@@ -30,6 +30,7 @@ namespace Game.Server.Core
                     "Server physics manager requires initialized game configuration.");
             }
 
+            // Validate the simulation region configuration from the game configuration.
             Game.Shared.GameConfigurationManager.Config.ValidateSimulationRegionConfiguration();
 
             if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
@@ -49,6 +50,8 @@ namespace Game.Server.Core
         {
             if (_instance == this)
             {
+                _environmentRegionBindings.Clear();
+                _activeRegions.Clear();
                 _instance = null;
                 _initialized = false;
             }

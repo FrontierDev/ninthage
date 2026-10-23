@@ -117,6 +117,7 @@ namespace Game.Server.Core
             foreach (var cleanup in _pendingLoadCleanup.Values)
                 cleanup?.Invoke();
             _pendingLoadCleanup.Clear();
+            _pendingUnloadOwners.Clear();
             _scenesAwaitingUnload.Clear();
 
             if (_instance == this)
@@ -182,6 +183,22 @@ namespace Game.Server.Core
                     return;
                 }
 
+                try
+                {
+                    ServerPhysicsManager.Instance.BindEnvironmentScene(chunkKey, state.scene);
+                }
+                catch (Exception exception)
+                {
+                    CompletePendingChunkLoad(
+                        chunkKey,
+                        sceneID,
+                        false,
+                        $"World scene '{sceneName}' failed physical binding for chunk {chunkKey} with SceneID {sceneID}: {exception.Message}",
+                        null);
+                    QueueSceneUnload(sceneID);
+                    return;
+                }
+
                 _loadedChunks.Add(chunkKey, sceneID);
                 if (_pendingLoadTimestamps != null
                     && _pendingLoadTimestamps.TryGetValue(chunkKey, out long startedTimestamp))
@@ -199,19 +216,32 @@ namespace Game.Server.Core
             if (!asServer)
                 return;
 
-            WorldChunkKey unloadedKey = default;
-            bool hasLoadedKey = false;
-            foreach (var loadedChunk in _loadedChunks)
+            if (_pendingUnloadOwners.TryGetValue(sceneID, out WorldChunkKey pendingUnloadKey))
             {
-                if (loadedChunk.Value != sceneID)
-                    continue;
-
-                unloadedKey = loadedChunk.Key;
-                hasLoadedKey = true;
-                break;
+                ServerPhysicsManager.Instance.UnbindEnvironmentScene(pendingUnloadKey);
+                _pendingUnloadOwners.Remove(sceneID);
             }
-            if (hasLoadedKey)
-                _loadedChunks.Remove(unloadedKey);
+            else
+            {
+                WorldChunkKey unloadedKey = default;
+                bool hasLoadedKey = false;
+                foreach (var loadedChunk in _loadedChunks)
+                {
+                    if (loadedChunk.Value != sceneID)
+                        continue;
+
+                    unloadedKey = loadedChunk.Key;
+                    hasLoadedKey = true;
+                    break;
+                }
+                if (hasLoadedKey)
+                {
+                    _loadedChunks.Remove(unloadedKey);
+                    ServerPhysicsManager.Instance.UnbindEnvironmentScene(unloadedKey);
+                    Debug.Error(
+                        $"Tracked world chunk {unloadedKey} reached terminal unload outside the owned UnloadChunk path.");
+                }
+            }
 
             if (_globalActorsSceneID == sceneID)
                 _globalActorsSceneID = default;

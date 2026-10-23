@@ -21,6 +21,7 @@ namespace Game.Server.Core
         // Chunks currently being loaded asynchronously.
         private readonly Dictionary<WorldChunkKey, List<Action<bool, SceneID>>> _pendingLoads = new();
         private readonly Dictionary<SceneID, WorldChunkKey> _pendingSceneOwners = new();
+        private readonly Dictionary<SceneID, WorldChunkKey> _pendingUnloadOwners = new();
         private readonly Dictionary<WorldChunkKey, Action> _pendingLoadCleanup = new();
         private readonly HashSet<SceneID> _scenesAwaitingUnload = new();
         private Dictionary<WorldChunkKey, long> _pendingLoadTimestamps;
@@ -247,8 +248,14 @@ namespace Game.Server.Core
             var chunkKey = new WorldChunkKey(context, chunkCoord);
             if (!_loadedChunks.TryGetValue(chunkKey, out SceneID sceneID))
                 return;
+            if (_pendingUnloadOwners.ContainsKey(sceneID))
+            {
+                throw new InvalidOperationException(
+                    $"World chunk {chunkKey} already has a pending unload for SceneID {sceneID}.");
+            }
 
             _loadedChunks.Remove(chunkKey);
+            _pendingUnloadOwners.Add(sceneID, chunkKey);
             if (PerformanceTelemetry.IsEnabled)
             {
                 if (_pendingUnloadTimestamps == null)
@@ -256,7 +263,18 @@ namespace Game.Server.Core
                 if (_pendingUnloadTimestamps.Count < MAX_PENDING_TELEMETRY_OPERATIONS)
                     _pendingUnloadTimestamps[sceneID] = Stopwatch.GetTimestamp();
             }
-            _networkManager.sceneModule.UnloadSceneAsync(sceneID);
+            try
+            {
+                _networkManager.sceneModule.UnloadSceneAsync(sceneID);
+            }
+            catch
+            {
+                _pendingUnloadOwners.Remove(sceneID);
+                _loadedChunks.Add(chunkKey, sceneID);
+                _pendingUnloadTimestamps?.Remove(sceneID);
+                RecordPendingSceneOperations();
+                throw;
+            }
             RecordPendingSceneOperations();
             if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var sceneState)) return;
             string sceneName = sceneState.scene.name;
