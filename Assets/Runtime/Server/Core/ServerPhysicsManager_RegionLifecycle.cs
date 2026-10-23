@@ -76,17 +76,26 @@ namespace Game.Server.Core
 
         private Vector3 GetRegionLocalAnchor(int slotIndex)
         {
-            double regionWidth = (double)GameConfigurationManager.Config.ServerSimulationRegionTilesX
-                * GameConfigurationManager.Config.ChunkSize;
+            int chunkSize = GameConfigurationManager.Config.ChunkSize;
+            double regionWidth =
+                (double)GameConfigurationManager.Config.ServerSimulationRegionTilesX
+                * chunkSize;
+            double halfTile = chunkSize * 0.5d;
             double anchorPitchX = regionWidth * 2d;
-            double anchorX = slotIndex * anchorPitchX;
-            if (!FitsFiniteFloat(anchorX))
+            double anchorX = slotIndex * anchorPitchX - halfTile;
+            double anchorZ = -halfTile;
+
+            if (!FitsFiniteFloat(anchorX)
+                || !FitsFiniteFloat(anchorZ))
             {
                 throw new InvalidOperationException(
                     $"Simulation-region slot {slotIndex} produces a local anchor outside the finite Unity float range.");
             }
 
-            return new Vector3((float)anchorX, 0f, 0f);
+            return new Vector3(
+                (float)anchorX,
+                0f,
+                (float)anchorZ);
         }
 
         private void RetireActiveRegion(SimulationRegionKey key)
