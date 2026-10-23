@@ -616,15 +616,20 @@ These systems must not require the player to stop moving under normal conditions
 
 ### 19.1 Floating-origin transitions
 
-Crossing a 256 m origin/network cell boundary may trigger a client floating-origin adjustment. This boundary is intentionally aligned with the 256 m environment-tile grid through the shared `GameConfiguration.ChunkSize` value. An aligned boundary may also change environment streaming interest, but rebase and streaming work remain separate operations and may be staggered/deferred.
+The 256 m origin/network grid is centre-anchored and aligned with the 256 m environment-tile grid through the shared `GameConfiguration.ChunkSize` value. Coordinate `(0,0)` is centred on absolute X/Z `(0,0)` and occupies `[-128,128)` on each horizontal axis. More generally, cell coordinate `c` owns `[cS-S/2, cS+S/2)`.
+
+Crossing one of those centred 256 m boundaries may trigger a client floating-origin adjustment. An aligned boundary may also change environment streaming interest, but rebase and streaming work remain separate operations and may be staggered/deferred. Client interest requests do not directly own or force the floating-origin change.
+
+The origin rebase must preserve the player's absolute `WorldPosition` and reproject the local player/environment into the new Unity-local frame exactly once. It must not rely on the locally owned player's incidental Unity scene membership.
 
 This must not:
 
 - interrupt movement;
 - change apparent velocity;
-- affect jump/fall state;
+- affect jump/fall or grounded state;
 - cause a loading screen;
-- change absolute authoritative position.
+- change absolute authoritative position;
+- produce a second synthetic 256 m movement proposal.
 
 ### 19.2 World-tile transitions
 
@@ -684,7 +689,7 @@ For each live actor, the server stores one accepted absolute double-precision po
 
 The source-specific handoff is fixed as follows:
 
-- Player movement uses one project-owned PurrNet position RPC, replacing only the gameplay position part of `NetworkTransform`. After `CharacterController.Move`, the client uses its current `ClientPositionManager.OriginChunk` and `LocalToChunkRelative`, reuses `PackWorldPosition`, and sends a monotonically increasing sequence scoped to the ownership epoch. The server authenticates the owner binding and resolves `ActorSpatialContext`; client context is never authoritative. `MovementEndpoint.Server_RequestChunkInterest` remains interest bookkeeping. A rejected, stale, reordered or old-epoch proposal does not modify accepted state.
+- Player movement uses one project-owned PurrNet position RPC, replacing only the gameplay position part of `NetworkTransform`. After `CharacterController.Move`, the client classifies the post-movement pose against the centred origin-cell footprint, performs any required presentation-only rebase, then uses its current `ClientPositionManager.OriginChunk` and `LocalToChunkRelative` to reconstruct the centred chunk/local `WorldPosition`. Chunk-local X/Z offsets are `[-S/2,S/2)`, so `World_0_0` contains the absolute origin rather than beginning there. The client reuses `PackWorldPosition` and sends a monotonically increasing sequence scoped to the ownership epoch. The server authenticates the owner binding and resolves `ActorSpatialContext`; client context is never authoritative. `MovementEndpoint.Server_RequestChunkInterest` remains interest bookkeeping and must not directly force the client floating origin. A rejected, stale, reordered or old-epoch proposal does not modify accepted state.
 - `NetworkTransform` position sync is disabled only after the server-authored observer path is ready. Rotation and other suitable properties may remain on it. Observers receive one server-authored accepted `WorldPosition` update with tick/proposal sequence, and clients project it through their own floating origin. Smoothing is presentation-only and never writes back to ECS.
 - NavMesh movement uses the actor's verified **simulation-region frame**. Many adjacent 256 m environment tiles share that one contiguous local frame, so ordinary tile crossings remain normal NavMesh movement and never require a physics-frame rebind or agent warp. Region-local positions are reconstructed to absolute double precision before authoritative ECS commit.
 - ECS-driven NPC motion writes the canonical ECS component during the authoritative ECS step. Physics queries and GameObject projection convert through the actor's simulation-region frame; a GameObject transform never becomes a new source of truth.
