@@ -152,6 +152,13 @@ namespace Game.Client.UI
             if (cam == null) return;
             using var markerScope = LATE_UPDATE_MARKER.Begin();
 
+            foreach (var kvp in activeNameplates)
+            {
+                if (kvp.Key == null || kvp.Value == null) continue;
+
+                kvp.Value.UpdatePresentation(cam);
+            }
+
             Vector3 camPos = cam.transform.position;
 
             foreach (var kvp in activeNameplates)

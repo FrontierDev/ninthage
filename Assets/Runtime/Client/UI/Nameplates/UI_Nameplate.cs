@@ -120,23 +120,27 @@ namespace Game.Client.UI
                 Destroy(gameObject);
                 return;
             }
+        }
+
+        internal void UpdatePresentation(Camera mainCamera)
+        {
+            if (mainCamera == null)
+                throw new ArgumentNullException(nameof(mainCamera));
+            if (_actor == null)
+                return;
 
             // Position nameplate above actor's head in world space
-            Vector3 targetPos = _actor.transform.position + Vector3.up * (_heightOffset + StackOffset);
-            transform.position = targetPos;
+            Vector3 targetPosition = _actor.transform.position + Vector3.up * (_heightOffset + StackOffset);
+            transform.position = targetPosition;
 
             // Face camera, but use camera's up so text stays screen-aligned
-            Camera mainCam = Camera.main;
-            if (mainCam != null)
-            {
-                transform.rotation = mainCam.transform.rotation;
+            transform.rotation = mainCamera.transform.rotation;
 
-                // Scale to maintain constant screen size regardless of distance
-                float dist = Vector3.Distance(mainCam.transform.position, targetPos);
-                float frustumHeight = 2f * dist * Mathf.Tan(mainCam.fieldOfView * 0.5f * Mathf.Deg2Rad);
-                float scale = frustumHeight * _screenSize;
-                transform.localScale = Vector3.one * scale;
-            }
+            // Scale to maintain constant screen size regardless of distance
+            float dist = Vector3.Distance(mainCamera.transform.position, targetPosition);
+            float frustumHeight = 2f * dist * Mathf.Tan(mainCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float scale = frustumHeight * _screenSize;
+            transform.localScale = Vector3.one * scale;
         }
 
         /// <summary>
