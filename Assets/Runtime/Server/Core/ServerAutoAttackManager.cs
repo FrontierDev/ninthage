@@ -710,36 +710,7 @@ namespace Game.Server.Core
                 return false;
             }
 
-            if (!state.Agent.hasPath
-                || state.Agent.isStopped
-                || state.Agent.pathPending
-                || state.Agent.pathStatus != NavMeshPathStatus.PathComplete
-                || float.IsNaN(state.Agent.remainingDistance)
-                || float.IsInfinity(state.Agent.remainingDistance))
-            {
-                return false;
-            }
-
-            NavMeshBuildSettings build = NavMesh.GetSettingsByID(0);
-            float voxel = build.overrideVoxelSize
-                ? build.voxelSize
-                : build.agentRadius / 3f;
-            float radius = Mathf.Max(state.Agent.radius, build.agentRadius);
-            float arrivalTolerance = Mathf.Max(radius * 0.5f, 2f * voxel);
-            if (build.agentTypeID != state.Agent.agentTypeID
-                || !(voxel > 0f)
-                || float.IsNaN(voxel)
-                || float.IsInfinity(voxel)
-                || !(radius > 0f)
-                || float.IsNaN(radius)
-                || float.IsInfinity(radius)
-                || !(arrivalTolerance > 0f)
-                || float.IsNaN(arrivalTolerance)
-                || float.IsInfinity(arrivalTolerance))
-            {
-                throw new InvalidOperationException("Region handoff arrival tolerance is invalid.");
-            }
-            if (state.Agent.remainingDistance > arrivalTolerance)
+            if (!ServerPhysicsManager.Instance.IsRegionSeamApproachReady(state.Agent))
                 return false;
 
             float directStoppingDistance = _autoAttackSpell.BaseRange

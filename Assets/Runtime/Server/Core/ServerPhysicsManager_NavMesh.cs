@@ -668,6 +668,35 @@ namespace Game.Server.Core
             }
         }
 
+        /// <summary>
+        /// Determines whether an enabled source NavMeshAgent has completed its validated seam approach.
+        /// </summary>
+        /// <param name="sourceAgent">The source-region NavMeshAgent to inspect.</param>
+        /// <returns>
+        /// <see langword="true"/> when the agent has a complete, non-pending path within the
+        /// physics-owned seam arrival tolerance; otherwise, <see langword="false"/>.
+        /// </returns>
+        internal bool IsRegionSeamApproachReady(NavMeshAgent sourceAgent)
+        {
+            ResolveNavigationSeamGeometry(
+                sourceAgent,
+                out _,
+                out _,
+                out _,
+                out _,
+                out _,
+                out _,
+                out var arrivalTolerance);
+
+            return sourceAgent.hasPath
+                && !sourceAgent.isStopped
+                && !sourceAgent.pathPending
+                && sourceAgent.pathStatus == NavMeshPathStatus.PathComplete
+                && !float.IsNaN(sourceAgent.remainingDistance)
+                && !float.IsInfinity(sourceAgent.remainingDistance)
+                && sourceAgent.remainingDistance <= arrivalTolerance;
+        }
+
         private bool TryEvaluateRegionSeamCandidate(
             NavMeshAgent sourceAgent,
             SimulationRegionKey sourceKey,

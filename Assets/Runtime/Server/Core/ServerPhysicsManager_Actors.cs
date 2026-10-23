@@ -272,41 +272,21 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     $"Actor {actorID} NavMesh area mask {agent.areaMask} does not match seam mask {seam.AreaMask}.");
             }
-            if (!agent.isOnNavMesh
-                || !agent.hasPath
-                || agent.isStopped
-                || agent.pathPending
-                || agent.pathStatus != NavMeshPathStatus.PathComplete
-                || float.IsNaN(agent.remainingDistance)
-                || float.IsInfinity(agent.remainingDistance))
-            {
+            if (!agent.isOnNavMesh)
                 return false;
-            }
 
-            NavMeshBuildSettings build = GetRegionNavMeshBuildSettings();
-            float voxel = build.overrideVoxelSize
-                ? build.voxelSize
-                : build.agentRadius / 3f;
-            float radius = Mathf.Max(agent.radius, build.agentRadius);
-            float sampleRadius = 2f * voxel;
-            float arrivalTolerance = Mathf.Max(radius * 0.5f, 2f * voxel);
-            if (!(voxel > 0f)
-                || float.IsNaN(voxel)
-                || float.IsInfinity(voxel)
-                || !(radius > 0f)
-                || float.IsNaN(radius)
-                || float.IsInfinity(radius)
-                || !(sampleRadius > 0f)
-                || float.IsNaN(sampleRadius)
-                || float.IsInfinity(sampleRadius)
-                || !(arrivalTolerance > 0f)
-                || float.IsNaN(arrivalTolerance)
-                || float.IsInfinity(arrivalTolerance))
-            {
-                throw new InvalidOperationException("Region handoff navigation resolution produced an invalid tolerance.");
-            }
-            if (agent.remainingDistance > arrivalTolerance)
+            if (!IsRegionSeamApproachReady(agent))
                 return false;
+
+            ResolveNavigationSeamGeometry(
+                agent,
+                out _,
+                out _,
+                out _,
+                out _,
+                out _,
+                out var sampleRadius,
+                out _);
 
             Vector3 originalSourceLocalPose = agent.transform.position;
             WorldPosition originalSourceAbsolutePose = ToWorld(sourceRegion, originalSourceLocalPose);
