@@ -416,11 +416,12 @@ namespace Game.Tests.Performance.Harness
             diagnostic = null;
             if (!CanEdit)
                 return FailUI("Only a draft campaign can be edited.", out diagnostic);
-            if (repeatCount < 1 || repeatCount > MAX_REPEAT_COUNT)
-                return FailUI($"Repeat count must be between 1 and {MAX_REPEAT_COUNT}.", out diagnostic);
             var job = FindJob(jobID);
             if (job == null)
                 return FailUI("The selected queue job no longer exists.", out diagnostic);
+            var minimumRepeatCount = GetMinimumRepeatCount(job.options);
+            if (repeatCount < minimumRepeatCount || repeatCount > MAX_REPEAT_COUNT)
+                return FailUI($"Repeat count must be between {minimumRepeatCount} and {MAX_REPEAT_COUNT} for this workload.", out diagnostic);
             if (CountRequestedAttempts(jobID, repeatCount) > MAX_TOTAL_ATTEMPTS)
                 return FailUI($"The queue is limited to {MAX_TOTAL_ATTEMPTS} total attempts.", out diagnostic);
             job.repeat_count = repeatCount;
@@ -526,13 +527,14 @@ namespace Game.Tests.Performance.Harness
             {
                 return FailUI("A make-up campaign can only be created from a settled campaign.", out diagnostic);
             }
-            if (repeatCount < 1 || repeatCount > MAX_REPEAT_COUNT)
-                return FailUI($"Make-up repeats must be between 1 and {MAX_REPEAT_COUNT}.", out diagnostic);
             var sourceManifest = _manifest;
             var sourceCampaignID = sourceManifest.campaign_id;
             var sourceJob = FindJob(jobID);
             if (sourceJob == null)
                 return FailUI("The selected make-up workload no longer exists.", out diagnostic);
+            var minimumRepeatCount = GetMinimumRepeatCount(sourceJob.options);
+            if (repeatCount < minimumRepeatCount || repeatCount > MAX_REPEAT_COUNT)
+                return FailUI($"Make-up repeats must be between {minimumRepeatCount} and {MAX_REPEAT_COUNT} for this workload.", out diagnostic);
             _manifest = null;
             _campaignDirectory = null;
             if (!EnsureDraftCampaign(out diagnostic))
@@ -1302,13 +1304,20 @@ namespace Game.Tests.Performance.Harness
             return false;
         }
 
+        private static int GetMinimumRepeatCount(Test_PerformanceHarnessOptions options)
+        {
+            return options != null && options.IsSimulationRegionSizing
+                ? Test_PerformanceHarnessOptions.SIMULATION_REGION_REQUIRED_REPEAT_COUNT
+                : 1;
+        }
+
         private static Test_PerformanceCampaignJob BuildJob(Test_PerformanceHarnessOptions options, out string diagnostic)
         {
             var job = new Test_PerformanceCampaignJob
             {
                 job_id = CreateID("job"),
                 options = options,
-                repeat_count = 1,
+                repeat_count = GetMinimumRepeatCount(options),
                 validation_state = UNVALIDATED,
             };
             if (TryBuildFixtureIdentity(options, out var identity, out diagnostic))
@@ -1355,6 +1364,12 @@ namespace Game.Tests.Performance.Harness
                     .Append(options.WarmupSeconds.ToString("R", CultureInfo.InvariantCulture)).Append('|')
                     .Append(options.MeasurementSeconds.ToString("R", CultureInfo.InvariantCulture)).Append('|')
                     .Append(options.ActorVariantID).Append('|');
+                if (options.IsSimulationRegionSizing)
+                {
+                    builder.Append(options.SimulationRegionTileSpan.ToString(CultureInfo.InvariantCulture)).Append('|')
+                        .Append(options.SimulationRegionCapacity.ToString(CultureInfo.InvariantCulture)).Append('|')
+                        .Append(options.SimulationRegionRepeatCount.ToString(CultureInfo.InvariantCulture)).Append('|');
+                }
                 if (actorProfile != null)
                     builder.Append(actorProfile.profile_id).Append('|').Append(actorProfile.variant_id).Append('|').Append(actorProfile.revision).Append('|').Append(actorProfile.provenance?.input_path);
                 if (worldPlan != null)
@@ -1815,7 +1830,11 @@ namespace Game.Tests.Performance.Harness
                 throw new InvalidDataException("The campaign manifest exceeds the bounded attempt limit.");
             foreach (var job in manifest.jobs)
             {
-                if (job == null || string.IsNullOrEmpty(job.job_id) || job.options == null || job.repeat_count < 1 || job.repeat_count > MAX_REPEAT_COUNT)
+                if (job == null
+                    || string.IsNullOrEmpty(job.job_id)
+                    || job.options == null
+                    || job.repeat_count < GetMinimumRepeatCount(job.options)
+                    || job.repeat_count > MAX_REPEAT_COUNT)
                     throw new InvalidDataException("The campaign manifest contains an invalid job snapshot.");
             }
             foreach (var attempt in manifest.attempts)

@@ -1022,6 +1022,26 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void PendingRunStatePreservesSimulationRegionProbeOptions()
+        {
+            var options = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.SimulationRegionSizing,
+                SimulationRegionTileSpan = 8,
+                SimulationRegionCapacity = 4,
+                SimulationRegionRepeatCount = Test_PerformanceHarnessOptions.SIMULATION_REGION_REQUIRED_REPEAT_COUNT,
+            };
+
+            var pendingOptions = Test_PerformancePendingRunOptions.Capture(options);
+            var restoredOptions = JsonUtility.FromJson<Test_PerformancePendingRunOptions>(JsonUtility.ToJson(pendingOptions)).ToOptions();
+
+            Assert.That(restoredOptions.WorkloadMode, Is.EqualTo(Test_PerformanceWorkloadMode.SimulationRegionSizing));
+            Assert.That(restoredOptions.SimulationRegionTileSpan, Is.EqualTo(options.SimulationRegionTileSpan));
+            Assert.That(restoredOptions.SimulationRegionCapacity, Is.EqualTo(options.SimulationRegionCapacity));
+            Assert.That(restoredOptions.SimulationRegionRepeatCount, Is.EqualTo(options.SimulationRegionRepeatCount));
+        }
+
+        [Test]
         public void PreviousSceneSetupStatePreservesRestoreMarkers()
         {
             var original = new[]

@@ -651,8 +651,11 @@ namespace Game.Tests.Performance.Harness
                     }
                     using (new EditorGUI.DisabledScope(Test_PerformanceJobQueue.CanEdit || (Test_PerformanceJobQueue.CampaignState != Test_PerformanceCampaignState.COMPLETED && Test_PerformanceJobQueue.CampaignState != Test_PerformanceCampaignState.CANCELLED && Test_PerformanceJobQueue.CampaignState != Test_PerformanceCampaignState.PAUSED)))
                     {
-                        if (GUILayout.Button("Make-up 1", GUILayout.Width(70f)))
-                            ShowQueueAction(Test_PerformanceJobQueue.CreateMakeupCampaign(job.job_id, 1, out diagnostic), diagnostic);
+                        var makeupRepeatCount = job.options != null && job.options.IsSimulationRegionSizing
+                            ? Test_PerformanceHarnessOptions.SIMULATION_REGION_REQUIRED_REPEAT_COUNT
+                            : 1;
+                        if (GUILayout.Button("Make-up " + makeupRepeatCount, GUILayout.Width(70f)))
+                            ShowQueueAction(Test_PerformanceJobQueue.CreateMakeupCampaign(job.job_id, makeupRepeatCount, out diagnostic), diagnostic);
                     }
                 }
 

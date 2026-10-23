@@ -1,8 +1,8 @@
 {
 "schema_version":"benchmark-run/v1",
-"run_id":"run-20261023T103358031Z-6247f639",
-"fixture":{"path":"fixture.json","sha256":"f794363f54afe8003413f6717732b737c455e7993ecdf4c53c9c57bf4693851d"},
-"git":{"repository":"C:\\Users\\recip\\Unity\\NinthAge","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-23T10:33:57.4852492Z","commit_sha":"2dc547c0ce0161c31555afde213a9d16e0adeef0","dirty":true,"diff_sha256":"6600d33521b4a6754bd6c292f852ab95cd41dcde37faefbb70c88ed19db27e7d"},
+"run_id":"run-20261023T105155892Z-37bdd6f5",
+"fixture":{"path":"fixture.json","sha256":"c86436d65e9844a246303566c87999e9f1952be25e2d8d89566a6baee588420e"},
+"git":{"repository":"C:\\Users\\recip\\Unity\\NinthAge","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-23T10:51:53.1431909Z","commit_sha":"c5154ea9873bc15e6c99fded9066a910f4af1624","dirty":true,"diff_sha256":"04cb44cf70f23a02ebd3174bfa5abb626ffefb183b0708d39354310acbd345f9"},
 "unity":{"version":"6000.3.10f1","platform":"WindowsEditor"},
 "packages":{"manifest_sha256":"8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90","lock_sha256":"933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9"},
 "hardware":{"host_id":"editor-host-2557e243b63e","description":"Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16","system_memory_bytes":17085497344,"graphics_device":"NVIDIA GeForce RTX 4060 Ti"},
