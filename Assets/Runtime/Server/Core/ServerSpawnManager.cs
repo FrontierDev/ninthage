@@ -600,6 +600,8 @@ namespace Game.Server.Core
                                 throw new InvalidOperationException(
                                     $"Source chunk {sourceChunk.ChunkCoord} has no active physical region binding.");
                             }
+                            if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
+                                throw new InvalidOperationException("Consuming a spawn command requires an initialized server actor manager.");
 
                             var spawnWorldPosition = new WorldPosition(
                                 cmd.WorldPositionD.x,
@@ -674,7 +676,7 @@ namespace Game.Server.Core
 
                             // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
                             actorSpawnEventStarted = true;
-                            ServerActorManager.Instance?.RegisterSpawnedActor(actor, spawnWorldPosition);
+                            ServerActorManager.Instance.RegisterSpawnedActor(actor, spawnWorldPosition);
                             Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
 
                             // Link the actor to the player's session data for disconnect cleanup.
