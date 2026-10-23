@@ -1,0 +1,12 @@
+{
+"schema_version":"benchmark-run/v1",
+"run_id":"run-20261023T111136216Z-cac1a189",
+"fixture":{"path":"fixture.json","sha256":"835fa344af2d6cf7c43d10c191e31ccbd85bf832c2d72f9d2e065db638d90e82"},
+"git":{"repository":"C:\\Users\\recip\\Unity\\NinthAge","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-23T11:11:35.8304663Z","commit_sha":"f554c3d7ea221c3602e3d5f63e8cda9c41265132","dirty":true,"diff_sha256":"bd73e3adec821436ed5fd2b0e8570fee43dd5ce72332f5e9a413c0d453fb7ff5"},
+"unity":{"version":"6000.3.10f1","platform":"WindowsEditor"},
+"packages":{"manifest_sha256":"8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90","lock_sha256":"933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9"},
+"hardware":{"host_id":"editor-host-2557e243b63e","description":"Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16","system_memory_bytes":17085497344,"graphics_device":"NVIDIA GeForce RTX 4060 Ti"},
+"build":{"kind":"editor_playmode_server","target":"Unity Editor","subtarget":"test_only_simulation_region_sizing","development":true,"deep_profiling":false,"executable":null},
+"execution":{"entrypoint":"Tools/Performance/Test Workload Runner","ordinary_runtime_path":true,"production_regions_activated":false,"production_defaults_selected":false},
+"probe":{"phase":"A_size_sweep","tile_span":2,"concurrent_regions":1,"qualified_repeat_requirement":5,"control_only":false}
+}

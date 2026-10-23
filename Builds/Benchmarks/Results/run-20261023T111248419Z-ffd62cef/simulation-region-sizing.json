@@ -1,0 +1,13 @@
+{
+"schema_version":"simulation-region-sizing/v1",
+"status":"qualified",
+"phase":"A_size_sweep",
+"selected":{"tile_span":8,"region_width_metres":"2048","concurrent_regions":1,"required_qualified_repeats":5,"control_only":false},
+"fixture":{"variant":"Outdoor","path":"Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity","shared_cell_size_metres":"256"},
+"timing":{"setup_ms":"2711.1315","teardown_ms":"9.4500000000000011","navmesh_build_ms":"2599.8639000000003","navmesh_registration_ms":"7.9415000000000004","physics_query_ms":"1.3192000000000002","navmesh_path_query_ms":"0.8176"},
+"memory":{"before_bytes":"1487961671","after_setup_bytes":"1486608457","delta_bytes":"-1353214"},
+"achieved":{"tile_count":64,"object_count":2112,"collider_count":64,"navmesh_data_count":1},
+"correctness":{"conversion_round_trip_error_x_metres":"2.3437500000000021E-05","conversion_round_trip_error_y_metres":"0","conversion_round_trip_error_z_metres":"2.3437500000000021E-05","physics_isolation":"passed","navmesh_internal_tile_continuity":"passed","navmesh_cross_region_isolation":"not_applicable_single_region","cleanup":"passed"},
+"blocked_reason":"",
+"instances":[{"tile_count":64,"object_count":2112,"collider_count":64,"navmesh_data_count":1,"navmesh_build_ms":"2599.8639000000003","navmesh_registration_ms":"7.9415000000000004","physics_query_ms":"1.3192000000000002","navmesh_path_query_ms":"0.8176"}]
+}

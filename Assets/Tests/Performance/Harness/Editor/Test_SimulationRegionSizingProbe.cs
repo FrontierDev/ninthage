@@ -134,7 +134,9 @@ namespace Game.Tests.Performance.Harness
                 });
             }
             _evidence.physicsIsolation = "passed";
-            _evidence.navMeshCrossRegionIsolation = "passed";
+            _evidence.navMeshCrossRegionIsolation = _run.Options.SimulationRegionCapacity == 1
+                ? "not_applicable_single_region"
+                : "passed";
             _evidence.navMeshInternalTileContinuity = _run.Options.SimulationRegionTileSpan == 1
                 ? "not_applicable_control"
                 : "passed";

@@ -1,18 +1,18 @@
 # Performance workload run
 
 - Status: `COMPLETE-MEASURED`
-- Run ID: `run-20261023T110323967Z-1dda8c3a`
+- Run ID: `run-20261023T111248419Z-ffd62cef`
 - Profile: `P1-SIM-REGION-SIZING`
 - World fixture: `Outdoor` (`Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity`)
 - Workload: `SimulationRegionSizing`
 - Seed: `424242`
-- Git commit: `69fa96060077a3cef5faa1566d661e5266a9e204` (dirty: `true`)
+- Git commit: `f554c3d7ea221c3602e3d5f63e8cda9c41265132` (dirty: `true`)
 - Simulation-region sizing evidence: `simulation-region-sizing.json`
 - Production region capacity and defaults: `not selected by this test-only probe`
-- Report directory: `C:\Users\recip\Unity\NinthAge\Builds\Benchmarks\Results\run-20261023T110323967Z-1dda8c3a`
-- Measurement: configured 5 s; actual 5.001 s; 3467 frames / 10 samples
-- Editor orchestration: Play Mode startup unknown; teardown 0.544 s; scene restore restored (0.52 s); total attempt wall-clock 19.619 s
-- Focus context: known_background; transitions 0; focused 0; unfocused 3467; unknown 0; runInBackground True
+- Report directory: `C:\Users\recip\Unity\NinthAge\Builds\Benchmarks\Results\run-20261023T111248419Z-ffd62cef`
+- Measurement: configured 5 s; actual 5.001 s; 3452 frames / 10 samples
+- Editor orchestration: Play Mode startup unknown; teardown 0.542 s; scene restore restored (0.529 s); total attempt wall-clock 27.439 s
+- Focus context: known_foreground; transitions 0; focused 3452; unfocused 0; unknown 0; runInBackground True
 
 ## Result
 
