@@ -86,17 +86,89 @@ Avoid review ping-pong: a review must distinguish evidence from conjecture, ackn
 
 The separation of production and regression-test issues in §2.2 still applies: “test first” means a **separate test-only issue/commit**, not mixing tests and runtime edits in one issue.
 
-## 2.8 Issue specificity and acceptance criteria
+## 2.8 Mandatory implementation-ready issue specification
 
-Every Codex-executable issue must answer:
+Every **Codex-executable implementation issue** must be written as an implementation contract, not as a design prompt or high-level task summary.
 
-- **Why / observed state:** exact failing scenario, directly evidenced deficiency, or explicitly approved requirement (not “make X robust”).
-- **Where:** named project-owned file(s), method(s), and current entry/exit boundary, based on reading latest `dev`.
-- **What changes:** exact invariant or state transition, including the minimal change required; explicitly preserve other behaviour.
-- **How to prove completion:** objective assertions of expected callback order/state and required static checks; distinguish actual tool-tested results from Unity/manual tests still needed.
-- **What is excluded:** neighbouring functionality and speculative abstractions, with any larger work linked to a separate issue.
+**Reference quality bar:** issue **#161** and the revised **#166–#170** demonstrate the expected level of implementation specificity. Future issues do not need to copy their wording, but they must provide the same kind of executable detail for the work they own.
 
-Reject vague or bundled assignments such as “fix all timing,” “improve ECS safety,” “refactor the combat managers,” or a checklist of unrelated subsystem migrations. A description can be long and **still be too broad**: precision of each item does not make several different changes one atomic issue.
+An implementation issue is sufficiently specified only when a developer or fresh Codex session can implement it from **latest `dev` + the cited repository documents + the issue body**, without needing conversation history and without inventing architecture, state ownership, error semantics, ordering, constants or acceptance behaviour.
+
+Before drafting the issue, the author must inspect the relevant current implementation on latest `dev` and the authoritative PDD/plan/style documents. Do not write target methods, signatures or lifecycle claims from memory when they can be read from the repository.
+
+Every Codex-executable issue must contain all of the following where applicable:
+
+1. **Single behavioural invariant**
+   - State one directly testable invariant or mechanical change that the issue owns.
+   - If the issue has approved internal phases, state the invariant for each phase.
+   - Do not substitute a broad aspiration such as “make navigation robust” or “improve ECS safety.”
+
+2. **Observed/current state**
+   - Name the exact current behaviour, limitation, throw, call path, data owner or approved missing requirement that motivates the change.
+   - When fixing a defect, distinguish confirmed behaviour from conjecture under §2.7.
+
+3. **Exact target locations**
+   - Name every project-owned production file expected to change.
+   - Name the exact type, method/member and lifecycle/call-site boundary being modified.
+   - Identify important **read-only dependencies** that must be reused but not edited.
+   - If a new file/type/method is required, state its exact intended path/name and why the existing owner cannot contain the behaviour.
+
+4. **Exact API contract**
+   - For every new or materially changed production method/type, provide the expected signature or an equally precise contract.
+   - Define parameter meaning, output meaning, ownership, mutability and whether the API creates/mutates state.
+   - State exact `true`/`false`/return-value meanings and the exception/failure classes that represent invalid caller state, unavailable runtime state and internal contradiction.
+   - Do not leave Codex to invent public/internal API shape when the issue can specify it.
+
+5. **Ordered implementation operations**
+   - Describe the required control-flow/state-mutation order step by step.
+   - Identify which validations occur **before** mutation, which mutation is authoritative, and what must happen after it.
+   - For transactional/reversible work, specify captured state, mutation order, rollback order and hard-failure behaviour.
+   - For frame/tick/lifecycle-sensitive work, state the exact callback/tick boundary and ordering relative to existing owners.
+
+6. **Exact state ownership and reuse**
+   - Name the existing dictionary/component/manager/service/endpoint/authoritative owner that must be reused.
+   - State whether new persistent/runtime state is allowed. If it is, name and justify it.
+   - Explicitly prohibit duplicate authority, parallel caches/registries/managers or fallback ownership when they are not required.
+
+7. **Deterministic rules and constants**
+   - Specify required formulas, ordering, tie-breaks, limits, budgets, tolerances, enum/state transitions and coordinate/frame rules when behaviour depends on them.
+   - Do not say “use a small tolerance,” “pick the best candidate,” “retry a few times,” or similar unless the issue intentionally owns a design decision and is marked `needs-design`.
+   - If an existing project setting/helper is authoritative, name it instead of duplicating the value.
+
+8. **Failure and unavailable-state semantics**
+   - State what happens for malformed input, temporarily unavailable resources, stale state, confirmed unreachable/invalid state and internal registry contradictions.
+   - State which cases return/no-op/wait/retry and which fail fast.
+   - Never leave fallback behaviour implicit.
+
+9. **Preserved behaviour and exact non-goals**
+   - Name neighbouring methods/systems/contracts that must remain unchanged.
+   - Explicitly exclude likely scope-expansion paths such as new managers, new registries, compatibility fallbacks, unrelated cleanup, test edits in a codebase issue, networking/persistence changes, or future roadmap work.
+
+10. **Objective completion proof**
+    - Map the implementation contract to static/automated assertions and exact owner-only manual validation.
+    - State source searches, compile targets, expected callback/order/state assertions and representative runtime scenarios.
+    - Distinguish checks Codex can actually run from Unity/PlayMode/headless checks the owner must perform.
+    - Where a failure path is part of the contract, validation must cover the expected settled state, not merely successful compilation.
+
+### Readiness gate
+
+A Codex-executable issue **must not be marked `Ready`** if any material implementation choice is still left to the implementer, including:
+
+- which production owner should hold the behaviour;
+- which files/methods are actually affected;
+- whether state is canonical or cached/derived;
+- mutation/callback/tick order;
+- API return/error semantics;
+- rollback/failure behaviour;
+- coordinate/reference-frame interpretation;
+- required constants/formulas/tie-breaks/budgets;
+- whether adjacent behaviour should be preserved or redesigned.
+
+If these cannot yet be specified from the current code and approved documents, create or retain an **investigation/design issue** (and apply `needs-design` when appropriate) rather than disguising discovery work as an implementation issue.
+
+“Codex can inspect the code and figure it out” is **not** an acceptable implementation specification for behaviour, ownership or architecture. Codex may discover exact line numbers and incidental local details, but the issue must already define the intended contract.
+
+Reject vague or bundled assignments such as “fix all timing,” “improve ECS safety,” “refactor the combat managers,” “support cross-region movement,” or a checklist of unrelated subsystem migrations. A description can be long and **still be too broad**: precision of each item does not make several different changes one atomic issue.
 
 ## 2.9 Changes discovered during implementation and review
 
@@ -201,14 +273,25 @@ Parallel work may omit a strict predecessor when it is genuinely independent.
 
 ## 4.3 Exact target locations
 
-Name the exact files, types and methods affected.
+Name the exact project-owned files, types, methods/members and relevant lifecycle/call boundaries affected **after inspecting latest `dev`**.
+
+For each target, distinguish:
+
+- **Modify:** exact file + type + method/member expected to change;
+- **Create:** exact new path/type/method, only when explicitly required and justified;
+- **Read only / reuse:** existing owners/helpers/contracts the implementation must consume but must not alter.
 
 Prefer:
 
 ```text
-Assets/Runtime/Server/Services/EnterWorldService.cs
-- EnterWorldService(...)
-- ValidateCharacterGUID()
+Assets/Runtime/Server/Core/ServerAutoAttackManager.cs
+- AutoAttackState
+- Update()
+- TryCommitReadyRegionHop(...)
+
+Read only:
+Assets/Runtime/Server/Core/ServerPhysicsManager_NavMesh.cs
+- ValidateRegionSeam(...)
 ```
 
 Avoid vague scope such as:
@@ -216,24 +299,36 @@ Avoid vague scope such as:
 ```text
 Clean up the server.
 Fix networking.
+Update navigation code.
 Refactor the UI.
 ```
 
-For broad mechanical migrations, reference an authoritative file-by-file manifest and explicitly constrain the issue to the entries assigned to that stage.
+“Relevant files” or “where needed” is not enough for a `Ready` implementation issue. If the correct production owner cannot yet be identified, the work is investigation/design, not implementation.
+
+For broad approved mechanical migrations, reference an authoritative file-by-file manifest and explicitly constrain the issue/phase to the entries assigned to that stage.
 
 ## 4.4 Exact changes
 
-Describe the required changes concretely.
+Describe the implementation as an **ordered executable contract**, not only an outcome.
 
-Where practical, list:
+Where applicable, specify:
 
-- old symbol or behaviour;
-- required new symbol or behaviour;
-- references that must be updated;
-- data/serialization migration requirements;
-- behaviour that must remain unchanged.
+- the exact existing block/branch/callback being replaced or extended;
+- required new/changed method/type signatures;
+- validation order before mutation;
+- authoritative state owner and exact fields/containers affected;
+- ordered state transitions/callbacks/tick phases;
+- exact return values and exception/failure semantics;
+- rollback/restoration order for reversible work;
+- constants, formulas, budgets, tolerances and deterministic tie-breaks;
+- coordinate/reference-frame conversions and the owner that performs them;
+- existing helpers/APIs that **must** be reused;
+- behaviour that must remain unchanged;
+- the exact point at which canonical state is accepted/committed.
 
-Codex should not be expected to invent the desired architecture from a short issue description.
+Use code snippets or pseudocode when they materially remove ambiguity. Snippets are a contract for behaviour/order, not permission for unrelated restructuring.
+
+Codex must not be expected to invent architecture, failure handling, numerical rules, API shape or ownership from a short issue description. If those are still undecided, the issue is not implementation-ready.
 
 ## 4.5 Exact non-goals
 
@@ -615,7 +710,7 @@ Unless an issue has a stricter protocol, use the following.
    - `.docs/MMORPG-Master-PDD.md`;
    - `.docs/Plans/Project-Roadmap.md`;
    - relevant PDDs and implementation plans.
-4. Re-read every target file from the current branch before editing.
+4. Re-read every target file from the current branch before editing. Treat the issue's exact targets, signatures, ordered operations, failure semantics, preservation constraints and non-goals as an implementation contract; do not replace them with a different design merely because another implementation seems cleaner.
 5. Preserve the running game's existing behaviour unless the issue explicitly identifies defective or temporary behaviour.
 6. Keep production-code issues and regression-test issues separate.
 7. Keep the change strictly within the issue's exact target scope.
@@ -652,20 +747,34 @@ At completion, report net new production lines, changed production files, new pe
 
 # 12. Issue Readiness Checklist
 
-An issue is `Ready` only when:
+A Codex-executable implementation issue is `Ready` only when **all applicable items below are explicit in the issue body**:
 
-- its purpose is clear;
-- its roadmap phase is known;
-- its milestone is assigned;
-- its Area, Work Type, Priority and Size are set;
-- exact targets are identified where practical;
-- the required change is concrete;
-- non-goals are defined when scope creep is plausible;
-- unresolved design is either absent or marked `needs-design`;
-- validation is specified;
+- purpose and current/observed state are clear;
+- one directly testable behavioural invariant is stated;
+- roadmap phase and milestone are assigned;
+- Area, Work Type, Priority and Size are set;
+- dependencies and owner-validation gates are explicit;
+- relevant latest-`dev` implementation and authoritative documents were inspected before drafting;
+- every expected production file is named;
+- every affected type/method/member or call/lifecycle boundary is named;
+- read-only dependencies/existing owners to reuse are named;
+- every new/changed production API has an exact signature or equivalently precise contract;
+- ordered validation/mutation/callback/tick operations are specified;
+- authoritative state ownership and any permitted new state are explicit;
+- return/no-op/wait/retry/exception semantics are explicit;
+- rollback or failure settlement is specified where mutation can partially succeed;
+- required constants/formulas/tolerances/budgets/tie-breaks/reference frames are specified or delegated to a named existing authoritative setting/helper;
+- preserved behaviour is named;
+- exact non-goals prevent likely scope expansion;
+- unresolved design is absent, or the issue is instead blocked/`needs-design`;
+- static/automated validation maps to the requested changes;
+- owner-only manual validation names concrete runtime scenarios and expected state;
 - `ai-safe` classification has been considered;
-- dependencies are explicit;
 - the Codex protocol is present for AI implementation.
+
+**Readiness rejection rule:** if a fresh implementer would still need to decide *what architecture or behaviour the project wants*, the issue is not `Ready`. “Inspect the code and decide” is acceptable only for incidental implementation detail, not for authority, semantics, ordering, error handling or design.
+
+Tracking, investigation and design issues may intentionally omit executable details, but they must not be handed to Codex as production implementation assignments until converted into the implementation-ready form required by §2.8 and §4.
 
 # 13. Completion Checklist
 
@@ -690,50 +799,109 @@ Before closing a production issue, ensure its *owned* invariants are proven with
 
 # 14. Example Issue Skeleton
 
+The following is the **minimum shape**, not a licence to use one-line sections. Each section must contain the implementation-level detail required by §2.8 and §4. Reference issues #161 and revised #166–#170 for the expected granularity.
+
 ```markdown
-# [Phase X.Y] Issue title
+# [Phase X.Y] Imperative implementation title
+
+**GitHub Project classification:** Phase ... · Area ... · Work Type ... · Priority ... · Size ... · Status ...
+**Milestone:** ...
 
 ## Purpose
 
-State the exact objective and behavioural constraint.
+State the current/observed behaviour and the approved objective.
+
+**Single invariant:** state one directly testable invariant owned by this issue.
 
 ## Sequence / dependency
 
-Requires **Phase X.Z** to be implemented and manually validated first.
+Requires #... implementation and owner validation.
+Name the authoritative PDD/plan sections governing the work.
 
 ## Exact target locations
 
+### Modify
 - `path/to/File.cs`
-  - `MethodName()`
+  - `TypeName.MethodName(...)`
+  - exact block/state owner being changed
+
+### Create
+- `path/to/NewType.cs` (+ `.meta`) — only if explicitly required and justified
+
+### Read only / reuse
+- `path/to/ExistingOwner.cs`
+  - `ExistingHelper(...)`
 
 ## Exact changes
 
-- Required change 1.
-- Required change 2.
-- Preserve existing behaviour X.
+### 1. Exact API/state change
+
+Provide required signature/member/state shape and ownership.
+
+```csharp
+internal bool RequiredMethod(
+    RequiredType input,
+    out ResultType result)
+```
+
+Define exact return/error semantics.
+
+### 2. Ordered implementation operations
+
+1. Validate ...
+2. Read authoritative ...
+3. Reject/wait/return ...
+4. Mutate existing owner ...
+5. Verify ...
+6. Publish/commit exactly once ...
+
+State callback/tick/lifecycle order and coordinate/reference-frame rules.
+
+### 3. Failure and rollback behaviour
+
+- malformed caller input → ...
+- temporarily unavailable runtime state → ...
+- stale state → ...
+- partial mutation failure → rollback ... then throw ...
+- internal contradiction → fail fast ...
+
+### 4. Deterministic rules
+
+Specify formulas, constants, budgets, tolerances, tie-breaks or the exact existing setting/helper that owns them.
+
+### 5. Preserve existing behaviour
+
+Name methods/systems/contracts that must remain unchanged.
 
 ## Exact non-goals
 
-- Do not redesign Y.
-- Do not modify regression tests.
+- Do not create ...
+- Do not redesign ...
+- Do not change ...
+- Do not modify regression tests in this codebase issue.
 
 ## Static / automated validation
 
-- Compilation/search/test requirement.
+- exact compilation target;
+- exact repository/source assertions;
+- exact expected state/order/count assertions;
+- existing focused tests to run, when justified.
 
 ## Manual validation
 
-- User check 1.
-- User check 2.
-
-## Strict manual validation — non-AI-safe
-
-Include this section only when the issue is not `ai-safe`.
+Owner Unity/PlayMode/headless:
+1. scenario → exact expected behaviour/state;
+2. failure scenario → exact expected settled state;
+3. regression scenario → behaviour that must remain unchanged.
 
 ## Codex implementation protocol
 
 Use the standard protocol from `.docs/GitHub-Issue-and-Workflow-Guide.md`,
-plus any issue-specific constraints.
+plus issue-specific scope/failure constraints.
+
+## Strict manual validation — non-AI-safe
+
+Include the §9 requirements when the issue is not `ai-safe`.
 ```
 
 The issue body should be sufficiently specific that another developer or Codex session can implement it without reconstructing the intended design from conversation history.
