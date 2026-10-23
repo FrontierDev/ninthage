@@ -37,7 +37,7 @@ Preserve these established decisions:
 
 1. **Headless server, PurrNet networking and hybrid ECS/GameObject architecture.** Improve ownership and hot paths rather than defaulting to a full ECS migration or a second networking stack.
 2. **Server-authoritative gameplay; client-authoritative movement subject to server validation.** Scheduling and replication must not weaken exploit protection.
-3. **Double-precision authoritative world positions**, floating-origin client rendering, distinct origin cells and 256 × 256 m streamed world tiles.
+3. **Double-precision authoritative world positions**, floating-origin client rendering, and one shared **256 × 256 m** horizontal grid for origin/network cells and streamed world tiles through `GameConfiguration.ChunkSize`. Their coordinate/grid size is shared; floating-origin projection and environment streaming remain separate responsibilities.
 4. **Actor simulation/identity is separate from additive environment scenes.** Retain the `global_actors` separation until an explicitly approved architectural replacement.
 5. **Runtime world/map/instance identity is independent of Unity scene identity.** Two private instances may share authored scenes or equivalent coordinates without seeing or affecting each other.
 6. **PostgreSQL-oriented relational persistence**, transactional ownership and progression, and persistence-neutral gameplay boundaries.
@@ -122,7 +122,7 @@ At Stage 1.2 completion:
 
 - every live actor has one valid server-owned `ActorSpatialContext` and one canonical accepted absolute double-precision position;
 - the spatial index is context-qualified and updated from accepted movement, teleports/transfers and lifecycle changes without stale membership;
-- environment streaming tiles, client origin cells, spatial-index cells and server simulation regions are separate concepts;
+- environment streaming tiles and client origin/network cells share one 256 m `GameConfiguration.ChunkSize` grid while remaining separate responsibilities; spatial-index cells and server simulation regions remain separate concepts;
 - many adjacent 256 m environment tiles share a contiguous simulation-region physics/NavMesh frame;
 - normal tile crossings do not warp/rebind NPC navigation or change the actor's simulation frame;
 - actor visibility, targeting, aggro, AoE and proximity queries cannot cross incompatible world/map/instance contexts;
@@ -183,11 +183,13 @@ The per-256 m tile physics/NavMesh slot prototype in `ServerPositionManager` / `
    - `ServerWorldManager` must not gain physical placement state.
    - Do not introduce `ServerNavigationManager` in this step; NavMesh physical placement/lifetime remains with the physics owner.
 
-6. **Define the simulation-region value/configuration model under `ServerPhysicsManager`.**
+6. **Align the shared 256 m origin/environment grid, then define the simulation-region value/configuration model under `ServerPhysicsManager`.**
+   - First change `GameConfiguration.ChunkSize` from 100 to **256** and make it the single runtime size authority for both origin/network position encoding and environment-tile coordinates. Do not introduce a second production environment-tile-size variable.
+   - Preserve separate ownership: `ClientPositionManager`/`WorldPosition` use the grid for floating-origin/network encoding; world/interest systems use the same coordinate for environment content. Crossing the aligned boundary may trigger both concerns, but their work may be staggered/deferred.
    - Define one immutable context-qualified simulation-region key/descriptor and region-local conversion contract.
-   - Region dimensions must be whole multiples of the 256 m environment tile size and configurable independently from origin/index/visibility settings.
-   - Benchmark representative candidate dimensions and concurrent-region counts; select initial engineering defaults before activating region placement.
-   - A region may contain many adjacent streamed tiles; a tile is never a region by default.
+   - Region dimensions must be whole multiples of the shared `GameConfiguration.ChunkSize` value and configurable by tile-span independently from spatial-index/visibility settings.
+   - Benchmark representative candidate region spans and concurrent-region counts; select initial engineering defaults before activating region placement.
+   - A region may contain many adjacent streamed tiles; one shared 256 m grid cell is never a region by default.
    - The active-region registry must contain physical representation/lifetime state only, not a duplicate canonical actor-position store.
 
 7. **Bind streamed environment content to `ServerPhysicsManager` simulation regions.**
@@ -270,7 +272,7 @@ The per-256 m tile physics/NavMesh slot prototype in `ServerPositionManager` / `
     - Do not duplicate scene lifetime/reference counts inside `ServerPhysicsManager`; physical references and scene-streaming ownership must remain distinct.
 
 20. **Stage 1.2 final correctness and performance gate.**
-    - Validate positive/negative coordinates, origin-cell crossings, environment-tile crossings, spatial-index-cell crossings and simulation-region transitions.
+    - Validate positive/negative coordinates, shared 256 m origin/environment boundary crossings (including correctly staggered rebase/streaming work), 64 m spatial-index-cell crossings and simulation-region transitions.
     - Validate two simultaneous logical contexts at identical absolute coordinates and the same authored environment tile with no visibility/physics/NavMesh leakage.
     - Validate continuous NPC navigation across several tiles inside a region and a controlled region-boundary handoff.
     - Validate player correction/reconnect/ownership changes and observer updates during origin rebases.

@@ -14,7 +14,7 @@ Authority follows [MMORPG Master PDD](MMORPG-Master-PDD.md): the Master PDD defi
 
 **Authoritative product references:**
 
-- [World Runtime and Instancing PDD](pdd/World-Runtime-and-Instancing-PDD.md) — world/map/instance identity, double precision, 100 m origin cells, 256 m world tiles, streamed scenes, actor interest, persistence across scene unloads.
+- [World Runtime and Instancing PDD](pdd/World-Runtime-and-Instancing-PDD.md) — world/map/instance identity, double precision, one shared 256 m origin/environment grid with separate projection/streaming ownership, streamed scenes, actor interest, persistence across scene unloads.
 - [Movement and Traversal PDD](pdd/Movement-and-Traversal-PDD.md) — responsive locally controlled movement, server validation and authoritative world position.
 - [Account, Character and Persistence PDD](pdd/Account-Character-and-Persistence-PDD.md) — identity/session separation, location recovery, minimum disconnect grace, timed-state continuity and persistence.
 - [AI and Encounter Behaviour PDD](pdd/AI-and-Encounter-Behaviour-PDD.md) — server authority, NPC activation and scalable decision frequency.
@@ -287,7 +287,7 @@ absolute double position = absolute double region origin + (region-local float -
 
 All subtraction/addition needed for world reconstruction occurs in double precision before/after the Unity float boundary. Region identity is representation/simulation-placement state only; it does not replace `ActorSpatialContext` or `WorldPositionD`.
 
-Region dimensions are configurable whole multiples of the 256 m environment tile size. Initial dimensions and per-process concurrent-region capacity must be selected from representative server load, navigation, physics and precision measurements. They must not be inferred from the 100 m client origin grid or the spatial-index cell size.
+Region dimensions are configurable whole multiples of the shared 256 m origin/environment grid size from `GameConfiguration.ChunkSize`. Initial region spans and per-process concurrent-region capacity must be selected from representative server load, navigation, physics and precision measurements. The region span must not be inferred from the 64 m spatial-index cell size or assumed to be one shared grid cell.
 
 If one Unity process hosts multiple simulation regions, `ServerPhysicsManager` must ensure their physics/NavMesh representations cannot interact accidentally. The concrete mechanism may evolve with deployment topology; the invariant is that **tiles inside one region remain contiguous**. A region boundary may eventually coincide with an in-process handoff or server-worker handoff, but it is intentionally much coarser than content streaming.
 
@@ -340,9 +340,9 @@ A rejected position is never published to the spatial index or observer path. Sa
 | Concept | Owner and meaning | Current value / future requirement |
 | --- | --- | --- |
 | Absolute world position | Server-authoritative `WorldPosition`/double-precision coordinates within an identified logical map/world context. | Already represented by `WorldPosition` and ECS `double3`; coordinate-use correctness incomplete. |
-| **Origin cell** | Position encoding and client floating-origin projection. | World Runtime PDD: **100 × 100 m** horizontally; `WorldPosition.Chunk` currently uses `GameConfigurationManager.Config.ChunkSize`. |
-| **World tile** | Streamed environment/terrain authored region, independent of origin cell. | World Runtime PDD: **256 × 256 m** terrain tiles; some current runtime `World_X_Y` chunk handling still conflates concepts. |
-| **Spatial-index cell** | Internal broad-phase search bucket for combat, perception and network relevance. | **Not implemented as the shared authoritative index.** Cell size/configuration Stage 1.2, independent of both 100 m/256 m grids. |
+| **Origin/network cell** | Position encoding and client floating-origin projection. | World Runtime PDD: **256 × 256 m** horizontally; `WorldPosition.Chunk` uses the shared `GameConfigurationManager.Config.ChunkSize` authority. |
+| **World tile** | Streamed environment/terrain authored region; separate lifecycle/ownership from origin projection despite sharing its grid. | World Runtime PDD: **256 × 256 m** terrain tiles using the same `GameConfiguration.ChunkSize` grid size. |
+| **Spatial-index cell** | Internal broad-phase search bucket for combat, perception and network relevance. | **64 m** Stage 1.2 broad-phase cell width, intentionally independent of the shared 256 m origin/environment grid. |
 | Authored scene asset | Reusable `.unity` scene/content from Addressables. | Existing `World_X_Y` and `global_actors` names are asset/runtime conventions, not instance identities. |
 | Loaded additive scene / `SceneID` | Specific Unity/PurrNet loaded scene, delivering content and/or holding representations. | Currently used by `ServerWorldManager` and scene subscriptions; may be reused across logical contexts only with correct separate identity. |
 | **World** | Explicit persistent player-selectable world (`World 32` in PDD example). | World Runtime PDD defines concept; not equivalent to a process or scene. |
@@ -353,7 +353,7 @@ A rejected position is never published to the spatial index or observer path. Sa
 
 **Spatial indexing authority (Stage 1.2):** A server-owned spatial membership service maintains actor current region and context; publishes insertion, accepted movement, removal, teleport/transfer and context teardown to consumers. AI, combat, interaction and replication must use the same qualified spatial source rather than independent global scans or a spawn-scene string. World/environment tile subscriptions remain a separate delivery mechanism. The existing `ServerInterestManager` changed-chunk targeted reevaluation is a useful retained starting point; do not falsely characterise it as an all-actor scan every interest update.
 
-**Open implementation values:** Spatial index structure/cell size, actor visibility range, enter/exit hysteresis values and independent environment scene radii. The PDD fixes neither actor range nor index dimensions; Stage 1.2 must select/tune implementations without treating 100 m or 256 m as mandatory index-cell dimensions.
+**Open implementation values:** Environment scene radii and later tuning remain separate from the shared grid. Stage 1.2 already fixes the initial 64 m spatial-index cell and 80/96 m visibility hysteresis defaults; these actor-search/relevance values remain independent of the shared 256 m origin/environment grid.
 
 ## 7. Replication and client/server authority
 
@@ -584,7 +584,7 @@ Issue [#64](https://github.com/FrontierDev/ninthage/issues/64) and Stage 1.1 exi
 
 - [ ] Architecture owner reviews and approves the present/proposed boundaries and identity matrix.
 - [ ] Cross-check current-source references at the implementation head of `dev` (source may advance).
-- [ ] Verify 100 m origin cells and 256 m world tiles remain separate; no scene is used as world/map/instance identity.
+- [ ] Verify origin/network cells and world tiles use the same 256 m `GameConfiguration.ChunkSize` grid while retaining separate projection/streaming ownership; no scene is used as world/map/instance identity.
 - [ ] Verify spawn, movement, scene unload, actor despawn, instance transfer and reconnect diagrams explicitly distinguish current from required behaviour.
 - [ ] Resolve/document the missing Phase 0.40 baseline artifact before treating Phase 0 documentary acceptance as verified.
 - [ ] Review the changed architecture/PDD documents and ensure **no runtime code, tests, scene/prefab assets, Unity `.meta`, vendor files or configuration changed**.
