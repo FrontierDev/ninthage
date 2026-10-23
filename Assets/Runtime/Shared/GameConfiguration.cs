@@ -96,6 +96,17 @@ namespace Game.Shared
         /// <summary>Gets or sets the lower-rate NPC proximity and aggro decision interval in seconds.</summary>
         public float NPCAggroDecisionIntervalSeconds = 0.2f;
 
+        [Header("Server Simulation Region Settings")]
+        [SerializeField]
+        /// <summary>Gets or sets the number of 256 m environment tiles across one region on X.</summary>
+        public int ServerSimulationRegionTilesX = 4;
+        [SerializeField]
+        /// <summary>Gets or sets the number of 256 m environment tiles across one region on Z.</summary>
+        public int ServerSimulationRegionTilesZ = 4;
+        [SerializeField]
+        /// <summary>Gets or sets the maximum concurrently active simulation regions owned by one server process.</summary>
+        public int ServerSimulationRegionCapacity = 8;
+
         [Header("Item Quality Colors")]
         /// <summary>Gets or sets the poor item color.</summary>
         public Color PoorColor = new(0.62f, 0.62f, 0.62f, 1f);
@@ -130,6 +141,38 @@ namespace Game.Shared
             {
                 throw new InvalidOperationException(
                     $"{nameof(ChunkSize)} must be exactly 256 metres for the shared world grid.");
+            }
+        }
+
+        /// <summary>Validates the configured server simulation-region dimensions and capacity.</summary>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a region span or capacity is not strictly positive, or when the region is one environment tile.
+        /// </exception>
+        public void ValidateSimulationRegionConfiguration()
+        {
+            if (ServerSimulationRegionTilesX <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ServerSimulationRegionTilesX)} must be strictly positive.");
+            }
+
+            if (ServerSimulationRegionTilesZ <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ServerSimulationRegionTilesZ)} must be strictly positive.");
+            }
+
+            if (ServerSimulationRegionCapacity <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ServerSimulationRegionCapacity)} must be strictly positive.");
+            }
+
+            if (ServerSimulationRegionTilesX == 1
+                && ServerSimulationRegionTilesZ == 1)
+            {
+                throw new InvalidOperationException(
+                    "Server simulation regions must contain more than one shared environment tile.");
             }
         }
 

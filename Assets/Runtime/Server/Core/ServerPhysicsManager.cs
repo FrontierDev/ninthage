@@ -30,6 +30,8 @@ namespace Game.Server.Core
                     "Server physics manager requires initialized game configuration.");
             }
 
+            Game.Shared.GameConfigurationManager.Config.ValidateSimulationRegionConfiguration();
+
             if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
                 throw new InvalidOperationException("Server physics manager requires initialized server world manager.");
 
@@ -49,6 +51,15 @@ namespace Game.Server.Core
             {
                 _instance = null;
                 _initialized = false;
+            }
+        }
+
+        private void EnsureInitialized()
+        {
+            if (!_initialized || _instance != this)
+            {
+                throw new InvalidOperationException(
+                    "ServerPhysicsManager is not initialized.");
             }
         }
     }

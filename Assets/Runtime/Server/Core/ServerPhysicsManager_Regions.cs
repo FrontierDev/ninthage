@@ -1,3 +1,5 @@
+using Game.Shared;
+using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using System;
 using UnityEngine;
@@ -16,6 +18,7 @@ namespace Game.Server.Core
             SimulationRegionDescriptor region,
             WorldPosition worldPosition)
         {
+            EnsureInitialized();
             if (!worldPosition.IsFinite)
                 throw new ArgumentException("The world position must be finite.", nameof(worldPosition));
             if (!ContainsWorldPosition(region, worldPosition))
@@ -48,6 +51,7 @@ namespace Game.Server.Core
             SimulationRegionDescriptor region,
             Vector3 regionLocalPosition)
         {
+            EnsureInitialized();
             if (!IsFinite(regionLocalPosition))
                 throw new ArgumentException("The region-local position must be finite.", nameof(regionLocalPosition));
             if (!ContainsRegionLocalPosition(region, regionLocalPosition))
@@ -69,6 +73,42 @@ namespace Game.Server.Core
             }
 
             return worldPosition;
+        }
+
+        /// <summary>Resolves an environment tile to its configured simulation-region key.</summary>
+        /// <param name="context">The authoritative runtime context.</param>
+        /// <param name="environmentTileCoordinate">The environment-tile coordinate.</param>
+        /// <returns>The configured simulation-region key containing the tile.</returns>
+        public SimulationRegionKey GetRegionKey(
+            ActorSpatialContext context,
+            Vector2Int environmentTileCoordinate)
+        {
+            EnsureInitialized();
+            int configuredTilesX = GameConfigurationManager.Config.ServerSimulationRegionTilesX;
+            int configuredTilesZ = GameConfigurationManager.Config.ServerSimulationRegionTilesZ;
+            return SimulationRegionKey.FromEnvironmentTile(
+                context,
+                environmentTileCoordinate,
+                configuredTilesX,
+                configuredTilesZ);
+        }
+
+        /// <summary>Creates a simulation-region descriptor using the validated configured tile spans.</summary>
+        /// <param name="key">The context-qualified simulation-region key.</param>
+        /// <param name="localAnchor">The caller-supplied local Unity-space anchor.</param>
+        /// <returns>The configured simulation-region descriptor.</returns>
+        public SimulationRegionDescriptor CreateRegionDescriptor(
+            SimulationRegionKey key,
+            Vector3 localAnchor)
+        {
+            EnsureInitialized();
+            int configuredTilesX = GameConfigurationManager.Config.ServerSimulationRegionTilesX;
+            int configuredTilesZ = GameConfigurationManager.Config.ServerSimulationRegionTilesZ;
+            return new SimulationRegionDescriptor(
+                key,
+                configuredTilesX,
+                configuredTilesZ,
+                localAnchor);
         }
 
         private static bool ContainsWorldPosition(
