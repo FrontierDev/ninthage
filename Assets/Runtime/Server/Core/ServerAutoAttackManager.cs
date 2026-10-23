@@ -188,6 +188,53 @@ namespace Game.Server.Core
                 // NPC chase — continuously update NavMeshAgent destination and stopping distance.
                 if (state.Agent != null && state.Agent.enabled)
                 {
+                    if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+                    {
+                        throw new InvalidOperationException(
+                            "Enabled NPC auto-attack movement requires an initialized server physics manager.");
+                    }
+
+                    if (!ServerPhysicsManager.Instance.TryGetActorNavigationRegion(
+                        state.Actor.ID,
+                        out var actorRegion,
+                        out var agentTypeID))
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor {state.Actor.ID} has an enabled NavMeshAgent but no registered region NavMesh.");
+                    }
+
+                    if (state.Agent.agentTypeID != agentTypeID)
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor {state.Actor.ID} NavMeshAgent type {state.Agent.agentTypeID} does not match region NavMesh agent type {agentTypeID}.");
+                    }
+
+                    if (!state.Agent.isOnNavMesh)
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor {state.Actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
+                    }
+
+                    if (!ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(
+                        state.Actor.Target.ID,
+                        out var targetRegion))
+                    {
+                        throw new InvalidOperationException(
+                            $"Auto-attack target {state.Actor.Target.ID} is not bound to an active simulation region.");
+                    }
+
+                    if (targetRegion.Key != actorRegion.Key)
+                    {
+                        throw new InvalidOperationException(
+                            $"Auto-attack chase from simulation region {actorRegion.Key} to {targetRegion.Key} requires the Stage 1.2 region-transition implementation.");
+                    }
+
+                    if (!state.Actor.SpatialContext.IsCompatibleWith(state.Actor.Target.SpatialContext))
+                    {
+                        throw new InvalidOperationException(
+                            $"Auto-attack actor {state.Actor.ID} and target {state.Actor.Target.ID} have incompatible spatial contexts.");
+                    }
+
                     state.Agent.stoppingDistance = _autoAttackSpell.BaseRange
                         + state.Actor.HitboxRadius + state.Actor.Target.HitboxRadius;
                     state.Agent.SetDestination(state.Actor.Target.transform.position);

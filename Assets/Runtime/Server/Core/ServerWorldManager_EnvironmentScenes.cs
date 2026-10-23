@@ -254,6 +254,15 @@ namespace Game.Server.Core
                     $"World chunk {chunkKey} already has a pending unload for SceneID {sceneID}.");
             }
 
+            if (!ServerPhysicsManager.IsInitialized
+                || ServerPhysicsManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "World chunk unload requires an initialized server physics manager.");
+            }
+
+            ServerPhysicsManager.Instance.PrepareEnvironmentNavigationUnload(chunkKey);
+
             _loadedChunks.Remove(chunkKey);
             _pendingUnloadOwners.Add(sceneID, chunkKey);
             if (PerformanceTelemetry.IsEnabled)
@@ -267,11 +276,24 @@ namespace Game.Server.Core
             {
                 _networkManager.sceneModule.UnloadSceneAsync(sceneID);
             }
-            catch
+            catch (Exception unloadException)
             {
                 _pendingUnloadOwners.Remove(sceneID);
                 _loadedChunks.Add(chunkKey, sceneID);
                 _pendingUnloadTimestamps?.Remove(sceneID);
+
+                try
+                {
+                    ServerPhysicsManager.Instance.CancelEnvironmentNavigationUnload(chunkKey);
+                }
+                catch (Exception navigationRollbackException)
+                {
+                    RecordPendingSceneOperations();
+                    throw new InvalidOperationException(
+                        $"World chunk unload request for {chunkKey} failed and navigation rollback also failed.",
+                        new AggregateException(unloadException, navigationRollbackException));
+                }
+
                 RecordPendingSceneOperations();
                 throw;
             }

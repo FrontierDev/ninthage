@@ -83,11 +83,27 @@ namespace Game.Server.Core
                 Physics.SyncTransforms();
                 activeRegion.BoundEnvironmentTiles.Add(chunkKey);
                 _environmentRegionBindings.Add(chunkKey, regionKey);
+                BindEnvironmentNavigation(
+                    activeRegion,
+                    chunkKey,
+                    roots);
                 return descriptor;
             }
             catch (Exception exception)
             {
                 Exception rollbackException = null;
+                if (activeRegion.NavigationRoots.ContainsKey(chunkKey))
+                {
+                    try
+                    {
+                        UnbindEnvironmentNavigation(activeRegion, chunkKey);
+                    }
+                    catch (Exception navigationRollbackException)
+                    {
+                        rollbackException = navigationRollbackException;
+                    }
+                }
+
                 if (rootMovementStarted)
                 {
                     for (int rootIndex = shiftedRootCount - 1; rootIndex >= 0; rootIndex--)
@@ -98,7 +114,9 @@ namespace Game.Server.Core
                         }
                         catch (Exception rootRollbackException)
                         {
-                            rollbackException ??= rootRollbackException;
+                            rollbackException = rollbackException == null
+                                ? rootRollbackException
+                                : new AggregateException(rollbackException, rootRollbackException);
                         }
                     }
 
@@ -108,7 +126,9 @@ namespace Game.Server.Core
                     }
                     catch (Exception syncException)
                     {
-                        rollbackException ??= syncException;
+                        rollbackException = rollbackException == null
+                            ? syncException
+                            : new AggregateException(rollbackException, syncException);
                     }
                 }
 
@@ -180,6 +200,7 @@ namespace Game.Server.Core
                     $"Active simulation region {regionKey} does not contain environment tile {chunkKey.ChunkCoord}.");
             }
 
+            UnbindEnvironmentNavigation(activeRegion, chunkKey);
             activeRegion.BoundEnvironmentTiles.Remove(chunkKey);
             _environmentRegionBindings.Remove(chunkKey);
             if (activeRegion.BoundEnvironmentTiles.Count == 0

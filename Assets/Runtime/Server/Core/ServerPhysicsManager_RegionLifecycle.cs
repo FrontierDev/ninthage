@@ -2,6 +2,7 @@ using Game.Shared;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Game.Server.Core
 {
@@ -96,12 +97,15 @@ namespace Game.Server.Core
                     $"Cannot retire missing active simulation region {key}.");
             }
             if (activeRegion.BoundEnvironmentTiles.Count != 0
-                || activeRegion.BoundActors.Count != 0)
+                || activeRegion.BoundActors.Count != 0
+                || activeRegion.NavigationRoots.Count != 0
+                || activeRegion.PendingNavigationUnloads.Count != 0)
             {
                 throw new InvalidOperationException(
-                    $"Cannot retire active simulation region {key} while environment tiles or actors remain bound.");
+                    $"Cannot retire active simulation region {key} while environment tiles, actors or navigation roots remain bound.");
             }
 
+            DisposeRegionNavMesh(activeRegion);
             _activeRegions.Remove(key);
         }
 
@@ -119,6 +123,10 @@ namespace Game.Server.Core
             internal readonly int SlotIndex;
             public readonly HashSet<WorldChunkKey> BoundEnvironmentTiles = new();
             internal readonly HashSet<Guid> BoundActors = new();
+            internal readonly Dictionary<WorldChunkKey, GameObject[]> NavigationRoots = new();
+            internal readonly HashSet<WorldChunkKey> PendingNavigationUnloads = new();
+            internal NavMeshData NavigationData;
+            internal NavMeshDataInstance NavigationInstance;
         }
     }
 }

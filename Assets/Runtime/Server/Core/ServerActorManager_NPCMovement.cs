@@ -68,7 +68,43 @@ namespace Game.Server.Core
         private static bool HasEnabledNavMeshAgent(Actor actor)
         {
             var agent = actor.GetComponent<NavMeshAgent>();
-            return agent != null && agent.enabled;
+            if (agent == null || !agent.enabled)
+                return false;
+
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Enabled NPC NavMesh movement requires an initialized server physics manager.");
+            }
+
+            if (!ServerPhysicsManager.Instance.TryGetActorNavigationRegion(
+                actor.ID,
+                out var region,
+                out var agentTypeID))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actor.ID} has an enabled NavMeshAgent but no registered region NavMesh.");
+            }
+
+            if (!region.Key.Context.IsCompatibleWith(actor.SpatialContext))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actor.ID} region context is incompatible with the actor context.");
+            }
+
+            if (agent.agentTypeID != agentTypeID)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actor.ID} NavMeshAgent type {agent.agentTypeID} does not match region NavMesh agent type {agentTypeID}.");
+            }
+
+            if (!agent.isOnNavMesh)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
+            }
+
+            return true;
         }
 
         private static SimulationRegionDescriptor GetVerifiedActorRegion(Actor actor)

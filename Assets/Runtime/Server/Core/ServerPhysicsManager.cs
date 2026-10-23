@@ -50,6 +50,9 @@ namespace Game.Server.Core
         {
             if (_instance == this)
             {
+                foreach (var activeRegion in _activeRegions.Values)
+                    DisposeRegionNavMesh(activeRegion);
+
                 _actorRegionBindings.Clear();
                 _environmentRegionBindings.Clear();
                 _activeRegions.Clear();
