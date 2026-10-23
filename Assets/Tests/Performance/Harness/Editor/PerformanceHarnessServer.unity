@@ -30,6 +30,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Game.Core::Game.Core.GameBootstrapper
   forceServerMode: 1
+  editorServerWorldName: performance-harness
 --- !u!4 &4000000
 Transform:
   m_ObjectHideFlags: 0

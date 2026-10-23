@@ -12,6 +12,7 @@ namespace Game.Core
         private static GameBootstrapper _instance;
 
         [SerializeField] protected bool forceServerMode = false; // Editor testing toggle for server mode
+        [SerializeField] private string editorServerWorldName = string.Empty; // Explicit world identity for forced Editor/test server mode
 
         #region Lifecycle
         private void Awake()
@@ -26,10 +27,15 @@ namespace Game.Core
             DontDestroyOnLoad(gameObject);
 
             // Detect execution context and route accordingly
-            if (IsHeadlessServer() || forceServerMode)
+            if (IsHeadlessServer())
             {
                 // Server mode: no rendering, no input—pure simulation
                 Game.Server.Core.ServerInitialization.Begin(this);
+            }
+            else if (forceServerMode)
+            {
+                // Editor/test server mode supplies its world identity through the serialized test bootstrap.
+                Game.Server.Core.ServerInitialization.Begin(this, editorServerWorldName);
             }
             else
             {

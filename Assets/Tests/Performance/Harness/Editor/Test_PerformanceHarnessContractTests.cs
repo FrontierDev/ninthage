@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Game.Server.Core;
 using Game.Shared.Performance;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
@@ -67,6 +68,19 @@ namespace Game.Tests.Performance.Harness
 
             options.SimulationRegionTileSpan = 2;
             Assert.That(options.IsSimulationRegionControl, Is.False);
+        }
+
+        [Test]
+        public void ExplicitEditorServerWorldNameRejectsBlankValues()
+        {
+            Assert.Throws<ArgumentException>(() => ServerInitialization.Begin(null, string.Empty));
+            Assert.Throws<ArgumentException>(() => ServerInitialization.Begin(null, "   "));
+        }
+
+        [Test]
+        public void ExplicitEditorServerWorldNameDoesNotUseCommandLineResolution()
+        {
+            Assert.Throws<ArgumentNullException>(() => ServerInitialization.Begin(null, "performance-harness"));
         }
 
         [Test]

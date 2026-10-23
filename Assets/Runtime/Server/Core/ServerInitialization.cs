@@ -55,8 +55,21 @@ namespace Game.Server.Core
         /// <param name="host">The component that owns the initialization coroutine.</param>
         public static void Begin(MonoBehaviour host)
         {
-            if (host == null)
-                throw new ArgumentNullException(nameof(host));
+            ValidateHost(host);
+            BeginInternal(host, ResolveLaunchWorldName());
+        }
+
+        /// <summary>Begins the Editor/test server initialization with an explicitly supplied world name.</summary>
+        /// <param name="host">The component that owns the initialization coroutine.</param>
+        /// <param name="worldName">The explicit world identity supplied by the test bootstrap.</param>
+        public static void Begin(MonoBehaviour host, string worldName)
+        {
+            BeginInternal(host, ValidateExplicitWorldName(worldName));
+        }
+
+        private static void BeginInternal(MonoBehaviour host, string launchWorldName)
+        {
+            ValidateHost(host);
             if (_initializationCoroutine != null || ServerECSManager.Initialized || ServerSimulationClock.IsRunning)
                 throw new InvalidOperationException("The server initialization sequence is already active.");
 
@@ -66,7 +79,7 @@ namespace Game.Server.Core
             bool runtimeContextInitialized = false;
             try
             {
-                InitializeWorldRuntimeContext();
+                InitializeWorldRuntimeContext(launchWorldName);
                 runtimeContextInitialized = true;
                 _initializationCoroutine = _host.StartCoroutine(InitializationProcess());
             }
@@ -80,12 +93,29 @@ namespace Game.Server.Core
             }
         }
 
-        private static void InitializeWorldRuntimeContext()
+        private static void ValidateHost(MonoBehaviour host)
         {
-            string launchWorldName = ResolveLaunchWorldName();
+            if (host == null)
+                throw new ArgumentNullException(nameof(host));
+        }
+
+        private static void InitializeWorldRuntimeContext(string launchWorldName)
+        {
             Guid worldID = Guid.NewGuid();
             ServerWorldManager.InitializeRuntimeContext(worldID);
             Debug.Log($"Server world '{launchWorldName}' initialized with world ID '{worldID}'.");
+        }
+
+        private static string ValidateExplicitWorldName(string worldName)
+        {
+            if (string.IsNullOrWhiteSpace(worldName))
+            {
+                throw new ArgumentException(
+                    "The explicit Editor/test server world name must be nonempty.",
+                    nameof(worldName));
+            }
+
+            return worldName;
         }
 
         private static string ResolveLaunchWorldName()
@@ -120,7 +150,7 @@ namespace Game.Server.Core
                     $"Server startup requires an explicit '{WORLD_ARGUMENT} <world-name>' launch argument.");
             }
 
-            return launchWorldName;
+            return ValidateExplicitWorldName(launchWorldName);
         }
 
         private static IEnumerator InitializationProcess()
