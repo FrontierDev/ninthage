@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Persistent worlds, world streaming, spatial partitioning, floating origin, actor visibility, seamless interiors, instanced spaces, map transitions and runtime scene authoring  
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-23
 
 ---
 
@@ -284,6 +284,57 @@ Physics queries for ECS-driven actors are routed through `ServerPhysicsManager`:
 NavMesh physical data placement/lifetime belongs with `ServerPhysicsManager` because it shares the region-local physical frame. Higher-level route planning or navigation behaviour may later justify a separate navigation owner, but Stage 1.2 must not introduce a speculative `ServerNavigationManager` merely to split naming.
 
 The previous per-environment-tile packed-slot design is superseded. Existing prototype code that allocates a separate physics/NavMesh slot for each 256 m tile must be removed before the replacement `ServerPhysicsManager` simulation-region implementation is introduced.
+
+### 5.6 Stage 1.2 simulation-region sizing benchmark and selected engineering default
+
+Issue [#147](https://github.com/FrontierDev/ninthage/issues/147) measured candidate simulation-region spans and concurrent-region counts using the existing Editor Play Mode performance harness, Unity 6.3.10f1, the deterministic `Outdoor` fixture at seed `424242`, and the shared 256 m `GameConfiguration.ChunkSize`. The measured machine was Windows 11 on an AMD Ryzen 7 5700X with 16 GB system memory and an NVIDIA GeForce RTX 4060 Ti. These measurements select an **initial engineering default for Stage 1.2**; they are not a supported-player-count claim, a standalone-headless capacity result, or a production deployment guarantee.
+
+The probe used a test-owned isolated `PhysicsScene` for each concurrent region and test-owned NavMesh data. Physics queries were explicitly synchronized to each local physics scene before measurement because project physics auto-sync is disabled. A successful candidate had to preserve descriptor conversion, physics isolation, NavMesh continuity across internal 256 m tile boundaries where applicable, cross-region NavMesh isolation when more than one region was active, and cleanup.
+
+#### Phase A — region-size sweep at one active region
+
+| Region span | Physical width | Tiles | Objects | Colliders | Setup | Teardown | NavMesh build | NavMesh registration | Physics query | NavMesh path query | Memory delta | Max X/Z round-trip error | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 × 1 | 256 m | 1 | 33 | 1 | 59.1025 ms | 4.4576 ms | 48.8952 ms | 0.7087 ms | 0.4564 ms | N/A — control has no internal tile boundary | -8,011,034 B | 0.000007080078125 m | Pass; control only |
+| 2 × 2 | 512 m | 4 | 132 | 4 | 178.1430 ms | 4.6938 ms | 163.2402 ms | 0.9232 ms | 0.5052 ms | 0.5781 ms | -7,692,742 B | 0.000007080078149 m | Pass |
+| 4 × 4 | 1024 m | 16 | 528 | 16 | 671.4247 ms | 5.6130 ms | 638.0332 ms | 2.2013 ms | 0.4802 ms | 0.5298 ms | -6,412,170 B | 0.000023437500000 m | Pass |
+| 8 × 8 | 2048 m | 64 | 2,112 | 64 | 2711.1315 ms | 9.4500 ms | 2599.8639 ms | 7.9415 ms | 1.3192 ms | 0.8176 ms | -1,353,214 B | 0.000023437500000 m | Pass |
+| 16 × 16 | 4096 m | 256 | 8,448 | 256 | 10463.9854 ms | 42.4774 ms | 10009.8303 ms | 43.9471 ms | 0.4384 ms | 0.4476 ms | +21,825,798 B | 0.000023437500204 m | Pass |
+
+All five Phase A spans passed the correctness checks. Physics isolation and cleanup passed for every span; NavMesh internal-tile continuity passed for every non-control span; cross-region NavMesh isolation was correctly recorded as not applicable because concurrency was one. The 1 × 1 case remains control-only and cannot be selected as the production default.
+
+The Phase A source baseline was commit `f554c3d7ea221c3602e3d5f63e8cda9c41265132`. The benchmark generated evidence files during execution, so later runs in the same campaign report a dirty working tree even though source code was not changed between candidates. The owner accepted the completed Phase A sweep as sufficient engineering evidence for selecting the two Phase B candidates. The results favoured 4 × 4 and 8 × 8: 2 × 2 would create substantially more physical-region boundaries, while 16 × 16 imposed approximately 10.5 seconds of region setup/NavMesh construction for a single region.
+
+#### Phase B — concurrent-region sweep
+
+Phase B compared the retained 4 × 4 and 8 × 8 candidates. The concurrency-one values are the corresponding Phase A measurements; the additional Phase B runs exercised 2, 4 and 8 simultaneously active isolated regions.
+
+| Region span | Concurrent regions | Total tiles | Total objects | Colliders | NavMesh data | Setup | Teardown | Memory delta | Max X/Z round-trip error | Physics isolation | Internal NavMesh continuity | Cross-region NavMesh isolation |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
+| 4 × 4 | 1 | 16 | 528 | 16 | 1 | 671.4247 ms | 5.6130 ms | -6,412,170 B | 0.000023437500000 m | Pass | Pass | N/A — single region |
+| 4 × 4 | 2 | 32 | 1,056 | 32 | 2 | 1336.4393 ms | 8.1969 ms | -6,221,591 B | 0.000023437500000 m | Pass | Pass | Pass |
+| 4 × 4 | 4 | 64 | 2,112 | 64 | 4 | 2681.9781 ms | 14.1786 ms | -1,328,642 B | 0.000023437500204 m | Pass | Pass | Pass |
+| 4 × 4 | 8 | 128 | 4,224 | 128 | 8 | 5478.8555 ms | 23.9931 ms | +5,267,464 B | 0.000023437500204 m | Pass | Pass | Pass |
+| 8 × 8 | 1 | 64 | 2,112 | 64 | 1 | 2711.1315 ms | 9.4500 ms | -1,353,214 B | 0.000023437500000 m | Pass | Pass | N/A — single region |
+| 8 × 8 | 2 | 128 | 4,224 | 128 | 2 | 5330.5875 ms | 15.0894 ms | +6,368,632 B | 0.000023437500000 m | Pass | Pass | Pass |
+| 8 × 8 | 4 | 256 | 8,448 | 256 | 4 | 10462.7013 ms | 29.3247 ms | +18,912,820 B | 0.000023437500204 m | Pass | Pass | Pass |
+| 8 × 8 | 8 | 512 | 16,896 | 512 | 8 | 21001.7230 ms | 61.7494 ms | +50,658,132 B | 0.000953124999796 m | Pass | Pass | Pass |
+
+All six additional Phase B runs completed as qualified harness runs and passed physics isolation, internal NavMesh continuity, cross-region NavMesh isolation and cleanup. The Phase B campaign began from clean commit `8eb460394b94ee8098e11518e36867f6416f6d47`; subsequent dirty-tree flags were caused only by generated benchmark evidence. No source-code changes were made between the Phase B candidates.
+
+The measurements show that setup cost is dominated by the amount of 256 m fixture/NavMesh content represented. A 4 × 4 region provides a 1024 × 1024 m contiguous physical frame with approximately 0.65–0.68 seconds of per-region setup/NavMesh-build cost in these tests, while an 8 × 8 region covers four times the tile area but costs approximately 2.5–2.6 seconds per region. At eight concurrent regions the measured aggregate setup cost was approximately 5.48 seconds for 4 × 4 versus 21.00 seconds for 8 × 8. The larger candidate reduced the number of potential region boundaries but provided no correctness advantage in the tested representation. Float conversion precision remained negligible for both candidates; the largest observed X error was approximately 0.953 mm at the furthest 8 × 8 / eight-region anchor.
+
+The owner-approved initial Stage 1.2 engineering default is therefore:
+
+```text
+Selected ServerSimulationRegionTilesX = 4
+Selected ServerSimulationRegionTilesZ = 4
+Selected ServerSimulationRegionCapacity = 8
+```
+
+This produces a **1024 × 1024 m simulation region** containing 16 shared 256 m environment tiles. A capacity of eight means one server process may own up to eight concurrently active simulation regions under this initial configuration. Capacity is a configured active-region limit, not a claim about supported player population. The choice intentionally prefers cheaper region activation and lower represented-content cost over the lower boundary frequency of 8 × 8 regions. It may be revisited when standalone-headless, production-content-density or real actor/navigation workloads provide stronger evidence.
+
+The raw benchmark evidence is tracked under `Builds/Benchmarks/Results/` in the #147 Phase A and Phase B commits. The Phase B evidence commit is `63492c228c54832a46834d8ee285adb581b5b030`.
 
 ## 6. Open-World Content Streaming
 
