@@ -90,6 +90,18 @@ namespace Game.Server.Core
 
         private void RetireActiveRegion(SimulationRegionKey key)
         {
+            if (!_activeRegions.TryGetValue(key, out ActiveSimulationRegion activeRegion))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot retire missing active simulation region {key}.");
+            }
+            if (activeRegion.BoundEnvironmentTiles.Count != 0
+                || activeRegion.BoundActors.Count != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot retire active simulation region {key} while environment tiles or actors remain bound.");
+            }
+
             _activeRegions.Remove(key);
         }
 
@@ -106,6 +118,7 @@ namespace Game.Server.Core
             internal readonly SimulationRegionDescriptor Descriptor;
             internal readonly int SlotIndex;
             public readonly HashSet<WorldChunkKey> BoundEnvironmentTiles = new();
+            internal readonly HashSet<Guid> BoundActors = new();
         }
     }
 }

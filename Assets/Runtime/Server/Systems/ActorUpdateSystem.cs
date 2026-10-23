@@ -1,5 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Core;
 using Game.Shared.Performance;
+using Game.Shared.Utility;
 using Unity.Entities;
 using UnityEngine;
 
@@ -62,18 +64,30 @@ namespace Game.Server.Systems
                 if (motion.ValueRO.UsesNavMeshAgent)
                     continue;
 
-                var worldPos = new UnityEngine.Vector3((float)actor.ValueRO.WorldPositionD.x, (float)actor.ValueRO.WorldPositionD.y, (float)actor.ValueRO.WorldPositionD.z);
+                var worldPosition = new WorldPosition(
+                    actor.ValueRO.WorldPositionD.x,
+                    actor.ValueRO.WorldPositionD.y,
+                    actor.ValueRO.WorldPositionD.z);
 
                 // Raycast downward from the actor's position to detect ground.
                 // Origin is offset up slightly so actors standing on the surface still detect it.
-                var rayOrigin = worldPos + new UnityEngine.Vector3(0, groundDetectionRadius, 0);
-                float maxRayDist = groundDetectionRadius * 2f + 10f;
-                bool hitGround = UnityEngine.Physics.Raycast(
-                    rayOrigin, UnityEngine.Vector3.down, out var hit,
-                    maxRayDist, groundLayerMask);
+                var rayOrigin = new WorldPosition(
+                    worldPosition.x,
+                    worldPosition.y + groundDetectionRadius,
+                    worldPosition.z);
+                var maxRayDistance = groundDetectionRadius * 2f + 10f;
+                var hitGround = ServerPhysicsManager.Instance.RaycastActorGround(
+                    actor.ValueRO.ActorID,
+                    rayOrigin,
+                    maxRayDistance,
+                    groundLayerMask,
+                    out var hitWorldPosition,
+                    out var hitDistance);
 
-                float distToGround = hitGround ? hit.distance - groundDetectionRadius : float.MaxValue;
-                bool isGrounded = hitGround && distToGround <= groundDetectionRadius;
+                var distanceToGround = hitGround
+                    ? hitDistance - groundDetectionRadius
+                    : float.MaxValue;
+                var isGrounded = hitGround && distanceToGround <= groundDetectionRadius;
 
                 motion.ValueRW.IsGrounded = isGrounded;
 
@@ -85,7 +99,7 @@ namespace Game.Server.Systems
                         motion.ValueRW.VerticalVelocity = 0;
 
                     // Snap to ground surface so NPCs don't float above it.
-                    actor.ValueRW.WorldPositionD.y = hit.point.y;
+                    actor.ValueRW.WorldPositionD.y = hitWorldPosition.y;
                 }
                 else
                 {

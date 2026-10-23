@@ -480,11 +480,24 @@ namespace Game.Server.Core
                     $"Actor '{actor.ID}' is already registered with the server actor manager.");
             }
 
-            ServerECSManager.ClearActorSimulationEventCancellation(actor.ID);
-            _spatialIndex.Insert(actor.ID, actor.SpatialContext, spawnPosition);
-            bool spatialMembershipInserted = true;
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Server actor registration requires an initialized server physics manager.");
+            }
+
+            ServerPhysicsManager.Instance.BindActor(
+                actor.ID,
+                actor.SpatialContext,
+                spawnPosition);
+            bool physicalRegionBound = true;
+            bool spatialMembershipInserted = false;
             try
             {
+                ServerECSManager.ClearActorSimulationEventCancellation(actor.ID);
+                _spatialIndex.Insert(actor.ID, actor.SpatialContext, spawnPosition);
+                spatialMembershipInserted = true;
+
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponentData(entity, new Systems.ActorComponent
                 {
@@ -534,6 +547,14 @@ namespace Game.Server.Core
                 if (spatialMembershipInserted)
                     RemoveSpatialMembership(actor.ID);
 
+                if (physicalRegionBound
+                    && ServerPhysicsManager.IsInitialized
+                    && ServerPhysicsManager.Instance != null
+                    && ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out _))
+                {
+                    ServerPhysicsManager.Instance.UnbindActor(actor.ID);
+                }
+
                 throw;
             }
         }
@@ -573,6 +594,13 @@ namespace Game.Server.Core
             if (_actorObjects.TryGetValue(actor.ID, out var registeredActor)
                 && !ReferenceEquals(registeredActor, actor))
                 return;
+
+            if (ServerPhysicsManager.IsInitialized
+                && ServerPhysicsManager.Instance != null
+                && ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out _))
+            {
+                ServerPhysicsManager.Instance.UnbindActor(actor.ID);
+            }
 
             RemoveSpatialMembership(actor.ID);
             _actorObjects.Remove(actor.ID);

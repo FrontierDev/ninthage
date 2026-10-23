@@ -1,6 +1,7 @@
 using Actor = Game.Shared.Runtime.Actors.Actor;
 using Game.Shared;
 using Game.Shared.Performance;
+using Game.Shared.Utility;
 using System;
 using Unity.Collections;
 using Unity.Entities;
@@ -70,6 +71,32 @@ namespace Game.Server.Core
             return agent != null && agent.enabled;
         }
 
+        private static SimulationRegionDescriptor GetVerifiedActorRegion(Actor actor)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "NPC movement synchronization requires an initialized server physics manager.");
+            }
+
+            if (!ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out var descriptor))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actor.ID} is not bound to an active simulation region.");
+            }
+
+            if (!descriptor.Key.Context.IsCompatibleWith(actor.SpatialContext))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actor.ID} region context is incompatible with the actor context.");
+            }
+
+            return descriptor;
+        }
+
         private void SynchronizeNPCPositionsToECS()
         {
             TraverseNPCMovementEntities(SynchronizeNPCPositionToECS);
@@ -131,8 +158,14 @@ namespace Game.Server.Core
             if (!hasEnabledAgent)
                 return false;
 
-            var pos = actorObj.transform.position;
-            component.WorldPositionD = new Unity.Mathematics.double3(pos.x, pos.y, pos.z);
+            var region = GetVerifiedActorRegion(actorObj);
+            var worldPosition = ServerPhysicsManager.Instance.ToWorld(
+                region,
+                actorObj.transform.position);
+            component.WorldPositionD = new Unity.Mathematics.double3(
+                worldPosition.x,
+                worldPosition.y,
+                worldPosition.z);
             _entityManager.SetComponentData(entity, component);
             return true;
         }
@@ -147,11 +180,14 @@ namespace Game.Server.Core
             if (_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
                 return false;
 
-            actorObj.transform.position = new Vector3(
-                (float)component.WorldPositionD.x,
-                (float)component.WorldPositionD.y,
-                (float)component.WorldPositionD.z
-            );
+            var region = GetVerifiedActorRegion(actorObj);
+            var worldPosition = new WorldPosition(
+                component.WorldPositionD.x,
+                component.WorldPositionD.y,
+                component.WorldPositionD.z);
+            actorObj.transform.position = ServerPhysicsManager.Instance.ToRegionLocal(
+                region,
+                worldPosition);
             return true;
         }
 

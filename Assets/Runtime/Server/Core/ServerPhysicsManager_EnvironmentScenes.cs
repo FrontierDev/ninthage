@@ -114,7 +114,9 @@ namespace Game.Server.Core
 
                 activeRegion.BoundEnvironmentTiles.Remove(chunkKey);
                 _environmentRegionBindings.Remove(chunkKey);
-                if (!regionWasActive && activeRegion.BoundEnvironmentTiles.Count == 0)
+                if (!regionWasActive
+                    && activeRegion.BoundEnvironmentTiles.Count == 0
+                    && activeRegion.BoundActors.Count == 0)
                     RetireActiveRegion(regionKey);
 
                 if (rollbackException != null)
@@ -180,7 +182,8 @@ namespace Game.Server.Core
 
             activeRegion.BoundEnvironmentTiles.Remove(chunkKey);
             _environmentRegionBindings.Remove(chunkKey);
-            if (activeRegion.BoundEnvironmentTiles.Count == 0)
+            if (activeRegion.BoundEnvironmentTiles.Count == 0
+                && activeRegion.BoundActors.Count == 0)
                 RetireActiveRegion(regionKey);
         }
     }

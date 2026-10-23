@@ -55,7 +55,8 @@ namespace Game.Server.Systems
                         ecb.AddComponent(cmd, new SpawnCommand
                         {
                             SpawnPointGUID = spawnPoint.ValueRO.SpawnPointGUID,
-                            Position = spawnPoint.ValueRO.Position,
+                            WorldPositionD = spawnPoint.ValueRO.WorldPositionD,
+                            ChunkCoord = spawnPoint.ValueRO.ChunkCoord,
                             PrefabIndex = spawnPoint.ValueRO.PrefabIndex,
                             SceneIndex = spawnPoint.ValueRO.SceneIndex,
                             SceneName = spawnPoint.ValueRO.SceneName,

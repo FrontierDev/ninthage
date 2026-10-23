@@ -50,6 +50,7 @@ namespace Game.Server.Core
         {
             if (_instance == this)
             {
+                _actorRegionBindings.Clear();
                 _environmentRegionBindings.Clear();
                 _activeRegions.Clear();
                 _instance = null;

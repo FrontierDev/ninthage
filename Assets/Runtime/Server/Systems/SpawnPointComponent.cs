@@ -16,8 +16,10 @@ namespace Game.Server.Systems
         public Guid SpawnPointGUID;
         /// <summary>The scene containing the spawn point.</summary>
         public FixedString128Bytes SceneName;
-        /// <summary>The spawn position.</summary>
-        public float3 Position;
+        /// <summary>The resolved absolute double-precision world position.</summary>
+        public double3 WorldPositionD;
+        /// <summary>The verified source environment-tile coordinate, not a second position authority.</summary>
+        public int2 ChunkCoord;
         /// <summary>The managed prefab registry index.</summary>
         public int PrefabIndex;    // index into a managed prefab list
         /// <summary>The scene index used for scene movement.</summary>
@@ -33,15 +35,15 @@ namespace Game.Server.Systems
         public Guid SpawnPointGUID;
         /// <summary>The scene containing the spawn point.</summary>
         public FixedString128Bytes SceneName;
-        /// <summary>The spawn position.</summary>
-        public float3 Position;
+        /// <summary>The resolved absolute double-precision world position.</summary>
+        public double3 WorldPositionD;
         /// <summary>The managed prefab registry index.</summary>
         public int PrefabIndex;
         /// <summary>The scene index used for scene movement.</summary>
         public int SceneIndex;
         /// <summary>The player that owns the spawned actor.</summary>
         public PlayerID Owner;
-        /// <summary>The chunk coordinate derived from the scene name.</summary>
-        public int2 ChunkCoord; // Chunk coordinate derived from SceneName
+        /// <summary>The verified source environment-tile coordinate, not a second position authority.</summary>
+        public int2 ChunkCoord;
     }
 }

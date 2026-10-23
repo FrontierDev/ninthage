@@ -144,6 +144,20 @@ namespace Game.Server.Core
                 .ToArray();
 
             Debug.Log($"Found {actorSpawnPoints.Length} spawn points in '{state.scene.name}'.");
+            if (actorSpawnPoints.Length == 0)
+                return;
+
+            WorldChunkKey sourceChunk = ResolveLoadedChunkKey(sceneID);
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Server spawn-point registration requires an initialized server physics manager.");
+            }
+            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(sourceChunk, out var region))
+            {
+                throw new InvalidOperationException(
+                    $"Loaded source chunk {sourceChunk.ChunkCoord} has no active physical region binding.");
+            }
 
             foreach (ActorSpawnPoint spawnPoint in actorSpawnPoints)
             {
@@ -155,13 +169,20 @@ namespace Game.Server.Core
                 }
 
                 int prefabIndex = RegisterPrefab(spawnPoint.Actor.gameObject);
+                WorldPosition spawnWorldPosition = ServerPhysicsManager.Instance.ToWorld(
+                    region,
+                    spawnPoint.transform.position);
 
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponentData(entity, new Systems.SpawnPointComponent
                 {
                     SpawnPointGUID = spawnPointGUID,
                     SceneName = state.scene.name,
-                    Position = spawnPoint.transform.position,
+                    WorldPositionD = new double3(
+                        spawnWorldPosition.x,
+                        spawnWorldPosition.y,
+                        spawnWorldPosition.z),
+                    ChunkCoord = new int2(sourceChunk.ChunkCoord.x, sourceChunk.ChunkCoord.y),
                     PrefabIndex = prefabIndex,
                     SceneIndex = sceneIndex,
                     Pending = true
@@ -170,6 +191,39 @@ namespace Game.Server.Core
                 // Tell the spawn system that this spawn point has an actor associated with it.
                 _spawnPointActorMap[spawnPointGUID] = spawnPoint.Actor;
             }
+        }
+
+        private WorldChunkKey ResolveLoadedChunkKey(SceneID sceneID)
+        {
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Resolving a loaded source chunk requires an initialized server world manager.");
+            }
+
+            WorldChunkKey resolvedChunk = default;
+            bool found = false;
+            foreach (var loadedChunk in ServerWorldManager.Instance.LoadedChunks)
+            {
+                if (loadedChunk.Value != sceneID)
+                    continue;
+                if (found)
+                {
+                    throw new InvalidOperationException(
+                        $"SceneID {sceneID} is mapped to multiple loaded world chunks.");
+                }
+
+                resolvedChunk = loadedChunk.Key;
+                found = true;
+            }
+
+            if (!found)
+            {
+                throw new InvalidOperationException(
+                    $"SceneID {sceneID} is not mapped to a loaded world chunk.");
+            }
+
+            return resolvedChunk;
         }
 
         private void OnServerActorDespawned(Actor actor)
@@ -229,12 +283,21 @@ namespace Game.Server.Core
                 yield break;
             }
 
-            var spawnPosition = new Vector3(0, 5, 0);
+            var runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            var sourceChunk = new WorldChunkKey(runtimeContext, spawnScene);
+            var spawnWorldPosition = WorldPosition.FromChunkLocal(
+                spawnScene,
+                new Vector3(0f, 5f, 0f));
             GameObject prefab = handle.Result;
 
             // Spawn the actor into the persistent global_actors scene, not the chunk scene.
             var globalSceneID = ServerWorldManager.Instance.GlobalActorsSceneID;
-            SpawnAt("World_0_0", spawnPosition, prefab, globalSceneID, playerID);
+            SpawnAt(
+                sourceChunk,
+                spawnWorldPosition,
+                prefab,
+                globalSceneID,
+                playerID);
 
             // Wait for the actor to be spawned and linked to the session (happens on next Update tick).
             var session = ServerConnectionManager.Instance.GetSessionData(playerID);
@@ -384,14 +447,35 @@ namespace Game.Server.Core
             _networkManager.scenePlayersModule.AddPlayerToScene(playerID, globalSceneID);
         }
 
-        /// <summary>Spawns an actor prefab at a position in a networked scene.</summary>
-        /// <param name="sceneName">The scene name used for the spawn.</param>
-        /// <param name="position">The world position for the spawned actor.</param>
+        /// <summary>Queues an actor prefab at an absolute world position in a networked scene.</summary>
+        /// <param name="sourceChunk">The verified environment tile supplying the spawn position and context.</param>
+        /// <param name="worldPosition">The finite absolute world position for the spawned actor.</param>
         /// <param name="prefab">The prefab to spawn.</param>
         /// <param name="sceneID">The networked scene identifier.</param>
         /// <param name="owner">The player that owns the spawned actor.</param>
-        public void SpawnAt(string sceneName, Vector3 position, GameObject prefab, SceneID sceneID, PlayerID owner)
+        public void SpawnAt(
+            WorldChunkKey sourceChunk,
+            WorldPosition worldPosition,
+            GameObject prefab,
+            SceneID sceneID,
+            PlayerID owner)
         {
+            if (!sourceChunk.Context.IsValid)
+                throw new ArgumentException("The source chunk must contain a valid context.", nameof(sourceChunk));
+            if (!worldPosition.IsFinite)
+                throw new ArgumentException("The spawn world position must be finite.", nameof(worldPosition));
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Queueing a spawn requires an initialized server world manager.");
+            }
+            if (!sourceChunk.Context.IsCompatibleWith(ServerWorldManager.Instance.CurrentRuntimeContext))
+            {
+                throw new InvalidOperationException(
+                    "The source chunk context must match the current server runtime context.");
+            }
+
+            string sceneName = $"World_{sourceChunk.ChunkCoord.x}_{sourceChunk.ChunkCoord.y}";
             if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
             {
                 Debug.Error($"Cannot queue spawn for scene '{sceneName}' because network scene '{sceneID}' is not available.");
@@ -408,19 +492,30 @@ namespace Game.Server.Core
                 return;
             }
 
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Queueing a spawn requires an initialized server physics manager.");
+            }
+            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(sourceChunk, out var region))
+            {
+                throw new InvalidOperationException(
+                    $"Source chunk {sourceChunk.ChunkCoord} has no active physical region binding.");
+            }
+            ServerPhysicsManager.Instance.ToRegionLocal(region, worldPosition);
+
             int prefabIndex = RegisterPrefab(prefab);
             int sceneIndex = RegisterScene(state.scene);
 
-            var chunkCoord = ServerWorldManager.Instance.ParseChunkCoordinate(sceneName);
             var entity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(entity, new Systems.SpawnCommand
             {
-                Position = position,
+                WorldPositionD = new double3(worldPosition.x, worldPosition.y, worldPosition.z),
                 PrefabIndex = prefabIndex,
                 SceneIndex = sceneIndex,
                 SceneName = sceneName,
                 Owner = owner,
-                ChunkCoord = new Unity.Mathematics.int2(chunkCoord.x, chunkCoord.y)
+                ChunkCoord = new int2(sourceChunk.ChunkCoord.x, sourceChunk.ChunkCoord.y)
             });
         }
 
@@ -488,29 +583,48 @@ namespace Game.Server.Core
                                 throw new InvalidOperationException($"Scene registry entry {cmd.SceneIndex} is no longer loaded.");
                             sceneNameForLog = scene.name;
 
-                            // Use PurrNet's Instantiate proxy — handles scene placement,
-                            // hierarchy registration, spawn, and replication in one call.
-                            spawnedObject = PurrNet.UnityProxy.Instantiate(prefab, cmd.Position, Quaternion.identity, scene);
-                            if (spawnedObject == null)
-                                throw new InvalidOperationException("PurrNet returned a null spawned object.");
-                            Debug.Log($"Spawned '{prefabName}' at {cmd.Position} in scene '{sceneNameForLog}'.");
-
-                            var actor = spawnedObject.GetComponent<Game.Shared.Runtime.Actors.Actor>();
-                            if (actor == null)
-                                throw new InvalidOperationException($"Prefab '{prefabName}' is missing an Actor component. Add it to the prefab in the editor.");
-                            spawnedActor = actor;
-
-                            if (ServerWorldManager.Instance == null)
+                            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
                                 throw new InvalidOperationException("The server world manager is not initialized.");
 
                             ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
                             if (!runtimeContext.IsValid)
                                 throw new InvalidOperationException("The server runtime spatial context is not initialized.");
 
+                            var sourceChunk = new WorldChunkKey(
+                                runtimeContext,
+                                new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y));
+                            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+                                throw new InvalidOperationException("The server physics manager is not initialized.");
+                            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(sourceChunk, out var region))
+                            {
+                                throw new InvalidOperationException(
+                                    $"Source chunk {sourceChunk.ChunkCoord} has no active physical region binding.");
+                            }
+
+                            var spawnWorldPosition = new WorldPosition(
+                                cmd.WorldPositionD.x,
+                                cmd.WorldPositionD.y,
+                                cmd.WorldPositionD.z);
+                            if (!spawnWorldPosition.IsFinite)
+                                throw new InvalidOperationException("The spawn command world position must be finite.");
+
+                            var regionLocalPosition = ServerPhysicsManager.Instance.ToRegionLocal(
+                                region,
+                                spawnWorldPosition);
+
+                            // Use PurrNet's Instantiate proxy — handles scene placement,
+                            // hierarchy registration, spawn, and replication in one call.
+                            spawnedObject = PurrNet.UnityProxy.Instantiate(prefab, regionLocalPosition, Quaternion.identity, scene);
+                            if (spawnedObject == null)
+                                throw new InvalidOperationException("PurrNet returned a null spawned object.");
+                            Debug.Log($"Spawned '{prefabName}' at {regionLocalPosition} in scene '{sceneNameForLog}'.");
+
+                            var actor = spawnedObject.GetComponent<Game.Shared.Runtime.Actors.Actor>();
+                            if (actor == null)
+                                throw new InvalidOperationException($"Prefab '{prefabName}' is missing an Actor component. Add it to the prefab in the editor.");
+                            spawnedActor = actor;
+
                             actor.CurrentChunk = sceneName;
-                            var spawnPosition = Game.Shared.Utility.WorldPosition.FromChunkLocal(
-                                new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y),
-                                new Vector3(cmd.Position.x, cmd.Position.y, cmd.Position.z));
                             actor.SetAuthoritativeSpatialContext(runtimeContext);
                             actor.Initialize(actor.ID, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefabName);
                             actor.SetSpawnPointGUID(cmd.SpawnPointGUID);
@@ -560,7 +674,7 @@ namespace Game.Server.Core
 
                             // Fire spawn event after Initialize + GiveOwnership so ECS entity is created with accurate data.
                             actorSpawnEventStarted = true;
-                            ServerActorManager.Instance?.RegisterSpawnedActor(actor, spawnPosition);
+                            ServerActorManager.Instance?.RegisterSpawnedActor(actor, spawnWorldPosition);
                             Game.Shared.Networking.ActorEndpoint.onServerActorSpawned?.Invoke(actor);
 
                             // Link the actor to the player's session data for disconnect cleanup.
