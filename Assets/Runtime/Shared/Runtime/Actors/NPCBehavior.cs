@@ -70,7 +70,13 @@ namespace Game.Shared.Runtime.Actors
         private void OnDeath()
         {
             GetComponent<NetworkAnimator>().SetTrigger("Death");
-            GetComponent<NavMeshAgent>().isStopped = true;
+
+            if (!Game.Shared.Runtime.Runtime.IsServer())
+                return;
+
+            var agent = GetComponent<NavMeshAgent>();
+            if (agent != null && agent.enabled)
+                agent.isStopped = true;
         }
 
         /// <summary>Records damage from an actor in the threat table.</summary>

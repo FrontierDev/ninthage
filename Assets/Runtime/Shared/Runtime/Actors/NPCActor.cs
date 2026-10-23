@@ -1,6 +1,7 @@
 using PurrNet;
 using Game.Shared.Runtime;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Serialization;
 
 namespace Game.Shared.Runtime.Actors
@@ -20,10 +21,19 @@ namespace Game.Shared.Runtime.Actors
 
         private void Awake()
         {
-            if (Game.Shared.Runtime.Runtime.IsServer())
+            if (!Game.Shared.Runtime.Runtime.IsServer())
             {
-                level.value = Random.Range(levelRange.Item1, levelRange.Item2 + 1);
+                if (TryGetComponent<NavMeshAgent>(out var agent))
+                {
+                    agent.updatePosition = false;
+                    agent.updateRotation = false;
+                    agent.enabled = false;
+                }
+
+                return;
             }
+
+            level.value = Random.Range(levelRange.Item1, levelRange.Item2 + 1);
         }
 
         /// <summary>Gets the NPC's display name.</summary>
