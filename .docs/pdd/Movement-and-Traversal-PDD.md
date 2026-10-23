@@ -616,7 +616,7 @@ These systems must not require the player to stop moving under normal conditions
 
 ### 19.1 Floating-origin transitions
 
-Crossing a 100 m origin-cell boundary may trigger a client floating-origin adjustment.
+Crossing a 256 m origin/network cell boundary may trigger a client floating-origin adjustment. This boundary is intentionally aligned with the 256 m environment-tile grid through the shared `GameConfiguration.ChunkSize` value. An aligned boundary may also change environment streaming interest, but rebase and streaming work remain separate operations and may be staggered/deferred.
 
 This must not:
 
@@ -733,7 +733,7 @@ The existing tick ownership boundary is retained:
 
 A **simulation-region boundary** is the only physical-frame transition. Such transitions are intentionally much coarser than 256 m tiles. `ServerPhysicsManager` owns physical detach/rebind, while movement/navigation logic preserves canonical absolute position, velocity/navigation intent and logical context unless gameplay explicitly performs a world/map/instance transition. The concrete handoff may remain in-process or move to another server worker; either way, it is not an ordinary environment-streaming operation.
 
-Region dimensions must be configurable and aligned to whole environment tiles. Initial dimensions and concurrent-region capacity are selected through representative server measurements before region integration is considered complete; they are not inferred from client origin cells, spatial-index cells or scene names.
+Region dimensions must be configurable whole multiples of the shared 256 m origin/environment grid. Initial region spans and concurrent-region capacity are selected through representative server measurements before region integration is considered complete; the span is not inferred from the 64 m spatial-index cells, scene names or the fact that one origin cell and one environment tile share a coordinate.
 
 NavMesh physical data belongs to `ServerPhysicsManager` because it shares the region-local physical frame. Do not create a separate navigation manager in Stage 1.2 unless later route-planning responsibilities independently justify one.
 
@@ -750,7 +750,7 @@ Ordinary movement must automatically drive any required updates to:
 
 Development-only manual interest controls must not be required in production.
 
-The update is emitted only after the accepted-position commit, never from a render update, client origin shift, `CurrentChunk`, scene identity or an unvalidated transform. The committed position and immutable `ActorSpatialContext` are passed together to the spatial index. World-content interest and actor visibility remain separate consumers: crossing an origin cell or streamed scene boundary alone does not change logical context, and a rejected movement candidate changes neither membership nor exact-range truth.
+The update is emitted only after the accepted-position commit, never from a render update, client origin shift, `CurrentChunk`, scene identity or an unvalidated transform. The committed position and immutable `ActorSpatialContext` are passed together to the spatial index. World-content interest and actor visibility remain separate consumers: crossing the aligned 256 m origin/environment boundary does not change logical context, and a rejected movement candidate changes neither membership nor exact-range truth. Floating-origin projection and content-streaming work may execute at different times even though the boundary coordinate is shared.
 
 ---
 
