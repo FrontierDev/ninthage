@@ -367,6 +367,10 @@ namespace Game.Server.Core
             yield return new WaitUntil(() => ServerPositionManager.IsInitialized == true);
             Debug.Log(" - Step 8: Server position manager initialized.");
 
+            NetworkManager.main.gameObject.AddComponent<ServerPhysicsManager>();
+            yield return new WaitUntil(() => ServerPhysicsManager.IsInitialized == true);
+            Debug.Log(" - Step 8: Server physics manager initialized.");
+
             NetworkManager.main.gameObject.AddComponent<ServerSpawnManager>();
             yield return new WaitUntil(() => ServerSpawnManager.IsInitialized == true);
             Debug.Log(" - Step 8: Server spawn manager initialized.");

@@ -192,7 +192,7 @@ namespace Game.Server.Core
                 if (!validationDue)
                 {
                     if (hasEligibleProposal)
-                        CommitPlayerPosition(entity, component, candidatePosition);
+                        CommitPlayerPosition(entity, component, actor.SpatialContext, candidatePosition);
                     continue;
                 }
 
@@ -240,7 +240,7 @@ namespace Game.Server.Core
                             ? currentAcceptedPosition
                             : baselinePosition;
                         // Ensure ECS is corrected when an earlier tick already admitted illegal movement.
-                        CommitPlayerPosition(entity, component, correctionPosition);
+                        CommitPlayerPosition(entity, component, actor.SpatialContext, correctionPosition);
 
                         var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(correctionPosition);
                         MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
@@ -256,7 +256,7 @@ namespace Game.Server.Core
                     else
                     {
                         if (hasEligibleProposal)
-                            CommitPlayerPosition(entity, component, candidatePosition);
+                            CommitPlayerPosition(entity, component, actor.SpatialContext, candidatePosition);
                         _periodicValidationBaselines[playerID] = candidatePosition;
                     }
                 }
@@ -264,7 +264,7 @@ namespace Game.Server.Core
                 {
                     _violationCounters[playerID] = 0;
                     if (hasEligibleProposal)
-                        CommitPlayerPosition(entity, component, candidatePosition);
+                        CommitPlayerPosition(entity, component, actor.SpatialContext, candidatePosition);
                     _periodicValidationBaselines[playerID] = candidatePosition;
                 }
 
@@ -275,15 +275,18 @@ namespace Game.Server.Core
         /// <summary>Writes one accepted absolute player position to the authoritative ECS component.</summary>
         /// <param name="entity">The player's authoritative ECS entity.</param>
         /// <param name="component">The current actor component value.</param>
+        /// <param name="spatialContext">The actor's authoritative spatial context.</param>
         /// <param name="position">The absolute position to commit.</param>
         private void CommitPlayerPosition(
             Entity entity,
             Systems.ActorComponent component,
+            ActorSpatialContext spatialContext,
             WorldPosition position)
         {
             using var markerScope = PLAYER_ECS_SYNC_MARKER.Begin();
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
             _entityManager.SetComponentData(entity, component);
+            GetSpatialIndex().Move(component.ActorID, spatialContext, position);
         }
 
         /// <summary>Moves a player's periodic validation window to the current authoritative tick.</summary>
