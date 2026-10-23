@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Spellcasting;
+using Game.Shared.Utility;
 using Guid = System.Guid;
 using PurrNet;
 using System;
@@ -32,6 +33,10 @@ namespace Game.Shared.Runtime.Actors
 
         /// <summary>Gets or sets the current streamed world chunk.</summary>
         public string CurrentChunk { get; set; }
+
+        [SerializeField]
+        private readonly SyncVar<ActorPositionSnapshot> _acceptedPositionSnapshot = new();
+        private long _lastClientAcceptedPositionTick = long.MinValue;
 
         private float? _cachedHitboxRadius;
 
@@ -95,6 +100,37 @@ namespace Game.Shared.Runtime.Actors
             _spatialContext = context;
         }
 
+        /// <summary>
+        /// Updates the replicated presentation snapshot from the server's accepted position.
+        /// </summary>
+        public void SetAcceptedPositionSnapshotFromServer(
+            WorldPosition position,
+            long tickID)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may assign an accepted actor position snapshot.");
+            if (!position.IsFinite)
+                throw new InvalidOperationException($"Actor {ID} received a non-finite accepted position.");
+            if (tickID < 0)
+                throw new InvalidOperationException($"Actor {ID} received an invalid accepted position tick {tickID}.");
+
+            var currentSnapshot = _acceptedPositionSnapshot.value;
+            if (currentSnapshot.IsValid
+                && currentSnapshot.Position.x == position.x
+                && currentSnapshot.Position.y == position.y
+                && currentSnapshot.Position.z == position.z)
+            {
+                return;
+            }
+
+            _acceptedPositionSnapshot.value = new ActorPositionSnapshot
+            {
+                IsValid = true,
+                TickID = tickID,
+                Position = position
+            };
+        }
+
         [SerializeField, FormerlySerializedAs("target")] private Actor _target;
         /// <summary>Gets the actor's current target.</summary>
         public Actor Target => _target;
@@ -150,16 +186,42 @@ namespace Game.Shared.Runtime.Actors
             }
 
             _expiredAurasThisFrame.Clear();
+
+            if (!NetworkManager.isServerStatic)
+            {
+                var snapshot = _acceptedPositionSnapshot.value;
+                if (snapshot.IsValid
+                    && snapshot.TickID >= 0
+                    && snapshot.TickID != _lastClientAcceptedPositionTick)
+                {
+                    if (!snapshot.Position.IsFinite)
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor {ID} received a non-finite accepted position snapshot.");
+                    }
+
+                    if (_lastClientAcceptedPositionTick != long.MinValue
+                        && snapshot.TickID < _lastClientAcceptedPositionTick)
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor {ID} received accepted position tick {snapshot.TickID} "
+                            + $"after {_lastClientAcceptedPositionTick}.");
+                    }
+
+                    _lastClientAcceptedPositionTick = snapshot.TickID;
+                    ActorEndpoint.onClientAcceptedPositionChanged?.Invoke(this, snapshot);
+                }
+            }
         }
 
         protected override void OnDestroy()
         {
             if (NetworkManager.isServerStatic)
                 Game.Shared.Networking.ActorEndpoint.onServerActorDespawned?.Invoke(this);
+            else
+                Game.Shared.Networking.ActorEndpoint.onActorDespawned?.Invoke(this);
 
             base.OnDestroy();
-            //else
-            //Game.Shared.Networking.ActorEndpoint.onActorDespawned?.Invoke(this);
         }
 
         /// <summary>Gets the actor's display name.</summary>

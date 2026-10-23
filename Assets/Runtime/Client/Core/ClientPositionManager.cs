@@ -1,6 +1,8 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.Performance;
+using Game.Shared.Networking;
 using Game.Shared.Performance;
+using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using PurrNet;
 using System;
@@ -35,12 +37,28 @@ namespace Game.Client
         public Vector2Int OriginChunk { get; private set; }
 
         private int _chunkSize;
+        private readonly Dictionary<Actor, ActorPositionSnapshot> _acceptedActorPositions = new();
 
         private void Awake()
         {
             _instance = this;
             _chunkSize = Game.Shared.GameConfigurationManager.Config.ChunkSize;
             _initialized = true;
+            ActorEndpoint.onClientAcceptedPositionChanged += OnClientAcceptedPositionChanged;
+            ActorEndpoint.onActorDespawned += OnActorDespawned;
+        }
+
+        private void OnDestroy()
+        {
+            ActorEndpoint.onClientAcceptedPositionChanged -= OnClientAcceptedPositionChanged;
+            ActorEndpoint.onActorDespawned -= OnActorDespawned;
+            _acceptedActorPositions.Clear();
+
+            if (_instance == this)
+            {
+                _instance = null;
+                _initialized = false;
+            }
         }
 
         /// <summary>
@@ -123,6 +141,27 @@ namespace Game.Client
                     playerAbsolute.LocalPosition);
             }
 
+            foreach (var pair in _acceptedActorPositions)
+            {
+                var actor = pair.Key;
+                if (actor == null
+                    || actor == playerActor)
+                {
+                    continue;
+                }
+
+                var snapshot = pair.Value;
+                if (!snapshot.IsValid || !snapshot.Position.IsFinite)
+                {
+                    throw new InvalidOperationException(
+                        "Cannot reproject a remote actor from an invalid accepted position snapshot.");
+                }
+
+                actor.transform.position = NetworkToLocal(
+                    snapshot.Position.Chunk,
+                    snapshot.Position.LocalPosition);
+            }
+
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             var appliedLocalShift = -shift;
             Debug.Log(
@@ -138,11 +177,51 @@ namespace Game.Client
             }
         }
 
+        private void OnClientAcceptedPositionChanged(
+            Actor actor,
+            ActorPositionSnapshot snapshot)
+        {
+            if (actor == null)
+                throw new InvalidOperationException("Cannot project an accepted position for a null actor.");
+            if (!snapshot.IsValid || snapshot.TickID < 0 || !snapshot.Position.IsFinite)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actor.ID} received an invalid accepted position snapshot.");
+            }
+
+            if (_acceptedActorPositions.TryGetValue(actor, out var currentSnapshot)
+                && currentSnapshot.TickID > snapshot.TickID)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actor.ID} received accepted position tick {snapshot.TickID} "
+                    + $"after {currentSnapshot.TickID}.");
+            }
+
+            _acceptedActorPositions[actor] = snapshot;
+            if (actor == ClientAccountManager.PlayerActor)
+                return;
+
+            actor.transform.position = NetworkToLocal(
+                snapshot.Position.Chunk,
+                snapshot.Position.LocalPosition);
+        }
+
+        private void OnActorDespawned(Actor actor)
+        {
+            if (actor == null)
+                return;
+
+            _acceptedActorPositions.Remove(actor);
+        }
+
         private static int ShiftSceneRoots(Scene scene, Vector3 shift)
         {
             int rootCount = 0;
             foreach (var root in scene.GetRootGameObjects())
             {
+                if (root.GetComponentInChildren<Actor>() != null)
+                    continue;
+
                 root.transform.position -= shift;
                 rootCount++;
             }

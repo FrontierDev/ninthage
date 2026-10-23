@@ -577,6 +577,15 @@ namespace Game.Server.Core
 
                 TrackNPCForAggro(actor);
 
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                long snapshotTickID = ServerECSManager.CurrentSimulationTickID;
+                actor.SetAcceptedPositionSnapshotFromServer(
+                    new WorldPosition(
+                        component.WorldPositionD.x,
+                        component.WorldPositionD.y,
+                        component.WorldPositionD.z),
+                    snapshotTickID >= 0 ? snapshotTickID : 0);
+
                 if (PerformanceTelemetry.IsEnabled)
                     PerformanceTelemetry.TryRecord(SPAWN_EVENT_COUNT_METRIC, 1);
                 Debug.Log("Actor spawned on server: " + actor.Name + " (ID: " + actor.ID + ")");
@@ -967,7 +976,69 @@ namespace Game.Server.Core
                 return;
 
             SynchronizeNPCTransformsFromECS();
+            PublishAcceptedActorPositions(
+                ServerECSManager.CurrentSimulationTickID);
             FlushPendingTickSyncContribution();
+        }
+
+        private void PublishAcceptedActorPositions(long tickID)
+        {
+            if (tickID < 0)
+                throw new InvalidOperationException($"Cannot publish accepted actor positions for tick {tickID}.");
+
+            foreach (var actorPair in _actorObjects)
+            {
+                Guid actorID = actorPair.Key;
+                Actor actor = actorPair.Value;
+                if (actor == null)
+                    throw new InvalidOperationException($"Actor registry contains a null actor for '{actorID}'.");
+                if (actor.ID != actorID)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor registry entry '{actorID}' contains actor '{actor.ID}'.");
+                }
+
+                if (!_actorEntities.TryGetValue(actorID, out var entity))
+                {
+                    throw new InvalidOperationException(
+                        $"Actor registry entry '{actorID}' has no corresponding ECS entity.");
+                }
+
+                if (!_entityManager.Exists(entity)
+                    || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
+                {
+                    throw new InvalidOperationException(
+                        $"Actor registry entry '{actorID}' does not resolve to an ECS actor entity.");
+                }
+
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                if (component.ActorID != actorID)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor registry entry '{actorID}' resolves to ECS actor '{component.ActorID}'.");
+                }
+
+                var position = new WorldPosition(
+                    component.WorldPositionD.x,
+                    component.WorldPositionD.y,
+                    component.WorldPositionD.z);
+                if (!position.IsFinite)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor '{actorID}' has a non-finite canonical ECS world position.");
+                }
+
+                actor.SetAcceptedPositionSnapshotFromServer(position, tickID);
+            }
+
+            foreach (var entityPair in _actorEntities)
+            {
+                if (!_actorObjects.ContainsKey(entityPair.Key))
+                {
+                    throw new InvalidOperationException(
+                        $"ECS actor registry entry '{entityPair.Key}' has no corresponding actor.");
+                }
+            }
         }
 
     }

@@ -25,6 +25,10 @@ namespace Game.Shared.Networking
         // Client callbacks.
         /// <summary>Raised when an actor is spawned on the client.</summary>
         public static Action<Actor> onActorSpawned;
+        /// <summary>Raised when an actor is despawned on the client.</summary>
+        public static Action<Actor> onActorDespawned;
+        /// <summary>Raised when a client receives a newer server-accepted actor position snapshot.</summary>
+        public static Action<Actor, ActorPositionSnapshot> onClientAcceptedPositionChanged;
         /// <summary>Raised when an actor owner changes.</summary>
         public static Action<Actor> onActorOwnerChanged;
         /// <summary>Raised when the local client takes actor ownership.</summary>
