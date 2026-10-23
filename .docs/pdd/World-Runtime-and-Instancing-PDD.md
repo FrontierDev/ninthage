@@ -115,11 +115,39 @@ The horizontal origin/network cell grid uses the same configured size as an auth
 
 `GameConfiguration.ChunkSize` is the single runtime size authority for both the horizontal origin/network cell grid and the environment-tile grid.
 
-This shared numeric grid does **not** merge their responsibilities. An origin cell is position-encoding/floating-origin state; an environment tile is streamed world-content state. The same coordinate may therefore identify both aligned grid cells while their lifecycle, ownership and side effects remain separate.
+The grid is **centre-anchored**. Integer coordinate `(cx, cz)` identifies the centre of the corresponding origin cell and aligned environment tile at absolute X/Z `(cx * S, cz * S)`, where `S = GameConfiguration.ChunkSize`.
+
+Each axis uses a strict half-open footprint:
+
+```text
+minimum = coordinate * S - S/2
+maximum = coordinate * S + S/2
+footprint = [minimum, maximum)
+```
+
+For `S = 256`:
+
+- cell/tile `0` occupies `[-128, 128)`;
+- cell/tile `1` occupies `[128, 384)`;
+- cell/tile `-1` occupies `[-384, -128)`.
+
+Absolute X/Z `0` is therefore the **centre of coordinate 0**, not a boundary between positive and negative cells.
+
+The canonical chunk/local representation uses a centred local offset:
+
+```text
+coordinate = floor((absolute + S/2) / S)
+local = absolute - coordinate * S
+absolute = coordinate * S + local
+```
+
+so horizontal local coordinates lie in `[-S/2, S/2)`. With `S = 256`, chunk-local X/Z lies in `[-128, 128)`.
+
+This shared numeric grid does **not** merge responsibilities. An origin cell is position-encoding/floating-origin state; an environment tile is streamed world-content state. The same coordinate may therefore identify both aligned grid cells while their lifecycle, ownership and side effects remain separate.
 
 Origin cells are not themselves terrain assets.
 
-Crossing an aligned 256 m boundary may permit the client's floating origin to move and may independently change environment streaming interest. These operations may be staggered/deferred by their respective owners; neither operation is required to complete synchronously merely because the boundaries coincide.
+Crossing an aligned centred-cell boundary may permit the client's floating origin to move and may independently change environment streaming interest. These operations may be staggered/deferred by their respective owners; neither operation is required to complete synchronously merely because the boundaries coincide.
 
 ### 3.3 World Tile
 
@@ -133,7 +161,9 @@ per terrain tile.
 
 World tiles contain or correspond to streamed environment content such as terrain and world objects.
 
-The world-tile and origin-cell systems are distinct responsibilities over the same 256 m horizontal grid and use the same `GameConfiguration.ChunkSize` size authority.
+A world-tile coordinate identifies the tile **centre**. `World_0_0` is centred on absolute X/Z `(0,0)` and occupies `[-128,128)` on each horizontal axis. Authored terrain or mesh content whose local geometry spans `[0,256]` must therefore place its minimum corner at `coordinate * 256 - 128`; scene/tile identity must not silently revert to a corner-anchored coordinate convention.
+
+The world-tile and origin-cell systems are distinct responsibilities over the same centred 256 m horizontal grid and use the same `GameConfiguration.ChunkSize` size authority.
 
 ### 3.4 Additive Scene
 
@@ -205,35 +235,37 @@ Float transforms must not replace this data as the authoritative world position.
 
 Unity rendering and normal GameObject operations continue to use `Vector3` positions.
 
-The client derives these positions relative to its current floating origin.
+The client derives these positions relative to the **centre** of its current floating-origin cell.
 
 Conceptually:
 
 ```text
-absolute WorldPosition
-        ↓
-subtract client floating origin
-        ↓
-local Vector3
-        ↓
-Unity Transform
+origin centre X/Z = OriginChunk * ChunkSize
+local X/Z = absolute X/Z - origin centre X/Z
 ```
+
+The local frame therefore keeps absolute world origin at Unity X/Z `(0,0)` while `OriginChunk == (0,0)`.
 
 ### 5.3 Origin cells
 
 The origin/network cell size is 256 m and is supplied by `GameConfiguration.ChunkSize`, the same size authority used for 256 m environment tiles.
 
-Crossing an aligned 256 m cell/tile boundary permits the client to move its floating origin so that active gameplay remains close to Unity's coordinate origin. Environment streaming interest may also change at that boundary, but floating-origin projection and content streaming remain independently owned operations and may be staggered/deferred.
+Origin cells use the centred footprint defined in §3.2. With the default size, `OriginChunk == (0,0)` remains valid while the player is inside X/Z `[-128,128)`; crossing X or Z `+128` enters coordinate `+1`, and crossing below `-128` enters coordinate `-1`.
 
-Changing origin must shift relevant loaded scene roots and actors without changing their absolute double-precision world positions.
+Crossing an aligned centred-cell/tile boundary permits the client to move its floating origin so that active gameplay remains close to Unity's coordinate origin. Environment streaming interest may also change at that boundary, but floating-origin projection and content streaming remain independently owned operations and may be staggered/deferred.
+
+Changing origin must shift relevant loaded scene roots and actors without changing their absolute double-precision world positions. The locally owned player is part of that invariant regardless of which Unity/PurrNet scene hierarchy currently contains its GameObject; an origin rebase must preserve its pre-rebase absolute `WorldPosition` and reproject it into the new local frame.
 
 A floating-origin shift is not a teleport and must not:
 
 - alter gameplay distance;
 - modify absolute actor position;
+- change apparent velocity or grounded/jump state;
 - change which world a player occupies;
 - inherently cause an instance transition;
 - inherently require loading different terrain or environment content.
+
+Client interest requests do not own the floating origin and must not directly call the origin-change operation merely because an interest coordinate changed.
 
 ### 5.4 Networking
 
@@ -265,6 +297,15 @@ This split is mandatory. Physics/NavMesh state must not drift back into `ServerP
 All environment tiles loaded into the same simulation region retain their authored adjacency in Unity space. Loading, unloading or crossing a 256 m tile boundary must not allocate a new physics frame, change an actor's local frame, warp a `NavMeshAgent`, or alter `ActorComponent.WorldPositionD`.
 
 A simulation region is identified by its logical context plus a coarse region coordinate or equivalent immutable region identifier owned by `ServerPhysicsManager`. Region dimensions must be configurable whole multiples of the shared 256 m origin/environment grid and selected from representative server-density/navigation measurements. The region **span** must not be inferred from the 64 m spatial-index grid or assumed to be one shared grid cell merely because origin and environment boundaries align.
+
+Simulation-region grouping retains integer environment-tile membership (for example, with a four-tile X span, region 0 contains tile coordinates 0 through 3), but the physical world footprint inherits the centred tile bounds. For tile size `S`, X tile span `N`, and region coordinate `r`:
+
+```text
+region minimum = r * N * S - S/2
+region maximum = region minimum + N * S
+```
+
+The same applies on Z. Therefore a 4×4 region 0 at `S = 256` begins at absolute X/Z `-128`, not `0`. Region containment remains strict half-open at that corrected minimum/maximum.
 
 The canonical physical conversion owned by `ServerPhysicsManager` is:
 
