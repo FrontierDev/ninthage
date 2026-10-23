@@ -75,8 +75,6 @@ namespace Game.Client
                 NetworkManager.main.sceneModule.onSceneUnloaded -= OnSceneUnloaded;
             }
 
-            Game.Shared.Networking.MovementEndpoint.onClientInterestRequest -= OnClientInterestRequest;
-
             StopProfilers();
 
             _instance = null;
@@ -186,11 +184,6 @@ namespace Game.Client
             StartCoroutine(OnEnteringWorld(sceneName));
         }
 
-        private void OnClientInterestRequest(Vector2Int chunk)
-        {
-            ClientPositionManager.Instance.SetOriginChunk(chunk);
-        }
-
         /// <summary>
         /// Handles the <c>OnSceneLoaded</c> callback.
         /// </summary>
@@ -238,7 +231,6 @@ namespace Game.Client
             // Subscribe BEFORE loading global_world to avoid missing scene callbacks
             NetworkManager.main.sceneModule.onSceneLoaded += OnSceneLoaded;
             NetworkManager.main.sceneModule.onSceneUnloaded += OnSceneUnloaded;
-            Game.Shared.Networking.MovementEndpoint.onClientInterestRequest += OnClientInterestRequest;
 
             if (PerformanceTelemetry.IsEnabled)
             {

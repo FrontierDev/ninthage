@@ -16,6 +16,7 @@ namespace Game.Shared.Runtime.Test
 
         [SerializeField] Vector2Int currentTile;
         [SerializeField] Vector2Int lastTile;
+        [SerializeField] private bool _enableKeyboardInterestTesting;
 
         private void Start()
         {
@@ -23,11 +24,14 @@ namespace Game.Shared.Runtime.Test
             _onMove += OnMove;
         }
 
-        private void Update() { PollKeys(); }
+        private void Update()
+        {
+            if (_enableKeyboardInterestTesting)
+                PollKeys();
+        }
 
         private void OnMove()
         {
-            MovementEndpoint.onClientInterestRequest?.Invoke(currentTile);
             MovementEndpoint.Server_RequestChunkInterest(currentTile);
         }
 

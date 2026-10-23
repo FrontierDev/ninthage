@@ -34,29 +34,34 @@ namespace Game.Shared.Utility
             get
             {
                 int cs = GameConfigurationManager.Config.ChunkSize;
-                int cx = (int)System.Math.Floor(x / cs);
-                int cz = (int)System.Math.Floor(z / cs);
+                double halfCell = cs * 0.5d;
+                int cx = (int)System.Math.Floor((x + halfCell) / cs);
+                int cz = (int)System.Math.Floor((z + halfCell) / cs);
                 return new Vector2Int(cx, cz);
             }
         }
 
         /// <summary>
-        /// The position local to the chunk (values in [0, ChunkSize) range).
+        /// The position local to the chunk (horizontal values in [-ChunkSize/2, ChunkSize/2) range).
         /// </summary>
         public Vector3 LocalPosition
         {
             get
             {
                 int cs = GameConfigurationManager.Config.ChunkSize;
-                double lx = x - System.Math.Floor(x / cs) * cs;
-                double ly = y;
-                double lz = z - System.Math.Floor(z / cs) * cs;
-                return new Vector3((float)lx, (float)ly, (float)lz);
+                var chunk = Chunk;
+                double lx = x - (double)chunk.x * cs;
+                double lz = z - (double)chunk.y * cs;
+
+                return new Vector3(
+                    (float)lx,
+                    (float)y,
+                    (float)lz);
             }
         }
 
         /// <summary>
-        /// Construct a WorldPosition from a chunk coordinate and a chunk-local offset.
+        /// Construct a WorldPosition from a chunk coordinate and centred horizontal chunk-local offsets.
         /// </summary>
         public static WorldPosition FromChunkLocal(Vector2Int chunk, Vector3 local)
         {

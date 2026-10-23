@@ -1,7 +1,9 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.Performance;
 using Game.Shared.Performance;
+using Game.Shared.Utility;
 using PurrNet;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -74,6 +76,24 @@ namespace Game.Client
             if (delta == Vector2Int.zero)
                 return;
 
+            var playerActor = ClientAccountManager.PlayerActor;
+            bool hasPlayerActor = playerActor != null;
+            WorldPosition playerAbsolute = default;
+
+            if (hasPlayerActor)
+            {
+                var (playerChunk, playerLocal) =
+                    LocalToChunkRelative(playerActor.transform.position);
+
+                playerAbsolute = WorldPosition.FromChunkLocal(
+                    playerChunk,
+                    playerLocal);
+
+                if (!playerAbsolute.IsFinite)
+                    throw new InvalidOperationException(
+                        "Cannot rebase the client origin from a non-finite local player position.");
+            }
+
             using var markerScope = ORIGIN_SHIFT_MARKER.Begin();
 
             var shift = new Vector3(delta.x * _chunkSize, 0f, delta.y * _chunkSize);
@@ -95,6 +115,13 @@ namespace Game.Client
                 rootCount += ShiftSceneRoots(globalActors, shift);
 
             OriginChunk = newChunk;
+
+            if (hasPlayerActor)
+            {
+                playerActor.transform.position = NetworkToLocal(
+                    playerAbsolute.Chunk,
+                    playerAbsolute.LocalPosition);
+            }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             var appliedLocalShift = -shift;
@@ -153,8 +180,13 @@ namespace Game.Client
         /// </summary>
         public (Vector2Int chunk, Vector3 local) LocalToChunkRelative(Vector3 unityPosition)
         {
-            int cx = Mathf.FloorToInt(unityPosition.x / _chunkSize) + OriginChunk.x;
-            int cz = Mathf.FloorToInt(unityPosition.z / _chunkSize) + OriginChunk.y;
+            float halfCell = _chunkSize * 0.5f;
+            int cx = Mathf.FloorToInt(
+                (unityPosition.x + halfCell) / _chunkSize)
+                + OriginChunk.x;
+            int cz = Mathf.FloorToInt(
+                (unityPosition.z + halfCell) / _chunkSize)
+                + OriginChunk.y;
             var chunk = new Vector2Int(cx, cz);
 
             Vector2Int offset = chunk - OriginChunk;

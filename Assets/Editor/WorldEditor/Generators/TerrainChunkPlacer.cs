@@ -91,10 +91,11 @@ namespace Game.Editor.WorldEditor
                         if (instance != null)
                         {
                             // Position at correct world location
+                            float halfChunkSize = CHUNK_SIZE * 0.5f;
                             Vector3 worldPosition = new Vector3(
-                                chunkX * CHUNK_SIZE,
+                                chunkX * CHUNK_SIZE - halfChunkSize,
                                 0f,
-                                chunkZ * CHUNK_SIZE);
+                                chunkZ * CHUNK_SIZE - halfChunkSize);
                             instance.transform.position = worldPosition;
 
                             instantiatedCount++;

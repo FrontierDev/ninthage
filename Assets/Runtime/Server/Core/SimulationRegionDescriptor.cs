@@ -63,14 +63,15 @@ namespace Game.Server.Core
             int cellSizeMetres = GameConfigurationManager.Config.ChunkSize;
             double widthMetres = (double)tileSpanX * cellSizeMetres;
             double depthMetres = (double)tileSpanZ * cellSizeMetres;
+            double halfTileMetres = cellSizeMetres * 0.5d;
 
             Key = key;
             TileSpanX = tileSpanX;
             TileSpanZ = tileSpanZ;
             WorldOrigin = new WorldPosition(
-                (double)key.RegionCoordinate.x * widthMetres,
+                (double)key.RegionCoordinate.x * widthMetres - halfTileMetres,
                 0d,
-                (double)key.RegionCoordinate.y * depthMetres);
+                (double)key.RegionCoordinate.y * depthMetres - halfTileMetres);
             LocalAnchor = localAnchor;
             WidthMetres = widthMetres;
             DepthMetres = depthMetres;
