@@ -485,7 +485,17 @@ namespace Game.Server.Core
                             state.HopNextCandidateIndex = 0;
                             state.HopHasBest = false;
                             state.HopBestSeam = default;
+                            state.HopSelected = false;
                             state.HopSearchComplete = false;
+                        }
+                        else
+                        {
+                            ClearHop(ref state);
+                            state.HopTargetID = state.Actor.Target.ID;
+                            state.HopTargetRegionKey = targetRegion.Key;
+                            state.HopSourceKey = actorRegion.Key;
+                            state.HopDestinationKey = firstNeighbour;
+                            state.HopAxisIndex = 0;
                         }
 
                         StoreAutoAttackStateIfRegistered(actorID, state);
