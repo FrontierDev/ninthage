@@ -113,6 +113,7 @@ namespace Game.Tests.Performance.Harness
             foreach (var instance in _instances)
             {
                 AddProbeBody(instance);
+                SynchronizePhysicsScene(instance);
                 VerifyPhysicsIsolation(instance);
             }
 
@@ -317,8 +318,23 @@ namespace Game.Tests.Performance.Harness
             instance.ProbeBody = probe;
         }
 
+        private static void SynchronizePhysicsScene(Test_SimulationRegionProbeInstance instance)
+        {
+            if (!instance.PhysicsScene.IsValid())
+                throw new InvalidOperationException("Simulation-region probe physics scene is invalid before physics synchronization.");
+
+            instance.PhysicsScene.RunSimulationStages(
+                0f,
+                SimulationStage.PrepareSimulation,
+                SimulationOption.SyncTransforms);
+        }
+
         private void VerifyPhysicsIsolation(Test_SimulationRegionProbeInstance instance)
         {
+            var expectedCollider = instance.ProbeBody.GetComponent<Collider>();
+            if (expectedCollider == null)
+                throw new InvalidOperationException("Simulation-region known physics probe has no Collider.");
+
             var query = instance.ProbeBody.transform.position;
             var colliders = new Collider[64];
             var timer = Stopwatch.StartNew();
@@ -337,15 +353,49 @@ namespace Game.Tests.Performance.Harness
                 ~0,
                 QueryTriggerInteraction.Ignore);
             timer.Stop();
-            if (overlapCount <= 0 || !raycastHit || hit.collider == null)
-                throw new InvalidOperationException("Physics isolation probe did not observe the known region geometry.");
+            if (overlapCount <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Physics isolation overlap returned no colliders for region anchor {instance.Descriptor.LocalAnchor}.");
+            }
+
+            var expectedColliderObserved = false;
             for (var index = 0; index < overlapCount; index++)
             {
-                if (colliders[index] == null || !colliders[index].transform.IsChildOf(instance.Root.transform))
-                    throw new InvalidOperationException("Physics isolation probe observed geometry outside its owning test region.");
+                var collider = colliders[index];
+                if (collider == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Physics isolation overlap returned a null collider for region anchor {instance.Descriptor.LocalAnchor}.");
+                }
+
+                if (!collider.transform.IsChildOf(instance.Root.transform))
+                {
+                    throw new InvalidOperationException(
+                        $"Physics isolation overlap observed geometry outside the owning region at anchor {instance.Descriptor.LocalAnchor}.");
+                }
+
+                if (collider == expectedCollider)
+                    expectedColliderObserved = true;
             }
+
+            if (!expectedColliderObserved)
+            {
+                throw new InvalidOperationException(
+                    $"Physics isolation overlap did not observe the known probe collider for region anchor {instance.Descriptor.LocalAnchor}.");
+            }
+
+            if (!raycastHit || hit.collider == null)
+            {
+                throw new InvalidOperationException(
+                    $"Physics isolation raycast did not hit region geometry for region anchor {instance.Descriptor.LocalAnchor}.");
+            }
+
             if (!hit.collider.transform.IsChildOf(instance.Root.transform))
-                throw new InvalidOperationException("Physics raycast crossed into geometry owned by another test region.");
+            {
+                throw new InvalidOperationException(
+                    $"Physics isolation raycast crossed into geometry outside the owning region at anchor {instance.Descriptor.LocalAnchor}.");
+            }
 
             instance.PhysicsQueryDurationMilliseconds = timer.Elapsed.TotalMilliseconds.ToString("R", CultureInfo.InvariantCulture);
         }
