@@ -2,6 +2,7 @@ using Game.Server.Core;
 using Game.Server.Systems;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using PurrNet;
 using System;
 using System.Collections;
@@ -153,10 +154,19 @@ namespace Game.Tests.Performance.Fixtures.Actors
             foreach (var placement in Test_ActorFixtureLayout.BuildPlacements(_profile))
             {
                 _pendingFullPlacements.Enqueue(placement);
-                var sceneName = $"World_{placement.world_tile_x}_{placement.world_tile_z}";
+                var sourceChunk = new WorldChunkKey(
+                    ServerWorldManager.Instance.CurrentRuntimeContext,
+                    new Vector2Int(
+                        placement.world_tile_x,
+                        placement.world_tile_z));
+                var worldPosition = new WorldPosition(
+                    placement.world_x,
+                    placement.world_y,
+                    placement.world_z);
+
                 ServerSpawnManager.Instance.SpawnAt(
-                    sceneName,
-                    new Vector3((float)placement.world_x, (float)placement.world_y, (float)placement.world_z),
+                    sourceChunk,
+                    worldPosition,
                     prefab,
                     sceneID,
                     default);

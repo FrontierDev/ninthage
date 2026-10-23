@@ -3,6 +3,7 @@ using Game.Server.Systems;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using NUnit.Framework;
 using PurrNet;
 using System;
@@ -21,7 +22,6 @@ namespace Game.Runtime.Tests.Server
     public sealed class ServerSpawnCommandLifecycleTests
     {
         private const string TEST_PREFAB_NAME = "Test Spawnable Object";
-        private const string TEST_SCENE_NAME = "World_0_0";
         private static readonly Guid TEST_WORLD_ID =
             Guid.Parse("00000000-0000-0000-0000-000000000917");
         private static readonly MethodInfo UPDATE_SIMULATION_METHOD =
@@ -48,6 +48,9 @@ namespace Game.Runtime.Tests.Server
         private NetworkManager _networkManager;
         private GameObject _clockHostObject;
         private GameObject _worldManagerObject;
+        private GameObject _positionManagerObject;
+        private GameObject _physicsManagerObject;
+        private WorldChunkKey _sourceChunk;
         private GameObject _statManagerObject;
         private GameObject _actorManagerObject;
         private GameObject _spawnManagerObject;
@@ -97,8 +100,10 @@ namespace Game.Runtime.Tests.Server
             yield return StartServerFixture();
 
             _spawnManager.SpawnAt(
-                TEST_SCENE_NAME,
-                new Vector3(4f, 0f, 4f),
+                _sourceChunk,
+                WorldPosition.FromChunkLocal(
+                    _sourceChunk.ChunkCoord,
+                    new Vector3(4f, 0f, 4f)),
                 _testPrefab,
                 _destinationSceneID,
                 default);
@@ -123,14 +128,18 @@ namespace Game.Runtime.Tests.Server
             Assert.That(ServerActorManager.Instance.TryGetActor(firstActorID, out _), Is.False);
 
             _spawnManager.SpawnAt(
-                TEST_SCENE_NAME,
-                new Vector3(8f, 0f, 8f),
+                _sourceChunk,
+                WorldPosition.FromChunkLocal(
+                    _sourceChunk.ChunkCoord,
+                    new Vector3(8f, 0f, 8f)),
                 _testPrefab,
                 _destinationSceneID,
                 default);
             _spawnManager.SpawnAt(
-                TEST_SCENE_NAME,
-                new Vector3(12f, 0f, 12f),
+                _sourceChunk,
+                WorldPosition.FromChunkLocal(
+                    _sourceChunk.ChunkCoord,
+                    new Vector3(12f, 0f, 12f)),
                 _testPrefab,
                 _destinationSceneID,
                 default);
@@ -187,6 +196,20 @@ namespace Game.Runtime.Tests.Server
 
             _worldManagerObject = new GameObject("ServerSpawnCommandLifecycleWorldManager");
             _worldManagerObject.AddComponent<ServerWorldManager>();
+            _positionManagerObject =
+                new GameObject("ServerSpawnCommandLifecyclePositionManager");
+            _positionManagerObject.AddComponent<ServerPositionManager>();
+            _physicsManagerObject =
+                new GameObject("ServerSpawnCommandLifecyclePhysicsManager");
+            _physicsManagerObject.AddComponent<ServerPhysicsManager>();
+
+            _sourceChunk = new WorldChunkKey(
+                ServerWorldManager.Instance.CurrentRuntimeContext,
+                Vector2Int.zero);
+            ServerPhysicsManager.Instance.BindEnvironmentScene(
+                _sourceChunk,
+                SceneManager.GetActiveScene());
+
             _statManagerObject = new GameObject("ServerSpawnCommandLifecycleStatManager");
             _statManagerObject.AddComponent<ServerStatManager>();
             _actorManagerObject = new GameObject("ServerSpawnCommandLifecycleActorManager");
@@ -229,7 +252,7 @@ namespace Game.Runtime.Tests.Server
             foreach (Entity entity in entities)
             {
                 SpawnCommand command = entityManager.GetComponentData<SpawnCommand>(entity);
-                if (!Mathf.Approximately(command.Position.x, 8f))
+                if (command.WorldPositionD.x != 8d)
                     continue;
 
                 command.PrefabIndex = int.MaxValue;
@@ -336,6 +359,18 @@ namespace Game.Runtime.Tests.Server
                 _statManagerObject = null;
             }
 
+            if (_physicsManagerObject != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_physicsManagerObject);
+                _physicsManagerObject = null;
+            }
+
+            if (_positionManagerObject != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_positionManagerObject);
+                _positionManagerObject = null;
+            }
+
             if (_worldManagerObject != null)
             {
                 UnityEngine.Object.DestroyImmediate(_worldManagerObject);
@@ -367,6 +402,7 @@ namespace Game.Runtime.Tests.Server
 
             _networkManager = null;
             _spawnManager = null;
+            _sourceChunk = default;
             _testPrefab = null;
             _spawnObservations.Clear();
         }
