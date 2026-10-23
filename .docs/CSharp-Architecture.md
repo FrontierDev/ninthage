@@ -3,8 +3,8 @@
 **Status:** Current architecture reference  
 **Repository:** `FrontierDev/ninthage`  
 **Branch:** `dev`
-**Source revision:** `3232b1cfc1a889d1f8be7665714bf145e8329a4b`
-**Snapshot date:** 2026-10-13
+**Source revision:** `0bff22452fdd98c8e63f6cc7def2fcfad50abf79`
+**Snapshot date:** 2026-10-23
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose and Scope
@@ -800,21 +800,43 @@ New chunk scenes are offset immediately to the active floating origin when they 
 
 The shared `WorldPosition` struct is the high-precision representation for world coordinates. The client does not render directly in those large double-precision coordinates.
 
-`ClientPositionManager` maintains an `OriginChunk`. Unity scene objects are positioned relative to this origin using normal `Vector3` values.
+The horizontal origin/network grid and authored environment-tile grid share the configured `GameConfiguration.ChunkSize` of 256 m, but the integer coordinate identifies the **centre** of the cell/tile rather than its minimum corner.
+
+For one horizontal axis with cell size `S` and integer coordinate `c`:
+
+```text
+cell centre = c * S
+cell footprint = [c * S - S/2, c * S + S/2)
+cell coordinate = floor((absolute + S/2) / S)
+cell-local offset = absolute - c * S
+absolute = c * S + cell-local offset
+```
+
+Therefore, with `S = 256`, `World_0_0` / origin cell `(0,0)` occupies X/Z `[-128, 128)`, and its chunk-local X/Z offsets are also `[-128, 128)`. Absolute world origin `(0,0)` is the centre of `World_0_0`, not the intersection of four cells.
+
+`ClientPositionManager` maintains an `OriginChunk`. Unity scene objects are positioned relative to the centre of that origin cell using normal `Vector3` values. Conceptually, client-local X/Z is:
+
+```text
+local = absolute - OriginChunk * ChunkSize
+```
 
 When the origin chunk changes:
 
 1. the delta between old and new origin chunks is calculated;
 2. the corresponding world-space shift is calculated from `ChunkSize`;
 3. root objects in loaded world scenes are shifted;
-4. root objects in `global_actors` are shifted;
+4. networked actors and the locally owned player are reprojected into the new local frame without changing their absolute `WorldPosition`;
 5. the new origin chunk becomes the client's reference origin.
+
+Scene membership is not an authority for whether the locally owned player must move with a rebase. If shifting scene roots does not guarantee the owner actor is shifted, the owner actor must be explicitly reprojected from its pre-rebase absolute position.
 
 The manager also provides conversions between:
 
-- network chunk + local position;
+- centred network chunk + local position;
 - Unity local-space position;
 - chunk-relative coordinates for data sent back toward the server.
+
+Normal floating-origin selection is driven by the player's actual position crossing a centred origin-cell boundary. Environment streaming/interest may use the same integer grid coordinate, but interest requests do not own or directly force the client floating origin.
 
 This separates large-scale authoritative coordinates from the float coordinate space used by Unity rendering and normal GameObject transforms.
 
