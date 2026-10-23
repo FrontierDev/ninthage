@@ -739,6 +739,71 @@ NavMesh physical data belongs to `ServerPhysicsManager` because it shares the re
 
 The previous per-tile packed-slot/gateway design is superseded and must not be used as the basis for new movement code.
 
+### 20.3.2 Approved Stage 1.2 enabled-NavMesh region-boundary handoff
+
+**Decision (Issue #165, 23 October 2026):** Enabled server `NavMeshAgent` actors cross only at a **calculated, validated seam between adjacent simulation regions**. The seam connects two independently built and physically separated region NavMeshes; it is not a Unity NavMesh link joining the datasets, an authored portal, an overlapping NavMesh band, or a gateway between 256 m environment tiles. A crossing is an authoritative movement step followed by a local physical-frame rebind, **not** a world/map/instance transfer. One region continues to own at most one registered NavMesh dataset for the configured agent type.
+
+#### Seam discovery and reachability
+
+- The candidate destination must be one of the four cardinally adjacent `SimulationRegionKey` values in the same valid `ActorSpatialContext`. Diagonal or nonadjacent physical handoffs are invalid. Use the configured whole-tile region dimensions, not scene/chunk names or local float positions.
+- For the shared absolute X or Z boundary, derive paired **source approach** and **destination landing** positions in absolute double precision. Both use the same position along the boundary; each lies strictly inside its own region's half-open footprint. Start candidate search near the projection of the intended route toward the boundary, then examine alternatives outward in deterministic order. A search that exhausts the eligible boundary without a valid pair reports no seam. Budget expensive sampling/path queries across updates; an incomplete search is pending, not proof that the seam is blocked.
+- Sample each candidate against the region's registered NavMesh using the correct agent type and allowed areas; reconstruct the sampled Unity-local point through that specific region descriptor and reject a point in any other region. Sampling radius, along-seam spacing, approach/landing offsets and arrival tolerance must be bounded from the agent dimensions and NavMesh build resolution, with any independently tunable limits centrally configured. Do not silently snap a candidate a large distance to a convenient NavMesh.
+- Accept a candidate only with a complete NavMesh path from the source agent to the approach point and a complete path from the landing point to a usable onward destination within the receiving region (the target when it is there, otherwise the next reachable region-local route waypoint). A successful path-query boolean by itself is insufficient: partial and invalid paths fail. Require navigable clearance and walkable geometric continuity across the small seam gap, including collision obstruction, walkable slope and vertical difference within the configured agent climb/step capability. Nearest-point proximity alone cannot authorise passage through a wall, cliff or missing terrain.
+- Choose a valid pair deterministically by the combined reachable travel cost, with a stable along-boundary coordinate tie-break. Do not retain old-frame `NavMeshPath.corners` as cross-region route data. Region-owned NavMesh rebuild/unload invalidates any pending seam that uses its changed content; it must be revalidated before admission.
+
+These calculated **region** seams do not alter the continuous NavMesh generated from tiles inside either region. No per-tile gateway, persistent duplicate edge NavMesh, manually authored border transition or speculative navigation manager is approved.
+
+#### Gameplay route intent and incremental multi-region progress
+
+`ServerAutoAttackManager` remains the owner of an auto-attack chase and `Actor.Target` remains its target identity. Its existing per-attacker state may hold only a temporary current-hop plan: target ID, source/destination region keys, absolute approach/landing points and the effective absolute onward destination. This is navigation intent, **not** a second authoritative actor-position store or a general region-route registry. Other future NPC movement behaviours own their own intents and may reuse the physical seam-query/handoff operations.
+
+- When attacker and target occupy the same region, preserve the existing direct local `SetDestination` behaviour and gameplay attack stopping distance.
+- Otherwise, consult the target's latest canonical ECS absolute position and context. Choose one adjacent region that reduces Manhattan distance in region-grid coordinates to the target, first along the axis with the greater remaining displacement, then the other reducing axis if needed (stable axis tie-break). Advance **one adjacent region per successful handoff** and recalculate from the new region; a moving target may invalidate or change the next hop.
+- There is no immediate teleport to a remote target and no precomputed multi-region corner list. Stage 1.2 deliberately does not support detours that first increase region-grid distance; if every distance-reducing adjacent seam is unusable, report unreachable navigation to the NPC's behaviour/recovery policy. A future independently justified coarse path-planning layer may extend this without changing the physical handoff contract.
+- While a hop is pending, direct target coordinates from another physical region must never be passed to the current agent's `SetDestination`. Use its **source-region-local approach point** with a seam-appropriate near-zero stopping distance. Recompute/clear this state on target change, chase stop, actor despawn/death, or source/target region change. Changing the target's absolute position inside the same region updates the onward intent without treating the old position as immutable.
+
+#### Crossing admission and authoritative tick
+
+The chase owner may prepare a hop during its normal navigation update, but **only the established pre-ECS NPC movement boundary** may perform and accept the physical crossing. The crossing is eligible only when all of the following remain true:
+
+1. the actor is alive, has the expected target and same logical context, and retains its verified source-region physical binding;
+2. the enabled agent matches the registered source NavMesh type and remains attached, is not stopped, has no pending path, has a complete source approach path, and its remaining path distance is within the bounded seam arrival tolerance;
+3. a currently valid source/landing pair passes the latest NavMesh and traversability checks, and the exact landing environment tile and destination region NavMesh are admitted as specified in the World Runtime PDD;
+4. the candidate destination key reconstructed from the **absolute landing position and authoritative context** equals the planned immediately adjacent key.
+
+For a positive-X boundary at `B`, the source endpoint has `x < B` and the destination endpoint has `x >= B`; the corresponding strict/inclusive inequalities reverse for an opposite-direction crossing. Apply the same rule to Z and negative world coordinates. No one absolute position belongs to both region footprints. The source agent must stop at a valid in-footprint approach point rather than drifting beyond its region and forcing the pre-ECS `ToWorld` bridge to interpret an out-of-region float.
+
+The short approach-to-landing displacement is a specifically bounded, server-authorised seam traversal that has passed terrain, collision and movement-capability validation. It is **not** a jump to the target region's centre or a reinterpretation of the same Unity `Vector3` in a different anchor frame. The previous `ActorComponent.WorldPositionD` stays accepted until the landing absolute position is committed; the warp projects that exact selected landing position into the destination-local frame.
+
+#### Agent snapshot, reattachment and commit
+
+Capture before mutation: enabled state, `isStopped`, pre-handoff `velocity` as motion direction/speed intent, the gameplay `stoppingDistance`, effective target identity/absolute destination, and the currently effective route hop. The same `NavMeshAgent` retains its agent type, area mask, speed, acceleration, angular speed, avoidance and other locomotion configuration. The transfer is only available to an **enabled** agent; it must not silently switch to ECS-driven movement.
+
+At one authoritative pre-ECS boundary:
+
+1. Verify the latest canonical source position/actor context and the verified source-region pose; recheck target, both region NavMeshes, exact destination tile and the candidate seam. Temporarily retain both active physical regions for the in-flight operation so rollback cannot lose its source frame.
+2. Quiesce the agent's current path as needed, then call `NavMeshAgent.Warp` using `ServerPhysicsManager.ToRegionLocal(destinationDescriptor, acceptedLandingAbsolutePosition)`. Require `Warp` success, `isOnNavMesh`, correct registered agent type and a resulting pose verified against the intended destination region. Do not assume a successful Warp just because the GameObject Transform moved.
+3. Use `ServerPhysicsManager.TransitionActorRegion` for the existing same-context, no-region-creation physical membership change. Request a **new** destination-region path toward the next local waypoint or current target, restoring the appropriate stopping distance and stopped/moving state. Do not copy source `NavMeshPath`, path corners, `destination`, `nextPosition` or region-local vectors into the destination frame.
+4. Only after successful physical reattachment and binding may the pre-ECS movement bridge accept the landing absolute position into `ActorComponent.WorldPositionD`. Later Stage 1.2 movement publication uses that sole canonical value to update `ServerSpatialIndex` once at the agreed tick boundary. A failed attempt must not publish a destination position or second movement stream. Release the temporary region holds after commit/rollback.
+
+Because physical region frames differ by translation, the captured velocity vector's world direction does not require rotation. It represents motion **intent** for route continuation, not a promise of numerically identical Unity crowd-simulation velocity on the first frame after Warp. Do not assign it indiscriminately to `NavMeshAgent.velocity`: Unity treats that setter as manual velocity control that overrides path following, avoidance and acceleration. Ordinary agent simulation resumes on the newly constructed path. `SetDestination` success is only acceptance of a path request, not proof that its later asynchronous result stays reachable; normal navigation recovery applies if the resulting path becomes invalid.
+
+#### Failure, rollback and AI recovery
+
+- **No verified crossing/path:** the chase owner reports an unreachable route, allowing the AI behaviour to reposition, wait briefly, retarget or disengage/reset under the AI and Encounter Behaviour PDD. Do not repeatedly force `SetDestination` into an invalid frame or attack through geometry.
+- **Region or exact destination tile unavailable, pending unload, or capacity exhausted:** do not create/borrow a frame or mutate accepted ECS/spatial state. Hold at the valid source-side waypoint or invoke bounded AI recovery. Environment loading remains the world/interest owner's responsibility.
+- **NavMesh rebuild or seam loss:** invalidate the pending hop and recalculate. A route prepared against an earlier representation cannot authorise the handoff.
+- **`Warp`, attachment, route request or membership failure:** restore the source physical binding and original verified source pose/navigation state before retrying; the old canonical position remains authoritative. Retain the source region through rollback. If Unity cannot restore a valid source agent, report a hard invalid-physical-state failure and stop its movement; never mark the transfer successful or conceal that recovery failed.
+- **Target identity/context changed during preparation or transfer:** cancel stale intent and, if uncommitted, restore the source. A new target is resolved from current authoritative state after the old attempt terminates.
+
+The operation must be same-process, non-interleaved and reversible until authoritative commit. It must never expose a partially rebound agent or dual physical membership as accepted gameplay state. Logical map/private-instance transfers remain a distinct later contract.
+
+#### Future worker compatibility
+
+Keep the logical handoff description portable: actor ID, full `ActorSpatialContext`, coarse integer region coordinates, canonical absolute position, bounded crossing/landing position, movement-intent vector, target ID/absolute route destination and an admission/commit identity. A future destination worker would confirm admission before source authority is relinquished. `LocalAnchor`, physical slot index, local Unity `Vector3`, `NavMeshDataInstance`, Unity scene identity and GameObject references are **never** fields of that portable contract. Stage 1.2 implements only the in-process physical handoff, not networked worker transfer.
+
+---
+
 ### 20.4 Movement-driven spatial updates
 
 Ordinary movement must automatically drive any required updates to:
