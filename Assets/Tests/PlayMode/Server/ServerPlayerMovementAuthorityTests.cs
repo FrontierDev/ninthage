@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 namespace Game.Runtime.Tests.Server
@@ -243,6 +244,28 @@ namespace Game.Runtime.Tests.Server
             AssertECSPosition(actorEntity, movedAbsolutePosition);
 
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator OriginRebaseShiftsStationaryGlobalActorRootWithoutSnapshot()
+        {
+            CreateClientOriginFixture();
+
+            var globalActorsScene = SceneManager.CreateScene("global_actors");
+            var actorObject = new GameObject("ServerPlayerMovementAuthorityGlobalActor");
+            SceneManager.MoveGameObjectToScene(actorObject, globalActorsScene);
+            actorObject.AddComponent<Actor>();
+            actorObject.transform.position = new Vector3(46f, 0f, 0f);
+
+            ClientPositionManager.Instance.SetOriginChunk(new Vector2Int(1, 0));
+
+            Assert.That(actorObject.transform.position.x, Is.EqualTo(-210f).Within(0.0001f));
+            Assert.That(actorObject.transform.position.z, Is.EqualTo(0f).Within(0.0001f));
+
+            UnityEngine.Object.DestroyImmediate(actorObject);
+            var unloadOperation = SceneManager.UnloadSceneAsync(globalActorsScene);
+            if (unloadOperation != null)
+                yield return unloadOperation;
         }
 
         private Entity GetActorEntity()

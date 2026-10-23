@@ -70,13 +70,7 @@ namespace Game.Client
         {
             using var markerScope = ORIGIN_SHIFT_MARKER.Begin();
             var originOffset = new Vector3(OriginChunk.x * _chunkSize, 0f, OriginChunk.y * _chunkSize);
-            int rootCount = 0;
-
-            foreach (var root in scene.GetRootGameObjects())
-            {
-                root.transform.position -= originOffset;
-                rootCount++;
-            }
+            int rootCount = ShiftAllSceneRoots(scene, originOffset);
 
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ORIGIN_SHIFT_ROOT_COUNT, rootCount);
@@ -124,21 +118,29 @@ namespace Game.Client
             foreach (var scene in worldScenes)
             {
                 if (!scene.isLoaded) continue;
-                rootCount += ShiftSceneRoots(scene, shift);
+                rootCount += ShiftAllSceneRoots(scene, shift);
             }
 
             // Shift the global_actors scene so networked actors stay aligned.
             var globalActors = SceneManager.GetSceneByName("global_actors");
             if (globalActors.isLoaded)
-                rootCount += ShiftSceneRoots(globalActors, shift);
+                rootCount += ShiftAllSceneRoots(globalActors, shift);
 
             OriginChunk = newChunk;
 
             if (hasPlayerActor)
             {
-                playerActor.transform.position = NetworkToLocal(
+                var previousLocalPosition = playerActor.transform.position;
+                var newLocalPosition = NetworkToLocal(
                     playerAbsolute.Chunk,
                     playerAbsolute.LocalPosition);
+                playerActor.transform.position = newLocalPosition;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.Log(
+                    $"[Movement/Origin] actor='{playerActor.Name}' ({playerActor.ID}) "
+                    + $"oldLocal={previousLocalPosition} newLocal={newLocalPosition}.");
+#endif
             }
 
             foreach (var pair in _acceptedActorPositions)
@@ -157,9 +159,17 @@ namespace Game.Client
                         "Cannot reproject a remote actor from an invalid accepted position snapshot.");
                 }
 
-                actor.transform.position = NetworkToLocal(
+                var previousLocalPosition = actor.transform.position;
+                var newLocalPosition = NetworkToLocal(
                     snapshot.Position.Chunk,
                     snapshot.Position.LocalPosition);
+                actor.transform.position = newLocalPosition;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.Log(
+                    $"[Movement/Origin] actor='{actor.Name}' ({actor.ID}) "
+                    + $"oldLocal={previousLocalPosition} newLocal={newLocalPosition}.");
+#endif
             }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -214,14 +224,11 @@ namespace Game.Client
             _acceptedActorPositions.Remove(actor);
         }
 
-        private static int ShiftSceneRoots(Scene scene, Vector3 shift)
+        private static int ShiftAllSceneRoots(Scene scene, Vector3 shift)
         {
             int rootCount = 0;
             foreach (var root in scene.GetRootGameObjects())
             {
-                if (root.GetComponentInChildren<Actor>() != null)
-                    continue;
-
                 root.transform.position -= shift;
                 rootCount++;
             }
