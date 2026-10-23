@@ -1,0 +1,13 @@
+{
+"schema_version":"simulation-region-sizing/v1",
+"status":"qualified",
+"phase":"B_concurrency_sweep",
+"selected":{"tile_span":4,"region_width_metres":"1024","concurrent_regions":4,"required_qualified_repeats":5,"control_only":false},
+"fixture":{"variant":"Outdoor","path":"Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity","shared_cell_size_metres":"256"},
+"timing":{"setup_ms":"2681.9781000000003","teardown_ms":"14.178600000000001","navmesh_build_ms":"663.053,627.95800000000008,626.2521,642.2109","navmesh_registration_ms":"2.9653,1.3679000000000001,1.2733,1.2604","physics_query_ms":"0.40240000000000004,0.011600000000000001,0.0108,0.0092","navmesh_path_query_ms":"0.3738,0.0263,0.0223,0.0175"},
+"memory":{"before_bytes":"1495102195","after_setup_bytes":"1493773553","delta_bytes":"-1328642"},
+"achieved":{"tile_count":64,"object_count":2112,"collider_count":64,"navmesh_data_count":4},
+"correctness":{"conversion_round_trip_error_x_metres":"2.3437500203726813E-05","conversion_round_trip_error_y_metres":"0","conversion_round_trip_error_z_metres":"2.3437500000000021E-05","physics_isolation":"passed","navmesh_internal_tile_continuity":"passed","navmesh_cross_region_isolation":"passed","cleanup":"passed"},
+"blocked_reason":"",
+"instances":[{"tile_count":16,"object_count":528,"collider_count":16,"navmesh_data_count":1,"navmesh_build_ms":"663.053","navmesh_registration_ms":"2.9653","physics_query_ms":"0.40240000000000004","navmesh_path_query_ms":"0.3738"},{"tile_count":16,"object_count":528,"collider_count":16,"navmesh_data_count":1,"navmesh_build_ms":"627.95800000000008","navmesh_registration_ms":"1.3679000000000001","physics_query_ms":"0.011600000000000001","navmesh_path_query_ms":"0.0263"},{"tile_count":16,"object_count":528,"collider_count":16,"navmesh_data_count":1,"navmesh_build_ms":"626.2521","navmesh_registration_ms":"1.2733","physics_query_ms":"0.0108","navmesh_path_query_ms":"0.0223"},{"tile_count":16,"object_count":528,"collider_count":16,"navmesh_data_count":1,"navmesh_build_ms":"642.2109","navmesh_registration_ms":"1.2604","physics_query_ms":"0.0092","navmesh_path_query_ms":"0.0175"}]
+}

@@ -1,0 +1,11 @@
+{
+"schema_version":"benchmark-fixture/v1",
+"profile":{"id":"P1-SIM-REGION-SIZING","revision":"simulation-region-sizing/v1","spec_revision":"simulation-region-sizing/v1","variant":"P1-SIM-REGION-SIZING","tier":"engineering_probe"},
+"random":{"master_seed":424242,"replicate_seed":424242,"replicate_index":0,"derivation":"tracked-fixture-plan-v1","streams":["world","region","physics","navigation"]},
+"provenance":{"fixture_generator":"Game.Tests.Performance.Fixtures.Test_WorldFixtureGenerator","generator_revision":"1.0.0","input_path":"Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json","asset_manifest_path":"Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json","source_commit":"8eb460394b94ee8098e11518e36867f6416f6d47","source_sha256":"96d94aa9137a695587903ae0e171f9cb2bc345eaabb47a1ad919f06450a3d4d0","asset_manifest_sha256":"96d94aa9137a695587903ae0e171f9cb2bc345eaabb47a1ad919f06450a3d4d0"},
+"required_features":["tracked_256m_fixture_geometry","shared_chunk_size_256m","simulation_region_descriptor","server_physics_conversion","separate_physics_scene","test_owned_navmesh_data"],
+"population":{"players":{"requested":0,"connection_kind":"none_data_only","groups":[]},"npcs":{"requested":0,"representation":"none","groups":[]}},
+"space":{"fixture_variant":"Outdoor","fixture_scene":"Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity","shared_cell_size_metres":"unavailable_until_runtime_preflight","selected_tile_span":4,"selected_concurrent_regions":4,"control_only":false},
+"timing":{"preflight_timeout_s":30,"qualified_repeat_count":5,"measurement_s":5},
+"stops":{"terminate_on_correctness_failure":true,"terminate_on_missing_fixture":true,"terminate_on_missing_required_telemetry":true}
+}

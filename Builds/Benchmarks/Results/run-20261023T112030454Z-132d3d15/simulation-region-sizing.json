@@ -1,0 +1,13 @@
+{
+"schema_version":"simulation-region-sizing/v1",
+"status":"qualified",
+"phase":"B_concurrency_sweep",
+"selected":{"tile_span":8,"region_width_metres":"2048","concurrent_regions":4,"required_qualified_repeats":5,"control_only":false},
+"fixture":{"variant":"Outdoor","path":"Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity","shared_cell_size_metres":"256"},
+"timing":{"setup_ms":"10462.7013","teardown_ms":"29.3247","navmesh_build_ms":"2501.0012,2486.9354000000003,2502.1056000000003,2557.4246000000003","navmesh_registration_ms":"7.5442,6.9967000000000006,6.6954,6.6618","physics_query_ms":"0.4132,0.0164,0.0151,0.012700000000000001","navmesh_path_query_ms":"0.4353,0.0519,0.0473,0.042100000000000005"},
+"memory":{"before_bytes":"1501333635","after_setup_bytes":"1520246455","delta_bytes":"18912820"},
+"achieved":{"tile_count":256,"object_count":8448,"collider_count":256,"navmesh_data_count":4},
+"correctness":{"conversion_round_trip_error_x_metres":"2.3437500203726813E-05","conversion_round_trip_error_y_metres":"0","conversion_round_trip_error_z_metres":"2.3437500000000021E-05","physics_isolation":"passed","navmesh_internal_tile_continuity":"passed","navmesh_cross_region_isolation":"passed","cleanup":"passed"},
+"blocked_reason":"",
+"instances":[{"tile_count":64,"object_count":2112,"collider_count":64,"navmesh_data_count":1,"navmesh_build_ms":"2501.0012","navmesh_registration_ms":"7.5442","physics_query_ms":"0.4132","navmesh_path_query_ms":"0.4353"},{"tile_count":64,"object_count":2112,"collider_count":64,"navmesh_data_count":1,"navmesh_build_ms":"2486.9354000000003","navmesh_registration_ms":"6.9967000000000006","physics_query_ms":"0.0164","navmesh_path_query_ms":"0.0519"},{"tile_count":64,"object_count":2112,"collider_count":64,"navmesh_data_count":1,"navmesh_build_ms":"2502.1056000000003","navmesh_registration_ms":"6.6954","physics_query_ms":"0.0151","navmesh_path_query_ms":"0.0473"},{"tile_count":64,"object_count":2112,"collider_count":64,"navmesh_data_count":1,"navmesh_build_ms":"2557.4246000000003","navmesh_registration_ms":"6.6618","physics_query_ms":"0.012700000000000001","navmesh_path_query_ms":"0.042100000000000005"}]
+}
