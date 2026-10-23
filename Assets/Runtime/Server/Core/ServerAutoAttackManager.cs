@@ -235,9 +235,27 @@ namespace Game.Server.Core
                             $"Auto-attack actor {state.Actor.ID} and target {state.Actor.Target.ID} have incompatible spatial contexts.");
                     }
 
+                    if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
+                    {
+                        throw new InvalidOperationException(
+                            "NPC auto-attack chase requires an initialized server actor manager.");
+                    }
+
+                    if (!ServerActorManager.Instance.TryGetAcceptedWorldPosition(
+                        state.Actor.Target.ID,
+                        out var targetWorldPosition))
+                    {
+                        throw new InvalidOperationException(
+                            $"Auto-attack target {state.Actor.Target.ID} has no live canonical ECS position.");
+                    }
+
+                    var targetRegionLocalPosition = ServerPhysicsManager.Instance.ToRegionLocal(
+                        actorRegion,
+                        targetWorldPosition);
+
                     state.Agent.stoppingDistance = _autoAttackSpell.BaseRange
                         + state.Actor.HitboxRadius + state.Actor.Target.HitboxRadius;
-                    state.Agent.SetDestination(state.Actor.Target.transform.position);
+                    state.Agent.SetDestination(targetRegionLocalPosition);
                 }
             }
 

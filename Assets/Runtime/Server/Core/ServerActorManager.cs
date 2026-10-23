@@ -244,6 +244,45 @@ namespace Game.Server.Core
         /// <returns><see langword="true"/> when the actor has a live authoritative entity.</returns>
         internal bool TryGetActorEntity(Guid actorID, out Entity entity) => _actorEntities.TryGetValue(actorID, out entity);
 
+        /// <summary>Attempts to get an actor's canonical accepted absolute world position.</summary>
+        /// <param name="actorID">The actor identifier.</param>
+        /// <param name="position">Receives the canonical accepted absolute world position when found.</param>
+        /// <returns><see langword="true"/> when a live authoritative actor entity was found.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the actor/entity mapping is inconsistent or the canonical position is non-finite.
+        /// </exception>
+        internal bool TryGetAcceptedWorldPosition(
+            Guid actorID,
+            out WorldPosition position)
+        {
+            if (!_actorEntities.TryGetValue(actorID, out var entity)
+                || !_entityManager.Exists(entity))
+            {
+                position = default;
+                return false;
+            }
+
+            var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+            if (component.ActorID != actorID)
+            {
+                throw new InvalidOperationException(
+                    $"Actor entity mapping for {actorID} references component actor {component.ActorID}.");
+            }
+
+            position = new WorldPosition(
+                component.WorldPositionD.x,
+                component.WorldPositionD.y,
+                component.WorldPositionD.z);
+
+            if (!position.IsFinite)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} has a non-finite canonical ECS world position.");
+            }
+
+            return true;
+        }
+
         // NPC aggro tracking.
         private struct NPCAggroState
         {
