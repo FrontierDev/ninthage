@@ -109,15 +109,17 @@ World positions are independent of the client's current floating origin.
 
 A regular spatial cell used by the floating-origin and position-encoding system.
 
-The current implementation uses:
+The horizontal origin/network cell grid uses the same configured size as an authored environment tile:
 
-**100 × 100 world units**
+**256 × 256 world units**
 
-for the horizontal origin-cell grid.
+`GameConfiguration.ChunkSize` is the single runtime size authority for both the horizontal origin/network cell grid and the environment-tile grid.
+
+This shared numeric grid does **not** merge their responsibilities. An origin cell is position-encoding/floating-origin state; an environment tile is streamed world-content state. The same coordinate may therefore identify both aligned grid cells while their lifecycle, ownership and side effects remain separate.
 
 Origin cells are not themselves terrain assets.
 
-Crossing an origin-cell boundary may cause the client's floating origin to move.
+Crossing an aligned 256 m boundary may permit the client's floating origin to move and may independently change environment streaming interest. These operations may be staggered/deferred by their respective owners; neither operation is required to complete synchronously merely because the boundaries coincide.
 
 ### 3.3 World Tile
 
@@ -131,7 +133,7 @@ per terrain tile.
 
 World tiles contain or correspond to streamed environment content such as terrain and world objects.
 
-The world-tile system is distinct from the 100 m origin-cell system.
+The world-tile and origin-cell systems are distinct responsibilities over the same 256 m horizontal grid and use the same `GameConfiguration.ChunkSize` size authority.
 
 ### 3.4 Additive Scene
 
@@ -219,9 +221,9 @@ Unity Transform
 
 ### 5.3 Origin cells
 
-The current implementation uses a 100 m origin-cell size.
+The origin/network cell size is 256 m and is supplied by `GameConfiguration.ChunkSize`, the same size authority used for 256 m environment tiles.
 
-Crossing an origin-cell boundary permits the client to move its floating origin so that active gameplay remains close to Unity's coordinate origin.
+Crossing an aligned 256 m cell/tile boundary permits the client to move its floating origin so that active gameplay remains close to Unity's coordinate origin. Environment streaming interest may also change at that boundary, but floating-origin projection and content streaming remain independently owned operations and may be staggered/deferred.
 
 Changing origin must shift relevant loaded scene roots and actors without changing their absolute double-precision world positions.
 
@@ -249,7 +251,7 @@ The project-owned path replaces only `NetworkTransform` position. `NetworkTransf
 
 ### 5.5 Server simulation regions and local physics/NavMesh frames
 
-Client floating-origin cells (100 m), environment tiles (256 m), server simulation regions and logical `ActorSpatialContext` are distinct concepts. **Environment tiles are content-streaming units, not physics coordinate systems.** A simulation region is a contiguous server-local Unity physics/NavMesh frame containing many adjacent environment tiles from one compatible `(WorldID, MapID, InstanceID)` context.
+Client floating-origin/network cells and environment tiles share one 256 m horizontal grid through `GameConfiguration.ChunkSize`, but remain distinct responsibilities. Server simulation regions and logical `ActorSpatialContext` remain separate concepts as well. **Environment tiles are content-streaming units, not physics coordinate systems.** A simulation region is a contiguous server-local Unity physics/NavMesh frame containing many adjacent environment tiles from one compatible `(WorldID, MapID, InstanceID)` context.
 
 The runtime ownership boundary is explicit:
 
@@ -262,7 +264,7 @@ This split is mandatory. Physics/NavMesh state must not drift back into `ServerP
 
 All environment tiles loaded into the same simulation region retain their authored adjacency in Unity space. Loading, unloading or crossing a 256 m tile boundary must not allocate a new physics frame, change an actor's local frame, warp a `NavMeshAgent`, or alter `ActorComponent.WorldPositionD`.
 
-A simulation region is identified by its logical context plus a coarse region coordinate or equivalent immutable region identifier owned by `ServerPhysicsManager`. Region dimensions must be configurable, aligned to whole environment tiles, and selected from representative server-density/navigation measurements rather than inferred from the 100 m client origin grid, 64 m spatial-index grid or one authored scene. The implementation must not hard-code one environment tile per region.
+A simulation region is identified by its logical context plus a coarse region coordinate or equivalent immutable region identifier owned by `ServerPhysicsManager`. Region dimensions must be configurable whole multiples of the shared 256 m origin/environment grid and selected from representative server-density/navigation measurements. The region **span** must not be inferred from the 64 m spatial-index grid or assumed to be one shared grid cell merely because origin and environment boundaries align.
 
 The canonical physical conversion owned by `ServerPhysicsManager` is:
 
@@ -301,9 +303,9 @@ This overall architecture is retained.
 
 The terrain-authoring system currently produces 256 × 256 m terrain tiles.
 
-The world-runtime architecture must preserve a distinction between these world-content tiles and the 100 m floating-origin cells.
+The world-runtime architecture intentionally aligns these world-content tiles with the 256 m floating-origin/network grid through the same `GameConfiguration.ChunkSize` value.
 
-A floating-origin transition may therefore occur without crossing a streamed world-tile boundary, and a world-tile transition may occur independently of an origin correction.
+Alignment is geometric, not architectural ownership. Crossing the shared boundary may independently trigger a floating-origin rebase and an environment-interest change. Either side may defer/stagger its presentation or streaming work; neither operation supplies authority for the other.
 
 ### 6.3 Streamed world content
 
@@ -410,7 +412,7 @@ The following **owner-approved initial engineering defaults** are the starting c
 | Actor visibility exit radius | **96 m** | An already-visible actor remains within distance-based interest until its authoritative distance exceeds this radius, subject to continued valid matching context and other interest rules. |
 | Visibility hysteresis | **16 m** | The difference between exit and entry radii; helps avoid rapid visibility toggling around the boundary. |
 
-All three primary settings must be **independently configurable** through the existing `GameConfiguration` authority. Require a finite, positive cell width; finite, positive entry and exit radii; and **exit radius >= entry radius** (equal radii may disable hysteresis). Use authoritative double-precision distance calculations, even if the Inspector-authored configuration fields use `float`. Do not infer these values from, or change, the **100 m origin-cell grid**, **256 m terrain tile grid** or current **3×3 environment-scene subscription grid**.
+All three primary settings must be **independently configurable** through the existing `GameConfiguration` authority. Require a finite, positive cell width; finite, positive entry and exit radii; and **exit radius >= entry radius** (equal radii may disable hysteresis). Use authoritative double-precision distance calculations, even if the Inspector-authored configuration fields use `float`. Do not infer these values from, or change, the shared **256 m origin/environment grid** or current **3×3 environment-scene subscription grid**.
 
 These values affect **actor spatial candidate indexing and network visibility**, not spell range, combat reach, NPC aggro/perception rules, world streaming distance, PurrNet transport settings or world capacity. Relevance and visibility must still respect the complete logical spatial context from §§18.1–18.2. The initial defaults are provisional engineering choices to be revisited using Stage 1.2 representative multiplayer/density measurements; they are **not validated performance guarantees**.
 
@@ -840,7 +842,7 @@ A **public-world instance** means the common non-private simulation for one spec
 
 The position authority is deliberately separate from this context identity. `Actor.SpatialContext` is the immutable server-assigned `(WorldID, MapID, InstanceID)` value; it is not inferred from a movement proposal, scene, chunk-interest request or floating-origin frame. The accepted position and context are published together at the authoritative tick boundary, and a proposal with missing or mismatched context is rejected rather than repaired from `CurrentChunk` or `SceneID`.
 
-Server simulation-region identity is separate from this full logical context. A simulation region groups many adjacent streamed environment tiles into one contiguous local physics/NavMesh frame owned by `ServerPhysicsManager`. It is not a 100 m origin cell, 64 m spatial-index cell, authored scene identity or replacement for the actor context. The actor's canonical absolute ECS position remains independent of whichever simulation region currently represents it.
+Server simulation-region identity is separate from this full logical context. A simulation region groups many adjacent streamed environment tiles into one contiguous local physics/NavMesh frame owned by `ServerPhysicsManager`. It is not a single 256 m origin/environment grid cell, 64 m spatial-index cell, authored scene identity or replacement for the actor context. The actor's canonical absolute ECS position remains independent of whichever simulation region currently represents it.
 
 Stage 1.2 first introduces this value contract in Shared code. Server-owned lifecycle/spawn integration resolves and assigns the actor's **real authoritative context** before publication. The approved *temporary single-world test-hosting contract* for this integration is defined below. No client-supplied context authority, implicit scene-derived identity or persistent-world allocation service is approved.
 
@@ -965,11 +967,11 @@ These systems are to be completed and reconciled rather than replaced.
 
 The following are architectural completion requirements, not a replacement design.
 
-### 23.1 Separate origin cells from world-content tiles
+### 23.1 Align the origin/network and world-content grids without merging ownership
 
-The current prototype uses the same runtime chunk coordinate in several places.
+The current prototype uses the same runtime chunk coordinate in several places while `GameConfiguration.ChunkSize` is still 100 m and authored environment tiles are 256 m.
 
-The completed system must distinguish the 100 m positional/floating-origin grid from the 256 m terrain/world-content grid.
+The completed system must use one 256 m horizontal grid size through `GameConfiguration.ChunkSize` for both origin/network position encoding and environment-tile coordinates. The coordinate/grid size is shared deliberately; floating-origin projection and world-content streaming remain separate systems with separate lifecycle and ownership.
 
 ### 23.2 Complete movement integration
 
@@ -1083,7 +1085,7 @@ The system satisfies this design when all of the following are possible:
 2. Client float coordinates remain near the floating origin during long-distance travel.
 3. Floating-origin correction produces no visible teleport or gameplay-position change.
 4. Open-world environment scenes load and unload additively according to spatial interest.
-5. The 100 m origin grid can operate independently of the 256 m world-content/terrain grid.
+5. The shared 256 m origin/environment grid uses one `GameConfiguration.ChunkSize` value while floating-origin projection and world-content streaming remain independently owned and may be staggered/deferred at a shared boundary.
 6. Terrain can remain visible at appropriate LOD beyond the range at which detailed world content is loaded.
 7. Actors can cross spatial boundaries while preserving correct authoritative position and network visibility.
 8. Actor replication uses double-precision range checks rather than scene membership alone.
