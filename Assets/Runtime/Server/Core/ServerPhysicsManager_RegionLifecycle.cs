@@ -127,6 +127,7 @@ namespace Game.Server.Core
             internal readonly HashSet<WorldChunkKey> PendingNavigationUnloads = new();
             internal NavMeshData NavigationData;
             internal NavMeshDataInstance NavigationInstance;
+            internal long NavigationRevision;
         }
     }
 }

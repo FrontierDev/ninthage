@@ -194,10 +194,50 @@ namespace Game.Server.Core
             if (!hasEnabledAgent)
                 return false;
 
+            var acceptedSourcePosition = new WorldPosition(
+                component.WorldPositionD.x,
+                component.WorldPositionD.y,
+                component.WorldPositionD.z);
+            if (!acceptedSourcePosition.IsFinite)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorObj.ID} has an invalid canonical ECS world position.");
+            }
+
+            bool crossed = false;
+            WorldPosition selectedLandingAbsolute = default;
+            if (ServerAutoAttackManager.IsInitialized
+                && ServerAutoAttackManager.Instance != null)
+            {
+                crossed = ServerAutoAttackManager.Instance.TryCommitReadyRegionHop(
+                    actorObj,
+                    acceptedSourcePosition,
+                    out selectedLandingAbsolute);
+            }
+
             var region = GetVerifiedActorRegion(actorObj);
-            var worldPosition = ServerPhysicsManager.Instance.ToWorld(
-                region,
-                actorObj.transform.position);
+            WorldPosition worldPosition;
+            if (crossed)
+            {
+                if (!selectedLandingAbsolute.IsFinite
+                    || ServerPhysicsManager.Instance.GetRegionKey(
+                        actorObj.SpatialContext,
+                        selectedLandingAbsolute.Chunk)
+                    != region.Key)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor {actorObj.ID} crossed into an unexpected simulation region.");
+                }
+
+                worldPosition = selectedLandingAbsolute;
+            }
+            else
+            {
+                worldPosition = ServerPhysicsManager.Instance.ToWorld(
+                    region,
+                    actorObj.transform.position);
+            }
+
             component.WorldPositionD = new Unity.Mathematics.double3(
                 worldPosition.x,
                 worldPosition.y,

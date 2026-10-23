@@ -2,6 +2,8 @@ using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.AI;
 
 namespace Game.Server.Core
 {
@@ -184,6 +186,382 @@ namespace Game.Server.Core
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Performs one synchronous, reversible handoff of an enabled NavMesh actor across an accepted region seam.
+        /// </summary>
+        /// <param name="actorID">The nonempty actor identity.</param>
+        /// <param name="context">The actor's compatible logical spatial context.</param>
+        /// <param name="agent">The enabled NavMesh agent being handed off.</param>
+        /// <param name="acceptedSourceAbsolute">The accepted source position for this handoff.</param>
+        /// <param name="seam">The previously validated adjacent-region seam.</param>
+        /// <param name="latestTargetAbsolute">The latest absolute target position.</param>
+        /// <param name="directChaseStoppingDistance">The stopping distance when the target is in the destination region.</param>
+        /// <returns>
+        /// <see langword="true"/> when the same agent and actor binding are attached to the destination region;
+        /// otherwise <see langword="false"/> when the handoff is not currently eligible.
+        /// </returns>
+        /// <exception cref="ArgumentException">Thrown when an identity, context or position is invalid.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the authoritative tick, physical state or a post-mutation rollback is invalid.
+        /// </exception>
+        public bool TryHandoffEnabledNavMeshActor(
+            Guid actorID,
+            ActorSpatialContext context,
+            NavMeshAgent agent,
+            WorldPosition acceptedSourceAbsolute,
+            SimulationRegionSeam seam,
+            WorldPosition latestTargetAbsolute,
+            float directChaseStoppingDistance)
+        {
+            EnsureInitialized();
+            if (ServerECSManager.CurrentSimulationTickID <= 0)
+                throw new InvalidOperationException("NavMesh actor handoff requires an active authoritative ECS tick.");
+            if (actorID == Guid.Empty)
+                throw new ArgumentException("A nonempty actor ID is required.", nameof(actorID));
+            if (!context.IsValid)
+                throw new ArgumentException("The actor context must be valid.", nameof(context));
+            if (!acceptedSourceAbsolute.IsFinite)
+                throw new ArgumentException("The accepted source position must be finite.", nameof(acceptedSourceAbsolute));
+            if (!latestTargetAbsolute.IsFinite)
+                throw new ArgumentException("The latest target position must be finite.", nameof(latestTargetAbsolute));
+            if (agent == null)
+                throw new ArgumentNullException(nameof(agent));
+            if (!agent.enabled || !agent.gameObject.activeInHierarchy)
+                throw new InvalidOperationException("NavMesh actor handoff requires an enabled active agent.");
+            if (float.IsNaN(directChaseStoppingDistance)
+                || float.IsInfinity(directChaseStoppingDistance)
+                || directChaseStoppingDistance < 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(directChaseStoppingDistance),
+                    directChaseStoppingDistance,
+                    "The direct-chase stopping distance must be finite and nonnegative.");
+            }
+
+            if (!TryGetActorRegionDescriptor(actorID, out var sourceRegion))
+                return false;
+            if (sourceRegion.Key != seam.SourceKey)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} is bound to source region {sourceRegion.Key}, but the seam starts at {seam.SourceKey}.");
+            }
+            if (!sourceRegion.Key.Context.IsCompatibleWith(context))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} source region context {sourceRegion.Key.Context} is incompatible with {context}.");
+            }
+            if (GetRegionKey(context, acceptedSourceAbsolute.Chunk) != seam.SourceKey)
+            {
+                throw new InvalidOperationException(
+                    $"The accepted source position does not resolve to seam source region {seam.SourceKey}.");
+            }
+
+            if (!TryGetActorNavigationRegion(actorID, out var registeredRegion, out var registeredAgentTypeID))
+                return false;
+            if (registeredRegion.Key != seam.SourceKey
+                || agent.agentTypeID != registeredAgentTypeID
+                || agent.agentTypeID != seam.AgentTypeID)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} has an incompatible source NavMesh agent type or region registration.");
+            }
+            if (agent.areaMask != seam.AreaMask)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} NavMesh area mask {agent.areaMask} does not match seam mask {seam.AreaMask}.");
+            }
+            if (!agent.isOnNavMesh
+                || !agent.hasPath
+                || agent.isStopped
+                || agent.pathPending
+                || agent.pathStatus != NavMeshPathStatus.PathComplete
+                || float.IsNaN(agent.remainingDistance)
+                || float.IsInfinity(agent.remainingDistance))
+            {
+                return false;
+            }
+
+            NavMeshBuildSettings build = GetRegionNavMeshBuildSettings();
+            float voxel = build.overrideVoxelSize
+                ? build.voxelSize
+                : build.agentRadius / 3f;
+            float radius = Mathf.Max(agent.radius, build.agentRadius);
+            float sampleRadius = 2f * voxel;
+            float arrivalTolerance = Mathf.Max(radius * 0.5f, 2f * voxel);
+            if (!(voxel > 0f)
+                || float.IsNaN(voxel)
+                || float.IsInfinity(voxel)
+                || !(radius > 0f)
+                || float.IsNaN(radius)
+                || float.IsInfinity(radius)
+                || !(sampleRadius > 0f)
+                || float.IsNaN(sampleRadius)
+                || float.IsInfinity(sampleRadius)
+                || !(arrivalTolerance > 0f)
+                || float.IsNaN(arrivalTolerance)
+                || float.IsInfinity(arrivalTolerance))
+            {
+                throw new InvalidOperationException("Region handoff navigation resolution produced an invalid tolerance.");
+            }
+            if (agent.remainingDistance > arrivalTolerance)
+                return false;
+
+            Vector3 originalSourceLocalPose = agent.transform.position;
+            WorldPosition originalSourceAbsolutePose = ToWorld(sourceRegion, originalSourceLocalPose);
+            WorldPosition originalSourceApproach = ToWorld(sourceRegion, agent.destination);
+
+            WorldPosition landingAbsolute = seam.LandingAbsolute;
+            SimulationRegionKey landingKey = GetRegionKey(context, landingAbsolute.Chunk);
+            if (landingKey != seam.DestinationKey)
+            {
+                throw new InvalidOperationException(
+                    $"The seam landing resolves to region {landingKey}, expected {seam.DestinationKey}.");
+            }
+
+            if (!TryGetAdjacentNavigationAdmission(
+                    seam.SourceKey,
+                    landingAbsolute,
+                    agent.agentTypeID,
+                    out var admittedSourceRegion,
+                    out var admittedDestinationRegion,
+                    out long sourceRevision,
+                    out long destinationRevision))
+            {
+                return false;
+            }
+            if (admittedSourceRegion.Key != seam.SourceKey
+                || admittedDestinationRegion.Key != seam.DestinationKey
+                || sourceRevision != seam.SourceNavigationRevision
+                || destinationRevision != seam.DestinationNavigationRevision
+                || agent.agentTypeID != seam.AgentTypeID)
+            {
+                return false;
+            }
+
+            if (!_activeRegions.TryGetValue(seam.SourceKey, out var sourceActiveRegion)
+                || !_activeRegions.TryGetValue(seam.DestinationKey, out var destinationActiveRegion))
+            {
+                return false;
+            }
+            if (sourceActiveRegion.BoundEnvironmentTiles.Count == 0
+                || destinationActiveRegion.BoundEnvironmentTiles.Count == 0
+                || sourceActiveRegion.NavigationData == null
+                || !sourceActiveRegion.NavigationInstance.valid
+                || destinationActiveRegion.NavigationData == null
+                || !destinationActiveRegion.NavigationInstance.valid)
+            {
+                return false;
+            }
+
+            if (!ValidateRegionSeam(agent, seam, latestTargetAbsolute, out var onwardAbsolute))
+                return false;
+            SimulationRegionKey targetKey = GetRegionKey(context, latestTargetAbsolute.Chunk);
+            Vector3 destinationLocal = ToRegionLocal(admittedDestinationRegion, landingAbsolute);
+            Vector3 onwardLocal = ToRegionLocal(admittedDestinationRegion, onwardAbsolute);
+            float stoppingDistance = targetKey == seam.DestinationKey
+                ? directChaseStoppingDistance
+                : 0f;
+
+            bool wasStopped = agent.isStopped;
+            bool enabled = agent.enabled;
+            float oldStoppingDistance = agent.stoppingDistance;
+            Vector3 oldVelocityIntent = agent.velocity;
+            _ = oldVelocityIntent;
+            bool bindingChanged = false;
+
+            try
+            {
+                agent.isStopped = true;
+                agent.ResetPath();
+
+                bool warped = agent.Warp(destinationLocal);
+                if (!warped
+                    || agent.enabled != enabled
+                    || !agent.isOnNavMesh
+                    || agent.agentTypeID != seam.AgentTypeID
+                    || agent.areaMask != seam.AreaMask)
+                {
+                    throw new InvalidOperationException("The NavMesh agent could not attach to the destination seam landing.");
+                }
+
+                WorldPosition warpedAbsolute = ToWorld(admittedDestinationRegion, agent.transform.position);
+                double warpedDX = warpedAbsolute.x - landingAbsolute.x;
+                double warpedDY = warpedAbsolute.y - landingAbsolute.y;
+                double warpedDZ = warpedAbsolute.z - landingAbsolute.z;
+                if (warpedDX * warpedDX + warpedDY * warpedDY + warpedDZ * warpedDZ
+                    > (double)sampleRadius * sampleRadius)
+                {
+                    throw new InvalidOperationException("The warped NavMesh pose exceeded the seam landing tolerance.");
+                }
+
+                bool transitioned = TransitionActorRegion(
+                    actorID,
+                    context,
+                    seam.LandingAbsolute,
+                    out var previousRegion,
+                    out var currentRegion);
+                bindingChanged = transitioned;
+                if (!transitioned
+                    || previousRegion.Key != seam.SourceKey
+                    || currentRegion.Key != seam.DestinationKey)
+                {
+                    throw new InvalidOperationException("The actor physical-region membership did not transition across the accepted seam.");
+                }
+
+                agent.stoppingDistance = stoppingDistance;
+                if (!agent.SetDestination(onwardLocal))
+                    throw new InvalidOperationException("The destination-region onward path request was rejected.");
+                if (!agent.enabled
+                    || !agent.isOnNavMesh
+                    || agent.agentTypeID != seam.AgentTypeID
+                    || agent.areaMask != seam.AreaMask)
+                {
+                    throw new InvalidOperationException("The destination NavMesh agent changed state during the onward path request.");
+                }
+
+                agent.isStopped = wasStopped;
+                return true;
+            }
+            catch (Exception originalFailure)
+            {
+                var restorationFailures = new List<Exception>();
+                bool sourceBindingVerified = false;
+                if (bindingChanged)
+                {
+                    try
+                    {
+                        bool reversed = TransitionActorRegion(
+                            actorID,
+                            context,
+                            originalSourceAbsolutePose,
+                            out var reversedPreviousRegion,
+                            out var reversedCurrentRegion);
+                        if (!reversed
+                            || reversedPreviousRegion.Key != seam.DestinationKey
+                            || reversedCurrentRegion.Key != seam.SourceKey)
+                        {
+                            throw new InvalidOperationException("The actor physical-region membership did not reverse to the source region.");
+                        }
+
+                        sourceBindingVerified = true;
+                    }
+                    catch (Exception restorationFailure)
+                    {
+                        restorationFailures.Add(restorationFailure);
+                    }
+                }
+
+                if (!sourceBindingVerified)
+                {
+                    try
+                    {
+                        sourceBindingVerified = TryGetActorRegionDescriptor(
+                            actorID,
+                            out var restoredRegion)
+                            && restoredRegion.Key == seam.SourceKey;
+                        if (!sourceBindingVerified)
+                        {
+                            throw new InvalidOperationException("The actor binding was not restored to the source region.");
+                        }
+                    }
+                    catch (Exception restorationFailure)
+                    {
+                        restorationFailures.Add(restorationFailure);
+                    }
+                }
+
+                try
+                {
+                    agent.ResetPath();
+                }
+                catch (Exception restorationFailure)
+                {
+                    restorationFailures.Add(restorationFailure);
+                }
+
+                if (sourceBindingVerified)
+                {
+                    try
+                    {
+                        if (agent.enabled != enabled
+                            || !agent.Warp(originalSourceLocalPose)
+                            || !agent.isOnNavMesh
+                            || agent.agentTypeID != seam.AgentTypeID
+                            || agent.areaMask != seam.AreaMask)
+                        {
+                            throw new InvalidOperationException("The source NavMesh agent could not be restored after the failed handoff.");
+                        }
+
+                        WorldPosition restoredAbsolute = ToWorld(sourceRegion, agent.transform.position);
+                        if (restoredAbsolute.x != originalSourceAbsolutePose.x
+                            || restoredAbsolute.y != originalSourceAbsolutePose.y
+                            || restoredAbsolute.z != originalSourceAbsolutePose.z)
+                        {
+                            throw new InvalidOperationException("The restored source NavMesh pose does not match the original pose.");
+                        }
+                    }
+                    catch (Exception restorationFailure)
+                    {
+                        restorationFailures.Add(restorationFailure);
+                        sourceBindingVerified = false;
+                    }
+                }
+
+                try
+                {
+                    agent.stoppingDistance = oldStoppingDistance;
+                    if (sourceBindingVerified)
+                    {
+                        if (!wasStopped)
+                        {
+                            agent.isStopped = false;
+                            if (!agent.SetDestination(ToRegionLocal(sourceRegion, originalSourceApproach)))
+                                throw new InvalidOperationException("The source NavMesh path could not be restored after the failed handoff.");
+                        }
+
+                        agent.isStopped = wasStopped;
+                    }
+                    else
+                    {
+                        agent.isStopped = true;
+                    }
+                }
+                catch (Exception restorationFailure)
+                {
+                    restorationFailures.Add(restorationFailure);
+                }
+
+                try
+                {
+                    if (!TryGetActorRegionDescriptor(actorID, out var restoredRegion)
+                        || restoredRegion.Key != seam.SourceKey)
+                    {
+                        throw new InvalidOperationException("The actor binding verification did not resolve to the source region.");
+                    }
+                }
+                catch (Exception restorationFailure)
+                {
+                    restorationFailures.Add(restorationFailure);
+                }
+
+                if (restorationFailures.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        "The NavMesh actor handoff failed and was rolled back.",
+                        originalFailure);
+                }
+
+                var failures = new List<Exception>(restorationFailures.Count + 1)
+                {
+                    originalFailure
+                };
+                failures.AddRange(restorationFailures);
+                throw new InvalidOperationException(
+                    "The NavMesh actor handoff failed and physical rollback also failed.",
+                    new AggregateException(failures));
+            }
         }
 
         /// <summary>
