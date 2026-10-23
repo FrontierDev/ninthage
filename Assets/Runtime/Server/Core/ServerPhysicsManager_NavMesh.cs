@@ -849,7 +849,6 @@ namespace Game.Server.Core
                     direction,
                     build,
                     voxel,
-                    radius,
                     inset))
             {
                 return false;
@@ -907,8 +906,8 @@ namespace Game.Server.Core
             }
 
             double sampledAlong = alongX
-                ? sampledAbsolute.z
-                : sampledAbsolute.x;
+                ? sampledAbsolute.x
+                : sampledAbsolute.z;
             if (!IsFinite(sampledAlong)
                 || Math.Abs(sampledAlong - expectedAlong) > sampleRadius)
             {
@@ -1229,7 +1228,6 @@ namespace Game.Server.Core
             int direction,
             NavMeshBuildSettings build,
             float voxel,
-            float radius,
             float inset)
         {
             double heightDifference = Math.Abs(destinationLanding.y - sourceApproach.y);
@@ -1257,7 +1255,6 @@ namespace Game.Server.Core
                     direction,
                     build,
                     voxel,
-                    radius,
                     inset)
                 && TryValidateSeamSide(
                     sourceAgent,
@@ -1268,7 +1265,6 @@ namespace Game.Server.Core
                     -direction,
                     build,
                     voxel,
-                    radius,
                     inset);
         }
 
@@ -1281,10 +1277,9 @@ namespace Game.Server.Core
             int sideToBoundaryDirection,
             NavMeshBuildSettings build,
             float voxel,
-            float radius,
             float inset)
         {
-            double normal = alongX ? seamPoint.x : seamPoint.z;
+            double normal = alongX ? seamPoint.z : seamPoint.x;
             double probeNormal = normal - sideToBoundaryDirection * voxel;
             WorldPosition probeAbsolute = alongX
                 ? new WorldPosition(seamPoint.x, seamPoint.y, probeNormal)
@@ -1316,14 +1311,14 @@ namespace Game.Server.Core
             }
 
             Vector3 castDirection = alongX
-                ? new Vector3(sideToBoundaryDirection, 0f, 0f)
-                : new Vector3(0f, 0f, sideToBoundaryDirection);
+                ? new Vector3(0f, 0f, sideToBoundaryDirection)
+                : new Vector3(sideToBoundaryDirection, 0f, 0f);
             return !HasBlockingCollider(
                 sourceAgent,
                 sampledLocal,
                 castDirection,
                 sourceAgent.height,
-                radius,
+                sourceAgent.radius,
                 inset,
                 slopeCosine);
         }

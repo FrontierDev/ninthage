@@ -241,7 +241,10 @@ namespace Game.Server.Core
             }
 
             if (!TryGetActorRegionDescriptor(actorID, out var sourceRegion))
-                return false;
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} has no simulation-region binding for NavMesh handoff.");
+            }
             if (sourceRegion.Key != seam.SourceKey)
             {
                 throw new InvalidOperationException(
