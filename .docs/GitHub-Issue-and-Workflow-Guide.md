@@ -801,7 +801,7 @@ Before closing a production issue, ensure its *owned* invariants are proven with
 
 The following is the **minimum shape**, not a licence to use one-line sections. Each section must contain the implementation-level detail required by §2.8 and §4. Reference issues #161 and revised #166–#170 for the expected granularity.
 
-```markdown
+````markdown
 # [Phase X.Y] Imperative implementation title
 
 **GitHub Project classification:** Phase ... · Area ... · Work Type ... · Priority ... · Size ... · Status ...
@@ -902,6 +902,6 @@ plus issue-specific scope/failure constraints.
 ## Strict manual validation — non-AI-safe
 
 Include the §9 requirements when the issue is not `ai-safe`.
-```
+````
 
 The issue body should be sufficiently specific that another developer or Codex session can implement it without reconstructing the intended design from conversation history.
