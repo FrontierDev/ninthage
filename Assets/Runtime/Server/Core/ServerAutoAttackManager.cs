@@ -293,82 +293,25 @@ namespace Game.Server.Core
                     continue;
                 }
 
-                // NPC chase — continuously update NavMeshAgent destination and stopping distance.
+                // NPC chase — prepare cross-region route state during the frame-side pass.
                 if (state.Agent != null && state.Agent.enabled)
                 {
-                    if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-                    {
-                        throw new InvalidOperationException(
-                            "Enabled NPC auto-attack movement requires an initialized server physics manager.");
-                    }
-
-                    if (!ServerPhysicsManager.Instance.TryGetActorNavigationRegion(
-                        state.Actor.ID,
+                    ResolveChaseNavigationContext(
+                        state,
                         out var actorRegion,
-                        out var agentTypeID))
-                    {
-                        throw new InvalidOperationException(
-                            $"Actor {state.Actor.ID} has an enabled NavMeshAgent but no registered region NavMesh.");
-                    }
-
-                    if (state.Agent.agentTypeID != agentTypeID)
-                    {
-                        throw new InvalidOperationException(
-                            $"Actor {state.Actor.ID} NavMeshAgent type {state.Agent.agentTypeID} does not match region NavMesh agent type {agentTypeID}.");
-                    }
-
-                    if (!state.Agent.isOnNavMesh)
-                    {
-                        throw new InvalidOperationException(
-                            $"Actor {state.Actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
-                    }
-
-                    if (!state.Actor.SpatialContext.IsCompatibleWith(state.Actor.Target.SpatialContext))
-                    {
-                        throw new InvalidOperationException(
-                            $"Auto-attack actor {state.Actor.ID} and target {state.Actor.Target.ID} have incompatible spatial contexts.");
-                    }
-
-                    if (!ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(
-                        state.Actor.Target.ID,
-                        out var targetRegion))
-                    {
-                        throw new InvalidOperationException(
-                            $"Auto-attack target {state.Actor.Target.ID} is not bound to an active simulation region.");
-                    }
-
-                    if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
-                    {
-                        throw new InvalidOperationException(
-                            "NPC auto-attack chase requires an initialized server actor manager.");
-                    }
-
-                    if (!ServerActorManager.Instance.TryGetAcceptedWorldPosition(
-                        state.Actor.Target.ID,
-                        out var targetWorldPosition))
-                    {
-                        throw new InvalidOperationException(
-                            $"Auto-attack target {state.Actor.Target.ID} has no live canonical ECS position.");
-                    }
-
-                    if (!targetWorldPosition.IsFinite)
-                    {
-                        throw new InvalidOperationException(
-                            $"Auto-attack target {state.Actor.Target.ID} has a non-finite canonical ECS world position.");
-                    }
+                        out var targetRegion,
+                        out var targetWorldPosition);
 
                     if (targetRegion.Key == actorRegion.Key)
                     {
                         if (state.HopTargetID != Guid.Empty)
+                        {
                             ClearHop(ref state);
+                            StoreAutoAttackStateIfRegistered(
+                                actorID,
+                                state);
+                        }
 
-                        var targetRegionLocalPosition = ServerPhysicsManager.Instance.ToRegionLocal(
-                            actorRegion,
-                            targetWorldPosition);
-                        state.Agent.stoppingDistance = _autoAttackSpell.BaseRange
-                            + state.Actor.HitboxRadius + state.Actor.Target.HitboxRadius;
-                        state.Agent.SetDestination(targetRegionLocalPosition);
-                        StoreAutoAttackStateIfRegistered(actorID, state);
                         continue;
                     }
 
@@ -599,6 +542,126 @@ namespace Game.Server.Core
             RemoveQueuedAutoAttackers();
         }
 
+        private static void ResolveChaseNavigationContext(
+            AutoAttackState state,
+            out SimulationRegionDescriptor actorRegion,
+            out SimulationRegionDescriptor targetRegion,
+            out WorldPosition targetWorldPosition)
+        {
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Enabled NPC auto-attack movement requires an initialized server physics manager.");
+            }
+
+            if (state.Actor == null
+                || state.Actor.Target == null
+                || state.Agent == null
+                || !state.Agent.enabled)
+            {
+                throw new InvalidOperationException(
+                    "NPC auto-attack chase requires a live actor, target, and enabled NavMeshAgent.");
+            }
+
+            if (!ServerPhysicsManager.Instance.TryGetActorNavigationRegion(
+                state.Actor.ID,
+                out actorRegion,
+                out var agentTypeID))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {state.Actor.ID} has an enabled NavMeshAgent but no registered region NavMesh.");
+            }
+
+            if (state.Agent.agentTypeID != agentTypeID)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {state.Actor.ID} NavMeshAgent type {state.Agent.agentTypeID} does not match region NavMesh agent type {agentTypeID}.");
+            }
+
+            if (!state.Agent.isOnNavMesh)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {state.Actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
+            }
+
+            if (!state.Actor.SpatialContext.IsCompatibleWith(state.Actor.Target.SpatialContext))
+            {
+                throw new InvalidOperationException(
+                    $"Auto-attack actor {state.Actor.ID} and target {state.Actor.Target.ID} have incompatible spatial contexts.");
+            }
+
+            if (!ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(
+                state.Actor.Target.ID,
+                out targetRegion))
+            {
+                throw new InvalidOperationException(
+                    $"Auto-attack target {state.Actor.Target.ID} is not bound to an active simulation region.");
+            }
+
+            if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "NPC auto-attack chase requires an initialized server actor manager.");
+            }
+
+            if (!ServerActorManager.Instance.TryGetAcceptedWorldPosition(
+                state.Actor.Target.ID,
+                out targetWorldPosition))
+            {
+                throw new InvalidOperationException(
+                    $"Auto-attack target {state.Actor.Target.ID} has no live canonical ECS position.");
+            }
+
+            if (!targetWorldPosition.IsFinite)
+            {
+                throw new InvalidOperationException(
+                    $"Auto-attack target {state.Actor.Target.ID} has a non-finite canonical ECS world position.");
+            }
+        }
+
+        private void UpdateSameRegionChaseDestination(
+            AutoAttackState state,
+            SimulationRegionDescriptor actorRegion,
+            WorldPosition targetWorldPosition)
+        {
+            if (state.Agent == null || !state.Agent.enabled)
+            {
+                throw new InvalidOperationException(
+                    "Same-region NPC chase requires an enabled NavMeshAgent.");
+            }
+
+            if (!state.Agent.isOnNavMesh)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {state.Actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
+            }
+
+            if (state.Agent.pathPending)
+                return;
+
+            var targetRegionLocalPosition = ServerPhysicsManager.Instance.ToRegionLocal(
+                actorRegion,
+                targetWorldPosition);
+            state.Agent.stoppingDistance = _autoAttackSpell.BaseRange
+                + state.Actor.HitboxRadius + state.Actor.Target.HitboxRadius;
+
+            bool accepted = state.Agent.SetDestination(targetRegionLocalPosition);
+            if (!accepted)
+            {
+                throw new InvalidOperationException(
+                    $"NPC {state.Actor.ID} rejected same-region chase destination for target {state.Actor.Target.ID}. "
+                    + $"actorRegion={actorRegion.Key}; "
+                    + $"agentPosition={state.Agent.transform.position}; "
+                    + $"nextPosition={state.Agent.nextPosition}; "
+                    + $"targetAbsolute=({targetWorldPosition.x}, {targetWorldPosition.y}, {targetWorldPosition.z}); "
+                    + $"requestedRegionLocal=({targetRegionLocalPosition.x}, {targetRegionLocalPosition.y}, {targetRegionLocalPosition.z}); "
+                    + $"agentTypeID={state.Agent.agentTypeID}; "
+                    + $"areaMask={state.Agent.areaMask}; "
+                    + $"isOnNavMesh={state.Agent.isOnNavMesh}; "
+                    + $"pathPending={state.Agent.pathPending}.");
+            }
+        }
+
         /// <summary>
         /// Commits one selected, source-side region hop for the pre-ECS movement boundary.
         /// </summary>
@@ -788,6 +851,24 @@ namespace Game.Server.Core
                 {
                     _toRemove.Add(actorID);
                     continue;
+                }
+
+                if (state.Agent != null
+                    && state.Agent.enabled)
+                {
+                    ResolveChaseNavigationContext(
+                        state,
+                        out var actorRegion,
+                        out var targetRegion,
+                        out var targetWorldPosition);
+
+                    if (targetRegion.Key == actorRegion.Key)
+                    {
+                        UpdateSameRegionChaseDestination(
+                            state,
+                            actorRegion,
+                            targetWorldPosition);
+                    }
                 }
 
                 // Pause auto-attack while casting an ability.

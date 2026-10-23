@@ -151,10 +151,22 @@ namespace Game.Client.UI
             Camera cam = Camera.main;
             if (cam == null) return;
             using var markerScope = LATE_UPDATE_MARKER.Begin();
+            var positionManager = ClientPositionManager.Instance;
 
             foreach (var kvp in activeNameplates)
             {
-                if (kvp.Key == null || kvp.Value == null) continue;
+                if (kvp.Key == null)
+                {
+                    if (kvp.Value != null)
+                        Destroy(kvp.Value.gameObject);
+                    continue;
+                }
+                if (kvp.Value == null) continue;
+
+                bool presentationReady = positionManager != null
+                    && positionManager.HasPresentationState(kvp.Key);
+                kvp.Value.SetPresentationVisible(presentationReady);
+                if (!presentationReady) continue;
 
                 kvp.Value.UpdatePresentation(cam);
             }
@@ -163,7 +175,7 @@ namespace Game.Client.UI
 
             foreach (var kvp in activeNameplates)
             {
-                if (kvp.Key == null || kvp.Value == null) continue;
+                if (kvp.Key == null || kvp.Value == null || !kvp.Value.PresentationVisible) continue;
 
                 float dist = Vector3.SqrMagnitude(kvp.Key.transform.position - camPos);
                 kvp.Value.SortingDistance = dist;
@@ -227,6 +239,7 @@ namespace Game.Client.UI
             {
                 if (kvp.Key == null || kvp.Value == null) continue;
                 if (kvp.Key == ClientAccountManager.PlayerActor) continue;
+                if (!kvp.Value.PresentationVisible) continue;
                 kvp.Value.StackOffset = 0f;
                 _sortedForStacking.Add(kvp.Value);
             }

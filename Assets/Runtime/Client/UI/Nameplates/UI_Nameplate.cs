@@ -37,6 +37,7 @@ namespace Game.Client.UI
         private RectTransform _rectTransform;
         private Canvas _canvas;
         private bool _isCasting;
+        private bool _presentationVisible;
 
         /// <summary>
         /// Gets the <c>SortingDistance</c> value.
@@ -58,6 +59,8 @@ namespace Game.Client.UI
         /// Gets the <c>StackOffset</c> value.
         /// </summary>
         public float StackOffset { get; set; }
+        /// <summary>Gets whether the nameplate has an authoritative presentation position.</summary>
+        internal bool PresentationVisible => _presentationVisible;
 
         private void Awake()
         {
@@ -91,6 +94,8 @@ namespace Game.Client.UI
             _actor = target;
             _canvas = worldCanvas;
             _rectTransform = GetComponent<RectTransform>();
+            _presentationVisible = false;
+            gameObject.SetActive(false);
 
             // Display the actor's name
             if (_nameText != null)
@@ -111,6 +116,13 @@ namespace Game.Client.UI
             EvaluateHealthBarVisibility();
             EvaluateNameVisibility();
             EvaluateCastBarVisibility();
+        }
+
+        internal void SetPresentationVisible(bool visible)
+        {
+            _presentationVisible = visible;
+            if (gameObject.activeSelf != visible)
+                gameObject.SetActive(visible);
         }
 
         private void Update()
