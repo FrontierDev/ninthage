@@ -116,12 +116,16 @@ namespace Game.Shared.Runtime.Actors
         {
             _stats[statID] = instance;
 
-            if (statID == "health" && instance.CurrentValue <= 0 && !GetComponent<Actor>().isDead)
+            if (statID == "health" && instance.CurrentValue <= 0)
             {
-                Debug.Log($"{GetComponent<Actor>().Name} has died.");
-                ActorEndpoint.onActorDeath?.Invoke(GetComponent<Actor>());
-                GetComponent<Actor>().isDead = true;
-                ActorEndpoint.onServerStopAutoAttack?.Invoke(GetComponent<Actor>());
+                Actor actor = GetComponent<Actor>();
+                if (!actor.isDead)
+                {
+                    Debug.Log($"{actor.Name} has died.");
+                    actor.isDead = true;
+                    ActorEndpoint.onServerStopAutoAttack?.Invoke(actor);
+                    ActorEndpoint.onActorDeath?.Invoke(actor);
+                }
             }
         }
 

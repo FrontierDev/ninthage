@@ -171,8 +171,19 @@ namespace Game.Server.Core
             {
                 Guid actorID = kvp.Key;
                 NPCNavigationState state = kvp.Value;
-                if (state.Actor == null
-                    || state.Actor.Owner != null
+                if (state.Actor == null)
+                {
+                    _npcNavigationStates.Remove(actorID);
+                    continue;
+                }
+
+                if (state.Actor.isDead)
+                {
+                    RetireNPCNavigationOnDeath(state.Actor);
+                    continue;
+                }
+
+                if (state.Actor.Owner != null
                     || state.Agent == null
                     || state.Actor.GetComponent<NavMeshAgent>() != state.Agent)
                 {
@@ -184,12 +195,6 @@ namespace Game.Server.Core
                     continue;
 
                 if (!state.Agent.enabled)
-                {
-                    _npcNavigationStates.Remove(actorID);
-                    continue;
-                }
-
-                if (state.Actor.isDead)
                 {
                     _npcNavigationStates.Remove(actorID);
                     continue;
@@ -294,6 +299,45 @@ namespace Game.Server.Core
                     lastGroundCheck = new Unity.Mathematics.float3(0, -1, 0)
                 });
             }
+        }
+
+        private void RetireNPCNavigationOnDeath(Actor actor)
+        {
+            if (actor == null)
+                return;
+
+            if (actor.Owner.HasValue)
+            {
+                _npcNavigationStates.Remove(actor.ID);
+                return;
+            }
+
+            NavMeshAgent agent = actor.GetComponent<NavMeshAgent>();
+            if (_npcNavigationStates.TryGetValue(actor.ID, out var state))
+            {
+                if (!ReferenceEquals(state.Actor, actor))
+                {
+                    throw new InvalidOperationException(
+                        $"NPC navigation state for actor '{actor.ID}' belongs to a different actor instance.");
+                }
+
+                if (agent != null && !ReferenceEquals(state.Agent, agent))
+                {
+                    throw new InvalidOperationException(
+                        $"NPC navigation state for actor '{actor.ID}' references a different NavMeshAgent component.");
+                }
+            }
+
+            if (agent != null && agent.enabled)
+            {
+                if (agent.isOnNavMesh && agent.hasPath)
+                    agent.ResetPath();
+
+                agent.isStopped = true;
+                agent.enabled = false;
+            }
+
+            _npcNavigationStates.Remove(actor.ID);
         }
 
         internal void SuspendNPCNavigationForUnavailableNavMesh()
@@ -500,6 +544,9 @@ namespace Game.Server.Core
             Systems.ActorComponent component,
             Actor actorObj)
         {
+            if (actorObj.isDead)
+                return false;
+
             var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
             if (_npcNavigationStates.TryGetValue(actorObj.ID, out var navigationState)
                 && ReferenceEquals(navigationState.Actor, actorObj)
@@ -540,6 +587,9 @@ namespace Game.Server.Core
             Systems.ActorComponent component,
             Actor actorObj)
         {
+            if (actorObj.isDead)
+                return false;
+
             if (_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
                 return false;
 

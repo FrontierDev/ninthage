@@ -821,7 +821,13 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
-            RemoveNPCNavigationRegistration(actor);
+            if (!actor.isDead)
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' death callback ran before its dead state was committed.");
+            }
+
+            RetireNPCNavigationOnDeath(actor);
             if (_npcAggroStates.TryGetValue(actor.ID, out var state))
             {
                 ClearPendingAggro(ref state);
