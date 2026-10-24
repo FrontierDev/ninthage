@@ -51,7 +51,8 @@ namespace Game.Server.Core
         }
 
         private readonly Dictionary<Actor, PlayerInterestState> _actorInterest = new();
-        private readonly List<NetworkIdentity> _visibilityIdentityBuffer = new();
+        private readonly List<Guid> _visibilityCandidateQueryBuffer = new();
+        private readonly HashSet<Guid> _visibilityCandidateActorIDs = new();
         private readonly Dictionary<PlayerID, WorldChunkKey> _retainedTransferEntranceChunks = new();
 
         private sealed class PreparedTransferScenes
@@ -118,7 +119,8 @@ namespace Game.Server.Core
             _actorInterest.Clear();
             _retainedTransferEntranceChunks.Clear();
             _preparedTransferScenes.Clear();
-            _visibilityIdentityBuffer.Clear();
+            _visibilityCandidateQueryBuffer.Clear();
+            _visibilityCandidateActorIDs.Clear();
             _instance = null;
             _initialized = false;
         }
@@ -187,7 +189,6 @@ namespace Game.Server.Core
             Vector2Int centerChunk = acceptedPosition.Chunk;
             using var markerScope = REQUEST_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int visibilityEvaluationCount = 0;
             ActorSpatialContext actorContext = actor.SpatialContext;
 
             var newSet = GetSceneGrid(centerChunk);
@@ -268,61 +269,138 @@ namespace Game.Server.Core
                     NetworkingPerformanceMetrics.INTEREST_CHANGED_SUBSCRIPTION_COUNT,
                     toSubscribe.Count + toUnsubscribe.Count);
 
-            // Targeted re-evaluation: only evaluate identities in chunks that changed,
-            // rather than scanning every identity in every scene.
-            var globalSceneID = ServerWorldManager.Instance.GlobalActorsSceneID;
-            if (NetworkManager.main.TryGetModule<HierarchyFactory>(true, out var factory)
-                && factory.TryGetHierarchy(globalSceneID, out var hierarchy))
-            {
-                void EvaluateVisibilityForScenes(
-                    ActorSpatialContext context,
-                    IEnumerable<string> sceneNames)
-                {
-                    foreach (var sceneName in sceneNames)
-                    {
-                        _visibilityIdentityBuffer.Clear();
-                        int identityCount = Game.Shared.Networking.ChunkSubscriptions.AppendIdentities(
-                            context,
-                            sceneName,
-                            _visibilityIdentityBuffer);
-
-                        for (int i = 0; i < identityCount; i++)
-                        {
-                            var id = _visibilityIdentityBuffer[i];
-                            if (id != null)
-                            {
-                                if (telemetryEnabled)
-                                    visibilityEvaluationCount++;
-                                hierarchy.EvaluateVisibility(playerID, id.transform);
-                            }
-                        }
-                    }
-                }
-
-                if (contextChanged)
-                {
-                    EvaluateVisibilityForScenes(oldState.Context, oldSet);
-                    EvaluateVisibilityForScenes(actorContext, newSet);
-                }
-                else
-                {
-                    var changedChunks = new HashSet<string>(newSet);
-                    changedChunks.SymmetricExceptWith(oldSet);
-                    EvaluateVisibilityForScenes(actorContext, changedChunks);
-                }
-            }
-
             // Notify that the actor's scene (center chunk) changed.
             if (ServerWorldManager.Instance.TryGetChunkSceneID(actorContext, centerChunk, out var _centerSceneID))
             {
                 Game.Shared.Networking.ActorEndpoint.onServerActorInterestChanged?.Invoke(actor, _centerSceneID);
             }
-            if (telemetryEnabled)
+        }
+
+        internal void ReevaluateActorVisibility(
+            Actor actor,
+            ActorSpatialContext previousContext,
+            WorldPosition previousPosition,
+            ActorSpatialContext currentContext,
+            WorldPosition currentPosition)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (!previousContext.IsValid)
+                throw new ArgumentException("A valid previous actor spatial context is required.", nameof(previousContext));
+            if (!currentContext.IsValid)
+                throw new ArgumentException("A valid current actor spatial context is required.", nameof(currentContext));
+            if (!previousPosition.IsFinite)
+                throw new ArgumentException("A finite previous actor position is required.", nameof(previousPosition));
+            if (!currentPosition.IsFinite)
+                throw new ArgumentException("A finite current actor position is required.", nameof(currentPosition));
+
+            if (!_initialized)
+                return;
+            if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null
+                || !ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null
+                || !GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
             {
-                PerformanceTelemetry.TryRecord(
-                    NetworkingPerformanceMetrics.INTEREST_VISIBILITY_EVALUATION_COUNT,
-                    visibilityEvaluationCount);
-                NetworkingPerformanceMetrics.RecordVisibilityCandidates(visibilityEvaluationCount);
+                throw new InvalidOperationException(
+                    "Actor visibility reevaluation requires initialized server actor, world and game configuration managers.");
+            }
+
+            double radius = GameConfigurationManager.Config.ActorVisibilityExitRadius;
+            _visibilityCandidateActorIDs.Clear();
+
+            _visibilityCandidateQueryBuffer.Clear();
+            ServerActorManager.Instance.QuerySpatialCandidates(
+                previousContext,
+                previousPosition,
+                radius,
+                _visibilityCandidateQueryBuffer,
+                out _);
+            for (int i = 0; i < _visibilityCandidateQueryBuffer.Count; i++)
+                _visibilityCandidateActorIDs.Add(_visibilityCandidateQueryBuffer[i]);
+
+            bool sameContextAndPosition = previousContext.Equals(currentContext)
+                && previousPosition.x == currentPosition.x
+                && previousPosition.y == currentPosition.y
+                && previousPosition.z == currentPosition.z;
+            if (!sameContextAndPosition)
+            {
+                _visibilityCandidateQueryBuffer.Clear();
+                ServerActorManager.Instance.QuerySpatialCandidates(
+                    currentContext,
+                    currentPosition,
+                    radius,
+                    _visibilityCandidateQueryBuffer,
+                    out _);
+                for (int i = 0; i < _visibilityCandidateQueryBuffer.Count; i++)
+                    _visibilityCandidateActorIDs.Add(_visibilityCandidateQueryBuffer[i]);
+            }
+
+            NetworkingPerformanceMetrics.RecordVisibilityCandidates(_visibilityCandidateActorIDs.Count);
+
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int visibilityEvaluationCount = 0;
+            try
+            {
+                NetworkManager networkManager = NetworkManager.main;
+                if (networkManager == null
+                    || !networkManager.TryGetModule<HierarchyFactory>(true, out var factory)
+                    || !factory.TryGetHierarchy(ServerWorldManager.Instance.GlobalActorsSceneID, out var hierarchy))
+                {
+                    return;
+                }
+
+                NetworkIdentity actorIdentity = actor.GetComponent<NetworkIdentity>();
+                if (actorIdentity == null)
+                    throw new InvalidOperationException(
+                        $"Actor '{actor.ID}' has no NetworkIdentity for visibility reevaluation.");
+
+                foreach (Guid candidateID in _visibilityCandidateActorIDs)
+                {
+                    if (!ServerActorManager.Instance.TryGetActor(candidateID, out Actor candidateActor)
+                        || candidateActor == null
+                        || candidateActor.ID != candidateID)
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial visibility candidate '{candidateID}' does not resolve to its live registered actor.");
+                    }
+
+                    if (candidateID == actor.ID)
+                    {
+                        if (!ReferenceEquals(candidateActor, actor))
+                        {
+                            throw new InvalidOperationException(
+                                $"Spatial visibility candidate '{candidateID}' does not match the moved actor instance.");
+                        }
+                        continue;
+                    }
+
+                    NetworkIdentity candidateIdentity = candidateActor.GetComponent<NetworkIdentity>();
+                    if (candidateIdentity == null)
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor '{candidateID}' has no NetworkIdentity for visibility reevaluation.");
+                    }
+
+                    if (candidateActor.Owner.HasValue)
+                    {
+                        visibilityEvaluationCount++;
+                        hierarchy.EvaluateVisibility(candidateActor.Owner.Value, actorIdentity.transform);
+                    }
+
+                    if (actor.Owner.HasValue)
+                    {
+                        visibilityEvaluationCount++;
+                        hierarchy.EvaluateVisibility(actor.Owner.Value, candidateIdentity.transform);
+                    }
+                }
+            }
+            finally
+            {
+                if (telemetryEnabled)
+                {
+                    PerformanceTelemetry.TryRecord(
+                        NetworkingPerformanceMetrics.INTEREST_VISIBILITY_EVALUATION_COUNT,
+                        visibilityEvaluationCount);
+                }
             }
         }
 

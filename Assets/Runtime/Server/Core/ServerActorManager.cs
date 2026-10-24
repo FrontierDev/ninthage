@@ -21,6 +21,26 @@ namespace Game.Server.Core
     /// </summary>
     public sealed partial class ServerActorManager : MonoBehaviour
     {
+        private readonly struct AcceptedVisibilityMovement
+        {
+            public Actor Actor { get; }
+            public WorldPosition PreviousPosition { get; }
+            public WorldPosition CurrentPosition { get; }
+            public ActorSpatialContext Context { get; }
+
+            public AcceptedVisibilityMovement(
+                Actor actor,
+                WorldPosition previousPosition,
+                WorldPosition currentPosition,
+                ActorSpatialContext context)
+            {
+                Actor = actor;
+                PreviousPosition = previousPosition;
+                CurrentPosition = currentPosition;
+                Context = context;
+            }
+        }
+
         private static readonly PerformanceMetricDefinition UPDATE_DURATION_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_MANAGER_UPDATE_DURATION,
             PerformanceMetricUnit.Milliseconds,
@@ -188,6 +208,7 @@ namespace Game.Server.Core
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
         private readonly Dictionary<Guid, Entity> _actorEntities = new();
         private readonly HashSet<PlayerID> _pendingSpatialContextTransfers = new();
+        private readonly List<AcceptedVisibilityMovement> _acceptedVisibilityMovements = new();
         private NetworkManager _networkManager;
         private ServerSpatialIndex _spatialIndex;
 
@@ -465,6 +486,7 @@ namespace Game.Server.Core
             _pendingSpatialContextTransfers.Clear();
             _npcAggroStates.Clear();
             _npcNavigationStates.Clear();
+            _acceptedVisibilityMovements.Clear();
             _pendingTickID = -1;
             _pendingTickEntityScanCount = 0;
             _pendingTickGameObjectSyncCount = 0;
@@ -694,6 +716,27 @@ namespace Game.Server.Core
                     RemoveSpatialMembership(actor.ID);
 
                 throw;
+            }
+
+            try
+            {
+                if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Spawned actor visibility refresh requires initialized server interest management.");
+                }
+
+                ServerInterestManager.Instance.ReevaluateActorVisibility(
+                    actor,
+                    actor.SpatialContext,
+                    spawnPosition,
+                    actor.SpatialContext,
+                    spawnPosition);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"[Visibility] Post-spawn reevaluation failed for actor '{actor.ID}': {exception.Message}");
             }
         }
 
@@ -1121,6 +1164,7 @@ namespace Game.Server.Core
             if (tickID < 0)
                 throw new InvalidOperationException($"Cannot publish accepted actor positions for tick {tickID}.");
 
+            _acceptedVisibilityMovements.Clear();
             foreach (var actorPair in _actorObjects)
             {
                 Guid actorID = actorPair.Key;
@@ -1163,12 +1207,26 @@ namespace Game.Server.Core
                         $"Actor '{actorID}' has a non-finite canonical ECS world position.");
                 }
 
+                bool hasPreviousSnapshot = actor.TryGetAcceptedPositionSnapshot(
+                    out ActorPositionSnapshot previousSnapshot);
+                ActorSpatialContext actorContext = actor.SpatialContext;
+
                 GetSpatialIndex().Move(
                     actorID,
-                    actor.SpatialContext,
+                    actorContext,
                     position);
                 UpdateAcceptedActorChunkMembership(actor, position);
                 actor.SetAcceptedPositionSnapshotFromServer(position, tickID);
+
+                if (hasPreviousSnapshot
+                    && !AreWorldPositionsEqual(previousSnapshot.Position, position))
+                {
+                    _acceptedVisibilityMovements.Add(new AcceptedVisibilityMovement(
+                        actor,
+                        previousSnapshot.Position,
+                        position,
+                        actorContext));
+                }
             }
 
             foreach (var entityPair in _actorEntities)
@@ -1178,6 +1236,26 @@ namespace Game.Server.Core
                     throw new InvalidOperationException(
                         $"ECS actor registry entry '{entityPair.Key}' has no corresponding actor.");
                 }
+            }
+
+            if (_acceptedVisibilityMovements.Count == 0)
+                return;
+
+            if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Accepted actor movement visibility refresh requires initialized server interest management.");
+            }
+
+            for (int i = 0; i < _acceptedVisibilityMovements.Count; i++)
+            {
+                AcceptedVisibilityMovement movement = _acceptedVisibilityMovements[i];
+                ServerInterestManager.Instance.ReevaluateActorVisibility(
+                    movement.Actor,
+                    movement.Context,
+                    movement.PreviousPosition,
+                    movement.Context,
+                    movement.CurrentPosition);
             }
         }
 
@@ -1892,6 +1970,27 @@ namespace Game.Server.Core
                 }
 
                 throw;
+            }
+
+            try
+            {
+                if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Committed actor context transfer visibility refresh requires initialized server interest management.");
+                }
+
+                ServerInterestManager.Instance.ReevaluateActorVisibility(
+                    actor,
+                    sourceContext,
+                    sourcePosition,
+                    destinationContext,
+                    destinationPosition);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"[Visibility] Post-transfer reevaluation failed for actor '{actor.ID}': {exception.Message}");
             }
         }
 
