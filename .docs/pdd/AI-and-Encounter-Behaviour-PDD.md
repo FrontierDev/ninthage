@@ -635,8 +635,6 @@ A player should not be able to preserve unintended partial boss state simply by 
 
 # 28. Open-World Encounter Areas
 
-# 28. Open-World Encounter Areas
-
 The open world may contain authored **Encounter Areas**.
 
 An Encounter Area groups NPC populations and shared behavioural context without requiring the content to become an instanced encounter.
