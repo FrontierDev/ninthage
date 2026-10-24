@@ -174,6 +174,30 @@ namespace Game.Shared.Runtime.Actors
             };
         }
 
+        /// <summary>Gets the last server-published accepted-position snapshot when it is valid.</summary>
+        /// <param name="snapshot">Receives the valid snapshot, or <see langword="default"/> when unavailable.</param>
+        /// <returns>Whether a valid accepted-position snapshot is available.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a valid snapshot contains an invalid tick or non-finite position.
+        /// </exception>
+        public bool TryGetAcceptedPositionSnapshot(out ActorPositionSnapshot snapshot)
+        {
+            snapshot = _acceptedPositionSnapshot.value;
+            if (!snapshot.IsValid)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            if (snapshot.TickID < 0 || !snapshot.Position.IsFinite)
+            {
+                throw new InvalidOperationException(
+                    $"Actor {ID} has a corrupt accepted position snapshot at tick {snapshot.TickID}.");
+            }
+
+            return true;
+        }
+
         [SerializeField, FormerlySerializedAs("target")] private Actor _target;
         /// <summary>Gets the actor's current target.</summary>
         public Actor Target => _target;

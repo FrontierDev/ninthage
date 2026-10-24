@@ -47,6 +47,7 @@ namespace Game.Shared
             }
 
             _config.ValidateWorldGridConfiguration();
+            _config.ValidateSpatialConfiguration();
 
             // Marked as initialized.
             _initialized = true;

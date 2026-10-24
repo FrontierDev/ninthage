@@ -15,6 +15,11 @@ MonoBehaviour:
   m_GroupName: World_Chunks
   m_GUID: f510df59de97faa42ac3db54e18e7b87
   m_SerializeEntries:
+  - m_GUID: 242f0b84ec3b7414fbb65c6b5b8269b4
+    m_Address: dungeon_0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 58218dd37563d3a4897da73e8b79f129
     m_Address: World_0_1
     m_ReadOnly: 0
