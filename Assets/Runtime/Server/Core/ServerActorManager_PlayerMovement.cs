@@ -4,16 +4,20 @@ using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.World;
 using Game.Shared.Utility;
 using PurrNet;
 using System;
 using System.Collections.Generic;
 using Unity.Entities;
+using UnityEngine;
 
 namespace Game.Server.Core
 {
     public sealed partial class ServerActorManager
     {
+        private readonly List<TransferCollider> _transferColliderBuffer = new();
+
         private static readonly PerformanceMetricDefinition POSITION_VALIDATION_DURATION_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_MANAGER_POSITION_VALIDATION_DURATION,
             PerformanceMetricUnit.Milliseconds,
@@ -98,9 +102,9 @@ namespace Game.Server.Core
             long ownershipEpoch,
             long proposalSequence)
         {
-            // Instance validation rechecks the captured canonical position after async preload.
+            // Spatial-context transfers recheck the captured canonical position after async preload.
             // Do not admit movement proposals that could invalidate that transaction.
-            if (_pendingInstanceValidationToggles.Contains(sender))
+            if (_pendingSpatialContextTransfers.Contains(sender))
                 return;
 
             if (!_initialized
@@ -298,6 +302,7 @@ namespace Game.Server.Core
             if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
                 throw new InvalidOperationException("Player position commit requires initialized server physics manager.");
 
+            WorldPosition previousPosition = ToWorldPosition(component.WorldPositionD);
             var physicalPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(position);
             actor.transform.position = physicalPosition;
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
@@ -306,6 +311,141 @@ namespace Game.Server.Core
             ActorEndpoint.onServerAcceptedPlayerPositionChanged?.Invoke(
                 actor,
                 position);
+            EvaluateTransferColliderCrossing(actor, previousPosition, position);
+        }
+
+        private void EvaluateTransferColliderCrossing(
+            Actor actor,
+            WorldPosition previousPosition,
+            WorldPosition currentPosition)
+        {
+            if (actor == null
+                || !actor.Owner.HasValue
+                || _pendingSpatialContextTransfers.Contains(actor.Owner.Value)
+                || AreWorldPositionsEqual(previousPosition, currentPosition))
+            {
+                return;
+            }
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null
+                || !ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+            {
+                return;
+            }
+
+            _transferColliderBuffer.Clear();
+            ServerWorldManager.Instance.AppendTransferColliders(
+                actor.SpatialContext,
+                previousPosition,
+                currentPosition,
+                _transferColliderBuffer);
+            if (_transferColliderBuffer.Count == 0)
+                return;
+
+            Vector3 previousPhysicalPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(previousPosition);
+            Vector3 currentPhysicalPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(currentPosition);
+            ActorSpatialContext publicContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            TransferCollider selectedCollider = null;
+            TransferCollider.CrossingDirection selectedDirection = default;
+            int eligibleCrossingCount = 0;
+            string candidateKeys = null;
+
+            foreach (TransferCollider collider in _transferColliderBuffer)
+            {
+                if (collider == null
+                    || !collider.TryGetCrossing(
+                        previousPhysicalPosition,
+                        currentPhysicalPosition,
+                        out TransferCollider.CrossingDirection direction,
+                        out _))
+                {
+                    continue;
+                }
+
+                bool eligible = direction == TransferCollider.CrossingDirection.IntoInstance
+                    ? actor.SpatialContext == publicContext
+                    : ServerWorldManager.Instance.TryGetTransferInstance(
+                        collider.InstanceKey,
+                        out ActorSpatialContext resolvedContext)
+                      && actor.SpatialContext == resolvedContext;
+                if (!eligible)
+                    continue;
+
+                eligibleCrossingCount++;
+                if (eligibleCrossingCount == 1)
+                {
+                    selectedCollider = collider;
+                    selectedDirection = direction;
+                }
+                if (eligibleCrossingCount == 2)
+                {
+                    candidateKeys = $"{selectedCollider.InstanceKey}, {collider.InstanceKey}";
+                }
+                else if (eligibleCrossingCount > 2)
+                {
+                    candidateKeys += $", {collider.InstanceKey}";
+                }
+            }
+
+            if (eligibleCrossingCount > 1)
+            {
+                Debug.Error(
+                    $"[TransferCollider] Actor {actor.ID} crossed multiple eligible planes in one accepted segment; "
+                    + $"candidate keys: {candidateKeys}. Correct the environment authoring; no transfer was started.");
+                return;
+            }
+            if (eligibleCrossingCount == 0)
+                return;
+
+            string key = selectedCollider.InstanceKey;
+            ActorSpatialContext destinationContext;
+            try
+            {
+                destinationContext = selectedDirection == TransferCollider.CrossingDirection.IntoInstance
+                    ? ServerWorldManager.Instance.ResolveOrCreateTransferInstance(key)
+                    : publicContext;
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"[TransferCollider] Player {actor.ID} key='{key}' direction={selectedDirection} "
+                    + $"transfer failed: {exception.Message}");
+                return;
+            }
+
+            bool started = TryBeginPlayerSpatialContextTransfer(
+                actor,
+                destinationContext,
+                (succeeded, reason) =>
+                {
+                    if (!succeeded)
+                    {
+                        Debug.Error(
+                            $"[TransferCollider] Player {actor.ID} key='{key}' direction={selectedDirection} "
+                            + $"transfer failed: {reason}");
+                        return;
+                    }
+
+                    if (selectedDirection == TransferCollider.CrossingDirection.IntoInstance)
+                    {
+                        Debug.Log(
+                            $"[TransferCollider] Player {actor.ID} entered key='{key}' "
+                            + $"instance={destinationContext.InstanceID} "
+                            + $"position=({currentPosition.x:F3},{currentPosition.y:F3},{currentPosition.z:F3})");
+                    }
+                    else
+                    {
+                        Debug.Log(
+                            $"[TransferCollider] Player {actor.ID} returned to public from key='{key}' "
+                            + $"position=({currentPosition.x:F3},{currentPosition.y:F3},{currentPosition.z:F3})");
+                    }
+                });
+
+            if (!started)
+            {
+                Debug.Error(
+                    $"[TransferCollider] Player {actor.ID} key='{key}' direction={selectedDirection} "
+                    + "transfer failed: another spatial-context transfer is already pending");
+            }
         }
 
         private static void ProjectPlayerPhysicalPosition(

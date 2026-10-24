@@ -1,9 +1,12 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.World;
+using Game.Shared.Utility;
 using PurrNet;
 using PurrNet.Modules;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -46,6 +49,9 @@ namespace Game.Server.Core
         private static ActorSpatialContext _runtimeContext;
         private static ActorSpatialContext _validationInstanceA;
         private static ActorSpatialContext _validationInstanceB;
+
+        private readonly Dictionary<WorldChunkKey, List<TransferCollider>> _transferCollidersByChunk = new();
+        private readonly Dictionary<string, ActorSpatialContext> _transferInstancesByKey = new(StringComparer.Ordinal);
 
         /// <summary>Initializes the authoritative public context for the current server lifetime.</summary>
         internal static void InitializeRuntimeContext(Guid worldID)
@@ -148,6 +154,9 @@ namespace Game.Server.Core
                 _networkManager.sceneModule.onSceneUnloaded -= OnChunkSceneUnloaded;
             }
 
+            _transferCollidersByChunk.Clear();
+            _transferInstancesByKey.Clear();
+
             foreach (var cleanup in _pendingLoadCleanup.Values)
                 cleanup?.Invoke();
             _pendingLoadCleanup.Clear();
@@ -217,19 +226,43 @@ namespace Game.Server.Core
                     return;
                 }
 
+                bool physicalBindingEstablished = false;
                 try
                 {
                     ServerPhysicsManager.Instance.BindEnvironmentScene(chunkKey, state.scene);
+                    physicalBindingEstablished = true;
+                    RegisterTransferColliders(chunkKey, state.scene);
+                    _loadedChunks.Add(chunkKey, sceneID);
                 }
                 catch (Exception exception)
                 {
+                    _transferCollidersByChunk.Remove(chunkKey);
+                    if (_loadedChunks.TryGetValue(chunkKey, out SceneID registeredSceneID)
+                        && registeredSceneID == sceneID)
+                    {
+                        _loadedChunks.Remove(chunkKey);
+                    }
+
+                    string failure = exception.Message;
+                    if (physicalBindingEstablished)
+                    {
+                        try
+                        {
+                            ServerPhysicsManager.Instance.UnbindEnvironmentScene(chunkKey);
+                        }
+                        catch (Exception unbindException)
+                        {
+                            failure += $"; physical binding rollback failed: {unbindException.Message}";
+                        }
+                    }
+
                     try
                     {
                         CompletePendingChunkLoad(
                             chunkKey,
                             sceneID,
                             false,
-                            $"World scene '{sceneName}' failed physical binding for chunk {chunkKey} with SceneID {sceneID}: {exception.Message}",
+                            $"World scene '{sceneName}' failed registration for chunk {chunkKey} with SceneID {sceneID}: {failure}",
                             null);
                     }
                     finally
@@ -240,7 +273,6 @@ namespace Game.Server.Core
                     return;
                 }
 
-                _loadedChunks.Add(chunkKey, sceneID);
                 if (_pendingLoadTimestamps != null
                     && _pendingLoadTimestamps.TryGetValue(chunkKey, out long startedTimestamp))
                 {
@@ -259,8 +291,15 @@ namespace Game.Server.Core
 
             if (_pendingUnloadOwners.TryGetValue(sceneID, out WorldChunkKey pendingUnloadKey))
             {
-                ServerPhysicsManager.Instance.UnbindEnvironmentScene(pendingUnloadKey);
-                _pendingUnloadOwners.Remove(sceneID);
+                try
+                {
+                    ServerPhysicsManager.Instance.UnbindEnvironmentScene(pendingUnloadKey);
+                }
+                finally
+                {
+                    _transferCollidersByChunk.Remove(pendingUnloadKey);
+                    _pendingUnloadOwners.Remove(sceneID);
+                }
             }
             else
             {
@@ -278,7 +317,14 @@ namespace Game.Server.Core
                 if (hasLoadedKey)
                 {
                     _loadedChunks.Remove(unloadedKey);
-                    ServerPhysicsManager.Instance.UnbindEnvironmentScene(unloadedKey);
+                    try
+                    {
+                        ServerPhysicsManager.Instance.UnbindEnvironmentScene(unloadedKey);
+                    }
+                    finally
+                    {
+                        _transferCollidersByChunk.Remove(unloadedKey);
+                    }
                     Debug.Error(
                         $"Tracked world chunk {unloadedKey} reached terminal unload outside the owned UnloadChunk path.");
                 }
@@ -295,6 +341,101 @@ namespace Game.Server.Core
             _pendingUnloadTimestamps.Remove(sceneID);
             RecordSceneDuration(SCENE_UNLOAD_DURATION_METRIC, startedTimestamp);
             RecordPendingSceneOperations();
+        }
+
+        private void RegisterTransferColliders(WorldChunkKey chunkKey, Scene scene)
+        {
+            var colliders = new List<TransferCollider>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                foreach (TransferCollider collider in root.GetComponentsInChildren<TransferCollider>(true))
+                {
+                    if (collider == null)
+                        throw new InvalidOperationException(
+                            $"World chunk {chunkKey} contains a missing TransferCollider component.");
+                    if (string.IsNullOrWhiteSpace(collider.InstanceKey))
+                        throw new InvalidOperationException(
+                            $"World chunk {chunkKey} contains a TransferCollider with an empty InstanceKey.");
+
+                    Vector2 size = collider.Size;
+                    if (float.IsNaN(size.x) || float.IsInfinity(size.x) || size.x <= 0f
+                        || float.IsNaN(size.y) || float.IsInfinity(size.y) || size.y <= 0f)
+                    {
+                        throw new InvalidOperationException(
+                            $"World chunk {chunkKey} contains TransferCollider key='{collider.InstanceKey}' with invalid size {size}.");
+                    }
+
+                    colliders.Add(collider);
+                }
+            }
+
+            if (!_transferCollidersByChunk.TryAdd(chunkKey, colliders))
+                throw new InvalidOperationException(
+                    $"TransferCollider registrations already exist for world chunk {chunkKey}.");
+        }
+
+        internal int AppendTransferColliders(
+            ActorSpatialContext context,
+            WorldPosition previousPosition,
+            WorldPosition currentPosition,
+            List<TransferCollider> resultBuffer)
+        {
+            if (!context.IsValid)
+                throw new ArgumentException("A valid spatial context is required.", nameof(context));
+            if (!previousPosition.IsFinite)
+                throw new ArgumentException("Previous position must be finite.", nameof(previousPosition));
+            if (!currentPosition.IsFinite)
+                throw new ArgumentException("Current position must be finite.", nameof(currentPosition));
+            if (resultBuffer == null)
+                throw new ArgumentNullException(nameof(resultBuffer));
+
+            int initialCount = resultBuffer.Count;
+            AppendTransferColliders(new WorldChunkKey(context, previousPosition.Chunk), resultBuffer);
+            if (currentPosition.Chunk != previousPosition.Chunk)
+                AppendTransferColliders(new WorldChunkKey(context, currentPosition.Chunk), resultBuffer);
+
+            return resultBuffer.Count - initialCount;
+        }
+
+        private void AppendTransferColliders(WorldChunkKey chunkKey, List<TransferCollider> resultBuffer)
+        {
+            if (!_transferCollidersByChunk.TryGetValue(chunkKey, out List<TransferCollider> colliders))
+                return;
+
+            resultBuffer.AddRange(colliders);
+        }
+
+        internal ActorSpatialContext ResolveOrCreateTransferInstance(string instanceKey)
+        {
+            if (!_runtimeContext.IsValid)
+                throw new InvalidOperationException("The current server runtime context is not initialized.");
+            if (string.IsNullOrWhiteSpace(instanceKey))
+                throw new ArgumentException("A nonempty transfer instance key is required.", nameof(instanceKey));
+            if (_transferInstancesByKey.TryGetValue(instanceKey, out ActorSpatialContext existing))
+                return existing;
+
+            Guid instanceID;
+            do
+            {
+                instanceID = Guid.NewGuid();
+            }
+            while (instanceID == Guid.Empty);
+
+            ActorSpatialContext context = ActorSpatialContext.CreateInstanced(
+                _runtimeContext.WorldID,
+                _runtimeContext.MapID,
+                instanceID);
+            _transferInstancesByKey.Add(instanceKey, context);
+            Debug.Log($"[TransferCollider] Created runtime instance key='{instanceKey}' instance={instanceID}");
+            return context;
+        }
+
+        internal bool TryGetTransferInstance(string instanceKey, out ActorSpatialContext context)
+        {
+            if (string.IsNullOrWhiteSpace(instanceKey))
+                throw new ArgumentException("A nonempty transfer instance key is required.", nameof(instanceKey));
+
+            return _transferInstancesByKey.TryGetValue(instanceKey, out context);
         }
 
         /// <summary>

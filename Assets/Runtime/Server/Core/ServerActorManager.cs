@@ -187,7 +187,7 @@ namespace Game.Server.Core
         // Maps actor ID -> Actor MonoBehaviour for authoritative movement bridges.
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
         private readonly Dictionary<Guid, Entity> _actorEntities = new();
-        private readonly HashSet<PlayerID> _pendingInstanceValidationToggles = new();
+        private readonly HashSet<PlayerID> _pendingSpatialContextTransfers = new();
         private NetworkManager _networkManager;
         private ServerSpatialIndex _spatialIndex;
 
@@ -462,7 +462,7 @@ namespace Game.Server.Core
             _violationCounters.Clear();
             _pendingPositionProposals.Clear();
             _lastProposalOrder.Clear();
-            _pendingInstanceValidationToggles.Clear();
+            _pendingSpatialContextTransfers.Clear();
             _npcAggroStates.Clear();
             _npcNavigationStates.Clear();
             _pendingTickID = -1;
@@ -742,7 +742,7 @@ namespace Game.Server.Core
                 var owner = actor.Owner.Value;
                 if (_playerActors.TryGetValue(owner, out var playerActor) && playerActor == actor)
                 {
-                    _pendingInstanceValidationToggles.Remove(owner);
+                    _pendingSpatialContextTransfers.Remove(owner);
                     RemovePlayerValidationState(owner);
                 }
             }
@@ -867,7 +867,7 @@ namespace Game.Server.Core
                         && _playerActors.TryGetValue(previousOwner, out var previousActor)
                         && previousActor == actor)
                     {
-                        _pendingInstanceValidationToggles.Remove(previousOwner);
+                        _pendingSpatialContextTransfers.Remove(previousOwner);
                         RemovePlayerValidationState(previousOwner);
                     }
 
@@ -1221,23 +1221,10 @@ namespace Game.Server.Core
 
         private void OnInstanceValidationToggleRequested(PlayerID playerID)
         {
-            if (_pendingInstanceValidationToggles.Contains(playerID))
+            if (_pendingSpatialContextTransfers.Contains(playerID))
             {
                 Debug.Warning(
                     $"[InstanceValidation] Ignoring duplicate toggle request from player {playerID} while pending.");
-                return;
-            }
-
-            if (!_initialized
-                || !ServerWorldManager.IsInitialized
-                || ServerWorldManager.Instance == null
-                || !ServerInterestManager.IsInitialized
-                || ServerInterestManager.Instance == null)
-            {
-                NotifyInstanceValidationToggleFailure(
-                    playerID,
-                    null,
-                    "required server managers are not initialized");
                 return;
             }
 
@@ -1253,46 +1240,16 @@ namespace Game.Server.Core
                 return;
             }
 
-            if (!_actorObjects.TryGetValue(actor.ID, out var registeredActor)
-                || !ReferenceEquals(registeredActor, actor))
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
             {
                 NotifyInstanceValidationToggleFailure(
                     playerID,
                     actor,
-                    "the player actor is not the registered authoritative actor");
-                return;
-            }
-
-            if (!_actorEntities.TryGetValue(actor.ID, out var entity)
-                || !_entityManager.Exists(entity)
-                || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
-            {
-                NotifyInstanceValidationToggleFailure(
-                    playerID,
-                    actor,
-                    "the player actor has no live ECS entity");
+                    "required server managers are not initialized");
                 return;
             }
 
             ActorSpatialContext sourceContext = actor.SpatialContext;
-            if (!sourceContext.IsValid)
-            {
-                NotifyInstanceValidationToggleFailure(
-                    playerID,
-                    actor,
-                    "the player actor has no valid spatial context");
-                return;
-            }
-
-            if (!TryGetAcceptedWorldPosition(actor.ID, out WorldPosition position))
-            {
-                NotifyInstanceValidationToggleFailure(
-                    playerID,
-                    actor,
-                    "the player actor has no canonical accepted position");
-                return;
-            }
-
             ActorSpatialContext instanceA = ServerWorldManager.Instance.ValidationInstanceA;
             ActorSpatialContext instanceB = ServerWorldManager.Instance.ValidationInstanceB;
             if (!instanceA.IsValid
@@ -1332,128 +1289,234 @@ namespace Game.Server.Core
                 sourceLabel = string.Empty;
             }
 
-            _pendingInstanceValidationToggles.Add(playerID);
-            RemovePendingPositionProposal(playerID);
-
-            void CompleteToggle(bool destinationReady)
+            bool started = TryBeginPlayerSpatialContextTransfer(
+                actor,
+                destinationContext,
+                (succeeded, reason) =>
             {
-                if (!_pendingInstanceValidationToggles.Contains(playerID))
-                    return;
-
-                if (!destinationReady)
+                if (!succeeded)
                 {
-                    _pendingInstanceValidationToggles.Remove(playerID);
                     NotifyInstanceValidationToggleFailure(
                         playerID,
                         actor,
-                        "destination environment or population readiness failed");
+                        reason);
                     return;
                 }
 
-                if (!_playerActors.TryGetValue(playerID, out var currentActor)
-                    || currentActor == null)
+                string transition = string.IsNullOrEmpty(sourceLabel)
+                    ? $"entered {destinationLabel}"
+                    : $"switched {sourceLabel} -> {destinationLabel}";
+                if (TryGetAcceptedWorldPosition(actor.ID, out WorldPosition position))
                 {
-                    _pendingInstanceValidationToggles.Remove(playerID);
-                    NotifyInstanceValidationToggleFailure(
-                        playerID,
-                        actor,
-                        "the requesting player actor was removed during destination readiness");
-                    return;
-                }
-
-                // A disconnect followed by a replacement actor must not let an old callback
-                // consume the replacement actor's newer pending request.
-                if (!ReferenceEquals(currentActor, actor))
-                    return;
-
-                try
-                {
-                    if (!_actorObjects.TryGetValue(actor.ID, out var currentRegisteredActor)
-                        || !ReferenceEquals(currentRegisteredActor, actor)
-                        || !actor.Owner.HasValue
-                        || actor.Owner.Value != playerID
-                        || !_actorEntities.TryGetValue(actor.ID, out var currentEntity)
-                        || !_entityManager.Exists(currentEntity)
-                        || !_entityManager.HasComponent<Systems.ActorComponent>(currentEntity))
-                    {
-                        _pendingInstanceValidationToggles.Remove(playerID);
-                        NotifyInstanceValidationToggleFailure(
-                            playerID,
-                            actor,
-                            "the player actor is no longer live before transfer");
-                        return;
-                    }
-
-                    if (!actor.SpatialContext.Equals(sourceContext))
-                    {
-                        _pendingInstanceValidationToggles.Remove(playerID);
-                        NotifyInstanceValidationToggleFailure(
-                            playerID,
-                            actor,
-                            "the source spatial context changed during destination readiness");
-                        return;
-                    }
-
-                    if (!TryGetAcceptedWorldPosition(actor.ID, out var currentPosition)
-                        || !AreWorldPositionsEqual(currentPosition, position))
-                    {
-                        _pendingInstanceValidationToggles.Remove(playerID);
-                        NotifyInstanceValidationToggleFailure(
-                            playerID,
-                            actor,
-                            "the canonical accepted position changed during destination readiness");
-                        return;
-                    }
-
-                    TransferActorSpatialContext(
-                        actor,
-                        destinationContext,
-                        position);
-                    _pendingInstanceValidationToggles.Remove(playerID);
-
-                    string transition = string.IsNullOrEmpty(sourceLabel)
-                        ? $"entered {destinationLabel}"
-                        : $"switched {sourceLabel} -> {destinationLabel}";
                     Debug.Log(
                         $"[InstanceValidation] Player {actor.ID} {transition} "
                         + $"instance={destinationContext.InstanceID} "
                         + $"position=({position.x:F3},{position.y:F3},{position.z:F3})");
-                    ActorEndpoint.Client_InstanceValidationToggleResult(
-                        playerID,
-                        true,
-                        destinationLabel,
-                        destinationContext.InstanceID);
+                }
+                ActorEndpoint.Client_InstanceValidationToggleResult(
+                    playerID,
+                    true,
+                    destinationLabel,
+                    destinationContext.InstanceID);
+            });
+
+            if (!started)
+                Debug.Warning(
+                    $"[InstanceValidation] Ignoring duplicate toggle request from player {playerID} while pending.");
+        }
+
+        private bool TryBeginPlayerSpatialContextTransfer(
+            Actor actor,
+            ActorSpatialContext destinationContext,
+            Action<bool, string> onCompleted)
+        {
+            if (onCompleted == null)
+                throw new ArgumentNullException(nameof(onCompleted));
+
+            PlayerID owner = default;
+            bool hasOwner = actor != null && actor.Owner.HasValue;
+            if (hasOwner)
+            {
+                owner = actor.Owner.Value;
+                if (_pendingSpatialContextTransfers.Contains(owner))
+                    return false;
+            }
+
+            string validationFailure = null;
+            ActorSpatialContext sourceContext = default;
+            WorldPosition sourcePosition = default;
+
+            if (!_initialized
+                || !ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null
+                || !ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
+            {
+                validationFailure = "required server managers are not initialized";
+            }
+            else if (actor == null || !hasOwner)
+            {
+                validationFailure = "a live owned player actor is required";
+            }
+            else if (!_playerActors.TryGetValue(owner, out Actor playerActor)
+                || !ReferenceEquals(playerActor, actor)
+                || !_actorObjects.TryGetValue(actor.ID, out Actor registeredActor)
+                || !ReferenceEquals(registeredActor, actor)
+                || !_actorEntities.TryGetValue(actor.ID, out Entity entity)
+                || !_entityManager.Exists(entity)
+                || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
+            {
+                validationFailure = "the player actor is not the live exact registered actor";
+            }
+            else
+            {
+                sourceContext = actor.SpatialContext;
+                ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+                if (!runtimeContext.IsValid || !sourceContext.IsValid || !destinationContext.IsValid)
+                    validationFailure = "source and destination contexts must be valid";
+                else if (sourceContext == destinationContext)
+                    validationFailure = "source and destination contexts are identical";
+                else if (sourceContext.WorldID != destinationContext.WorldID
+                    || !StringComparer.Ordinal.Equals(sourceContext.MapID, destinationContext.MapID))
+                    validationFailure = "source and destination must belong to the same world and map";
+                else if (destinationContext.InstanceID == Guid.Empty
+                    && destinationContext != runtimeContext)
+                    validationFailure = "a public destination must be the current runtime context";
+                else if (destinationContext.InstanceID != Guid.Empty
+                    && (destinationContext.WorldID != runtimeContext.WorldID
+                        || !StringComparer.Ordinal.Equals(destinationContext.MapID, runtimeContext.MapID)))
+                    validationFailure = "a private destination must belong to the current server runtime";
+                else
+                {
+                    try
+                    {
+                        if (!TryGetAcceptedWorldPosition(actor.ID, out sourcePosition))
+                            validationFailure = "the player actor has no canonical accepted position";
+                    }
+                    catch (Exception exception)
+                    {
+                        validationFailure = $"the canonical accepted position could not be read: {exception.Message}";
+                    }
+                }
+            }
+
+            if (validationFailure != null)
+            {
+                onCompleted(false, validationFailure);
+                return true;
+            }
+
+            _pendingSpatialContextTransfers.Add(owner);
+            RemovePendingPositionProposal(owner);
+
+            bool completionDelivered = false;
+            void Complete(bool succeeded, string reason)
+            {
+                if (completionDelivered)
+                    return;
+
+                completionDelivered = true;
+                if (_playerActors.TryGetValue(owner, out Actor currentActor)
+                    && ReferenceEquals(currentActor, actor))
+                {
+                    _pendingSpatialContextTransfers.Remove(owner);
+                }
+
+                onCompleted(succeeded, reason);
+            }
+
+            void OnDestinationReady(bool destinationReady)
+            {
+                if (completionDelivered)
+                    return;
+                if (!destinationReady)
+                {
+                    Complete(false, "destination environment or population readiness failed");
+                    return;
+                }
+
+                string validationFailure = null;
+                try
+                {
+                    if (!_pendingSpatialContextTransfers.Contains(owner))
+                    {
+                        validationFailure = "the pending context transfer was cancelled";
+                    }
+                    else if (!_playerActors.TryGetValue(owner, out Actor currentActor)
+                        || !ReferenceEquals(currentActor, actor))
+                    {
+                        validationFailure = "the requesting player actor changed during destination readiness";
+                    }
+                    else if (!_actorObjects.TryGetValue(actor.ID, out Actor currentRegisteredActor)
+                        || !ReferenceEquals(currentRegisteredActor, actor)
+                        || !actor.Owner.HasValue
+                        || actor.Owner.Value != owner
+                        || !_actorEntities.TryGetValue(actor.ID, out Entity currentEntity)
+                        || !_entityManager.Exists(currentEntity)
+                        || !_entityManager.HasComponent<Systems.ActorComponent>(currentEntity))
+                    {
+                        validationFailure = "the player actor is no longer live before transfer";
+                    }
+                    else if (actor.SpatialContext != sourceContext)
+                    {
+                        validationFailure = "the source spatial context changed during destination readiness";
+                    }
+                    else if (!TryGetAcceptedWorldPosition(actor.ID, out WorldPosition currentPosition)
+                        || !AreWorldPositionsEqual(currentPosition, sourcePosition))
+                    {
+                        validationFailure = "the canonical accepted position changed during destination readiness";
+                    }
                 }
                 catch (Exception exception)
                 {
-                    _pendingInstanceValidationToggles.Remove(playerID);
-                    NotifyInstanceValidationToggleFailure(
-                        playerID,
-                        actor,
-                        $"context transfer failed: {exception.Message}");
+                    validationFailure = $"transfer revalidation failed: {exception.Message}";
                 }
+
+                if (validationFailure != null)
+                {
+                    Complete(false, validationFailure);
+                    return;
+                }
+
+                string transferFailure = null;
+                try
+                {
+                    TransferActorSpatialContext(actor, destinationContext, sourcePosition);
+                }
+                catch (Exception exception)
+                {
+                    transferFailure = $"context transfer failed: {exception.Message}";
+                }
+
+                Complete(transferFailure == null, transferFailure);
             }
 
             try
             {
-                ServerInterestManager.Instance.EnsureDestinationReadyForAdmission(
-                    destinationContext,
-                    position,
-                    CompleteToggle);
+                if (destinationContext.InstanceID == Guid.Empty)
+                {
+                    ServerInterestManager.Instance.EnsureInterestGridLoaded(
+                        destinationContext,
+                        sourcePosition,
+                        OnDestinationReady);
+                }
+                else
+                {
+                    ServerInterestManager.Instance.EnsureDestinationReadyForAdmission(
+                        destinationContext,
+                        sourcePosition,
+                        OnDestinationReady);
+                }
             }
             catch (Exception exception)
             {
-                _pendingInstanceValidationToggles.Remove(playerID);
-                NotifyInstanceValidationToggleFailure(
-                    playerID,
-                    actor,
-                    $"destination readiness could not start: {exception.Message}");
+                Complete(false, $"destination readiness could not start: {exception.Message}");
             }
+
+            return true;
         }
 
         private void OnPlayerLeft(PlayerID playerID, bool asServer)
         {
-            _pendingInstanceValidationToggles.Remove(playerID);
+            _pendingSpatialContextTransfers.Remove(playerID);
         }
 
         private static void NotifyInstanceValidationToggleFailure(
