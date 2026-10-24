@@ -7,9 +7,8 @@ namespace Game.Server.Core
     public sealed partial class ServerPhysicsManager
     {
         /// <summary>
-        /// Casts a downward ground ray for an actor using the actor's verified simulation-region frame.
+        /// Casts a downward ground ray in the continuous server physical frame.
         /// </summary>
-        /// <param name="actorID">The nonempty identity of the actor performing the query.</param>
         /// <param name="worldOrigin">The finite absolute world-space origin of the ray.</param>
         /// <param name="maxDistance">The nonnegative maximum ray distance in metres.</param>
         /// <param name="layerMask">The Unity physics layer mask used by the raycast.</param>
@@ -17,18 +16,16 @@ namespace Game.Server.Core
         /// <param name="hitDistance">Receives the hit distance when the ray hits; otherwise zero.</param>
         /// <returns><see langword="true"/> when the ray hits a collider; otherwise <see langword="false"/>.</returns>
         /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="actorID"/> is empty or <paramref name="worldOrigin"/> is non-finite.
+        /// Thrown when <paramref name="worldOrigin"/> is non-finite.
         /// </exception>
         /// <exception cref="ArgumentOutOfRangeException">
         /// Thrown when <paramref name="maxDistance"/> is non-finite or negative, or when the query origin or hit
-        /// cannot be represented inside the actor's simulation region.
+        /// cannot be represented in the continuous Unity frame.
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the physics manager is not initialized, or the actor's physical-region binding is missing
-        /// or stale.
+        /// Thrown when the physics manager is not initialized.
         /// </exception>
-        public bool RaycastActorGround(
-            Guid actorID,
+        public bool RaycastGround(
             WorldPosition worldOrigin,
             float maxDistance,
             int layerMask,
@@ -36,8 +33,6 @@ namespace Game.Server.Core
             out float hitDistance)
         {
             EnsureInitialized();
-            if (actorID == Guid.Empty)
-                throw new ArgumentException("A nonempty actor ID is required.", nameof(actorID));
             if (!worldOrigin.IsFinite)
                 throw new ArgumentException("The ray origin must be finite.", nameof(worldOrigin));
             if (float.IsNaN(maxDistance)
@@ -49,15 +44,9 @@ namespace Game.Server.Core
                     "The maximum ray distance must be finite and nonnegative.");
             }
 
-            if (!TryGetActorRegionDescriptor(actorID, out var region))
-            {
-                throw new InvalidOperationException(
-                    $"Actor {actorID} is not bound to an active simulation region.");
-            }
-
-            var localOrigin = ToRegionLocal(region, worldOrigin);
+            var physicalOrigin = ToPhysicalPosition(worldOrigin);
             var hitGround = Physics.Raycast(
-                localOrigin,
+                physicalOrigin,
                 Vector3.down,
                 out var hit,
                 maxDistance,
@@ -69,7 +58,7 @@ namespace Game.Server.Core
                 return false;
             }
 
-            hitWorldPosition = ToWorld(region, hit.point);
+            hitWorldPosition = ToWorldPosition(hit.point);
             hitDistance = hit.distance;
             return true;
         }

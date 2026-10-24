@@ -76,8 +76,7 @@ namespace Game.Server.Systems
                     worldPosition.y + groundDetectionRadius,
                     worldPosition.z);
                 var maxRayDistance = groundDetectionRadius * 2f + 10f;
-                var hitGround = ServerPhysicsManager.Instance.RaycastActorGround(
-                    actor.ValueRO.ActorID,
+                var hitGround = ServerPhysicsManager.Instance.RaycastGround(
                     rayOrigin,
                     maxRayDistance,
                     groundLayerMask,

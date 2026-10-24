@@ -194,14 +194,6 @@ namespace Game.Server.Core
                     }
                 }
 
-                if (hasEligibleProposal && !CanAdmitPlayerRegionPosition(actor, candidatePosition))
-                {
-                    SendPlayerCorrection(playerID, actor, currentAcceptedPosition);
-                    physicalTransformsChanged = true;
-                    hasEligibleProposal = false;
-                    candidatePosition = currentAcceptedPosition;
-                }
-
                 if (!validationDue)
                 {
                     if (hasEligibleProposal)
@@ -287,7 +279,7 @@ namespace Game.Server.Core
         /// <summary>Writes one accepted absolute player position to the authoritative ECS component.</summary>
         /// <param name="entity">The player's authoritative ECS entity.</param>
         /// <param name="component">The current actor component value.</param>
-        /// <param name="actor">The actor whose physical region must contain the position.</param>
+        /// <param name="actor">The actor whose physical transform is updated.</param>
         /// <param name="position">The absolute position to commit.</param>
         private void CommitPlayerPosition(
             Entity entity,
@@ -301,13 +293,8 @@ namespace Game.Server.Core
             if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
                 throw new InvalidOperationException("Player position commit requires initialized server physics manager.");
 
-            ServerPhysicsManager.Instance.TransitionActorRegion(
-                actor.ID,
-                actor.SpatialContext,
-                position,
-                out _,
-                out var currentRegion);
-            ProjectPlayerPhysicalPosition(actor, currentRegion, position);
+            var physicalPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(position);
+            actor.transform.position = physicalPosition;
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
             _entityManager.SetComponentData(entity, component);
             GetSpatialIndex().Move(component.ActorID, actor.SpatialContext, position);
@@ -315,75 +302,19 @@ namespace Game.Server.Core
 
         private static void ProjectPlayerPhysicalPosition(
             Actor actor,
-            SimulationRegionDescriptor region,
             WorldPosition position)
         {
             if (actor == null)
                 throw new ArgumentNullException(nameof(actor));
             if (!position.IsFinite)
                 throw new ArgumentException("The player physical position must be finite.", nameof(position));
-            if (!region.Key.Context.IsCompatibleWith(actor.SpatialContext))
-            {
-                throw new InvalidOperationException(
-                    $"Player actor '{actor.ID}' region context is incompatible with its actor context.");
-            }
-
-            actor.transform.position =
-                ServerPhysicsManager.Instance.ToRegionLocal(
-                    region,
-                    position);
-        }
-
-        /// <summary>Admits a player position only when its physical simulation region is ready.</summary>
-        private static bool CanAdmitPlayerRegionPosition(
-            Actor actor,
-            WorldPosition position)
-        {
-            if (actor == null)
-                return false;
             if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-                throw new InvalidOperationException("Player region admission requires initialized server physics manager.");
-            if (!position.IsFinite)
-                return false;
+                throw new InvalidOperationException("Player physical projection requires initialized server physics manager.");
 
-            if (!ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out var currentRegion))
-            {
-                throw new InvalidOperationException(
-                    $"Player actor '{actor.ID}' has no active simulation-region binding.");
-            }
-            if (!currentRegion.Key.Context.IsCompatibleWith(actor.SpatialContext))
-            {
-                throw new InvalidOperationException(
-                    $"Player actor '{actor.ID}' simulation-region context is incompatible with its actor context.");
-            }
-
-            var destinationKey = ServerPhysicsManager.Instance.GetRegionKey(
-                actor.SpatialContext,
-                position.Chunk);
-            if (destinationKey == currentRegion.Key)
-            {
-                ServerPhysicsManager.Instance.ToRegionLocal(currentRegion, position);
-                return true;
-            }
-
-            var destinationChunk = new WorldChunkKey(actor.SpatialContext, position.Chunk);
-            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(
-                    destinationChunk,
-                    out var destinationRegion))
-            {
-                return false;
-            }
-            if (destinationRegion.Key != destinationKey)
-            {
-                throw new InvalidOperationException(
-                    $"Environment tile {destinationChunk.ChunkCoord} is bound to simulation region {destinationRegion.Key}, expected {destinationKey}.");
-            }
-
-            ServerPhysicsManager.Instance.ToRegionLocal(destinationRegion, position);
-            return true;
+            actor.transform.position = ServerPhysicsManager.Instance.ToPhysicalPosition(position);
         }
 
-        /// <summary>Sends a client correction and projects it into the actor's active physical frame.</summary>
+        /// <summary>Sends a client correction and projects it into the continuous physical frame.</summary>
         private static void SendPlayerCorrection(
             PlayerID playerID,
             Actor actor,
@@ -399,13 +330,7 @@ namespace Game.Server.Core
 
             if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
                 throw new InvalidOperationException("Player correction requires initialized server physics manager.");
-            if (!ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out var currentRegion))
-            {
-                throw new InvalidOperationException(
-                    $"Player actor '{actor.ID}' has no active simulation-region binding for correction.");
-            }
-
-            ProjectPlayerPhysicalPosition(actor, currentRegion, correctionPosition);
+            ProjectPlayerPhysicalPosition(actor, correctionPosition);
         }
 
         /// <summary>Moves a player's periodic validation window to the current authoritative tick.</summary>

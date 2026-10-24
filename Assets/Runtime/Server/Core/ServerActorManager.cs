@@ -619,17 +619,6 @@ namespace Game.Server.Core
                     $"Actor '{actor.ID}' is already registered with the server actor manager.");
             }
 
-            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-            {
-                throw new InvalidOperationException(
-                    "Server actor registration requires an initialized server physics manager.");
-            }
-
-            ServerPhysicsManager.Instance.BindActor(
-                actor.ID,
-                actor.SpatialContext,
-                spawnPosition);
-            bool physicalRegionBound = true;
             bool spatialMembershipInserted = false;
             try
             {
@@ -695,14 +684,6 @@ namespace Game.Server.Core
                 if (spatialMembershipInserted)
                     RemoveSpatialMembership(actor.ID);
 
-                if (physicalRegionBound
-                    && ServerPhysicsManager.IsInitialized
-                    && ServerPhysicsManager.Instance != null
-                    && ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out _))
-                {
-                    ServerPhysicsManager.Instance.UnbindActor(actor.ID);
-                }
-
                 throw;
             }
         }
@@ -744,13 +725,6 @@ namespace Game.Server.Core
                 return;
 
             RemoveNPCNavigationRegistration(actor);
-            if (ServerPhysicsManager.IsInitialized
-                && ServerPhysicsManager.Instance != null
-                && ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out _))
-            {
-                ServerPhysicsManager.Instance.UnbindActor(actor.ID);
-            }
-
             RemoveSpatialMembership(actor.ID);
             _actorObjects.Remove(actor.ID);
             _actorEntities.Remove(actor.ID);
@@ -1074,7 +1048,6 @@ namespace Game.Server.Core
                 ValidatePlayerPositions(tick);
             if (playerPhysicalTransformsChanged)
                 Physics.SyncTransforms();
-            UpdateSameRegionNPCNavigationDestinations();
             SynchronizeNPCPositionsToECS();
         }
 

@@ -153,12 +153,6 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     "Server spawn-point registration requires an initialized server physics manager.");
             }
-            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(sourceChunk, out var region))
-            {
-                throw new InvalidOperationException(
-                    $"Loaded source chunk {sourceChunk.ChunkCoord} has no active physical region binding.");
-            }
-
             foreach (ActorSpawnPoint spawnPoint in actorSpawnPoints)
             {
                 Guid spawnPointGUID = spawnPoint.GUID;
@@ -169,8 +163,7 @@ namespace Game.Server.Core
                 }
 
                 int prefabIndex = RegisterPrefab(spawnPoint.Actor.gameObject);
-                WorldPosition spawnWorldPosition = ServerPhysicsManager.Instance.ToWorld(
-                    region,
+                WorldPosition spawnWorldPosition = ServerPhysicsManager.Instance.ToWorldPosition(
                     spawnPoint.transform.position);
 
                 var entity = _entityManager.CreateEntity();
@@ -497,12 +490,7 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     "Queueing a spawn requires an initialized server physics manager.");
             }
-            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(sourceChunk, out var region))
-            {
-                throw new InvalidOperationException(
-                    $"Source chunk {sourceChunk.ChunkCoord} has no active physical region binding.");
-            }
-            ServerPhysicsManager.Instance.ToRegionLocal(region, worldPosition);
+            ServerPhysicsManager.Instance.ToPhysicalPosition(worldPosition);
 
             int prefabIndex = RegisterPrefab(prefab);
             int sceneIndex = RegisterScene(state.scene);
@@ -595,11 +583,6 @@ namespace Game.Server.Core
                                 new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y));
                             if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
                                 throw new InvalidOperationException("The server physics manager is not initialized.");
-                            if (!ServerPhysicsManager.Instance.TryGetEnvironmentRegionDescriptor(sourceChunk, out var region))
-                            {
-                                throw new InvalidOperationException(
-                                    $"Source chunk {sourceChunk.ChunkCoord} has no active physical region binding.");
-                            }
                             if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
                                 throw new InvalidOperationException("Consuming a spawn command requires an initialized server actor manager.");
 
@@ -610,16 +593,14 @@ namespace Game.Server.Core
                             if (!spawnWorldPosition.IsFinite)
                                 throw new InvalidOperationException("The spawn command world position must be finite.");
 
-                            var regionLocalPosition = ServerPhysicsManager.Instance.ToRegionLocal(
-                                region,
-                                spawnWorldPosition);
+                            var physicalPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(spawnWorldPosition);
 
                             // Use PurrNet's Instantiate proxy — handles scene placement,
                             // hierarchy registration, spawn, and replication in one call.
-                            spawnedObject = PurrNet.UnityProxy.Instantiate(prefab, regionLocalPosition, Quaternion.identity, scene);
+                            spawnedObject = PurrNet.UnityProxy.Instantiate(prefab, physicalPosition, Quaternion.identity, scene);
                             if (spawnedObject == null)
                                 throw new InvalidOperationException("PurrNet returned a null spawned object.");
-                            Debug.Log($"Spawned '{prefabName}' at {regionLocalPosition} in scene '{sceneNameForLog}'.");
+                            Debug.Log($"Spawned '{prefabName}' at {physicalPosition} in scene '{sceneNameForLog}'.");
 
                             var actor = spawnedObject.GetComponent<Game.Shared.Runtime.Actors.Actor>();
                             if (actor == null)
