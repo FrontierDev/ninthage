@@ -566,6 +566,8 @@ The AI should not:
 - remain in combat forever with no valid path;
 - attack through invalid geometry merely to avoid resetting.
 
+Navigation/locomotion code reports path failure or unreachable movement state; it does **not** independently clear the gameplay target merely because a path search failed. Target selection, retargeting and disengagement remain AI/encounter decisions.
+
 Exact path-recovery timing is implementation tuning.
 
 ---
@@ -580,13 +582,14 @@ Possible causes include:
 - all targets escaped;
 - all targets left the encounter/home area;
 - the NPC can no longer reach any valid target;
+- a target crossed an authored no-pursuit simulation-region/encounter boundary;
 - the encounter explicitly resets.
 
 Disengagement should transition through a clear evasion/reset process rather than leaving combat state partially active.
 
 ---
 
-## 26. Leashing and Home Areas
+## 26. Leashing, Home Areas and Simulation-Region Boundaries
 
 NPCs should not pursue players indefinitely through the world unless deliberately authored to do so.
 
@@ -600,9 +603,14 @@ Leash/reset decisions may consider:
 - encounter boundaries;
 - path validity;
 - target validity;
-- scripted encounter rules.
+- scripted encounter rules;
+- authored coarse simulation-region boundaries.
 
-Exact leash distances are content/configuration values rather than universal numbers.
+Future server simulation-region boundaries should be deliberately placed where cross-boundary pursuit is naturally impossible, undesirable or can cleanly terminate. Such boundaries may coincide with major terrain barriers, controlled passes/crossings, tunnels, gates, transport transitions or other authored world divisions. When a boundary is designated as no-pursuit, AI treats it as an encounter/leash rule and disengages/resets deliberately.
+
+A physical/server partition must not accidentally decide combat target state merely because a lower-level navigation representation changed. If content ever requires seamless pursuit across a true server-worker boundary, that is a separately designed capability.
+
+Exact leash distances and authored boundary behaviour are content/configuration values rather than universal numbers.
 
 ---
 
@@ -624,6 +632,8 @@ Boss and structured encounter resets should be deterministic.
 A player should not be able to preserve unintended partial boss state simply by exploiting leash boundaries.
 
 ---
+
+# 28. Open-World Encounter Areas
 
 # 28. Open-World Encounter Areas
 
