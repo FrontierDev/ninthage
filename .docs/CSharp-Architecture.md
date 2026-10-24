@@ -3,8 +3,8 @@
 **Status:** Current architecture reference  
 **Repository:** `FrontierDev/ninthage`  
 **Branch:** `dev`
-**Source revision:** `0bff22452fdd98c8e63f6cc7def2fcfad50abf79`
-**Snapshot date:** 2026-10-23
+**Source revision:** `b23d62bb070423cf33ca490d3aa7b89d6b7d8412`
+**Snapshot date:** 2026-10-24
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose and Scope
@@ -64,16 +64,17 @@ These are type-selection boundaries, not a mandate to rewrite existing serialize
 
 ## 3. Source Layout
 
-At this revision, the project contains 386 C# files under `Assets`.
+At this revision, the project contains 451 C# files under `Assets`.
 
 | Area | C# files | Role |
 |---|---:|---|
-| `Assets/Runtime/Client` | 139 | Client execution, presentation, input, UI and client world state |
-| `Assets/Runtime/Server` | 37 | Authoritative server managers, services, ECS systems and persistence |
-| `Assets/Runtime/Shared` | 130 | Shared definitions, runtime objects, networking and utilities |
+| `Assets/Runtime/Client` | 140 | Client execution, presentation, input, UI and client world state |
+| `Assets/Runtime/Server` | 50 | Authoritative server managers, services, ECS systems, persistence and server test helpers |
+| `Assets/Runtime/Shared` | 137 | Shared definitions, runtime objects, networking and utilities |
 | `Assets/Runtime/Core` | 1 | Process bootstrap and client/server routing |
 | `Assets/Editor` | 79 | Unity editor extensions and world/data authoring tools |
-| **Total** | **386** | |
+| `Assets/Tests` | 44 | Project-owned EditMode/PlayMode/performance test infrastructure |
+| **Total** | **451** | |
 
 The principal source layout is:
 
@@ -89,6 +90,11 @@ Assets/
 │   ├── Windows/
 │   ├── WorldEditor/
 │   └── Editor.asmdef
+│
+├── Tests/
+│   ├── EditMode/
+│   ├── PlayMode/
+│   └── Performance/
 │
 └── Runtime/
     ├── Client/
@@ -299,7 +305,7 @@ The gameplay/world manager architecture is:
 
 - `ServerInterestManager`;
 - `ServerPositionManager`;
-- `ServerPhysicsManager` (Stage 1.2 target owner; introduced during the simulation-region migration);
+- `ServerPhysicsManager` (continuous server physical-coordinate, physics-query and streamed NavMesh owner);
 - `ServerSpawnManager`;
 - `ServerActorManager`;
 - `ServerStatManager`;
@@ -532,17 +538,17 @@ The main server managers are MonoBehaviour-based, process-wide components create
 
 `ServerConnectionManager` manages connected-player/session state.
 
-`ServerWorldManager` owns server-side chunk scene loading and unloading.
+`ServerWorldManager` owns context-qualified server environment scene loading/unloading, PurrNet scene identity and terminal asynchronous scene lifecycle.
 
 `ServerInterestManager` owns player interest in world chunks and coordinates subscriptions with `ServerWorldManager`.
 
-`ServerPositionManager` owns position/network coordinate conversion that is independent of active physical simulation. It must not own simulation-region, collider, NavMesh or physics-query lifetime.
+`ServerPositionManager` owns chunk/local position and network transport conversion. It does not own active physical state, colliders, NavMesh lifetime or physics queries.
 
-`ServerPhysicsManager` owns server-side physical simulation regions: region-local physical frames, physical placement/isolation, collider/NavMesh binding and physics-query coordinate conversion/execution. It consumes authoritative actor/world position but does not own canonical actor position or environment scene loading.
+`ServerPhysicsManager` owns the current continuous server physical/NavMesh representation. `ToPhysicalPosition(WorldPosition)` and `ToWorldPosition(Vector3)` convert between canonical absolute positions and the single Unity physical frame; `RaycastGround(...)` executes continuous physical queries; and context-qualified environment navigation roots keyed by `WorldChunkKey` feed one streamed continuous NavMesh representation. It also owns navigation-aware environment unload preparation/cancellation. It does **not** own `ActorComponent.WorldPositionD`, an actor-position cache, actor physical-region membership, environment scene loading, gameplay target selection or future worker-region policy.
 
 `ServerSpawnManager` owns spawning flows.
 
-`ServerActorManager` maintains the authoritative relationship between networked `Actor` GameObjects and their server ECS entities, along with player validation and NPC-related actor processing. Its `ServerActorManager_NPCMovement` partial (not a separate runtime manager) owns NPC locomotion/navigation orchestration: enabled-`NavMeshAgent` pursuit and destination updates, temporary cross-region navigation-hop state, the pre-ECS enabled-agent GameObject-to-canonical-ECS movement bridge, and post-ECS ECS-to-GameObject projection for ECS-driven NPC movement. It consumes `ServerPhysicsManager` services for region-local NavMesh/physical mechanics.
+`ServerActorManager` maintains the authoritative relationship between networked `Actor` GameObjects and their server ECS entities, along with player validation and NPC-related actor processing. Its `ServerActorManager_NPCMovement` partial (not a separate runtime manager) owns enabled-`NavMeshAgent` lifecycle, direct pursuit/destination updates in the continuous physical space, the pre-ECS enabled-agent GameObject-to-canonical-ECS movement bridge, and post-ECS ECS-to-GameObject projection for ECS-driven NPC movement. Navigation code does not own gameplay target clearing. There is no region-hop, seam-search or Warp state in the current NPC navigation path.
 
 `ServerStatManager`, `ServerSpellCastManager`, `ServerAuraManager`, `ServerTickerManager`, `ServerCooldownManager`, and `ServerAutoAttackManager` own authoritative gameplay subsystems of the same names. `ServerAutoAttackManager` manages auto-attack registration, attack-range/readiness/cooldown checks and attack execution only; it does not own NPC navigation state or movement.
 
@@ -624,7 +630,7 @@ Depending on actor type and movement ownership, state can move in either directi
 
 - player-owned actor movement is tracked from the networked actor and synchronised into ECS for authoritative state/validation;
 - non-player actors without NavMesh ownership can have vertical motion simulated in ECS and applied back to their GameObject transform;
-- for enabled-`NavMeshAgent` NPCs, `ServerActorManager_NPCMovement` owns pursuit/navigation requests; the agent moves in its verified simulation-region-local frame, and the pre-ECS bridge reconstructs the absolute double-precision position into `ActorComponent.WorldPositionD`. The GameObject transform is a physical representation, not an independent global position authority. `ServerPhysicsManager` supplies frame conversion and physical NavMesh/handoff operations.
+- for enabled-`NavMeshAgent` NPCs, `ServerActorManager_NPCMovement` resolves the live target's canonical accepted `WorldPositionD`, projects it through `ServerPhysicsManager.ToPhysicalPosition(...)`, and submits that continuous-space destination to `NavMeshAgent.SetDestination(...)`. The pre-ECS bridge reconstructs the agent's physical transform through `ServerPhysicsManager.ToWorldPosition(...)` into `ActorComponent.WorldPositionD`. The GameObject transform is a physical representation, not an independent global position authority; there is no seam/hop/Warp handoff path.
 
 ECS systems also communicate completion/tick events back to the MonoBehaviour/domain layer through shared endpoint callbacks. `SpellCastSystem`, for example, decrements cast state in ECS and raises `ActorEndpoint` callbacks for cast ticks and cast completion.
 
@@ -749,7 +755,7 @@ World chunk scenes use names in the form:
 World_<x>_<y>
 ```
 
-`GameConfiguration.ChunkSize` supplies the shared physical chunk size.
+`GameConfiguration.ChunkSize` supplies the shared 256 m origin/network/environment-tile grid size.
 
 `WorldPosition` stores authoritative coordinates using double precision (`double x/y/z`) and derives:
 
@@ -757,18 +763,20 @@ World_<x>_<y>
 - the local position within a chunk;
 - conversion to local coordinates relative to an arbitrary origin.
 
+`ActorSpatialContext` carries authoritative logical world/map/instance identity independently of physical coordinates. Server environment identity uses `WorldChunkKey`, which combines an `ActorSpatialContext` with an environment-tile coordinate so equal tile coordinates in different runtime contexts do not share logical identity.
+
 ### 15.2 Server world scenes
 
 `ServerWorldManager` is authoritative for context-qualified world chunk scene loading/unloading. It maps logical context + environment tile identity to PurrNet `SceneID` values and tracks asynchronous in-flight chunk loads.
 
 World chunks are loaded through the PurrNet scene module as addressable additive scenes. The manager also loads a persistent `global_actors` scene used for actor GameObjects.
 
-Physical simulation is a separate responsibility. `ServerWorldManager` does not own simulation-region frames, collider/NavMesh placement or physics queries. Loaded environment content is physically bound to the appropriate simulation region by `ServerPhysicsManager`.
+Physical simulation is a separate responsibility. `ServerWorldManager` does not own physical-coordinate conversion, collider/NavMesh binding or physics queries. When an environment scene reaches the loaded state, `ServerPhysicsManager.BindEnvironmentScene(...)` registers its existing scene roots as context-qualified NavMesh sources without moving those roots into another physical frame. Navigation-aware unload preparation removes a tile from the continuous NavMesh before terminal scene unload and can be cancelled if the unload is aborted.
 
 This creates a distinction between:
 
 - terrain/world chunk scenes, whose scene lifetime belongs to `ServerWorldManager`;
-- physical simulation-region representation, whose lifetime/placement belongs to `ServerPhysicsManager`;
+- continuous physical/NavMesh representation, whose conversion/query/navigation lifetime belongs to `ServerPhysicsManager`;
 - `global_actors`, which acts as the persistent actor scene.
 
 ### 15.3 Interest management
@@ -838,6 +846,10 @@ The manager also provides conversions between:
 
 Normal floating-origin selection is driven by the player's actual position crossing a centred origin-cell boundary. Environment streaming/interest may use the same integer grid coordinate, but interest requests do not own or directly force the client floating origin.
 
+The authoritative server does not mirror the client's floating-origin shifts. Canonical accepted actor position remains double precision in `ActorComponent.WorldPositionD`. For the current tested world scale, `ServerPhysicsManager` projects finite canonical coordinates directly into one continuous Unity `Vector3` physical frame and reconstructs physical results back into `WorldPosition`. A streamed 256 m environment/origin-cell boundary therefore does not create a server physical frame boundary.
+
+This direct-float server representation is the current implementation, not a claim that one Unity process can represent an arbitrarily large future world indefinitely. Any later physical partitioning/server-worker ownership model is deferred until precision, workload or deployment evidence requires it, and future coarse regions are not implied by the 256 m streaming/FPO grid.
+
 This separates large-scale authoritative coordinates from the float coordinate space used by Unity rendering and normal GameObject transforms.
 
 ## 17. Movement Architecture
@@ -849,9 +861,9 @@ Movement contains both shared mathematics and side-specific ownership/validation
 The current actor/server architecture treats player movement differently from NPC movement:
 
 - player movement uses the existing client-owned position proposal, authoritative server validation and correction path through `MovementEndpoint`;
-- `ServerActorManager_NPCMovement` orchestrates enabled-`NavMeshAgent` NPC pursuit, destination refresh, temporary region-hop intent and the pre-ECS movement bridge;
+- `ServerActorManager_NPCMovement` orchestrates enabled-`NavMeshAgent` NPC pursuit, direct continuous-space destination refresh and the pre-ECS movement bridge;
 - disabled/absent-agent NPC vertical movement is owned by server ECS and projected back to the GameObject after ECS simulation;
-- `ServerPhysicsManager` owns region-local physical/NavMesh services, seam queries/validation, Warp and physical region binding;
+- `ServerPhysicsManager` owns continuous physical conversion, physical queries and streamed NavMesh binding/lifetime; streamed tile crossings do not cause region lookup, Warp or handoff;
 - `ServerAutoAttackManager` handles auto-attack combat execution, not NPC locomotion/navigation.
 
 Chunk transitions are coupled to movement through interest requests rather than by directly making the movement simulation responsible for scene loading.
@@ -1068,7 +1080,7 @@ Not every feature uses every stage, but this captures the principal direction of
 | Authoritative world loading | `Game.Server.Core.ServerWorldManager` |
 | Player chunk interest | `Game.Server.Core.ServerInterestManager` |
 | Position/network coordinate conversion | `Game.Server.Core.ServerPositionManager` |
-| Simulation-region physics/NavMesh representation | `Game.Server.Core.ServerPhysicsManager` |
+| Continuous server physics/NavMesh representation | `Game.Server.Core.ServerPhysicsManager` |
 | Server actor/GameObject-ECS bridge | `Game.Server.Core.ServerActorManager` |
 | Server time-based simulation | `Game.Server.Systems` systems |
 | Authentication/account implementation | `Game.Server.Services` / `Game.Server.Persistence` |
@@ -1092,7 +1104,9 @@ The current Ninth Age C# architecture is centred on five responsibility domains:
 
 The server runtime combines networked GameObject actors with a Unity Entities simulation layer. Shared actor objects provide the network-visible gameplay identity, while server ECS entities and dynamic buffers hold selected simulation state such as positions, movement state, spell casts, cooldowns, auras, tickers and regeneration. `Game.Server.Core.ServerActorManager` and `Game.Shared.Networking.ActorEndpoint` callbacks bridge these two representations.
 
-The world layer uses addressable additive chunk scenes, server-controlled scene interest, a persistent global actor scene, double-precision shared world coordinates and a client-side floating origin. This allows the world-management architecture, actor architecture and networking architecture to share the same chunk-coordinate model.
+Stage 1.2 is not complete. The continuous physical-space cleanup is a current foundation; remaining planned work includes accepted-position-driven environment interest, current actor visibility membership/range relevance, migration of remaining gameplay proximity consumers to the context-qualified spatial index, observer replication from canonical accepted position, and atomic logical-context transfer.
+
+The world layer uses context-qualified addressable additive environment scenes, server-controlled scene interest, a persistent global actor scene, double-precision canonical actor positions, one continuous server physical/NavMesh space for the current runtime phase, and a client-side floating origin. The shared centred 256 m grid identifies client origin/network cells and authored environment tiles without partitioning server physics.
 
 The authored RPG rules are represented as shared `ScriptableObject` definitions and definition libraries, with specialised effects/targets/conditions/behaviours represented as smaller typed components. The editor assembly provides dedicated authoring tools over those same shared definition types.
 

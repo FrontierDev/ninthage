@@ -570,3 +570,22 @@ Relevant design/test references:
 At the time this investigation was recorded, the remote `dev` branch visible through the GitHub repository API pointed to `79e75888` (`Issue 181 rev 1`). Issue #182 was closed but its Inspector files were not present on that remote branch snapshot.
 
 The runtime conclusions above are therefore tied to the stated commit baseline. Any later code changes to simulation-region mapping, NPC movement, seam discovery, interest management, aggro acquisition or distance calculation must be checked against this record rather than assuming these findings remain current.
+
+---
+
+## 21. Resolution — 24 October 2026
+
+The findings in Sections 1–20 remain accurate for the recorded baseline commit `79e75888c09741fb8ed5caed5ffd3fe0e15cb6df`. They document the behaviour of the fixed 4×4 tile-derived simulation-region, isolated physical-slot and calculated seam/handoff architecture that existed at that revision.
+
+After this investigation, the owner superseded that architecture rather than repairing the seam system incrementally. The selected response was architectural simplification: retain the working client floating-origin path and canonical double-precision server position, collapse the current server runtime to one continuous physical/NavMesh space, and defer any future coarse simulation-region/server-worker boundaries until they can be deliberately authored around geography, gameplay and operational requirements.
+
+The cleanup sequence was:
+
+- **#188** — realigned the Stage 1.2 implementation and performance architecture documents with continuous server physical space;
+- **#189** — cut the live player/NPC/spawn/world physics paths over to the continuous physical/NavMesh representation;
+- **#190** — deleted the fixed-region types, actor/region registries, configuration and temporary compatibility stubs;
+- **#191** — retired the executable simulation-region sizing workload while preserving its historical benchmark evidence.
+
+As of source revision `b23d62bb070423cf33ca490d3aa7b89d6b7d8412` (`Issue 191`), the executable sizing probe has also been removed. The earlier 4×4 span and active-region-capacity results remain historical engineering evidence only; they are not current runtime configuration.
+
+This document is therefore intentionally retained as a historical debugging and architecture record. Its cross-region defects should not be read as descriptions of the current continuous-space implementation, but they explain why the superseded architecture was retired.
