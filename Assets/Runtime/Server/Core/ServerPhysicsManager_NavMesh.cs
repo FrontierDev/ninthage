@@ -528,8 +528,8 @@ namespace Game.Server.Core
                 out double borderMin,
                 out double borderMax);
             double alongCoordinate = alongX
-                ? seam.ApproachAbsolute.z
-                : seam.ApproachAbsolute.x;
+                ? seam.ApproachAbsolute.x
+                : seam.ApproachAbsolute.z;
             double permittedMin = borderMin + inset;
             double permittedMax = borderMax - inset;
             if (!IsFinite(alongCoordinate)
