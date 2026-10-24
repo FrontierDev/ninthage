@@ -209,6 +209,7 @@ namespace Game.Server.Core
         private readonly Dictionary<Guid, Entity> _actorEntities = new();
         private readonly HashSet<PlayerID> _pendingSpatialContextTransfers = new();
         private readonly List<AcceptedVisibilityMovement> _acceptedVisibilityMovements = new();
+        private readonly List<Guid> _riftQueryCandidateIDs = new();
         private NetworkManager _networkManager;
         private ServerSpatialIndex _spatialIndex;
 
@@ -256,6 +257,54 @@ namespace Game.Server.Core
                 out examinedCandidateCount,
                 includeVerticalDistance,
                 predicate);
+        }
+
+        private List<Actor> QueryActorsInRange(
+            ActorSpatialContext context,
+            WorldPosition center,
+            double radius)
+        {
+            if (!_initialized || _instance != this || _spatialIndex == null)
+                throw new InvalidOperationException("The server actor manager is not initialized for spatial queries.");
+            if (!context.IsValid)
+                throw new ArgumentException("A valid spatial context is required.", nameof(context));
+            if (!center.IsFinite)
+                throw new ArgumentException("A finite query centre is required.", nameof(center));
+            if (double.IsNaN(radius) || double.IsInfinity(radius) || radius < 0d)
+                throw new ArgumentOutOfRangeException(nameof(radius), radius, "Query radius must be finite and nonnegative.");
+
+            _riftQueryCandidateIDs.Clear();
+            QuerySpatialInRange(
+                context,
+                center,
+                radius,
+                _riftQueryCandidateIDs,
+                ResolveAcceptedPosition,
+                out _,
+                includeVerticalDistance: true);
+
+            var actors = new List<Actor>(_riftQueryCandidateIDs.Count);
+            foreach (Guid actorID in _riftQueryCandidateIDs)
+            {
+                if (!TryGetActor(actorID, out Actor actor) || actor == null)
+                    throw new InvalidOperationException(
+                        $"Spatial index contains actor {actorID}, but the authoritative actor registry does not.");
+                if (!actor.SpatialContext.IsValid || !context.IsCompatibleWith(actor.SpatialContext))
+                    throw new InvalidOperationException(
+                        $"Spatial index returned actor {actorID} with an invalid or incompatible spatial context.");
+
+                actors.Add(actor);
+            }
+
+            return actors;
+
+            WorldPosition ResolveAcceptedPosition(Guid actorID)
+            {
+                if (!TryGetAcceptedWorldPosition(actorID, out WorldPosition position))
+                    throw new InvalidOperationException(
+                        $"Spatial index contains actor {actorID}, but it has no accepted world position.");
+                return position;
+            }
         }
 
         /// <summary>Finds the authoritative ECS entity associated with an actor identifier.</summary>
@@ -437,6 +486,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
             ActorEndpoint.onActorDeath += OnActorDeath;
             ActorEndpoint.onServerInstanceValidationToggleRequested += OnInstanceValidationToggleRequested;
+            ActorEndpoint.onServerQueryActorsInRange += QueryActorsInRange;
             MovementEndpoint.onServerPositionProposal += OnServerPositionProposal;
             _networkManager.onPlayerLeft += OnPlayerLeft;
 
@@ -461,6 +511,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorInterestChanged -= OnActorInterestChanged;
             ActorEndpoint.onActorDeath -= OnActorDeath;
             ActorEndpoint.onServerInstanceValidationToggleRequested -= OnInstanceValidationToggleRequested;
+            ActorEndpoint.onServerQueryActorsInRange -= QueryActorsInRange;
             MovementEndpoint.onServerPositionProposal -= OnServerPositionProposal;
             if (_networkManager != null)
                 _networkManager.onPlayerLeft -= OnPlayerLeft;
@@ -487,6 +538,7 @@ namespace Game.Server.Core
             _npcAggroStates.Clear();
             _npcNavigationStates.Clear();
             _acceptedVisibilityMovements.Clear();
+            _riftQueryCandidateIDs.Clear();
             _pendingTickID = -1;
             _pendingTickEntityScanCount = 0;
             _pendingTickGameObjectSyncCount = 0;

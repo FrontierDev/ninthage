@@ -5,6 +5,7 @@ using PurrNet;
 using Game.Shared.Performance;
 using Game.Shared.Utility;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Shared.Networking
@@ -77,7 +78,7 @@ namespace Game.Shared.Networking
         public static Action<AuraInstance, Actor, int> onClientDispelAura;
 
         /// <summary>Raised to spawn a client visual effect at a position.</summary>
-        public static Action<ActorVFXController, int, string, Vector3, float> onClientSpawnVFXAtPosition;
+        public static Action<ActorVFXController, int, string, WorldPosition, float> onClientSpawnVFXAtPosition;
         /// <summary>Raised to spawn a client projectile.</summary>
         public static Action<ActorVFXController, Actor, string, float> onClientSpawnProjectile;
         /// <summary>Raised to trigger a client visual effect.</summary>
@@ -105,6 +106,9 @@ namespace Game.Shared.Networking
         /// </summary>
         public static Action<Actor, WorldPosition>
             onServerAcceptedPlayerPositionChanged;
+        /// <summary>Queries authoritative actors within a context-qualified absolute world-space range.</summary>
+        public static Func<ActorSpatialContext, WorldPosition, double, List<Actor>>
+            onServerQueryActorsInRange;
 
         // ... Spell casting callbacks
         /// <summary>Raised when a server spell cast starts.</summary>

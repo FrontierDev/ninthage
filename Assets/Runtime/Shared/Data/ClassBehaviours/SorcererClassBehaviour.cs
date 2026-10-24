@@ -1,6 +1,8 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared.Utility;
 using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Networking;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -33,8 +35,10 @@ namespace Game.Shared.Data.ClassBehaviours
 
         private struct RiftData
         {
-            /// <summary>Gets or sets the rift world position.</summary>
-            public Vector3 Position;
+            /// <summary>Gets or sets the rift's placement context.</summary>
+            public ActorSpatialContext SpatialContext;
+            /// <summary>Gets or sets the rift's authoritative absolute world position.</summary>
+            public WorldPosition Position;
             /// <summary>Gets or sets the rift radius.</summary>
             public float Radius;
             /// <summary>Gets or sets the rift visual effect identifier.</summary>
@@ -104,13 +108,37 @@ namespace Game.Shared.Data.ClassBehaviours
         /// Registers a Rift.
         /// </summary>
         /// <param name="caster"></param>
-        /// <param name="position"></param>
+        /// <param name="spatialContext">The placement world, map and instance context.</param>
+        /// <param name="position">The authoritative absolute placement position.</param>
         /// <param name="duration"></param>
         /// <param name="radius"></param>
         /// <param name="vfxID"></param>
-        public void RegisterRift(Actor caster, Vector3 position, float duration, float radius, int vfxID)
+        public void RegisterRift(
+            Actor caster,
+            ActorSpatialContext spatialContext,
+            WorldPosition position,
+            float duration,
+            float radius,
+            int vfxID)
         {
-            _activeRifts[caster] = new RiftData { Position = position, Radius = radius, VFXID = vfxID };
+            if (caster == null)
+                throw new ArgumentNullException(nameof(caster));
+            if (!spatialContext.IsValid)
+                throw new ArgumentException("A valid Rift placement context is required.", nameof(spatialContext));
+            if (!position.IsFinite)
+                throw new ArgumentException("A finite Rift placement position is required.", nameof(position));
+            if (float.IsNaN(duration) || float.IsInfinity(duration) || duration < 0f)
+                throw new ArgumentOutOfRangeException(nameof(duration), duration, "Rift duration must be finite and nonnegative.");
+            if (float.IsNaN(radius) || float.IsInfinity(radius) || radius < 0f)
+                throw new ArgumentOutOfRangeException(nameof(radius), radius, "Rift radius must be finite and nonnegative.");
+
+            _activeRifts[caster] = new RiftData
+            {
+                SpatialContext = spatialContext,
+                Position = position,
+                Radius = radius,
+                VFXID = vfxID
+            };
 
             // Replace any existing rift ticker.
             ActorEndpoint.onServerRemoveTickerByTag?.Invoke(caster, "sorcerer_rift");
@@ -125,11 +153,23 @@ namespace Game.Shared.Data.ClassBehaviours
         /// <param name="rift"></param>
         private void PulseRift(Actor caster, RiftData rift)
         {
-            var colliders = Physics.OverlapSphere(rift.Position, rift.Radius);
-            foreach (var col in colliders)
+            var query = ActorEndpoint.onServerQueryActorsInRange
+                ?? throw new InvalidOperationException(
+                    "Rift pulse requires the authoritative server spatial query bridge.");
+
+            List<Actor> targets = query(
+                rift.SpatialContext,
+                rift.Position,
+                rift.Radius);
+
+            foreach (Actor target in targets)
             {
-                var target = col.GetComponentInParent<Actor>();
-                if (target == null || target == caster || target.isDead) continue;
+                if (target == null)
+                    throw new InvalidOperationException("The Rift spatial query returned a null actor.");
+
+                if (ReferenceEquals(target, caster) || target.isDead)
+                    continue;
+
                 ApplyRiftPulseDamage(caster, target);
             }
 

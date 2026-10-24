@@ -6,9 +6,11 @@ using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Runtime.VFX;
+using Game.Shared.Utility;
 using PurrNet;
 using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
@@ -60,7 +62,7 @@ namespace Game.Client
             _initialized = false;
         }
 
-        private void OnClientSpawnVFXAtPosition(ActorVFXController actor, int vfxID, string addressablePath, Vector3 position, float lifetime)
+        private void OnClientSpawnVFXAtPosition(ActorVFXController actor, int vfxID, string addressablePath, WorldPosition position, float lifetime)
         {
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             long startedTimestamp = telemetryEnabled ? Stopwatch.GetTimestamp() : 0;
@@ -90,7 +92,30 @@ namespace Game.Client
                     return;
                 }
 
-                var go = UnityProxy.InstantiateDirectly(handle.Result, position, Quaternion.identity);
+                if (!ClientPositionManager.Initialized || ClientPositionManager.Instance == null)
+                {
+                    Debug.Error($"Cannot spawn effect {vfxID} ('{addressablePath}'): ClientPositionManager is not initialized.");
+                    return;
+                }
+                if (!position.IsFinite)
+                {
+                    Debug.Error($"Cannot spawn effect {vfxID} ('{addressablePath}') at a non-finite world position.");
+                    return;
+                }
+
+                Vector3 localPosition = ClientPositionManager.Instance.NetworkToLocal(
+                    position.Chunk,
+                    position.LocalPosition);
+                var go = UnityProxy.InstantiateDirectly(handle.Result, localPosition, Quaternion.identity);
+                Scene globalActors = SceneManager.GetSceneByName("global_actors");
+                if (!globalActors.IsValid() || !globalActors.isLoaded)
+                {
+                    Debug.Error($"Cannot place effect {vfxID} ('{addressablePath}'): global_actors scene is unavailable.");
+                    Destroy(go);
+                    return;
+                }
+
+                SceneManager.MoveGameObjectToScene(go, globalActors);
                 TrackVFX(go);
                 actor.RegisterEffect(vfxID, go);
 

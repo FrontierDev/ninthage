@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System;
 using Game.Shared.Data.ClassBehaviours;
 using Game.Shared.Runtime.Spellcasting;
+using Game.Shared.Utility;
 using UnityEngine;
 using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.Serialization;
@@ -42,17 +44,40 @@ namespace Game.Shared.Data.SpellEffectDefinitions
         /// <summary>Places the rift for the spell caster.</summary>
         public override void Execute(SpellContext ctx, Actor target)
         {
+            if (ctx == null)
+                throw new ArgumentNullException(nameof(ctx));
+            if (ctx.Caster == null)
+                throw new InvalidOperationException("Cannot place a Rift without a caster.");
+            if (!ctx.HasWorldPositionTarget)
+                throw new InvalidOperationException("Cannot place a Rift without an authoritative world-position target.");
+            if (!ctx.WorldPositionTarget.IsFinite)
+                throw new InvalidOperationException("Cannot place a Rift at a non-finite world position.");
+            if (!ctx.Caster.SpatialContext.IsValid)
+                throw new InvalidOperationException("Cannot place a Rift for a caster with an invalid spatial context.");
             if (ClassBehaviour == null) return;
+
             if (!string.IsNullOrEmpty(RiftPrefabAddressablePath))
             {
                 int effectId = Time.time.GetHashCode(); // Generate a unique ID for this effect instance
                 ctx.Caster.GetComponent<ActorVFXController>()
-                    ?.Observers_SpawnEffectAtPosition(effectId, RiftPrefabAddressablePath, ctx.PositionTarget, Duration);
-                ClassBehaviour.RegisterRift(ctx.Caster, ctx.PositionTarget, Duration, Radius, effectId);
+                    ?.Observers_SpawnEffectAtPosition(effectId, RiftPrefabAddressablePath, ctx.WorldPositionTarget, Duration);
+                ClassBehaviour.RegisterRift(
+                    ctx.Caster,
+                    ctx.Caster.SpatialContext,
+                    ctx.WorldPositionTarget,
+                    Duration,
+                    Radius,
+                    effectId);
             }
             else
             {
-                ClassBehaviour.RegisterRift(ctx.Caster, ctx.PositionTarget, Duration, Radius, 0);
+                ClassBehaviour.RegisterRift(
+                    ctx.Caster,
+                    ctx.Caster.SpatialContext,
+                    ctx.WorldPositionTarget,
+                    Duration,
+                    Radius,
+                    0);
             }
         }
     }

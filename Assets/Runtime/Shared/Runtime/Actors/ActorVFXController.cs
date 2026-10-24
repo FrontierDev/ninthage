@@ -1,5 +1,6 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
+using Game.Shared.Utility;
 using PurrNet;
 using System.Collections;
 using System.Collections.Generic;
@@ -33,11 +34,17 @@ namespace Game.Shared.Runtime.Actors
         /// ground-placed visual effect (zones, portals, AoE indicators, etc.).
         /// </summary>
         /// <param name="addressablePath">Addressable key for the prefab to instantiate.</param>
-        /// <param name="position">Physics-space world position.</param>
+        /// <param name="position">Authoritative absolute world position.</param>
         /// <param name="lifetime">Seconds until the object is auto-destroyed. 0 = prefab manages its own lifecycle.</param>
         [ObserversRpc]
-        public void Observers_SpawnEffectAtPosition(int id, string addressablePath, Vector3 position, float lifetime)
+        public void Observers_SpawnEffectAtPosition(int id, string addressablePath, WorldPosition position, float lifetime)
         {
+            if (!position.IsFinite)
+            {
+                Debug.Error($"Cannot spawn effect {id} ('{addressablePath}') at a non-finite world position.");
+                return;
+            }
+
             ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_VFX_HANDLER_INVOCATION_COUNT);
             ActorEndpoint.onClientSpawnVFXAtPosition?.Invoke(this, id, addressablePath, position, lifetime);
         }
