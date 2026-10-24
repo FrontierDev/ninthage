@@ -1,9 +1,9 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
-using Game.Server.Networking;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using PurrNet;
 using PurrNet.Modules;
 using System;
@@ -21,7 +21,7 @@ namespace Game.Server.Core
     {
         private static readonly PerformanceMarker REQUEST_MARKER = new(
             NetworkingPerformanceMetrics.INTEREST_REQUEST_DURATION,
-            "Server.InterestManager.OnInterestRequest");
+            "Server.InterestManager.UpdateAcceptedPositionInterest");
         private static ServerInterestManager _instance;
         /// <summary>Gets the active server interest manager.</summary>
         public static ServerInterestManager Instance => _instance;
@@ -46,8 +46,8 @@ namespace Game.Server.Core
             // cache a reference to the network manager.
             _networkManager = NetworkManager.main;
 
-            // Listen for interest requests from the movement service.
-            Game.Shared.Networking.MovementEndpoint.onInterestRequest += OnInterestRequest;
+            Game.Shared.Networking.ActorEndpoint.onServerAcceptedPlayerPositionChanged +=
+                OnServerAcceptedPlayerPositionChanged;
             _networkManager.onPlayerLeft += OnPlayerLeft;
 
             _initialized = true;
@@ -55,7 +55,8 @@ namespace Game.Server.Core
 
         private void OnDestroy()
         {
-            Game.Shared.Networking.MovementEndpoint.onInterestRequest -= OnInterestRequest;
+            Game.Shared.Networking.ActorEndpoint.onServerAcceptedPlayerPositionChanged -=
+                OnServerAcceptedPlayerPositionChanged;
 
             if (_networkManager != null)
                 _networkManager.onPlayerLeft -= OnPlayerLeft;
@@ -107,22 +108,36 @@ namespace Game.Server.Core
             _actorChunks.Remove(playerActor);
         }
 
-        private void OnInterestRequest(PlayerID playerID, Vector2Int centerChunk)
+        internal void UpdatePlayerInterestFromAcceptedPosition(
+            Actor actor,
+            WorldPosition acceptedPosition)
         {
-            var session = ServerConnectionManager.Instance.GetSessionData(playerID);
-            if (session?.PlayerActor == null) return;
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (!actor.Owner.HasValue)
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' has no player owner for interest management.");
+            if (!actor.SpatialContext.IsValid)
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' has no valid server-owned spatial context.");
+            if (!acceptedPosition.IsFinite)
+                throw new ArgumentException(
+                    "Accepted player position must be finite.",
+                    nameof(acceptedPosition));
+
+            PlayerID playerID = actor.Owner.Value;
+            Vector2Int centerChunk = acceptedPosition.Chunk;
             using var markerScope = REQUEST_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int visibilityEvaluationCount = 0;
-            var actor = session.PlayerActor;
             ActorSpatialContext actorContext = actor.SpatialContext;
-            if (!actorContext.IsValid)
-                throw new InvalidOperationException($"Actor {actor} has no valid server-owned spatial context.");
 
             var newSet = GetSceneGrid(centerChunk);
 
             if (!_actorChunks.TryGetValue(actor, out var oldSet))
                 oldSet = new HashSet<string>();
+            else if (oldSet.SetEquals(newSet))
+                return;
 
             var toSubscribe = new List<Vector2Int>();
             var toUnsubscribe = new List<Vector2Int>();
@@ -220,6 +235,13 @@ namespace Game.Server.Core
                     visibilityEvaluationCount);
                 NetworkingPerformanceMetrics.RecordVisibilityCandidates(visibilityEvaluationCount);
             }
+        }
+
+        private void OnServerAcceptedPlayerPositionChanged(
+            Actor actor,
+            WorldPosition acceptedPosition)
+        {
+            UpdatePlayerInterestFromAcceptedPosition(actor, acceptedPosition);
         }
 
         private void ProcessInterestChange(Actor actor, List<Vector2Int> toSubscribe, List<Vector2Int> toUnsubscribe)

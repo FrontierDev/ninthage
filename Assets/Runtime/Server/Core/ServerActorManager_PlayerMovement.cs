@@ -298,6 +298,9 @@ namespace Game.Server.Core
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
             _entityManager.SetComponentData(entity, component);
             GetSpatialIndex().Move(component.ActorID, actor.SpatialContext, position);
+            ActorEndpoint.onServerAcceptedPlayerPositionChanged?.Invoke(
+                actor,
+                position);
         }
 
         private static void ProjectPlayerPhysicalPosition(

@@ -451,8 +451,17 @@ namespace Game.Server.Core
             // which transiently triggers the death check. Reset the flag.
             playerActor.isDead = false;
 
-            // Trigger initial 3x3 chunk interest around the spawn location.
-            Game.Shared.Networking.MovementEndpoint.onInterestRequest?.Invoke(playerID, spawnScene);
+            // Trigger initial 3x3 chunk interest around the accepted spawn position.
+            if (!ServerInterestManager.IsInitialized
+                || ServerInterestManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Initial player interest requires initialized server interest manager.");
+            }
+
+            ServerInterestManager.Instance.UpdatePlayerInterestFromAcceptedPosition(
+                playerActor,
+                spawnWorldPosition);
 
             // Send the finalized character data to the client now, after all server-side
             // modifications are complete. This must happen before AddPlayerToScene so

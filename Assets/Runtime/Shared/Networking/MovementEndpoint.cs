@@ -14,10 +14,6 @@ namespace Game.Shared.Networking
         /// <summary>Raised when the client requests an interest update.</summary>
         public static Action<Vector2Int> onClientInterestRequest;
 
-        // Server callbacks.
-        /// <summary>Raised when a player requests a chunk-interest update.</summary>
-        public static Action<PlayerID, Vector2Int> onInterestRequest;
-
         /// <summary>Raised when an owner submits an origin-qualified movement proposal.</summary>
         public static Action<PlayerID, WorldPosition, long, long> onServerPositionProposal;
 
@@ -47,15 +43,6 @@ namespace Game.Shared.Networking
                 position,
                 ownershipEpoch,
                 proposalSequence);
-        }
-
-        /// <summary>Requests a chunk-interest update from the server.</summary>
-        [ServerRpc]
-        public static void Server_RequestChunkInterest(Vector2Int centerChunk, RPCInfo rpcInfo = default)
-        {
-            NetworkingPerformanceMetrics.RecordRpcHandlerInvocation(
-                NetworkingPerformanceMetrics.RPC_MOVEMENT_SERVER_REQUEST_CHUNK_INTEREST_HANDLER_INVOCATION_COUNT);
-            onInterestRequest?.Invoke(rpcInfo.sender, centerChunk);
         }
 
         /// <summary>Notifies a client of its current chunk interest.</summary>

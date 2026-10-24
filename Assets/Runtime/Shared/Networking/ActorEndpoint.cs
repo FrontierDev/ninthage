@@ -3,6 +3,7 @@ using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using PurrNet;
 using Game.Shared.Performance;
+using Game.Shared.Utility;
 using System;
 using UnityEngine;
 
@@ -94,6 +95,12 @@ namespace Game.Shared.Networking
         public static Action<Actor> onServerActorOwnerChanged;
         /// <summary>Raised when server actor interest changes.</summary>
         public static Action<Actor, SceneID> onServerActorInterestChanged;
+        /// <summary>
+        /// Raised after a player's authoritative accepted position
+        /// has been committed by the server.
+        /// </summary>
+        public static Action<Actor, WorldPosition>
+            onServerAcceptedPlayerPositionChanged;
 
         // ... Spell casting callbacks
         /// <summary>Raised when a server spell cast starts.</summary>
