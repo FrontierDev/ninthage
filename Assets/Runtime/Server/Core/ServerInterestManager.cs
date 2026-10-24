@@ -54,6 +54,7 @@ namespace Game.Server.Core
         private readonly List<Guid> _visibilityCandidateQueryBuffer = new();
         private readonly HashSet<Guid> _visibilityCandidateActorIDs = new();
         private readonly Dictionary<PlayerID, WorldChunkKey> _retainedTransferEntranceChunks = new();
+        private readonly Dictionary<WorldChunkKey, int> _environmentPreloadCounts = new();
 
         private sealed class PreparedTransferScenes
         {
@@ -118,6 +119,7 @@ namespace Game.Server.Core
 
             _actorInterest.Clear();
             _retainedTransferEntranceChunks.Clear();
+            _environmentPreloadCounts.Clear();
             _preparedTransferScenes.Clear();
             _visibilityCandidateQueryBuffer.Clear();
             _visibilityCandidateActorIDs.Clear();
@@ -517,7 +519,11 @@ namespace Game.Server.Core
                 if (!_actorInterest.TryGetValue(actor, out var currentState)
                     || !currentState.Context.Equals(context)
                     || !currentState.SceneNames.Contains(chunkScene))
+                {
+                    var chunkKey = new WorldChunkKey(context, chunkCoord);
+                    UnloadChunkIfUnused(chunkKey, sceneID);
                     return;
+                }
 
                 if (actor.Owner != null)
                 {
@@ -561,15 +567,7 @@ namespace Game.Server.Core
                 Debug.Log($"Unsubscribed player {actor} from chunk {chunkCoord}.");
             }
 
-            // If no players remain subscribed and no loads are in-flight, unload the chunk.
-            if (ServerWorldManager.Instance.IsChunkLoadPending(context, chunkCoord))
-                return;
-
-            if (_networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
-                && players.Count == 0)
-            {
-                ServerWorldManager.Instance.UnloadChunk(context, chunkCoord);
-            }
+            UnloadChunkIfUnused(new WorldChunkKey(context, chunkCoord), sceneID);
         }
 
         /// <summary>
@@ -605,56 +603,99 @@ namespace Game.Server.Core
             }
 
             Vector2Int centerChunk = position.Chunk;
-            var pendingChunks = new List<Vector2Int>();
-            foreach (var chunk in GetGrid(centerChunk))
+            var preloadChunks = new List<WorldChunkKey>();
+            try
             {
-                if (!ServerWorldManager.Instance.IsChunkLoaded(context, chunk))
-                    pendingChunks.Add(chunk);
+                foreach (Vector2Int chunk in GetGrid(centerChunk))
+                {
+                    var chunkKey = new WorldChunkKey(context, chunk);
+                    AddEnvironmentPreload(chunkKey);
+                    preloadChunks.Add(chunkKey);
+                }
+            }
+            catch
+            {
+                for (int i = preloadChunks.Count - 1; i >= 0; i--)
+                    RemoveEnvironmentPreload(preloadChunks[i]);
+                throw;
             }
 
-            if (pendingChunks.Count == 0)
+            var pendingChunks = new List<WorldChunkKey>();
+            foreach (WorldChunkKey chunkKey in preloadChunks)
             {
-                onCompleted(true);
-                return;
+                if (!ServerWorldManager.Instance.IsChunkLoaded(context, chunkKey.ChunkCoord))
+                    pendingChunks.Add(chunkKey);
             }
 
-            int remaining = pendingChunks.Count;
             bool terminalResultDelivered = false;
-
-            void CompleteChunk(bool succeeded)
+            void CompletePreload(bool succeeded)
             {
                 if (terminalResultDelivered)
                     return;
 
+                terminalResultDelivered = true;
+                try
+                {
+                    onCompleted(succeeded);
+                }
+                finally
+                {
+                    for (int i = preloadChunks.Count - 1; i >= 0; i--)
+                        RemoveEnvironmentPreload(preloadChunks[i]);
+
+                    foreach (WorldChunkKey chunkKey in preloadChunks)
+                    {
+                        if (ServerWorldManager.Instance.TryGetChunkSceneID(
+                                chunkKey.Context,
+                                chunkKey.ChunkCoord,
+                                out SceneID sceneID))
+                            UnloadChunkIfUnused(chunkKey, sceneID);
+                    }
+                }
+            }
+
+            if (pendingChunks.Count == 0)
+            {
+                CompletePreload(true);
+                return;
+            }
+
+            int remaining = pendingChunks.Count;
+
+            void CompleteChunk(WorldChunkKey chunkKey, bool succeeded, SceneID sceneID)
+            {
+                if (terminalResultDelivered)
+                {
+                    if (succeeded)
+                        UnloadChunkIfUnused(chunkKey, sceneID);
+                    return;
+                }
+
                 if (!succeeded)
                 {
-                    terminalResultDelivered = true;
-                    onCompleted(false);
+                    CompletePreload(false);
                     return;
                 }
 
                 remaining--;
                 if (remaining == 0)
-                {
-                    terminalResultDelivered = true;
-                    onCompleted(true);
-                }
+                    CompletePreload(true);
             }
 
-            foreach (var chunk in pendingChunks)
+            foreach (WorldChunkKey chunkKey in pendingChunks)
             {
                 try
                 {
                     ServerWorldManager.Instance.EnsureChunkLoaded(
                         context,
-                        chunk,
-                        (succeeded, sceneID) => CompleteChunk(succeeded));
+                        chunkKey.ChunkCoord,
+                        (succeeded, sceneID) => CompleteChunk(chunkKey, succeeded, sceneID));
                 }
                 catch (Exception exception)
                 {
                     Debug.Error(
-                        $"[InstanceValidation] Destination chunk preload failed for {context} / {chunk}: {exception.Message}");
-                    CompleteChunk(false);
+                        $"[InstanceValidation] Destination chunk preload failed for {context} / {chunkKey.ChunkCoord}: {exception.Message}");
+                    CompleteChunk(chunkKey, false, default);
                 }
             }
         }
@@ -1086,11 +1127,7 @@ namespace Game.Server.Core
 
             if (_networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
                 _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
-            if (_networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
-                && players.Count == 0)
-                ServerWorldManager.Instance.UnloadChunk(
-                    entranceChunk.Context,
-                    entranceChunk.ChunkCoord);
+            UnloadChunkIfUnused(entranceChunk, sceneID);
         }
 
         private void RemovePlayerFromInstanceScene(
@@ -1120,12 +1157,62 @@ namespace Game.Server.Core
                 ServerWorldManager.Instance.UnloadInstanceScene(context, address);
         }
 
+        private void AddEnvironmentPreload(WorldChunkKey chunkKey)
+        {
+            if (_environmentPreloadCounts.TryGetValue(chunkKey, out int count))
+            {
+                _environmentPreloadCounts[chunkKey] = checked(count + 1);
+                return;
+            }
+
+            _environmentPreloadCounts.Add(chunkKey, 1);
+        }
+
+        private void RemoveEnvironmentPreload(WorldChunkKey chunkKey)
+        {
+            if (!_environmentPreloadCounts.TryGetValue(chunkKey, out int count)
+                || count <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Environment preload bookkeeping is missing a positive count for {chunkKey}.");
+            }
+
+            if (count == 1)
+            {
+                _environmentPreloadCounts.Remove(chunkKey);
+                return;
+            }
+
+            _environmentPreloadCounts[chunkKey] = count - 1;
+        }
+
         private void UnloadChunkIfUnused(WorldChunkKey chunkKey, SceneID sceneID)
         {
-            if (sceneID != default
-                && _networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
-                && players.Count == 0)
-                ServerWorldManager.Instance.UnloadChunk(chunkKey.Context, chunkKey.ChunkCoord);
+            if (sceneID == default)
+                return;
+            if (_environmentPreloadCounts.TryGetValue(chunkKey, out int preloadCount)
+                && preloadCount > 0)
+                return;
+
+            string chunkScene = $"World_{chunkKey.ChunkCoord.x}_{chunkKey.ChunkCoord.y}";
+            foreach (PlayerInterestState state in _actorInterest.Values)
+            {
+                if (state.Context.Equals(chunkKey.Context)
+                    && state.SceneNames.Contains(chunkScene))
+                    return;
+            }
+
+            foreach (WorldChunkKey retainedChunk in _retainedTransferEntranceChunks.Values)
+            {
+                if (retainedChunk == chunkKey)
+                    return;
+            }
+
+            if (_networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
+                && players.Count > 0)
+                return;
+
+            ServerWorldManager.Instance.UnloadChunk(chunkKey.Context, chunkKey.ChunkCoord);
         }
 
         /// <summary>

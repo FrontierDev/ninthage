@@ -20,6 +20,7 @@ namespace Game.Server.Core
 
         // Chunks currently being loaded asynchronously.
         private readonly Dictionary<WorldChunkKey, List<Action<bool, SceneID>>> _pendingLoads = new();
+        private readonly Dictionary<WorldChunkKey, List<Action<bool, SceneID>>> _loadAfterUnloadCallbacks = new();
         private readonly Dictionary<SceneID, WorldChunkKey> _pendingSceneOwners = new();
         private readonly Dictionary<SceneID, WorldChunkKey> _pendingUnloadOwners = new();
         private readonly Dictionary<WorldChunkKey, Action> _pendingLoadCleanup = new();
@@ -36,13 +37,23 @@ namespace Game.Server.Core
                 || _networkManager.sceneModule == null)
                 return;
 
-            foreach (SceneID sceneID in _scenesAwaitingUnload)
+            var sceneIDs = new List<SceneID>(_scenesAwaitingUnload);
+            foreach (SceneID sceneID in sceneIDs)
             {
-                if (_networkManager.sceneModule.TryGetSceneState(sceneID, out _))
-                    _networkManager.sceneModule.UnloadSceneAsync(sceneID);
-            }
+                if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out _))
+                    continue;
 
-            _scenesAwaitingUnload.Clear();
+                try
+                {
+                    _networkManager.sceneModule.UnloadSceneAsync(sceneID);
+                    _scenesAwaitingUnload.Remove(sceneID);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"Failed to unload cleanup scene {sceneID}: {exception.Message}\n{exception.StackTrace}");
+                }
+            }
         }
 
         /// <summary>Parses a chunk coordinate from a world scene name.</summary>
@@ -95,6 +106,18 @@ namespace Game.Server.Core
         public void EnsureChunkLoaded(ActorSpatialContext context, Vector2Int chunkCoord, Action<bool, SceneID> onCompleted)
         {
             var chunkKey = new WorldChunkKey(context, chunkCoord);
+            if (IsChunkUnloading(chunkKey))
+            {
+                if (!_loadAfterUnloadCallbacks.TryGetValue(chunkKey, out var deferredLoadCallbacks))
+                {
+                    deferredLoadCallbacks = new List<Action<bool, SceneID>>();
+                    _loadAfterUnloadCallbacks.Add(chunkKey, deferredLoadCallbacks);
+                }
+
+                deferredLoadCallbacks.Add(onCompleted);
+                return;
+            }
+
             if (_loadedChunks.TryGetValue(chunkKey, out SceneID sceneID))
             {
                 onCompleted?.Invoke(true, sceneID);
@@ -295,12 +318,84 @@ namespace Game.Server.Core
                 }
 
                 RecordPendingSceneOperations();
+                if (_loadAfterUnloadCallbacks.Remove(chunkKey, out var deferredCallbacks))
+                {
+                    foreach (var callback in deferredCallbacks)
+                    {
+                        try
+                        {
+                            callback?.Invoke(true, sceneID);
+                        }
+                        catch (Exception callbackException)
+                        {
+                            Debug.Error(
+                                $"Deferred chunk-load callback failed during unload rollback for {chunkKey}: "
+                                + $"{callbackException.Message}\n{callbackException.StackTrace}");
+                        }
+                    }
+                }
+
                 throw;
             }
             RecordPendingSceneOperations();
             if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var sceneState)) return;
             string sceneName = sceneState.scene.name;
             Debug.Log($"Unloaded chunk {chunkCoord} (no remaining subscribers).");
+        }
+
+        private bool IsChunkUnloading(WorldChunkKey chunkKey)
+        {
+            foreach (WorldChunkKey pendingUnloadKey in _pendingUnloadOwners.Values)
+            {
+                if (pendingUnloadKey == chunkKey)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void StartDeferredChunkLoadAfterUnload(WorldChunkKey chunkKey)
+        {
+            if (!_loadAfterUnloadCallbacks.Remove(chunkKey, out var callbacks)
+                || callbacks.Count == 0)
+                return;
+
+            bool callbacksDispatched = false;
+            void DispatchCallbacks(bool succeeded, SceneID sceneID)
+            {
+                if (callbacksDispatched)
+                    return;
+
+                callbacksDispatched = true;
+                foreach (var callback in callbacks)
+                {
+                    try
+                    {
+                        callback?.Invoke(succeeded, sceneID);
+                    }
+                    catch (Exception callbackException)
+                    {
+                        Debug.Error(
+                            $"Deferred chunk-load callback failed for {chunkKey}: "
+                            + $"{callbackException.Message}\n{callbackException.StackTrace}");
+                    }
+                }
+            }
+
+            try
+            {
+                EnsureChunkLoaded(
+                    chunkKey.Context,
+                    chunkKey.ChunkCoord,
+                    DispatchCallbacks);
+            }
+            catch (Exception startException)
+            {
+                DispatchCallbacks(false, default);
+                Debug.Error(
+                    $"Deferred chunk load could not start for {chunkKey}: "
+                    + $"{startException.Message}\n{startException.StackTrace}");
+            }
         }
 
         private void FailUnownedWorldScene(SceneID sceneID, string failureMessage)

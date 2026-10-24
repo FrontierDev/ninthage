@@ -195,6 +195,7 @@ namespace Game.Server.Core
                 cleanup?.Invoke();
             _pendingLoadCleanup.Clear();
             _pendingUnloadOwners.Clear();
+            _loadAfterUnloadCallbacks.Clear();
             _scenesAwaitingUnload.Clear();
 
             if (_instance == this)
@@ -326,6 +327,8 @@ namespace Game.Server.Core
             if (!asServer)
                 return;
 
+            _scenesAwaitingUnload.Remove(sceneID);
+
             if (HandleTransferInstanceSceneUnloaded(sceneID))
                 return;
 
@@ -340,6 +343,8 @@ namespace Game.Server.Core
                     _transferCollidersByChunk.Remove(pendingUnloadKey);
                     _pendingUnloadOwners.Remove(sceneID);
                 }
+
+                StartDeferredChunkLoadAfterUnload(pendingUnloadKey);
             }
             else
             {
