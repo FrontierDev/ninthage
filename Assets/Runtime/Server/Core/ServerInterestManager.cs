@@ -127,45 +127,23 @@ namespace Game.Server.Core
 
         private void OnPlayerLeft(PlayerID playerID, bool asServer)
         {
-            // Find the actor for this player from our own tracking, since session
-            // data may already be removed by ServerConnectionManager.OnPlayerLeft.
             Actor playerActor = null;
-            PlayerInterestState interestState = null;
-            foreach (var kvp in _actorInterest)
+            foreach (Actor actor in _actorInterest.Keys)
             {
-                if (kvp.Key.Owner == playerID)
+                if (!ReferenceEquals(actor, null) && actor.Owner == playerID)
                 {
-                    playerActor = kvp.Key;
-                    interestState = kvp.Value;
+                    playerActor = actor;
                     break;
                 }
             }
 
-            if (playerActor == null || interestState == null)
-            {
-                CleanupTransferPlayerState(playerID, null, true);
-                return;
-            }
+            if (ReferenceEquals(playerActor, null)
+                && Game.Shared.Networking.ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(
+                    playerID,
+                    out Actor registeredActor))
+                playerActor = registeredActor;
 
-            // Remove from ChunkSubscriptions
-            foreach (var sceneName in interestState.SceneNames)
-            {
-                Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
-                    interestState.Context,
-                    sceneName,
-                    playerActor);
-            }
-
-            Game.Shared.Networking.ChunkSubscriptions.UnregisterPlayerActor(playerID);
-
-            foreach (var sceneName in interestState.SceneNames)
-            {
-                if (TryParseChunkCoord(sceneName, out var chunkCoord))
-                    UnsubscribePlayerFromChunk(playerActor, interestState.Context, chunkCoord);
-            }
-
-            _actorInterest.Remove(playerActor);
-            CleanupTransferPlayerState(playerID, playerActor, true);
+            RetirePlayerInterest(playerID, playerActor);
         }
 
         internal void UpdatePlayerInterestFromAcceptedPosition(
@@ -1020,7 +998,53 @@ namespace Game.Server.Core
         {
             if (actor == null || !actor.Owner.HasValue)
                 return;
-            CleanupTransferPlayerState(actor.Owner.Value, actor, true);
+            RetirePlayerInterest(actor.Owner.Value, actor);
+        }
+
+        private void RetirePlayerInterest(PlayerID playerID, Actor expectedActor)
+        {
+            Actor interestActor = null;
+            PlayerInterestState interestState = null;
+            if (!ReferenceEquals(expectedActor, null))
+            {
+                foreach (KeyValuePair<Actor, PlayerInterestState> entry in _actorInterest)
+                {
+                    if (!ReferenceEquals(entry.Key, expectedActor))
+                        continue;
+
+                    interestActor = entry.Key;
+                    interestState = entry.Value;
+                    break;
+                }
+            }
+
+            if (interestState != null)
+            {
+                foreach (string sceneName in interestState.SceneNames)
+                {
+                    Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
+                        interestState.Context,
+                        sceneName,
+                        expectedActor);
+                }
+
+                foreach (string sceneName in interestState.SceneNames)
+                {
+                    if (TryParseChunkCoord(sceneName, out Vector2Int chunkCoord))
+                        UnsubscribePlayerFromChunk(expectedActor, interestState.Context, chunkCoord);
+                }
+
+                _actorInterest.Remove(interestActor);
+            }
+
+            if (!ReferenceEquals(expectedActor, null)
+                && Game.Shared.Networking.ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(
+                    playerID,
+                    out Actor registeredActor)
+                && ReferenceEquals(registeredActor, expectedActor))
+                Game.Shared.Networking.ChunkSubscriptions.UnregisterPlayerActor(playerID);
+
+            CleanupTransferPlayerState(playerID, expectedActor, true);
         }
 
         private void CleanupTransferPlayerState(PlayerID playerID, Actor actor, bool removeEntranceMembership)

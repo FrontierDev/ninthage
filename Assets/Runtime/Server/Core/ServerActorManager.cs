@@ -775,9 +775,14 @@ namespace Game.Server.Core
             if (actor == null || !_initialized)
                 return;
 
-            if (_actorObjects.TryGetValue(actor.ID, out var registeredActor)
-                && !ReferenceEquals(registeredActor, actor))
+            bool hasRegisteredActor = _actorObjects.TryGetValue(actor.ID, out var registeredActor);
+            bool hasRegisteredEntity = _actorEntities.TryGetValue(actor.ID, out var registeredEntity);
+            if (hasRegisteredActor && !ReferenceEquals(registeredActor, actor))
                 return;
+            if (!hasRegisteredActor && !hasRegisteredEntity)
+                return;
+
+            RemoveCombatReferencesToActor(actor);
 
             if (actor.Owner.HasValue
                 && ServerInterestManager.IsInitialized
@@ -786,19 +791,85 @@ namespace Game.Server.Core
 
             RemoveNPCNavigationRegistration(actor);
             RemoveSpatialMembership(actor.ID);
-            _actorObjects.Remove(actor.ID);
-            _actorEntities.Remove(actor.ID);
+            ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
+
+            if (hasRegisteredEntity)
+            {
+                if (_entityManager.Exists(registeredEntity))
+                {
+                    if (!_entityManager.HasComponent<Systems.ActorComponent>(registeredEntity))
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor entity mapping for {actor.ID} has no ActorComponent.");
+                    }
+
+                    Systems.ActorComponent actorComponent =
+                        _entityManager.GetComponentData<Systems.ActorComponent>(registeredEntity);
+                    if (actorComponent.ActorID != actor.ID)
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor entity mapping for {actor.ID} references component actor {actorComponent.ActorID}.");
+                    }
+
+                    _entityManager.DestroyEntity(registeredEntity);
+                }
+
+                _actorEntities.Remove(actor.ID);
+            }
+
+            if (_actorObjects.TryGetValue(actor.ID, out registeredActor)
+                && ReferenceEquals(registeredActor, actor))
+                _actorObjects.Remove(actor.ID);
+
             if (actor.Owner.HasValue)
             {
                 var owner = actor.Owner.Value;
-                if (_playerActors.TryGetValue(owner, out var playerActor) && playerActor == actor)
+                if (_playerActors.TryGetValue(owner, out var playerActor)
+                    && ReferenceEquals(playerActor, actor))
                 {
                     _pendingSpatialContextTransfers.Remove(owner);
                     RemovePlayerValidationState(owner);
                 }
             }
             _npcAggroStates.Remove(actor.ID);
-            ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
+        }
+
+        private void RemoveCombatReferencesToActor(Actor retiredActor)
+        {
+            if (ReferenceEquals(retiredActor, null))
+                return;
+
+            List<Actor> actors = new(_actorObjects.Values);
+            foreach (Actor candidate in actors)
+            {
+                if (candidate == null || ReferenceEquals(candidate, retiredActor))
+                    continue;
+
+                if (!ReferenceEquals(candidate.Target, retiredActor))
+                    continue;
+
+                if (candidate.Owner == null)
+                {
+                    DropNPCTarget(candidate);
+                }
+                else
+                {
+                    candidate.SetTargetFromServer(null);
+                    ActorEndpoint.onServerStopAutoAttack?.Invoke(candidate);
+                }
+            }
+
+            if (retiredActor is not PlayerActor retiredPlayer)
+                return;
+
+            foreach (Actor candidate in actors)
+            {
+                if (candidate == null || ReferenceEquals(candidate, retiredActor))
+                    continue;
+
+                if (candidate.TryGetComponent<NPCBehavior>(out var npcBehavior))
+                    npcBehavior.RemoveThreatSource(retiredPlayer);
+            }
         }
 
         private void RemoveSpatialMembership(Guid actorID)

@@ -93,5 +93,16 @@ namespace Game.Shared.Runtime.Actors
                 threatTable[playerSource] += damage;
             }
         }
+
+        /// <summary>Removes one player actor lifetime from this NPC's threat table.</summary>
+        /// <param name="player">The exact player actor lifetime to remove.</param>
+        /// <returns>Whether the player was present in the threat table.</returns>
+        public bool RemoveThreatSource(PlayerActor player)
+        {
+            if (player == null)
+                return false;
+
+            return threatTable.Remove(player);
+        }
     }
 }
