@@ -90,14 +90,23 @@ namespace Game.Server.Core
 
         private void UpdateNavMesh()
         {
+            bool hadNavigation = _navigationData != null && _navigationInstance.valid;
             var sources = CollectNavMeshSources(_navigationRoots, _pendingNavigationUnloads);
             if (sources.Count == 0)
             {
-                if (_navigationInstance.valid)
-                    _navigationInstance.Remove();
+                if (!hadNavigation)
+                    return;
+
+                if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Removing the final continuous NavMesh requires an initialized server actor manager.");
+                }
+
+                ServerActorManager.Instance.SuspendNPCNavigationForUnavailableNavMesh();
+                _navigationInstance.Remove();
                 _navigationInstance = default;
-                if (_navigationData != null)
-                    Destroy(_navigationData);
+                Destroy(_navigationData);
                 _navigationData = null;
                 return;
             }
@@ -167,6 +176,9 @@ namespace Game.Server.Core
                     throw new InvalidOperationException(
                         "Unity rejected continuous server NavMesh data registration.");
                 }
+
+                if (!hadNavigation)
+                    ServerActorManager.Instance?.ResumeNPCNavigationAfterNavMeshAvailable();
             }
         }
 

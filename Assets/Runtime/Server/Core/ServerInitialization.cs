@@ -21,6 +21,8 @@ namespace Game.Server.Core
         private static GameObject _networkManagerObject;
         private static bool _forceCleanServer;
         private static Coroutine _initializationCoroutine;
+        private static Coroutine _fatalShutdownCoroutine;
+        private static bool _fatalShutdownRequested;
         private static bool _initializationSucceeded;
         private static ServerTimeAuthority _timeAuthority;
 
@@ -70,6 +72,8 @@ namespace Game.Server.Core
         private static void BeginInternal(MonoBehaviour host, string launchWorldName)
         {
             ValidateHost(host);
+            if (_fatalShutdownRequested)
+                throw new InvalidOperationException("The server cannot restart after a fatal authoritative simulation failure.");
             if (_initializationCoroutine != null || ServerECSManager.Initialized || ServerSimulationClock.IsRunning)
                 throw new InvalidOperationException("The server initialization sequence is already active.");
 
@@ -189,7 +193,7 @@ namespace Game.Server.Core
             finally
             {
                 _initializationCoroutine = null;
-                if (!_initializationSucceeded)
+                if (!_initializationSucceeded && !_fatalShutdownRequested)
                     Stop();
             }
         }
@@ -312,6 +316,9 @@ namespace Game.Server.Core
         /// <summary>Stops server initialization, the simulation clock and the owned ECS world.</summary>
         public static void Stop()
         {
+            if (_fatalShutdownRequested)
+                return;
+
             _timeAuthority = null;
             if (_initializationCoroutine != null && _host != null)
                 _host.StopCoroutine(_initializationCoroutine);
@@ -328,6 +335,9 @@ namespace Game.Server.Core
         /// <summary>Aborts a still-running initialization coroutine when its server host is destroyed.</summary>
         internal static void AbortInitialization()
         {
+            if (_fatalShutdownRequested)
+                return;
+
             _timeAuthority = null;
             if (_initializationCoroutine != null && _host != null)
                 _host.StopCoroutine(_initializationCoroutine);
@@ -348,6 +358,61 @@ namespace Game.Server.Core
 
             GameObject.Destroy(_networkManagerObject);
             _networkManagerObject = null;
+        }
+
+        internal static void BeginFatalShutdown(Exception exception)
+        {
+            if (exception == null)
+                throw new ArgumentNullException(nameof(exception));
+            if (_fatalShutdownRequested)
+                return;
+
+            _fatalShutdownRequested = true;
+            Debug.Error($"Fatal authoritative server simulation failure; shutting down the server runtime.\n{exception}");
+            ServerSimulationClock.Stop();
+
+            NetworkManager networkManager = _networkManagerObject != null
+                ? _networkManagerObject.GetComponent<NetworkManager>()
+                : null;
+            if (networkManager != null)
+                networkManager.StopServer();
+
+            if (_initializationCoroutine != null && _host != null)
+                _host.StopCoroutine(_initializationCoroutine);
+            _initializationCoroutine = null;
+
+            if (_host == null)
+            {
+                Debug.Error(
+                    "Fatal server shutdown cannot complete because the initialization host is missing. "
+                    + "The ECS world remains alive to protect outstanding server callbacks.");
+                return;
+            }
+
+            _fatalShutdownCoroutine = _host.StartCoroutine(FatalShutdownProcess(networkManager));
+        }
+
+        private static IEnumerator FatalShutdownProcess(NetworkManager networkManager)
+        {
+            if (networkManager != null)
+            {
+                yield return new WaitUntil(
+                    () => networkManager == null
+                        || networkManager.serverState == ConnectionState.Disconnected);
+                yield return null;
+            }
+
+            DestroyNetworkManager();
+            yield return null;
+
+            ServerECSManager.Shutdown();
+            ServerWorldManager.ClearRuntimeContext();
+            _timeAuthority = null;
+            _initializationCoroutine = null;
+            _initializationSucceeded = false;
+            _host = null;
+            _fatalShutdownCoroutine = null;
+            _fatalShutdownRequested = false;
         }
 
         private static IEnumerator ServerInitializeBindings()

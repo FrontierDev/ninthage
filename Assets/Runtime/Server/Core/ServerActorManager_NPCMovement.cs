@@ -37,6 +37,7 @@ namespace Game.Server.Core
         {
             public Actor Actor;
             public NavMeshAgent Agent;
+            public bool SuspendedForUnavailableNavigation;
         }
 
         private readonly Dictionary<Guid, NPCNavigationState> _npcNavigationStates = new();
@@ -173,8 +174,16 @@ namespace Game.Server.Core
                 if (state.Actor == null
                     || state.Actor.Owner != null
                     || state.Agent == null
-                    || state.Actor.GetComponent<NavMeshAgent>() != state.Agent
-                    || !state.Agent.enabled)
+                    || state.Actor.GetComponent<NavMeshAgent>() != state.Agent)
+                {
+                    _npcNavigationStates.Remove(actorID);
+                    continue;
+                }
+
+                if (state.SuspendedForUnavailableNavigation)
+                    continue;
+
+                if (!state.Agent.enabled)
                 {
                     _npcNavigationStates.Remove(actorID);
                     continue;
@@ -287,6 +296,130 @@ namespace Game.Server.Core
             }
         }
 
+        internal void SuspendNPCNavigationForUnavailableNavMesh()
+        {
+            var states = new List<KeyValuePair<Guid, NPCNavigationState>>(_npcNavigationStates);
+            var actorsToSuspend = new List<KeyValuePair<Guid, NPCNavigationState>>();
+            foreach (var entry in states)
+            {
+                NPCNavigationState state = entry.Value;
+                if (state.Actor == null
+                    || state.Actor.isDead
+                    || state.Actor.Owner != null
+                    || state.Agent == null
+                    || state.Actor.GetComponent<NavMeshAgent>() != state.Agent)
+                {
+                    _npcNavigationStates.Remove(entry.Key);
+                    continue;
+                }
+
+                if (state.SuspendedForUnavailableNavigation)
+                    continue;
+
+                if (!state.Agent.enabled || !state.Agent.isOnNavMesh)
+                {
+                    throw new InvalidOperationException(
+                        $"NPC {state.Actor.ID} cannot be suspended because its registered NavMeshAgent is not enabled on the continuous NavMesh.");
+                }
+
+                actorsToSuspend.Add(entry);
+            }
+
+            foreach (var entry in actorsToSuspend)
+            {
+                NPCNavigationState state = entry.Value;
+                if (state.Agent.hasPath)
+                    state.Agent.ResetPath();
+                state.Agent.enabled = false;
+                state.SuspendedForUnavailableNavigation = true;
+                _npcNavigationStates[entry.Key] = state;
+            }
+        }
+
+        internal void ResumeNPCNavigationAfterNavMeshAvailable()
+        {
+            if (!ServerPhysicsManager.IsInitialized
+                || ServerPhysicsManager.Instance == null
+                || !ServerPhysicsManager.Instance.TryGetNavigationAgentType(out int agentTypeID))
+            {
+                throw new InvalidOperationException(
+                    "Suspended NPC navigation cannot resume without a registered continuous NavMesh.");
+            }
+
+            var suspendedStates = new List<KeyValuePair<Guid, NPCNavigationState>>();
+            foreach (var entry in new List<KeyValuePair<Guid, NPCNavigationState>>(_npcNavigationStates))
+            {
+                NPCNavigationState state = entry.Value;
+                if (!state.SuspendedForUnavailableNavigation)
+                    continue;
+
+                if (state.Actor == null
+                    || state.Actor.isDead
+                    || state.Actor.Owner != null
+                    || state.Agent == null
+                    || state.Actor.GetComponent<NavMeshAgent>() != state.Agent)
+                {
+                    _npcNavigationStates.Remove(entry.Key);
+                    continue;
+                }
+
+                if (state.Agent.agentTypeID != agentTypeID)
+                {
+                    throw new InvalidOperationException(
+                        $"Suspended NPC {state.Actor.ID} NavMeshAgent type {state.Agent.agentTypeID} does not match continuous NavMesh agent type {agentTypeID}.");
+                }
+
+                suspendedStates.Add(entry);
+            }
+
+            var resumedStates = new List<KeyValuePair<Guid, NPCNavigationState>>();
+            try
+            {
+                foreach (var entry in suspendedStates)
+                {
+                    NPCNavigationState state = entry.Value;
+                    resumedStates.Add(entry);
+                    state.Agent.enabled = true;
+                    if (!state.Agent.isOnNavMesh)
+                    {
+                        state.Agent.enabled = false;
+                        throw new InvalidOperationException(
+                            $"Suspended NPC {state.Actor.ID} could not attach to the restored continuous NavMesh at its existing transform.");
+                    }
+
+                    state.SuspendedForUnavailableNavigation = false;
+                    _npcNavigationStates[entry.Key] = state;
+                }
+            }
+            catch (Exception exception)
+            {
+                Exception rollbackException = null;
+                foreach (var entry in resumedStates)
+                {
+                    NPCNavigationState state = entry.Value;
+                    try
+                    {
+                        state.Agent.enabled = false;
+                    }
+                    catch (Exception agentException)
+                    {
+                        rollbackException = rollbackException ?? agentException;
+                    }
+
+                    state.SuspendedForUnavailableNavigation = true;
+                    _npcNavigationStates[entry.Key] = state;
+                }
+
+                var resumeException = new InvalidOperationException(
+                    "NPC navigation resume failed; all previously suspended agents were returned to the suspended state.",
+                    exception);
+                if (rollbackException != null)
+                    resumeException.Data["NPCNavigationResumeRollbackException"] = rollbackException;
+
+                throw resumeException;
+            }
+        }
+
         private static bool HasEnabledNavMeshAgent(Actor actor)
         {
             var agent = actor.GetComponent<NavMeshAgent>();
@@ -368,6 +501,19 @@ namespace Game.Server.Core
             Actor actorObj)
         {
             var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
+            if (_npcNavigationStates.TryGetValue(actorObj.ID, out var navigationState)
+                && ReferenceEquals(navigationState.Actor, actorObj)
+                && navigationState.SuspendedForUnavailableNavigation)
+            {
+                if (!motion.UsesNavMeshAgent)
+                {
+                    throw new InvalidOperationException(
+                        $"Suspended NPC {actorObj.ID} lost its NavMesh-driven motion classification.");
+                }
+
+                return false;
+            }
+
             bool hasEnabledAgent = HasEnabledNavMeshAgent(actorObj);
             UpdateNPCNavigationRegistration(actorObj, hasEnabledAgent);
             if (motion.UsesNavMeshAgent != hasEnabledAgent)

@@ -379,7 +379,7 @@ namespace Game.Server.Core
 
             long scheduledThisFrame = 0;
             int executedThisFrame = 0;
-            bool failed = false;
+            Exception failure = null;
             _deadlineMissesThisFrame = 0;
 
             try
@@ -416,24 +416,32 @@ namespace Game.Server.Core
                 if (_pendingTickCount > 0)
                     _catchUpCapHitCount = checked(_catchUpCapHitCount + 1);
             }
-            catch
+            catch (Exception exception)
             {
-                failed = true;
-                throw;
+                failure = exception;
             }
             finally
             {
-                ServerECSManager.RecordSimulationFrameMetrics(
-                    scheduledThisFrame,
-                    executedThisFrame,
-                    _pendingTickCount,
-                    _deadlineMissesThisFrame,
-                    _pendingTickCount > 0);
-
-                if (failed)
+                try
                 {
-                    StopClock();
-                    ServerECSManager.Shutdown();
+                    ServerECSManager.RecordSimulationFrameMetrics(
+                        scheduledThisFrame,
+                        executedThisFrame,
+                        _pendingTickCount,
+                        _deadlineMissesThisFrame,
+                        _pendingTickCount > 0);
+                }
+                catch (Exception telemetryException)
+                {
+                    if (failure == null)
+                        failure = telemetryException;
+                    else
+                        failure.Data["SimulationFrameMetricsException"] = telemetryException;
+                }
+                finally
+                {
+                    if (failure != null)
+                        ServerInitialization.BeginFatalShutdown(failure);
                 }
             }
         }
@@ -539,11 +547,10 @@ namespace Game.Server.Core
 
         private void OnDestroy()
         {
-            bool ownsActiveClock = _active == this;
-            StopClock();
-            if (!ownsActiveClock)
+            if (_active != this)
                 return;
 
+            StopClock();
             ServerInitialization.AbortInitialization();
             ServerECSManager.Shutdown();
         }
