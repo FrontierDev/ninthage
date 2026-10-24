@@ -419,7 +419,7 @@ namespace Game.Tests.Performance.Harness
             var job = FindJob(jobID);
             if (job == null)
                 return FailUI("The selected queue job no longer exists.", out diagnostic);
-            var minimumRepeatCount = GetMinimumRepeatCount(job.options);
+            var minimumRepeatCount = GetMinimumRepeatCount();
             if (repeatCount < minimumRepeatCount || repeatCount > MAX_REPEAT_COUNT)
                 return FailUI($"Repeat count must be between {minimumRepeatCount} and {MAX_REPEAT_COUNT} for this workload.", out diagnostic);
             if (CountRequestedAttempts(jobID, repeatCount) > MAX_TOTAL_ATTEMPTS)
@@ -532,7 +532,7 @@ namespace Game.Tests.Performance.Harness
             var sourceJob = FindJob(jobID);
             if (sourceJob == null)
                 return FailUI("The selected make-up workload no longer exists.", out diagnostic);
-            var minimumRepeatCount = GetMinimumRepeatCount(sourceJob.options);
+            var minimumRepeatCount = GetMinimumRepeatCount();
             if (repeatCount < minimumRepeatCount || repeatCount > MAX_REPEAT_COUNT)
                 return FailUI($"Make-up repeats must be between {minimumRepeatCount} and {MAX_REPEAT_COUNT} for this workload.", out diagnostic);
             _manifest = null;
@@ -1304,11 +1304,9 @@ namespace Game.Tests.Performance.Harness
             return false;
         }
 
-        private static int GetMinimumRepeatCount(Test_PerformanceHarnessOptions options)
+        private static int GetMinimumRepeatCount()
         {
-            return options != null && options.IsSimulationRegionSizing
-                ? Test_PerformanceHarnessOptions.SIMULATION_REGION_REQUIRED_REPEAT_COUNT
-                : 1;
+            return 1;
         }
 
         private static Test_PerformanceCampaignJob BuildJob(Test_PerformanceHarnessOptions options, out string diagnostic)
@@ -1317,7 +1315,7 @@ namespace Game.Tests.Performance.Harness
             {
                 job_id = CreateID("job"),
                 options = options,
-                repeat_count = GetMinimumRepeatCount(options),
+                repeat_count = GetMinimumRepeatCount(),
                 validation_state = UNVALIDATED,
             };
             if (TryBuildFixtureIdentity(options, out var identity, out diagnostic))
@@ -1364,12 +1362,6 @@ namespace Game.Tests.Performance.Harness
                     .Append(options.WarmupSeconds.ToString("R", CultureInfo.InvariantCulture)).Append('|')
                     .Append(options.MeasurementSeconds.ToString("R", CultureInfo.InvariantCulture)).Append('|')
                     .Append(options.ActorVariantID).Append('|');
-                if (options.IsSimulationRegionSizing)
-                {
-                    builder.Append(options.SimulationRegionTileSpan.ToString(CultureInfo.InvariantCulture)).Append('|')
-                        .Append(options.SimulationRegionCapacity.ToString(CultureInfo.InvariantCulture)).Append('|')
-                        .Append(options.SimulationRegionRepeatCount.ToString(CultureInfo.InvariantCulture)).Append('|');
-                }
                 if (actorProfile != null)
                     builder.Append(actorProfile.profile_id).Append('|').Append(actorProfile.variant_id).Append('|').Append(actorProfile.revision).Append('|').Append(actorProfile.provenance?.input_path);
                 if (worldPlan != null)
@@ -1833,7 +1825,7 @@ namespace Game.Tests.Performance.Harness
                 if (job == null
                     || string.IsNullOrEmpty(job.job_id)
                     || job.options == null
-                    || job.repeat_count < GetMinimumRepeatCount(job.options)
+                    || job.repeat_count < GetMinimumRepeatCount()
                     || job.repeat_count > MAX_REPEAT_COUNT)
                     throw new InvalidDataException("The campaign manifest contains an invalid job snapshot.");
             }

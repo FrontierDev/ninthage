@@ -86,10 +86,6 @@ namespace Game.Tests.Performance.Harness
         public int actorDensity;
         public float warmupSeconds;
         public float measurementSeconds;
-        public int simulationRegionTileSpan;
-        public int simulationRegionCapacity;
-        public int simulationRegionRepeatCount;
-
         public static Test_PerformancePendingRunOptions Capture(Test_PerformanceHarnessOptions options)
         {
             return new Test_PerformancePendingRunOptions
@@ -104,9 +100,6 @@ namespace Game.Tests.Performance.Harness
                 actorDensity = (int)options.ActorDensity,
                 warmupSeconds = options.WarmupSeconds,
                 measurementSeconds = options.MeasurementSeconds,
-                simulationRegionTileSpan = options.SimulationRegionTileSpan,
-                simulationRegionCapacity = options.SimulationRegionCapacity,
-                simulationRegionRepeatCount = options.SimulationRegionRepeatCount,
             };
         }
 
@@ -124,9 +117,6 @@ namespace Game.Tests.Performance.Harness
                 ActorDensity = (Test_GraphicalActorDensity)actorDensity,
                 WarmupSeconds = warmupSeconds,
                 MeasurementSeconds = measurementSeconds,
-                SimulationRegionTileSpan = simulationRegionTileSpan,
-                SimulationRegionCapacity = simulationRegionCapacity,
-                SimulationRegionRepeatCount = simulationRegionRepeatCount,
             };
         }
     }
@@ -694,12 +684,6 @@ namespace Game.Tests.Performance.Harness
                 yield break;
             }
 
-            if (_run.IsSimulationRegionSizing)
-            {
-                yield return ExecuteSimulationRegionSizingCore();
-                yield break;
-            }
-
             yield return WaitForServerReady();
             _run.RegisterServerMetrics();
             yield return LoadSelectedWorldFixture();
@@ -750,29 +734,6 @@ namespace Game.Tests.Performance.Harness
                 PerformanceRunStatus.CompleteMeasured,
                 "MEASUREMENT_COMPLETE",
                 "The requested data-only population was measured and cleaned up successfully.");
-        }
-
-        private IEnumerator ExecuteSimulationRegionSizingCore()
-        {
-            yield return WaitForServerReady();
-            _run.RegisterServerMetrics();
-            var probe = new Test_SimulationRegionSizingProbe();
-            yield return DriveNested(
-                probe.Execute(_run),
-                exception =>
-                {
-                    probe.RecordFailure(exception);
-                    RecordExecutionFailure(exception);
-                });
-            if (_pendingFailure != null)
-            {
-                yield return DriveNested(probe.CleanupAfterFailure(), RecordCleanupFailure);
-                yield break;
-            }
-            SetRequestedResult(
-                PerformanceRunStatus.CompleteMeasured,
-                "SIMULATION_REGION_SIZING_COMPLETE",
-                "The requested simulation-region sizing probe completed with qualified evidence and cleanup.");
         }
 
         private IEnumerator ExecuteGraphicalCore()

@@ -43,34 +43,6 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
-        public void SimulationRegionSizingUsesTheFixedCandidateMatrix()
-        {
-            var options = new Test_PerformanceHarnessOptions
-            {
-                WorkloadMode = Test_PerformanceWorkloadMode.SimulationRegionSizing,
-            };
-
-            Assert.That(options.IsSimulationRegionSizing, Is.True);
-            Assert.That(options.IsSimulationRegionControl, Is.True);
-            Assert.That(options.EffectiveProfileID, Is.EqualTo(Test_PerformanceHarnessOptions.SIMULATION_REGION_PROFILE_ID));
-            Assert.That(options.ActorVariantID, Is.EqualTo(Test_PerformanceHarnessOptions.SIMULATION_REGION_PROFILE_ID));
-            Assert.That(options.SimulationRegionRepeatCount, Is.EqualTo(Test_PerformanceHarnessOptions.SIMULATION_REGION_REQUIRED_REPEAT_COUNT));
-            Assert.That(Test_PerformanceHarnessOptions.GetSimulationRegionTileSpanOptions(), Is.EqualTo(new[] { 1, 2, 4, 8, 16 }));
-            Assert.That(Test_PerformanceHarnessOptions.GetSimulationRegionCapacityOptions(), Is.EqualTo(new[] { 1, 2, 4, 8 }));
-
-            foreach (var tileSpan in new[] { 1, 2, 4, 8, 16 })
-                Assert.That(Test_PerformanceHarnessOptions.IsSupportedSimulationRegionTileSpan(tileSpan), Is.True);
-            foreach (var capacity in new[] { 1, 2, 4, 8 })
-                Assert.That(Test_PerformanceHarnessOptions.IsSupportedSimulationRegionCapacity(capacity), Is.True);
-
-            Assert.That(Test_PerformanceHarnessOptions.IsSupportedSimulationRegionTileSpan(3), Is.False);
-            Assert.That(Test_PerformanceHarnessOptions.IsSupportedSimulationRegionCapacity(3), Is.False);
-
-            options.SimulationRegionTileSpan = 2;
-            Assert.That(options.IsSimulationRegionControl, Is.False);
-        }
-
-        [Test]
         public void ExplicitEditorServerWorldNameRejectsBlankValues()
         {
             Assert.Throws<ArgumentException>(() => ServerInitialization.Begin(null, string.Empty));
@@ -1019,26 +991,6 @@ namespace Game.Tests.Performance.Harness
             Assert.That(restoredOptions.WorldFixture, Is.EqualTo(options.WorldFixture));
             Assert.That(restoredOptions.WorkloadMode, Is.EqualTo(options.WorkloadMode));
             Assert.That(restoredOptions.Seed, Is.EqualTo(options.Seed));
-        }
-
-        [Test]
-        public void PendingRunStatePreservesSimulationRegionProbeOptions()
-        {
-            var options = new Test_PerformanceHarnessOptions
-            {
-                WorkloadMode = Test_PerformanceWorkloadMode.SimulationRegionSizing,
-                SimulationRegionTileSpan = 8,
-                SimulationRegionCapacity = 4,
-                SimulationRegionRepeatCount = Test_PerformanceHarnessOptions.SIMULATION_REGION_REQUIRED_REPEAT_COUNT,
-            };
-
-            var pendingOptions = Test_PerformancePendingRunOptions.Capture(options);
-            var restoredOptions = JsonUtility.FromJson<Test_PerformancePendingRunOptions>(JsonUtility.ToJson(pendingOptions)).ToOptions();
-
-            Assert.That(restoredOptions.WorkloadMode, Is.EqualTo(Test_PerformanceWorkloadMode.SimulationRegionSizing));
-            Assert.That(restoredOptions.SimulationRegionTileSpan, Is.EqualTo(options.SimulationRegionTileSpan));
-            Assert.That(restoredOptions.SimulationRegionCapacity, Is.EqualTo(options.SimulationRegionCapacity));
-            Assert.That(restoredOptions.SimulationRegionRepeatCount, Is.EqualTo(options.SimulationRegionRepeatCount));
         }
 
         [Test]
