@@ -1836,8 +1836,15 @@ namespace Game.Server.Core
                 if (!losesTarget)
                     continue;
 
-                other.SetTargetFromServer(null);
-                ActorEndpoint.onServerStopAutoAttack?.Invoke(other);
+                if (other.Owner == null)
+                {
+                    DropNPCTarget(other);
+                }
+                else
+                {
+                    other.SetTargetFromServer(null);
+                    ActorEndpoint.onServerStopAutoAttack?.Invoke(other);
+                }
             }
         }
 

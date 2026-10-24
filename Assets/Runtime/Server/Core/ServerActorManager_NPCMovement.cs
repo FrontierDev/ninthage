@@ -1,5 +1,6 @@
 using Actor = Game.Shared.Runtime.Actors.Actor;
 using Game.Shared;
+using Game.Shared.Networking;
 using Game.Shared.Performance;
 using Game.Shared.Utility;
 using System;
@@ -111,6 +112,58 @@ namespace Game.Server.Core
             return stoppingDistance;
         }
 
+        internal void DropNPCTarget(Actor npc)
+        {
+            if (npc == null)
+                return;
+            if (npc.Owner != null)
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{npc.ID}' is player-owned and cannot use NPC target-drop handling.");
+            }
+
+            if (!npc.SpatialContext.IsValid)
+            {
+                throw new InvalidOperationException(
+                    $"NPC '{npc.ID}' has an invalid spatial context.");
+            }
+
+            Actor target = npc.Target;
+            if (target != null && !target.SpatialContext.IsValid)
+            {
+                throw new InvalidOperationException(
+                    $"NPC target '{target.ID}' has an invalid spatial context.");
+            }
+
+            if (target != null)
+                npc.SetTargetFromServer(null);
+
+            if (_npcAggroStates.TryGetValue(npc.ID, out var aggroState))
+            {
+                if (!ReferenceEquals(aggroState.NPC, npc))
+                {
+                    throw new InvalidOperationException(
+                        $"NPC aggro state for '{npc.ID}' belongs to a different actor instance.");
+                }
+
+                ClearPendingAggro(ref aggroState);
+                _npcAggroStates[npc.ID] = aggroState;
+            }
+
+            if (_npcNavigationStates.TryGetValue(npc.ID, out var navigationState)
+                && ReferenceEquals(navigationState.Actor, npc)
+                && navigationState.Agent != null
+                && navigationState.Agent == npc.GetComponent<NavMeshAgent>()
+                && navigationState.Agent.enabled
+                && navigationState.Agent.isOnNavMesh
+                && navigationState.Agent.hasPath)
+            {
+                navigationState.Agent.ResetPath();
+            }
+
+            ActorEndpoint.onServerStopAutoAttack?.Invoke(npc);
+        }
+
         private void UpdateNPCNavigation()
         {
             foreach (var kvp in new List<KeyValuePair<Guid, NPCNavigationState>>(_npcNavigationStates))
@@ -133,18 +186,36 @@ namespace Game.Server.Core
                     continue;
                 }
 
+                if (!state.Actor.SpatialContext.IsValid)
+                {
+                    throw new InvalidOperationException(
+                        $"NPC '{state.Actor.ID}' has an invalid spatial context.");
+                }
+
                 Actor target = state.Actor.Target;
-                if (target == null || target.isDead)
+                if (target == null)
                 {
                     if (state.Agent.isOnNavMesh && state.Agent.hasPath)
                         state.Agent.ResetPath();
                     continue;
                 }
 
-                if (!state.Actor.SpatialContext.IsCompatibleWith(target.SpatialContext))
+                if (!target.SpatialContext.IsValid)
                 {
                     throw new InvalidOperationException(
-                        $"NPC {state.Actor.ID} and target {target.ID} have incompatible spatial contexts.");
+                        $"NPC target '{target.ID}' has an invalid spatial context.");
+                }
+
+                if (!state.Actor.SpatialContext.IsCompatibleWith(target.SpatialContext))
+                {
+                    DropNPCTarget(state.Actor);
+                    continue;
+                }
+
+                if (target.isDead)
+                {
+                    DropNPCTarget(state.Actor);
+                    continue;
                 }
 
                 if (!TryGetAcceptedWorldPosition(target.ID, out WorldPosition targetWorldPosition))

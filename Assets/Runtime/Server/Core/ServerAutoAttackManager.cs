@@ -193,9 +193,49 @@ namespace Game.Server.Core
                     continue;
                 }
 
-                if (state.Actor.Target == null || state.Actor.Target.isDead)
+                Actor target = state.Actor.Target;
+                if (target == null)
                 {
                     _toRemove.Add(actorID);
+                    continue;
+                }
+
+                if (!state.Actor.SpatialContext.IsValid)
+                {
+                    throw new InvalidOperationException(
+                        $"Auto-attacker '{state.Actor.ID}' has an invalid spatial context.");
+                }
+                if (!target.SpatialContext.IsValid)
+                {
+                    throw new InvalidOperationException(
+                        $"Auto-attack target '{target.ID}' has an invalid spatial context.");
+                }
+
+                if (target.isDead)
+                {
+                    if (state.Actor.Owner == null)
+                    {
+                        ServerActorManager.Instance.DropNPCTarget(state.Actor);
+                    }
+                    else
+                    {
+                        _toRemove.Add(actorID);
+                    }
+                    continue;
+                }
+
+                if (!state.Actor.SpatialContext.IsCompatibleWith(target.SpatialContext))
+                {
+                    if (state.Actor.Owner == null)
+                    {
+                        ServerActorManager.Instance.DropNPCTarget(state.Actor);
+                    }
+                    else
+                    {
+                        state.Actor.SetTargetFromServer(null);
+                        ActorEndpoint.onServerStopAutoAttack?.Invoke(state.Actor);
+                    }
+
                     continue;
                 }
 
@@ -206,7 +246,7 @@ namespace Game.Server.Core
                 // Check range — skip swing but don't remove (player may walk back).
                 double distance = ServerActorManager.Instance.GetAcceptedSurfaceDistance(
                     state.Actor,
-                    state.Actor.Target);
+                    target);
                 if (distance > _autoAttackSpell.BaseRange)
                     continue;
 
