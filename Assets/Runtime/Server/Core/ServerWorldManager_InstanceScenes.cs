@@ -53,6 +53,8 @@ namespace Game.Server.Core
             string address,
             Action<bool, SceneID> onCompleted)
         {
+            if (_tearingDown)
+                throw new InvalidOperationException("Cannot load a transfer-instance scene while the world manager is tearing down.");
             if (!context.IsValid || !_transferRuntimes.ContainsKey(context))
                 throw new ArgumentException("A registered transfer runtime context is required.", nameof(context));
             if (string.IsNullOrWhiteSpace(address))
@@ -84,6 +86,7 @@ namespace Game.Server.Core
             }
 
             _pendingInstanceSceneLoads.Add(key, new List<Action<bool, SceneID>> { onCompleted });
+            RecordPendingSceneOperations();
             AsyncOperationHandle<SceneInstance> loadHandle;
             try
             {
@@ -157,6 +160,9 @@ namespace Game.Server.Core
 
         internal void UnloadInstanceScene(ActorSpatialContext context, string address)
         {
+            if (_tearingDown)
+                throw new InvalidOperationException("Cannot unload a transfer-instance scene while the world manager is tearing down.");
+
             var key = new InstanceSceneKey(context, address);
             if (!_loadedInstanceScenes.TryGetValue(key, out SceneID sceneID))
                 return;
@@ -165,6 +171,7 @@ namespace Game.Server.Core
 
             _loadedInstanceScenes.Remove(key);
             _unloadingInstanceScenes.Add(sceneID, key);
+            RecordPendingSceneOperations();
             try
             {
                 _networkManager.sceneModule.UnloadSceneAsync(sceneID);
@@ -173,6 +180,7 @@ namespace Game.Server.Core
             {
                 _unloadingInstanceScenes.Remove(sceneID);
                 _loadedInstanceScenes.Add(key, sceneID);
+                RecordPendingSceneOperations();
                 throw new InvalidOperationException(
                     $"Unloading transfer scene '{address}' for {context} failed.",
                     exception);
@@ -212,7 +220,8 @@ namespace Game.Server.Core
             CompleteInstanceSceneLoad(key, sceneID, false);
             Debug.Error(
                 $"[TransferInstanceScene] Rejected '{key.Address}' for {key.Context}: {reason}");
-            _scenesAwaitingUnload.Add(sceneID);
+            if (_scenesAwaitingUnload.Add(sceneID))
+                RecordPendingSceneOperations();
         }
 
         private bool HandleTransferInstanceSceneLoaded(SceneID sceneID)
@@ -224,7 +233,8 @@ namespace Game.Server.Core
             {
                 _pendingInstanceSceneOwners.Remove(sceneID);
                 Debug.Error($"[TransferInstanceScene] Loaded SceneID {sceneID} had no pending owner for {key.Address}.");
-                _scenesAwaitingUnload.Add(sceneID);
+                if (_scenesAwaitingUnload.Add(sceneID))
+                    RecordPendingSceneOperations();
                 return true;
             }
 
@@ -234,7 +244,8 @@ namespace Game.Server.Core
                 CompleteInstanceSceneLoad(key, sceneID, false);
                 Debug.Error(
                     $"[TransferInstanceScene] Duplicate loaded scene registration for '{key.Address}' in {key.Context}.");
-                _scenesAwaitingUnload.Add(sceneID);
+                if (_scenesAwaitingUnload.Add(sceneID))
+                    RecordPendingSceneOperations();
             }
             return true;
         }
@@ -242,7 +253,10 @@ namespace Game.Server.Core
         private bool HandleTransferInstanceSceneUnloaded(SceneID sceneID)
         {
             if (_unloadingInstanceScenes.Remove(sceneID))
+            {
+                RecordPendingSceneOperations();
                 return true;
+            }
 
             InstanceSceneKey loadedKey = default;
             bool foundLoadedScene = false;
@@ -257,6 +271,7 @@ namespace Game.Server.Core
             if (foundLoadedScene)
             {
                 _loadedInstanceScenes.Remove(loadedKey);
+                RecordPendingSceneOperations();
                 Debug.Error(
                     $"[TransferInstanceScene] Tracked scene '{loadedKey.Address}' for {loadedKey.Context} "
                     + $"reached terminal unload outside the owned unload path.");
@@ -278,7 +293,17 @@ namespace Game.Server.Core
         private void CompleteInstanceSceneLoad(InstanceSceneKey key, SceneID sceneID, bool succeeded)
         {
             if (_pendingInstanceSceneLoadCleanup.Remove(key, out Action cleanup))
-                cleanup?.Invoke();
+            {
+                try
+                {
+                    cleanup?.Invoke();
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"[TransferInstanceScene] Load-handler cleanup for '{key.Address}' in {key.Context} threw: {exception.Message}");
+                }
+            }
             if (sceneID != default
                 && _pendingInstanceSceneOwners.TryGetValue(sceneID, out InstanceSceneKey owner)
                 && owner.Equals(key))
@@ -290,11 +315,14 @@ namespace Game.Server.Core
                 && loadedSceneID == sceneID)
             {
                 _loadedInstanceScenes.Remove(key);
-                _scenesAwaitingUnload.Add(sceneID);
+                if (_scenesAwaitingUnload.Add(sceneID))
+                    RecordPendingSceneOperations();
             }
 
             if (!_pendingInstanceSceneLoads.Remove(key, out List<Action<bool, SceneID>> callbacks))
                 return;
+
+            RecordPendingSceneOperations();
 
             foreach (Action<bool, SceneID> callback in callbacks)
             {
@@ -312,32 +340,15 @@ namespace Game.Server.Core
 
         private void ClearInstanceSceneState()
         {
+            var pendingCleanups = new List<KeyValuePair<InstanceSceneKey, Action>>();
+            foreach (KeyValuePair<InstanceSceneKey, Action> cleanup in _pendingInstanceSceneLoadCleanup)
+                pendingCleanups.Add(cleanup);
+
+            var pendingCallbacks = new List<KeyValuePair<InstanceSceneKey, Action<bool, SceneID>>>();
             foreach (KeyValuePair<InstanceSceneKey, List<Action<bool, SceneID>>> pending in _pendingInstanceSceneLoads)
             {
-                if (_pendingInstanceSceneLoadCleanup.Remove(pending.Key, out Action cleanup))
-                {
-                    try
-                    {
-                        cleanup?.Invoke();
-                    }
-                    catch (Exception exception)
-                    {
-                        Debug.Error(
-                            $"[TransferInstanceScene] Teardown cleanup for '{pending.Key.Address}' in {pending.Key.Context} threw: {exception.Message}");
-                    }
-                }
                 foreach (Action<bool, SceneID> callback in pending.Value)
-                {
-                    try
-                    {
-                        callback?.Invoke(false, default);
-                    }
-                    catch (Exception exception)
-                    {
-                        Debug.Error(
-                            $"[TransferInstanceScene] Teardown callback for '{pending.Key.Address}' in {pending.Key.Context} threw: {exception.Message}");
-                    }
-                }
+                    pendingCallbacks.Add(new KeyValuePair<InstanceSceneKey, Action<bool, SceneID>>(pending.Key, callback));
             }
 
             _pendingInstanceSceneLoads.Clear();
@@ -345,6 +356,34 @@ namespace Game.Server.Core
             _pendingInstanceSceneLoadCleanup.Clear();
             _loadedInstanceScenes.Clear();
             _unloadingInstanceScenes.Clear();
+
+            foreach (KeyValuePair<InstanceSceneKey, Action> cleanup in pendingCleanups)
+            {
+                try
+                {
+                    cleanup.Value?.Invoke();
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"[TransferInstanceScene] Teardown cleanup for '{cleanup.Key.Address}' in {cleanup.Key.Context} threw: {exception.Message}");
+                }
+            }
+
+            foreach (KeyValuePair<InstanceSceneKey, Action<bool, SceneID>> pending in pendingCallbacks)
+            {
+                try
+                {
+                    pending.Value?.Invoke(false, default);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"[TransferInstanceScene] Teardown callback for '{pending.Key.Address}' in {pending.Key.Context} threw: {exception.Message}");
+                }
+            }
+
+            RecordPendingSceneOperations();
         }
     }
 }

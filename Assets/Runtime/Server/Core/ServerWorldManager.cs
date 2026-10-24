@@ -50,6 +50,8 @@ namespace Game.Server.Core
         private static ActorSpatialContext _validationInstanceA;
         private static ActorSpatialContext _validationInstanceB;
 
+        private bool _tearingDown;
+
         internal readonly struct TransferColliderCandidate
         {
             internal WorldChunkKey ChunkKey { get; }
@@ -181,21 +183,17 @@ namespace Game.Server.Core
 
         private void OnDestroy()
         {
+            _tearingDown = true;
+
             if (_networkManager != null && _networkManager.sceneModule != null)
             {
                 _networkManager.sceneModule.onSceneLoaded -= OnChunkSceneLoaded;
                 _networkManager.sceneModule.onSceneUnloaded -= OnChunkSceneUnloaded;
             }
 
-            _transferCollidersByChunk.Clear();
             ClearInstanceSceneState();
             _transferRuntimes.Clear();
-
-            foreach (var cleanup in _pendingLoadCleanup.Values)
-                cleanup?.Invoke();
-            _pendingLoadCleanup.Clear();
-            _pendingUnloadOwners.Clear();
-            _scenesAwaitingUnload.Clear();
+            ClearEnvironmentSceneState();
 
             if (_instance == this)
             {
@@ -207,6 +205,8 @@ namespace Game.Server.Core
 
         private void OnChunkSceneLoaded(SceneID sceneID, bool asServer)
         {
+            if (_tearingDown)
+                return;
             if (!asServer) return;
             if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
 
@@ -323,8 +323,15 @@ namespace Game.Server.Core
 
         private void OnChunkSceneUnloaded(SceneID sceneID, bool asServer)
         {
+            if (_tearingDown)
+                return;
             if (!asServer)
                 return;
+
+            bool pendingOperationsChanged = _scenesAwaitingUnload.Remove(sceneID);
+            pendingOperationsChanged |= _cleanupOnlyUnloads.Remove(sceneID);
+            if (pendingOperationsChanged)
+                RecordPendingSceneOperations();
 
             if (HandleTransferInstanceSceneUnloaded(sceneID))
                 return;
@@ -339,7 +346,10 @@ namespace Game.Server.Core
                 {
                     _transferCollidersByChunk.Remove(pendingUnloadKey);
                     _pendingUnloadOwners.Remove(sceneID);
+                    RecordPendingSceneOperations();
                 }
+
+                HandleChunkUnloadCompleted(pendingUnloadKey);
             }
             else
             {
@@ -367,20 +377,20 @@ namespace Game.Server.Core
                     }
                     Debug.Error(
                         $"Tracked world chunk {unloadedKey} reached terminal unload outside the owned UnloadChunk path.");
+                    HandleChunkUnloadCompleted(unloadedKey);
                 }
             }
 
             if (_globalActorsSceneID == sceneID)
                 _globalActorsSceneID = default;
 
-            if (_pendingUnloadTimestamps == null)
-                return;
-            if (!_pendingUnloadTimestamps.TryGetValue(sceneID, out long startedTimestamp))
-                return;
+            if (_pendingUnloadTimestamps != null
+                && _pendingUnloadTimestamps.TryGetValue(sceneID, out long startedTimestamp))
+            {
+                _pendingUnloadTimestamps.Remove(sceneID);
+                RecordSceneDuration(SCENE_UNLOAD_DURATION_METRIC, startedTimestamp);
+            }
 
-            _pendingUnloadTimestamps.Remove(sceneID);
-            RecordSceneDuration(SCENE_UNLOAD_DURATION_METRIC, startedTimestamp);
-            RecordPendingSceneOperations();
         }
 
         private void RegisterTransferColliders(WorldChunkKey chunkKey, Scene scene)
@@ -522,6 +532,9 @@ namespace Game.Server.Core
         /// </summary>
         public void LoadGlobalActorsScene()
         {
+            if (_tearingDown)
+                throw new InvalidOperationException("Cannot load the global actors scene while the world manager is tearing down.");
+
             var settings = new PurrSceneSettings
             {
                 mode = LoadSceneMode.Additive,
@@ -532,7 +545,16 @@ namespace Game.Server.Core
                 _globalActorsLoadTimestamp = Stopwatch.GetTimestamp();
                 RecordPendingSceneOperations();
             }
-            _networkManager.sceneModule.LoadSceneAsync("global_actors", settings);
+            try
+            {
+                _networkManager.sceneModule.LoadSceneAsync("global_actors", settings);
+            }
+            catch
+            {
+                _globalActorsLoadTimestamp = 0;
+                RecordPendingSceneOperations();
+                throw;
+            }
         }
 
         private void RecordPendingSceneOperations()
@@ -541,8 +563,11 @@ namespace Game.Server.Core
                 return;
 
             int pendingOperationCount = _pendingLoads.Count;
-            if (_pendingUnloadTimestamps != null)
-                pendingOperationCount += _pendingUnloadTimestamps.Count;
+            pendingOperationCount += _pendingUnloadOwners.Count;
+            pendingOperationCount += _pendingInstanceSceneLoads.Count;
+            pendingOperationCount += _unloadingInstanceScenes.Count;
+            pendingOperationCount += _scenesAwaitingUnload.Count;
+            pendingOperationCount += _cleanupOnlyUnloads.Count;
             if (_globalActorsLoadTimestamp > 0)
                 pendingOperationCount++;
             PerformanceTelemetry.TryRecord(PENDING_SCENE_OPERATION_COUNT_METRIC, pendingOperationCount);

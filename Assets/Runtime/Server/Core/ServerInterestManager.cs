@@ -507,27 +507,37 @@ namespace Game.Server.Core
             if (actor == null)
                 throw new ArgumentNullException(nameof(actor));
 
-            ServerWorldManager.Instance.EnsureChunkLoaded(context, chunkCoord, (succeeded, sceneID) =>
+            ServerWorldManager worldManager = ServerWorldManager.Instance;
+            worldManager.RetainChunk(context, chunkCoord);
+            try
             {
-                if (!succeeded)
-                    return;
-
-                // Guard: if the actor's interest changed while the chunk was loading, skip.
-                var chunkScene = $"World_{chunkCoord.x}_{chunkCoord.y}";
-                if (!_actorInterest.TryGetValue(actor, out var currentState)
-                    || !currentState.Context.Equals(context)
-                    || !currentState.SceneNames.Contains(chunkScene))
-                    return;
-
-                if (actor.Owner != null)
+                worldManager.EnsureChunkLoaded(context, chunkCoord, (succeeded, sceneID) =>
                 {
-                    PlayerID playerID = actor.Owner.Value;
-                    _networkManager.scenePlayersModule.AddPlayerToScene(playerID, sceneID);
-                    Debug.Log($"Subscribed player {actor} to chunk {chunkCoord}.");
-                }
+                    if (!succeeded)
+                        return;
 
-                onSubscribed?.Invoke();
-            });
+                    // Guard: if the actor's interest changed while the chunk was loading, skip.
+                    var chunkScene = $"World_{chunkCoord.x}_{chunkCoord.y}";
+                    if (!_actorInterest.TryGetValue(actor, out var currentState)
+                        || !currentState.Context.Equals(context)
+                        || !currentState.SceneNames.Contains(chunkScene))
+                        return;
+
+                    if (actor.Owner != null)
+                    {
+                        PlayerID playerID = actor.Owner.Value;
+                        _networkManager.scenePlayersModule.AddPlayerToScene(playerID, sceneID);
+                        Debug.Log($"Subscribed player {actor} to chunk {chunkCoord}.");
+                    }
+
+                    onSubscribed?.Invoke();
+                });
+            }
+            catch
+            {
+                worldManager.ReleaseChunk(context, chunkCoord);
+                throw;
+            }
         }
 
         /// <summary>Unsubscribes a player's actor from a world chunk.</summary>
@@ -546,29 +556,24 @@ namespace Game.Server.Core
             if (actor == null)
                 throw new ArgumentNullException(nameof(actor));
 
-            if (actor.Owner.HasValue
+            bool retainedTransferEntrance = actor.Owner.HasValue
                 && _retainedTransferEntranceChunks.TryGetValue(actor.Owner.Value, out WorldChunkKey retainedChunk)
-                && retainedChunk == new WorldChunkKey(context, chunkCoord))
-                return;
-
-            if (!ServerWorldManager.Instance.TryGetChunkSceneID(context, chunkCoord, out SceneID sceneID))
-                return;
-
-            if (actor.Owner != null)
+                && retainedChunk == new WorldChunkKey(context, chunkCoord);
+            ServerWorldManager worldManager = ServerWorldManager.Instance;
+            try
             {
-                PlayerID playerID = actor.Owner.Value;
-                _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
-                Debug.Log($"Unsubscribed player {actor} from chunk {chunkCoord}.");
+                if (!retainedTransferEntrance
+                    && worldManager.TryGetChunkSceneID(context, chunkCoord, out SceneID sceneID)
+                    && actor.Owner.HasValue)
+                {
+                    PlayerID playerID = actor.Owner.Value;
+                    _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
+                    Debug.Log($"Unsubscribed player {actor} from chunk {chunkCoord}.");
+                }
             }
-
-            // If no players remain subscribed and no loads are in-flight, unload the chunk.
-            if (ServerWorldManager.Instance.IsChunkLoadPending(context, chunkCoord))
-                return;
-
-            if (_networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
-                && players.Count == 0)
+            finally
             {
-                ServerWorldManager.Instance.UnloadChunk(context, chunkCoord);
+                worldManager.ReleaseChunk(context, chunkCoord);
             }
         }
 
@@ -604,22 +609,60 @@ namespace Game.Server.Core
                     "Interest grid preload context does not belong to the current server runtime.");
             }
 
-            Vector2Int centerChunk = position.Chunk;
-            var pendingChunks = new List<Vector2Int>();
-            foreach (var chunk in GetGrid(centerChunk))
+            ServerWorldManager worldManager = ServerWorldManager.Instance;
+            var requiredChunks = new List<Vector2Int>(GetGrid(position.Chunk));
+            var retainedChunks = new List<Vector2Int>(requiredChunks.Count);
+            try
             {
-                if (!ServerWorldManager.Instance.IsChunkLoaded(context, chunk))
+                foreach (Vector2Int chunk in requiredChunks)
+                {
+                    worldManager.RetainChunk(context, chunk);
+                    retainedChunks.Add(chunk);
+                }
+            }
+            catch (Exception retainException)
+            {
+                try
+                {
+                    ReleaseTemporaryChunkRetains(worldManager, context, retainedChunks);
+                }
+                catch (Exception releaseException)
+                {
+                    throw new AggregateException(
+                        "Destination chunk retain acquisition and rollback both failed.",
+                        retainException,
+                        releaseException);
+                }
+                throw;
+            }
+
+            var pendingChunks = new List<Vector2Int>();
+            foreach (Vector2Int chunk in requiredChunks)
+            {
+                if (!worldManager.IsChunkLoaded(context, chunk))
                     pendingChunks.Add(chunk);
             }
 
-            if (pendingChunks.Count == 0)
-            {
-                onCompleted(true);
-                return;
-            }
-
             int remaining = pendingChunks.Count;
+            bool startupInProgress = true;
             bool terminalResultDelivered = false;
+            bool failed = false;
+
+            void DeliverResult(bool succeeded)
+            {
+                if (terminalResultDelivered)
+                    return;
+
+                terminalResultDelivered = true;
+                try
+                {
+                    onCompleted(succeeded);
+                }
+                finally
+                {
+                    ReleaseTemporaryChunkRetains(worldManager, context, retainedChunks);
+                }
+            }
 
             void CompleteChunk(bool succeeded)
             {
@@ -627,35 +670,38 @@ namespace Game.Server.Core
                     return;
 
                 if (!succeeded)
-                {
-                    terminalResultDelivered = true;
-                    onCompleted(false);
-                    return;
-                }
+                    failed = true;
+                else
+                    remaining--;
 
-                remaining--;
-                if (remaining == 0)
-                {
-                    terminalResultDelivered = true;
-                    onCompleted(true);
-                }
+                if (!startupInProgress && (failed || remaining == 0))
+                    DeliverResult(!failed);
             }
 
-            foreach (var chunk in pendingChunks)
+            try
             {
-                try
+                foreach (Vector2Int chunk in pendingChunks)
                 {
-                    ServerWorldManager.Instance.EnsureChunkLoaded(
-                        context,
-                        chunk,
-                        (succeeded, sceneID) => CompleteChunk(succeeded));
+                    try
+                    {
+                        worldManager.EnsureChunkLoaded(
+                            context,
+                            chunk,
+                            (succeeded, _) => CompleteChunk(succeeded));
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.Error(
+                            $"[InstanceValidation] Destination chunk preload failed for {context} / {chunk}: {exception.Message}");
+                        CompleteChunk(false);
+                    }
                 }
-                catch (Exception exception)
-                {
-                    Debug.Error(
-                        $"[InstanceValidation] Destination chunk preload failed for {context} / {chunk}: {exception.Message}");
-                    CompleteChunk(false);
-                }
+            }
+            finally
+            {
+                startupInProgress = false;
+                if (failed || remaining == 0)
+                    DeliverResult(!failed);
             }
         }
 
@@ -819,13 +865,24 @@ namespace Game.Server.Core
                 || runtime.EntranceChunk != entranceChunk
                 || runtime.EntranceCollider == null)
                 throw new InvalidOperationException("Transfer-instance admission does not match its registered entrance runtime.");
-            if (_preparedTransferScenes.ContainsKey(playerID))
+            if (_preparedTransferScenes.ContainsKey(playerID)
+                || _retainedTransferEntranceChunks.ContainsKey(playerID))
                 throw new InvalidOperationException($"Player {playerID} already has prepared transfer-instance scenes.");
 
             var copiedAddresses = new List<string>(sceneAddresses);
             var preparation = new PreparedTransferScenes(actor, destinationContext, copiedAddresses);
             _preparedTransferScenes.Add(playerID, preparation);
-            _retainedTransferEntranceChunks[playerID] = entranceChunk;
+            _retainedTransferEntranceChunks.Add(playerID, entranceChunk);
+            try
+            {
+                worldManager.RetainChunk(entranceChunk.Context, entranceChunk.ChunkCoord);
+            }
+            catch
+            {
+                _retainedTransferEntranceChunks.Remove(playerID);
+                _preparedTransferScenes.Remove(playerID);
+                throw;
+            }
 
             bool completed = false;
             void Fail(string message)
@@ -854,10 +911,7 @@ namespace Game.Server.Core
                     (entranceLoaded, entranceSceneID) =>
                     {
                         if (preparation.Cancelled)
-                        {
-                            UnloadChunkIfUnused(entranceChunk, entranceSceneID);
                             return;
-                        }
                         if (completed)
                             return;
                         if (!entranceLoaded)
@@ -1070,27 +1124,30 @@ namespace Game.Server.Core
             if (!_retainedTransferEntranceChunks.Remove(playerID, out WorldChunkKey entranceChunk))
                 return;
 
+            ServerWorldManager worldManager = ServerWorldManager.Instance;
             bool remainsInPublicGrid = !removeMembership
                 && actor != null
-                && actor.SpatialContext == ServerWorldManager.Instance.CurrentRuntimeContext
+                && actor.SpatialContext == worldManager.CurrentRuntimeContext
                 && _actorInterest.TryGetValue(actor, out PlayerInterestState state)
                 && state.SceneNames.Contains($"World_{entranceChunk.ChunkCoord.x}_{entranceChunk.ChunkCoord.y}");
-            if (!removeMembership && remainsInPublicGrid)
-                return;
-
-            if (!ServerWorldManager.Instance.TryGetChunkSceneID(
-                    entranceChunk.Context,
-                    entranceChunk.ChunkCoord,
-                    out SceneID sceneID))
-                return;
-
-            if (_networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
-                _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
-            if (_networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
-                && players.Count == 0)
-                ServerWorldManager.Instance.UnloadChunk(
-                    entranceChunk.Context,
-                    entranceChunk.ChunkCoord);
+            try
+            {
+                if (removeMembership || !remainsInPublicGrid)
+                {
+                    if (worldManager.TryGetChunkSceneID(
+                            entranceChunk.Context,
+                            entranceChunk.ChunkCoord,
+                            out SceneID sceneID)
+                        && _networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
+                    {
+                        _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
+                    }
+                }
+            }
+            finally
+            {
+                worldManager.ReleaseChunk(entranceChunk.Context, entranceChunk.ChunkCoord);
+            }
         }
 
         private void RemovePlayerFromInstanceScene(
@@ -1118,14 +1175,6 @@ namespace Game.Server.Core
                 && _networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
                 && players.Count == 0)
                 ServerWorldManager.Instance.UnloadInstanceScene(context, address);
-        }
-
-        private void UnloadChunkIfUnused(WorldChunkKey chunkKey, SceneID sceneID)
-        {
-            if (sceneID != default
-                && _networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
-                && players.Count == 0)
-                ServerWorldManager.Instance.UnloadChunk(chunkKey.Context, chunkKey.ChunkCoord);
         }
 
         /// <summary>
@@ -1161,6 +1210,31 @@ namespace Game.Server.Core
                 for (int y = -1; y <= 1; y++)
                     set.Add(new Vector2Int(center.x + x, center.y + y));
             return set;
+        }
+
+        private static void ReleaseTemporaryChunkRetains(
+            ServerWorldManager worldManager,
+            ActorSpatialContext context,
+            List<Vector2Int> retainedChunks)
+        {
+            List<Exception> releaseExceptions = null;
+            foreach (Vector2Int chunk in retainedChunks)
+            {
+                try
+                {
+                    worldManager.ReleaseChunk(context, chunk);
+                }
+                catch (Exception exception)
+                {
+                    if (releaseExceptions == null)
+                        releaseExceptions = new List<Exception>();
+                    releaseExceptions.Add(exception);
+                }
+            }
+            retainedChunks.Clear();
+
+            if (releaseExceptions != null)
+                throw new AggregateException("One or more temporary destination chunk retains could not be released.", releaseExceptions);
         }
 
         private static HashSet<string> GetSceneGrid(Vector2Int center)
