@@ -55,6 +55,8 @@ namespace Game.Client
         /// Raised by the client-side <c>onInteractInput</c> event.
         /// </summary>
         public event System.Action onInteractInput;
+        /// <summary>Raised when the validation-instance toggle key is pressed.</summary>
+        public event Action onInstanceValidationToggleInput;
         /// <summary>
         /// Raised by the client-side <c>onCancelInput</c> event.
         /// </summary>
@@ -170,6 +172,9 @@ namespace Game.Client
         private void Update()
         {
             if (_currentMode != InputMode.GameplayMovement) return;
+
+            if (Keyboard.current != null && Keyboard.current.yKey.wasPressedThisFrame)
+                onInstanceValidationToggleInput?.Invoke();
 
             onMovementInput?.Invoke(_moveAction.ReadValue<Vector2>());
 

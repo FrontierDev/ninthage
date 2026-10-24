@@ -14,6 +14,12 @@ namespace Game.Server.Systems
     {
         /// <summary>The unique spawn-point identifier.</summary>
         public Guid SpawnPointGUID;
+        /// <summary>The source world identity captured when the point was registered.</summary>
+        public Guid WorldID;
+        /// <summary>The source logical map identity captured when the point was registered.</summary>
+        public FixedString128Bytes MapID;
+        /// <summary>The source private instance identity captured when the point was registered.</summary>
+        public Guid InstanceID;
         /// <summary>The scene containing the spawn point.</summary>
         public FixedString128Bytes SceneName;
         /// <summary>The resolved absolute double-precision world position.</summary>
@@ -33,6 +39,12 @@ namespace Game.Server.Systems
     {
         /// <summary>The source spawn-point identifier.</summary>
         public Guid SpawnPointGUID;
+        /// <summary>The source world identity captured when the command was queued.</summary>
+        public Guid WorldID;
+        /// <summary>The source logical map identity captured when the command was queued.</summary>
+        public FixedString128Bytes MapID;
+        /// <summary>The source private instance identity captured when the command was queued.</summary>
+        public Guid InstanceID;
         /// <summary>The scene containing the spawn point.</summary>
         public FixedString128Bytes SceneName;
         /// <summary>The resolved absolute double-precision world position.</summary>

@@ -187,6 +187,8 @@ namespace Game.Server.Core
         // Maps actor ID -> Actor MonoBehaviour for authoritative movement bridges.
         private readonly Dictionary<Guid, Actor> _actorObjects = new();
         private readonly Dictionary<Guid, Entity> _actorEntities = new();
+        private readonly HashSet<PlayerID> _pendingInstanceValidationToggles = new();
+        private NetworkManager _networkManager;
         private ServerSpatialIndex _spatialIndex;
 
         /// <summary>Finds the server actor associated with an actor identifier.</summary>
@@ -406,13 +408,16 @@ namespace Game.Server.Core
             _npcAggroDecisionIntervalTicks = GetNPCAggroDecisionIntervalTicks();
             _spatialIndex = new ServerSpatialIndex(GameConfigurationManager.Config.SpatialIndexCellWidth);
             _instance = this;
+            _networkManager = NetworkManager.main;
 
             ActorEndpoint.onServerActorSpawned += OnActorSpawned;
             ActorEndpoint.onServerActorDespawned += OnActorDespawned;
             ActorEndpoint.onServerActorOwnerChanged += OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
             ActorEndpoint.onActorDeath += OnActorDeath;
+            ActorEndpoint.onServerInstanceValidationToggleRequested += OnInstanceValidationToggleRequested;
             MovementEndpoint.onServerPositionProposal += OnServerPositionProposal;
+            _networkManager.onPlayerLeft += OnPlayerLeft;
 
             var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
@@ -434,7 +439,10 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorOwnerChanged -= OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged -= OnActorInterestChanged;
             ActorEndpoint.onActorDeath -= OnActorDeath;
+            ActorEndpoint.onServerInstanceValidationToggleRequested -= OnInstanceValidationToggleRequested;
             MovementEndpoint.onServerPositionProposal -= OnServerPositionProposal;
+            if (_networkManager != null)
+                _networkManager.onPlayerLeft -= OnPlayerLeft;
 
             foreach (var actorID in _actorObjects.Keys)
                 RemoveSpatialMembership(actorID);
@@ -454,6 +462,7 @@ namespace Game.Server.Core
             _violationCounters.Clear();
             _pendingPositionProposals.Clear();
             _lastProposalOrder.Clear();
+            _pendingInstanceValidationToggles.Clear();
             _npcAggroStates.Clear();
             _npcNavigationStates.Clear();
             _pendingTickID = -1;
@@ -462,6 +471,7 @@ namespace Game.Server.Core
             _hasPendingTickSyncContribution = false;
             _spatialIndex = null;
             _instance = null;
+            _networkManager = null;
         }
 
         private ServerSpatialIndex GetSpatialIndex()
@@ -732,6 +742,7 @@ namespace Game.Server.Core
                 var owner = actor.Owner.Value;
                 if (_playerActors.TryGetValue(owner, out var playerActor) && playerActor == actor)
                 {
+                    _pendingInstanceValidationToggles.Remove(owner);
                     RemovePlayerValidationState(owner);
                 }
             }
@@ -856,6 +867,7 @@ namespace Game.Server.Core
                         && _playerActors.TryGetValue(previousOwner, out var previousActor)
                         && previousActor == actor)
                     {
+                        _pendingInstanceValidationToggles.Remove(previousOwner);
                         RemovePlayerValidationState(previousOwner);
                     }
 
@@ -1205,6 +1217,589 @@ namespace Game.Server.Core
             }
 
             actor.CurrentChunk = destinationSceneName;
+        }
+
+        private void OnInstanceValidationToggleRequested(PlayerID playerID)
+        {
+            if (_pendingInstanceValidationToggles.Contains(playerID))
+            {
+                Debug.Warning(
+                    $"[InstanceValidation] Ignoring duplicate toggle request from player {playerID} while pending.");
+                return;
+            }
+
+            if (!_initialized
+                || !ServerWorldManager.IsInitialized
+                || ServerWorldManager.Instance == null
+                || !ServerInterestManager.IsInitialized
+                || ServerInterestManager.Instance == null)
+            {
+                NotifyInstanceValidationToggleFailure(
+                    playerID,
+                    null,
+                    "required server managers are not initialized");
+                return;
+            }
+
+            if (!_playerActors.TryGetValue(playerID, out var actor)
+                || actor == null
+                || !actor.Owner.HasValue
+                || actor.Owner.Value != playerID)
+            {
+                NotifyInstanceValidationToggleFailure(
+                    playerID,
+                    null,
+                    "the requesting player has no live owned actor");
+                return;
+            }
+
+            if (!_actorObjects.TryGetValue(actor.ID, out var registeredActor)
+                || !ReferenceEquals(registeredActor, actor))
+            {
+                NotifyInstanceValidationToggleFailure(
+                    playerID,
+                    actor,
+                    "the player actor is not the registered authoritative actor");
+                return;
+            }
+
+            if (!_actorEntities.TryGetValue(actor.ID, out var entity)
+                || !_entityManager.Exists(entity)
+                || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
+            {
+                NotifyInstanceValidationToggleFailure(
+                    playerID,
+                    actor,
+                    "the player actor has no live ECS entity");
+                return;
+            }
+
+            ActorSpatialContext sourceContext = actor.SpatialContext;
+            if (!sourceContext.IsValid)
+            {
+                NotifyInstanceValidationToggleFailure(
+                    playerID,
+                    actor,
+                    "the player actor has no valid spatial context");
+                return;
+            }
+
+            if (!TryGetAcceptedWorldPosition(actor.ID, out WorldPosition position))
+            {
+                NotifyInstanceValidationToggleFailure(
+                    playerID,
+                    actor,
+                    "the player actor has no canonical accepted position");
+                return;
+            }
+
+            ActorSpatialContext instanceA = ServerWorldManager.Instance.ValidationInstanceA;
+            ActorSpatialContext instanceB = ServerWorldManager.Instance.ValidationInstanceB;
+            if (!instanceA.IsValid
+                || !instanceB.IsValid
+                || instanceA.InstanceID == Guid.Empty
+                || instanceB.InstanceID == Guid.Empty
+                || instanceA.Equals(instanceB)
+                || instanceA.WorldID != instanceB.WorldID
+                || !StringComparer.Ordinal.Equals(instanceA.MapID, instanceB.MapID))
+            {
+                NotifyInstanceValidationToggleFailure(
+                    playerID,
+                    actor,
+                    "server validation instances are invalid");
+                return;
+            }
+
+            ActorSpatialContext destinationContext;
+            string destinationLabel;
+            string sourceLabel;
+            if (sourceContext.Equals(instanceA))
+            {
+                destinationContext = instanceB;
+                destinationLabel = "B";
+                sourceLabel = "A";
+            }
+            else if (sourceContext.Equals(instanceB))
+            {
+                destinationContext = instanceA;
+                destinationLabel = "A";
+                sourceLabel = "B";
+            }
+            else
+            {
+                destinationContext = instanceA;
+                destinationLabel = "A";
+                sourceLabel = string.Empty;
+            }
+
+            _pendingInstanceValidationToggles.Add(playerID);
+
+            void CompleteToggle(bool preloadSucceeded)
+            {
+                if (!_pendingInstanceValidationToggles.Contains(playerID))
+                    return;
+
+                if (!preloadSucceeded)
+                {
+                    _pendingInstanceValidationToggles.Remove(playerID);
+                    NotifyInstanceValidationToggleFailure(
+                        playerID,
+                        actor,
+                        "destination interest grid preload failed");
+                    return;
+                }
+
+                if (!_playerActors.TryGetValue(playerID, out var currentActor)
+                    || currentActor == null)
+                {
+                    _pendingInstanceValidationToggles.Remove(playerID);
+                    NotifyInstanceValidationToggleFailure(
+                        playerID,
+                        actor,
+                        "the requesting player actor was removed during preload");
+                    return;
+                }
+
+                // A disconnect followed by a replacement actor must not let an old callback
+                // consume the replacement actor's newer pending request.
+                if (!ReferenceEquals(currentActor, actor))
+                    return;
+
+                try
+                {
+                    if (!_actorObjects.TryGetValue(actor.ID, out var currentRegisteredActor)
+                        || !ReferenceEquals(currentRegisteredActor, actor)
+                        || !actor.Owner.HasValue
+                        || actor.Owner.Value != playerID
+                        || !_actorEntities.TryGetValue(actor.ID, out var currentEntity)
+                        || !_entityManager.Exists(currentEntity)
+                        || !_entityManager.HasComponent<Systems.ActorComponent>(currentEntity))
+                    {
+                        _pendingInstanceValidationToggles.Remove(playerID);
+                        NotifyInstanceValidationToggleFailure(
+                            playerID,
+                            actor,
+                            "the player actor is no longer live before transfer");
+                        return;
+                    }
+
+                    if (!actor.SpatialContext.Equals(sourceContext))
+                    {
+                        _pendingInstanceValidationToggles.Remove(playerID);
+                        NotifyInstanceValidationToggleFailure(
+                            playerID,
+                            actor,
+                            "the source spatial context changed during preload");
+                        return;
+                    }
+
+                    if (!TryGetAcceptedWorldPosition(actor.ID, out var currentPosition)
+                        || !AreWorldPositionsEqual(currentPosition, position))
+                    {
+                        _pendingInstanceValidationToggles.Remove(playerID);
+                        NotifyInstanceValidationToggleFailure(
+                            playerID,
+                            actor,
+                            "the canonical accepted position changed during preload");
+                        return;
+                    }
+
+                    TransferActorSpatialContext(
+                        actor,
+                        destinationContext,
+                        position);
+                    _pendingInstanceValidationToggles.Remove(playerID);
+
+                    string transition = string.IsNullOrEmpty(sourceLabel)
+                        ? $"entered {destinationLabel}"
+                        : $"switched {sourceLabel} -> {destinationLabel}";
+                    Debug.Log(
+                        $"[InstanceValidation] Player {actor.ID} {transition} "
+                        + $"instance={destinationContext.InstanceID} "
+                        + $"position=({position.x:F3},{position.y:F3},{position.z:F3})");
+                    ActorEndpoint.Client_InstanceValidationToggleResult(
+                        playerID,
+                        true,
+                        destinationLabel,
+                        destinationContext.InstanceID);
+                }
+                catch (Exception exception)
+                {
+                    _pendingInstanceValidationToggles.Remove(playerID);
+                    NotifyInstanceValidationToggleFailure(
+                        playerID,
+                        actor,
+                        $"context transfer failed: {exception.Message}");
+                }
+            }
+
+            try
+            {
+                ServerInterestManager.Instance.EnsureInterestGridLoaded(
+                    destinationContext,
+                    position,
+                    CompleteToggle);
+            }
+            catch (Exception exception)
+            {
+                _pendingInstanceValidationToggles.Remove(playerID);
+                NotifyInstanceValidationToggleFailure(
+                    playerID,
+                    actor,
+                    $"destination interest grid preload could not start: {exception.Message}");
+            }
+        }
+
+        private void OnPlayerLeft(PlayerID playerID, bool asServer)
+        {
+            _pendingInstanceValidationToggles.Remove(playerID);
+        }
+
+        private static void NotifyInstanceValidationToggleFailure(
+            PlayerID playerID,
+            Actor actor,
+            string reason)
+        {
+            string actorID = actor == null ? "<none>" : actor.ID.ToString();
+            Debug.Error(
+                $"[InstanceValidation] Toggle failed for player {playerID} actor={actorID}: {reason}");
+            ActorEndpoint.Client_InstanceValidationToggleResult(
+                playerID,
+                false,
+                string.Empty,
+                Guid.Empty);
+        }
+
+        private static bool AreWorldPositionsEqual(WorldPosition left, WorldPosition right)
+        {
+            return left.x == right.x
+                && left.y == right.y
+                && left.z == right.z;
+        }
+
+        /// <summary>
+        /// Transfers one live actor between authoritative logical contexts and projects all owned
+        /// position, spatial, visibility and observer state as one server transaction.
+        /// </summary>
+        /// <param name="actor">The registered live actor to transfer.</param>
+        /// <param name="destinationContext">The already-authorised destination logical context.</param>
+        /// <param name="destinationPosition">The already-authorised destination absolute world position.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="actor"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when destination input is invalid or unchanged.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when authoritative actor state, required managers or destination environment are unavailable,
+        /// inconsistent, or a transfer/rollback operation fails.
+        /// </exception>
+        internal void TransferActorSpatialContext(
+            Actor actor,
+            ActorSpatialContext destinationContext,
+            WorldPosition destinationPosition)
+        {
+            if (!_initialized)
+                throw new InvalidOperationException("Server actor manager is not initialized.");
+            GetSpatialIndex();
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+
+            ActorSpatialContext sourceContext = actor.SpatialContext;
+            if (!sourceContext.IsValid)
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' has no valid source spatial context.");
+            if (!destinationContext.IsValid)
+                throw new ArgumentException(
+                    "A valid destination actor spatial context is required.",
+                    nameof(destinationContext));
+            if (!destinationPosition.IsFinite)
+                throw new ArgumentException(
+                    "A finite destination actor position is required.",
+                    nameof(destinationPosition));
+            if (destinationContext.Equals(sourceContext))
+                throw new ArgumentException(
+                    "A logical-context transfer requires a different destination context.",
+                    nameof(destinationContext));
+
+            if (!_actorObjects.TryGetValue(actor.ID, out var registeredActor)
+                || !ReferenceEquals(registeredActor, actor))
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' is not registered as the exact server actor instance.");
+            }
+            if (!_actorEntities.TryGetValue(actor.ID, out var entity)
+                || !_entityManager.Exists(entity)
+                || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' has no live mapped ECS actor entity.");
+            }
+
+            var originalComponent = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+            if (originalComponent.ActorID != actor.ID)
+            {
+                throw new InvalidOperationException(
+                    $"Actor entity mapping for '{actor.ID}' contains component actor '{originalComponent.ActorID}'.");
+            }
+
+            WorldPosition sourcePosition = new WorldPosition(
+                originalComponent.WorldPositionD.x,
+                originalComponent.WorldPositionD.y,
+                originalComponent.WorldPositionD.z);
+            if (!sourcePosition.IsFinite)
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' has a non-finite canonical source position.");
+
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
+                throw new InvalidOperationException(
+                    "Actor context transfer requires initialized server world management.");
+            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+                throw new InvalidOperationException(
+                    "Actor context transfer requires initialized server physics management.");
+
+            Vector2Int destinationChunk = destinationPosition.Chunk;
+            if (!ServerWorldManager.Instance.IsChunkLoaded(destinationContext, destinationChunk))
+            {
+                throw new InvalidOperationException(
+                    $"Destination chunk '{destinationChunk}' is not loaded for actor context transfer.");
+            }
+
+            PlayerID? owner = actor.Owner;
+            if (owner.HasValue)
+            {
+                if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Player actor context transfer requires initialized server interest management.");
+                }
+                if (!ServerInterestManager.Instance.IsInterestGridLoaded(
+                        destinationContext,
+                        destinationPosition))
+                {
+                    throw new InvalidOperationException(
+                        $"Destination interest grid is not fully loaded for actor '{actor.ID}'.");
+                }
+            }
+
+            Vector3 destinationPhysicalPosition =
+                ServerPhysicsManager.Instance.ToPhysicalPosition(destinationPosition);
+            long transferTickID = ServerECSManager.CurrentSimulationTickID;
+            if (transferTickID < 0)
+                throw new InvalidOperationException(
+                    $"Actor context transfer requires a nonnegative simulation tick, received {transferTickID}.");
+
+            Vector3 sourcePhysicalPosition = actor.transform.position;
+            string sourceSceneName = actor.CurrentChunk;
+            string destinationSceneName = $"World_{destinationChunk.x}_{destinationChunk.y}";
+            NetworkIdentity identity = actor.GetComponent<NetworkIdentity>();
+
+            bool spatialMembershipTransferred = false;
+            bool actorContextTransferred = false;
+            bool componentPositionCommitted = false;
+            bool identityTransferred = false;
+            bool currentChunkChanged = false;
+            bool physicalPositionChanged = false;
+            bool playerValidationStateInitialized = false;
+            bool destinationInterestCallbackStarted = false;
+
+            try
+            {
+                GetSpatialIndex().Transfer(
+                    actor.ID,
+                    destinationContext,
+                    destinationPosition);
+                spatialMembershipTransferred = true;
+
+                actor.TransferAuthoritativeSpatialContext(
+                    sourceContext,
+                    destinationContext);
+                actorContextTransferred = true;
+
+                var destinationComponent = originalComponent;
+                destinationComponent.WorldPositionD = new Unity.Mathematics.double3(
+                    destinationPosition.x,
+                    destinationPosition.y,
+                    destinationPosition.z);
+                _entityManager.SetComponentData(entity, destinationComponent);
+                componentPositionCommitted = true;
+
+                if (identity != null)
+                {
+                    ChunkSubscriptions.TransferIdentity(
+                        sourceContext,
+                        sourceSceneName,
+                        destinationContext,
+                        destinationSceneName,
+                        identity);
+                    identityTransferred = true;
+                }
+
+                actor.CurrentChunk = destinationSceneName;
+                currentChunkChanged = true;
+
+                actor.transform.position = destinationPhysicalPosition;
+                physicalPositionChanged = true;
+
+                if (owner.HasValue)
+                {
+                    InitializePlayerValidationState(owner.Value, actor, destinationPosition);
+                    playerValidationStateInitialized = true;
+
+                    if (ActorEndpoint.onServerAcceptedPlayerPositionChanged != null)
+                    {
+                        destinationInterestCallbackStarted = true;
+                        ActorEndpoint.onServerAcceptedPlayerPositionChanged.Invoke(
+                            actor,
+                            destinationPosition);
+                    }
+                }
+
+                actor.SetAcceptedPositionSnapshotFromServer(
+                    destinationPosition,
+                    transferTickID);
+            }
+            catch (Exception transferException)
+            {
+                var rollbackFailures = new List<Exception>();
+                bool actorContextRestoredForInterest = false;
+
+                if (destinationInterestCallbackStarted && actorContextTransferred)
+                {
+                    // ServerInterestManager derives the callback context from Actor.SpatialContext.
+                    // Restore the actor context before projecting interest back to the source context;
+                    // this is the same context rollback otherwise performed below.
+                    try
+                    {
+                        actor.TransferAuthoritativeSpatialContext(
+                            destinationContext,
+                            sourceContext);
+                        actorContextTransferred = false;
+                        actorContextRestoredForInterest = true;
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (destinationInterestCallbackStarted && actorContextRestoredForInterest)
+                {
+                    try
+                    {
+                        ActorEndpoint.onServerAcceptedPlayerPositionChanged?.Invoke(
+                            actor,
+                            sourcePosition);
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (playerValidationStateInitialized && owner.HasValue)
+                {
+                    try
+                    {
+                        InitializePlayerValidationState(owner.Value, actor, sourcePosition);
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (physicalPositionChanged)
+                {
+                    try
+                    {
+                        actor.transform.position = sourcePhysicalPosition;
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (currentChunkChanged)
+                {
+                    try
+                    {
+                        actor.CurrentChunk = sourceSceneName;
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (identityTransferred)
+                {
+                    try
+                    {
+                        ChunkSubscriptions.TransferIdentity(
+                            destinationContext,
+                            destinationSceneName,
+                            sourceContext,
+                            sourceSceneName,
+                            identity);
+                        identityTransferred = false;
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (componentPositionCommitted)
+                {
+                    try
+                    {
+                        _entityManager.SetComponentData(entity, originalComponent);
+                        componentPositionCommitted = false;
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (actorContextTransferred)
+                {
+                    try
+                    {
+                        actor.TransferAuthoritativeSpatialContext(
+                            destinationContext,
+                            sourceContext);
+                        actorContextTransferred = false;
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (spatialMembershipTransferred)
+                {
+                    try
+                    {
+                        GetSpatialIndex().Transfer(
+                            actor.ID,
+                            sourceContext,
+                            sourcePosition);
+                        spatialMembershipTransferred = false;
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (rollbackFailures.Count > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor '{actor.ID}' context transfer failed and rollback also failed.",
+                        new AggregateException(transferException, new AggregateException(rollbackFailures)));
+                }
+
+                throw;
+            }
         }
 
     }

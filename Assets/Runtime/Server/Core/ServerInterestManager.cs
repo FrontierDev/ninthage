@@ -457,6 +457,93 @@ namespace Game.Server.Core
         }
 
         /// <summary>
+        /// Ensures that the explicit context-qualified destination interest grid is loaded
+        /// without changing any player's current interest state.
+        /// </summary>
+        internal void EnsureInterestGridLoaded(
+            ActorSpatialContext context,
+            WorldPosition position,
+            Action<bool> onCompleted)
+        {
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid actor spatial context is required.",
+                    nameof(context));
+            if (!position.IsFinite)
+                throw new ArgumentException(
+                    "Interest grid position must be finite.",
+                    nameof(position));
+            if (onCompleted == null)
+                throw new ArgumentNullException(nameof(onCompleted));
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
+                throw new InvalidOperationException(
+                    "Interest grid preload requires an initialized server world manager.");
+
+            ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            if (!runtimeContext.IsValid
+                || context.WorldID != runtimeContext.WorldID
+                || !StringComparer.Ordinal.Equals(context.MapID, runtimeContext.MapID))
+            {
+                throw new InvalidOperationException(
+                    "Interest grid preload context does not belong to the current server runtime.");
+            }
+
+            Vector2Int centerChunk = position.Chunk;
+            var pendingChunks = new List<Vector2Int>();
+            foreach (var chunk in GetGrid(centerChunk))
+            {
+                if (!ServerWorldManager.Instance.IsChunkLoaded(context, chunk))
+                    pendingChunks.Add(chunk);
+            }
+
+            if (pendingChunks.Count == 0)
+            {
+                onCompleted(true);
+                return;
+            }
+
+            int remaining = pendingChunks.Count;
+            bool terminalResultDelivered = false;
+
+            void CompleteChunk(bool succeeded)
+            {
+                if (terminalResultDelivered)
+                    return;
+
+                if (!succeeded)
+                {
+                    terminalResultDelivered = true;
+                    onCompleted(false);
+                    return;
+                }
+
+                remaining--;
+                if (remaining == 0)
+                {
+                    terminalResultDelivered = true;
+                    onCompleted(true);
+                }
+            }
+
+            foreach (var chunk in pendingChunks)
+            {
+                try
+                {
+                    ServerWorldManager.Instance.EnsureChunkLoaded(
+                        context,
+                        chunk,
+                        (succeeded, sceneID) => CompleteChunk(succeeded));
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"[InstanceValidation] Destination chunk preload failed for {context} / {chunk}: {exception.Message}");
+                    CompleteChunk(false);
+                }
+            }
+        }
+
+        /// <summary>
         /// Determines whether all nine context-qualified chunks around a position are loaded.
         /// </summary>
         /// <param name="context">The authoritative runtime context that owns the interest grid.</param>

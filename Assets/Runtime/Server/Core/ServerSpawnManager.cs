@@ -88,7 +88,47 @@ namespace Game.Server.Core
         private readonly Dictionary<int, Scene> _sceneRegistry = new();
         private int _nextSceneIndex;
 
-        private Dictionary<Guid, Actor> _spawnPointActorMap = new();
+        private readonly struct SpawnPointRuntimeKey : IEquatable<SpawnPointRuntimeKey>
+        {
+            public SpawnPointRuntimeKey(ActorSpatialContext context, Guid spawnPointGUID)
+            {
+                if (!context.IsValid)
+                    throw new ArgumentException(
+                        "A valid actor spatial context is required.",
+                        nameof(context));
+                if (spawnPointGUID == Guid.Empty)
+                    throw new ArgumentException(
+                        "A nonempty spawn-point GUID is required.",
+                        nameof(spawnPointGUID));
+
+                Context = context;
+                SpawnPointGUID = spawnPointGUID;
+            }
+
+            public ActorSpatialContext Context { get; }
+            public Guid SpawnPointGUID { get; }
+
+            public bool Equals(SpawnPointRuntimeKey other)
+            {
+                return Context.Equals(other.Context)
+                    && SpawnPointGUID == other.SpawnPointGUID;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is SpawnPointRuntimeKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return (Context.GetHashCode() * 397) ^ SpawnPointGUID.GetHashCode();
+                }
+            }
+        }
+
+        private readonly Dictionary<SpawnPointRuntimeKey, Actor> _spawnPointActorMap = new();
 
         private EntityManager _entityManager;
         private EntityQuery _spawnCommandQuery;
@@ -148,6 +188,10 @@ namespace Game.Server.Core
                 return;
 
             WorldChunkKey sourceChunk = ResolveLoadedChunkKey(sceneID);
+            if (!sourceChunk.Context.IsValid)
+                throw new InvalidOperationException(
+                    $"Loaded scene {sceneID} resolved to an invalid source context.");
+            FixedString128Bytes sourceMapID = ToSpawnContextMapID(sourceChunk.Context);
             if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
             {
                 throw new InvalidOperationException(
@@ -156,9 +200,13 @@ namespace Game.Server.Core
             foreach (ActorSpawnPoint spawnPoint in actorSpawnPoints)
             {
                 Guid spawnPointGUID = spawnPoint.GUID;
-                if (_spawnPointActorMap.ContainsKey(spawnPointGUID))
+                var spawnPointKey = new SpawnPointRuntimeKey(
+                    sourceChunk.Context,
+                    spawnPointGUID);
+                if (_spawnPointActorMap.ContainsKey(spawnPointKey))
                 {
-                    Debug.Warning($"Spawn point '{spawnPoint.name}' with GUID {spawnPointGUID} already has an actor spawned. Skipping duplicate.");
+                    Debug.Warning(
+                        $"Spawn point '{spawnPoint.name}' with GUID {spawnPointGUID} already has an actor spawned in context {sourceChunk.Context}. Skipping duplicate.");
                     continue;
                 }
 
@@ -170,6 +218,9 @@ namespace Game.Server.Core
                 _entityManager.AddComponentData(entity, new Systems.SpawnPointComponent
                 {
                     SpawnPointGUID = spawnPointGUID,
+                    WorldID = sourceChunk.Context.WorldID,
+                    MapID = sourceMapID,
+                    InstanceID = sourceChunk.Context.InstanceID,
                     SceneName = state.scene.name,
                     WorldPositionD = new double3(
                         spawnWorldPosition.x,
@@ -182,7 +233,7 @@ namespace Game.Server.Core
                 });
 
                 // Tell the spawn system that this spawn point has an actor associated with it.
-                _spawnPointActorMap[spawnPointGUID] = spawnPoint.Actor;
+                _spawnPointActorMap[spawnPointKey] = spawnPoint.Actor;
             }
         }
 
@@ -219,13 +270,58 @@ namespace Game.Server.Core
             return resolvedChunk;
         }
 
+        private static FixedString128Bytes ToSpawnContextMapID(ActorSpatialContext context)
+        {
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid actor spatial context is required.",
+                    nameof(context));
+
+            string mapID = context.MapID;
+            try
+            {
+                var fixedMapID = new FixedString128Bytes(mapID);
+                if (!StringComparer.Ordinal.Equals(fixedMapID.ToString(), mapID))
+                {
+                    throw new InvalidOperationException(
+                        $"Map ID '{mapID}' cannot be represented losslessly in FixedString128Bytes.");
+                }
+
+                return fixedMapID;
+            }
+            catch (Exception exception) when (exception is ArgumentException
+                || exception is InvalidOperationException)
+            {
+                throw new InvalidOperationException(
+                    $"Map ID '{mapID}' cannot be represented losslessly in the spawn command.",
+                    exception);
+            }
+        }
+
         private void OnServerActorDespawned(Actor actor)
         {
-            // If this actor was spawned from a spawn point, mark that spawn point as pending again so it can respawn.
-            if (actor != null
-                && actor.SpawnPointGUID != default
-                && _spawnPointActorMap.ContainsKey(actor.SpawnPointGUID))
-                _spawnPointActorMap.Remove(actor.SpawnPointGUID);
+            // If this actor was spawned from a spawn point, mark that exact reservation as pending again.
+            if (actor != null)
+            {
+                bool foundReservation = false;
+                SpawnPointRuntimeKey reservationKey = default;
+                foreach (var reservation in _spawnPointActorMap)
+                {
+                    if (!ReferenceEquals(reservation.Value, actor))
+                        continue;
+                    if (foundReservation)
+                    {
+                        throw new InvalidOperationException(
+                            $"Spawn-point actor '{actor.ID}' owns multiple runtime reservations.");
+                    }
+
+                    foundReservation = true;
+                    reservationKey = reservation.Key;
+                }
+
+                if (foundReservation)
+                    _spawnPointActorMap.Remove(reservationKey);
+            }
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(DESPAWN_EVENT_COUNT_METRIC, 1);
 
@@ -496,11 +592,16 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     "Queueing a spawn requires an initialized server world manager.");
             }
-            if (!sourceChunk.Context.IsCompatibleWith(ServerWorldManager.Instance.CurrentRuntimeContext))
+            if (!ServerWorldManager.Instance.TryGetChunkSceneID(
+                    sourceChunk.Context,
+                    sourceChunk.ChunkCoord,
+                    out _))
             {
                 throw new InvalidOperationException(
-                    "The source chunk context must match the current server runtime context.");
+                    $"The exact source chunk '{sourceChunk.ChunkCoord}' is not loaded for context "
+                    + $"({sourceChunk.Context.WorldID}, {sourceChunk.Context.MapID}, {sourceChunk.Context.InstanceID}).");
             }
+            FixedString128Bytes sourceMapID = ToSpawnContextMapID(sourceChunk.Context);
 
             string sceneName = $"World_{sourceChunk.ChunkCoord.x}_{sourceChunk.ChunkCoord.y}";
             if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state))
@@ -532,6 +633,9 @@ namespace Game.Server.Core
             var entity = _entityManager.CreateEntity();
             _entityManager.AddComponentData(entity, new Systems.SpawnCommand
             {
+                WorldID = sourceChunk.Context.WorldID,
+                MapID = sourceMapID,
+                InstanceID = sourceChunk.Context.InstanceID,
                 WorldPositionD = new double3(worldPosition.x, worldPosition.y, worldPosition.z),
                 PrefabIndex = prefabIndex,
                 SceneIndex = sceneIndex,
@@ -576,9 +680,9 @@ namespace Game.Server.Core
                         Actor spawnedActor = null;
                         NetworkIdentity registeredIdentity = null;
                         Actor spawnPointReservation = null;
-                        bool hasSpawnPointReservation = _spawnPointActorMap.TryGetValue(
-                            cmd.SpawnPointGUID,
-                            out spawnPointReservation);
+                        SpawnPointRuntimeKey spawnPointKey = default;
+                        bool hasSpawnPointReservation = false;
+                        bool spawnPointReservationUpdated = false;
                         bool playerActorRegistered = false;
                         bool hadPreviousPlayerActor = false;
                         Actor previousPlayerActor = null;
@@ -608,13 +712,44 @@ namespace Game.Server.Core
                             if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
                                 throw new InvalidOperationException("The server world manager is not initialized.");
 
-                            ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
-                            if (!runtimeContext.IsValid)
-                                throw new InvalidOperationException("The server runtime spatial context is not initialized.");
+                            string mapID = cmd.MapID.ToString();
+                            if (cmd.WorldID == Guid.Empty)
+                                throw new InvalidOperationException("The spawn command world ID is empty.");
+                            if (string.IsNullOrWhiteSpace(mapID))
+                                throw new InvalidOperationException("The spawn command map ID is empty.");
+
+                            ActorSpatialContext spawnContext = cmd.InstanceID == Guid.Empty
+                                ? ActorSpatialContext.CreatePublic(cmd.WorldID, mapID)
+                                : ActorSpatialContext.CreateInstanced(cmd.WorldID, mapID, cmd.InstanceID);
 
                             var sourceChunk = new WorldChunkKey(
-                                runtimeContext,
+                                spawnContext,
                                 new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y));
+                            if (cmd.SpawnPointGUID != Guid.Empty)
+                            {
+                                spawnPointKey = new SpawnPointRuntimeKey(
+                                    spawnContext,
+                                    cmd.SpawnPointGUID);
+                                hasSpawnPointReservation = _spawnPointActorMap.TryGetValue(
+                                    spawnPointKey,
+                                    out spawnPointReservation);
+                                if (!hasSpawnPointReservation || spawnPointReservation == null)
+                                {
+                                    throw new InvalidOperationException(
+                                        $"Spawn-point reservation for '{cmd.SpawnPointGUID}' is missing in context {spawnContext}.");
+                                }
+                            }
+
+                            if (!ServerWorldManager.Instance.TryGetChunkSceneID(
+                                    sourceChunk.Context,
+                                    sourceChunk.ChunkCoord,
+                                    out _))
+                            {
+                                throw new InvalidOperationException(
+                                    $"The queued source chunk '{sourceChunk.ChunkCoord}' is no longer loaded for context "
+                                    + $"({spawnContext.WorldID}, {spawnContext.MapID}, {spawnContext.InstanceID}).");
+                            }
+
                             if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
                                 throw new InvalidOperationException("The server physics manager is not initialized.");
                             if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
@@ -634,17 +769,27 @@ namespace Game.Server.Core
                             spawnedObject = PurrNet.UnityProxy.Instantiate(prefab, physicalPosition, Quaternion.identity, scene);
                             if (spawnedObject == null)
                                 throw new InvalidOperationException("PurrNet returned a null spawned object.");
-                            Debug.Log($"Spawned '{prefabName}' at {physicalPosition} in scene '{sceneNameForLog}'.");
-
                             var actor = spawnedObject.GetComponent<Game.Shared.Runtime.Actors.Actor>();
                             if (actor == null)
                                 throw new InvalidOperationException($"Prefab '{prefabName}' is missing an Actor component. Add it to the prefab in the editor.");
                             spawnedActor = actor;
 
                             actor.CurrentChunk = sceneName;
-                            actor.SetAuthoritativeSpatialContext(runtimeContext);
+                            actor.SetAuthoritativeSpatialContext(spawnContext);
                             actor.Initialize(actor.ID, cmd.Owner != default ? $"Player_{cmd.Owner}" : prefabName);
                             actor.SetSpawnPointGUID(cmd.SpawnPointGUID);
+
+                            if (hasSpawnPointReservation)
+                            {
+                                _spawnPointActorMap[spawnPointKey] = spawnedActor;
+                                spawnPointReservationUpdated = true;
+                            }
+
+                            Debug.Log(
+                                $"[Spawn] Spawned '{prefabName}' chunk=({sourceChunk.ChunkCoord.x},{sourceChunk.ChunkCoord.y}) "
+                                + $"world={spawnContext.WorldID} map={spawnContext.MapID} "
+                                + $"instance={spawnContext.InstanceID} position={physicalPosition} "
+                                + $"scene='{sceneNameForLog}'.");
 
                             // Register the root identity for targeted visibility re-evaluation.
                             NetworkIdentity identity = spawnedObject.GetComponent<NetworkIdentity>();
@@ -768,11 +913,24 @@ namespace Game.Server.Core
 
                                 try
                                 {
-                                    if (hasSpawnPointReservation
-                                        && _spawnPointActorMap.TryGetValue(cmd.SpawnPointGUID, out var currentReservation)
-                                        && ReferenceEquals(currentReservation, spawnPointReservation))
+                                    if (hasSpawnPointReservation)
                                     {
-                                        _spawnPointActorMap.Remove(cmd.SpawnPointGUID);
+                                        if (!_spawnPointActorMap.TryGetValue(
+                                                spawnPointKey,
+                                                out var currentReservation))
+                                        {
+                                            throw new InvalidOperationException(
+                                                $"Spawn-point reservation for '{cmd.SpawnPointGUID}' disappeared during rollback.");
+                                        }
+                                        if (!ReferenceEquals(currentReservation, spawnPointReservation)
+                                            && !(spawnPointReservationUpdated
+                                                && ReferenceEquals(currentReservation, spawnedActor)))
+                                        {
+                                            throw new InvalidOperationException(
+                                                $"Spawn-point reservation for '{cmd.SpawnPointGUID}' changed during rollback.");
+                                        }
+
+                                        _spawnPointActorMap.Remove(spawnPointKey);
                                     }
                                 }
                                 catch (Exception cleanupException)

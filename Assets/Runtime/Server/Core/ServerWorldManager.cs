@@ -44,6 +44,8 @@ namespace Game.Server.Core
         public static bool IsInitialized => _initialized;
 
         private static ActorSpatialContext _runtimeContext;
+        private static ActorSpatialContext _validationInstanceA;
+        private static ActorSpatialContext _validationInstanceB;
 
         /// <summary>Initializes the authoritative public context for the current server lifetime.</summary>
         internal static void InitializeRuntimeContext(Guid worldID)
@@ -52,12 +54,40 @@ namespace Game.Server.Core
                 throw new InvalidOperationException("The server world runtime context is already initialized.");
 
             _runtimeContext = ActorSpatialContext.CreatePublic(worldID, MAIN_MAP_ID);
+
+            Guid instanceAID;
+            do
+            {
+                instanceAID = Guid.NewGuid();
+            }
+            while (instanceAID == Guid.Empty);
+
+            Guid instanceBID;
+            do
+            {
+                instanceBID = Guid.NewGuid();
+            }
+            while (instanceBID == Guid.Empty || instanceBID == instanceAID);
+
+            _validationInstanceA = ActorSpatialContext.CreateInstanced(
+                _runtimeContext.WorldID,
+                _runtimeContext.MapID,
+                instanceAID);
+            _validationInstanceB = ActorSpatialContext.CreateInstanced(
+                _runtimeContext.WorldID,
+                _runtimeContext.MapID,
+                instanceBID);
+
+            Debug.Log(
+                $"[InstanceValidation] Created runtime instances A={instanceAID} B={instanceBID}");
         }
 
         /// <summary>Clears the authoritative public context during server teardown.</summary>
         internal static void ClearRuntimeContext()
         {
             _runtimeContext = default;
+            _validationInstanceA = default;
+            _validationInstanceB = default;
         }
 
         private NetworkManager _networkManager;
@@ -73,6 +103,10 @@ namespace Game.Server.Core
         public bool IsGlobalActorsSceneLoaded => _globalActorsSceneID != default;
         /// <summary>Gets the authoritative public context for the current server lifetime.</summary>
         public ActorSpatialContext CurrentRuntimeContext => _runtimeContext;
+        /// <summary>Gets the first server-lifetime validation instance.</summary>
+        internal ActorSpatialContext ValidationInstanceA => _validationInstanceA;
+        /// <summary>Gets the second server-lifetime validation instance.</summary>
+        internal ActorSpatialContext ValidationInstanceB => _validationInstanceB;
 
         internal static void RegisterPerformanceMetrics()
         {

@@ -30,6 +30,8 @@ namespace Game.Shared.Networking
         public static Action<Actor> onActorDespawned;
         /// <summary>Raised when a client receives a newer server-accepted actor position snapshot.</summary>
         public static Action<Actor, ActorPositionSnapshot> onClientAcceptedPositionChanged;
+        /// <summary>Raised when the client receives an instance validation toggle result.</summary>
+        public static Action<bool, string, Guid> onClientInstanceValidationToggleResult;
         /// <summary>Raised when an actor owner changes.</summary>
         public static Action<Actor> onActorOwnerChanged;
         /// <summary>Raised when the local client takes actor ownership.</summary>
@@ -95,6 +97,8 @@ namespace Game.Shared.Networking
         public static Action<Actor> onServerActorOwnerChanged;
         /// <summary>Raised when server actor interest changes.</summary>
         public static Action<Actor, SceneID> onServerActorInterestChanged;
+        /// <summary>Raised when a client requests an instance validation toggle.</summary>
+        public static Action<PlayerID> onServerInstanceValidationToggleRequested;
         /// <summary>
         /// Raised after a player's authoritative accepted position
         /// has been committed by the server.
@@ -149,5 +153,27 @@ namespace Game.Shared.Networking
         public static Action<Actor> onServerStartAutoAttack;
         /// <summary>Raised when a server auto attack stops.</summary>
         public static Action<Actor> onServerStopAutoAttack;
+
+        /// <summary>Requests a server-authorised validation-instance toggle for the sender's player.</summary>
+        [ServerRpc]
+        public static void Server_RequestInstanceValidationToggle(RPCInfo rpcInfo = default)
+        {
+            onServerInstanceValidationToggleRequested?.Invoke(rpcInfo.sender);
+        }
+
+        /// <summary>Reports the authoritative result of a validation-instance toggle to one client.</summary>
+        [TargetRpc]
+        public static void Client_InstanceValidationToggleResult(
+            PlayerID target,
+            bool succeeded,
+            string instanceLabel,
+            Guid instanceID,
+            RPCInfo rpcInfo = default)
+        {
+            onClientInstanceValidationToggleResult?.Invoke(
+                succeeded,
+                instanceLabel,
+                instanceID);
+        }
     }
 }

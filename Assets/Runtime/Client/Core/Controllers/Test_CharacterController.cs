@@ -1,4 +1,5 @@
 ﻿using Game.Shared;
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Movement;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
@@ -56,7 +57,9 @@ namespace Game.Client
                 ClientInputController.Instance.onMovementInput += OnMovementInput;
                 ClientInputController.Instance.onJumpInput += OnJumpInput;
                 ClientInputController.Instance.onInteractInput += OnInteractInput;
+                ClientInputController.Instance.onInstanceValidationToggleInput += OnInstanceValidationToggleInput;
             }
+            ActorEndpoint.onClientInstanceValidationToggleResult += OnInstanceValidationToggleResult;
         }
 
         // Movement and proposal sequencing begin only after this object is the local actor owner.
@@ -74,7 +77,7 @@ namespace Game.Client
             _instance = this;
             MovementEndpoint.onServerCorrection += OnServerCorrection;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            FormattedDebug.Log($"[Movement/Ownership] actor={actor.ID} epoch={_ownershipEpoch} proposal state reset.");
+            Debug.Log($"[Movement/Ownership] actor={actor.ID} epoch={_ownershipEpoch} proposal state reset.");
 #endif
             enabled = true;
         }
@@ -83,6 +86,7 @@ namespace Game.Client
         {
             ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
             MovementEndpoint.onServerCorrection -= OnServerCorrection;
+            ActorEndpoint.onClientInstanceValidationToggleResult -= OnInstanceValidationToggleResult;
             ResetPositionProposalState();
 
             if (ClientInputController.Instance != null)
@@ -90,6 +94,7 @@ namespace Game.Client
                 ClientInputController.Instance.onMovementInput -= OnMovementInput;
                 ClientInputController.Instance.onJumpInput -= OnJumpInput;
                 ClientInputController.Instance.onInteractInput -= OnInteractInput;
+                ClientInputController.Instance.onInstanceValidationToggleInput -= OnInstanceValidationToggleInput;
             }
         }
 
@@ -227,5 +232,41 @@ namespace Game.Client
         private void OnMovementInput(Vector2 direction) => _currentMovementInput = direction;
         private void OnJumpInput() => _jumpRequested = true;
         private void OnInteractInput() { /* TODO */ }
+
+        private void OnInstanceValidationToggleInput()
+        {
+            if (!enabled || _actorMotor == null)
+                return;
+
+            Actor playerActor = ClientAccountManager.PlayerActor;
+            if (playerActor == null
+                || playerActor.gameObject != gameObject
+                || !playerActor.Owner.HasValue
+                || NetworkManager.main == null
+                || playerActor.Owner.Value != NetworkManager.main.localPlayer)
+            {
+                return;
+            }
+
+            ActorEndpoint.Server_RequestInstanceValidationToggle();
+        }
+
+        private void OnInstanceValidationToggleResult(
+            bool succeeded,
+            string instanceLabel,
+            Guid instanceID)
+        {
+            if (!enabled
+                || ClientAccountManager.PlayerActor == null
+                || ClientAccountManager.PlayerActor.gameObject != gameObject)
+            {
+                return;
+            }
+
+            if (succeeded)
+                Debug.Log($"[InstanceValidation] Switched player to instance {instanceLabel} ({instanceID}).");
+            else
+                Debug.Log("[InstanceValidation] Instance toggle failed.");
+        }
     }
 }
