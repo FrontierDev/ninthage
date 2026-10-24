@@ -478,6 +478,7 @@ namespace Game.Server.Core
             if (!_initialized) return;
             EnsureNPCAggroScheduleRegistered();
             UpdateNPCNavigation();
+            UpdateNPCNavigation();
             using var markerScope = UPDATE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             if (telemetryEnabled)
