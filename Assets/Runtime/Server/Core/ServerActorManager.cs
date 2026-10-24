@@ -1333,6 +1333,7 @@ namespace Game.Server.Core
             }
 
             _pendingInstanceValidationToggles.Add(playerID);
+            RemovePendingPositionProposal(playerID);
 
             void CompleteToggle(bool preloadSucceeded)
             {
@@ -1590,6 +1591,10 @@ namespace Game.Server.Core
             string destinationSceneName = $"World_{destinationChunk.x}_{destinationChunk.y}";
             NetworkIdentity identity = actor.GetComponent<NetworkIdentity>();
 
+            // Targets are live relationships, not part of spatial membership. Retire any
+            // relationship that cannot survive the destination context before publishing it.
+            ClearIncompatibleTargetsForTransfer(actor, destinationContext);
+
             bool spatialMembershipTransferred = false;
             bool actorContextTransferred = false;
             bool componentPositionCommitted = false;
@@ -1799,6 +1804,40 @@ namespace Game.Server.Core
                 }
 
                 throw;
+            }
+        }
+
+        private void ClearIncompatibleTargetsForTransfer(
+            Actor actor,
+            ActorSpatialContext destinationContext)
+        {
+            foreach (Actor other in new List<Actor>(_actorObjects.Values))
+            {
+                if (other == null)
+                    continue;
+
+                bool losesTarget = ReferenceEquals(other, actor)
+                    ? other.Target != null
+                      && !destinationContext.IsCompatibleWith(other.Target.SpatialContext)
+                    : ReferenceEquals(other.Target, actor)
+                      && !other.SpatialContext.IsCompatibleWith(destinationContext);
+                if (_npcAggroStates.TryGetValue(other.ID, out var state)
+                    && (losesTarget
+                        || ReferenceEquals(other, actor)
+                           && state.PendingTarget != null
+                           && !destinationContext.IsCompatibleWith(state.PendingTarget.SpatialContext)
+                        || ReferenceEquals(state.PendingTarget, actor)
+                           && !other.SpatialContext.IsCompatibleWith(destinationContext)))
+                {
+                    ClearPendingAggro(ref state);
+                    _npcAggroStates[other.ID] = state;
+                }
+
+                if (!losesTarget)
+                    continue;
+
+                other.SetTargetFromServer(null);
+                ActorEndpoint.onServerStopAutoAttack?.Invoke(other);
             }
         }
 

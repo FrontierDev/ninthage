@@ -969,6 +969,14 @@ namespace Game.Server.Core
                     "Single-target continuation range validation requires initialized server actor manager.");
             }
 
+            if (!context.Caster.SpatialContext.IsCompatibleWith(context.ActorTarget.SpatialContext))
+            {
+                ActorEndpoint.onServerSpellCastInterrupted?.Invoke(
+                    context.Caster.ID,
+                    context.Spell.BaseDefinition.DefinitionID);
+                return false;
+            }
+
             double distance = ServerActorManager.Instance
                 .GetAcceptedCenterDistance(
                     context.Caster,

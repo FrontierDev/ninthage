@@ -46,6 +46,7 @@ namespace Game.Client
         private bool _hasSentPositionProposal;
         private float _lastPositionProposalTime;
         private WorldPosition _lastTransmittedPosition;
+        private bool _instanceValidationTogglePending;
 
         private void Awake()
         {
@@ -72,6 +73,7 @@ namespace Game.Client
 
             _ownershipEpoch = checked(_ownershipEpoch + 1);
             _proposalSequence = 0;
+            _instanceValidationTogglePending = false;
             ResetPositionProposalState();
             _cc = GetComponent<CharacterController>();
             _instance = this;
@@ -87,6 +89,7 @@ namespace Game.Client
             ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
             MovementEndpoint.onServerCorrection -= OnServerCorrection;
             ActorEndpoint.onClientInstanceValidationToggleResult -= OnInstanceValidationToggleResult;
+            _instanceValidationTogglePending = false;
             ResetPositionProposalState();
 
             if (ClientInputController.Instance != null)
@@ -100,6 +103,10 @@ namespace Game.Client
 
         private void Update()
         {
+            // Keep the captured server position stable while the destination interest grid loads.
+            if (_instanceValidationTogglePending)
+                return;
+
             var config = GameConfigurationManager.Config;
 
             bool jump = _jumpRequested && _cc.isGrounded;
@@ -235,7 +242,7 @@ namespace Game.Client
 
         private void OnInstanceValidationToggleInput()
         {
-            if (!enabled || _actorMotor == null)
+            if (!enabled || _actorMotor == null || _instanceValidationTogglePending)
                 return;
 
             Actor playerActor = ClientAccountManager.PlayerActor;
@@ -248,6 +255,9 @@ namespace Game.Client
                 return;
             }
 
+            _instanceValidationTogglePending = true;
+            _currentMovementInput = Vector2.zero;
+            _jumpRequested = false;
             ActorEndpoint.Server_RequestInstanceValidationToggle();
         }
 
@@ -263,6 +273,7 @@ namespace Game.Client
                 return;
             }
 
+            _instanceValidationTogglePending = false;
             if (succeeded)
                 Debug.Log($"[InstanceValidation] Switched player to instance {instanceLabel} ({instanceID}).");
             else

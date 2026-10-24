@@ -35,6 +35,8 @@ namespace Game.Runtime.Tests.Server
         private static readonly PlayerID PLAYER_OWNER_ID = new PlayerID(2UL, false);
         private static readonly MethodInfo REGISTER_SPAWNED_ACTOR_METHOD =
             typeof(ServerActorManager).GetMethod("RegisterSpawnedActor", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo CLEAR_INCOMPATIBLE_TARGETS_METHOD =
+            typeof(ServerActorManager).GetMethod("ClearIncompatibleTargetsForTransfer", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private GameConfiguration _configuration;
         private float _originalTickDuration;
@@ -211,6 +213,57 @@ namespace Game.Runtime.Tests.Server
             Assert.That(_npc.Target, Is.SameAs(_player));
             Assert.That(_startAutoAttackCount, Is.EqualTo(1));
             Assert.That(_npc.transform.position.y, Is.EqualTo(0f).Within(0.01f));
+        }
+
+        [UnityTest]
+        public IEnumerator ContextTransferRetiresOldNPCTargetAndStopsAttack()
+        {
+            yield return null;
+
+            int waitedFrames = 0;
+            while (!_networkManager.isServer)
+            {
+                if (++waitedFrames > 120)
+                    Assert.Fail("The test NetworkManager did not become a server within 120 frames.");
+
+                yield return null;
+            }
+
+            CreateActors();
+            Assert.That(CLEAR_INCOMPATIBLE_TARGETS_METHOD, Is.Not.Null);
+            _npc.SetTargetFromServer(_player);
+
+            int stoppedAttacks = 0;
+            void OnStopAutoAttack(Actor actor)
+            {
+                if (ReferenceEquals(actor, _npc))
+                    stoppedAttacks++;
+            }
+
+            ActorEndpoint.onServerStopAutoAttack += OnStopAutoAttack;
+            try
+            {
+                var publicContext = ActorSpatialContext.CreatePublic(TEST_WORLD_ID, "test-map");
+                CLEAR_INCOMPATIBLE_TARGETS_METHOD.Invoke(
+                    _actorManager,
+                    new object[] { _player, publicContext });
+                Assert.That(_npc.Target, Is.SameAs(_player));
+                Assert.That(stoppedAttacks, Is.Zero);
+
+                var instanceContext = ActorSpatialContext.CreateInstanced(
+                    TEST_WORLD_ID,
+                    "test-map",
+                    Guid.NewGuid());
+                CLEAR_INCOMPATIBLE_TARGETS_METHOD.Invoke(
+                    _actorManager,
+                    new object[] { _player, instanceContext });
+                Assert.That(_npc.Target, Is.Null);
+                Assert.That(stoppedAttacks, Is.EqualTo(1));
+            }
+            finally
+            {
+                ActorEndpoint.onServerStopAutoAttack -= OnStopAutoAttack;
+            }
         }
 
         private void CreateActors()

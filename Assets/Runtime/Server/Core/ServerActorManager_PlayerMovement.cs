@@ -98,6 +98,11 @@ namespace Game.Server.Core
             long ownershipEpoch,
             long proposalSequence)
         {
+            // Instance validation rechecks the captured canonical position after async preload.
+            // Do not admit movement proposals that could invalidate that transaction.
+            if (_pendingInstanceValidationToggles.Contains(sender))
+                return;
+
             if (!_initialized
                 || ownershipEpoch <= 0
                 || proposalSequence <= 0
