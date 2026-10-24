@@ -876,7 +876,17 @@ namespace Game.Server.Core
                     continue;
 
                 // Check range — skip swing but don't remove (player may walk back).
-                float distance = state.Actor.DistanceTo(state.Actor.Target);
+                if (!ServerActorManager.IsInitialized
+                    || ServerActorManager.Instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Auto-attack range validation requires initialized server actor manager.");
+                }
+
+                double distance = ServerActorManager.Instance
+                    .GetAcceptedSurfaceDistance(
+                        state.Actor,
+                        state.Actor.Target);
                 if (distance > _autoAttackSpell.BaseRange)
                     continue;
 

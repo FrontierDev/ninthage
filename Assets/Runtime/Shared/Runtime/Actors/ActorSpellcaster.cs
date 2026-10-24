@@ -321,9 +321,8 @@ namespace Game.Shared.Runtime.Actors
                 return false;
             }
 
-            // Check the spell definition to see if any of its components require a target, 
-            // and if so, ensure we have one. If it requires a target, check that the target
-            // is in range.
+            // Check the spell definition to see if any of its components require a target,
+            // and if so, ensure we have one.
             if (spellDef.BaseComponents.Any(c => c.TargetDefinition.RequiresTarget))
             {
                 // ❓ Target check
@@ -333,17 +332,8 @@ namespace Game.Shared.Runtime.Actors
                     return false;
                 }
 
-                // ❓ Range check
-                // Strict range checking on start. 
-                float maxRange = spellDef.BaseRange;
-                var target = GetComponent<Actor>().Target;
-                float distance = GetComponent<Actor>().DistanceTo(target);
-                if (distance > maxRange)
-                {
-                    Debug.Warning($"Actor {name} attempted to cast '{spellDef.DefinitionID}' on target {target.name} which is out of range. Distance: {distance}, Max Range: {maxRange}");
-                    return false;
-                }
-
+                // Authoritative world-space range is validated by ServerSpellCastManager,
+                // which owns access to canonical server positions.
             }
 
             // ❓ Resource check

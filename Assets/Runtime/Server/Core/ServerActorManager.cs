@@ -283,6 +283,106 @@ namespace Game.Server.Core
             return true;
         }
 
+        /// <summary>Gets the authoritative center-to-center distance between two actors.</summary>
+        /// <param name="first">The first live actor.</param>
+        /// <param name="second">The second live actor.</param>
+        /// <returns>The finite, nonnegative distance between accepted absolute positions.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when either actor is null.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when actor contexts or accepted positions are invalid or unavailable.
+        /// </exception>
+        internal double GetAcceptedCenterDistance(
+            Actor first,
+            Actor second)
+        {
+            if (first == null)
+                throw new ArgumentNullException(nameof(first));
+            if (second == null)
+                throw new ArgumentNullException(nameof(second));
+
+            ActorSpatialContext firstContext = first.SpatialContext;
+            ActorSpatialContext secondContext = second.SpatialContext;
+            if (!firstContext.IsValid
+                || !secondContext.IsValid
+                || !firstContext.IsCompatibleWith(secondContext))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot calculate actor distance for incompatible or invalid spatial contexts ({first.ID}, {second.ID}).");
+            }
+
+            if (!TryGetAcceptedWorldPosition(first.ID, out var firstPosition))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {first.ID} has no live accepted world position.");
+            }
+            if (!TryGetAcceptedWorldPosition(second.ID, out var secondPosition))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {second.ID} has no live accepted world position.");
+            }
+
+            double deltaX = firstPosition.x - secondPosition.x;
+            double deltaY = firstPosition.y - secondPosition.y;
+            double deltaZ = firstPosition.z - secondPosition.z;
+            double distance = Math.Sqrt(
+                deltaX * deltaX
+                + deltaY * deltaY
+                + deltaZ * deltaZ);
+            if (double.IsNaN(distance)
+                || double.IsInfinity(distance)
+                || distance < 0d)
+            {
+                throw new InvalidOperationException(
+                    $"Actor distance between {first.ID} and {second.ID} is not finite and nonnegative.");
+            }
+
+            return distance;
+        }
+
+        /// <summary>Gets the authoritative surface-to-surface distance between two actors.</summary>
+        /// <param name="first">The first live actor.</param>
+        /// <param name="second">The second live actor.</param>
+        /// <returns>The finite, nonnegative distance after subtracting both hitbox radii.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when either actor is null.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when actor contexts, accepted positions, hitbox radii or the result are invalid.
+        /// </exception>
+        internal double GetAcceptedSurfaceDistance(
+            Actor first,
+            Actor second)
+        {
+            double centerDistance = GetAcceptedCenterDistance(first, second);
+            float firstRadius = first.HitboxRadius;
+            float secondRadius = second.HitboxRadius;
+            if (float.IsNaN(firstRadius)
+                || float.IsInfinity(firstRadius)
+                || firstRadius < 0f)
+            {
+                throw new InvalidOperationException($"Actor {first.ID} has an invalid hitbox radius.");
+            }
+            if (float.IsNaN(secondRadius)
+                || float.IsInfinity(secondRadius)
+                || secondRadius < 0f)
+            {
+                throw new InvalidOperationException($"Actor {second.ID} has an invalid hitbox radius.");
+            }
+
+            double distance = Math.Max(
+                0d,
+                centerDistance
+                    - firstRadius
+                    - secondRadius);
+            if (double.IsNaN(distance)
+                || double.IsInfinity(distance)
+                || distance < 0d)
+            {
+                throw new InvalidOperationException(
+                    $"Actor surface distance between {first.ID} and {second.ID} is not finite and nonnegative.");
+            }
+
+            return distance;
+        }
+
         // NPC aggro tracking.
         private struct NPCAggroState
         {
@@ -963,7 +1063,10 @@ namespace Game.Server.Core
             if (!_initialized)
                 return;
 
-            ValidatePlayerPositions(tick);
+            bool playerPhysicalTransformsChanged =
+                ValidatePlayerPositions(tick);
+            if (playerPhysicalTransformsChanged)
+                Physics.SyncTransforms();
             SynchronizeNPCPositionsToECS();
         }
 

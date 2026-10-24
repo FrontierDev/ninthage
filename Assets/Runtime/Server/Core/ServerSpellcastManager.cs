@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Services;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Data.SpellTargetDefinitions;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
@@ -221,14 +222,43 @@ namespace Game.Server.Core
                 return false;
             }
 
+            if (spell.BaseDefinition.BaseComponents.Any(
+                    component => component.TargetDefinition.RequiresTarget))
+            {
+                if (caster.Target == null)
+                {
+                    Debug.Warning(
+                        $"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' which requires a target, but no target was selected.");
+                    return false;
+                }
+                if (!ServerActorManager.IsInitialized
+                    || ServerActorManager.Instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Targeted spell range validation requires initialized server actor manager.");
+                }
+
+                double distance = ServerActorManager.Instance
+                    .GetAcceptedSurfaceDistance(
+                        caster,
+                        caster.Target);
+                float maxRange = spell.BaseDefinition.BaseRange;
+                if (distance > maxRange)
+                {
+                    Debug.Warning(
+                        $"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' on target {caster.Target.Name} which is out of range. Distance: {distance}, Max Range: {maxRange}");
+                    return false;
+                }
+            }
+
             return true;
         }
 
         /// <summary>
         /// Handles the start of a spell cast. This is where we create the SpellContext, calculate the actual cast time 
         /// after modifiers, and initialize the ECS components for the spell cast.
-        /// All validation is done on the ActorSpellcaster before it is passed to the SpellCastManager, 
-        /// so we can assume at this point that the spell can be cast and we just need to set it up.
+        /// ActorSpellcaster performs request-side validation, while this manager revalidates
+        /// authoritative cooldown, target and range state before setup.
         /// </summary>
         private void OnSpellCastStarted(Actor caster, SpellOverride spell)
         {
@@ -913,8 +943,68 @@ namespace Game.Server.Core
 
         #endregion
 
+        private bool ValidateSingleTargetContinuationRange(
+            SpellContext context,
+            SpellComponent component)
+        {
+            if (component.TargetDefinition is not SpellTarget_Single)
+                return true;
+            if (context.Phase != SpellCastPhase.OnChannelTick
+                && context.Phase != SpellCastPhase.OnCastEnd)
+            {
+                return true;
+            }
+            if (context.Caster == null
+                || context.ActorTarget == null
+                || context.Spell == null
+                || context.Spell.BaseDefinition == null)
+            {
+                throw new InvalidOperationException(
+                    "Single-target continuation range validation requires a complete spell context.");
+            }
+            if (!ServerActorManager.IsInitialized
+                || ServerActorManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Single-target continuation range validation requires initialized server actor manager.");
+            }
+
+            double distance = ServerActorManager.Instance
+                .GetAcceptedCenterDistance(
+                    context.Caster,
+                    context.ActorTarget);
+            float maxRange =
+                (context.Phase == SpellCastPhase.OnChannelTick
+                    ? GameConfigurationManager.Config.SpellCastRangeTickBuffer
+                    : GameConfigurationManager.Config.SpellCastRangeEndBuffer)
+                + context.Spell.Range;
+            if (float.IsNaN(maxRange)
+                || float.IsInfinity(maxRange)
+                || maxRange < 0f)
+            {
+                throw new InvalidOperationException(
+                    $"Single-target continuation range for spell '{context.Spell.BaseDefinition.DefinitionID}' is invalid.");
+            }
+
+            if (distance <= maxRange)
+                return true;
+
+            ActorEndpoint.onServerSpellCastInterrupted
+                ?.Invoke(
+                    context.Caster.ID,
+                    context.Spell.BaseDefinition.DefinitionID);
+            return false;
+        }
+
         private void ApplySpellEffect(SpellContext ctx, SpellComponent component, long castID)
         {
+            if (!ValidateSingleTargetContinuationRange(
+                    ctx,
+                    component))
+            {
+                return;
+            }
+
             List<Actor> targets = component.TargetDefinition.Evaluate(ctx);
             foreach (var target in targets)
             {

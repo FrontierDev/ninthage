@@ -139,9 +139,10 @@ namespace Game.Server.Core
         /// any due periodic speed check against the committed ECS position. The networked transform
         /// is never treated as an absolute coordinate source.
         /// </summary>
-        private void ValidatePlayerPositions(ServerSimulationTick tick)
+        private bool ValidatePlayerPositions(ServerSimulationTick tick)
         {
             using var markerScope = POSITION_VALIDATION_MARKER.Begin();
+            bool physicalTransformsChanged = false;
             foreach (var kvp in _playerActors)
             {
                 var playerID = kvp.Key;
@@ -196,6 +197,7 @@ namespace Game.Server.Core
                 if (hasEligibleProposal && !CanAdmitPlayerRegionPosition(actor, candidatePosition))
                 {
                     SendPlayerCorrection(playerID, actor, currentAcceptedPosition);
+                    physicalTransformsChanged = true;
                     hasEligibleProposal = false;
                     candidatePosition = currentAcceptedPosition;
                 }
@@ -203,7 +205,10 @@ namespace Game.Server.Core
                 if (!validationDue)
                 {
                     if (hasEligibleProposal)
+                    {
                         CommitPlayerPosition(entity, component, actor, candidatePosition);
+                        physicalTransformsChanged = true;
+                    }
                     continue;
                 }
 
@@ -247,6 +252,7 @@ namespace Game.Server.Core
                             : baselinePosition;
                         // Ensure ECS is corrected when an earlier tick already admitted illegal movement.
                         CommitPlayerPosition(entity, component, actor, correctionPosition);
+                        physicalTransformsChanged = true;
                         SendPlayerCorrection(playerID, actor, correctionPosition);
                         _periodicValidationBaselines[playerID] = correctionPosition;
                         _violationCounters[playerID] = 0;
@@ -254,7 +260,10 @@ namespace Game.Server.Core
                     else
                     {
                         if (hasEligibleProposal)
+                        {
                             CommitPlayerPosition(entity, component, actor, candidatePosition);
+                            physicalTransformsChanged = true;
+                        }
                         _periodicValidationBaselines[playerID] = candidatePosition;
                     }
                 }
@@ -262,12 +271,17 @@ namespace Game.Server.Core
                 {
                     _violationCounters[playerID] = 0;
                     if (hasEligibleProposal)
+                    {
                         CommitPlayerPosition(entity, component, actor, candidatePosition);
+                        physicalTransformsChanged = true;
+                    }
                     _periodicValidationBaselines[playerID] = candidatePosition;
                 }
 
                 AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
             }
+
+            return physicalTransformsChanged;
         }
 
         /// <summary>Writes one accepted absolute player position to the authoritative ECS component.</summary>
@@ -292,10 +306,32 @@ namespace Game.Server.Core
                 actor.SpatialContext,
                 position,
                 out _,
-                out _);
+                out var currentRegion);
+            ProjectPlayerPhysicalPosition(actor, currentRegion, position);
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
             _entityManager.SetComponentData(entity, component);
             GetSpatialIndex().Move(component.ActorID, actor.SpatialContext, position);
+        }
+
+        private static void ProjectPlayerPhysicalPosition(
+            Actor actor,
+            SimulationRegionDescriptor region,
+            WorldPosition position)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (!position.IsFinite)
+                throw new ArgumentException("The player physical position must be finite.", nameof(position));
+            if (!region.Key.Context.IsCompatibleWith(actor.SpatialContext))
+            {
+                throw new InvalidOperationException(
+                    $"Player actor '{actor.ID}' region context is incompatible with its actor context.");
+            }
+
+            actor.transform.position =
+                ServerPhysicsManager.Instance.ToRegionLocal(
+                    region,
+                    position);
         }
 
         /// <summary>Admits a player position only when its physical simulation region is ready.</summary>
@@ -369,7 +405,7 @@ namespace Game.Server.Core
                     $"Player actor '{actor.ID}' has no active simulation-region binding for correction.");
             }
 
-            actor.transform.position = ServerPhysicsManager.Instance.ToRegionLocal(currentRegion, correctionPosition);
+            ProjectPlayerPhysicalPosition(actor, currentRegion, correctionPosition);
         }
 
         /// <summary>Moves a player's periodic validation window to the current authoritative tick.</summary>
