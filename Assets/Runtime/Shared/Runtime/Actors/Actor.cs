@@ -101,6 +101,49 @@ namespace Game.Shared.Runtime.Actors
         }
 
         /// <summary>
+        /// Transfers this actor's authoritative server-owned spatial context after verifying its current context.
+        /// </summary>
+        /// <param name="expectedCurrentContext">The context the server expects this actor to currently have.</param>
+        /// <param name="destinationContext">The valid server-owned destination context.</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when called outside the server, when the actor has no current context, or when the expected
+        /// context does not match the actor's current context.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when the expected or destination context is invalid.
+        /// </exception>
+        public void TransferAuthoritativeSpatialContext(
+            ActorSpatialContext expectedCurrentContext,
+            ActorSpatialContext destinationContext)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may transfer an actor spatial context.");
+            if (!expectedCurrentContext.IsValid)
+                throw new ArgumentException(
+                    "A valid expected actor spatial context is required.",
+                    nameof(expectedCurrentContext));
+            if (!destinationContext.IsValid)
+                throw new ArgumentException(
+                    "A valid destination actor spatial context is required.",
+                    nameof(destinationContext));
+            if (!_spatialContext.IsValid)
+                throw new InvalidOperationException(
+                    "The actor has no authoritative spatial context to transfer.");
+            if (!_spatialContext.Equals(expectedCurrentContext))
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{ID}' spatial context mismatch: expected "
+                    + $"({expectedCurrentContext.WorldID}, '{expectedCurrentContext.MapID}', "
+                    + $"{expectedCurrentContext.InstanceID}), current "
+                    + $"({_spatialContext.WorldID}, '{_spatialContext.MapID}', {_spatialContext.InstanceID}).");
+            }
+            if (destinationContext.Equals(expectedCurrentContext))
+                return;
+
+            _spatialContext = destinationContext;
+        }
+
+        /// <summary>
         /// Updates the replicated presentation snapshot from the server's accepted position.
         /// </summary>
         public void SetAcceptedPositionSnapshotFromServer(
