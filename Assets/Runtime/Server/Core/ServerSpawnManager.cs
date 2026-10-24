@@ -812,7 +812,44 @@ namespace Game.Server.Core
             // Add the player to global_actors AFTER ChunkSubscriptions is populated.
             // This avoids a race where PurrNet's Spawn() and OnPlayerLoadedScene both
             // send spawn packets before the visibility rule has data to work with.
-            _networkManager.scenePlayersModule.AddPlayerToScene(playerID, globalSceneID);
+            ScenePlayersModule scenePlayers = _networkManager.scenePlayersModule;
+            bool playerLoadedInGlobalScene = scenePlayers.IsPlayerLoadedInScene(playerID, globalSceneID);
+            void OnPlayerLoadedScene(PlayerID loadedPlayerID, SceneID loadedSceneID, bool asServer)
+            {
+                if (asServer && loadedPlayerID == playerID && loadedSceneID == globalSceneID)
+                    playerLoadedInGlobalScene = true;
+            }
+
+            scenePlayers.onPlayerLoadedScene += OnPlayerLoadedScene;
+            try
+            {
+                scenePlayers.AddPlayerToScene(playerID, globalSceneID);
+                if (!scenePlayers.IsPlayerInScene(playerID, globalSceneID))
+                {
+                    throw new InvalidOperationException(
+                        $"PurrNet did not add player {playerID} to the global actors scene {globalSceneID}.");
+                }
+
+                if (!playerLoadedInGlobalScene)
+                    yield return new WaitUntil(() => playerLoadedInGlobalScene);
+            }
+            finally
+            {
+                scenePlayers.onPlayerLoadedScene -= OnPlayerLoadedScene;
+            }
+
+            if (!scenePlayers.IsPlayerLoadedInScene(playerID, globalSceneID))
+            {
+                throw new InvalidOperationException(
+                    $"Player {playerID} has not finished loading the global actors scene {globalSceneID}.");
+            }
+
+            ServerInterestManager.Instance.ReevaluateActorVisibility(
+                playerActor,
+                playerActor.SpatialContext,
+                spawnWorldPosition,
+                playerActor.SpatialContext,
+                spawnWorldPosition);
         }
 
         /// <summary>Queues an actor prefab at an absolute world position in a networked scene.</summary>

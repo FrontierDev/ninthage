@@ -718,25 +718,28 @@ namespace Game.Server.Core
                 throw;
             }
 
-            try
+            if (!actor.Owner.HasValue)
             {
-                if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
+                try
                 {
-                    throw new InvalidOperationException(
-                        "Spawned actor visibility refresh requires initialized server interest management.");
-                }
+                    if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
+                    {
+                        throw new InvalidOperationException(
+                            "Spawned actor visibility refresh requires initialized server interest management.");
+                    }
 
-                ServerInterestManager.Instance.ReevaluateActorVisibility(
-                    actor,
-                    actor.SpatialContext,
-                    spawnPosition,
-                    actor.SpatialContext,
-                    spawnPosition);
-            }
-            catch (Exception exception)
-            {
-                Debug.Error(
-                    $"[Visibility] Post-spawn reevaluation failed for actor '{actor.ID}': {exception.Message}");
+                    ServerInterestManager.Instance.ReevaluateActorVisibility(
+                        actor,
+                        actor.SpatialContext,
+                        spawnPosition,
+                        actor.SpatialContext,
+                        spawnPosition);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"[Visibility] Post-spawn reevaluation failed for actor '{actor.ID}': {exception.Message}");
+                }
             }
         }
 

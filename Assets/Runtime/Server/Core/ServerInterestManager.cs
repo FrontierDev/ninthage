@@ -370,6 +370,13 @@ namespace Game.Server.Core
                             throw new InvalidOperationException(
                                 $"Spatial visibility candidate '{candidateID}' does not match the moved actor instance.");
                         }
+
+                        if (actor.Owner.HasValue)
+                        {
+                            visibilityEvaluationCount++;
+                            hierarchy.EvaluateVisibility(actor.Owner.Value, actorIdentity.transform);
+                        }
+
                         continue;
                     }
 
