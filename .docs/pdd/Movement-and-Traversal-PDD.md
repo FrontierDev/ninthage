@@ -774,8 +774,6 @@ The calculated adjacent-region seam/Warp design previously approved under Issue 
 
 ---
 
-### 20.4
-
 ### 20.4 Movement-driven spatial updates
 
 Ordinary movement must automatically drive any required updates to:
