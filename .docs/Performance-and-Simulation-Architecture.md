@@ -3,7 +3,7 @@
 **Status:** Stage 1.1 implemented; owner confirms all required validation completed on 17 October 2026. Subsequent Phase 1 contracts remain future work.
 **Scope:** Historical Phase 1.0 baseline, Stage 1.1 as-built simulation/time integration, and forward-looking Phase 1 technical contracts.
 **Source baseline:** Original `f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f`; Stage 1.1 reviewed on `dev` through `4db4aed1e18c7d7fbd92421f160d4d982d22f53c` (#106 rev 1).
-**Updated:** 2026-10-17
+**Updated:** 2026-10-24
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose, authority and interpretation
@@ -263,46 +263,37 @@ CharacterController.Move
 
 After the observer path is functional, server-authored accepted `WorldPosition` updates replace `NetworkTransform` position synchronization. Rotation/other suitable transform properties may remain on `NetworkTransform`. Client interpolation is presentation-only and never writes back to server authority.
 
-#### Simulation regions, not per-tile physics slots
+#### Continuous server physical space, not streamed-tile regions
 
-A 256 m environment tile is an Addressables/content-streaming unit. It is **not** a server physics coordinate frame.
+A 256 m environment tile is an Addressables/content-streaming unit and an aligned client origin/network cell. It is **not** a server physics partition.
 
-The server groups many adjacent environment tiles into one **simulation region**. A region belongs to one compatible `ActorSpatialContext` and owns a contiguous local Unity physics/NavMesh coordinate frame. Tiles loaded inside that region preserve their authored relative positions, so ordinary tile streaming and tile-boundary movement do not require frame allocation, `NavMeshAgent` warping or route reconstruction.
+For the current implementation phase, one active public map/runtime instance uses **one continuous Unity physics and NavMesh space** across its streamed detailed environment. Loading or unloading a 256 m tile adds or removes environment representation in that same physical space. It must not move existing actors, change their server physics frame, warp a `NavMeshAgent`, clear gameplay targets or trigger a navigation handoff.
 
 The server ownership split is fixed:
 
 - `ServerWorldManager` owns context-qualified environment scene loading/unloading, PurrNet `SceneID` correlation and terminal async scene lifecycle.
-- `ServerPositionManager` owns general coordinate/transport conversion that is independent of physical simulation, including `WorldPosition` ↔ chunk/local network encoding.
-- `ServerPhysicsManager` owns active simulation-region physical state: region identity/lifetime, region-local frame conversion, process-local physical isolation/placement, collider/NavMesh binding and physics-query execution/conversion.
-- `ServerActorManager` and ECS own actor lifecycle/canonical state; they consume `ServerPhysicsManager` rather than implementing physical-frame state themselves.
+- `ServerPositionManager` owns general coordinate/transport conversion independent of physical simulation, including `WorldPosition` ↔ chunk/local network encoding.
+- `ServerPhysicsManager` owns reusable physical coordinate checks/conversion, environment collider/NavMesh binding/lifetime and server physics-query execution/conversion.
+- `ServerActorManager` and ECS own actor lifecycle and canonical `ActorComponent.WorldPositionD`; physical helpers never become a second accepted-position authority.
 
-`ServerPositionManager` must not own active region registries or physics/NavMesh lifetime merely because both use coordinate conversion. `ServerWorldManager` must not retain physical-placement registries merely because it owns streamed scenes.
+`ServerPositionManager` must not own collider/NavMesh lifetime merely because both systems use coordinates. `ServerWorldManager` must not retain physical-placement registries merely because it owns streamed scenes. `ServerPhysicsManager` must not own an actor-region registry or cache a second mutable accepted actor position.
 
-The conversion owned by `ServerPhysicsManager` is:
+For the current tested world scale, a server Unity transform is a finite-float physical projection of canonical absolute state in this continuous physical space. The existing client floating-origin system remains the precision mechanism for graphical clients; the server does not mirror each client origin change and does not introduce a server floating-origin system in Stage 1.2. This current projection is not a claim that one process can represent an arbitrarily large future world in floats forever.
 
-```text
-region-local float = region anchor + (absolute double position - absolute double region origin)
-absolute double position = absolute double region origin + (region-local float - region anchor)
-```
+Environment scenes retain their authored world-space adjacency when streamed. Streamed NavMesh content must form one continuous navigation domain wherever authored terrain is traversable. Whether Unity stores that contribution as one `NavMeshData` or several adjacent data objects is an implementation detail; a streamed-tile boundary must not be visible to gameplay navigation.
 
-All subtraction/addition needed for world reconstruction occurs in double precision before/after the Unity float boundary. Region identity is representation/simulation-placement state only; it does not replace `ActorSpatialContext` or `WorldPositionD`.
+A future **simulation region** remains a coarse server/world-worker ownership concept only. It is not derived from floor-dividing 256 m tile coordinates, has no current small fixed capacity, and is not part of ordinary traversal. If future precision, workload or deployment evidence requires partitioning, regions are authored as large world areas around geography, gameplay and operational boundaries. A worker transfer across such a boundary is a separate authority-transfer problem, not routine nearby-tile seam search or `NavMeshAgent.Warp`.
 
-Region dimensions are configurable whole multiples of the shared 256 m origin/environment grid size from `GameConfiguration.ChunkSize`. Initial region spans and per-process concurrent-region capacity must be selected from representative server load, navigation, physics and precision measurements. The region span must not be inferred from the 64 m spatial-index cell size or assumed to be one shared grid cell.
-
-If one Unity process hosts multiple simulation regions, `ServerPhysicsManager` must ensure their physics/NavMesh representations cannot interact accidentally. The concrete mechanism may evolve with deployment topology; the invariant is that **tiles inside one region remain contiguous**. A region boundary may eventually coincide with an in-process handoff or server-worker handoff, but it is intentionally much coarser than content streaming.
-
-NavMesh data placement and lifetime are part of the region's physical representation and therefore remain under `ServerPhysicsManager` in Stage 1.2. Higher-level path planning/navigation behaviour may be separated later if it becomes an independently substantial responsibility.
-
-The previous 16 × 16 per-environment-tile packed-slot model is superseded. Existing prototype slot allocation/placement code must be removed before additional server physics/NavMesh integration proceeds.
+The fixed 1×1/2×2/4×4/8×8/16×16 region-sizing experiment from Issue #147 is **historical evidence, not an active architecture requirement**. Its NavMesh build-cost, isolation and precision measurements remain useful for future comparison, but the temporary 4×4 span and eight-active-region engineering result must not be treated as current production configuration or capacity.
 
 #### NPC movement and physics-query ownership
 
-- **NavMesh-driven NPC:** Unity navigation provides a region-local motion result. The pre-ECS bridge asks `ServerPhysicsManager` for the verified actor region/conversion, converts that result to absolute double precision and commits one position to `WorldPositionD`.
-- **ECS-driven NPC:** ECS updates `WorldPositionD`. Physics queries are routed through `ServerPhysicsManager`, which converts canonical absolute position into the verified region-local frame and reconstructs query results back to absolute double precision before authoritative state changes.
-- **GameObject transforms:** are local projections/materialisations. They never become a second gameplay-distance or world-position authority.
-- **Region association:** is physical representation state owned by `ServerPhysicsManager`; it must not contain another mutable authoritative actor position.
+- **NavMesh-driven NPC:** Unity navigation provides motion in the continuous server physical/NavMesh space. The pre-ECS bridge converts that result through `ServerPhysicsManager` and commits one absolute double-precision position to `WorldPositionD`.
+- **ECS-driven NPC:** ECS updates `WorldPositionD`. Physics queries and materialised GameObject projection route through `ServerPhysicsManager`, which converts between canonical absolute state and the current continuous physical representation.
+- **GameObject transforms:** are physical/presentation materialisations. They never become a second gameplay-distance or world-position authority.
+- **Physical membership:** there is no per-actor fixed simulation-region membership in the current phase. Logical `ActorSpatialContext` and canonical `WorldPositionD` remain independent of streamed tile boundaries and any future authored worker ownership.
 
-Crossing a streamed environment tile boundary inside one simulation region changes neither the actor frame nor logical context. Crossing a simulation-region boundary is a coarse physical-simulation handoff owned by `ServerPhysicsManager`; movement/navigation logic preserves absolute position and intent unless gameplay explicitly performs a logical context transition.
+Crossing a streamed 256 m environment/origin boundary changes neither server physics frame nor logical context. It may independently change client floating origin and environment streaming interest, but ordinary NPC pursuit continues through normal NavMesh movement without calculated seam search, Warp or target-state mutation.
 
 #### Authoritative tick ordering
 
@@ -325,12 +316,13 @@ A rejected position is never published to the spatial index or observer path. Sa
 | Concern | Owner | Must not own |
 | --- | --- | --- |
 | Logical world/map/instance identity | `ActorSpatialContext` and server runtime/world authority | Scene names, transforms, origin cells or spatial cells |
-| Accepted actor position | `ActorComponent.WorldPositionD` | GameObject transform, spatial index or region frame |
+| Accepted actor position | `ActorComponent.WorldPositionD` | GameObject transform, spatial index or physical helper state |
 | Spatial broad phase | `ServerSpatialIndex` | A second precise accepted-position store |
-| Environment tile streaming | `ServerWorldManager` / supported PurrNet scene lifecycle | Physical-region ownership or actor physics state |
-| Simulation-region physical state | `ServerPhysicsManager` | Logical context, gameplay teleport policy or accepted position |
+| Environment tile streaming | `ServerWorldManager` / supported PurrNet scene lifecycle | Physical/NavMesh ownership or actor physics state |
+| Continuous server physical/NavMesh representation | `ServerPhysicsManager` | Logical context, gameplay teleport policy, accepted actor position or environment scene loading |
+| Future authored simulation-region / worker ownership | Deferred architecture selected from precision/workload/deployment evidence | Fixed tile-floor partitioning, ordinary traversal seams or current gameplay target state |
 | Observer position output | Project-owned server replication path | Server gameplay position mutation |
-| Position/network conversion | `ServerPositionManager` | Active simulation-region, collider, NavMesh or physics-query lifetime |
+| Position/network conversion | `ServerPositionManager` | Collider, NavMesh or physics-query lifetime |
 | Client floating origin | Client position/world presentation | Server absolute position or logical context |
 
 ## 6. Spatial coordinate and runtime-context model
@@ -534,7 +526,7 @@ This table is a **responsibility specification**, not a new named C# API declara
 | --- | --- | --- |
 | **1.0** | Define ownership/context contracts, stress profiles, measurable invariants, baseline instrumentation/evidence. | No gameplay optimisation or benchmark result is implied by this document. |
 | **1.1** | **Implemented and owner-confirmed validated:** 20 Hz single fixed clock, four-step catch-up/debt metrics, seven-system ECS, buffered domain delivery, authoritative movement/spawn/combat/NPC scheduling and UTC/reconciliation boundary; critical tests through #107. | Generic bounded PurrNet ingress quotas, sustained-overload operational action policy, headless capacity qualification, activity tiers, disconnect grace and durable gameplay-state reconciliation remain later work. |
-| **1.2** | World/map/instance-qualified double-precision spatial membership, query and visibility candidate interface; event-driven insert/move/remove/context transfer; independent world-content streaming interest; the accepted-position handoff and simulation-region model defined in §5.3. | `ChunkSubscriptions` is not a fully general spatial index; range-qualified instance isolation and simulation-region integration remain incomplete. |
+| **1.2** | World/map/instance-qualified double-precision spatial membership, query and visibility candidate interface; event-driven insert/move/remove/context transfer; independent world-content streaming interest; the accepted-position handoff and continuous server physical-space ownership defined in §5.3. | The fixed-grid region implementation still requires cleanup; range-qualified visibility, observer publication, spatial-consumer migration and accepted-position-driven environment interest remain incomplete. |
 | **1.3** | Exact single-writer per-field ownership, actor ID ↔ ECS Entity mapping, batched managed/ECS bridge, job/main-thread boundaries, safe teardown. The accepted live position owner is `ActorComponent.WorldPositionD`; redundant actor-side position storage is removed without reversing Shared → Server layering. | Dormancy and broader ECS mapping remain implementation work, but they must preserve the fixed position owner. |
 | **1.4** | Relevance/activity states, scheduling of NPC perception and decisions, sleep/wake continuity, representation demand and activation spikes. | Dormant/near/engaged simulation tiers not currently established. |
 | **1.5** | PurrNet-supported observer policy, prioritised update frequency, bandwidth/accounting and correct instance/range observer set. | Existing chunk visibility is not a network budget/priority implementation. |
@@ -569,7 +561,7 @@ Stage 1.0 issue [#42](https://github.com/FrontierDev/ninthage/issues/42) and sub
 The following **remain open on purpose**:
 
 - **Stage 1.1 — implemented, owner-confirmed validated:** §3 records 20 Hz fixed ticks, a four-tick catch-up cap, deferred domain delivery, 200 ms NPC perception, every-tick auto-attacks and UTC/reconciliation primitives. Bounded general PurrNet input admission and full sustained-overload operational response are **future** integration tasks; qualified headless capacity remains unmeasured. Real offline resource/aura/cooldown restoration belongs to Stages 1.7–1.8.
-- **Stage 1.2:** The logical context, canonical absolute position, project-owned player transport, spatial index and visibility defaults are established foundations. Remaining work must remove the superseded per-tile physics-slot prototype, reduce `ServerPositionManager` to non-physical position/transport conversion, introduce `ServerPhysicsManager` as the sole simulation-region physical owner defined in §5.3, complete movement publication/observer visibility, and validate region sizing/capacity from representative workloads.
+- **Stage 1.2:** The logical context, canonical absolute position, project-owned player transport, shared 256 m client-origin/environment grid, spatial index and visibility defaults are established foundations. The current fixed-grid simulation-region implementation is superseded and must be collapsed into the continuous server physical/NavMesh model in §5.3; `ServerPhysicsManager` remains the physical-query/NavMesh-binding owner without per-actor region authority. After that cleanup is owner-validated, remaining work continues with movement publication, observer visibility, spatial-consumer migration, logical-context transfer and accepted-position-driven environment interest. The old region-sizing campaign remains historical evidence rather than a capacity/design requirement.
 - **Stage 1.3:** Per-actor ECS mapping implementation, managed/Jobs/Burst boundaries, entity representation under dormancy and broader actor lifecycle/access boundaries. The redundant mutable `Actor.WorldPos` storage is removed during Stage 1.2; Stage 1.3 must preserve that single canonical position decision.
 - **Stage 1.4:** relevance-/dormancy-specific AI frequency and simulation LOD remain undecided. The initial global **200 ms NPC perception** cadence was already approved under Stage 1.1 (#99); it is not an activity-tier policy.
 - **Stage 1.5–1.6:** PurrNet-supported replication features, per-connection budgets, asset LOD thresholds, streaming concurrency and pooling strategy.
