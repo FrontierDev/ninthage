@@ -1112,6 +1112,10 @@ namespace Game.Server.Core
                         $"Actor '{actorID}' has a non-finite canonical ECS world position.");
                 }
 
+                GetSpatialIndex().Move(
+                    actorID,
+                    actor.SpatialContext,
+                    position);
                 actor.SetAcceptedPositionSnapshotFromServer(position, tickID);
             }
 
