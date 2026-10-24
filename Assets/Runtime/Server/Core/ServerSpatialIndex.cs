@@ -112,6 +112,136 @@ namespace Game.Server.Core
             _cellByActorID[actorID] = destinationCell;
         }
 
+        /// <summary>
+        /// Atomically transfers an indexed actor to the cell projected from a destination context
+        /// and accepted absolute position.
+        /// </summary>
+        /// <param name="actorID">The indexed live actor identifier.</param>
+        /// <param name="destinationContext">The actor's destination world, map and instance context.</param>
+        /// <param name="destinationPosition">The destination accepted double-precision absolute position.</param>
+        /// <exception cref="ArgumentException">
+        /// Thrown when the actor ID, destination context or destination position is invalid.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when the destination position cannot be represented by the index's integral cell coordinates.
+        /// </exception>
+        /// <exception cref="KeyNotFoundException">Thrown when the actor is not currently indexed.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the existing membership is inconsistent, a destination insertion or source removal fails,
+        /// or a query is active.
+        /// </exception>
+        public void Transfer(
+            Guid actorID,
+            ActorSpatialContext destinationContext,
+            WorldPosition destinationPosition)
+        {
+            EnsureNoActiveQuery();
+            ValidateActorID(actorID);
+            var destinationCell = CreateCellKey(destinationContext, destinationPosition);
+
+            if (!_cellByActorID.TryGetValue(actorID, out var currentCell))
+            {
+                throw new KeyNotFoundException($"Actor '{actorID}' is not registered in the spatial index.");
+            }
+
+            var currentBucket = GetExistingBucket(currentCell, actorID);
+            if (currentCell.Equals(destinationCell))
+                return;
+
+            AddActorToCell(actorID, destinationCell);
+            try
+            {
+                RemoveActorFromBucket(currentCell, currentBucket, actorID);
+            }
+            catch (Exception sourceRemovalException)
+            {
+                try
+                {
+                    if (!_actorIDsByCell.TryGetValue(destinationCell, out var destinationBucket))
+                    {
+                        throw new InvalidOperationException(
+                            $"Destination membership for actor '{actorID}' is missing during transfer rollback.");
+                    }
+
+                    RemoveActorFromBucket(destinationCell, destinationBucket, actorID);
+                }
+                catch (Exception rollbackException)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor '{actorID}' transfer failed during source removal and destination rollback.",
+                        new AggregateException(sourceRemovalException, rollbackException));
+                }
+
+                throw;
+            }
+
+            _cellByActorID[actorID] = destinationCell;
+        }
+
+        /// <summary>
+        /// Removes all derived spatial memberships belonging to an authoritative context.
+        /// </summary>
+        /// <param name="context">The world, map and instance context to remove.</param>
+        /// <param name="removedActorIDs">
+        /// A caller-owned list to which removed actor identifiers are appended; existing entries are preserved.
+        /// </param>
+        /// <returns>The number of actor memberships removed from the context.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="context"/> is invalid.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="removedActorIDs"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a query is active or a context membership is internally inconsistent.
+        /// </exception>
+        public int ClearContext(
+            ActorSpatialContext context,
+            List<Guid> removedActorIDs)
+        {
+            EnsureNoActiveQuery();
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid world, map and instance context is required.",
+                    nameof(context));
+            if (removedActorIDs == null)
+                throw new ArgumentNullException(nameof(removedActorIDs));
+
+            var memberships = new List<KeyValuePair<Guid, SpatialCellKey>>();
+            var matchingActorIDs = new HashSet<Guid>();
+            foreach (var pair in _cellByActorID)
+            {
+                if (!pair.Value.Context.Equals(context))
+                    continue;
+
+                GetExistingBucket(pair.Value, pair.Key);
+                memberships.Add(new KeyValuePair<Guid, SpatialCellKey>(pair.Key, pair.Value));
+                matchingActorIDs.Add(pair.Key);
+            }
+
+            foreach (var pair in _actorIDsByCell)
+            {
+                foreach (var actorID in pair.Value)
+                {
+                    if (!pair.Key.Context.Equals(context) && !matchingActorIDs.Contains(actorID))
+                        continue;
+
+                    if (!_cellByActorID.TryGetValue(actorID, out var reverseCell)
+                        || !reverseCell.Equals(pair.Key))
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial membership for actor '{actorID}' is inconsistent in context '{context}'.");
+                    }
+                }
+            }
+
+            foreach (var membership in memberships)
+            {
+                var bucket = GetExistingBucket(membership.Value, membership.Key);
+                RemoveActorFromBucket(membership.Value, bucket, membership.Key);
+                _cellByActorID.Remove(membership.Key);
+                removedActorIDs.Add(membership.Key);
+            }
+
+            return memberships.Count;
+        }
+
         /// <summary>Removes an actor and releases its empty spatial cell bucket.</summary>
         /// <param name="actorID">The indexed actor identifier.</param>
         /// <exception cref="ArgumentException">Thrown when the actor ID is empty.</exception>
@@ -384,6 +514,10 @@ namespace Game.Server.Core
             return distanceSquared <= radiusSquared;
         }
 
+        /// <summary>
+        /// Ensures that there are no active spatial queries.
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
         private void EnsureNoActiveQuery()
         {
             if (_activeQueryCount > 0)

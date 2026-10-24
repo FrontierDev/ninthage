@@ -12,9 +12,9 @@
         "plateauSharpness": 3.0,
         "showPreview": true,
         "zoomLevel": 2.499999523162842,
-        "panOffsetX": 0.0,
+        "panOffsetX": 5.0,
         "panOffsetY": 0.0,
-        "selectedSidebarTab": 1,
+        "selectedSidebarTab": 0,
         "visualizationMode": 0,
         "enableErosion": true,
         "erosionModeEnabled": [

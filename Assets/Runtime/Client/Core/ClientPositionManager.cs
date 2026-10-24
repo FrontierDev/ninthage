@@ -188,6 +188,8 @@ namespace Game.Client
 #endif
             }
 
+            Physics.SyncTransforms();
+
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             var appliedLocalShift = -shift;
             Debug.Log(
