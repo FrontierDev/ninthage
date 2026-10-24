@@ -543,6 +543,115 @@ namespace Game.Server.Core
             }
         }
 
+        internal void EnsureDestinationReadyForAdmission(
+            ActorSpatialContext context,
+            WorldPosition position,
+            Action<bool> onCompleted)
+        {
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid actor spatial context is required.",
+                    nameof(context));
+            if (!position.IsFinite)
+                throw new ArgumentException(
+                    "Destination position must be finite.",
+                    nameof(position));
+            if (onCompleted == null)
+                throw new ArgumentNullException(nameof(onCompleted));
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
+                throw new InvalidOperationException(
+                    "Destination readiness requires an initialized server world manager.");
+            if (!ServerSpawnManager.IsInitialized || ServerSpawnManager.Instance == null)
+                throw new InvalidOperationException(
+                    "Destination readiness requires an initialized server spawn manager.");
+
+            ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            if (!runtimeContext.IsValid
+                || context.WorldID != runtimeContext.WorldID
+                || !StringComparer.Ordinal.Equals(context.MapID, runtimeContext.MapID))
+            {
+                throw new InvalidOperationException(
+                    "Destination context does not belong to the current server runtime.");
+            }
+
+            Vector2Int centerChunk = position.Chunk;
+            if (centerChunk.x == int.MinValue
+                || centerChunk.x == int.MaxValue
+                || centerChunk.y == int.MinValue
+                || centerChunk.y == int.MaxValue)
+                throw new InvalidOperationException(
+                    "The destination interest grid would exceed the concrete chunk-coordinate range.");
+
+            HashSet<Vector2Int> requiredChunks = GetGrid(centerChunk);
+
+            bool completionDelivered = false;
+            bool populationCompleted = false;
+            bool populationSucceeded = false;
+            bool environmentCompleted = false;
+            bool environmentSucceeded = false;
+
+            void TryComplete()
+            {
+                if (completionDelivered)
+                    return;
+                if ((populationCompleted && !populationSucceeded)
+                    || (environmentCompleted && !environmentSucceeded))
+                {
+                    completionDelivered = true;
+                    onCompleted(false);
+                    return;
+                }
+                if (!populationCompleted || !environmentCompleted)
+                    return;
+
+                completionDelivered = true;
+                onCompleted(true);
+            }
+
+            void CompletePopulationPreparation(bool succeeded)
+            {
+                populationCompleted = true;
+                populationSucceeded = succeeded;
+                TryComplete();
+            }
+
+            void CompleteEnvironmentPreload(bool succeeded)
+            {
+                if (!succeeded)
+                {
+                    ServerSpawnManager.Instance.FailInstancePopulationPreparation(
+                        context,
+                        "required destination environment preload failed");
+                }
+
+                environmentCompleted = true;
+                environmentSucceeded = succeeded;
+                TryComplete();
+            }
+
+            ServerSpawnManager.Instance.EnsureInstancePopulationReady(
+                context,
+                requiredChunks,
+                CompletePopulationPreparation);
+
+            try
+            {
+                EnsureInterestGridLoaded(
+                    context,
+                    position,
+                    CompleteEnvironmentPreload);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"[InstanceReadiness] Destination environment preload could not start for {context}: {exception.Message}");
+                ServerSpawnManager.Instance.FailInstancePopulationPreparation(
+                    context,
+                    $"required destination environment preload could not start: {exception.Message}");
+                CompleteEnvironmentPreload(false);
+            }
+        }
+
         /// <summary>
         /// Determines whether all nine context-qualified chunks around a position are loaded.
         /// </summary>

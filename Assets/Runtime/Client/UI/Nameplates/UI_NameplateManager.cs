@@ -113,6 +113,7 @@ namespace Game.Client.UI
         {
             // Subscribe to actor spawn events
             ActorEndpoint.onActorSpawned += OnActorSpawned;
+            ActorEndpoint.onActorDespawned += OnActorDespawned;
             ActorEndpoint.onClientHoveredActorChanged += SetHoveredActor;
             ActorEndpoint.onClientLateTargetedActorChanged += OnLateTargetChanged;
             ActorEndpoint.onSpellCastStarted += OnSpellCastStarted;
@@ -126,6 +127,7 @@ namespace Game.Client.UI
         private void OnDestroy()
         {
             ActorEndpoint.onActorSpawned -= OnActorSpawned;
+            ActorEndpoint.onActorDespawned -= OnActorDespawned;
             ActorEndpoint.onClientHoveredActorChanged -= SetHoveredActor;
             ActorEndpoint.onClientLateTargetedActorChanged -= OnLateTargetChanged;
             ActorEndpoint.onSpellCastStarted -= OnSpellCastStarted;
@@ -141,6 +143,7 @@ namespace Game.Client.UI
                     nameplate.Released -= OnNameplateReleased;
             }
             activeNameplates.Clear();
+            _staleNameplateActors.Clear();
 
             if (_instance == this)
                 _instance = null;
@@ -148,6 +151,8 @@ namespace Game.Client.UI
 
         private void LateUpdate()
         {
+            RemoveStaleNameplates();
+
             Camera cam = Camera.main;
             if (cam == null) return;
             using var markerScope = LATE_UPDATE_MARKER.Begin();
@@ -155,13 +160,7 @@ namespace Game.Client.UI
 
             foreach (var kvp in activeNameplates)
             {
-                if (kvp.Key == null)
-                {
-                    if (kvp.Value != null)
-                        Destroy(kvp.Value.gameObject);
-                    continue;
-                }
-                if (kvp.Value == null) continue;
+                if (kvp.Key == null || kvp.Value == null) continue;
 
                 bool presentationReady = positionManager != null
                     && positionManager.HasPresentationState(kvp.Key);
@@ -230,6 +229,7 @@ namespace Game.Client.UI
         }
 
         private readonly List<UI_Nameplate> _sortedForStacking = new();
+        private readonly List<Actor> _staleNameplateActors = new();
 
         private void ResolveStacking(Camera cam)
         {
@@ -405,12 +405,7 @@ namespace Game.Client.UI
                     else
                     {
                         // If disabling own nameplate, remove it if it exists
-                        if (activeNameplates.TryGetValue(ClientAccountManager.PlayerActor, out var ownNameplate))
-                        {
-                            Destroy(ownNameplate.gameObject);
-                            activeNameplates.Remove(ClientAccountManager.PlayerActor);
-                            RecordPresentationCounts();
-                        }
+                        RemoveNameplateForActor(ClientAccountManager.PlayerActor);
                     }
                 }
 
@@ -431,7 +426,8 @@ namespace Game.Client.UI
         /// </summary>
         public void SetHoveredActor(Actor actor)
         {
-            if (hoveredActor == actor) return;
+            RemoveStaleNameplates();
+            if (ReferenceEquals(hoveredActor, actor)) return;
 
             hoveredActor = actor;
 
@@ -441,6 +437,46 @@ namespace Game.Client.UI
                 kvp.Value.EvaluateNameVisibility();
                 kvp.Value.EvaluateCastBarVisibility();
             }
+        }
+
+        private void RemoveStaleNameplates()
+        {
+            _staleNameplateActors.Clear();
+            foreach (var pair in activeNameplates)
+            {
+                if (pair.Key == null || pair.Value == null)
+                    _staleNameplateActors.Add(pair.Key);
+            }
+
+            foreach (Actor actor in _staleNameplateActors)
+                RemoveNameplateForActor(actor);
+            _staleNameplateActors.Clear();
+        }
+
+        private void OnActorDespawned(Actor actor)
+        {
+            RemoveNameplateForActor(actor);
+        }
+
+        private void RemoveNameplateForActor(Actor actor)
+        {
+            if (ReferenceEquals(actor, null))
+                return;
+
+            if (ReferenceEquals(hoveredActor, actor))
+                hoveredActor = null;
+
+            if (!activeNameplates.TryGetValue(actor, out var nameplate))
+                return;
+
+            activeNameplates.Remove(actor);
+            if (nameplate != null)
+            {
+                nameplate.Released -= OnNameplateReleased;
+                Destroy(nameplate.gameObject);
+            }
+
+            RecordPresentationCounts();
         }
 
         /// <summary>
@@ -501,33 +537,30 @@ namespace Game.Client.UI
 
         private void OnNameplateReleased(UI_Nameplate nameplate)
         {
-            if (nameplate != null)
-            {
-                if (nameplate.Actor != null)
-                {
-                    activeNameplates.Remove(nameplate.Actor);
-                }
-                else
-                {
-                    Actor releasedActor = null;
-                    foreach (var pair in activeNameplates)
-                    {
-                        if (pair.Value == nameplate)
-                        {
-                            releasedActor = pair.Key;
-                            break;
-                        }
-                    }
+            if (ReferenceEquals(nameplate, null))
+                return;
 
-                    if (releasedActor != null)
-                        activeNameplates.Remove(releasedActor);
+            Actor releasedActor = null;
+            bool foundActor = false;
+            foreach (var pair in activeNameplates)
+            {
+                if (ReferenceEquals(pair.Value, nameplate))
+                {
+                    releasedActor = pair.Key;
+                    foundActor = true;
+                    break;
                 }
             }
 
-            if (!PerformanceTelemetry.IsEnabled)
-                return;
+            if (foundActor)
+            {
+                activeNameplates.Remove(releasedActor);
+                if (ReferenceEquals(hoveredActor, releasedActor))
+                    hoveredActor = null;
+            }
 
-            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.NAMEPLATE_RELEASE_COUNT, 1);
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.NAMEPLATE_RELEASE_COUNT, 1);
             RecordPresentationCounts();
         }
     }

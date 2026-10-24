@@ -1335,18 +1335,18 @@ namespace Game.Server.Core
             _pendingInstanceValidationToggles.Add(playerID);
             RemovePendingPositionProposal(playerID);
 
-            void CompleteToggle(bool preloadSucceeded)
+            void CompleteToggle(bool destinationReady)
             {
                 if (!_pendingInstanceValidationToggles.Contains(playerID))
                     return;
 
-                if (!preloadSucceeded)
+                if (!destinationReady)
                 {
                     _pendingInstanceValidationToggles.Remove(playerID);
                     NotifyInstanceValidationToggleFailure(
                         playerID,
                         actor,
-                        "destination interest grid preload failed");
+                        "destination environment or population readiness failed");
                     return;
                 }
 
@@ -1357,7 +1357,7 @@ namespace Game.Server.Core
                     NotifyInstanceValidationToggleFailure(
                         playerID,
                         actor,
-                        "the requesting player actor was removed during preload");
+                        "the requesting player actor was removed during destination readiness");
                     return;
                 }
 
@@ -1390,7 +1390,7 @@ namespace Game.Server.Core
                         NotifyInstanceValidationToggleFailure(
                             playerID,
                             actor,
-                            "the source spatial context changed during preload");
+                            "the source spatial context changed during destination readiness");
                         return;
                     }
 
@@ -1401,7 +1401,7 @@ namespace Game.Server.Core
                         NotifyInstanceValidationToggleFailure(
                             playerID,
                             actor,
-                            "the canonical accepted position changed during preload");
+                            "the canonical accepted position changed during destination readiness");
                         return;
                     }
 
@@ -1436,7 +1436,7 @@ namespace Game.Server.Core
 
             try
             {
-                ServerInterestManager.Instance.EnsureInterestGridLoaded(
+                ServerInterestManager.Instance.EnsureDestinationReadyForAdmission(
                     destinationContext,
                     position,
                     CompleteToggle);
@@ -1447,7 +1447,7 @@ namespace Game.Server.Core
                 NotifyInstanceValidationToggleFailure(
                     playerID,
                     actor,
-                    $"destination interest grid preload could not start: {exception.Message}");
+                    $"destination readiness could not start: {exception.Message}");
             }
         }
 

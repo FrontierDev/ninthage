@@ -130,6 +130,31 @@ namespace Game.Server.Core
 
         private readonly Dictionary<SpawnPointRuntimeKey, Actor> _spawnPointActorMap = new();
 
+        private enum InstancePopulationReadiness
+        {
+            Preparing,
+            Ready,
+            Failed
+        }
+
+        private sealed class InstancePopulationPreparation
+        {
+            public InstancePopulationReadiness Readiness { get; set; }
+            public HashSet<Vector2Int> RequiredChunks { get; }
+            public HashSet<Vector2Int> DiscoveredChunks { get; } = new();
+            public HashSet<SpawnPointRuntimeKey> PendingSpawnPoints { get; } = new();
+            public List<Action<bool>> CompletionCallbacks { get; } = new();
+
+            public InstancePopulationPreparation(HashSet<Vector2Int> requiredChunks)
+            {
+                Readiness = InstancePopulationReadiness.Preparing;
+                RequiredChunks = requiredChunks;
+            }
+        }
+
+        private readonly Dictionary<ActorSpatialContext, InstancePopulationPreparation>
+            _instancePopulationPreparations = new();
+
         private EntityManager _entityManager;
         private EntityQuery _spawnCommandQuery;
 
@@ -165,6 +190,165 @@ namespace Game.Server.Core
 
             _instance = null;
             _initialized = false;
+            _instancePopulationPreparations.Clear();
+        }
+
+        internal void EnsureInstancePopulationReady(
+            ActorSpatialContext context,
+            IReadOnlyCollection<Vector2Int> requiredChunks,
+            Action<bool> onCompleted)
+        {
+            if (!_initialized || !ReferenceEquals(_instance, this))
+                throw new InvalidOperationException(
+                    "Instance population readiness requires the current initialized server spawn manager.");
+            if (!context.IsValid)
+                throw new ArgumentException("A valid actor spatial context is required.", nameof(context));
+            if (context.InstanceID == Guid.Empty)
+                throw new ArgumentException("A private instance context is required.", nameof(context));
+            if (requiredChunks == null || requiredChunks.Count == 0)
+                throw new ArgumentException("At least one required chunk is needed.", nameof(requiredChunks));
+            if (onCompleted == null)
+                throw new ArgumentNullException(nameof(onCompleted));
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
+                throw new InvalidOperationException(
+                    "Instance population readiness requires an initialized server world manager.");
+
+            ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            if (!runtimeContext.IsValid
+                || context.WorldID != runtimeContext.WorldID
+                || !StringComparer.Ordinal.Equals(context.MapID, runtimeContext.MapID))
+            {
+                throw new InvalidOperationException(
+                    "Instance population context does not belong to the current server runtime.");
+            }
+
+            var requestedChunks = new HashSet<Vector2Int>(requiredChunks);
+            if (requestedChunks.Count == 0)
+                throw new ArgumentException("At least one required chunk is needed.", nameof(requiredChunks));
+
+            if (!_instancePopulationPreparations.TryGetValue(context, out var preparation))
+            {
+                preparation = new InstancePopulationPreparation(requestedChunks);
+                preparation.CompletionCallbacks.Add(onCompleted);
+                _instancePopulationPreparations.Add(context, preparation);
+                return;
+            }
+
+            switch (preparation.Readiness)
+            {
+                case InstancePopulationReadiness.Preparing:
+                    if (!preparation.RequiredChunks.SetEquals(requestedChunks))
+                    {
+                        throw new InvalidOperationException(
+                            $"Required chunks changed while instance population was preparing for {context}.");
+                    }
+                    preparation.CompletionCallbacks.Add(onCompleted);
+                    return;
+                case InstancePopulationReadiness.Ready:
+                    onCompleted(true);
+                    return;
+                case InstancePopulationReadiness.Failed:
+                    onCompleted(false);
+                    return;
+                default:
+                    throw new InvalidOperationException(
+                        $"Unknown population readiness state for {context}.");
+            }
+        }
+
+        internal void FailInstancePopulationPreparation(ActorSpatialContext context, string reason)
+        {
+            if (!context.IsValid)
+                throw new ArgumentException("A valid actor spatial context is required.", nameof(context));
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("A failure reason is required.", nameof(reason));
+            if (!_instancePopulationPreparations.TryGetValue(context, out var preparation)
+                || preparation.Readiness != InstancePopulationReadiness.Preparing)
+            {
+                return;
+            }
+
+            preparation.Readiness = InstancePopulationReadiness.Failed;
+            Debug.Error(
+                $"[InstanceReadiness] Failed world={context.WorldID} map={context.MapID} "
+                + $"instance={context.InstanceID}: {reason}");
+            CompletePopulationCallbacks(preparation, false);
+        }
+
+        private void RecordSpawnPointDiscovery(WorldChunkKey sourceChunk, Guid spawnPointGUID)
+        {
+            if (!_instancePopulationPreparations.TryGetValue(sourceChunk.Context, out var preparation)
+                || preparation.Readiness != InstancePopulationReadiness.Preparing
+                || !preparation.RequiredChunks.Contains(sourceChunk.ChunkCoord))
+            {
+                return;
+            }
+
+            if (spawnPointGUID == Guid.Empty)
+                throw new InvalidOperationException("A discovered authored spawn point has no GUID.");
+            preparation.PendingSpawnPoints.Add(
+                new SpawnPointRuntimeKey(sourceChunk.Context, spawnPointGUID));
+        }
+
+        private void CompletePopulationCallbacks(
+            InstancePopulationPreparation preparation,
+            bool succeeded)
+        {
+            Action<bool>[] callbacks = preparation.CompletionCallbacks.ToArray();
+            preparation.CompletionCallbacks.Clear();
+            foreach (Action<bool> callback in callbacks)
+            {
+                try
+                {
+                    callback(succeeded);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"[InstanceReadiness] Completion callback failed: {exception.Message}\n{exception.StackTrace}");
+                }
+            }
+        }
+
+        private void CompleteSpawnPointPreparation(
+            ActorSpatialContext context,
+            SpawnPointRuntimeKey spawnPointKey,
+            bool succeeded,
+            string failureReason)
+        {
+            if (!_instancePopulationPreparations.TryGetValue(context, out var preparation)
+                || preparation.Readiness != InstancePopulationReadiness.Preparing
+                || !preparation.PendingSpawnPoints.Contains(spawnPointKey))
+            {
+                return;
+            }
+
+            if (!succeeded)
+            {
+                FailInstancePopulationPreparation(context, failureReason);
+                return;
+            }
+
+            preparation.PendingSpawnPoints.Remove(spawnPointKey);
+            TryMarkInstancePopulationReady(context, preparation);
+        }
+
+        private void TryMarkInstancePopulationReady(
+            ActorSpatialContext context,
+            InstancePopulationPreparation preparation)
+        {
+            if (preparation.Readiness != InstancePopulationReadiness.Preparing
+                || !preparation.DiscoveredChunks.SetEquals(preparation.RequiredChunks)
+                || preparation.PendingSpawnPoints.Count != 0)
+            {
+                return;
+            }
+
+            preparation.Readiness = InstancePopulationReadiness.Ready;
+            Debug.Log(
+                $"[InstanceReadiness] Ready world={context.WorldID} map={context.MapID} "
+                + $"instance={context.InstanceID}");
+            CompletePopulationCallbacks(preparation, true);
         }
 
         private void OnPostSceneLoaded(SceneID sceneID, bool asServer)
@@ -174,66 +358,108 @@ namespace Game.Server.Core
             using var markerScope = SCENE_LOAD_MARKER.Begin();
 
             var globalSceneID = ServerWorldManager.Instance.GlobalActorsSceneID;
-            if (!_networkManager.sceneModule.TryGetSceneState(globalSceneID, out var globalState))
-                return;
-            int sceneIndex = RegisterScene(globalState.scene);
-
-            // Find spawn points ONLY in the specific scene that was loaded
-            ActorSpawnPoint[] actorSpawnPoints = state.scene.GetRootGameObjects()
-                .SelectMany(go => go.GetComponentsInChildren<ActorSpawnPoint>())
-                .ToArray();
-
-            Debug.Log($"Found {actorSpawnPoints.Length} spawn points in '{state.scene.name}'.");
-            if (actorSpawnPoints.Length == 0)
+            if (sceneID == globalSceneID)
                 return;
 
             WorldChunkKey sourceChunk = ResolveLoadedChunkKey(sceneID);
             if (!sourceChunk.Context.IsValid)
                 throw new InvalidOperationException(
                     $"Loaded scene {sceneID} resolved to an invalid source context.");
-            FixedString128Bytes sourceMapID = ToSpawnContextMapID(sourceChunk.Context);
-            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+
+            if (!_networkManager.sceneModule.TryGetSceneState(globalSceneID, out var globalState))
             {
-                throw new InvalidOperationException(
-                    "Server spawn-point registration requires an initialized server physics manager.");
-            }
-            foreach (ActorSpawnPoint spawnPoint in actorSpawnPoints)
-            {
-                Guid spawnPointGUID = spawnPoint.GUID;
-                var spawnPointKey = new SpawnPointRuntimeKey(
+                ServerSpawnManager.Instance.FailInstancePopulationPreparation(
                     sourceChunk.Context,
-                    spawnPointGUID);
-                if (_spawnPointActorMap.ContainsKey(spawnPointKey))
+                    "the global actor scene was unavailable during environment spawn-point registration");
+                return;
+            }
+            int sceneIndex = RegisterScene(globalState.scene);
+
+            _instancePopulationPreparations.TryGetValue(sourceChunk.Context, out var preparation);
+            bool tracksRequiredChunk = preparation != null
+                && preparation.Readiness == InstancePopulationReadiness.Preparing
+                && preparation.RequiredChunks.Contains(sourceChunk.ChunkCoord);
+
+            try
+            {
+                // Find spawn points ONLY in the specific scene that was loaded.
+                ActorSpawnPoint[] actorSpawnPoints = state.scene.GetRootGameObjects()
+                    .SelectMany(go => go.GetComponentsInChildren<ActorSpawnPoint>())
+                    .ToArray();
+
+                Debug.Log($"Found {actorSpawnPoints.Length} spawn points in '{state.scene.name}'.");
+                if (tracksRequiredChunk)
+                    preparation.DiscoveredChunks.Add(sourceChunk.ChunkCoord);
+
+                if (actorSpawnPoints.Length == 0)
                 {
-                    Debug.Warning(
-                        $"Spawn point '{spawnPoint.name}' with GUID {spawnPointGUID} already has an actor spawned in context {sourceChunk.Context}. Skipping duplicate.");
-                    continue;
+                    if (tracksRequiredChunk)
+                        TryMarkInstancePopulationReady(sourceChunk.Context, preparation);
+                    return;
                 }
 
-                int prefabIndex = RegisterPrefab(spawnPoint.Actor.gameObject);
-                WorldPosition spawnWorldPosition = ServerPhysicsManager.Instance.ToWorldPosition(
-                    spawnPoint.transform.position);
-
-                var entity = _entityManager.CreateEntity();
-                _entityManager.AddComponentData(entity, new Systems.SpawnPointComponent
+                FixedString128Bytes sourceMapID = ToSpawnContextMapID(sourceChunk.Context);
+                if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
                 {
-                    SpawnPointGUID = spawnPointGUID,
-                    WorldID = sourceChunk.Context.WorldID,
-                    MapID = sourceMapID,
-                    InstanceID = sourceChunk.Context.InstanceID,
-                    SceneName = state.scene.name,
-                    WorldPositionD = new double3(
-                        spawnWorldPosition.x,
-                        spawnWorldPosition.y,
-                        spawnWorldPosition.z),
-                    ChunkCoord = new int2(sourceChunk.ChunkCoord.x, sourceChunk.ChunkCoord.y),
-                    PrefabIndex = prefabIndex,
-                    SceneIndex = sceneIndex,
-                    Pending = true
-                });
+                    throw new InvalidOperationException(
+                        "Server spawn-point registration requires an initialized server physics manager.");
+                }
+                foreach (ActorSpawnPoint spawnPoint in actorSpawnPoints)
+                {
+                    Guid spawnPointGUID = spawnPoint.GUID;
+                    var spawnPointKey = new SpawnPointRuntimeKey(
+                        sourceChunk.Context,
+                        spawnPointGUID);
+                    if (_spawnPointActorMap.TryGetValue(spawnPointKey, out var reservedActor)
+                        && reservedActor != null)
+                    {
+                        Debug.Warning(
+                            $"Spawn point '{spawnPoint.name}' with GUID {spawnPointGUID} already has an actor spawned in context {sourceChunk.Context}. Skipping duplicate.");
+                        continue;
+                    }
+                    if (_spawnPointActorMap.ContainsKey(spawnPointKey))
+                        _spawnPointActorMap.Remove(spawnPointKey);
 
-                // Tell the spawn system that this spawn point has an actor associated with it.
-                _spawnPointActorMap[spawnPointKey] = spawnPoint.Actor;
+                    int prefabIndex = RegisterPrefab(spawnPoint.Actor.gameObject);
+                    WorldPosition spawnWorldPosition = ServerPhysicsManager.Instance.ToWorldPosition(
+                        spawnPoint.transform.position);
+
+                    var entity = _entityManager.CreateEntity();
+                    _entityManager.AddComponentData(entity, new Systems.SpawnPointComponent
+                    {
+                        SpawnPointGUID = spawnPointGUID,
+                        WorldID = sourceChunk.Context.WorldID,
+                        MapID = sourceMapID,
+                        InstanceID = sourceChunk.Context.InstanceID,
+                        SceneName = state.scene.name,
+                        WorldPositionD = new double3(
+                            spawnWorldPosition.x,
+                            spawnWorldPosition.y,
+                            spawnWorldPosition.z),
+                        ChunkCoord = new int2(sourceChunk.ChunkCoord.x, sourceChunk.ChunkCoord.y),
+                        PrefabIndex = prefabIndex,
+                        SceneIndex = sceneIndex,
+                        Pending = true
+                    });
+
+                    // Tell the spawn system that this spawn point has an actor associated with it.
+                    _spawnPointActorMap[spawnPointKey] = spawnPoint.Actor;
+                    RecordSpawnPointDiscovery(sourceChunk, spawnPointGUID);
+                }
+
+                if (tracksRequiredChunk)
+                    TryMarkInstancePopulationReady(sourceChunk.Context, preparation);
+            }
+            catch (Exception exception)
+            {
+                if (tracksRequiredChunk)
+                {
+                    FailInstancePopulationPreparation(
+                        sourceChunk.Context,
+                        $"spawn-point discovery failed for chunk {sourceChunk.ChunkCoord}: {exception.Message}");
+                }
+
+                throw;
             }
         }
 
@@ -681,6 +907,9 @@ namespace Game.Server.Core
                         NetworkIdentity registeredIdentity = null;
                         Actor spawnPointReservation = null;
                         SpawnPointRuntimeKey spawnPointKey = default;
+                        ActorSpatialContext spawnContext = default;
+                        bool hasSpawnContext = false;
+                        string spawnFailureReason = "spawn command failed";
                         bool hasSpawnPointReservation = false;
                         bool spawnPointReservationUpdated = false;
                         bool playerActorRegistered = false;
@@ -695,6 +924,24 @@ namespace Game.Server.Core
 
                         try
                         {
+                            string mapID = cmd.MapID.ToString();
+                            if (cmd.WorldID == Guid.Empty)
+                                throw new InvalidOperationException("The spawn command world ID is empty.");
+                            if (string.IsNullOrWhiteSpace(mapID))
+                                throw new InvalidOperationException("The spawn command map ID is empty.");
+
+                            spawnContext = cmd.InstanceID == Guid.Empty
+                                ? ActorSpatialContext.CreatePublic(cmd.WorldID, mapID)
+                                : ActorSpatialContext.CreateInstanced(cmd.WorldID, mapID, cmd.InstanceID);
+                            hasSpawnContext = true;
+
+                            if (cmd.SpawnPointGUID != Guid.Empty)
+                            {
+                                spawnPointKey = new SpawnPointRuntimeKey(
+                                    spawnContext,
+                                    cmd.SpawnPointGUID);
+                            }
+
                             if (cmd.PrefabIndex < 0 || cmd.PrefabIndex >= _prefabRegistry.Count)
                                 throw new InvalidOperationException($"Prefab registry index {cmd.PrefabIndex} is invalid.");
 
@@ -712,24 +959,11 @@ namespace Game.Server.Core
                             if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
                                 throw new InvalidOperationException("The server world manager is not initialized.");
 
-                            string mapID = cmd.MapID.ToString();
-                            if (cmd.WorldID == Guid.Empty)
-                                throw new InvalidOperationException("The spawn command world ID is empty.");
-                            if (string.IsNullOrWhiteSpace(mapID))
-                                throw new InvalidOperationException("The spawn command map ID is empty.");
-
-                            ActorSpatialContext spawnContext = cmd.InstanceID == Guid.Empty
-                                ? ActorSpatialContext.CreatePublic(cmd.WorldID, mapID)
-                                : ActorSpatialContext.CreateInstanced(cmd.WorldID, mapID, cmd.InstanceID);
-
                             var sourceChunk = new WorldChunkKey(
                                 spawnContext,
                                 new Vector2Int(cmd.ChunkCoord.x, cmd.ChunkCoord.y));
                             if (cmd.SpawnPointGUID != Guid.Empty)
                             {
-                                spawnPointKey = new SpawnPointRuntimeKey(
-                                    spawnContext,
-                                    cmd.SpawnPointGUID);
                                 hasSpawnPointReservation = _spawnPointActorMap.TryGetValue(
                                     spawnPointKey,
                                     out spawnPointReservation);
@@ -858,6 +1092,7 @@ namespace Game.Server.Core
                         }
                         catch (Exception ex)
                         {
+                            spawnFailureReason = ex.Message;
                             Debug.Error($"Failed to consume spawn command for prefab '{prefabName}' in scene '{sceneNameForLog}' (spawn point {cmd.SpawnPointGUID}): {ex.Message}\n{ex.StackTrace}");
                         }
                         finally
@@ -976,6 +1211,15 @@ namespace Game.Server.Core
                                     spawnSucceeded ? SPAWN_SUCCESS_COUNT_METRIC : SPAWN_FAILURE_COUNT_METRIC,
                                     1);
                             }
+                        }
+
+                        if (hasSpawnContext && cmd.SpawnPointGUID != Guid.Empty)
+                        {
+                            CompleteSpawnPointPreparation(
+                                spawnContext,
+                                spawnPointKey,
+                                spawnSucceeded,
+                                spawnFailureReason);
                         }
                     }
 
