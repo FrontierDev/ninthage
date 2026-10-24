@@ -542,9 +542,9 @@ The main server managers are MonoBehaviour-based, process-wide components create
 
 `ServerSpawnManager` owns spawning flows.
 
-`ServerActorManager` maintains the authoritative relationship between networked `Actor` GameObjects and their server ECS entities, along with player validation and NPC-related actor processing.
+`ServerActorManager` maintains the authoritative relationship between networked `Actor` GameObjects and their server ECS entities, along with player validation and NPC-related actor processing. Its `ServerActorManager_NPCMovement` partial (not a separate runtime manager) owns NPC locomotion/navigation orchestration: enabled-`NavMeshAgent` pursuit and destination updates, temporary cross-region navigation-hop state, the pre-ECS enabled-agent GameObject-to-canonical-ECS movement bridge, and post-ECS ECS-to-GameObject projection for ECS-driven NPC movement. It consumes `ServerPhysicsManager` services for region-local NavMesh/physical mechanics.
 
-`ServerStatManager`, `ServerSpellCastManager`, `ServerAuraManager`, `ServerTickerManager`, `ServerCooldownManager`, and `ServerAutoAttackManager` own authoritative gameplay subsystems of the same names.
+`ServerStatManager`, `ServerSpellCastManager`, `ServerAuraManager`, `ServerTickerManager`, `ServerCooldownManager`, and `ServerAutoAttackManager` own authoritative gameplay subsystems of the same names. `ServerAutoAttackManager` manages auto-attack registration, attack-range/readiness/cooldown checks and attack execution only; it does not own NPC navigation state or movement.
 
 `ServerBindings` performs the one-time server binding registration. It registers `AccountBindings` for account endpoint requests and `ActorDeathBindings` for the actor-death callback. Other managers subscribe directly to the endpoint they own; bindings are not required around every subscription.
 
@@ -624,7 +624,7 @@ Depending on actor type and movement ownership, state can move in either directi
 
 - player-owned actor movement is tracked from the networked actor and synchronised into ECS for authoritative state/validation;
 - non-player actors without NavMesh ownership can have vertical motion simulated in ECS and applied back to their GameObject transform;
-- NPCs using `NavMeshAgent` keep NavMesh movement on the GameObject side and update ECS position from the transform.
+- for enabled-`NavMeshAgent` NPCs, `ServerActorManager_NPCMovement` owns pursuit/navigation requests; the agent moves in its verified simulation-region-local frame, and the pre-ECS bridge reconstructs the absolute double-precision position into `ActorComponent.WorldPositionD`. The GameObject transform is a physical representation, not an independent global position authority. `ServerPhysicsManager` supplies frame conversion and physical NavMesh/handoff operations.
 
 ECS systems also communicate completion/tick events back to the MonoBehaviour/domain layer through shared endpoint callbacks. `SpellCastSystem`, for example, decrements cast state in ECS and raises `ActorEndpoint` callbacks for cast ticks and cast completion.
 
@@ -848,10 +848,11 @@ Movement contains both shared mathematics and side-specific ownership/validation
 
 The current actor/server architecture treats player movement differently from NPC movement:
 
-- player movement is owner/client-driven at the network-transform level;
-- the server tracks and periodically validates player positions;
-- server correction is available through `MovementEndpoint` when validation detects an illegal position;
-- NPC movement may be driven by `NavMeshAgent` or server ECS gravity depending on the actor setup.
+- player movement uses the existing client-owned position proposal, authoritative server validation and correction path through `MovementEndpoint`;
+- `ServerActorManager_NPCMovement` orchestrates enabled-`NavMeshAgent` NPC pursuit, destination refresh, temporary region-hop intent and the pre-ECS movement bridge;
+- disabled/absent-agent NPC vertical movement is owned by server ECS and projected back to the GameObject after ECS simulation;
+- `ServerPhysicsManager` owns region-local physical/NavMesh services, seam queries/validation, Warp and physical region binding;
+- `ServerAutoAttackManager` handles auto-attack combat execution, not NPC locomotion/navigation.
 
 Chunk transitions are coupled to movement through interest requests rather than by directly making the movement simulation responsible for scene loading.
 
