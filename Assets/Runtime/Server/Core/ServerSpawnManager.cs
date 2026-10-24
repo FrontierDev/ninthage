@@ -222,10 +222,35 @@ namespace Game.Server.Core
         private void OnServerActorDespawned(Actor actor)
         {
             // If this actor was spawned from a spawn point, mark that spawn point as pending again so it can respawn.
-            if (actor.SpawnPointGUID != default && _spawnPointActorMap.ContainsKey(actor.SpawnPointGUID))
+            if (actor != null
+                && actor.SpawnPointGUID != default
+                && _spawnPointActorMap.ContainsKey(actor.SpawnPointGUID))
                 _spawnPointActorMap.Remove(actor.SpawnPointGUID);
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(DESPAWN_EVENT_COUNT_METRIC, 1);
+
+            if (actor == null)
+                return;
+
+            NetworkIdentity identity = actor.GetComponent<NetworkIdentity>();
+            if (identity != null
+                && actor.SpatialContext.IsValid
+                && !string.IsNullOrWhiteSpace(actor.CurrentChunk))
+            {
+                Game.Shared.Networking.ChunkSubscriptions.UnregisterIdentity(
+                    actor.SpatialContext,
+                    actor.CurrentChunk,
+                    identity);
+            }
+
+            if (actor.Owner != null
+                && Game.Shared.Networking.ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(
+                    actor.Owner.Value,
+                    out var registeredActor)
+                && registeredActor == actor)
+            {
+                Game.Shared.Networking.ChunkSubscriptions.UnregisterPlayerActor(actor.Owner.Value);
+            }
         }
 
         /// <summary>Starts spawning the actor associated with a connected player.</summary>
@@ -616,7 +641,10 @@ namespace Game.Server.Core
                             NetworkIdentity identity = spawnedObject.GetComponent<NetworkIdentity>();
                             if (identity != null)
                             {
-                                Game.Shared.Networking.ChunkSubscriptions.RegisterIdentity(sceneName, identity);
+                                Game.Shared.Networking.ChunkSubscriptions.RegisterIdentity(
+                                    actor.SpatialContext,
+                                    sceneName,
+                                    identity);
                                 registeredIdentity = identity;
                             }
 
@@ -745,8 +773,13 @@ namespace Game.Server.Core
 
                                 try
                                 {
-                                    if (registeredIdentity != null)
-                                        Game.Shared.Networking.ChunkSubscriptions.UnregisterIdentity(sceneName, registeredIdentity);
+                                    if (registeredIdentity != null && spawnedActor != null)
+                                    {
+                                        Game.Shared.Networking.ChunkSubscriptions.UnregisterIdentity(
+                                            spawnedActor.SpatialContext,
+                                            sceneName,
+                                            registeredIdentity);
+                                    }
                                 }
                                 catch (Exception cleanupException)
                                 {

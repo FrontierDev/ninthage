@@ -32,6 +32,7 @@ namespace Game.Server.Core
         private NetworkManager _networkManager;
 
         private readonly Dictionary<Actor, HashSet<string>> _actorChunks = new();
+        private readonly List<NetworkIdentity> _visibilityIdentityBuffer = new();
 
         private void Awake()
         {
@@ -60,6 +61,7 @@ namespace Game.Server.Core
                 _networkManager.onPlayerLeft -= OnPlayerLeft;
 
             _actorChunks.Clear();
+            _visibilityIdentityBuffer.Clear();
             _instance = null;
             _initialized = false;
         }
@@ -81,11 +83,19 @@ namespace Game.Server.Core
             if (playerActor == null)
                 return;
 
+            ActorSpatialContext actorContext = playerActor.SpatialContext;
+            if (!actorContext.IsValid)
+                throw new InvalidOperationException(
+                    $"Player actor '{playerActor.ID}' has no valid server-owned spatial context.");
+
             // Remove from ChunkSubscriptions
             if (_actorChunks.TryGetValue(playerActor, out var scenes))
             {
                 foreach (var sceneName in scenes)
-                    Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(sceneName, playerActor);
+                    Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
+                        actorContext,
+                        sceneName,
+                        playerActor);
             }
 
             Game.Shared.Networking.ChunkSubscriptions.UnregisterPlayerActor(playerID);
@@ -148,12 +158,18 @@ namespace Game.Server.Core
             foreach (var sceneName in oldSet)
             {
                 if (!newSet.Contains(sceneName))
-                    Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(sceneName, actor);
+                    Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
+                        actorContext,
+                        sceneName,
+                        actor);
             }
             foreach (var sceneName in newSet)
             {
                 if (!oldSet.Contains(sceneName))
-                    Game.Shared.Networking.ChunkSubscriptions.AddActorToScene(sceneName, actor);
+                    Game.Shared.Networking.ChunkSubscriptions.AddActorToScene(
+                        actorContext,
+                        sceneName,
+                        actor);
             }
 
             // Subscribe/unsubscribe chunk scenes for terrain loading
@@ -175,11 +191,15 @@ namespace Game.Server.Core
 
                 foreach (var chunk in changedChunks)
                 {
-                    if (!Game.Shared.Networking.ChunkSubscriptions.SCENE_IDENTITIES.TryGetValue(chunk, out var identities))
-                        continue;
+                    _visibilityIdentityBuffer.Clear();
+                    int identityCount = Game.Shared.Networking.ChunkSubscriptions.AppendIdentities(
+                        actorContext,
+                        chunk,
+                        _visibilityIdentityBuffer);
 
-                    foreach (var id in identities)
+                    for (int i = 0; i < identityCount; i++)
                     {
+                        var id = _visibilityIdentityBuffer[i];
                         if (id != null)
                         {
                             if (telemetryEnabled)

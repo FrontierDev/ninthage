@@ -20,17 +20,24 @@ namespace Game.Shared.Networking
         public override bool CanSee(PlayerID player, NetworkIdentity target)
         {
             using var markerScope = VISIBILITY_MARKER.Begin();
-            var targetActor = target.GetComponent<Actor>();
-            if (targetActor == null || string.IsNullOrEmpty(targetActor.CurrentChunk))
-                return RecordVisibility(false);
-
-            if (!ChunkSubscriptions.SCENE_ACTORS.TryGetValue(targetActor.CurrentChunk, out var subscribers))
+            var targetActor = target == null ? null : target.GetComponent<Actor>();
+            if (targetActor == null || string.IsNullOrWhiteSpace(targetActor.CurrentChunk))
                 return RecordVisibility(false);
 
             if (!ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(player, out var playerActor))
                 return RecordVisibility(false);
 
-            return RecordVisibility(subscribers.Contains(playerActor));
+            if (!targetActor.SpatialContext.IsValid
+                || !playerActor.SpatialContext.IsValid
+                || !targetActor.SpatialContext.IsCompatibleWith(playerActor.SpatialContext))
+            {
+                return RecordVisibility(false);
+            }
+
+            return RecordVisibility(ChunkSubscriptions.ContainsActor(
+                targetActor.SpatialContext,
+                targetActor.CurrentChunk,
+                playerActor));
         }
 
         private static bool RecordVisibility(bool visible)
