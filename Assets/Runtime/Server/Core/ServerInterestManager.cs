@@ -31,7 +31,26 @@ namespace Game.Server.Core
 
         private NetworkManager _networkManager;
 
-        private readonly Dictionary<Actor, HashSet<string>> _actorChunks = new();
+        private sealed class PlayerInterestState
+        {
+            public ActorSpatialContext Context { get; }
+            public HashSet<string> SceneNames { get; }
+
+            public PlayerInterestState(ActorSpatialContext context, HashSet<string> sceneNames)
+            {
+                if (!context.IsValid)
+                    throw new ArgumentException(
+                        "A valid actor spatial context is required.",
+                        nameof(context));
+                if (sceneNames == null)
+                    throw new ArgumentNullException(nameof(sceneNames));
+
+                Context = context;
+                SceneNames = new HashSet<string>(sceneNames, StringComparer.Ordinal);
+            }
+        }
+
+        private readonly Dictionary<Actor, PlayerInterestState> _actorInterest = new();
         private readonly List<NetworkIdentity> _visibilityIdentityBuffer = new();
 
         private void Awake()
@@ -61,7 +80,7 @@ namespace Game.Server.Core
             if (_networkManager != null)
                 _networkManager.onPlayerLeft -= OnPlayerLeft;
 
-            _actorChunks.Clear();
+            _actorInterest.Clear();
             _visibilityIdentityBuffer.Clear();
             _instance = null;
             _initialized = false;
@@ -72,40 +91,38 @@ namespace Game.Server.Core
             // Find the actor for this player from our own tracking, since session
             // data may already be removed by ServerConnectionManager.OnPlayerLeft.
             Actor playerActor = null;
-            foreach (var kvp in _actorChunks)
+            PlayerInterestState interestState = null;
+            foreach (var kvp in _actorInterest)
             {
                 if (kvp.Key.Owner == playerID)
                 {
                     playerActor = kvp.Key;
+                    interestState = kvp.Value;
                     break;
                 }
             }
 
-            if (playerActor == null)
+            if (playerActor == null || interestState == null)
                 return;
 
-            ActorSpatialContext actorContext = playerActor.SpatialContext;
-            if (!actorContext.IsValid)
-                throw new InvalidOperationException(
-                    $"Player actor '{playerActor.ID}' has no valid server-owned spatial context.");
-
             // Remove from ChunkSubscriptions
-            if (_actorChunks.TryGetValue(playerActor, out var scenes))
+            foreach (var sceneName in interestState.SceneNames)
             {
-                foreach (var sceneName in scenes)
-                    Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
-                        actorContext,
-                        sceneName,
-                        playerActor);
+                Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
+                    interestState.Context,
+                    sceneName,
+                    playerActor);
             }
 
             Game.Shared.Networking.ChunkSubscriptions.UnregisterPlayerActor(playerID);
 
-            GetChunksByActor(playerActor, out var subscribedChunks);
-            foreach (var chunk in subscribedChunks)
-                UnsubscribePlayerFromChunk(playerActor, chunk);
+            foreach (var sceneName in interestState.SceneNames)
+            {
+                if (TryParseChunkCoord(sceneName, out var chunkCoord))
+                    UnsubscribePlayerFromChunk(playerActor, interestState.Context, chunkCoord);
+            }
 
-            _actorChunks.Remove(playerActor);
+            _actorInterest.Remove(playerActor);
         }
 
         internal void UpdatePlayerInterestFromAcceptedPosition(
@@ -134,10 +151,16 @@ namespace Game.Server.Core
 
             var newSet = GetSceneGrid(centerChunk);
 
-            if (!_actorChunks.TryGetValue(actor, out var oldSet))
-                oldSet = new HashSet<string>();
-            else if (oldSet.SetEquals(newSet))
+            bool hasOldState = _actorInterest.TryGetValue(actor, out var oldState);
+            if (hasOldState
+                && oldState.Context.Equals(actorContext)
+                && oldState.SceneNames.SetEquals(newSet))
                 return;
+
+            var oldSet = hasOldState
+                ? oldState.SceneNames
+                : new HashSet<string>(StringComparer.Ordinal);
+            bool contextChanged = hasOldState && !oldState.Context.Equals(actorContext);
 
             var toSubscribe = new List<Vector2Int>();
             var toUnsubscribe = new List<Vector2Int>();
@@ -152,41 +175,50 @@ namespace Game.Server.Core
                     oldCoords.Add(coord);
             }
 
-            foreach (var coord in newCoords)
+            if (contextChanged)
             {
-                if (!oldCoords.Contains(coord))
+                foreach (var coord in newCoords)
                     toSubscribe.Add(coord);
-            }
-
-            foreach (var coord in oldCoords)
-            {
-                if (!newCoords.Contains(coord))
+                foreach (var coord in oldCoords)
                     toUnsubscribe.Add(coord);
             }
-
-            // Update actor's subscribed scene set.
-            _actorChunks[actor] = newSet;
-
-            // Update ChunkSubscriptions: remove actor from old scenes, add to new
-            foreach (var sceneName in oldSet)
+            else
             {
-                if (!newSet.Contains(sceneName))
-                    Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
-                        actorContext,
-                        sceneName,
-                        actor);
-            }
-            foreach (var sceneName in newSet)
-            {
-                if (!oldSet.Contains(sceneName))
-                    Game.Shared.Networking.ChunkSubscriptions.AddActorToScene(
-                        actorContext,
-                        sceneName,
-                        actor);
+                foreach (var coord in newCoords)
+                {
+                    if (!oldCoords.Contains(coord))
+                        toSubscribe.Add(coord);
+                }
+                foreach (var coord in oldCoords)
+                {
+                    if (!newCoords.Contains(coord))
+                        toUnsubscribe.Add(coord);
+                }
             }
 
-            // Subscribe/unsubscribe chunk scenes for terrain loading
-            ProcessInterestChange(actor, toSubscribe, toUnsubscribe);
+            if (contextChanged)
+            {
+                Game.Shared.Networking.ChunkSubscriptions.TransferActorSubscriptions(
+                    oldState.Context,
+                    oldState.SceneNames,
+                    actorContext,
+                    newSet,
+                    actor);
+            }
+            else
+            {
+                ApplySameContextSubscriptionChange(actor, actorContext, oldSet, newSet);
+            }
+
+            _actorInterest[actor] = new PlayerInterestState(actorContext, newSet);
+
+            // Subscribe/unsubscribe chunk scenes for terrain loading.
+            ProcessInterestChange(
+                actor,
+                hasOldState ? oldState.Context : actorContext,
+                actorContext,
+                toSubscribe,
+                toUnsubscribe);
             if (telemetryEnabled)
                 PerformanceTelemetry.TryRecord(
                     NetworkingPerformanceMetrics.INTEREST_CHANGED_SUBSCRIPTION_COUNT,
@@ -198,28 +230,41 @@ namespace Game.Server.Core
             if (NetworkManager.main.TryGetModule<HierarchyFactory>(true, out var factory)
                 && factory.TryGetHierarchy(globalSceneID, out var hierarchy))
             {
-                // Symmetric difference: chunks that were added or removed
-                var changedChunks = new HashSet<string>(newSet);
-                changedChunks.SymmetricExceptWith(oldSet);
-
-                foreach (var chunk in changedChunks)
+                void EvaluateVisibilityForScenes(
+                    ActorSpatialContext context,
+                    IEnumerable<string> sceneNames)
                 {
-                    _visibilityIdentityBuffer.Clear();
-                    int identityCount = Game.Shared.Networking.ChunkSubscriptions.AppendIdentities(
-                        actorContext,
-                        chunk,
-                        _visibilityIdentityBuffer);
-
-                    for (int i = 0; i < identityCount; i++)
+                    foreach (var sceneName in sceneNames)
                     {
-                        var id = _visibilityIdentityBuffer[i];
-                        if (id != null)
+                        _visibilityIdentityBuffer.Clear();
+                        int identityCount = Game.Shared.Networking.ChunkSubscriptions.AppendIdentities(
+                            context,
+                            sceneName,
+                            _visibilityIdentityBuffer);
+
+                        for (int i = 0; i < identityCount; i++)
                         {
-                            if (telemetryEnabled)
-                                visibilityEvaluationCount++;
-                            hierarchy.EvaluateVisibility(playerID, id.transform);
+                            var id = _visibilityIdentityBuffer[i];
+                            if (id != null)
+                            {
+                                if (telemetryEnabled)
+                                    visibilityEvaluationCount++;
+                                hierarchy.EvaluateVisibility(playerID, id.transform);
+                            }
                         }
                     }
+                }
+
+                if (contextChanged)
+                {
+                    EvaluateVisibilityForScenes(oldState.Context, oldSet);
+                    EvaluateVisibilityForScenes(actorContext, newSet);
+                }
+                else
+                {
+                    var changedChunks = new HashSet<string>(newSet);
+                    changedChunks.SymmetricExceptWith(oldSet);
+                    EvaluateVisibilityForScenes(actorContext, changedChunks);
                 }
             }
 
@@ -244,30 +289,124 @@ namespace Game.Server.Core
             UpdatePlayerInterestFromAcceptedPosition(actor, acceptedPosition);
         }
 
-        private void ProcessInterestChange(Actor actor, List<Vector2Int> toSubscribe, List<Vector2Int> toUnsubscribe)
+        private static void ApplySameContextSubscriptionChange(
+            Actor actor,
+            ActorSpatialContext context,
+            HashSet<string> oldSceneNames,
+            HashSet<string> newSceneNames)
+        {
+            var removedSceneNames = new List<string>();
+            var addedSceneNames = new List<string>();
+            try
+            {
+                foreach (var sceneName in oldSceneNames)
+                {
+                    if (newSceneNames.Contains(sceneName)
+                        || !Game.Shared.Networking.ChunkSubscriptions.ContainsActor(
+                            context,
+                            sceneName,
+                            actor))
+                    {
+                        continue;
+                    }
+
+                    Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
+                        context,
+                        sceneName,
+                        actor);
+                    removedSceneNames.Add(sceneName);
+                }
+
+                foreach (var sceneName in newSceneNames)
+                {
+                    if (oldSceneNames.Contains(sceneName))
+                        continue;
+
+                    bool wasRegistered = Game.Shared.Networking.ChunkSubscriptions.ContainsActor(
+                        context,
+                        sceneName,
+                        actor);
+                    Game.Shared.Networking.ChunkSubscriptions.AddActorToScene(
+                        context,
+                        sceneName,
+                        actor);
+                    if (!wasRegistered)
+                        addedSceneNames.Add(sceneName);
+                }
+            }
+            catch (Exception transferException)
+            {
+                try
+                {
+                    for (int i = addedSceneNames.Count - 1; i >= 0; i--)
+                    {
+                        Game.Shared.Networking.ChunkSubscriptions.RemoveActorFromScene(
+                            context,
+                            addedSceneNames[i],
+                            actor);
+                    }
+
+                    foreach (var sceneName in removedSceneNames)
+                    {
+                        Game.Shared.Networking.ChunkSubscriptions.AddActorToScene(
+                            context,
+                            sceneName,
+                            actor);
+                    }
+                }
+                catch (Exception rollbackException)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor '{actor.ID}' same-context subscription update failed and rollback also failed.",
+                        new AggregateException(transferException, rollbackException));
+                }
+
+                throw;
+            }
+        }
+
+        private void ProcessInterestChange(
+            Actor actor,
+            ActorSpatialContext sourceContext,
+            ActorSpatialContext destinationContext,
+            List<Vector2Int> toSubscribe,
+            List<Vector2Int> toUnsubscribe)
         {
             foreach (var chunk in toSubscribe)
-                SubscribePlayerToChunk(actor, chunk);
+                SubscribePlayerToChunk(actor, destinationContext, chunk);
 
             foreach (var chunk in toUnsubscribe)
-                UnsubscribePlayerFromChunk(actor, chunk);
+                UnsubscribePlayerFromChunk(actor, sourceContext, chunk);
         }
 
         /// <summary>Subscribes a player's actor to a world chunk.</summary>
         /// <param name="actor">The actor to subscribe.</param>
+        /// <param name="context">The context that owns the chunk.</param>
         /// <param name="chunkCoord">The chunk coordinate.</param>
         /// <param name="onSubscribed">An optional callback invoked after subscription.</param>
-        public void SubscribePlayerToChunk(Actor actor, Vector2Int chunkCoord, Action onSubscribed = null)
+        private void SubscribePlayerToChunk(
+            Actor actor,
+            ActorSpatialContext context,
+            Vector2Int chunkCoord,
+            Action onSubscribed = null)
         {
-            ActorSpatialContext actorContext = actor.SpatialContext;
-            ServerWorldManager.Instance.EnsureChunkLoaded(actorContext, chunkCoord, (succeeded, sceneID) =>
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid actor spatial context is required.",
+                    nameof(context));
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+
+            ServerWorldManager.Instance.EnsureChunkLoaded(context, chunkCoord, (succeeded, sceneID) =>
             {
                 if (!succeeded)
                     return;
 
                 // Guard: if the actor's interest changed while the chunk was loading, skip.
                 var chunkScene = $"World_{chunkCoord.x}_{chunkCoord.y}";
-                if (!_actorChunks.TryGetValue(actor, out var currentChunks) || !currentChunks.Contains(chunkScene))
+                if (!_actorInterest.TryGetValue(actor, out var currentState)
+                    || !currentState.Context.Equals(context)
+                    || !currentState.SceneNames.Contains(chunkScene))
                     return;
 
                 if (actor.Owner != null)
@@ -283,11 +422,21 @@ namespace Game.Server.Core
 
         /// <summary>Unsubscribes a player's actor from a world chunk.</summary>
         /// <param name="actor">The actor to unsubscribe.</param>
+        /// <param name="context">The context that owns the chunk.</param>
         /// <param name="chunkCoord">The chunk coordinate.</param>
-        public void UnsubscribePlayerFromChunk(Actor actor, Vector2Int chunkCoord)
+        private void UnsubscribePlayerFromChunk(
+            Actor actor,
+            ActorSpatialContext context,
+            Vector2Int chunkCoord)
         {
-            ActorSpatialContext actorContext = actor.SpatialContext;
-            if (!ServerWorldManager.Instance.TryGetChunkSceneID(actorContext, chunkCoord, out SceneID sceneID))
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid actor spatial context is required.",
+                    nameof(context));
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+
+            if (!ServerWorldManager.Instance.TryGetChunkSceneID(context, chunkCoord, out SceneID sceneID))
                 return;
 
             if (actor.Owner != null)
@@ -298,13 +447,42 @@ namespace Game.Server.Core
             }
 
             // If no players remain subscribed and no loads are in-flight, unload the chunk.
-            if (ServerWorldManager.Instance.IsChunkLoadPending(actorContext, chunkCoord))
+            if (ServerWorldManager.Instance.IsChunkLoadPending(context, chunkCoord))
                 return;
 
             if (!_networkManager.scenePlayersModule.TryGetPlayersInScene(sceneID, out var players) || players.Count == 0)
             {
-                ServerWorldManager.Instance.UnloadChunk(actorContext, chunkCoord);
+                ServerWorldManager.Instance.UnloadChunk(context, chunkCoord);
             }
+        }
+
+        /// <summary>
+        /// Determines whether all nine context-qualified chunks around a position are loaded.
+        /// </summary>
+        /// <param name="context">The authoritative runtime context that owns the interest grid.</param>
+        /// <param name="position">The finite world position at the grid centre.</param>
+        /// <returns><see langword="true"/> when every chunk in the 3x3 grid is loaded.</returns>
+        internal bool IsInterestGridLoaded(
+            ActorSpatialContext context,
+            WorldPosition position)
+        {
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid actor spatial context is required.",
+                    nameof(context));
+            if (!position.IsFinite)
+                throw new ArgumentException(
+                    "Interest grid position must be finite.",
+                    nameof(position));
+
+            Vector2Int centerChunk = position.Chunk;
+            foreach (var chunkCoord in GetGrid(centerChunk))
+            {
+                if (!ServerWorldManager.Instance.IsChunkLoaded(context, chunkCoord))
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
