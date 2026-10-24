@@ -16,7 +16,7 @@ namespace Game.Server.Core
 {
     public sealed partial class ServerActorManager
     {
-        private readonly List<TransferCollider> _transferColliderBuffer = new();
+        private readonly List<ServerWorldManager.TransferColliderCandidate> _transferColliderBuffer = new();
 
         private static readonly PerformanceMetricDefinition POSITION_VALIDATION_DURATION_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_MANAGER_POSITION_VALIDATION_DURATION,
@@ -308,10 +308,10 @@ namespace Game.Server.Core
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
             _entityManager.SetComponentData(entity, component);
             GetSpatialIndex().Move(component.ActorID, actor.SpatialContext, position);
+            EvaluateTransferColliderCrossing(actor, previousPosition, position);
             ActorEndpoint.onServerAcceptedPlayerPositionChanged?.Invoke(
                 actor,
                 position);
-            EvaluateTransferColliderCrossing(actor, previousPosition, position);
         }
 
         private void EvaluateTransferColliderCrossing(
@@ -333,7 +333,8 @@ namespace Game.Server.Core
             }
 
             _transferColliderBuffer.Clear();
-            ServerWorldManager.Instance.AppendTransferColliders(
+            ServerWorldManager worldManager = ServerWorldManager.Instance;
+            worldManager.AppendTransferColliders(
                 actor.SpatialContext,
                 previousPosition,
                 currentPosition,
@@ -345,12 +346,13 @@ namespace Game.Server.Core
             Vector3 currentPhysicalPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(currentPosition);
             ActorSpatialContext publicContext = ServerWorldManager.Instance.CurrentRuntimeContext;
             TransferCollider selectedCollider = null;
+            WorldChunkKey selectedEntranceChunk = default;
             TransferCollider.CrossingDirection selectedDirection = default;
             int eligibleCrossingCount = 0;
-            string candidateKeys = null;
 
-            foreach (TransferCollider collider in _transferColliderBuffer)
+            foreach (ServerWorldManager.TransferColliderCandidate candidate in _transferColliderBuffer)
             {
+                TransferCollider collider = candidate.Collider;
                 if (collider == null
                     || !collider.TryGetCrossing(
                         previousPhysicalPosition,
@@ -361,12 +363,16 @@ namespace Game.Server.Core
                     continue;
                 }
 
-                bool eligible = direction == TransferCollider.CrossingDirection.IntoInstance
-                    ? actor.SpatialContext == publicContext
-                    : ServerWorldManager.Instance.TryGetTransferInstance(
-                        collider.InstanceKey,
-                        out ActorSpatialContext resolvedContext)
-                      && actor.SpatialContext == resolvedContext;
+                bool eligible;
+                if (direction == TransferCollider.CrossingDirection.IntoInstance)
+                {
+                    eligible = actor.SpatialContext == publicContext;
+                }
+                else
+                {
+                    eligible = worldManager.TryGetTransferRuntime(actor.SpatialContext, out var runtime)
+                        && runtime.EntranceCollider == collider;
+                }
                 if (!eligible)
                     continue;
 
@@ -374,15 +380,8 @@ namespace Game.Server.Core
                 if (eligibleCrossingCount == 1)
                 {
                     selectedCollider = collider;
+                    selectedEntranceChunk = candidate.ChunkKey;
                     selectedDirection = direction;
-                }
-                if (eligibleCrossingCount == 2)
-                {
-                    candidateKeys = $"{selectedCollider.InstanceKey}, {collider.InstanceKey}";
-                }
-                else if (eligibleCrossingCount > 2)
-                {
-                    candidateKeys += $", {collider.InstanceKey}";
                 }
             }
 
@@ -390,37 +389,57 @@ namespace Game.Server.Core
             {
                 Debug.Error(
                     $"[TransferCollider] Actor {actor.ID} crossed multiple eligible planes in one accepted segment; "
-                    + $"candidate keys: {candidateKeys}. Correct the environment authoring; no transfer was started.");
+                    + "correct the environment authoring; no transfer was started.");
                 return;
             }
             if (eligibleCrossingCount == 0)
                 return;
 
-            string key = selectedCollider.InstanceKey;
             ActorSpatialContext destinationContext;
             try
             {
                 destinationContext = selectedDirection == TransferCollider.CrossingDirection.IntoInstance
-                    ? ServerWorldManager.Instance.ResolveOrCreateTransferInstance(key)
+                    ? worldManager.CreateTransferRuntime(selectedEntranceChunk, selectedCollider)
                     : publicContext;
             }
             catch (Exception exception)
             {
                 Debug.Error(
-                    $"[TransferCollider] Player {actor.ID} key='{key}' direction={selectedDirection} "
+                    $"[TransferCollider] Player {actor.ID} direction={selectedDirection} "
                     + $"transfer failed: {exception.Message}");
                 return;
             }
 
+            bool inward = selectedDirection == TransferCollider.CrossingDirection.IntoInstance;
+            ActorSpatialContext sourceContext = actor.SpatialContext;
+            if (inward)
+                worldManager.AddTransferRuntimeUser(destinationContext, actor.Owner.Value);
+            Action<Action<bool>> prepareDestination = inward
+                ? callback => ServerInterestManager.Instance.PrepareTransferInstanceAdmission(
+                    actor,
+                    destinationContext,
+                    selectedEntranceChunk,
+                    worldManager.TryGetTransferRuntime(destinationContext, out var transferRuntime)
+                        ? transferRuntime.SceneAddresses
+                        : throw new InvalidOperationException($"Transfer runtime {destinationContext} was not registered."),
+                    callback)
+                : callback => ServerInterestManager.Instance.EnsureInterestGridLoaded(
+                    destinationContext,
+                    currentPosition,
+                    callback);
+
             bool started = TryBeginPlayerSpatialContextTransfer(
                 actor,
                 destinationContext,
+                prepareDestination,
                 (succeeded, reason) =>
                 {
                     if (!succeeded)
                     {
+                        if (inward)
+                            ServerInterestManager.Instance.CancelTransferInstanceAdmission(actor, destinationContext);
                         Debug.Error(
-                            $"[TransferCollider] Player {actor.ID} key='{key}' direction={selectedDirection} "
+                            $"[TransferCollider] Player {actor.ID} direction={selectedDirection} "
                             + $"transfer failed: {reason}");
                         return;
                     }
@@ -428,22 +447,25 @@ namespace Game.Server.Core
                     if (selectedDirection == TransferCollider.CrossingDirection.IntoInstance)
                     {
                         Debug.Log(
-                            $"[TransferCollider] Player {actor.ID} entered key='{key}' "
+                            $"[TransferCollider] Player {actor.ID} entered "
                             + $"instance={destinationContext.InstanceID} "
                             + $"position=({currentPosition.x:F3},{currentPosition.y:F3},{currentPosition.z:F3})");
                     }
                     else
                     {
                         Debug.Log(
-                            $"[TransferCollider] Player {actor.ID} returned to public from key='{key}' "
+                            $"[TransferCollider] Player {actor.ID} returned to public "
                             + $"position=({currentPosition.x:F3},{currentPosition.y:F3},{currentPosition.z:F3})");
+                        ServerInterestManager.Instance.CleanupTransferInstanceAfterExit(actor, sourceContext);
                     }
                 });
 
             if (!started)
             {
+                if (inward)
+                    worldManager.ReleaseTransferRuntimeUser(destinationContext, actor.Owner.Value);
                 Debug.Error(
-                    $"[TransferCollider] Player {actor.ID} key='{key}' direction={selectedDirection} "
+                    $"[TransferCollider] Player {actor.ID} direction={selectedDirection} "
                     + "transfer failed: another spatial-context transfer is already pending");
             }
         }

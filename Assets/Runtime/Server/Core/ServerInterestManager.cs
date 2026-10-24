@@ -52,6 +52,24 @@ namespace Game.Server.Core
 
         private readonly Dictionary<Actor, PlayerInterestState> _actorInterest = new();
         private readonly List<NetworkIdentity> _visibilityIdentityBuffer = new();
+        private readonly Dictionary<PlayerID, WorldChunkKey> _retainedTransferEntranceChunks = new();
+
+        private sealed class PreparedTransferScenes
+        {
+            internal Actor Actor { get; }
+            internal ActorSpatialContext Context { get; }
+            internal List<string> Addresses { get; }
+            internal bool Cancelled { get; set; }
+
+            internal PreparedTransferScenes(Actor actor, ActorSpatialContext context, List<string> addresses)
+            {
+                Actor = actor;
+                Context = context;
+                Addresses = addresses;
+            }
+        }
+
+        private readonly Dictionary<PlayerID, PreparedTransferScenes> _preparedTransferScenes = new();
 
         private void Awake()
         {
@@ -80,7 +98,26 @@ namespace Game.Server.Core
             if (_networkManager != null)
                 _networkManager.onPlayerLeft -= OnPlayerLeft;
 
+            var transferPlayers = new List<PlayerID>(_preparedTransferScenes.Keys);
+            foreach (PlayerID playerID in transferPlayers)
+            {
+                Actor actor = _preparedTransferScenes.TryGetValue(playerID, out PreparedTransferScenes prepared)
+                    ? prepared.Actor
+                    : null;
+                try
+                {
+                    CleanupTransferPlayerState(playerID, actor, true);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"[TransferInstanceScene] Server teardown cleanup failed for player {playerID}: {exception.Message}");
+                }
+            }
+
             _actorInterest.Clear();
+            _retainedTransferEntranceChunks.Clear();
+            _preparedTransferScenes.Clear();
             _visibilityIdentityBuffer.Clear();
             _instance = null;
             _initialized = false;
@@ -103,7 +140,10 @@ namespace Game.Server.Core
             }
 
             if (playerActor == null || interestState == null)
+            {
+                CleanupTransferPlayerState(playerID, null, true);
                 return;
+            }
 
             // Remove from ChunkSubscriptions
             foreach (var sceneName in interestState.SceneNames)
@@ -123,6 +163,7 @@ namespace Game.Server.Core
             }
 
             _actorInterest.Remove(playerActor);
+            CleanupTransferPlayerState(playerID, playerActor, true);
         }
 
         internal void UpdatePlayerInterestFromAcceptedPosition(
@@ -150,6 +191,7 @@ namespace Game.Server.Core
             ActorSpatialContext actorContext = actor.SpatialContext;
 
             var newSet = GetSceneGrid(centerChunk);
+            bool destinationIsTransferRuntime = ServerWorldManager.Instance.IsTransferRuntime(actorContext);
 
             bool hasOldState = _actorInterest.TryGetValue(actor, out var oldState);
             if (hasOldState
@@ -166,7 +208,9 @@ namespace Game.Server.Core
             var toUnsubscribe = new List<Vector2Int>();
 
             // Diff using the coordinate grid for subscribe/unsubscribe operations
-            var newCoords = GetGrid(centerChunk);
+            var newCoords = destinationIsTransferRuntime
+                ? new HashSet<Vector2Int>()
+                : GetGrid(centerChunk);
             var oldCoords = new HashSet<Vector2Int>();
             // Rebuild old coords from old scene names
             foreach (var sceneName in oldSet)
@@ -372,8 +416,11 @@ namespace Game.Server.Core
             List<Vector2Int> toSubscribe,
             List<Vector2Int> toUnsubscribe)
         {
-            foreach (var chunk in toSubscribe)
-                SubscribePlayerToChunk(actor, destinationContext, chunk);
+            if (!ServerWorldManager.Instance.IsTransferRuntime(destinationContext))
+            {
+                foreach (var chunk in toSubscribe)
+                    SubscribePlayerToChunk(actor, destinationContext, chunk);
+            }
 
             foreach (var chunk in toUnsubscribe)
                 UnsubscribePlayerFromChunk(actor, sourceContext, chunk);
@@ -436,6 +483,11 @@ namespace Game.Server.Core
             if (actor == null)
                 throw new ArgumentNullException(nameof(actor));
 
+            if (actor.Owner.HasValue
+                && _retainedTransferEntranceChunks.TryGetValue(actor.Owner.Value, out WorldChunkKey retainedChunk)
+                && retainedChunk == new WorldChunkKey(context, chunkCoord))
+                return;
+
             if (!ServerWorldManager.Instance.TryGetChunkSceneID(context, chunkCoord, out SceneID sceneID))
                 return;
 
@@ -450,7 +502,8 @@ namespace Game.Server.Core
             if (ServerWorldManager.Instance.IsChunkLoadPending(context, chunkCoord))
                 return;
 
-            if (!_networkManager.scenePlayersModule.TryGetPlayersInScene(sceneID, out var players) || players.Count == 0)
+            if (_networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
+                && players.Count == 0)
             {
                 ServerWorldManager.Instance.UnloadChunk(context, chunkCoord);
             }
@@ -679,6 +732,291 @@ namespace Game.Server.Core
             }
 
             return true;
+        }
+
+        internal void PrepareTransferInstanceAdmission(
+            Actor actor,
+            ActorSpatialContext destinationContext,
+            WorldChunkKey entranceChunk,
+            IReadOnlyList<string> sceneAddresses,
+            Action<bool> onCompleted)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (!actor.Owner.HasValue)
+                throw new InvalidOperationException("Transfer-instance admission requires an owned player actor.");
+            if (sceneAddresses == null || sceneAddresses.Count == 0)
+                throw new ArgumentException("At least one transfer scene address is required.", nameof(sceneAddresses));
+            if (onCompleted == null)
+                throw new ArgumentNullException(nameof(onCompleted));
+
+            PlayerID playerID = actor.Owner.Value;
+            ServerWorldManager worldManager = ServerWorldManager.Instance;
+            if (!worldManager.TryGetTransferRuntime(destinationContext, out ServerWorldManager.TransferRuntime runtime)
+                || runtime.EntranceChunk != entranceChunk
+                || runtime.EntranceCollider == null)
+                throw new InvalidOperationException("Transfer-instance admission does not match its registered entrance runtime.");
+            if (_preparedTransferScenes.ContainsKey(playerID))
+                throw new InvalidOperationException($"Player {playerID} already has prepared transfer-instance scenes.");
+
+            var copiedAddresses = new List<string>(sceneAddresses);
+            var preparation = new PreparedTransferScenes(actor, destinationContext, copiedAddresses);
+            _preparedTransferScenes.Add(playerID, preparation);
+            _retainedTransferEntranceChunks[playerID] = entranceChunk;
+
+            bool completed = false;
+            void Fail(string message)
+            {
+                if (completed)
+                    return;
+                completed = true;
+                Debug.Error($"[TransferInstanceScene] Admission preparation failed for player {playerID}: {message}");
+                try
+                {
+                    CleanupTransferPlayerState(playerID, actor, false);
+                }
+                catch (Exception cleanupException)
+                {
+                    Debug.Error(
+                        $"[TransferInstanceScene] Admission rollback failed for player {playerID}: {cleanupException.Message}");
+                }
+                onCompleted(false);
+            }
+
+            try
+            {
+                worldManager.EnsureChunkLoaded(
+                    entranceChunk.Context,
+                    entranceChunk.ChunkCoord,
+                    (entranceLoaded, entranceSceneID) =>
+                    {
+                        if (preparation.Cancelled)
+                        {
+                            UnloadChunkIfUnused(entranceChunk, entranceSceneID);
+                            return;
+                        }
+                        if (completed)
+                            return;
+                        if (!entranceLoaded)
+                        {
+                            Fail($"public entrance chunk {entranceChunk} did not load");
+                            return;
+                        }
+
+                        if (!_networkManager.scenePlayersModule.IsPlayerInScene(playerID, entranceSceneID))
+                            _networkManager.scenePlayersModule.AddPlayerToScene(playerID, entranceSceneID);
+                        if (!_networkManager.scenePlayersModule.IsPlayerInScene(playerID, entranceSceneID))
+                        {
+                            Fail($"player could not be subscribed to entrance chunk {entranceChunk}");
+                            return;
+                        }
+
+                        LoadNextInstanceScene(0);
+                    });
+            }
+            catch (Exception exception)
+            {
+                Fail(exception.Message);
+            }
+
+            void LoadNextInstanceScene(int index)
+            {
+                if (completed)
+                    return;
+                if (index == copiedAddresses.Count)
+                {
+                    completed = true;
+                    onCompleted(true);
+                    return;
+                }
+
+                string address = copiedAddresses[index];
+                try
+                {
+                    worldManager.EnsureInstanceSceneLoaded(
+                        destinationContext,
+                        address,
+                        (sceneLoaded, sceneID) =>
+                        {
+                            if (preparation.Cancelled)
+                            {
+                                UnloadInstanceSceneIfUnused(destinationContext, address, sceneID);
+                                return;
+                            }
+                            if (completed)
+                                return;
+                            if (!sceneLoaded)
+                            {
+                                Fail($"configured instance scene '{address}' did not load");
+                                return;
+                            }
+
+                            try
+                            {
+                                if (!_networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
+                                    _networkManager.scenePlayersModule.AddPlayerToScene(playerID, sceneID);
+                                if (!_networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
+                                {
+                                    Fail($"player could not be subscribed to instance scene '{address}'");
+                                    return;
+                                }
+
+                                LoadNextInstanceScene(index + 1);
+                            }
+                            catch (Exception exception)
+                            {
+                                Fail($"subscription to instance scene '{address}' threw: {exception.Message}");
+                            }
+                        });
+                }
+                catch (Exception exception)
+                {
+                    Fail($"load request for instance scene '{address}' threw: {exception.Message}");
+                }
+            }
+        }
+
+        internal bool IsPlayerDestinationEnvironmentReady(
+            PlayerID playerID,
+            ActorSpatialContext context,
+            WorldPosition position)
+        {
+            if (ServerWorldManager.Instance.TryGetTransferRuntime(context, out ServerWorldManager.TransferRuntime runtime))
+            {
+                if (!_preparedTransferScenes.TryGetValue(playerID, out PreparedTransferScenes prepared)
+                    || prepared.Context != context
+                    || !_retainedTransferEntranceChunks.TryGetValue(playerID, out WorldChunkKey retained)
+                    || retained != runtime.EntranceChunk
+                    || !ServerWorldManager.Instance.TryGetChunkSceneID(
+                        retained.Context,
+                        retained.ChunkCoord,
+                        out SceneID entranceSceneID)
+                    || !_networkManager.scenePlayersModule.IsPlayerInScene(playerID, entranceSceneID))
+                    return false;
+
+                foreach (string address in runtime.SceneAddresses)
+                {
+                    if (!ServerWorldManager.Instance.TryGetInstanceSceneID(context, address, out SceneID sceneID)
+                        || !_networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
+                        return false;
+                }
+
+                return true;
+            }
+
+            return IsInterestGridLoaded(context, position);
+        }
+
+        internal void CancelTransferInstanceAdmission(Actor actor, ActorSpatialContext context)
+        {
+            if (actor == null || !actor.Owner.HasValue)
+                return;
+
+            PlayerID playerID = actor.Owner.Value;
+            if (_preparedTransferScenes.TryGetValue(playerID, out PreparedTransferScenes prepared)
+                && prepared.Context == context)
+                CleanupTransferPlayerState(playerID, actor, false);
+            else
+                ServerWorldManager.Instance.ReleaseTransferRuntimeUser(context, playerID);
+        }
+
+        internal void CleanupTransferInstanceAfterExit(Actor actor, ActorSpatialContext context)
+        {
+            if (actor == null || !actor.Owner.HasValue)
+                return;
+
+            PlayerID playerID = actor.Owner.Value;
+            if (_preparedTransferScenes.TryGetValue(playerID, out PreparedTransferScenes prepared)
+                && prepared.Context == context)
+                CleanupTransferPlayerState(playerID, actor, false);
+        }
+
+        internal void OnPlayerActorRemoved(Actor actor)
+        {
+            if (actor == null || !actor.Owner.HasValue)
+                return;
+            CleanupTransferPlayerState(actor.Owner.Value, actor, true);
+        }
+
+        private void CleanupTransferPlayerState(PlayerID playerID, Actor actor, bool removeEntranceMembership)
+        {
+            if (_preparedTransferScenes.TryGetValue(playerID, out PreparedTransferScenes prepared))
+            {
+                prepared.Cancelled = true;
+                foreach (string address in prepared.Addresses)
+                    RemovePlayerFromInstanceScene(playerID, prepared.Context, address);
+
+                _preparedTransferScenes.Remove(playerID);
+                ServerWorldManager.Instance.ReleaseTransferRuntimeUser(prepared.Context, playerID);
+            }
+
+            ReleaseTransferEntranceRetention(playerID, actor, removeEntranceMembership);
+        }
+
+        private void ReleaseTransferEntranceRetention(
+            PlayerID playerID,
+            Actor actor,
+            bool removeMembership)
+        {
+            if (!_retainedTransferEntranceChunks.Remove(playerID, out WorldChunkKey entranceChunk))
+                return;
+
+            bool remainsInPublicGrid = !removeMembership
+                && actor != null
+                && actor.SpatialContext == ServerWorldManager.Instance.CurrentRuntimeContext
+                && _actorInterest.TryGetValue(actor, out PlayerInterestState state)
+                && state.SceneNames.Contains($"World_{entranceChunk.ChunkCoord.x}_{entranceChunk.ChunkCoord.y}");
+            if (!removeMembership && remainsInPublicGrid)
+                return;
+
+            if (!ServerWorldManager.Instance.TryGetChunkSceneID(
+                    entranceChunk.Context,
+                    entranceChunk.ChunkCoord,
+                    out SceneID sceneID))
+                return;
+
+            if (_networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
+                _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
+            if (_networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
+                && players.Count == 0)
+                ServerWorldManager.Instance.UnloadChunk(
+                    entranceChunk.Context,
+                    entranceChunk.ChunkCoord);
+        }
+
+        private void RemovePlayerFromInstanceScene(
+            PlayerID playerID,
+            ActorSpatialContext context,
+            string address)
+        {
+            if (!ServerWorldManager.Instance.TryGetInstanceSceneID(context, address, out SceneID sceneID))
+                return;
+
+            if (_networkManager.scenePlayersModule.IsPlayerInScene(playerID, sceneID))
+                _networkManager.scenePlayersModule.RemovePlayerFromScene(playerID, sceneID);
+
+            if (_networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
+                && players.Count == 0)
+                ServerWorldManager.Instance.UnloadInstanceScene(context, address);
+        }
+
+        private void UnloadInstanceSceneIfUnused(
+            ActorSpatialContext context,
+            string address,
+            SceneID sceneID)
+        {
+            if (sceneID != default
+                && _networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
+                && players.Count == 0)
+                ServerWorldManager.Instance.UnloadInstanceScene(context, address);
+        }
+
+        private void UnloadChunkIfUnused(WorldChunkKey chunkKey, SceneID sceneID)
+        {
+            if (sceneID != default
+                && _networkManager.scenePlayersModule.TryGetPlayersAttachedToScene(sceneID, out var players)
+                && players.Count == 0)
+                ServerWorldManager.Instance.UnloadChunk(chunkKey.Context, chunkKey.ChunkCoord);
         }
 
         /// <summary>

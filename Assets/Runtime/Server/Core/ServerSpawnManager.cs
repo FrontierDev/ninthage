@@ -361,6 +361,25 @@ namespace Game.Server.Core
             if (sceneID == globalSceneID)
                 return;
 
+            if (ServerWorldManager.Instance.IsTransferInstanceScene(sceneID))
+            {
+                ActorSpawnPoint[] transferSpawnPoints = state.scene.GetRootGameObjects()
+                    .SelectMany(go => go.GetComponentsInChildren<ActorSpawnPoint>(true))
+                    .ToArray();
+                if (transferSpawnPoints.Length > 0)
+                {
+                    ServerWorldManager.Instance.FailTransferInstanceScene(
+                        sceneID,
+                        $"scene contains {transferSpawnPoints.Length} unsupported ActorSpawnPoint component(s)");
+                    throw new InvalidOperationException(
+                        $"Transfer-instance scene '{state.scene.name}' contains ActorSpawnPoint content, "
+                        + "which is not supported for transfer scenes.");
+                }
+
+                ServerWorldManager.Instance.ConfirmTransferInstanceSceneReady(sceneID);
+                return;
+            }
+
             WorldChunkKey sourceChunk = ResolveLoadedChunkKey(sceneID);
             if (!sourceChunk.Context.IsValid)
                 throw new InvalidOperationException(

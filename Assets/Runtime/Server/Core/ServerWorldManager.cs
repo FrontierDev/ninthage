@@ -50,8 +50,41 @@ namespace Game.Server.Core
         private static ActorSpatialContext _validationInstanceA;
         private static ActorSpatialContext _validationInstanceB;
 
+        internal readonly struct TransferColliderCandidate
+        {
+            internal WorldChunkKey ChunkKey { get; }
+            internal TransferCollider Collider { get; }
+
+            internal TransferColliderCandidate(WorldChunkKey chunkKey, TransferCollider collider)
+            {
+                ChunkKey = chunkKey;
+                Collider = collider;
+            }
+        }
+
+        internal sealed class TransferRuntime
+        {
+            internal ActorSpatialContext Context { get; }
+            internal WorldChunkKey EntranceChunk { get; }
+            internal TransferCollider EntranceCollider { get; }
+            internal IReadOnlyList<string> SceneAddresses { get; }
+            internal HashSet<PlayerID> Users { get; } = new();
+
+            internal TransferRuntime(
+                ActorSpatialContext context,
+                WorldChunkKey entranceChunk,
+                TransferCollider entranceCollider,
+                IReadOnlyList<string> sceneAddresses)
+            {
+                Context = context;
+                EntranceChunk = entranceChunk;
+                EntranceCollider = entranceCollider;
+                SceneAddresses = sceneAddresses;
+            }
+        }
+
         private readonly Dictionary<WorldChunkKey, List<TransferCollider>> _transferCollidersByChunk = new();
-        private readonly Dictionary<string, ActorSpatialContext> _transferInstancesByKey = new(StringComparer.Ordinal);
+        private readonly Dictionary<ActorSpatialContext, TransferRuntime> _transferRuntimes = new();
 
         /// <summary>Initializes the authoritative public context for the current server lifetime.</summary>
         internal static void InitializeRuntimeContext(Guid worldID)
@@ -155,7 +188,8 @@ namespace Game.Server.Core
             }
 
             _transferCollidersByChunk.Clear();
-            _transferInstancesByKey.Clear();
+            ClearInstanceSceneState();
+            _transferRuntimes.Clear();
 
             foreach (var cleanup in _pendingLoadCleanup.Values)
                 cleanup?.Invoke();
@@ -175,6 +209,9 @@ namespace Game.Server.Core
         {
             if (!asServer) return;
             if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var state)) return;
+
+            if (HandleTransferInstanceSceneLoaded(sceneID))
+                return;
 
             string sceneName = state.scene.name;
 
@@ -289,6 +326,9 @@ namespace Game.Server.Core
             if (!asServer)
                 return;
 
+            if (HandleTransferInstanceSceneUnloaded(sceneID))
+                return;
+
             if (_pendingUnloadOwners.TryGetValue(sceneID, out WorldChunkKey pendingUnloadKey))
             {
                 try
@@ -353,16 +393,15 @@ namespace Game.Server.Core
                     if (collider == null)
                         throw new InvalidOperationException(
                             $"World chunk {chunkKey} contains a missing TransferCollider component.");
-                    if (string.IsNullOrWhiteSpace(collider.InstanceKey))
-                        throw new InvalidOperationException(
-                            $"World chunk {chunkKey} contains a TransferCollider with an empty InstanceKey.");
-
-                    Vector2 size = collider.Size;
-                    if (float.IsNaN(size.x) || float.IsInfinity(size.x) || size.x <= 0f
-                        || float.IsNaN(size.y) || float.IsInfinity(size.y) || size.y <= 0f)
+                    try
+                    {
+                        collider.ValidateConfiguration();
+                    }
+                    catch (Exception exception)
                     {
                         throw new InvalidOperationException(
-                            $"World chunk {chunkKey} contains TransferCollider key='{collider.InstanceKey}' with invalid size {size}.");
+                            $"World chunk {chunkKey} contains an invalid TransferCollider: {exception.Message}",
+                            exception);
                     }
 
                     colliders.Add(collider);
@@ -375,13 +414,13 @@ namespace Game.Server.Core
         }
 
         internal int AppendTransferColliders(
-            ActorSpatialContext context,
+            ActorSpatialContext actorContext,
             WorldPosition previousPosition,
             WorldPosition currentPosition,
-            List<TransferCollider> resultBuffer)
+            List<TransferColliderCandidate> resultBuffer)
         {
-            if (!context.IsValid)
-                throw new ArgumentException("A valid spatial context is required.", nameof(context));
+            if (!actorContext.IsValid)
+                throw new ArgumentException("A valid actor spatial context is required.", nameof(actorContext));
             if (!previousPosition.IsFinite)
                 throw new ArgumentException("Previous position must be finite.", nameof(previousPosition));
             if (!currentPosition.IsFinite)
@@ -390,6 +429,18 @@ namespace Game.Server.Core
                 throw new ArgumentNullException(nameof(resultBuffer));
 
             int initialCount = resultBuffer.Count;
+            if (_transferRuntimes.TryGetValue(actorContext, out TransferRuntime runtime))
+            {
+                resultBuffer.Add(new TransferColliderCandidate(
+                    runtime.EntranceChunk,
+                    runtime.EntranceCollider));
+                return resultBuffer.Count - initialCount;
+            }
+
+            if (actorContext != CurrentRuntimeContext)
+                return 0;
+
+            ActorSpatialContext context = CurrentRuntimeContext;
             AppendTransferColliders(new WorldChunkKey(context, previousPosition.Chunk), resultBuffer);
             if (currentPosition.Chunk != previousPosition.Chunk)
                 AppendTransferColliders(new WorldChunkKey(context, currentPosition.Chunk), resultBuffer);
@@ -397,22 +448,26 @@ namespace Game.Server.Core
             return resultBuffer.Count - initialCount;
         }
 
-        private void AppendTransferColliders(WorldChunkKey chunkKey, List<TransferCollider> resultBuffer)
+        private void AppendTransferColliders(WorldChunkKey chunkKey, List<TransferColliderCandidate> resultBuffer)
         {
             if (!_transferCollidersByChunk.TryGetValue(chunkKey, out List<TransferCollider> colliders))
                 return;
 
-            resultBuffer.AddRange(colliders);
+            foreach (TransferCollider collider in colliders)
+                resultBuffer.Add(new TransferColliderCandidate(chunkKey, collider));
         }
 
-        internal ActorSpatialContext ResolveOrCreateTransferInstance(string instanceKey)
+        internal ActorSpatialContext CreateTransferRuntime(
+            WorldChunkKey entranceChunk,
+            TransferCollider entranceCollider)
         {
             if (!_runtimeContext.IsValid)
                 throw new InvalidOperationException("The current server runtime context is not initialized.");
-            if (string.IsNullOrWhiteSpace(instanceKey))
-                throw new ArgumentException("A nonempty transfer instance key is required.", nameof(instanceKey));
-            if (_transferInstancesByKey.TryGetValue(instanceKey, out ActorSpatialContext existing))
-                return existing;
+            if (entranceChunk.Context != _runtimeContext)
+                throw new ArgumentException("A transfer runtime must be created from a public world chunk.", nameof(entranceChunk));
+            if (entranceCollider == null)
+                throw new ArgumentNullException(nameof(entranceCollider));
+            entranceCollider.ValidateConfiguration();
 
             Guid instanceID;
             do
@@ -425,17 +480,41 @@ namespace Game.Server.Core
                 _runtimeContext.WorldID,
                 _runtimeContext.MapID,
                 instanceID);
-            _transferInstancesByKey.Add(instanceKey, context);
-            Debug.Log($"[TransferCollider] Created runtime instance key='{instanceKey}' instance={instanceID}");
+            _transferRuntimes.Add(
+                context,
+                new TransferRuntime(
+                    context,
+                    entranceChunk,
+                    entranceCollider,
+                    new List<string>(entranceCollider.InstanceSceneAddresses)));
+            Debug.Log($"[TransferCollider] Created runtime instance={instanceID} entrance={entranceChunk}");
             return context;
         }
 
-        internal bool TryGetTransferInstance(string instanceKey, out ActorSpatialContext context)
+        internal bool TryGetTransferRuntime(ActorSpatialContext context, out TransferRuntime runtime)
         {
-            if (string.IsNullOrWhiteSpace(instanceKey))
-                throw new ArgumentException("A nonempty transfer instance key is required.", nameof(instanceKey));
+            return _transferRuntimes.TryGetValue(context, out runtime);
+        }
 
-            return _transferInstancesByKey.TryGetValue(instanceKey, out context);
+        internal bool IsTransferRuntime(ActorSpatialContext context)
+        {
+            return _transferRuntimes.ContainsKey(context);
+        }
+
+        internal void AddTransferRuntimeUser(ActorSpatialContext context, PlayerID playerID)
+        {
+            if (!_transferRuntimes.TryGetValue(context, out TransferRuntime runtime))
+                throw new InvalidOperationException($"Transfer runtime {context} is not registered.");
+            runtime.Users.Add(playerID);
+        }
+
+        internal void ReleaseTransferRuntimeUser(ActorSpatialContext context, PlayerID playerID)
+        {
+            if (!_transferRuntimes.TryGetValue(context, out TransferRuntime runtime))
+                return;
+            runtime.Users.Remove(playerID);
+            if (runtime.Users.Count == 0)
+                _transferRuntimes.Remove(context);
         }
 
         /// <summary>

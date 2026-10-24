@@ -733,6 +733,11 @@ namespace Game.Server.Core
                 && !ReferenceEquals(registeredActor, actor))
                 return;
 
+            if (actor.Owner.HasValue
+                && ServerInterestManager.IsInitialized
+                && ServerInterestManager.Instance != null)
+                ServerInterestManager.Instance.OnPlayerActorRemoved(actor);
+
             RemoveNPCNavigationRegistration(actor);
             RemoveSpatialMembership(actor.ID);
             _actorObjects.Remove(actor.ID);
@@ -1330,6 +1335,19 @@ namespace Game.Server.Core
             ActorSpatialContext destinationContext,
             Action<bool, string> onCompleted)
         {
+            return TryBeginPlayerSpatialContextTransfer(
+                actor,
+                destinationContext,
+                null,
+                onCompleted);
+        }
+
+        private bool TryBeginPlayerSpatialContextTransfer(
+            Actor actor,
+            ActorSpatialContext destinationContext,
+            Action<Action<bool>> prepareDestination,
+            Action<bool, string> onCompleted)
+        {
             if (onCompleted == null)
                 throw new ArgumentNullException(nameof(onCompleted));
 
@@ -1491,7 +1509,11 @@ namespace Game.Server.Core
 
             try
             {
-                if (destinationContext.InstanceID == Guid.Empty)
+                if (prepareDestination != null)
+                {
+                    prepareDestination(OnDestinationReady);
+                }
+                else if (destinationContext.InstanceID == Guid.Empty)
                 {
                     ServerInterestManager.Instance.EnsureInterestGridLoaded(
                         destinationContext,
@@ -1619,7 +1641,9 @@ namespace Game.Server.Core
                     "Actor context transfer requires initialized server physics management.");
 
             Vector2Int destinationChunk = destinationPosition.Chunk;
-            if (!ServerWorldManager.Instance.IsChunkLoaded(destinationContext, destinationChunk))
+            bool transferRuntime = ServerWorldManager.Instance.IsTransferRuntime(destinationContext);
+            if (!transferRuntime
+                && !ServerWorldManager.Instance.IsChunkLoaded(destinationContext, destinationChunk))
             {
                 throw new InvalidOperationException(
                     $"Destination chunk '{destinationChunk}' is not loaded for actor context transfer.");
@@ -1633,7 +1657,8 @@ namespace Game.Server.Core
                     throw new InvalidOperationException(
                         "Player actor context transfer requires initialized server interest management.");
                 }
-                if (!ServerInterestManager.Instance.IsInterestGridLoaded(
+                if (!ServerInterestManager.Instance.IsPlayerDestinationEnvironmentReady(
+                        owner.Value,
                         destinationContext,
                         destinationPosition))
                 {
