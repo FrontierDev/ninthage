@@ -9,7 +9,7 @@ namespace Game.Editor.Inspectors
 {
     /// <summary>Displays read-only runtime targeting and NavMesh state for an NPC actor.</summary>
     [CustomEditor(typeof(NPCActor))]
-    public sealed class NPCActorInspector : Editor
+    public sealed class NPCActorInspector : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
