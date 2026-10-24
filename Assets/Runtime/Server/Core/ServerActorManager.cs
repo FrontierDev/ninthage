@@ -177,9 +177,7 @@ namespace Game.Server.Core
                 "The server has no project-owned dormant actor state probe.");
             PerformanceTelemetry.RegisterMetric(
                 SPATIAL_CANDIDATE_COUNT_METRIC,
-                0,
-                PerformanceMetricObservation.Unavailable,
-                "The server has no project-owned spatial candidate probe; NPC overlap candidates are recorded separately.");
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
         // ECS Management.
@@ -391,6 +389,7 @@ namespace Game.Server.Core
             public long PendingAcquisitionTickID;
         }
         private readonly Dictionary<Guid, NPCAggroState> _npcAggroStates = new();
+        private readonly List<Guid> _npcAggroCandidateIDs = new();
         private ServerSimulationRegistrationHandle _npcAggroSchedule;
         private int _npcAggroDecisionIntervalTicks;
 
@@ -815,6 +814,15 @@ namespace Game.Server.Core
             state.PendingAcquisitionTickID = 0;
         }
 
+        private WorldPosition GetRequiredAcceptedWorldPosition(Guid actorID)
+        {
+            if (TryGetAcceptedWorldPosition(actorID, out WorldPosition position))
+                return position;
+
+            throw new InvalidOperationException(
+                $"Actor {actorID} has no live accepted world position.");
+        }
+
         /// <summary>
         /// Updates ECS ownership and reinitializes the periodic validation baseline after an
         /// authoritative ownership transition.
@@ -905,8 +913,7 @@ namespace Game.Server.Core
         {
             using var markerScope = NPC_AGGRO_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int overlapSearchCount = 0;
-            int colliderCandidateCount = 0;
+            int spatialCandidateCount = 0;
             int allocHeavyOperationCount = telemetryEnabled ? 1 : 0;
             var keys = new List<Guid>(_npcAggroStates.Keys);
 
@@ -936,30 +943,56 @@ namespace Game.Server.Core
                     continue;
                 }
 
-                // Find the nearest player within aggro range via physics query.
                 float aggroRange = state.Behavior.AggroRange;
-                Vector3 npcPos = state.NPC.transform.position;
+                if (float.IsNaN(aggroRange)
+                    || float.IsInfinity(aggroRange)
+                    || aggroRange <= 0f)
+                {
+                    throw new InvalidOperationException(
+                        $"NPC '{state.NPC.ID}' must have a finite, strictly positive aggro range.");
+                }
+
+                WorldPosition npcPosition = GetRequiredAcceptedWorldPosition(state.NPC.ID);
+                if (!state.NPC.SpatialContext.IsValid)
+                {
+                    throw new InvalidOperationException(
+                        $"NPC '{state.NPC.ID}' has an invalid spatial context.");
+                }
+
+                _npcAggroCandidateIDs.Clear();
+                QuerySpatialInRange(
+                    state.NPC.SpatialContext,
+                    npcPosition,
+                    aggroRange,
+                    _npcAggroCandidateIDs,
+                    GetRequiredAcceptedWorldPosition,
+                    out int examinedCandidateCount,
+                    includeVerticalDistance: true);
+                spatialCandidateCount += examinedCandidateCount;
 
                 Actor closest = null;
-                float closestDistSqr = float.MaxValue;
-
-                var colliders = Physics.OverlapSphere(npcPos, aggroRange);
-                if (telemetryEnabled)
+                double closestDistance = double.MaxValue;
+                foreach (Guid candidateID in _npcAggroCandidateIDs)
                 {
-                    overlapSearchCount++;
-                    colliderCandidateCount += colliders.Length;
-                    allocHeavyOperationCount++;
-                }
-                foreach (var col in colliders)
-                {
-                    var player = col.GetComponentInParent<PlayerActor>();
-                    if (player == null || player.isDead) continue;
+                    if (candidateID == state.NPC.ID)
+                        continue;
 
-                    float distSqr = (player.transform.position - npcPos).sqrMagnitude;
-                    if (distSqr < closestDistSqr)
+                    if (!TryGetActor(candidateID, out Actor candidateActor))
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
+                    }
+
+                    if (!(candidateActor is PlayerActor player) || player.isDead)
+                        continue;
+
+                    double distance = GetAcceptedCenterDistance(state.NPC, player);
+                    if (closest == null
+                        || distance < closestDistance
+                        || (distance == closestDistance && player.ID.CompareTo(closest.ID) < 0))
                     {
                         closest = player;
-                        closestDistSqr = distSqr;
+                        closestDistance = distance;
                     }
                 }
 
@@ -1001,8 +1034,9 @@ namespace Game.Server.Core
             }
             if (telemetryEnabled)
             {
-                PerformanceTelemetry.TryRecord(OVERLAP_SEARCH_COUNT_METRIC, overlapSearchCount);
-                PerformanceTelemetry.TryRecord(COLLIDER_CANDIDATE_COUNT_METRIC, colliderCandidateCount);
+                PerformanceTelemetry.TryRecord(OVERLAP_SEARCH_COUNT_METRIC, 0);
+                PerformanceTelemetry.TryRecord(COLLIDER_CANDIDATE_COUNT_METRIC, 0);
+                PerformanceTelemetry.TryRecord(SPATIAL_CANDIDATE_COUNT_METRIC, spatialCandidateCount);
                 PerformanceTelemetry.TryRecord(ALLOC_HEAVY_OPERATION_COUNT_METRIC, allocHeavyOperationCount);
             }
         }
