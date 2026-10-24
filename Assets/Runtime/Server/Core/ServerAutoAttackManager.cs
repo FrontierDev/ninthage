@@ -60,6 +60,14 @@ namespace Game.Server.Core
                 Destroy(this);
                 return;
             }
+
+            if (!ServerActorManager.IsInitialized
+                || ServerActorManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Server auto-attack manager requires initialized server actor manager.");
+            }
+
             _instance = this;
 
             _autoAttackSpell = GameConfigurationManager.Config.AutoAttackSpell;
@@ -196,7 +204,9 @@ namespace Game.Server.Core
                     continue;
 
                 // Check range — skip swing but don't remove (player may walk back).
-                float distance = state.Actor.DistanceTo(state.Actor.Target);
+                double distance = ServerActorManager.Instance.GetAcceptedSurfaceDistance(
+                    state.Actor,
+                    state.Actor.Target);
                 if (distance > _autoAttackSpell.BaseRange)
                     continue;
 
