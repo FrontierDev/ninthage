@@ -105,11 +105,21 @@ namespace Game.Server.Core
                 activeRegion.NavigationData = new NavMeshData(settings.agentTypeID);
             }
 
+            var descriptor = activeRegion.Descriptor;
+            var bounds = new Bounds(
+                descriptor.LocalAnchor + new Vector3(
+                    (float)(descriptor.WidthMetres * 0.5d),
+                    0f,
+                    (float)(descriptor.DepthMetres * 0.5d)),
+                new Vector3(
+                    (float)descriptor.WidthMetres,
+                    64f,
+                    (float)descriptor.DepthMetres));
             bool updated = NavMeshBuilder.UpdateNavMeshData(
                 activeRegion.NavigationData,
                 settings,
                 sources,
-                default);
+                bounds);
             if (!updated)
             {
                 throw new InvalidOperationException(
