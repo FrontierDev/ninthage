@@ -378,6 +378,7 @@ namespace Game.Server.Core
         {
             if (!_initialized) return;
             EnsureNPCAggroScheduleRegistered();
+            UpdateNPCNavigation();
             using var markerScope = UPDATE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             if (telemetryEnabled)
@@ -964,6 +965,7 @@ namespace Game.Server.Core
                 return;
 
             ValidatePlayerPositions(tick);
+            UpdateSameRegionNPCNavigationDestinations();
             SynchronizeNPCPositionsToECS();
         }
 
