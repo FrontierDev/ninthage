@@ -4,7 +4,6 @@ using Game.Shared.Performance;
 using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
-using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -799,7 +798,6 @@ namespace Game.Server.Core
             // ActorUpdateSystem and both movement bridges keep player movement out of this path.
             bool hasEnabledAgent = HasEnabledNavMeshAgent(actor);
             UpdateNPCNavigationRegistration(actor, hasEnabledAgent);
-            UpdateNPCNavigationRegistration(actor, hasEnabledAgent);
 
             if (_entityManager.HasComponent<Systems.MotionStateComponent>(entity))
             {
@@ -949,7 +947,6 @@ namespace Game.Server.Core
             var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
             bool hasEnabledAgent = HasEnabledNavMeshAgent(actorObj);
             UpdateNPCNavigationRegistration(actorObj, hasEnabledAgent);
-            UpdateNPCNavigationRegistration(actorObj, hasEnabledAgent);
             if (motion.UsesNavMeshAgent != hasEnabledAgent)
             {
                 motion.UsesNavMeshAgent = hasEnabledAgent;
@@ -969,10 +966,6 @@ namespace Game.Server.Core
                     $"Actor {actorObj.ID} has an invalid canonical ECS world position.");
             }
 
-            bool crossed = TryCommitReadyNPCRegionHop(
-                actorObj,
-                acceptedSourcePosition,
-                out WorldPosition selectedLandingAbsolute);
             bool crossed = TryCommitReadyNPCRegionHop(
                 actorObj,
                 acceptedSourcePosition,
