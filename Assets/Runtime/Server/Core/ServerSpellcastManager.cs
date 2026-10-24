@@ -6,6 +6,7 @@ using Game.Shared.Data.SpellTargetDefinitions;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
+using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,6 +32,7 @@ namespace Game.Server.Core
         // Store active spell casts by actor ID for quick access during ticks and completion.
         private readonly Dictionary<Guid, SpellContext> _activeSpellCasts = new();
         private readonly Dictionary<Guid, long> _activeCastIDs = new();
+        private readonly List<Guid> _spellTargetCandidateIDs = new();
         private readonly List<PendingAction> _pendingActions = new();
         private readonly ServerSimulationMutationQueue<SpellMutation> _pendingMutations = new();
         private readonly Dictionary<long, SpellMutation> _pendingStarts = new();
@@ -58,7 +60,9 @@ namespace Game.Server.Core
                 SpellOverride spell,
                 SpellContext context,
                 string spellID,
-                long castID)
+                long castID,
+                bool hasWorldPositionTarget,
+                WorldPosition worldPositionTarget)
             {
                 Kind = kind;
                 ActorID = actorID;
@@ -67,6 +71,8 @@ namespace Game.Server.Core
                 Context = context;
                 SpellID = spellID;
                 CastID = castID;
+                HasWorldPositionTarget = hasWorldPositionTarget;
+                WorldPositionTarget = worldPositionTarget;
             }
 
             internal SpellMutationKind Kind { get; }
@@ -76,6 +82,8 @@ namespace Game.Server.Core
             internal SpellContext Context { get; }
             internal string SpellID { get; }
             internal long CastID { get; }
+            internal bool HasWorldPositionTarget { get; }
+            internal WorldPosition WorldPositionTarget { get; }
         }
 
         private sealed class PendingAction
@@ -126,6 +134,7 @@ namespace Game.Server.Core
 
             _activeSpellCasts.Clear();
             _activeCastIDs.Clear();
+            _spellTargetCandidateIDs.Clear();
             _pendingActions.Clear();
             _pendingMutations.Clear();
             _pendingStarts.Clear();
@@ -189,7 +198,12 @@ namespace Game.Server.Core
                             continue;
                         }
 
-                        OnSpellCastStartedNow(currentCaster, pendingStart.Spell, pendingStart.CastID);
+                        OnSpellCastStartedNow(
+                            currentCaster,
+                            pendingStart.Spell,
+                            pendingStart.CastID,
+                            pendingStart.HasWorldPositionTarget,
+                            pendingStart.WorldPositionTarget);
                         break;
                     case SpellMutationKind.Interrupt:
                         if (TryTakePendingInterrupt(mutation, out SpellMutation pendingInterrupt))
@@ -222,7 +236,7 @@ namespace Game.Server.Core
                 return false;
             }
 
-            if (spell.BaseDefinition.BaseComponents.Any(
+            if (spell.Components.Any(
                     component => component.TargetDefinition.RequiresTarget))
             {
                 if (caster.Target == null)
@@ -238,11 +252,39 @@ namespace Game.Server.Core
                         "Targeted spell range validation requires initialized server actor manager.");
                 }
 
+                if (!ServerActorManager.Instance.TryGetActor(caster.Target.ID, out Actor currentTarget)
+                    || !ReferenceEquals(currentTarget, caster.Target))
+                {
+                    Debug.Warning(
+                        $"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' on a stale or despawned target.");
+                    return false;
+                }
+
+                ActorSpatialContext casterContext = caster.SpatialContext;
+                ActorSpatialContext targetContext = caster.Target.SpatialContext;
+                if (!casterContext.IsValid
+                    || !targetContext.IsValid
+                    || !casterContext.IsCompatibleWith(targetContext))
+                {
+                    Debug.Warning(
+                        $"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' on a target in an incompatible spatial context.");
+                    return false;
+                }
+
+                if (float.IsNaN(spell.Range)
+                    || float.IsInfinity(spell.Range)
+                    || spell.Range < 0f)
+                {
+                    Debug.Warning(
+                        $"Spell '{spell.BaseDefinition.DefinitionID}' has an invalid effective range ({spell.Range}).");
+                    return false;
+                }
+
                 double distance = ServerActorManager.Instance
                     .GetAcceptedSurfaceDistance(
                         caster,
                         caster.Target);
-                float maxRange = spell.BaseDefinition.BaseRange;
+                float maxRange = spell.Range;
                 if (distance > maxRange)
                 {
                     Debug.Warning(
@@ -252,6 +294,209 @@ namespace Game.Server.Core
             }
 
             return true;
+        }
+
+        /// <summary>Resolves spell recipients from current server actor state and spatial membership.</summary>
+        private List<Actor> ResolveSpellTargets(
+            SpellContext context,
+            SpellTargetDefinition targetDefinition)
+        {
+            if (context == null
+                || context.Caster == null
+                || context.Spell == null
+                || context.Spell.BaseDefinition == null
+                || targetDefinition == null)
+            {
+                throw new InvalidOperationException(
+                    "Spell target resolution requires a complete spell context and target definition.");
+            }
+            if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
+            {
+                throw new InvalidOperationException(
+                    "Spell target resolution requires initialized server actor manager.");
+            }
+
+            Actor caster = context.Caster;
+            ActorSpatialContext spatialContext = caster.SpatialContext;
+            if (!spatialContext.IsValid)
+            {
+                throw new InvalidOperationException(
+                    $"Spell caster '{caster.ID}' has an invalid spatial context.");
+            }
+
+            WorldPosition ResolveAcceptedPosition(Guid actorID)
+            {
+                if (!ServerActorManager.Instance.TryGetAcceptedWorldPosition(actorID, out WorldPosition position))
+                {
+                    throw new InvalidOperationException(
+                        $"Spatial index returned actor '{actorID}' without a live accepted world position.");
+                }
+
+                return position;
+            }
+
+            var results = new List<Actor>();
+            if (targetDefinition is SpellTarget_Single)
+            {
+                Actor target = context.ActorTarget;
+                if (target == null
+                    || !ServerActorManager.Instance.TryGetActor(target.ID, out Actor currentTarget)
+                    || !ReferenceEquals(currentTarget, target))
+                {
+                    return results;
+                }
+
+                ActorSpatialContext targetContext = target.SpatialContext;
+                if (targetContext.IsValid && spatialContext.IsCompatibleWith(targetContext))
+                    results.Add(target);
+
+                return results;
+            }
+
+            if (targetDefinition is SpellTarget_Cone cone)
+            {
+                if (float.IsNaN(cone.Range)
+                    || float.IsInfinity(cone.Range)
+                    || cone.Range < 0f)
+                {
+                    throw new InvalidOperationException(
+                        $"Cone target for spell '{context.Spell.BaseDefinition.DefinitionID}' has an invalid range ({cone.Range}).");
+                }
+                if (float.IsNaN(cone.Angle)
+                    || float.IsInfinity(cone.Angle)
+                    || cone.Angle < 0f
+                    || cone.Angle > 360f)
+                {
+                    throw new InvalidOperationException(
+                        $"Cone target for spell '{context.Spell.BaseDefinition.DefinitionID}' has an invalid angle ({cone.Angle}).");
+                }
+                if (!ServerActorManager.Instance.TryGetAcceptedWorldPosition(caster.ID, out WorldPosition casterPosition))
+                {
+                    throw new InvalidOperationException(
+                        $"Spell caster '{caster.ID}' has no live accepted world position.");
+                }
+
+                _spellTargetCandidateIDs.Clear();
+                ServerActorManager.Instance.QuerySpatialInRange(
+                    spatialContext,
+                    casterPosition,
+                    cone.Range,
+                    _spellTargetCandidateIDs,
+                    ResolveAcceptedPosition,
+                    out _,
+                    includeVerticalDistance: true);
+
+                Vector3 facing = caster.transform.forward;
+                double facingX = facing.x;
+                double facingY = facing.y;
+                double facingZ = facing.z;
+                double facingMagnitude = Math.Sqrt(
+                    facingX * facingX + facingY * facingY + facingZ * facingZ);
+                if (double.IsNaN(facingMagnitude)
+                    || double.IsInfinity(facingMagnitude)
+                    || facingMagnitude == 0d)
+                {
+                    throw new InvalidOperationException(
+                        $"Spell caster '{caster.ID}' has an invalid facing direction for cone targeting.");
+                }
+
+                double minimumDot = Math.Cos(cone.Angle * 0.5d * Math.PI / 180d);
+                foreach (Guid candidateID in _spellTargetCandidateIDs)
+                {
+                    if (candidateID == caster.ID)
+                        continue;
+
+                    if (!ServerActorManager.Instance.TryGetActor(candidateID, out Actor candidate))
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
+                    }
+                    if (!candidate.SpatialContext.IsValid
+                        || !spatialContext.IsCompatibleWith(candidate.SpatialContext))
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial index returned actor '{candidateID}' from an incompatible context.");
+                    }
+
+                    WorldPosition candidatePosition = ResolveAcceptedPosition(candidateID);
+                    double deltaX = candidatePosition.x - casterPosition.x;
+                    double deltaY = candidatePosition.y - casterPosition.y;
+                    double deltaZ = candidatePosition.z - casterPosition.z;
+                    double displacementSquared =
+                        deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
+                    if (displacementSquared == 0d)
+                    {
+                        results.Add(candidate);
+                        continue;
+                    }
+
+                    double displacementMagnitude = Math.Sqrt(displacementSquared);
+                    double normalizedDot =
+                        (facingX * deltaX + facingY * deltaY + facingZ * deltaZ)
+                        / (facingMagnitude * displacementMagnitude);
+                    normalizedDot = Math.Max(-1d, Math.Min(1d, normalizedDot));
+                    if (normalizedDot >= minimumDot)
+                        results.Add(candidate);
+                }
+
+                return results;
+            }
+
+            if (targetDefinition is SpellTarget_GroundLocation groundTarget)
+            {
+                if (!groundTarget.GetActorsInRadius)
+                {
+                    results.Add(caster);
+                    return results;
+                }
+                if (!context.HasWorldPositionTarget || !context.WorldPositionTarget.IsFinite)
+                {
+                    throw new InvalidOperationException(
+                        "Ground-radius target resolution requires a finite authoritative world target.");
+                }
+                if (float.IsNaN(groundTarget.Radius)
+                    || float.IsInfinity(groundTarget.Radius)
+                    || groundTarget.Radius < 0f)
+                {
+                    throw new InvalidOperationException(
+                        $"Ground target for spell '{context.Spell.BaseDefinition.DefinitionID}' has an invalid radius ({groundTarget.Radius}).");
+                }
+
+                _spellTargetCandidateIDs.Clear();
+                ServerActorManager.Instance.QuerySpatialInRange(
+                    spatialContext,
+                    context.WorldPositionTarget,
+                    groundTarget.Radius,
+                    _spellTargetCandidateIDs,
+                    ResolveAcceptedPosition,
+                    out _,
+                    includeVerticalDistance: true);
+
+                foreach (Guid candidateID in _spellTargetCandidateIDs)
+                {
+                    if (candidateID == caster.ID)
+                        continue;
+
+                    if (!ServerActorManager.Instance.TryGetActor(candidateID, out Actor candidate))
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
+                    }
+                    if (!candidate.SpatialContext.IsValid
+                        || !spatialContext.IsCompatibleWith(candidate.SpatialContext))
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial index returned actor '{candidateID}' from an incompatible context.");
+                    }
+
+                    results.Add(candidate);
+                }
+
+                return results;
+            }
+
+            throw new NotSupportedException(
+                $"Spell target definition type '{targetDefinition.GetType().FullName}' is not supported by the server target resolver.");
         }
 
         /// <summary>
@@ -265,19 +510,57 @@ namespace Game.Server.Core
             if (caster == null || spell == null)
                 return;
 
+            bool hasWorldPositionTarget = spell.HasWorldPositionTarget;
+            WorldPosition worldPositionTarget = spell.WorldPositionTarget;
+            if (hasWorldPositionTarget && !worldPositionTarget.IsFinite)
+            {
+                Debug.Warning($"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' with a non-finite ground target.");
+                return;
+            }
+
             if (ServerECSManager.IsMutationBoundaryActive
                 || _pendingStartIDsByActor.ContainsKey(caster.ID)
                 || _pendingInterruptIDsByActor.ContainsKey(caster.ID))
             {
-                QueuePendingStart(caster, spell);
+                QueuePendingStart(caster, spell, hasWorldPositionTarget, worldPositionTarget);
                 return;
             }
 
-            OnSpellCastStartedNow(caster, spell);
+            OnSpellCastStartedNow(caster, spell, 0, hasWorldPositionTarget, worldPositionTarget);
         }
 
-        private bool OnSpellCastStartedNow(Actor caster, SpellOverride spell, long requestedCastID = 0)
+        private bool OnSpellCastStartedNow(
+            Actor caster,
+            SpellOverride spell,
+            long requestedCastID = 0,
+            bool hasWorldPositionTarget = false,
+            WorldPosition worldPositionTarget = default)
         {
+            bool requiresWorldPositionTarget = spell.Components.Any(
+                component => component.TargetDefinition is SpellTarget_GroundLocation);
+            if (requiresWorldPositionTarget != hasWorldPositionTarget)
+            {
+                Debug.Warning(
+                    $"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' with an invalid ground-target request shape.");
+                return false;
+            }
+
+            if (hasWorldPositionTarget && !worldPositionTarget.IsFinite)
+            {
+                Debug.Warning($"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' with a non-finite ground target.");
+                return false;
+            }
+
+            if (requiresWorldPositionTarget)
+            {
+                if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
+                    throw new InvalidOperationException("Ground spell range validation requires initialized server actor manager.");
+                if (!caster.SpatialContext.IsValid)
+                    throw new InvalidOperationException($"Ground spell caster {caster.ID} has no valid authoritative spatial context.");
+                if (!IsGroundTargetInRange(caster, spell, worldPositionTarget))
+                    return false;
+            }
+
             if (!IsValidated(caster, spell)) return false;
 
             var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
@@ -290,7 +573,15 @@ namespace Game.Server.Core
 
                     // Create the spell context here.
                     SpellContext ctx = new(spell, caster, caster.Target);
-                    ctx.PositionTarget = spell.PositionTarget;
+                    if (hasWorldPositionTarget)
+                    {
+                        if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
+                            throw new InvalidOperationException("Ground spell context creation requires initialized server physics manager.");
+
+                        ctx.HasWorldPositionTarget = true;
+                        ctx.WorldPositionTarget = worldPositionTarget;
+                        ctx.PositionTarget = ServerPhysicsManager.Instance.ToPhysicalPosition(worldPositionTarget);
+                    }
                     long castID = requestedCastID > 0 ? requestedCastID : checked(++_nextCastID);
                     InvalidateActiveCast(caster.ID);
                     _activeSpellCasts[caster.ID] = ctx;
@@ -387,6 +678,34 @@ namespace Game.Server.Core
 
             Debug.Warning($"Could not find ECS entity for actor {caster.Name} (ID: {caster.ID})");
             return false;
+        }
+
+        private static bool IsGroundTargetInRange(Actor caster, SpellOverride spell, WorldPosition targetPosition)
+        {
+            if (float.IsNaN(spell.Range)
+                || float.IsInfinity(spell.Range)
+                || spell.Range < 0f)
+            {
+                Debug.Warning($"Spell '{spell.BaseDefinition.DefinitionID}' has an invalid effective range ({spell.Range}).");
+                return false;
+            }
+
+            if (!ServerActorManager.Instance.TryGetAcceptedWorldPosition(caster.ID, out WorldPosition casterPosition))
+                throw new InvalidOperationException($"Ground spell caster {caster.ID} has no live accepted world position.");
+
+            double dx = casterPosition.x - targetPosition.x;
+            double dy = casterPosition.y - targetPosition.y;
+            double dz = casterPosition.z - targetPosition.z;
+            double distanceSquared = dx * dx + dy * dy + dz * dz;
+            double rangeSquared = (double)spell.Range * spell.Range;
+            if (distanceSquared > rangeSquared)
+            {
+                Debug.Warning(
+                    $"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' out of ground-target range. Distance squared: {distanceSquared}, Max range: {spell.Range}.");
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -742,7 +1061,9 @@ namespace Game.Server.Core
                 null,
                 context,
                 spellID,
-                castID);
+                castID,
+                false,
+                default);
 
             _pendingInterrupts.Add(castID, mutation);
             _pendingInterruptIDsByActor.Add(actorID, castID);
@@ -780,7 +1101,11 @@ namespace Game.Server.Core
             _pendingInterrupts.Remove(castID);
         }
 
-        private void QueuePendingStart(Actor caster, SpellOverride spell)
+        private void QueuePendingStart(
+            Actor caster,
+            SpellOverride spell,
+            bool hasWorldPositionTarget,
+            WorldPosition worldPositionTarget)
         {
             long castID = checked(++_nextCastID);
             SpellMutation mutation = new(
@@ -790,7 +1115,9 @@ namespace Game.Server.Core
                 spell,
                 null,
                 null,
-                castID);
+                castID,
+                hasWorldPositionTarget,
+                worldPositionTarget);
 
             _pendingStarts.Add(castID, mutation);
             if (!_pendingStartIDsByActor.TryGetValue(caster.ID, out var pendingIDs))
@@ -969,7 +1296,11 @@ namespace Game.Server.Core
                     "Single-target continuation range validation requires initialized server actor manager.");
             }
 
-            if (!context.Caster.SpatialContext.IsCompatibleWith(context.ActorTarget.SpatialContext))
+            if (!ServerActorManager.Instance.TryGetActor(context.ActorTarget.ID, out Actor currentTarget)
+                || !ReferenceEquals(currentTarget, context.ActorTarget)
+                || !context.Caster.SpatialContext.IsValid
+                || !context.ActorTarget.SpatialContext.IsValid
+                || !context.Caster.SpatialContext.IsCompatibleWith(context.ActorTarget.SpatialContext))
             {
                 ActorEndpoint.onServerSpellCastInterrupted?.Invoke(
                     context.Caster.ID,
@@ -1013,7 +1344,7 @@ namespace Game.Server.Core
                 return;
             }
 
-            List<Actor> targets = component.TargetDefinition.Evaluate(ctx);
+            List<Actor> targets = ResolveSpellTargets(ctx, component.TargetDefinition);
             foreach (var target in targets)
             {
                 // Scope source identity across effect execution, including OnCastEnd after the active

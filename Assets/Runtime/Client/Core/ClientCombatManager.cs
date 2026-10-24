@@ -5,6 +5,7 @@ using Game.Shared.Data;
 using Game.Shared.Data.SpellTargetDefinitions;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using PurrNet;
 using System.Collections.Generic;
 using System.Linq;
@@ -178,7 +179,23 @@ namespace Game.Client
             {
                 if (!TryGetGroundPosition(out var groundPos))
                     groundPos = ClientAccountManager.PlayerActor.transform.position;
-                spellcaster.Server_RequestGroundSpellCast(spellID, groundPos);
+
+                if (!ClientPositionManager.Initialized
+                    || ClientPositionManager.Instance == null)
+                {
+                    Debug.Error("Cannot cast a ground-target spell because the client position manager is unavailable.");
+                    return;
+                }
+
+                var (chunk, local) = ClientPositionManager.Instance.LocalToChunkRelative(groundPos);
+                WorldPosition groundWorldPosition = WorldPosition.FromChunkLocal(chunk, local);
+                if (!groundWorldPosition.IsFinite)
+                {
+                    Debug.Error($"Cannot cast ground-target spell '{spellID}' with a non-finite world position.");
+                    return;
+                }
+
+                spellcaster.Server_RequestGroundSpellCast(spellID, groundWorldPosition);
             }
             else
             {

@@ -1,10 +1,4 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
-using System.Collections.Generic;
-using Game.Shared.Runtime.Spellcasting;
-using UnityEngine;
 using UnityEngine.Scripting.APIUpdating;
-
-using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Data.SpellTargetDefinitions
 {
     [System.Serializable]
@@ -33,29 +27,5 @@ namespace Game.Shared.Data.SpellTargetDefinitions
             };
         }
 
-        /// <summary>Evaluates actors inside the cone.</summary>
-        public override List<Actor> Evaluate(SpellContext ctx)
-        {
-            var results = new List<Actor>();
-            var caster = ctx.Caster;
-            var origin = caster.transform.position;
-            var forward = caster.transform.forward;
-            float halfAngle = Angle * 0.5f;
-
-            var colliders = Physics.OverlapSphere(origin, Range);
-            foreach (var col in colliders)
-            {
-                var actor = col.GetComponentInParent<Actor>();
-                if (actor == null || actor == caster) continue;
-
-                var dirToTarget = (actor.transform.position - origin).normalized;
-                float angle = Vector3.Angle(forward, dirToTarget);
-
-                if (angle <= halfAngle)
-                    results.Add(actor);
-            }
-
-            return results;
-        }
     }
 }

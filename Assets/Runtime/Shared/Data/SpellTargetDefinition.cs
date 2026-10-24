@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using Game.Shared.Runtime.Spellcasting;
-
-using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Data
 {
     /// <summary>Base definition for selecting spell targets.</summary>
@@ -13,7 +9,5 @@ namespace Game.Shared.Data
 
         /// <summary>Creates a copy of this target definition.</summary>
         public abstract SpellTargetDefinition Clone();
-        /// <summary>Evaluates the actors selected by this definition.</summary>
-        public abstract List<Actor> Evaluate(SpellContext ctx);
     }
 }

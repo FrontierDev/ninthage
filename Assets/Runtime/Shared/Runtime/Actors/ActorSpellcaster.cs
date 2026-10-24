@@ -3,6 +3,7 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Runtime.Spellcasting.SpellModifiers;
+using Game.Shared.Utility;
 using PurrNet;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,8 +27,10 @@ namespace Game.Shared.Runtime.Actors
         public float CastTime;
         /// <summary>Gets or sets the effective tick count.</summary>
         public float TotalTicks;
-        /// <summary>Gets or sets the ground target position.</summary>
-        public Vector3 PositionTarget;
+        /// <summary>Gets or sets whether this transient request carries a ground target.</summary>
+        public bool HasWorldPositionTarget;
+        /// <summary>Gets or sets the transient absolute ground target position for the current request.</summary>
+        public WorldPosition WorldPositionTarget;
 
         /// <summary>Gets the cloned runtime components.</summary>
         public List<SpellComponent> Components = new();
@@ -264,15 +267,29 @@ namespace Game.Shared.Runtime.Actors
         }
 
         [ServerRpc(requireOwnership: true)]
-        public void Server_RequestGroundSpellCast(string spellID, Vector3 groundPosition, RPCInfo rpcInfo = default)
+        public void Server_RequestGroundSpellCast(string spellID, WorldPosition groundPosition, RPCInfo rpcInfo = default)
         {
             ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_SERVER_SPELL_CAST_HANDLER_INVOCATION_COUNT);
             if (!CanCastSpell(spellID, out var spellDef)) return;
 
+            if (!groundPosition.IsFinite)
+            {
+                Debug.Warning($"Actor {name} attempted to cast ground spell '{spellID}' with a non-finite world position.");
+                return;
+            }
+
             Debug.Log($"Actor {name} is casting ground spell '{spellID}' at {groundPosition}");
-            spellDef.PositionTarget = groundPosition;
-            ActorEndpoint.onServerSpellCastStarted?.Invoke(GetComponent<Actor>(), spellDef);
-            spellDef.PositionTarget = default;
+            spellDef.HasWorldPositionTarget = true;
+            spellDef.WorldPositionTarget = groundPosition;
+            try
+            {
+                ActorEndpoint.onServerSpellCastStarted?.Invoke(GetComponent<Actor>(), spellDef);
+            }
+            finally
+            {
+                spellDef.HasWorldPositionTarget = false;
+                spellDef.WorldPositionTarget = default;
+            }
         }
 
         /// <summary>

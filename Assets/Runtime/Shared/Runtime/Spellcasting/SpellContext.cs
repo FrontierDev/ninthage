@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 namespace Game.Shared.Runtime.Spellcasting
 {
     /// <summary>Contains runtime state for one spell cast.</summary>
@@ -18,7 +19,11 @@ namespace Game.Shared.Runtime.Spellcasting
         public Actor Caster;
         /// <summary>Gets or sets the actor target.</summary>
         public Actor ActorTarget;
-        /// <summary>Gets or sets the ground target position.</summary>
+        /// <summary>Gets or sets whether this cast has an authoritative ground target.</summary>
+        public bool HasWorldPositionTarget;
+        /// <summary>Gets or sets the authoritative absolute ground target position.</summary>
+        public WorldPosition WorldPositionTarget;
+        /// <summary>Gets or sets the derived continuous-server physical projection of the ground target.</summary>
         public Vector3 PositionTarget;
         /// <summary>Gets the selected actor targets.</summary>
         public List<Actor> Targets = new();

@@ -1,8 +1,4 @@
-using System.Collections.Generic;
-using Game.Shared.Runtime.Spellcasting;
 using UnityEngine.Scripting.APIUpdating;
-
-using Game.Shared.Runtime.Actors;
 namespace Game.Shared.Data.SpellTargetDefinitions
 {
     [System.Serializable]
@@ -22,10 +18,5 @@ namespace Game.Shared.Data.SpellTargetDefinitions
             return new SpellTarget_Single();
         }
 
-        /// <summary>Evaluates the selected actor.</summary>
-        public override List<Actor> Evaluate(SpellContext ctx)
-        {
-            return ctx.ActorTarget != null ? new List<Actor> { ctx.ActorTarget } : new List<Actor>();
-        }
     }
 }
