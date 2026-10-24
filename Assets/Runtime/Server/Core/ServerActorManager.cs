@@ -11,7 +11,6 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
-using UnityEngine.AI;
 
 namespace Game.Server.Core
 {
@@ -388,7 +387,6 @@ namespace Game.Server.Core
         {
             public Actor NPC;
             public NPCBehavior Behavior;
-            public NavMeshAgent Agent;
             public Actor PendingTarget;
             public long PendingAcquisitionTickID;
         }
@@ -458,6 +456,7 @@ namespace Game.Server.Core
             _pendingPositionProposals.Clear();
             _lastProposalOrder.Clear();
             _npcAggroStates.Clear();
+            _npcNavigationStates.Clear();
             _pendingTickID = -1;
             _pendingTickEntityScanCount = 0;
             _pendingTickGameObjectSyncCount = 0;
@@ -478,6 +477,7 @@ namespace Game.Server.Core
         {
             if (!_initialized) return;
             EnsureNPCAggroScheduleRegistered();
+            UpdateNPCNavigation();
             using var markerScope = UPDATE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             if (telemetryEnabled)
@@ -743,6 +743,7 @@ namespace Game.Server.Core
                 && !ReferenceEquals(registeredActor, actor))
                 return;
 
+            RemoveNPCNavigationRegistration(actor);
             if (ServerPhysicsManager.IsInitialized
                 && ServerPhysicsManager.Instance != null
                 && ServerPhysicsManager.Instance.TryGetActorRegionDescriptor(actor.ID, out _))
@@ -785,6 +786,7 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
+            RemoveNPCNavigationRegistration(actor);
             if (_npcAggroStates.TryGetValue(actor.ID, out var state))
             {
                 ClearPendingAggro(ref state);
@@ -828,7 +830,6 @@ namespace Game.Server.Core
             {
                 NPC = actor,
                 Behavior = behavior,
-                Agent = actor.GetComponent<NavMeshAgent>(),
                 PendingTarget = null,
                 PendingAcquisitionTickID = 0
             };
@@ -860,7 +861,13 @@ namespace Game.Server.Core
                     // An unowned actor must have the same movement state as a newly registered NPC
                     // before the next authoritative movement bridge runs.
                     if (component.Owner == default)
+                    {
                         EnsureNPCMovementComponents(entity, actor);
+                    }
+                    else
+                    {
+                        RemoveNPCNavigationRegistration(actor);
+                    }
 
                     if (previousOwner != default
                         && previousOwner != component.Owner
@@ -1067,6 +1074,7 @@ namespace Game.Server.Core
                 ValidatePlayerPositions(tick);
             if (playerPhysicalTransformsChanged)
                 Physics.SyncTransforms();
+            UpdateSameRegionNPCNavigationDestinations();
             SynchronizeNPCPositionsToECS();
         }
 
