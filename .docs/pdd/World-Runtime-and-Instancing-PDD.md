@@ -281,113 +281,51 @@ The fixed solution is one project-owned PurrNet position RPC/serialization path.
 
 The project-owned path replaces only `NetworkTransform` position. `NetworkTransform` remains available for rotation and other suitable properties, and its position sync is set to `No` only after server-authored observer position updates and client-origin projection are functional. No vendor source is modified and no competing gameplay position stream is retained. The implementation order is: origin-qualified proposal sending/serialization, server validation and canonical commit, then observer updates and the position-sync cutover.
 
-### 5.5 Server simulation regions and local physics/NavMesh frames
+### 5.5 Server physical simulation space and authored simulation regions
 
-Client floating-origin/network cells and environment tiles share one 256 m horizontal grid through `GameConfiguration.ChunkSize`, but remain distinct responsibilities. Server simulation regions and logical `ActorSpatialContext` remain separate concepts as well. **Environment tiles are content-streaming units, not physics coordinate systems.** A simulation region is a contiguous server-local Unity physics/NavMesh frame containing many adjacent environment tiles from one compatible `(WorldID, MapID, InstanceID)` context.
+Client floating-origin/network cells and environment tiles continue to share one 256 m horizontal grid through `GameConfiguration.ChunkSize`, but that grid is **not** a server physics partition.
 
-The runtime ownership boundary is explicit:
+For the current implementation phase, one active public map/runtime instance uses **one continuous Unity physics and navigation space** across its streamed detailed environment. Environment tiles remain additive content-streaming units. Loading or unloading a 256 m tile adds/removes its environment representation in that same physical space; it must not move existing actors, change their physics frame, warp a `NavMeshAgent`, or trigger a navigation handoff.
 
-- `ServerWorldManager` owns PurrNet/Addressables environment-scene identity, loading, unloading and terminal async scene lifecycle. It does **not** own physics frames, collider placement, NavMesh placement or physics-query coordinate conversion.
-- `ServerPositionManager` owns general position representation/transport conversions that are independent of physical simulation, including existing `WorldPosition` ↔ chunk/local network encoding. It does **not** own active simulation regions, colliders, NavMesh data, physics scenes or physical-frame lifetime.
-- `ServerPhysicsManager` owns the server's physical representation: active simulation-region registry/lifetime, region-local coordinate frames, absolute-double ↔ region-local conversion at the Unity boundary, physical isolation/placement of active regions, environment collider/NavMesh physical binding and server physics-query execution/conversion.
-- `ActorComponent.WorldPositionD` remains the sole mutable accepted absolute actor position. `ServerPhysicsManager` projects that state into Unity-local physical space; it does not become another actor-position authority.
+The runtime ownership boundary is:
 
-This split is mandatory. Physics/NavMesh state must not drift back into `ServerPositionManager` merely because coordinate conversion is involved, and scene streaming must not accumulate physical-placement state in `ServerWorldManager`.
+- `ServerWorldManager` owns Addressables/PurrNet environment scene identity, loading, unloading and terminal async scene lifecycle.
+- `ServerPositionManager` owns general position representation/transport conversions independent of physical simulation.
+- `ServerPhysicsManager` owns reusable server physics mechanics, environment collider/NavMesh binding and server physics-query execution.
+- `ActorComponent.WorldPositionD` remains the sole mutable accepted absolute actor position.
 
-All environment tiles loaded into the same simulation region retain their authored adjacency in Unity space. Loading, unloading or crossing a 256 m tile boundary must not allocate a new physics frame, change an actor's local frame, warp a `NavMeshAgent`, or alter `ActorComponent.WorldPositionD`.
+The existing client floating-origin system remains the current precision mechanism. The server does not mirror each client origin change and does not need a server floating-origin system at the present testing scale. Server Unity transforms are a physical representation of canonical absolute state, not a replacement authority.
 
-A simulation region is identified by its logical context plus a coarse region coordinate or equivalent immutable region identifier owned by `ServerPhysicsManager`. Region dimensions must be configurable whole multiples of the shared 256 m origin/environment grid and selected from representative server-density/navigation measurements. The region **span** must not be inferred from the 64 m spatial-index grid or assumed to be one shared grid cell merely because origin and environment boundaries align.
+Streamed NavMesh content must form a **continuous navigation domain** wherever authored terrain is traversable. Whether Unity stores that contribution as one dataset or several adjacent `NavMeshData` objects is an implementation detail; a 256 m content boundary must not be visible to gameplay navigation.
 
-Simulation-region grouping retains integer environment-tile membership (for example, with a four-tile X span, region 0 contains tile coordinates 0 through 3), but the physical world footprint inherits the centred tile bounds. For tile size `S`, X tile span `N`, and region coordinate `r`:
+A **simulation region** remains a long-term coarse server-ownership concept, but it is no longer derived from fixed floor division of environment-tile coordinates. Future regions are large authored world areas chosen around geography, gameplay and operational scaling. Their boundaries should be rare and intentionally placed at natural or designed transition points where ordinary NPC pursuit does not need to continue across the boundary, such as major mountain barriers/passes, controlled river crossings, tunnels, gates or transport transitions.
 
-```text
-region minimum = r * N * S - S/2
-region maximum = region minimum + N * S
-```
+Within one simulation region, physics and NavMesh movement are continuous. An authored simulation-region boundary may also be an AI/encounter leash boundary where appropriate. A future server-worker transfer across such a boundary is a separate authority-transfer problem and must not be implemented as routine `NavMeshAgent` seam search/Warp between nearby streamed tiles.
 
-The same applies on Z. Therefore a 4×4 region 0 at `S = 256` begins at absolute X/Z `-128`, not `0`. Region containment remains strict half-open at that corrected minimum/maximum.
+The authoritative logical `ActorSpatialContext` remains independent of environment scenes, client floating origin and future simulation-region/worker ownership.
 
-The canonical physical conversion owned by `ServerPhysicsManager` is:
+### 5.6 Superseded fixed-grid simulation-region experiment
 
-```text
-region-local float = region-local anchor + (absolute double position - absolute double region origin)
-absolute double position = absolute double region origin + (region-local float - region-local anchor)
-```
+Issue #147 measured fixed rectangular 1×1, 2×2, 4×4, 8×8 and 16×16 physical simulation-region candidates and selected a temporary 4×4/8-active-region engineering default. Those measurements remain useful historical evidence about Unity NavMesh build cost, physical isolation and float precision, but the resulting architecture is **superseded**.
 
-The subtraction and inverse reconstruction occur in double precision before the float boundary. Region/frame identity is representation and simulation-placement state only; it is not another position authority and is never inferred from `GameObject.scene`, PurrNet `SceneID`, scene name, client origin cell or spatial-index cell.
-
-A server worker may host one or more simulation regions. If multiple regions share one Unity process, `ServerPhysicsManager` must ensure their physical representations cannot interact accidentally while preserving the invariant that **tiles inside one region are physically contiguous**. The concrete Unity isolation/placement mechanism remains an implementation decision to validate against supported Physics/NavMesh behaviour. Private instances may use separate regions or eventually separate workers without changing actor/world identity.
-
-Crossing a **simulation-region** boundary is a coarse physical-simulation handoff, not a normal tile-streaming event. `ServerPhysicsManager` owns the local-frame transition and physical binding; higher-level movement/navigation ownership preserves `ActorSpatialContext`, canonical absolute position and route intent unless gameplay explicitly performs a logical context transition. Ordinary movement across adjacent 256 m tiles inside one region uses normal continuous NavMesh/physics movement.
-
-**Approved Stage 1.2 enabled-NavMesh boundary contract (Issue #165).** Physically separated region NavMeshes are connected for navigation by **calculated, validated adjacent-region seams** expressed in absolute double-precision map coordinates. Each seam has one reachable source approach point inside the source region and one admissible destination landing point inside the cardinally adjacent region. This is a navigation handoff, not a Unity NavMesh link, per-environment-tile gateway, authored portal, shared NavMesh or overlapping physical frame. One simulation region still owns at most one registered NavMesh dataset for the configured agent type. The Movement and Traversal PDD §20.3.2 owns candidate search, complete-path and traversability checks, chase routing, agent state, crossing trigger and recovery.
-
-**Physical readiness and half-open ownership.**
-
-1. The source and destination must have compatible valid `ActorSpatialContext` values and immediately adjacent immutable coarse region identities. Both active region descriptors must exist; the destination must not be implicitly created as a side-effect of an actor handoff.
-2. The **exact landing environment tile** (`WorldChunkKey` from the actor context and accepted absolute landing coordinate) must have completed physical binding to the expected destination region. Its scene/NavMesh contribution must not be pending unload. Both source and destination region NavMesh datasets must be registered, valid, and suitable for the enabled agent type, with a currently verified seam through both navigation surfaces.
-3. Each region retains its half-open absolute X/Z footprint. The shared boundary belongs to exactly one region according to the existing floor-division and `ToRegionLocal`/`ToWorld` contract, including negative coordinates. A source approach remains in its source footprint; the destination landing belongs to the destination footprint. The physically separate local-frame Warp projects the **chosen admitted landing absolute position**, not a source-local float or an ambiguous same-position claim across two regions.
-4. Streamed environment scenes, collider/NavMesh data and the actor's physical registration remain active for the duration of any in-flight handoff or rollback. Region retirement cannot remove the source frame before a failed reattachment has been safely resolved. The physics owner retains any temporary transfer lifetime protection; the world owner still exclusively decides loading/unloading and does not acquire a navigation-route registry.
-5. A failed seam/agent admission leaves the previously accepted `ActorComponent.WorldPositionD`, logical context and spatial membership unchanged. A successful same-context handoff updates physical actor membership through `ServerPhysicsManager.TransitionActorRegion` before the accepted landing coordinate is published; it is not the atomic logical-context transfer of Stage 1.2 step 13. A Unity Warp/attachment failure must be restored to a verified source representation or surfaced as a hard invalid physical state, never silently accepted.
-
-**Owner and portability boundaries.** `Actor.Target` holds the selected gameplay target identity. `ServerActorManager_NPCMovement` (the `ServerActorManager` partial, not a separate manager) exclusively owns NPC pursuit/navigation intent, enabled-`NavMeshAgent` destination requests, same-region destination refresh, temporary adjacent-region seam search/hop state, selected approach intent, handoff readiness and the pre-ECS movement bridge. `ServerPhysicsManager` owns the reusable NavMesh/physical mechanics: navigation-region lookup, NavMesh data registration/lifetime, seam candidate discovery and validation, region-local/absolute conversion, reversible physical Warp and region binding transitions. `ServerActorManager`/ECS retain the accepted-position tick and spatial-publication authority. `ServerAutoAttackManager` owns only auto-attack combat registration, range, casting/cooldown/readiness evaluation and attack execution/removal; it does not own `NavMeshAgent`, `SetDestination`, path, seam/hop or Warp state, nor decide or commit region crossings. Removing or stopping auto-attack registration must not implicitly stop otherwise-valid NPC pursuit; movement does not depend on `ServerAutoAttackManager._activeAutoAttackers`. Normal 256 m tile transitions inside a region still do none of these handoff operations. A future worker message carries logical context, actor/region identity, absolute coordinates, movement intent and target identity, **not** process-local physical slot numbers, `LocalAnchor`, Unity `Vector3` region coordinates, `NavMeshDataInstance`, scene or GameObject references. No inter-worker protocol is introduced in Stage 1.2.
-
-Physics queries for ECS-driven actors are routed through `ServerPhysicsManager`: convert canonical absolute coordinates to the actor's verified region-local frame before the query, then convert query results back to absolute doubles before authoritative ECS state is changed. Missing, stale or conflicting region/frame association is an explicit invalid simulation state; there is no origin-zero or transform-derived fallback.
-
-NavMesh physical data placement/lifetime belongs with `ServerPhysicsManager` because it shares the region-local physical frame. Higher-level route planning or navigation behaviour may later justify a separate navigation owner, but Stage 1.2 must not introduce a speculative `ServerNavigationManager` merely to split naming.
-
-The previous per-environment-tile packed-slot design is superseded. Existing prototype code that allocates a separate physics/NavMesh slot for each 256 m tile must be removed before the replacement `ServerPhysicsManager` simulation-region implementation is introduced.
-
-### 5.6 Stage 1.2 simulation-region sizing benchmark and selected engineering default
-
-Issue [#147](https://github.com/FrontierDev/ninthage/issues/147) measured candidate simulation-region spans and concurrent-region counts using the existing Editor Play Mode performance harness, Unity 6.3.10f1, the deterministic `Outdoor` fixture at seed `424242`, and the shared 256 m `GameConfiguration.ChunkSize`. The measured machine was Windows 11 on an AMD Ryzen 7 5700X with 16 GB system memory and an NVIDIA GeForce RTX 4060 Ti. These measurements select an **initial engineering default for Stage 1.2**; they are not a supported-player-count claim, a standalone-headless capacity result, or a production deployment guarantee.
-
-The probe used a test-owned isolated `PhysicsScene` for each concurrent region and test-owned NavMesh data. Physics queries were explicitly synchronized to each local physics scene before measurement because project physics auto-sync is disabled. A successful candidate had to preserve descriptor conversion, physics isolation, NavMesh continuity across internal 256 m tile boundaries where applicable, cross-region NavMesh isolation when more than one region was active, and cleanup.
-
-#### Phase A — region-size sweep at one active region
-
-| Region span | Physical width | Tiles | Objects | Colliders | Setup | Teardown | NavMesh build | NavMesh registration | Physics query | NavMesh path query | Memory delta | Max X/Z round-trip error | Result |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 × 1 | 256 m | 1 | 33 | 1 | 59.1025 ms | 4.4576 ms | 48.8952 ms | 0.7087 ms | 0.4564 ms | N/A — control has no internal tile boundary | -8,011,034 B | 0.000007080078125 m | Pass; control only |
-| 2 × 2 | 512 m | 4 | 132 | 4 | 178.1430 ms | 4.6938 ms | 163.2402 ms | 0.9232 ms | 0.5052 ms | 0.5781 ms | -7,692,742 B | 0.000007080078149 m | Pass |
-| 4 × 4 | 1024 m | 16 | 528 | 16 | 671.4247 ms | 5.6130 ms | 638.0332 ms | 2.2013 ms | 0.4802 ms | 0.5298 ms | -6,412,170 B | 0.000023437500000 m | Pass |
-| 8 × 8 | 2048 m | 64 | 2,112 | 64 | 2711.1315 ms | 9.4500 ms | 2599.8639 ms | 7.9415 ms | 1.3192 ms | 0.8176 ms | -1,353,214 B | 0.000023437500000 m | Pass |
-| 16 × 16 | 4096 m | 256 | 8,448 | 256 | 10463.9854 ms | 42.4774 ms | 10009.8303 ms | 43.9471 ms | 0.4384 ms | 0.4476 ms | +21,825,798 B | 0.000023437500204 m | Pass |
-
-All five Phase A spans passed the correctness checks. Physics isolation and cleanup passed for every span; NavMesh internal-tile continuity passed for every non-control span; cross-region NavMesh isolation was correctly recorded as not applicable because concurrency was one. The 1 × 1 case remains control-only and cannot be selected as the production default.
-
-The Phase A source baseline was commit `f554c3d7ea221c3602e3d5f63e8cda9c41265132`. The benchmark generated evidence files during execution, so later runs in the same campaign report a dirty working tree even though source code was not changed between candidates. The owner accepted the completed Phase A sweep as sufficient engineering evidence for selecting the two Phase B candidates. The results favoured 4 × 4 and 8 × 8: 2 × 2 would create substantially more physical-region boundaries, while 16 × 16 imposed approximately 10.5 seconds of region setup/NavMesh construction for a single region.
-
-#### Phase B — concurrent-region sweep
-
-Phase B compared the retained 4 × 4 and 8 × 8 candidates. The concurrency-one values are the corresponding Phase A measurements; the additional Phase B runs exercised 2, 4 and 8 simultaneously active isolated regions.
-
-| Region span | Concurrent regions | Total tiles | Total objects | Colliders | NavMesh data | Setup | Teardown | Memory delta | Max X/Z round-trip error | Physics isolation | Internal NavMesh continuity | Cross-region NavMesh isolation |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
-| 4 × 4 | 1 | 16 | 528 | 16 | 1 | 671.4247 ms | 5.6130 ms | -6,412,170 B | 0.000023437500000 m | Pass | Pass | N/A — single region |
-| 4 × 4 | 2 | 32 | 1,056 | 32 | 2 | 1336.4393 ms | 8.1969 ms | -6,221,591 B | 0.000023437500000 m | Pass | Pass | Pass |
-| 4 × 4 | 4 | 64 | 2,112 | 64 | 4 | 2681.9781 ms | 14.1786 ms | -1,328,642 B | 0.000023437500204 m | Pass | Pass | Pass |
-| 4 × 4 | 8 | 128 | 4,224 | 128 | 8 | 5478.8555 ms | 23.9931 ms | +5,267,464 B | 0.000023437500204 m | Pass | Pass | Pass |
-| 8 × 8 | 1 | 64 | 2,112 | 64 | 1 | 2711.1315 ms | 9.4500 ms | -1,353,214 B | 0.000023437500000 m | Pass | Pass | N/A — single region |
-| 8 × 8 | 2 | 128 | 4,224 | 128 | 2 | 5330.5875 ms | 15.0894 ms | +6,368,632 B | 0.000023437500000 m | Pass | Pass | Pass |
-| 8 × 8 | 4 | 256 | 8,448 | 256 | 4 | 10462.7013 ms | 29.3247 ms | +18,912,820 B | 0.000023437500204 m | Pass | Pass | Pass |
-| 8 × 8 | 8 | 512 | 16,896 | 512 | 8 | 21001.7230 ms | 61.7494 ms | +50,658,132 B | 0.000953124999796 m | Pass | Pass | Pass |
-
-All six additional Phase B runs completed as qualified harness runs and passed physics isolation, internal NavMesh continuity, cross-region NavMesh isolation and cleanup. The Phase B campaign began from clean commit `8eb460394b94ee8098e11518e36867f6416f6d47`; subsequent dirty-tree flags were caused only by generated benchmark evidence. No source-code changes were made between the Phase B candidates.
-
-The measurements show that setup cost is dominated by the amount of 256 m fixture/NavMesh content represented. A 4 × 4 region provides a 1024 × 1024 m contiguous physical frame with approximately 0.65–0.68 seconds of per-region setup/NavMesh-build cost in these tests, while an 8 × 8 region covers four times the tile area but costs approximately 2.5–2.6 seconds per region. At eight concurrent regions the measured aggregate setup cost was approximately 5.48 seconds for 4 × 4 versus 21.00 seconds for 8 × 8. The larger candidate reduced the number of potential region boundaries but provided no correctness advantage in the tested representation. Float conversion precision remained negligible for both candidates; the largest observed X error was approximately 0.953 mm at the furthest 8 × 8 / eight-region anchor.
-
-The owner-approved initial Stage 1.2 engineering default is therefore:
+The fixed values:
 
 ```text
-Selected ServerSimulationRegionTilesX = 4
-Selected ServerSimulationRegionTilesZ = 4
-Selected ServerSimulationRegionCapacity = 8
+ServerSimulationRegionTilesX = 4
+ServerSimulationRegionTilesZ = 4
+ServerSimulationRegionCapacity = 8
 ```
 
-This produces a **1024 × 1024 m simulation region** containing 16 shared 256 m environment tiles. A capacity of eight means one server process may own up to eight concurrently active simulation regions under this initial configuration. Capacity is a configured active-region limit, not a claim about supported player population. The choice intentionally prefers cheaper region activation and lower represented-content cost over the lower boundary frequency of 8 × 8 regions. It may be revisited when standalone-headless, production-content-density or real actor/navigation workloads provide stronger evidence.
+are no longer design requirements. In particular:
 
-The raw benchmark evidence is tracked under `Builds/Benchmarks/Results/` in the #147 Phase A and Phase B commits. The Phase B evidence commit is `63492c228c54832a46834d8ee285adb581b5b030`.
+- nearby 256 m streamed tiles must not be split into isolated physics/NavMesh spaces merely to satisfy a small fixed region grid;
+- an initial 3×3 streaming window must not consume multiple physical simulation-region slots solely because it straddles integer floor-division boundaries;
+- ordinary NPC pursuit must not depend on calculated inter-region seams, `NavMeshAgent.Warp` or small-region capacity;
+- server partitioning should be introduced only when precision, workload or worker-scaling evidence requires it.
+
+The investigation motivating this revision is recorded in `.docs/NPC-Cross-Region-Pursuit-Investigation.md`. The original benchmark evidence and prior PDD revisions remain available through repository history for future comparison.
+
+## 6.
 
 ## 6. Open-World Content Streaming
 
@@ -946,7 +884,7 @@ A **public-world instance** means the common non-private simulation for one spec
 
 The position authority is deliberately separate from this context identity. `Actor.SpatialContext` is the immutable server-assigned `(WorldID, MapID, InstanceID)` value; it is not inferred from a movement proposal, scene, chunk-interest request or floating-origin frame. The accepted position and context are published together at the authoritative tick boundary, and a proposal with missing or mismatched context is rejected rather than repaired from `CurrentChunk` or `SceneID`.
 
-Server simulation-region identity is separate from this full logical context. A simulation region groups many adjacent streamed environment tiles into one contiguous local physics/NavMesh frame owned by `ServerPhysicsManager`. It is not a single 256 m origin/environment grid cell, 64 m spatial-index cell, authored scene identity or replacement for the actor context. The actor's canonical absolute ECS position remains independent of whichever simulation region currently represents it.
+Future simulation-region/worker ownership is separate from this full logical context. A simulation region is a large authored server-ownership area, not a 256 m origin/environment cell, 64 m spatial-index cell, scene identity or replacement for actor context. During the current single-area implementation, actors share one continuous server physical/navigation space for the active map instance. The actor's canonical absolute ECS position remains independent of any future worker or simulation-region ownership.
 
 Stage 1.2 first introduces this value contract in Shared code. Server-owned lifecycle/spawn integration resolves and assigns the actor's **real authoritative context** before publication. The approved *temporary single-world test-hosting contract* for this integration is defined below. No client-supplied context authority, implicit scene-derived identity or persistent-world allocation service is approved.
 
@@ -1102,17 +1040,17 @@ Spatial identity must not remain fixed to the actor's original spawn scene.
 
 `ServerSpatialIndex.Move` consumes the changed accepted ECS position exactly once per authoritative commit. Same-cell moves retain broad-phase membership while exact queries and observer updates read the latest ECS position. The index does not own a second precise position store.
 
-#### Server-local simulation regions
+#### Continuous server physical space and future authored regions
 
-Server navigation operates within contiguous simulation-region frames rather than one packed frame per streamed tile. `ServerPhysicsManager` owns every active region's physical frame, qualified by full world/map/instance context and a coarse region identity; each region contains multiple adjacent 256 m environment tiles in their natural relative positions.
+The current implementation target is one continuous server physics/NavMesh space for the active public map/runtime instance. Individual 256 m environment scenes may stream independently, but their physical and navigation content is placed into that same space. Tile streaming must not move existing actors, change their physical frame or require `NavMeshAgent` rebind/Warp.
 
-`ServerWorldManager` may load or unload individual tile scenes, but it hands physical binding/unbinding to `ServerPhysicsManager`. Tile streaming must not move existing actors, change their physics frame, or require `NavMeshAgent` rebind/warp at tile boundaries. Colliders, NavMesh data, agents and ECS physics queries use the same region-local physical conversion while canonical actor state remains absolute double precision.
+`ServerPhysicsManager` owns physical/query mechanics and environment collider/NavMesh binding. `ServerPositionManager` remains outside physical lifetime and may provide world/chunk transport conversions only.
 
-`ServerPositionManager` remains outside this lifecycle. It may provide world/chunk transport conversions, but it must not allocate regions, retain physical-frame references or execute physical placement.
+Future simulation regions are large authored areas intended for coarse worker ownership or deliberate world partitioning. They are not generated by fixed-size floor division of streamed tiles. Boundaries should be chosen where world geography and encounter design permit clean transitions and where ordinary NPC pursuit is intentionally prevented or reset.
 
-A transition between simulation regions is comparatively rare and occurs only at the coarse region boundary. `ServerPhysicsManager` owns physical detach/rebind; movement/navigation logic preserves absolute position and navigation intent. Such a transition is not automatically a logical world/map/instance transfer.
+No small concurrent-region capacity is an architectural requirement. Any later worker/region capacity is an operational deployment limit derived from measured workload, not a gameplay-space cap and not a reason to subdivide a nearby continuous world prematurely.
 
-The size and concurrent-region capacity are configuration/performance decisions. Region sizing must be validated against representative actor density, streamed tile count, NavMesh/physics cost and float precision; capacity exhaustion or unavailable destination simulation must fail explicitly rather than collapsing multiple regions onto one frame.
+### 23.5 Add range-based actor visibility
 
 ### 23.5 Add range-based actor visibility
 
