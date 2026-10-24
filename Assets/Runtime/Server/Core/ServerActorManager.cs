@@ -1150,6 +1150,7 @@ namespace Game.Server.Core
                     actorID,
                     actor.SpatialContext,
                     position);
+                UpdateAcceptedActorChunkMembership(actor, position);
                 actor.SetAcceptedPositionSnapshotFromServer(position, tickID);
             }
 
@@ -1161,6 +1162,49 @@ namespace Game.Server.Core
                         $"ECS actor registry entry '{entityPair.Key}' has no corresponding actor.");
                 }
             }
+        }
+
+        private static void UpdateAcceptedActorChunkMembership(
+            Actor actor,
+            WorldPosition position)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (!actor.SpatialContext.IsValid)
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' has an invalid spatial context.");
+            }
+            if (!position.IsFinite)
+                throw new ArgumentException("Accepted actor position must be finite.", nameof(position));
+
+            Vector2Int chunk = position.Chunk;
+            string destinationSceneName = $"World_{chunk.x}_{chunk.y}";
+            string sourceSceneName = actor.CurrentChunk;
+            if (StringComparer.Ordinal.Equals(sourceSceneName, destinationSceneName))
+                return;
+
+            NetworkIdentity identity = actor.GetComponent<NetworkIdentity>();
+            if (identity != null)
+            {
+                if (string.IsNullOrEmpty(sourceSceneName))
+                {
+                    ChunkSubscriptions.RegisterIdentity(
+                        actor.SpatialContext,
+                        destinationSceneName,
+                        identity);
+                }
+                else
+                {
+                    ChunkSubscriptions.MoveIdentity(
+                        actor.SpatialContext,
+                        sourceSceneName,
+                        destinationSceneName,
+                        identity);
+                }
+            }
+
+            actor.CurrentChunk = destinationSceneName;
         }
 
     }

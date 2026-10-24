@@ -149,10 +149,8 @@ namespace Game.Server.Core
                     toUnsubscribe.Add(coord);
             }
 
-            // Update actor's subscribed scene set and current chunk
+            // Update actor's subscribed scene set.
             _actorChunks[actor] = newSet;
-            var centerScene = $"World_{centerChunk.x}_{centerChunk.y}";
-            actor.CurrentChunk = centerScene;
 
             // Update ChunkSubscriptions: remove actor from old scenes, add to new
             foreach (var sceneName in oldSet)
