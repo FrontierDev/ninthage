@@ -279,8 +279,15 @@ namespace Game.Tests.Performance.Harness
             if (!_timedStateStressEnabled || _timedStateStressPrepared)
                 return;
 
+            DisableTimedStateStressMotion(0, _fixture.DataOnlyEntities.Count);
+
+            _timedStateStressPrepared = true;
+        }
+
+        private void DisableTimedStateStressMotion(int firstEntityIndex, int entityCount)
+        {
             var entityManager = ServerECSManager.DefaultWorld.EntityManager;
-            for (var index = 0; index < _fixture.DataOnlyEntities.Count; index++)
+            for (var index = firstEntityIndex; index < firstEntityIndex + entityCount; index++)
             {
                 var entity = _fixture.DataOnlyEntities[index];
                 if (!entityManager.Exists(entity))
@@ -290,8 +297,6 @@ namespace Game.Tests.Performance.Harness
 
                 entityManager.SetComponentEnabled<MotionStateComponent>(entity, false);
             }
-
-            _timedStateStressPrepared = true;
         }
 
         public void AdvanceRamp(float elapsedSeconds, float durationSeconds)
@@ -307,7 +312,10 @@ namespace Game.Tests.Performance.Harness
             var count = target - _fixture.DataOnlyEntityCount;
             if (count > 0)
             {
+                var firstSpawnedEntityIndex = _fixture.DataOnlyEntityCount;
                 _fixture.SpawnDataOnly(count);
+                if (_timedStateStressEnabled)
+                    DisableTimedStateStressMotion(firstSpawnedEntityIndex, count);
                 RecordSpawnEvent(count);
             }
 

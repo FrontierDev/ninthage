@@ -25,7 +25,7 @@
         "generator_revision": "1.0.0",
         "input_path": "Assets/Tests/Performance/Fixtures/Actors/actor-population-manifest.json",
         "asset_manifest_path": "Assets/Tests/Performance/Fixtures/Actors/actor-asset-manifest.json",
-        "source_commit": "ecf1b500c4e163eda8fee97a43eefe66c86222c7",
+        "source_commit": "407ad38328807f31345514eaacb47be3c9cf7a1b",
         "source_sha256": "4b4b70aef4eeda0ecbe8b17ee39da136e3e2aee1e13437aca688569995d66b93",
         "asset_manifest_sha256": "ad8a7c5ddced960ac7e028b5f75ff2e6f04ba6cf7ee6e2df946ef90d08e26842"
     },

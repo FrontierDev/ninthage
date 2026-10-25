@@ -1,8 +1,8 @@
 {
 "schema_version":"benchmark-run/v1",
-"run_id":"run-20261025T190154873Z-cc7f73ce",
-"fixture":{"path":"fixture.json","sha256":"a0195eaa351d61334e1a037dab0fdb34f2a378fd5f67113d28b8e43f0213bc95"},
-"git":{"repository":"C:\\Users\\recip\\Unity\\NinthAge","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-25T19:01:51.8054442Z","commit_sha":"ecf1b500c4e163eda8fee97a43eefe66c86222c7","dirty":true,"diff_sha256":"4c9b49b385291b14ad73ee5f46699c03a6cb63361981adb6f81f4f693c1660a6"},
+"run_id":"run-20261025T191025445Z-3ad8deb8",
+"fixture":{"path":"fixture.json","sha256":"740b56b4f8996308bf9a357caec8ffbf55fcbd1c0035a3f44ff9d29a8deae69f"},
+"git":{"repository":"C:\\Users\\recip\\Unity\\NinthAge","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-25T19:10:25.0331105Z","commit_sha":"407ad38328807f31345514eaacb47be3c9cf7a1b","dirty":true,"diff_sha256":"d94832d7690ad5c01735dee62ce09526c8a6c55a747372028f942c6b00c50b05"},
 "unity":{"version":"6000.3.10f1","platform":"WindowsEditor"},
 "packages":{"manifest_sha256":"8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90","lock_sha256":"933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9"},
 "purrnet":{"source":"Assets/ThirdParty/PurrNet","sha256":"e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941"},
