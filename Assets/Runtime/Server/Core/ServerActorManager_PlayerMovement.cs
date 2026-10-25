@@ -30,11 +30,33 @@ namespace Game.Server.Core
             PerformanceMetricSide.Server,
             "actor_manager",
             "server_update");
+        private static readonly PerformanceMetricDefinition PLAYER_MOVEMENT_WORK_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_PLAYER_MOVEMENT_WORK_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_tick");
+        private static readonly PerformanceMetricDefinition PENDING_POSITION_PROPOSAL_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_PENDING_POSITION_PROPOSAL_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_tick");
+        private static readonly PerformanceMetricDefinition DUE_POSITION_VALIDATION_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_DUE_POSITION_VALIDATION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager",
+            "server_tick");
         private static readonly PerformanceMarker POSITION_VALIDATION_MARKER = new(POSITION_VALIDATION_DURATION_METRIC, "Server.ActorManager.ValidatePlayerPositions");
         private static readonly PerformanceMarker PLAYER_ECS_SYNC_MARKER = new(PLAYER_ECS_SYNC_DURATION_METRIC, "Server.ActorManager.SyncPlayerECS");
 
         // Player tracking for validation.
         private readonly Dictionary<PlayerID, Actor> _playerActors = new();
+        private long _playerValidationIntervalTicks;
+        private List<PlayerID>[] _playerValidationBuckets;
+        private readonly List<PlayerID> _playerMovementWork = new();
+        private readonly HashSet<PlayerID> _playerMovementWorkSet = new();
         // This is an anti-cheat snapshot only; ActorComponent.WorldPositionD remains the
         // authoritative accepted position and is updated on every authoritative tick.
         private readonly Dictionary<PlayerID, WorldPosition> _periodicValidationBaselines = new();
@@ -87,6 +109,53 @@ namespace Game.Server.Core
         // Require sustained violations before correcting to tolerate network jitter.
         private const int VIOLATION_THRESHOLD = 3;
         private const float VALIDATION_INTERVAL = 0.5f;
+
+        private void InitializePlayerValidationSchedule()
+        {
+            _playerValidationIntervalTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                VALIDATION_INTERVAL,
+                GameConfigurationManager.Config.ServerSimulationTickDuration);
+            if (_playerValidationIntervalTicks <= 0 || _playerValidationIntervalTicks > int.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    "The player validation interval must be positive and representable as a validation bucket array length.");
+            }
+
+            int bucketCount = checked((int)_playerValidationIntervalTicks);
+            _playerValidationBuckets = new List<PlayerID>[bucketCount];
+            for (int i = 0; i < _playerValidationBuckets.Length; i++)
+                _playerValidationBuckets[i] = new List<PlayerID>();
+        }
+
+        private void SchedulePlayerValidation(
+            PlayerID playerID,
+            long dueTickID)
+        {
+            if (_playerValidationIntervalTicks <= 0 || _playerValidationBuckets == null)
+            {
+                throw new InvalidOperationException(
+                    "Player validation scheduling has not been initialized.");
+            }
+
+            if (ServerECSManager.CurrentSimulationTickID > 0)
+            {
+                if (dueTickID <= ServerECSManager.CurrentSimulationTickID)
+                {
+                    throw new InvalidOperationException(
+                        $"Player validation deadline {dueTickID} must be after active simulation tick "
+                        + $"{ServerECSManager.CurrentSimulationTickID}.");
+                }
+            }
+            else if (dueTickID <= ServerSimulationClock.CurrentTickID)
+            {
+                throw new InvalidOperationException(
+                    $"Player validation deadline {dueTickID} must be after current simulation tick "
+                    + $"{ServerSimulationClock.CurrentTickID}.");
+            }
+
+            int bucketIndex = (int)(dueTickID % _playerValidationIntervalTicks);
+            _playerValidationBuckets[bucketIndex].Add(playerID);
+        }
 
         /// <summary>
         /// Authenticates and coalesces the newest owner proposal for consumption by the next
@@ -148,10 +217,63 @@ namespace Game.Server.Core
         {
             using var markerScope = POSITION_VALIDATION_MARKER.Begin();
             bool physicalTransformsChanged = false;
-            foreach (var kvp in _playerActors)
+            _playerMovementWork.Clear();
+            _playerMovementWorkSet.Clear();
+
+            int pendingProposalCount = _pendingPositionProposals.Count;
+            foreach (PlayerID playerID in _pendingPositionProposals.Keys)
             {
-                var playerID = kvp.Key;
-                var actor = kvp.Value;
+                if (_playerMovementWorkSet.Add(playerID))
+                    _playerMovementWork.Add(playerID);
+            }
+
+            if (_playerValidationIntervalTicks <= 0 || _playerValidationBuckets == null)
+            {
+                throw new InvalidOperationException(
+                    "Player validation scheduling has not been initialized.");
+            }
+
+            int bucketIndex = (int)(tick.TickID % _playerValidationIntervalTicks);
+            List<PlayerID> validationBucket = _playerValidationBuckets[bucketIndex];
+            int dueValidationCount = 0;
+            foreach (PlayerID playerID in validationBucket)
+            {
+                if (!_nextValidationTickIDs.TryGetValue(playerID, out long dueTickID)
+                    || dueTickID > tick.TickID)
+                {
+                    continue;
+                }
+
+                dueValidationCount++;
+                if (_playerMovementWorkSet.Add(playerID))
+                    _playerMovementWork.Add(playerID);
+            }
+            validationBucket.Clear();
+
+            if (PerformanceTelemetry.IsEnabled)
+            {
+                PerformanceTelemetry.TryRecord(
+                    PENDING_POSITION_PROPOSAL_COUNT_METRIC,
+                    pendingProposalCount,
+                    tick.TickID);
+                PerformanceTelemetry.TryRecord(
+                    DUE_POSITION_VALIDATION_COUNT_METRIC,
+                    dueValidationCount,
+                    tick.TickID);
+                PerformanceTelemetry.TryRecord(
+                    PLAYER_MOVEMENT_WORK_COUNT_METRIC,
+                    _playerMovementWork.Count,
+                    tick.TickID);
+            }
+
+            foreach (PlayerID playerID in _playerMovementWork)
+            {
+                if (!_playerActors.TryGetValue(playerID, out var actor))
+                {
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' has no registered actor.");
+                }
+
                 if (actor == null)
                 {
                     throw new InvalidOperationException(
@@ -182,7 +304,7 @@ namespace Game.Server.Core
                 if (!validationDue && !hasEligibleProposal)
                     continue;
 
-                if (!_actorEntities.TryGetValue(actor.ID, out var entity))
+                if (!TryGetActorEntity(actor.ID, out var entity))
                 {
                     throw new InvalidOperationException(
                         $"Player '{playerID}' has no corresponding ECS entity.");
@@ -210,9 +332,8 @@ namespace Game.Server.Core
                         $"Player '{playerID}' has no validation baseline tick.");
                 }
 
-                long validationIntervalTicks = checked(nextValidationTickID - lastValidationTickID);
                 long elapsedTickCount = checked(tick.TickID - lastValidationTickID);
-                if (validationIntervalTicks <= 0 || elapsedTickCount <= 0)
+                if (nextValidationTickID <= lastValidationTickID || elapsedTickCount <= 0)
                     throw new InvalidOperationException("Player position validation deadline state is invalid.");
 
                 if (!_periodicValidationBaselines.TryGetValue(playerID, out var baselinePosition))
@@ -281,7 +402,7 @@ namespace Game.Server.Core
                     _periodicValidationBaselines[playerID] = candidatePosition;
                 }
 
-                AdvanceValidationDeadline(playerID, tick.TickID, validationIntervalTicks);
+                AdvanceValidationDeadline(playerID, tick.TickID);
             }
 
             return physicalTransformsChanged;
@@ -301,10 +422,13 @@ namespace Game.Server.Core
             using var markerScope = PLAYER_ECS_SYNC_MARKER.Begin();
 
             WorldPosition previousPosition = ToWorldPosition(component.WorldPositionD);
+            bool positionChanged = !AreWorldPositionsEqual(previousPosition, position);
             var physicalPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(position);
             actor.transform.position = physicalPosition;
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
             _entityManager.SetComponentData(entity, component);
+            if (positionChanged)
+                _entityManager.SetComponentEnabled<Systems.AcceptedPositionDirtyComponent>(entity, true);
             _spatialIndex.Move(component.ActorID, actor.SpatialContext, position);
             EvaluateTransferColliderCrossing(actor, previousPosition, position);
             ActorEndpoint.onServerAcceptedPlayerPositionChanged?.Invoke(
@@ -478,11 +602,12 @@ namespace Game.Server.Core
         /// <summary>Moves a player's periodic validation window to the current authoritative tick.</summary>
         /// <param name="playerID">The player whose deadline is advancing.</param>
         /// <param name="tickID">The current authoritative tick.</param>
-        /// <param name="validationIntervalTicks">The configured validation interval in ticks.</param>
-        private void AdvanceValidationDeadline(PlayerID playerID, long tickID, long validationIntervalTicks)
+        private void AdvanceValidationDeadline(PlayerID playerID, long tickID)
         {
             _lastValidationTickIDs[playerID] = tickID;
-            _nextValidationTickIDs[playerID] = checked(tickID + validationIntervalTicks);
+            long dueTickID = checked(tickID + _playerValidationIntervalTicks);
+            _nextValidationTickIDs[playerID] = dueTickID;
+            SchedulePlayerValidation(playerID, dueTickID);
         }
 
         /// <summary>
@@ -495,13 +620,14 @@ namespace Game.Server.Core
         private void InitializePlayerValidationState(PlayerID owner, Actor actor, WorldPosition acceptedPosition)
         {
             long currentTickID = ServerSimulationClock.CurrentTickID;
-            long validationIntervalTicks = GetValidationIntervalTicks();
+            long dueTickID = checked(currentTickID + _playerValidationIntervalTicks);
             RemovePendingPositionProposal(owner);
             _playerActors[owner] = actor;
             _periodicValidationBaselines[owner] = acceptedPosition;
             _lastValidationTickIDs[owner] = currentTickID;
-            _nextValidationTickIDs[owner] = checked(currentTickID + validationIntervalTicks);
+            _nextValidationTickIDs[owner] = dueTickID;
             _violationCounters[owner] = 0;
+            SchedulePlayerValidation(owner, dueTickID);
         }
 
         /// <summary>Removes all authoritative movement state associated with a player owner.</summary>
@@ -532,11 +658,5 @@ namespace Game.Server.Core
             return new WorldPosition(position.x, position.y, position.z);
         }
 
-        private static long GetValidationIntervalTicks()
-        {
-            return ServerSimulationClock.GetNonShorteningTickCount(
-                VALIDATION_INTERVAL,
-                GameConfigurationManager.Config.ServerSimulationTickDuration);
-        }
     }
 }

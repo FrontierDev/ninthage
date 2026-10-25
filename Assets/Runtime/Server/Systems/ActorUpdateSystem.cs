@@ -3,6 +3,7 @@ using Game.Server.Core;
 using Game.Shared.Performance;
 using Game.Shared.Utility;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Game.Server.Systems
@@ -46,8 +47,9 @@ namespace Game.Server.Systems
             using var markerScope = ACTOR_UPDATE_MARKER.Begin();
             var deltaTime = SystemAPI.Time.DeltaTime;
 
-            foreach (var (actor, motion, groundCheck) in
-                SystemAPI.Query<RefRW<ActorComponent>, RefRW<MotionStateComponent>, RefRO<GroundDetectionComponent>>())
+            foreach (var (actor, motion, groundCheck, entity) in
+                SystemAPI.Query<RefRW<ActorComponent>, RefRW<MotionStateComponent>, RefRO<GroundDetectionComponent>>()
+                         .WithEntityAccess())
             {
                 // Players own their vertical movement — only simulate gravity for NPC entities.
                 // NPCs with NavMeshAgent handle their own gravity and movement.
@@ -55,6 +57,8 @@ namespace Game.Server.Systems
                     continue;
                 if (motion.ValueRO.UsesNavMeshAgent)
                     continue;
+
+                double3 previousPosition = actor.ValueRO.WorldPositionD;
 
                 float groundDetectionRadius = groundCheck.ValueRO.groundDetectionRadius;
 
@@ -104,6 +108,14 @@ namespace Game.Server.Systems
                         motion.ValueRW.VerticalVelocity = -_maxFallSpeed;
 
                     actor.ValueRW.WorldPositionD.y += motion.ValueRW.VerticalVelocity * deltaTime;
+                }
+
+                double3 currentPosition = actor.ValueRO.WorldPositionD;
+                if (previousPosition.x != currentPosition.x
+                    || previousPosition.y != currentPosition.y
+                    || previousPosition.z != currentPosition.z)
+                {
+                    state.EntityManager.SetComponentEnabled<AcceptedPositionDirtyComponent>(entity, true);
                 }
             }
         }

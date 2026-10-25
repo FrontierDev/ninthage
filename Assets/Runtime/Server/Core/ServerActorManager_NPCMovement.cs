@@ -5,7 +5,6 @@ using Game.Shared.Performance;
 using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
-using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.AI;
@@ -462,44 +461,51 @@ namespace Game.Server.Core
 
         private void SynchronizeNPCPositionsToECS()
         {
-            TraverseNPCMovementEntities(SynchronizeNPCPositionToECS);
-        }
-
-        private void SynchronizeNPCTransformsFromECS()
-        {
-            TraverseNPCMovementEntities(SynchronizeNPCTransformFromECS);
-        }
-
-        private void TraverseNPCMovementEntities(
-            Func<Entity, Systems.ActorComponent, Actor, bool> synchronize)
-        {
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int syncCount = 0;
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            int fullScanCount = entities.Length;
+            _npcNavigationSnapshot.Clear();
             try
             {
-                foreach (var entity in entities)
-                {
-                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (component.Owner != default)
-                        continue;
-                    if (!_actorObjects.TryGetValue(component.ActorID, out var actorObj) || actorObj == null)
-                        continue;
+                foreach (var entry in _npcNavigationStates)
+                    _npcNavigationSnapshot.Add(entry);
 
-                    if (synchronize(entity, component, actorObj) && telemetryEnabled)
+                foreach (var entry in _npcNavigationSnapshot)
+                {
+                    Guid actorID = entry.Key;
+                    NPCNavigationState navigationState = entry.Value;
+                    if (navigationState.Actor == null)
+                    {
+                        _npcNavigationStates.Remove(actorID);
+                        continue;
+                    }
+
+                    if (!TryGetActorEntity(navigationState.Actor.ID, out Entity entity)
+                        || !_entityManager.Exists(entity))
+                    {
+                        _npcNavigationStates.Remove(actorID);
+                        continue;
+                    }
+
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                    if (component.ActorID != navigationState.Actor.ID)
+                    {
+                        throw new InvalidOperationException(
+                            $"NPC navigation registration for '{navigationState.Actor.ID}' resolved an entity for '{component.ActorID}'.");
+                    }
+
+                    if (SynchronizeNPCPositionToECS(entity, component, navigationState) && telemetryEnabled)
                         syncCount++;
                 }
             }
             finally
             {
-                entities.Dispose();
+                _npcNavigationSnapshot.Clear();
             }
 
             if (telemetryEnabled)
             {
                 RecordTickSyncContribution(
-                    fullScanCount,
+                    0,
                     syncCount,
                     ServerECSManager.CurrentSimulationTickID);
             }
@@ -508,14 +514,14 @@ namespace Game.Server.Core
         private bool SynchronizeNPCPositionToECS(
             Entity entity,
             Systems.ActorComponent component,
-            Actor actorObj)
+            NPCNavigationState navigationState)
         {
+            Actor actorObj = navigationState.Actor;
             if (actorObj.isDead)
                 return false;
 
             var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
-            if (!_npcNavigationStates.TryGetValue(actorObj.ID, out var navigationState)
-                || !ReferenceEquals(navigationState.Actor, actorObj))
+            if (component.Owner != default || actorObj.Owner != null)
             {
                 if (motion.UsesNavMeshAgent)
                 {
@@ -523,6 +529,7 @@ namespace Game.Server.Core
                     _entityManager.SetComponentData(entity, motion);
                 }
 
+                _npcNavigationStates.Remove(actorObj.ID);
                 return false;
             }
 
@@ -575,31 +582,19 @@ namespace Game.Server.Core
 
             WorldPosition worldPosition = ServerPhysicsManager.Instance.ToWorldPosition(
                 actorObj.transform.position);
+            WorldPosition currentPosition = new WorldPosition(
+                component.WorldPositionD.x,
+                component.WorldPositionD.y,
+                component.WorldPositionD.z);
+            if (AreWorldPositionsEqual(currentPosition, worldPosition))
+                return false;
+
             component.WorldPositionD = new Unity.Mathematics.double3(
                 worldPosition.x,
                 worldPosition.y,
                 worldPosition.z);
             _entityManager.SetComponentData(entity, component);
-            return true;
-        }
-
-        private bool SynchronizeNPCTransformFromECS(
-            Entity entity,
-            Systems.ActorComponent component,
-            Actor actorObj)
-        {
-            if (actorObj.isDead)
-                return false;
-
-            if (_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
-                return false;
-
-            var worldPosition = new WorldPosition(
-                component.WorldPositionD.x,
-                component.WorldPositionD.y,
-                component.WorldPositionD.z);
-
-            actorObj.transform.position = ServerPhysicsManager.Instance.ToPhysicalPosition(worldPosition);
+            _entityManager.SetComponentEnabled<Systems.AcceptedPositionDirtyComponent>(entity, true);
             return true;
         }
 

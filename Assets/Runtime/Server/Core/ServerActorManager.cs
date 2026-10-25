@@ -179,6 +179,9 @@ namespace Game.Server.Core
             PerformanceTelemetry.RegisterMetric(NPC_AGGRO_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(POSITION_VALIDATION_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(PLAYER_ECS_SYNC_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(PLAYER_MOVEMENT_WORK_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(PENDING_POSITION_PROPOSAL_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(DUE_POSITION_VALIDATION_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(ECS_ACTOR_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(NETWORK_GAMEOBJECT_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(TOTAL_ALLOCATED_MEMORY_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
@@ -212,10 +215,26 @@ namespace Game.Server.Core
         // ECS Management.
         private EntityManager _entityManager;
         private EntityQuery _actorComponentQuery;
+        private EntityQuery _acceptedPositionDirtyQuery;
 
-        // Maps actor ID -> Actor MonoBehaviour for authoritative movement bridges.
-        private readonly Dictionary<Guid, Actor> _actorObjects = new();
-        private readonly Dictionary<Guid, Entity> _actorEntities = new();
+        private readonly struct ActorRegistration
+        {
+            internal ActorRegistration(
+                Actor actor,
+                Entity entity,
+                NetworkIdentity identity)
+            {
+                Actor = actor;
+                Entity = entity;
+                Identity = identity;
+            }
+
+            internal Actor Actor { get; }
+            internal Entity Entity { get; }
+            internal NetworkIdentity Identity { get; }
+        }
+
+        private readonly Dictionary<Guid, ActorRegistration> _actors = new();
         private readonly HashSet<PlayerID> _pendingSpatialContextTransfers = new();
         private readonly List<AcceptedVisibilityMovement> _acceptedVisibilityMovements = new();
         private readonly List<Guid> _riftQueryCandidateIDs = new();
@@ -230,7 +249,17 @@ namespace Game.Server.Core
         /// <param name="actorID">The actor identifier to find.</param>
         /// <param name="actor">Receives the actor when found.</param>
         /// <returns><see langword="true"/> when an actor was found.</returns>
-        public bool TryGetActor(Guid actorID, out Actor actor) => _actorObjects.TryGetValue(actorID, out actor);
+        public bool TryGetActor(Guid actorID, out Actor actor)
+        {
+            if (_actors.TryGetValue(actorID, out ActorRegistration registration))
+            {
+                actor = registration.Actor;
+                return true;
+            }
+
+            actor = null;
+            return false;
+        }
 
         /// <summary>Queries candidate actor identifiers from the owned spatial index.</summary>
         public int QuerySpatialCandidates(
@@ -315,7 +344,33 @@ namespace Game.Server.Core
         /// <param name="actorID">The actor identifier to find.</param>
         /// <param name="entity">Receives the authoritative ECS entity when found.</param>
         /// <returns><see langword="true"/> when the actor has a live authoritative entity.</returns>
-        internal bool TryGetActorEntity(Guid actorID, out Entity entity) => _actorEntities.TryGetValue(actorID, out entity);
+        internal bool TryGetActorEntity(Guid actorID, out Entity entity)
+        {
+            if (_actors.TryGetValue(actorID, out ActorRegistration registration))
+            {
+                entity = registration.Entity;
+                return true;
+            }
+
+            entity = default;
+            return false;
+        }
+
+        /// <summary>Finds the authoritative network identity associated with an actor identifier.</summary>
+        /// <param name="actorID">The actor identifier to find.</param>
+        /// <param name="identity">Receives the authoritative network identity when found.</param>
+        /// <returns><see langword="true"/> when the actor has a live authoritative network identity.</returns>
+        internal bool TryGetActorIdentity(Guid actorID, out NetworkIdentity identity)
+        {
+            if (_actors.TryGetValue(actorID, out ActorRegistration registration))
+            {
+                identity = registration.Identity;
+                return true;
+            }
+
+            identity = null;
+            return false;
+        }
 
         /// <summary>Attempts to get an actor's canonical accepted absolute world position.</summary>
         /// <param name="actorID">The actor identifier.</param>
@@ -326,13 +381,13 @@ namespace Game.Server.Core
             Guid actorID,
             out WorldPosition position)
         {
-            if (!_actorEntities.TryGetValue(actorID, out var entity))
+            if (!_actors.TryGetValue(actorID, out ActorRegistration registration))
             {
                 position = default;
                 return false;
             }
 
-            var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+            var component = _entityManager.GetComponentData<Systems.ActorComponent>(registration.Entity);
             position = new WorldPosition(
                 component.WorldPositionD.x,
                 component.WorldPositionD.y,
@@ -452,6 +507,7 @@ namespace Game.Server.Core
             if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
                 throw new InvalidOperationException("Server spatial indexing requires initialized game configuration.");
 
+            InitializePlayerValidationSchedule();
             _npcAggroDecisionIntervalTicks = GetNPCAggroDecisionIntervalTicks();
             _spatialIndex = new ServerSpatialIndex(GameConfigurationManager.Config.SpatialIndexCellWidth);
             _instance = this;
@@ -470,6 +526,9 @@ namespace Game.Server.Core
             var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
             _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
+            _acceptedPositionDirtyQuery = _entityManager.CreateEntityQuery(
+                typeof(Systems.ActorComponent),
+                typeof(Systems.AcceptedPositionDirtyComponent));
 
             _initialized = true;
             _npcAggroSchedule = ServerSimulationClock.RegisterLowerRate(
@@ -498,8 +557,7 @@ namespace Game.Server.Core
             if (_networkManager != null)
                 _networkManager.onPlayerLeft -= OnPlayerLeft;
 
-            _actorObjects.Clear();
-            _actorEntities.Clear();
+            _actors.Clear();
             _playerActors.Clear();
             _periodicValidationBaselines.Clear();
             _lastValidationTickIDs.Clear();
@@ -507,6 +565,16 @@ namespace Game.Server.Core
             _violationCounters.Clear();
             _pendingPositionProposals.Clear();
             _lastProposalOrder.Clear();
+            _playerMovementWork.Clear();
+            _playerMovementWorkSet.Clear();
+            if (_playerValidationBuckets != null)
+            {
+                for (int i = 0; i < _playerValidationBuckets.Length; i++)
+                    _playerValidationBuckets[i].Clear();
+
+                _playerValidationBuckets = null;
+            }
+            _playerValidationIntervalTicks = 0;
             _pendingSpatialContextTransfers.Clear();
             _npcAggroStates.Clear();
             _npcNavigationStates.Clear();
@@ -541,7 +609,7 @@ namespace Game.Server.Core
             if (telemetryEnabled)
             {
                 PerformanceTelemetry.TryRecord(ECS_ACTOR_COUNT_METRIC, _actorComponentQuery.CalculateEntityCount());
-                PerformanceTelemetry.TryRecord(NETWORK_GAMEOBJECT_COUNT_METRIC, _actorObjects.Count);
+                PerformanceTelemetry.TryRecord(NETWORK_GAMEOBJECT_COUNT_METRIC, _actors.Count);
                 PerformanceTelemetry.TryRecord(
                     TOTAL_ALLOCATED_MEMORY_METRIC,
                     UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong());
@@ -621,7 +689,7 @@ namespace Game.Server.Core
         /// </exception>
         private void OnActorSpawned(Actor actor)
         {
-            if (actor == null || _actorObjects.ContainsKey(actor.ID) || _actorEntities.ContainsKey(actor.ID))
+            if (actor == null || _actors.ContainsKey(actor.ID))
                 return;
 
             throw new InvalidOperationException(
@@ -649,25 +717,35 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
-            bool hasExistingObject = _actorObjects.TryGetValue(actor.ID, out var existingActor);
-            bool hasExistingEntity = _actorEntities.ContainsKey(actor.ID);
-            if (hasExistingObject || hasExistingEntity)
+            if (_actors.TryGetValue(actor.ID, out var existingRegistration))
             {
-                if (hasExistingObject && hasExistingEntity && ReferenceEquals(existingActor, actor))
+                if (ReferenceEquals(existingRegistration.Actor, actor))
                     return;
 
                 throw new InvalidOperationException(
                     $"Actor '{actor.ID}' is already registered with the server actor manager.");
             }
 
+            NetworkIdentity identity = actor.GetComponent<NetworkIdentity>();
+            if (identity == null)
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{actor.ID}' has no NetworkIdentity for server actor registration.");
+            }
+
             bool spatialMembershipInserted = false;
+            bool entityCreated = false;
+            bool registrationPublished = false;
+            bool playerValidationStateTouched = false;
+            Entity entity = default;
             try
             {
                 ServerECSManager.ClearActorSimulationEventCancellation(actor.ID);
                 _spatialIndex.Insert(actor.ID, actor.SpatialContext, spawnPosition);
                 spatialMembershipInserted = true;
 
-                var entity = _entityManager.CreateEntity();
+                entity = _entityManager.CreateEntity();
+                entityCreated = true;
                 _entityManager.AddComponentData(entity, new Systems.ActorComponent
                 {
                     ActorID = actor.ID,
@@ -679,16 +757,16 @@ namespace Game.Server.Core
                         spawnPosition.y,
                         spawnPosition.z)
                 });
+                _entityManager.AddComponentData(entity, new Systems.AcceptedPositionDirtyComponent());
+                _entityManager.SetComponentEnabled<Systems.AcceptedPositionDirtyComponent>(entity, false);
 
                 if (actor.Owner == null)
                     EnsureNPCMovementComponents(entity, actor);
 
-                _actorObjects[actor.ID] = actor;
-                _actorEntities[actor.ID] = entity;
-
                 if (actor.Owner != null)
                 {
                     var owner = actor.Owner.Value;
+                    playerValidationStateTouched = true;
                     InitializePlayerValidationState(owner, actor, spawnPosition);
                 }
 
@@ -704,6 +782,11 @@ namespace Game.Server.Core
 
                 // Add ticker buffer for generic time-based callbacks.
                 _entityManager.AddBuffer<Systems.TickerElement>(entity);
+
+                _actors.Add(
+                    actor.ID,
+                    new ActorRegistration(actor, entity, identity));
+                registrationPublished = true;
 
                 TrackNPCForAggro(actor);
 
@@ -722,8 +805,45 @@ namespace Game.Server.Core
             }
             catch
             {
-                if (spatialMembershipInserted)
-                    RemoveSpatialMembership(actor.ID);
+                try
+                {
+                    if (spatialMembershipInserted)
+                        RemoveSpatialMembership(actor.ID);
+                }
+                catch (Exception cleanupException)
+                {
+                    Debug.Error(
+                        $"Failed to remove spatial membership while rolling back actor '{actor.ID}': "
+                        + cleanupException.Message);
+                }
+
+                try
+                {
+                    if (entityCreated && _entityManager.Exists(entity))
+                        _entityManager.DestroyEntity(entity);
+                }
+                catch (Exception cleanupException)
+                {
+                    Debug.Error(
+                        $"Failed to destroy ECS entity while rolling back actor '{actor.ID}': "
+                        + cleanupException.Message);
+                }
+
+                try
+                {
+                    if (registrationPublished)
+                        _actors.Remove(actor.ID);
+                }
+                catch (Exception cleanupException)
+                {
+                    Debug.Error(
+                        $"Failed to remove actor registration while rolling back actor '{actor.ID}': "
+                        + cleanupException.Message);
+                }
+
+                if (playerValidationStateTouched && actor.Owner.HasValue)
+                    RemovePlayerValidationState(actor.Owner.Value);
+                _npcAggroStates.Remove(actor.ID);
 
                 throw;
             }
@@ -754,8 +874,8 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
-            if (_actorObjects.TryGetValue(actor.ID, out var registeredActor)
-                && !ReferenceEquals(registeredActor, actor))
+            if (_actors.TryGetValue(actor.ID, out var registered)
+                && !ReferenceEquals(registered.Actor, actor))
             {
                 return;
             }
@@ -763,8 +883,11 @@ namespace Game.Server.Core
             RemoveSpatialMembership(actor.ID);
             try
             {
-                if (TryGetActorEntity(actor.ID, out var entity) && _entityManager.Exists(entity))
-                    _entityManager.DestroyEntity(entity);
+                if (_actors.TryGetValue(actor.ID, out var registration)
+                    && _entityManager.Exists(registration.Entity))
+                {
+                    _entityManager.DestroyEntity(registration.Entity);
+                }
             }
             finally
             {
@@ -779,11 +902,9 @@ namespace Game.Server.Core
             if (actor == null)
                 return;
 
-            bool hasRegisteredActor = _actorObjects.TryGetValue(actor.ID, out var registeredActor);
-            bool hasRegisteredEntity = _actorEntities.TryGetValue(actor.ID, out var registeredEntity);
-            if (hasRegisteredActor && !ReferenceEquals(registeredActor, actor))
+            if (!_actors.TryGetValue(actor.ID, out var registration))
                 return;
-            if (!hasRegisteredActor && !hasRegisteredEntity)
+            if (!ReferenceEquals(registration.Actor, actor))
                 return;
 
             RemoveCombatReferencesToActor(actor);
@@ -795,33 +916,26 @@ namespace Game.Server.Core
             RemoveSpatialMembership(actor.ID);
             ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
 
-            if (hasRegisteredEntity)
+            if (_entityManager.Exists(registration.Entity))
             {
-                if (_entityManager.Exists(registeredEntity))
+                if (!_entityManager.HasComponent<Systems.ActorComponent>(registration.Entity))
                 {
-                    if (!_entityManager.HasComponent<Systems.ActorComponent>(registeredEntity))
-                    {
-                        throw new InvalidOperationException(
-                            $"Actor entity mapping for {actor.ID} has no ActorComponent.");
-                    }
-
-                    Systems.ActorComponent actorComponent =
-                        _entityManager.GetComponentData<Systems.ActorComponent>(registeredEntity);
-                    if (actorComponent.ActorID != actor.ID)
-                    {
-                        throw new InvalidOperationException(
-                            $"Actor entity mapping for {actor.ID} references component actor {actorComponent.ActorID}.");
-                    }
-
-                    _entityManager.DestroyEntity(registeredEntity);
+                    throw new InvalidOperationException(
+                        $"Actor entity mapping for {actor.ID} has no ActorComponent.");
                 }
 
-                _actorEntities.Remove(actor.ID);
+                Systems.ActorComponent actorComponent =
+                    _entityManager.GetComponentData<Systems.ActorComponent>(registration.Entity);
+                if (actorComponent.ActorID != actor.ID)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor entity mapping for {actor.ID} references component actor {actorComponent.ActorID}.");
+                }
+
+                _entityManager.DestroyEntity(registration.Entity);
             }
 
-            if (_actorObjects.TryGetValue(actor.ID, out registeredActor)
-                && ReferenceEquals(registeredActor, actor))
-                _actorObjects.Remove(actor.ID);
+            _actors.Remove(actor.ID);
 
             if (actor.Owner.HasValue)
             {
@@ -841,7 +955,9 @@ namespace Game.Server.Core
             if (ReferenceEquals(retiredActor, null))
                 return;
 
-            List<Actor> actors = new(_actorObjects.Values);
+            List<Actor> actors = new(_actors.Count);
+            foreach (ActorRegistration registration in _actors.Values)
+                actors.Add(registration.Actor);
             foreach (Actor candidate in actors)
             {
                 if (candidate == null || ReferenceEquals(candidate, retiredActor))
@@ -991,8 +1107,9 @@ namespace Game.Server.Core
         /// <param name="actor">The actor whose owner changed.</param>
         private void OnActorOwnerChanged(Actor actor)
         {
-            if (_actorEntities.TryGetValue(actor.ID, out var entity))
+            if (_actors.TryGetValue(actor.ID, out var registration))
             {
+                Entity entity = registration.Entity;
                 if (!_entityManager.Exists(entity))
                 {
                     throw new InvalidOperationException(
@@ -1052,8 +1169,9 @@ namespace Game.Server.Core
 
         private void OnActorInterestChanged(Actor actor, SceneID sceneID)
         {
-            if (_actorEntities.TryGetValue(actor.ID, out var entity))
+            if (_actors.TryGetValue(actor.ID, out var registration))
             {
+                Entity entity = registration.Entity;
                 if (!_entityManager.Exists(entity))
                 {
                     throw new InvalidOperationException(
@@ -1194,8 +1312,8 @@ namespace Game.Server.Core
                     state.NPC.SetTargetFromServer(closest);
                     ActorEndpoint.onServerStartAutoAttack?.Invoke(state.NPC);
 
-                    if (!_actorObjects.TryGetValue(id, out var currentActor)
-                        || currentActor != state.NPC)
+                    if (!_actors.TryGetValue(id, out var currentRegistration)
+                        || currentRegistration.Actor != state.NPC)
                     {
                         _npcAggroStates.Remove(id);
                         continue;
@@ -1242,63 +1360,73 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Projects ECS-owned NPC positions to their GameObject transforms after the authoritative ECS simulation step.
+        /// Publishes changed canonical actor positions after the authoritative ECS simulation step.
         /// </summary>
         internal void ProcessAuthoritativeTickCompleted()
         {
-            SynchronizeNPCTransformsFromECS();
-            PublishAcceptedActorPositions(
+            PublishDirtyAcceptedActorPositions(
                 ServerECSManager.CurrentSimulationTickID);
             FlushPendingTickSyncContribution();
         }
 
-        private void PublishAcceptedActorPositions(long tickID)
+        private void PublishDirtyAcceptedActorPositions(long tickID)
         {
             if (tickID < 0)
                 throw new InvalidOperationException($"Cannot publish accepted actor positions for tick {tickID}.");
 
             _acceptedVisibilityMovements.Clear();
-            foreach (var actorPair in _actorObjects)
+            int gameObjectSyncCount = 0;
+            var entities = _acceptedPositionDirtyQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+            try
             {
-                Guid actorID = actorPair.Key;
-                Actor actor = actorPair.Value;
-
-                if (!_actorEntities.TryGetValue(actorID, out var entity))
+                foreach (Entity entity in entities)
                 {
-                    throw new InvalidOperationException(
-                        $"Actor registry entry '{actorID}' has no corresponding ECS entity.");
-                }
+                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                    if (!_actors.TryGetValue(component.ActorID, out ActorRegistration registration))
+                    {
+                        throw new InvalidOperationException(
+                            $"Dirty actor entity has no registered actor for '{component.ActorID}'.");
+                    }
 
-                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                var position = new WorldPosition(
-                    component.WorldPositionD.x,
-                    component.WorldPositionD.y,
-                    component.WorldPositionD.z);
+                    Actor actor = registration.Actor;
+                    if (!actor.TryGetAcceptedPositionSnapshot(out ActorPositionSnapshot previousSnapshot))
+                    {
+                        throw new InvalidOperationException(
+                            $"Actor '{actor.ID}' has no accepted position snapshot for dirty publication.");
+                    }
 
-                bool hasPreviousSnapshot = actor.TryGetAcceptedPositionSnapshot(
-                    out ActorPositionSnapshot previousSnapshot);
-                ActorSpatialContext actorContext = actor.SpatialContext;
-                bool positionChanged = !hasPreviousSnapshot
-                    || !AreWorldPositionsEqual(previousSnapshot.Position, position);
+                    WorldPosition position = new WorldPosition(
+                        component.WorldPositionD.x,
+                        component.WorldPositionD.y,
+                        component.WorldPositionD.z);
+                    ActorSpatialContext actorContext = actor.SpatialContext;
 
-                if (positionChanged)
-                {
+                    if (component.Owner == default
+                        && !actor.isDead
+                        && _entityManager.HasComponent<Systems.MotionStateComponent>(entity)
+                        && !_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
+                    {
+                        actor.transform.position = ServerPhysicsManager.Instance.ToPhysicalPosition(position);
+                        gameObjectSyncCount++;
+                    }
+
                     _spatialIndex.Move(
-                        actorID,
+                        actor.ID,
                         actorContext,
                         position);
-                    UpdateAcceptedActorChunkMembership(actor, position);
-                }
-                actor.SetAcceptedPositionSnapshotFromServer(position, tickID);
-
-                if (hasPreviousSnapshot && positionChanged)
-                {
+                    UpdateAcceptedActorChunkMembership(actor, position, registration.Identity);
+                    actor.SetAcceptedPositionSnapshotFromServer(position, tickID);
                     _acceptedVisibilityMovements.Add(new AcceptedVisibilityMovement(
                         actor,
                         previousSnapshot.Position,
                         position,
                         actorContext));
+                    _entityManager.SetComponentEnabled<Systems.AcceptedPositionDirtyComponent>(entity, false);
                 }
+            }
+            finally
+            {
+                entities.Dispose();
             }
 
             if (_acceptedVisibilityMovements.Count == 0)
@@ -1314,11 +1442,15 @@ namespace Game.Server.Core
                     movement.Context,
                     movement.CurrentPosition);
             }
+
+            if (PerformanceTelemetry.IsEnabled && gameObjectSyncCount > 0)
+                RecordTickSyncContribution(0, gameObjectSyncCount, tickID);
         }
 
         private static void UpdateAcceptedActorChunkMembership(
             Actor actor,
-            WorldPosition position)
+            WorldPosition position,
+            NetworkIdentity identity)
         {
             Vector2Int chunk = position.Chunk;
             string destinationSceneName = $"World_{chunk.x}_{chunk.y}";
@@ -1326,24 +1458,20 @@ namespace Game.Server.Core
             if (StringComparer.Ordinal.Equals(sourceSceneName, destinationSceneName))
                 return;
 
-            NetworkIdentity identity = actor.GetComponent<NetworkIdentity>();
-            if (identity != null)
+            if (string.IsNullOrEmpty(sourceSceneName))
             {
-                if (string.IsNullOrEmpty(sourceSceneName))
-                {
-                    ChunkSubscriptions.RegisterIdentity(
-                        actor.SpatialContext,
-                        destinationSceneName,
-                        identity);
-                }
-                else
-                {
-                    ChunkSubscriptions.MoveIdentity(
-                        actor.SpatialContext,
-                        sourceSceneName,
-                        destinationSceneName,
-                        identity);
-                }
+                ChunkSubscriptions.RegisterIdentity(
+                    actor.SpatialContext,
+                    destinationSceneName,
+                    identity);
+            }
+            else
+            {
+                ChunkSubscriptions.MoveIdentity(
+                    actor.SpatialContext,
+                    sourceSceneName,
+                    destinationSceneName,
+                    identity);
             }
 
             actor.CurrentChunk = destinationSceneName;
@@ -1680,14 +1808,14 @@ namespace Game.Server.Core
                     "A logical-context transfer requires a different destination context.",
                     nameof(destinationContext));
 
-            if (!_actorObjects.TryGetValue(actor.ID, out var registeredActor)
-                || !ReferenceEquals(registeredActor, actor))
+            if (!_actors.TryGetValue(actor.ID, out var registration)
+                || !ReferenceEquals(registration.Actor, actor))
             {
                 throw new InvalidOperationException(
                     $"Actor '{actor.ID}' is not registered as the exact server actor instance.");
             }
-            if (!_actorEntities.TryGetValue(actor.ID, out var entity)
-                || !_entityManager.Exists(entity)
+            Entity entity = registration.Entity;
+            if (!_entityManager.Exists(entity)
                 || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
             {
                 throw new InvalidOperationException(
@@ -1741,7 +1869,7 @@ namespace Game.Server.Core
             Vector3 sourcePhysicalPosition = actor.transform.position;
             string sourceSceneName = actor.CurrentChunk;
             string destinationSceneName = $"World_{destinationChunk.x}_{destinationChunk.y}";
-            NetworkIdentity identity = actor.GetComponent<NetworkIdentity>();
+            NetworkIdentity identity = registration.Identity;
 
             // Targets are live relationships, not part of spatial membership. Retire any
             // relationship that cannot survive the destination context before publishing it.
@@ -1755,6 +1883,8 @@ namespace Game.Server.Core
             bool physicalPositionChanged = false;
             bool playerValidationStateInitialized = false;
             bool destinationInterestCallbackStarted = false;
+            bool acceptedPositionDirtyBeforeTransfer =
+                _entityManager.IsComponentEnabled<Systems.AcceptedPositionDirtyComponent>(entity);
 
             try
             {
@@ -1777,16 +1907,13 @@ namespace Game.Server.Core
                 _entityManager.SetComponentData(entity, destinationComponent);
                 componentPositionCommitted = true;
 
-                if (identity != null)
-                {
-                    ChunkSubscriptions.TransferIdentity(
-                        sourceContext,
-                        sourceSceneName,
-                        destinationContext,
-                        destinationSceneName,
-                        identity);
-                    identityTransferred = true;
-                }
+                ChunkSubscriptions.TransferIdentity(
+                    sourceContext,
+                    sourceSceneName,
+                    destinationContext,
+                    destinationSceneName,
+                    identity);
+                identityTransferred = true;
 
                 actor.CurrentChunk = destinationSceneName;
                 currentChunkChanged = true;
@@ -1811,6 +1938,7 @@ namespace Game.Server.Core
                 actor.SetAcceptedPositionSnapshotFromServer(
                     destinationPosition,
                     transferTickID);
+                _entityManager.SetComponentEnabled<Systems.AcceptedPositionDirtyComponent>(entity, false);
             }
             catch (Exception transferException)
             {
@@ -1917,6 +2045,17 @@ namespace Game.Server.Core
                     }
                 }
 
+                try
+                {
+                    _entityManager.SetComponentEnabled<Systems.AcceptedPositionDirtyComponent>(
+                        entity,
+                        acceptedPositionDirtyBeforeTransfer);
+                }
+                catch (Exception rollbackException)
+                {
+                    rollbackFailures.Add(rollbackException);
+                }
+
                 if (actorContextTransferred)
                 {
                     try
@@ -1978,7 +2117,11 @@ namespace Game.Server.Core
             Actor actor,
             ActorSpatialContext destinationContext)
         {
-            foreach (Actor other in new List<Actor>(_actorObjects.Values))
+            List<Actor> actors = new(_actors.Count);
+            foreach (ActorRegistration registration in _actors.Values)
+                actors.Add(registration.Actor);
+
+            foreach (Actor other in actors)
             {
                 if (other == null)
                     continue;

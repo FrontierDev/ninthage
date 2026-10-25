@@ -119,6 +119,9 @@ namespace Game.Shared.Performance
         public const string SERVER_ACTOR_MANAGER_NPC_AGGRO_DURATION = "server.actor_manager.npc_aggro_duration";
         public const string SERVER_ACTOR_MANAGER_POSITION_VALIDATION_DURATION = "server.actor_manager.position_validation_duration";
         public const string SERVER_ACTOR_MANAGER_PLAYER_ECS_SYNC_DURATION = "server.actor_manager.player_ecs_sync_duration";
+        public const string SERVER_ACTOR_PLAYER_MOVEMENT_WORK_COUNT = "server.actor.player_movement_work_count";
+        public const string SERVER_ACTOR_PENDING_POSITION_PROPOSAL_COUNT = "server.actor.pending_position_proposal_count";
+        public const string SERVER_ACTOR_DUE_POSITION_VALIDATION_COUNT = "server.actor.due_position_validation_count";
         public const string SERVER_ACTOR_ECS_COUNT = "server.actor.ecs_count";
         public const string SERVER_ACTOR_NETWORK_GAMEOBJECT_COUNT = "server.actor.network_gameobject_count";
         public const string SERVER_ACTOR_NPC_OVERLAP_SEARCH_COUNT = "server.actor.npc_overlap_search_count";

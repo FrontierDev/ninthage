@@ -23,6 +23,11 @@ namespace Game.Server.Systems
         public double3 WorldPositionD; // Double-precision authoritative position
     }
 
+    /// <summary>Marks an actor whose canonical accepted position requires post-ECS publication.</summary>
+    public struct AcceptedPositionDirtyComponent : IComponentData, IEnableableComponent
+    {
+    }
+
     /// <summary>Stores a resource regeneration entry for an actor.</summary>
     public struct ResourceRegenElement : IBufferElementData
     {
