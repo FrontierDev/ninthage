@@ -121,7 +121,7 @@ namespace Game.Server.Core
                     "The player validation interval must be positive and representable as a validation bucket array length.");
             }
 
-            int bucketCount = checked((int)_playerValidationIntervalTicks);
+            var bucketCount = checked((int)_playerValidationIntervalTicks);
             _playerValidationBuckets = new List<PlayerID>[bucketCount];
             for (int i = 0; i < _playerValidationBuckets.Length; i++)
                 _playerValidationBuckets[i] = new List<PlayerID>();
@@ -131,12 +131,6 @@ namespace Game.Server.Core
             PlayerID playerID,
             long dueTickID)
         {
-            if (_playerValidationIntervalTicks <= 0 || _playerValidationBuckets == null)
-            {
-                throw new InvalidOperationException(
-                    "Player validation scheduling has not been initialized.");
-            }
-
             if (ServerECSManager.CurrentSimulationTickID > 0)
             {
                 if (dueTickID <= ServerECSManager.CurrentSimulationTickID)
@@ -153,7 +147,7 @@ namespace Game.Server.Core
                     + $"{ServerSimulationClock.CurrentTickID}.");
             }
 
-            int bucketIndex = (int)(dueTickID % _playerValidationIntervalTicks);
+            var bucketIndex = (int)(dueTickID % _playerValidationIntervalTicks);
             _playerValidationBuckets[bucketIndex].Add(playerID);
         }
 
@@ -220,25 +214,19 @@ namespace Game.Server.Core
             _playerMovementWork.Clear();
             _playerMovementWorkSet.Clear();
 
-            int pendingProposalCount = _pendingPositionProposals.Count;
+            var pendingProposalCount = _pendingPositionProposals.Count;
             foreach (PlayerID playerID in _pendingPositionProposals.Keys)
             {
                 if (_playerMovementWorkSet.Add(playerID))
                     _playerMovementWork.Add(playerID);
             }
 
-            if (_playerValidationIntervalTicks <= 0 || _playerValidationBuckets == null)
-            {
-                throw new InvalidOperationException(
-                    "Player validation scheduling has not been initialized.");
-            }
-
-            int bucketIndex = (int)(tick.TickID % _playerValidationIntervalTicks);
-            List<PlayerID> validationBucket = _playerValidationBuckets[bucketIndex];
+            var bucketIndex = (int)(tick.TickID % _playerValidationIntervalTicks);
+            var validationBucket = _playerValidationBuckets[bucketIndex];
             int dueValidationCount = 0;
             foreach (PlayerID playerID in validationBucket)
             {
-                if (!_nextValidationTickIDs.TryGetValue(playerID, out long dueTickID)
+                if (!_nextValidationTickIDs.TryGetValue(playerID, out var dueTickID)
                     || dueTickID > tick.TickID)
                 {
                     continue;
@@ -308,12 +296,6 @@ namespace Game.Server.Core
                 {
                     throw new InvalidOperationException(
                         $"Player '{playerID}' has no corresponding ECS entity.");
-                }
-
-                if (!_entityManager.Exists(entity))
-                {
-                    throw new InvalidOperationException(
-                        $"Player '{playerID}' maps to a destroyed ECS entity.");
                 }
 
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
@@ -605,7 +587,7 @@ namespace Game.Server.Core
         private void AdvanceValidationDeadline(PlayerID playerID, long tickID)
         {
             _lastValidationTickIDs[playerID] = tickID;
-            long dueTickID = checked(tickID + _playerValidationIntervalTicks);
+            var dueTickID = checked(tickID + _playerValidationIntervalTicks);
             _nextValidationTickIDs[playerID] = dueTickID;
             SchedulePlayerValidation(playerID, dueTickID);
         }
@@ -620,7 +602,7 @@ namespace Game.Server.Core
         private void InitializePlayerValidationState(PlayerID owner, Actor actor, WorldPosition acceptedPosition)
         {
             long currentTickID = ServerSimulationClock.CurrentTickID;
-            long dueTickID = checked(currentTickID + _playerValidationIntervalTicks);
+            var dueTickID = checked(currentTickID + _playerValidationIntervalTicks);
             RemovePendingPositionProposal(owner);
             _playerActors[owner] = actor;
             _periodicValidationBaselines[owner] = acceptedPosition;

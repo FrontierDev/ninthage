@@ -472,27 +472,21 @@ namespace Game.Server.Core
                 foreach (var entry in _npcNavigationSnapshot)
                 {
                     Guid actorID = entry.Key;
-                    NPCNavigationState navigationState = entry.Value;
-                    if (navigationState.Actor == null)
+                    var navigationState = entry.Value;
+                    var actor = navigationState.Actor;
+                    if (actor == null)
                     {
                         _npcNavigationStates.Remove(actorID);
                         continue;
                     }
 
-                    if (!TryGetActorEntity(navigationState.Actor.ID, out Entity entity)
-                        || !_entityManager.Exists(entity))
+                    if (!TryGetActorEntity(actor.ID, out var entity))
                     {
                         _npcNavigationStates.Remove(actorID);
                         continue;
                     }
 
                     var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (component.ActorID != navigationState.Actor.ID)
-                    {
-                        throw new InvalidOperationException(
-                            $"NPC navigation registration for '{navigationState.Actor.ID}' resolved an entity for '{component.ActorID}'.");
-                    }
-
                     if (SynchronizeNPCPositionToECS(entity, component, navigationState) && telemetryEnabled)
                         syncCount++;
                 }
@@ -516,12 +510,12 @@ namespace Game.Server.Core
             Systems.ActorComponent component,
             NPCNavigationState navigationState)
         {
-            Actor actorObj = navigationState.Actor;
-            if (actorObj.isDead)
+            var actor = navigationState.Actor;
+            if (actor.isDead)
                 return false;
 
             var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
-            if (component.Owner != default || actorObj.Owner != null)
+            if (component.Owner != default || actor.Owner != null)
             {
                 if (motion.UsesNavMeshAgent)
                 {
@@ -529,7 +523,7 @@ namespace Game.Server.Core
                     _entityManager.SetComponentData(entity, motion);
                 }
 
-                _npcNavigationStates.Remove(actorObj.ID);
+                _npcNavigationStates.Remove(actor.ID);
                 return false;
             }
 
@@ -538,7 +532,7 @@ namespace Game.Server.Core
                 if (!motion.UsesNavMeshAgent)
                 {
                     throw new InvalidOperationException(
-                        $"Suspended NPC {actorObj.ID} lost its NavMesh-driven motion classification.");
+                        $"Suspended NPC {actor.ID} lost its NavMesh-driven motion classification.");
                 }
 
                 return false;
@@ -546,7 +540,7 @@ namespace Game.Server.Core
 
             if (navigationState.Agent == null)
             {
-                _npcNavigationStates.Remove(actorObj.ID);
+                _npcNavigationStates.Remove(actor.ID);
                 if (motion.UsesNavMeshAgent)
                 {
                     motion.UsesNavMeshAgent = false;
@@ -558,7 +552,7 @@ namespace Game.Server.Core
 
             if (!navigationState.Agent.enabled)
             {
-                _npcNavigationStates.Remove(actorObj.ID);
+                _npcNavigationStates.Remove(actor.ID);
                 if (motion.UsesNavMeshAgent)
                 {
                     motion.UsesNavMeshAgent = false;
@@ -571,7 +565,7 @@ namespace Game.Server.Core
             if (!navigationState.Agent.isOnNavMesh)
             {
                 throw new InvalidOperationException(
-                    $"NPC {actorObj.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
+                    $"NPC {actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
             }
 
             if (!motion.UsesNavMeshAgent)
@@ -580,9 +574,9 @@ namespace Game.Server.Core
                 _entityManager.SetComponentData(entity, motion);
             }
 
-            WorldPosition worldPosition = ServerPhysicsManager.Instance.ToWorldPosition(
-                actorObj.transform.position);
-            WorldPosition currentPosition = new WorldPosition(
+            var worldPosition = ServerPhysicsManager.Instance.ToWorldPosition(
+                actor.transform.position);
+            var currentPosition = new WorldPosition(
                 component.WorldPositionD.x,
                 component.WorldPositionD.y,
                 component.WorldPositionD.z);

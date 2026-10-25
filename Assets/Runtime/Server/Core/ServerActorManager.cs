@@ -42,6 +42,23 @@ namespace Game.Server.Core
             }
         }
 
+        private readonly struct ActorRegistration
+        {
+            internal ActorRegistration(
+                Actor actor,
+                Entity entity,
+                NetworkIdentity identity)
+            {
+                Actor = actor;
+                Entity = entity;
+                Identity = identity;
+            }
+
+            internal Actor Actor { get; }
+            internal Entity Entity { get; }
+            internal NetworkIdentity Identity { get; }
+        }
+
         #endregion
 
         #region Static state and performance metrics
@@ -216,23 +233,6 @@ namespace Game.Server.Core
         private EntityManager _entityManager;
         private EntityQuery _actorComponentQuery;
         private EntityQuery _acceptedPositionDirtyQuery;
-
-        private readonly struct ActorRegistration
-        {
-            internal ActorRegistration(
-                Actor actor,
-                Entity entity,
-                NetworkIdentity identity)
-            {
-                Actor = actor;
-                Entity = entity;
-                Identity = identity;
-            }
-
-            internal Actor Actor { get; }
-            internal Entity Entity { get; }
-            internal NetworkIdentity Identity { get; }
-        }
 
         private readonly Dictionary<Guid, ActorRegistration> _actors = new();
         private readonly HashSet<PlayerID> _pendingSpatialContextTransfers = new();
@@ -726,7 +726,7 @@ namespace Game.Server.Core
                     $"Actor '{actor.ID}' is already registered with the server actor manager.");
             }
 
-            NetworkIdentity identity = actor.GetComponent<NetworkIdentity>();
+            var identity = actor.GetComponent<NetworkIdentity>();
             if (identity == null)
             {
                 throw new InvalidOperationException(
@@ -803,18 +803,17 @@ namespace Game.Server.Core
                     PerformanceTelemetry.TryRecord(SPAWN_EVENT_COUNT_METRIC, 1);
                 Debug.Log("Actor spawned on server: " + actor.Name + " (ID: " + actor.ID + ")");
             }
-            catch
+            catch (Exception registrationException)
             {
+                var rollbackFailures = new List<Exception>();
                 try
                 {
                     if (spatialMembershipInserted)
                         RemoveSpatialMembership(actor.ID);
                 }
-                catch (Exception cleanupException)
+                catch (Exception rollbackException)
                 {
-                    Debug.Error(
-                        $"Failed to remove spatial membership while rolling back actor '{actor.ID}': "
-                        + cleanupException.Message);
+                    rollbackFailures.Add(rollbackException);
                 }
 
                 try
@@ -822,11 +821,9 @@ namespace Game.Server.Core
                     if (entityCreated && _entityManager.Exists(entity))
                         _entityManager.DestroyEntity(entity);
                 }
-                catch (Exception cleanupException)
+                catch (Exception rollbackException)
                 {
-                    Debug.Error(
-                        $"Failed to destroy ECS entity while rolling back actor '{actor.ID}': "
-                        + cleanupException.Message);
+                    rollbackFailures.Add(rollbackException);
                 }
 
                 try
@@ -834,16 +831,23 @@ namespace Game.Server.Core
                     if (registrationPublished)
                         _actors.Remove(actor.ID);
                 }
-                catch (Exception cleanupException)
+                catch (Exception rollbackException)
                 {
-                    Debug.Error(
-                        $"Failed to remove actor registration while rolling back actor '{actor.ID}': "
-                        + cleanupException.Message);
+                    rollbackFailures.Add(rollbackException);
                 }
 
                 if (playerValidationStateTouched && actor.Owner.HasValue)
                     RemovePlayerValidationState(actor.Owner.Value);
                 _npcAggroStates.Remove(actor.ID);
+
+                if (rollbackFailures.Count > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor '{actor.ID}' registration failed and rollback also failed.",
+                        new AggregateException(
+                            registrationException,
+                            new AggregateException(rollbackFailures)));
+                }
 
                 throw;
             }
@@ -917,23 +921,7 @@ namespace Game.Server.Core
             ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
 
             if (_entityManager.Exists(registration.Entity))
-            {
-                if (!_entityManager.HasComponent<Systems.ActorComponent>(registration.Entity))
-                {
-                    throw new InvalidOperationException(
-                        $"Actor entity mapping for {actor.ID} has no ActorComponent.");
-                }
-
-                Systems.ActorComponent actorComponent =
-                    _entityManager.GetComponentData<Systems.ActorComponent>(registration.Entity);
-                if (actorComponent.ActorID != actor.ID)
-                {
-                    throw new InvalidOperationException(
-                        $"Actor entity mapping for {actor.ID} references component actor {actorComponent.ActorID}.");
-                }
-
                 _entityManager.DestroyEntity(registration.Entity);
-            }
 
             _actors.Remove(actor.ID);
 
@@ -955,7 +943,7 @@ namespace Game.Server.Core
             if (ReferenceEquals(retiredActor, null))
                 return;
 
-            List<Actor> actors = new(_actors.Count);
+            var actors = new List<Actor>(_actors.Count);
             foreach (ActorRegistration registration in _actors.Values)
                 actors.Add(registration.Actor);
             foreach (Actor candidate in actors)
@@ -1109,20 +1097,8 @@ namespace Game.Server.Core
         {
             if (_actors.TryGetValue(actor.ID, out var registration))
             {
-                Entity entity = registration.Entity;
-                if (!_entityManager.Exists(entity))
-                {
-                    throw new InvalidOperationException(
-                        $"Actor '{actor.ID}' is mapped to an ECS entity that no longer exists.");
-                }
-
+                var entity = registration.Entity;
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                if (component.ActorID != actor.ID)
-                {
-                    throw new InvalidOperationException(
-                        $"Actor entity mapping for '{actor.ID}' contains component actor '{component.ActorID}'.");
-                }
-
                 var previousOwner = component.Owner;
                 component.Owner = actor.Owner ?? default;
                 _entityManager.SetComponentData(entity, component);
@@ -1171,20 +1147,8 @@ namespace Game.Server.Core
         {
             if (_actors.TryGetValue(actor.ID, out var registration))
             {
-                Entity entity = registration.Entity;
-                if (!_entityManager.Exists(entity))
-                {
-                    throw new InvalidOperationException(
-                        $"Actor '{actor.ID}' is mapped to an ECS entity that no longer exists.");
-                }
-
+                var entity = registration.Entity;
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                if (component.ActorID != actor.ID)
-                {
-                    throw new InvalidOperationException(
-                        $"Actor entity mapping for '{actor.ID}' contains component actor '{component.ActorID}'.");
-                }
-
                 component.CurrentScene = sceneID;
                 _entityManager.SetComponentData(entity, component);
 
@@ -1388,18 +1352,18 @@ namespace Game.Server.Core
                             $"Dirty actor entity has no registered actor for '{component.ActorID}'.");
                     }
 
-                    Actor actor = registration.Actor;
+                    var actor = registration.Actor;
                     if (!actor.TryGetAcceptedPositionSnapshot(out ActorPositionSnapshot previousSnapshot))
                     {
                         throw new InvalidOperationException(
                             $"Actor '{actor.ID}' has no accepted position snapshot for dirty publication.");
                     }
 
-                    WorldPosition position = new WorldPosition(
+                    var position = new WorldPosition(
                         component.WorldPositionD.x,
                         component.WorldPositionD.y,
                         component.WorldPositionD.z);
-                    ActorSpatialContext actorContext = actor.SpatialContext;
+                    var actorContext = actor.SpatialContext;
 
                     if (component.Owner == default
                         && !actor.isDead
@@ -1814,22 +1778,10 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     $"Actor '{actor.ID}' is not registered as the exact server actor instance.");
             }
-            Entity entity = registration.Entity;
-            if (!_entityManager.Exists(entity)
-                || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
-            {
-                throw new InvalidOperationException(
-                    $"Actor '{actor.ID}' has no live mapped ECS actor entity.");
-            }
-
+            var entity = registration.Entity;
             var originalComponent = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-            if (originalComponent.ActorID != actor.ID)
-            {
-                throw new InvalidOperationException(
-                    $"Actor entity mapping for '{actor.ID}' contains component actor '{originalComponent.ActorID}'.");
-            }
 
-            WorldPosition sourcePosition = new WorldPosition(
+            var sourcePosition = new WorldPosition(
                 originalComponent.WorldPositionD.x,
                 originalComponent.WorldPositionD.y,
                 originalComponent.WorldPositionD.z);
@@ -1837,8 +1789,8 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     $"Actor '{actor.ID}' has a non-finite canonical source position.");
 
-            Vector2Int destinationChunk = destinationPosition.Chunk;
-            bool transferRuntime = ServerWorldManager.Instance.IsTransferRuntime(destinationContext);
+            var destinationChunk = destinationPosition.Chunk;
+            var transferRuntime = ServerWorldManager.Instance.IsTransferRuntime(destinationContext);
             if (!transferRuntime
                 && !ServerWorldManager.Instance.IsChunkLoaded(destinationContext, destinationChunk))
             {
@@ -1859,17 +1811,17 @@ namespace Game.Server.Core
                 }
             }
 
-            Vector3 destinationPhysicalPosition =
+            var destinationPhysicalPosition =
                 ServerPhysicsManager.Instance.ToPhysicalPosition(destinationPosition);
             long transferTickID = ServerECSManager.CurrentSimulationTickID;
             if (transferTickID < 0)
                 throw new InvalidOperationException(
                     $"Actor context transfer requires a nonnegative simulation tick, received {transferTickID}.");
 
-            Vector3 sourcePhysicalPosition = actor.transform.position;
-            string sourceSceneName = actor.CurrentChunk;
-            string destinationSceneName = $"World_{destinationChunk.x}_{destinationChunk.y}";
-            NetworkIdentity identity = registration.Identity;
+            var sourcePhysicalPosition = actor.transform.position;
+            var sourceSceneName = actor.CurrentChunk;
+            var destinationSceneName = $"World_{destinationChunk.x}_{destinationChunk.y}";
+            var identity = registration.Identity;
 
             // Targets are live relationships, not part of spatial membership. Retire any
             // relationship that cannot survive the destination context before publishing it.
@@ -2117,7 +2069,7 @@ namespace Game.Server.Core
             Actor actor,
             ActorSpatialContext destinationContext)
         {
-            List<Actor> actors = new(_actors.Count);
+            var actors = new List<Actor>(_actors.Count);
             foreach (ActorRegistration registration in _actors.Values)
                 actors.Add(registration.Actor);
 
