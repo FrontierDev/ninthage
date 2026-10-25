@@ -715,6 +715,13 @@ Choose numeric types according to **value semantics, range, required precision, 
 | Expression-bodied members | Allowed for properties and short methods |
 | `#region` | Allowed for meaningful organisation |
 | Public API documentation | XML documentation required |
+| Invariants | Establish once at the owning boundary; stable internal consumers trust them |
+| Dynamic/async state | Revalidate only where state can legitimately change or after suspension/reentrancy |
+| Singleton lifecycle | Publish after initialization; duplicate creation fails; only the registered instance tears down |
+| Actor teardown | Retire authoritative gameplay state before network despawn; `OnDestroy` is a one-shot fallback |
+| Hot-path lookup | Use existing owner mappings/references; avoid scans and repeated rediscovery |
+| Scratch/snapshots | Reuse owned temporary buffers where safe; preserve real mutation/reentrancy snapshot boundaries |
+| Failure semantics | Fail at the responsible boundary; no silent success/fallback for an operation that did not occur |
 | DTO/ECS fields | Public PascalCase fields allowed |
 | Normal filenames | Exact primary-type match |
 | Partial filenames | `TypeName_Section.cs` |
