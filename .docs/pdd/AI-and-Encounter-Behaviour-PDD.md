@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** NPC perception, aggro, threat, target selection, movement and positioning, group behaviour, ability use, disengagement, resets, reusable behaviour definitions, encounter state and open-world encounter-area readiness  
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-25
 
 ---
 
@@ -962,6 +962,70 @@ The architecture may use techniques such as:
 Any optimisation must preserve server authority and produce believable results when players interact with the NPC.
 
 Exact optimisation architecture belongs to technical design.
+
+### 42.1 Stage 1.3 timed-state scaling evidence
+
+Stage 1.3 benchmark work measured the current server ECS timed-state systems independently of full AI, navigation, physics, visibility and replication.
+
+The measured workload used data-only ECS entities with no GameObjects or PurrNet actor representations. Each entity maintained:
+
+- one repeated 0.5-second non-channelled cast;
+- 16 cooldown entries;
+- four periodic aura entries;
+- four periodic ticker entries.
+
+The scaling campaign measured five independent runs at each population tier:
+
+```text
+100
+500
+1,000
+2,500
+5,000
+```
+
+The server simulation interval was 0.05 seconds (20 Hz). The table records the median of the five run-level percentile values for whole authoritative simulation-tick duration:
+
+| Timed-state entities | Tick p50 | Tick p95 | Tick p99 | p95 share of 50 ms tick budget |
+| ---: | ---: | ---: | ---: | ---: |
+| 100 | 0.228 ms | 0.355 ms | 0.488 ms | 0.7% |
+| 500 | 0.850 ms | 1.123 ms | 2.229 ms | 2.2% |
+| 1,000 | 1.673 ms | 2.487 ms | 3.300 ms | 5.0% |
+| 2,500 | 3.950 ms | 5.635 ms | 7.335 ms | 11.3% |
+| 5,000 | 8.047 ms | 9.987 ms | 12.949 ms | 20.0% |
+
+At 5,000 entities the workload contained approximately 125,000 live timed-state items:
+
+```text
+5,000 active casts
+80,000 cooldown entries
+20,000 aura entries
+20,000 ticker entries
+```
+
+Median run-level timings at that tier were:
+
+| Timed system | p50 | p95 |
+| --- | ---: | ---: |
+| Spell casts | 0.404 ms | 0.564 ms |
+| Cooldowns | 2.692 ms | 3.243 ms |
+| Auras | 2.113 ms | 2.776 ms |
+| Tickers | 0.864 ms | 1.051 ms |
+
+Across all 25 completed measurements there were:
+
+- zero simulation backlog observations;
+- zero deadline misses;
+- zero catch-up-cap hits;
+- successful cleanup back to zero fixture entities.
+
+Within the tested range, whole-tick cost scaled approximately linearly with timed-state entity count. The current evidence therefore does **not** justify converting these timed-state systems to Jobs/Burst solely for Stage 1.3 performance. If future integrated workloads make timed-state traversal material, cooldown processing is the first obvious candidate because it is the largest measured individual contributor and has the simplest data-only traversal.
+
+This evidence must **not** be read as a demonstrated 5,000-actor production-server capacity. The benchmark intentionally excludes full AI decision-making, perception, NavMesh movement, Physics, threat evaluation, spatial/interest processing, PurrNet replication, full gameplay-domain callbacks and persistence. It shows only that the current timed-state ECS layer is not a limiting factor at the measured scale.
+
+The 5,000-entity scaling workload also distributes periodic/cast deadlines across simulation ticks to remain within the current bounded event-buffer contract. It therefore measures high-population steady-state timed-state scaling, not a single synchronized worst-case event burst.
+
+The measured campaigns were captured in the Unity Editor on Windows 11 with an AMD Ryzen 7 5700X (8 cores / 16 logical processors), Unity 6000.3.10f1. These results are appropriate for relative scaling and architectural decisions, not direct production hardware capacity claims.
 
 ---
 
