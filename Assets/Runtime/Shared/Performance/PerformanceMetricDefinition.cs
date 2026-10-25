@@ -117,6 +117,16 @@ namespace Game.Shared.Performance
         public const string SERVER_ACTOR_MANAGER_UPDATE_DURATION = "server.actor_manager.update_duration";
         public const string SERVER_ACTOR_MANAGER_LATE_UPDATE_DURATION = "server.actor_manager.late_update_duration";
         public const string SERVER_ACTOR_MANAGER_NPC_AGGRO_DURATION = "server.actor_manager.npc_aggro_duration";
+        public const string SERVER_ACTOR_NPC_PERCEPTION_PLAYER_CENTER_COUNT =
+            "server.actor.npc_perception.player_center_count";
+        public const string SERVER_ACTOR_NPC_PERCEPTION_UNIQUE_CELL_COUNT =
+            "server.actor.npc_perception.unique_cell_count";
+        public const string SERVER_ACTOR_NPC_PERCEPTION_UNIQUE_NPC_CANDIDATE_COUNT =
+            "server.actor.npc_perception.unique_npc_candidate_count";
+        public const string SERVER_ACTOR_NPC_PERCEPTION_LOCAL_PAIR_COUNT =
+            "server.actor.npc_perception.local_pair_count";
+        public const string SERVER_ACTOR_NPC_PERCEPTION_DECISION_COUNT =
+            "server.actor.npc_perception.decision_count";
         public const string SERVER_ACTOR_MANAGER_POSITION_VALIDATION_DURATION = "server.actor_manager.position_validation_duration";
         public const string SERVER_ACTOR_MANAGER_PLAYER_ECS_SYNC_DURATION = "server.actor_manager.player_ecs_sync_duration";
         public const string SERVER_ACTOR_PLAYER_MOVEMENT_WORK_COUNT = "server.actor.player_movement_work_count";

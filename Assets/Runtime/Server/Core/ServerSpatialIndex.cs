@@ -14,6 +14,7 @@ namespace Game.Server.Core
 
         private readonly Dictionary<SpatialCellKey, HashSet<Guid>> _actorIDsByCell = new();
         private readonly Dictionary<Guid, SpatialCellKey> _cellByActorID = new();
+        private readonly HashSet<SpatialCellKey> _batchQueryCells = new();
         private int _activeQueryCount;
 
         /// <summary>
@@ -314,6 +315,101 @@ namespace Game.Server.Core
                 predicate,
                 true,
                 out examinedCandidateCount);
+        }
+
+        /// <summary>
+        /// Appends actor IDs from the union of context-qualified cells intersecting multiple horizontal query envelopes.
+        /// </summary>
+        /// <param name="context">The single authoritative world, map and instance context for all centres.</param>
+        /// <param name="centers">Canonical absolute positions from one authoritative snapshot.</param>
+        /// <param name="radius">The non-negative horizontal broad-phase radius in metres.</param>
+        /// <param name="resultBuffer">
+        /// A caller-owned reusable set. This method appends to it and does not clear it; entries are actor IDs.
+        /// </param>
+        /// <param name="examinedCellCount">Receives the number of unique union cells traversed.</param>
+        /// <param name="examinedCandidateCount">
+        /// Receives the number of actor IDs encountered in existing buckets in those cells.
+        /// </param>
+        /// <returns>The number of actor IDs newly added to <paramref name="resultBuffer"/> by this invocation.</returns>
+        /// <remarks>
+        /// This is a broad-phase query only. Result ordering is unspecified, and membership mutations are rejected
+        /// while the query is active.
+        /// </remarks>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="context"/> is invalid.</exception>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="centers"/> or <paramref name="resultBuffer"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when the radius or a supplied centre is outside the supported spatial range.
+        /// </exception>
+        public int QueryCandidateUnion(
+            ActorSpatialContext context,
+            IReadOnlyList<WorldPosition> centers,
+            double radius,
+            HashSet<Guid> resultBuffer,
+            out int examinedCellCount,
+            out int examinedCandidateCount)
+        {
+            examinedCellCount = 0;
+            examinedCandidateCount = 0;
+
+            if (centers == null)
+                throw new ArgumentNullException(nameof(centers));
+            if (resultBuffer == null)
+                throw new ArgumentNullException(nameof(resultBuffer));
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid world, map and instance context is required.",
+                    nameof(context));
+            ValidateRadius(radius);
+
+            _batchQueryCells.Clear();
+            if (centers.Count == 0)
+                return 0;
+
+            int returnedCount = 0;
+            _activeQueryCount++;
+            try
+            {
+                foreach (WorldPosition center in centers)
+                {
+                    CellBounds bounds = GetQueryBounds(context, center, radius);
+                    for (long cellX = bounds.MinCellX; ; cellX++)
+                    {
+                        for (long cellZ = bounds.MinCellZ; ; cellZ++)
+                        {
+                            _batchQueryCells.Add(new SpatialCellKey(context, cellX, cellZ));
+
+                            if (cellZ == bounds.MaxCellZ)
+                                break;
+                        }
+
+                        if (cellX == bounds.MaxCellX)
+                            break;
+                    }
+                }
+
+                examinedCellCount = _batchQueryCells.Count;
+                foreach (SpatialCellKey cell in _batchQueryCells)
+                {
+                    if (!_actorIDsByCell.TryGetValue(cell, out var bucket))
+                        continue;
+
+                    foreach (Guid actorID in bucket)
+                    {
+                        examinedCandidateCount++;
+                        if (resultBuffer.Add(actorID))
+                            returnedCount++;
+                    }
+                }
+            }
+            finally
+            {
+                _activeQueryCount--;
+                _batchQueryCells.Clear();
+            }
+
+            return returnedCount;
         }
 
         private static void ValidateActorID(Guid actorID)

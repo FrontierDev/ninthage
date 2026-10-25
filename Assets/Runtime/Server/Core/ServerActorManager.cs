@@ -81,6 +81,36 @@ namespace Game.Server.Core
             PerformanceMetricSide.Server,
             "actor_manager",
             "server_schedule");
+        private static readonly PerformanceMetricDefinition NPC_PERCEPTION_PLAYER_CENTER_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_PLAYER_CENTER_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_perception",
+            "server_schedule");
+        private static readonly PerformanceMetricDefinition NPC_PERCEPTION_UNIQUE_CELL_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_UNIQUE_CELL_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_perception",
+            "server_schedule");
+        private static readonly PerformanceMetricDefinition NPC_PERCEPTION_UNIQUE_NPC_CANDIDATE_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_UNIQUE_NPC_CANDIDATE_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_perception",
+            "server_schedule");
+        private static readonly PerformanceMetricDefinition NPC_PERCEPTION_LOCAL_PAIR_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_LOCAL_PAIR_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_perception",
+            "server_schedule");
+        private static readonly PerformanceMetricDefinition NPC_PERCEPTION_DECISION_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_DECISION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_perception",
+            "server_schedule");
         private static readonly PerformanceMetricDefinition ECS_ACTOR_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_ECS_COUNT,
             PerformanceMetricUnit.Count,
@@ -194,6 +224,11 @@ namespace Game.Server.Core
             PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(LATE_UPDATE_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(NPC_AGGRO_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(NPC_PERCEPTION_PLAYER_CENTER_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(NPC_PERCEPTION_UNIQUE_CELL_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(NPC_PERCEPTION_UNIQUE_NPC_CANDIDATE_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(NPC_PERCEPTION_LOCAL_PAIR_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(NPC_PERCEPTION_DECISION_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(POSITION_VALIDATION_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(PLAYER_ECS_SYNC_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(PLAYER_MOVEMENT_WORK_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
@@ -495,7 +530,10 @@ namespace Game.Server.Core
             public long PendingAcquisitionTickID;
         }
         private readonly Dictionary<Guid, NPCAggroState> _npcAggroStates = new();
-        private readonly List<Guid> _npcAggroCandidateIDs = new();
+        private readonly HashSet<ActorSpatialContext> _npcPerceptionContexts = new();
+        private readonly List<PlayerActor> _npcPerceptionContextPlayers = new();
+        private readonly List<WorldPosition> _npcPerceptionContextPlayerPositions = new();
+        private readonly HashSet<Guid> _npcPerceptionCandidateIDs = new();
         private ServerSimulationRegistrationHandle _npcAggroSchedule;
         private int _npcAggroDecisionIntervalTicks;
 
@@ -580,6 +618,10 @@ namespace Game.Server.Core
             _playerValidationIntervalTicks = 0;
             _pendingSpatialContextTransfers.Clear();
             _npcAggroStates.Clear();
+            _npcPerceptionContexts.Clear();
+            _npcPerceptionContextPlayers.Clear();
+            _npcPerceptionContextPlayerPositions.Clear();
+            _npcPerceptionCandidateIDs.Clear();
             _npcNavigationStates.Clear();
             _acceptedVisibilityMovements.Clear();
             _riftQueryCandidateIDs.Clear();
@@ -1000,6 +1042,14 @@ namespace Game.Server.Core
                 if (candidate == null || ReferenceEquals(candidate, retiredActor))
                     continue;
 
+                if (retiredActor is PlayerActor
+                    && _npcAggroStates.TryGetValue(candidate.ID, out var pendingState)
+                    && ReferenceEquals(pendingState.PendingTarget, retiredActor))
+                {
+                    ClearPendingAggro(ref pendingState);
+                    _npcAggroStates[candidate.ID] = pendingState;
+                }
+
                 if (!ReferenceEquals(candidate.Target, retiredActor))
                     continue;
 
@@ -1118,6 +1168,13 @@ namespace Game.Server.Core
                 return;
             }
 
+            if (behavior.AggroRange > GameConfigurationManager.Config.NPCFullEntryRadius)
+            {
+                throw new InvalidOperationException(
+                    $"NPC '{actor.ID}' has aggro range {behavior.AggroRange}, exceeding the configured Full-entry radius "
+                    + $"{GameConfigurationManager.Config.NPCFullEntryRadius}.");
+            }
+
             if (_npcAggroStates.ContainsKey(actor.ID))
                 return;
 
@@ -1228,8 +1285,16 @@ namespace Game.Server.Core
             if (component.State == state)
                 return;
 
+            bool leavingFull = component.State == Systems.NPCActivityState.Full
+                && state != Systems.NPCActivityState.Full;
             component.State = state;
             _entityManager.SetComponentData(registration.Entity, component);
+
+            if (leavingFull && _npcAggroStates.TryGetValue(actorID, out var aggroState))
+            {
+                ClearPendingAggro(ref aggroState);
+                _npcAggroStates[actorID] = aggroState;
+            }
         }
 
         private void ReevaluateNPCActivity(Actor npc)
@@ -1461,125 +1526,229 @@ namespace Game.Server.Core
         {
             using var markerScope = NPC_AGGRO_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int playerCenterCount = 0;
+            int uniqueCellCount = 0;
+            int uniqueNPCCandidateCount = 0;
+            int localPairCount = 0;
+            int decisionCount = 0;
             int spatialCandidateCount = 0;
-            int allocHeavyOperationCount = telemetryEnabled ? 1 : 0;
-            var keys = new List<Guid>(_npcAggroStates.Keys);
+            double fullExitRadiusSquared =
+                (double)GameConfigurationManager.Config.NPCFullExitRadius
+                * GameConfigurationManager.Config.NPCFullExitRadius;
+            bool actorLifetimeMayHaveChanged = false;
 
-            foreach (var id in keys)
+            _npcPerceptionContexts.Clear();
+            _npcPerceptionContextPlayers.Clear();
+            _npcPerceptionContextPlayerPositions.Clear();
+            _npcPerceptionCandidateIDs.Clear();
+            try
             {
-                if (!_npcAggroStates.TryGetValue(id, out var state))
-                    continue;
-
-                if (state.NPC == null || state.Behavior == null)
+                foreach (Actor actor in _playerActors.Values)
                 {
-                    _npcAggroStates.Remove(id);
-                    continue;
-                }
-
-                if (state.NPC.isDead)
-                {
-                    ClearPendingAggro(ref state);
-                    _npcAggroStates[id] = state;
-                    continue;
-                }
-
-                // Already locked on a target — nothing to do.
-                if (state.NPC.Target != null)
-                {
-                    ClearPendingAggro(ref state);
-                    _npcAggroStates[id] = state;
-                    continue;
-                }
-
-                float aggroRange = state.Behavior.AggroRange;
-                WorldPosition npcPosition = GetRequiredAcceptedWorldPosition(state.NPC.ID);
-
-                _npcAggroCandidateIDs.Clear();
-                QuerySpatialInRange(
-                    state.NPC.SpatialContext,
-                    npcPosition,
-                    aggroRange,
-                    _npcAggroCandidateIDs,
-                    GetRequiredAcceptedWorldPosition,
-                    out int examinedCandidateCount,
-                    includeVerticalDistance: true);
-                spatialCandidateCount += examinedCandidateCount;
-
-                Actor closest = null;
-                double closestDistance = double.MaxValue;
-                foreach (Guid candidateID in _npcAggroCandidateIDs)
-                {
-                    if (candidateID == state.NPC.ID)
+                    if (actor is not PlayerActor player || player.isDead)
                         continue;
-
-                    if (!TryGetActor(candidateID, out Actor candidateActor))
+                    if (!player.SpatialContext.IsValid)
                     {
                         throw new InvalidOperationException(
-                            $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
+                            $"Living player '{player.ID}' has an invalid spatial context during NPC perception.");
                     }
 
-                    if (!(candidateActor is PlayerActor player) || player.isDead)
-                        continue;
+                    _npcPerceptionContexts.Add(player.SpatialContext);
+                    playerCenterCount++;
+                }
 
-                    WorldPosition playerPosition = GetRequiredAcceptedWorldPosition(player.ID);
-                    double deltaX = npcPosition.x - playerPosition.x;
-                    double deltaY = npcPosition.y - playerPosition.y;
-                    double deltaZ = npcPosition.z - playerPosition.z;
-                    double distance = Math.Sqrt(
-                        deltaX * deltaX
-                        + deltaY * deltaY
-                        + deltaZ * deltaZ);
-                    if (closest == null
-                        || distance < closestDistance
-                        || (distance == closestDistance && player.ID.CompareTo(closest.ID) < 0))
+                foreach (ActorSpatialContext context in _npcPerceptionContexts)
+                {
+                    _npcPerceptionContextPlayers.Clear();
+                    _npcPerceptionContextPlayerPositions.Clear();
+                    _npcPerceptionCandidateIDs.Clear();
+
+                    foreach (Actor actor in _playerActors.Values)
                     {
-                        closest = player;
-                        closestDistance = distance;
+                        if (actor is not PlayerActor player
+                            || player.isDead
+                            || !context.IsCompatibleWith(player.SpatialContext))
+                        {
+                            continue;
+                        }
+
+                        _npcPerceptionContextPlayers.Add(player);
+                        _npcPerceptionContextPlayerPositions.Add(
+                            GetRequiredAcceptedWorldPosition(player.ID));
                     }
-                }
 
-                if (closest == null)
-                {
-                    // No player in range — reset any pending aggro.
-                    ClearPendingAggro(ref state);
-                    _npcAggroStates[id] = state;
-                    continue;
-                }
+                    _spatialIndex.QueryCandidateUnion(
+                        context,
+                        _npcPerceptionContextPlayerPositions,
+                        GameConfigurationManager.Config.NPCFullExitRadius,
+                        _npcPerceptionCandidateIDs,
+                        out int examinedCellCount,
+                        out int examinedCandidateCount);
+                    uniqueCellCount += examinedCellCount;
+                    spatialCandidateCount += examinedCandidateCount;
 
-                // Player detected — start or continue the authoritative pending deadline.
-                if (state.PendingTarget != closest)
-                {
-                    state.PendingTarget = closest;
-                    long delayTicks = GetNonShorteningAggroDelayTicks(state.Behavior.AggroDelay);
-                    state.PendingAcquisitionTickID = delayTicks == 0
-                        ? tick.TickID
-                        : checked(tick.TickID + delayTicks);
-                }
-
-                if (tick.TickID >= state.PendingAcquisitionTickID)
-                {
-                    Debug.Log($"NPC '{state.NPC.Name}' aggroed player '{closest.Name}'.");
-                    state.NPC.SetTargetFromServer(closest);
-                    ActorEndpoint.onServerStartAutoAttack?.Invoke(state.NPC);
-
-                    if (!_actors.TryGetValue(id, out var currentRegistration)
-                        || currentRegistration.Actor != state.NPC)
+                    foreach (Guid candidateID in _npcPerceptionCandidateIDs)
                     {
-                        _npcAggroStates.Remove(id);
-                        continue;
-                    }
+                        if (!TryGetActor(candidateID, out Actor candidateActor))
+                        {
+                            if (!actorLifetimeMayHaveChanged)
+                            {
+                                throw new InvalidOperationException(
+                                    $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
+                            }
 
-                    ClearPendingAggro(ref state);
+                            continue;
+                        }
+
+                        if (candidateActor is not NPCActor)
+                            continue;
+
+                        uniqueNPCCandidateCount++;
+                        if (!_npcAggroStates.TryGetValue(candidateID, out var state))
+                            continue;
+
+                        if (state.NPC == null || state.Behavior == null)
+                        {
+                            _npcAggroStates.Remove(candidateID);
+                            continue;
+                        }
+
+                        if (state.NPC.isDead)
+                        {
+                            ClearPendingAggro(ref state);
+                            _npcAggroStates[candidateID] = state;
+                            continue;
+                        }
+
+                        if (state.NPC.Target != null)
+                        {
+                            ClearPendingAggro(ref state);
+                            _npcAggroStates[candidateID] = state;
+                            continue;
+                        }
+
+                        var activityComponent = _entityManager.GetComponentData<Systems.NPCActivityComponent>(
+                            _actors[candidateID].Entity);
+                        if (activityComponent.State != Systems.NPCActivityState.Full)
+                        {
+                            ClearPendingAggro(ref state);
+                            _npcAggroStates[candidateID] = state;
+                            continue;
+                        }
+
+                        decisionCount++;
+                        WorldPosition npcPosition = GetRequiredAcceptedWorldPosition(state.NPC.ID);
+                        double aggroRangeSquared =
+                            (double)state.Behavior.AggroRange * state.Behavior.AggroRange;
+                        PlayerActor closest = null;
+                        double closestDistanceSquared = double.MaxValue;
+
+                        for (int playerIndex = 0;
+                             playerIndex < _npcPerceptionContextPlayers.Count;
+                             playerIndex++)
+                        {
+                            PlayerActor player = _npcPerceptionContextPlayers[playerIndex];
+                            if (!_actors.TryGetValue(player.ID, out var playerRegistration)
+                                || !ReferenceEquals(playerRegistration.Actor, player)
+                                || player.isDead
+                                || !player.SpatialContext.IsCompatibleWith(state.NPC.SpatialContext))
+                            {
+                                continue;
+                            }
+
+                            WorldPosition playerPosition =
+                                _npcPerceptionContextPlayerPositions[playerIndex];
+                            double deltaX = npcPosition.x - playerPosition.x;
+                            double deltaY = npcPosition.y - playerPosition.y;
+                            double deltaZ = npcPosition.z - playerPosition.z;
+                            double distanceSquared =
+                                deltaX * deltaX
+                                + deltaY * deltaY
+                                + deltaZ * deltaZ;
+                            if (distanceSquared > fullExitRadiusSquared)
+                                continue;
+
+                            localPairCount++;
+                            if (distanceSquared > aggroRangeSquared)
+                                continue;
+
+                            if (closest == null
+                                || distanceSquared < closestDistanceSquared
+                                || (distanceSquared == closestDistanceSquared
+                                    && player.ID.CompareTo(closest.ID) < 0))
+                            {
+                                closest = player;
+                                closestDistanceSquared = distanceSquared;
+                            }
+                        }
+
+                        if (closest == null)
+                        {
+                            ClearPendingAggro(ref state);
+                            _npcAggroStates[candidateID] = state;
+                            continue;
+                        }
+
+                        if (state.PendingTarget != closest)
+                        {
+                            state.PendingTarget = closest;
+                            long delayTicks = GetNonShorteningAggroDelayTicks(state.Behavior.AggroDelay);
+                            state.PendingAcquisitionTickID = delayTicks == 0
+                                ? tick.TickID
+                                : checked(tick.TickID + delayTicks);
+                        }
+
+                        if (tick.TickID >= state.PendingAcquisitionTickID)
+                        {
+                            SetNPCActivityState(state.NPC.ID, Systems.NPCActivityState.Full);
+                            Debug.Log($"NPC '{state.NPC.Name}' aggroed player '{closest.Name}'.");
+                            state.NPC.SetTargetFromServer(closest);
+                            ActorEndpoint.onServerStartAutoAttack?.Invoke(state.NPC);
+                            actorLifetimeMayHaveChanged = true;
+
+                            if (!_actors.TryGetValue(candidateID, out var currentRegistration)
+                                || !ReferenceEquals(currentRegistration.Actor, state.NPC))
+                            {
+                                _npcAggroStates.Remove(candidateID);
+                                continue;
+                            }
+
+                            ClearPendingAggro(ref state);
+                        }
+
+                        _npcAggroStates[candidateID] = state;
+                    }
                 }
 
-                _npcAggroStates[id] = state;
+                if (telemetryEnabled)
+                {
+                    PerformanceTelemetry.TryRecord(
+                        NPC_PERCEPTION_PLAYER_CENTER_COUNT_METRIC,
+                        playerCenterCount);
+                    PerformanceTelemetry.TryRecord(
+                        NPC_PERCEPTION_UNIQUE_CELL_COUNT_METRIC,
+                        uniqueCellCount);
+                    PerformanceTelemetry.TryRecord(
+                        NPC_PERCEPTION_UNIQUE_NPC_CANDIDATE_COUNT_METRIC,
+                        uniqueNPCCandidateCount);
+                    PerformanceTelemetry.TryRecord(
+                        NPC_PERCEPTION_LOCAL_PAIR_COUNT_METRIC,
+                        localPairCount);
+                    PerformanceTelemetry.TryRecord(
+                        NPC_PERCEPTION_DECISION_COUNT_METRIC,
+                        decisionCount);
+                    PerformanceTelemetry.TryRecord(OVERLAP_SEARCH_COUNT_METRIC, 0);
+                    PerformanceTelemetry.TryRecord(COLLIDER_CANDIDATE_COUNT_METRIC, 0);
+                    PerformanceTelemetry.TryRecord(SPATIAL_CANDIDATE_COUNT_METRIC, spatialCandidateCount);
+                    PerformanceTelemetry.TryRecord(ALLOC_HEAVY_OPERATION_COUNT_METRIC, 0);
+                }
             }
-            if (telemetryEnabled)
+            finally
             {
-                PerformanceTelemetry.TryRecord(OVERLAP_SEARCH_COUNT_METRIC, 0);
-                PerformanceTelemetry.TryRecord(COLLIDER_CANDIDATE_COUNT_METRIC, 0);
-                PerformanceTelemetry.TryRecord(SPATIAL_CANDIDATE_COUNT_METRIC, spatialCandidateCount);
-                PerformanceTelemetry.TryRecord(ALLOC_HEAVY_OPERATION_COUNT_METRIC, allocHeavyOperationCount);
+                _npcPerceptionContexts.Clear();
+                _npcPerceptionContextPlayers.Clear();
+                _npcPerceptionContextPlayerPositions.Clear();
+                _npcPerceptionCandidateIDs.Clear();
             }
         }
 
