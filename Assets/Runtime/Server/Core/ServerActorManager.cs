@@ -238,6 +238,9 @@ namespace Game.Server.Core
         private readonly HashSet<PlayerID> _pendingSpatialContextTransfers = new();
         private readonly List<AcceptedVisibilityMovement> _acceptedVisibilityMovements = new();
         private readonly List<Guid> _riftQueryCandidateIDs = new();
+        private readonly HashSet<Guid> _npcActivityCandidateIDs = new();
+        private readonly List<Guid> _npcActivityCandidateQueryBuffer = new();
+        private readonly List<Guid> _npcActivityPlayerQueryBuffer = new();
         private NetworkManager _networkManager;
         private ServerSpatialIndex _spatialIndex;
 
@@ -580,6 +583,9 @@ namespace Game.Server.Core
             _npcNavigationStates.Clear();
             _acceptedVisibilityMovements.Clear();
             _riftQueryCandidateIDs.Clear();
+            _npcActivityCandidateIDs.Clear();
+            _npcActivityCandidateQueryBuffer.Clear();
+            _npcActivityPlayerQueryBuffer.Clear();
             _pendingTickID = -1;
             _pendingTickEntityScanCount = 0;
             _pendingTickGameObjectSyncCount = 0;
@@ -886,6 +892,20 @@ namespace Game.Server.Core
                         $"[Visibility] Post-spawn reevaluation failed for actor '{actor.ID}': {exception.Message}");
                 }
             }
+
+            if (actor is PlayerActor player)
+            {
+                _npcActivityCandidateIDs.Clear();
+                AppendNPCActivityCandidates(
+                    player.SpatialContext,
+                    GetRequiredAcceptedWorldPosition(player.ID),
+                    GameConfigurationManager.Config.ActorVisibilityEntryRadius);
+                ReevaluateNPCActivityCandidates();
+            }
+            else if (actor is NPCActor npc && !npc.Owner.HasValue && !npc.isDead)
+            {
+                ReevaluateNPCActivity(npc);
+            }
         }
 
         /// <summary>Rolls back actor and ECS state created by a rejected spawn attempt.</summary>
@@ -928,6 +948,15 @@ namespace Game.Server.Core
             if (!ReferenceEquals(registration.Actor, actor))
                 return;
 
+            if (actor is PlayerActor player)
+            {
+                _npcActivityCandidateIDs.Clear();
+                AppendNPCActivityCandidates(
+                    player.SpatialContext,
+                    GetRequiredAcceptedWorldPosition(player.ID),
+                    GameConfigurationManager.Config.ActorVisibilityExitRadius);
+            }
+
             RemoveCombatReferencesToActor(actor);
 
             if (actor.Owner.HasValue)
@@ -953,6 +982,9 @@ namespace Game.Server.Core
                 }
             }
             _npcAggroStates.Remove(actor.ID);
+
+            if (actor is PlayerActor)
+                ReevaluateNPCActivityCandidates();
         }
 
         private void RemoveCombatReferencesToActor(Actor retiredActor)
@@ -973,6 +1005,9 @@ namespace Game.Server.Core
 
                 if (candidate.Owner == null)
                 {
+                    if (retiredActor is PlayerActor && candidate is NPCActor)
+                        _npcActivityCandidateIDs.Add(candidate.ID);
+
                     DropNPCTarget(candidate);
                 }
                 else
@@ -990,8 +1025,12 @@ namespace Game.Server.Core
                 if (candidate == null || ReferenceEquals(candidate, retiredActor))
                     continue;
 
-                if (candidate.TryGetComponent<NPCBehavior>(out var npcBehavior))
-                    npcBehavior.RemoveThreatSource(retiredPlayer);
+                if (!candidate.TryGetComponent<NPCBehavior>(out var npcBehavior))
+                    continue;
+
+                bool threatRemoved = npcBehavior.RemoveThreatSource(retiredPlayer);
+                if (threatRemoved && candidate is NPCActor && candidate.Owner == null)
+                    _npcActivityCandidateIDs.Add(candidate.ID);
             }
         }
 
@@ -1167,6 +1206,9 @@ namespace Game.Server.Core
                     Time.frameCount);
 
             TrackNPCForAggro(actor);
+
+            if (actor is NPCActor && !actor.Owner.HasValue && !actor.isDead)
+                ReevaluateNPCActivity(actor);
         }
 
         private void SetNPCActivityState(Guid actorID, Systems.NPCActivityState state)
@@ -1183,6 +1225,203 @@ namespace Game.Server.Core
 
             component.State = state;
             _entityManager.SetComponentData(registration.Entity, component);
+        }
+
+        private void ReevaluateNPCActivity(Actor npc)
+        {
+            if (npc == null)
+                throw new InvalidOperationException("Cannot reevaluate activity for a null actor.");
+            if (npc is not NPCActor)
+                throw new InvalidOperationException(
+                    $"Cannot reevaluate activity for non-NPC actor '{npc.ID}'.");
+            if (!_actors.TryGetValue(npc.ID, out var registration)
+                || !ReferenceEquals(registration.Actor, npc))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot reevaluate activity for NPC '{npc.ID}' because it is not the registered actor instance.");
+            }
+
+            if (npc.isDead)
+                return;
+
+            if (npc.Owner.HasValue)
+            {
+                SetNPCActivityState(npc.ID, Systems.NPCActivityState.Full);
+                return;
+            }
+
+            if (npc.Target != null)
+            {
+                SetNPCActivityState(npc.ID, Systems.NPCActivityState.Full);
+                return;
+            }
+
+            if (npc.TryGetComponent<NPCBehavior>(out var npcBehavior))
+            {
+                foreach (var threatEntry in npcBehavior.ThreatTable)
+                {
+                    PlayerActor player = threatEntry.Key;
+                    if (player == null
+                        || !_actors.TryGetValue(player.ID, out var playerRegistration)
+                        || !ReferenceEquals(playerRegistration.Actor, player)
+                        || !player.SpatialContext.IsCompatibleWith(npc.SpatialContext))
+                    {
+                        continue;
+                    }
+
+                    SetNPCActivityState(npc.ID, Systems.NPCActivityState.Full);
+                    return;
+                }
+            }
+
+            WorldPosition npcPosition = GetRequiredAcceptedWorldPosition(npc.ID);
+            double nearestPlayerDistanceSquared = double.MaxValue;
+            try
+            {
+                _npcActivityPlayerQueryBuffer.Clear();
+                QuerySpatialInRange(
+                    npc.SpatialContext,
+                    npcPosition,
+                    GameConfigurationManager.Config.ActorVisibilityExitRadius,
+                    _npcActivityPlayerQueryBuffer,
+                    GetRequiredAcceptedWorldPosition,
+                    out _,
+                    includeVerticalDistance: true);
+
+                foreach (Guid candidateID in _npcActivityPlayerQueryBuffer)
+                {
+                    if (!TryGetActor(candidateID, out Actor candidateActor))
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
+                    }
+
+                    if (candidateActor is not PlayerActor player
+                        || !player.SpatialContext.IsCompatibleWith(npc.SpatialContext))
+                    {
+                        continue;
+                    }
+
+                    WorldPosition playerPosition = GetRequiredAcceptedWorldPosition(player.ID);
+                    double deltaX = npcPosition.x - playerPosition.x;
+                    double deltaY = npcPosition.y - playerPosition.y;
+                    double deltaZ = npcPosition.z - playerPosition.z;
+                    double distanceSquared =
+                        deltaX * deltaX
+                        + deltaY * deltaY
+                        + deltaZ * deltaZ;
+                    if (distanceSquared < nearestPlayerDistanceSquared)
+                        nearestPlayerDistanceSquared = distanceSquared;
+                }
+            }
+            finally
+            {
+                _npcActivityPlayerQueryBuffer.Clear();
+            }
+
+            double fullEntryRadiusSquared =
+                GameConfigurationManager.Config.NPCFullEntryRadius
+                * GameConfigurationManager.Config.NPCFullEntryRadius;
+            double fullExitRadiusSquared =
+                GameConfigurationManager.Config.NPCFullExitRadius
+                * GameConfigurationManager.Config.NPCFullExitRadius;
+            double visibilityEntryRadiusSquared =
+                GameConfigurationManager.Config.ActorVisibilityEntryRadius
+                * GameConfigurationManager.Config.ActorVisibilityEntryRadius;
+            double visibilityExitRadiusSquared =
+                GameConfigurationManager.Config.ActorVisibilityExitRadius
+                * GameConfigurationManager.Config.ActorVisibilityExitRadius;
+
+            Systems.NPCActivityState currentState =
+                _entityManager.GetComponentData<Systems.NPCActivityComponent>(registration.Entity).State;
+            Systems.NPCActivityState nextState;
+            switch (currentState)
+            {
+                case Systems.NPCActivityState.Full:
+                    nextState = nearestPlayerDistanceSquared <= fullExitRadiusSquared
+                        ? Systems.NPCActivityState.Full
+                        : nearestPlayerDistanceSquared <= visibilityExitRadiusSquared
+                            ? Systems.NPCActivityState.Nearby
+                            : Systems.NPCActivityState.Dormant;
+                    break;
+                case Systems.NPCActivityState.Nearby:
+                    nextState = nearestPlayerDistanceSquared <= fullEntryRadiusSquared
+                        ? Systems.NPCActivityState.Full
+                        : nearestPlayerDistanceSquared <= visibilityExitRadiusSquared
+                            ? Systems.NPCActivityState.Nearby
+                            : Systems.NPCActivityState.Dormant;
+                    break;
+                case Systems.NPCActivityState.Dormant:
+                    nextState = nearestPlayerDistanceSquared <= fullEntryRadiusSquared
+                        ? Systems.NPCActivityState.Full
+                        : nearestPlayerDistanceSquared <= visibilityEntryRadiusSquared
+                            ? Systems.NPCActivityState.Nearby
+                            : Systems.NPCActivityState.Dormant;
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"NPC '{npc.ID}' has an unsupported activity state '{currentState}'.");
+            }
+
+            SetNPCActivityState(npc.ID, nextState);
+        }
+
+        private void AppendNPCActivityCandidates(
+            ActorSpatialContext context,
+            WorldPosition center,
+            double radius)
+        {
+            _npcActivityCandidateQueryBuffer.Clear();
+            try
+            {
+                QuerySpatialInRange(
+                    context,
+                    center,
+                    radius,
+                    _npcActivityCandidateQueryBuffer,
+                    GetRequiredAcceptedWorldPosition,
+                    out _,
+                    includeVerticalDistance: true);
+
+                foreach (Guid candidateID in _npcActivityCandidateQueryBuffer)
+                {
+                    if (!TryGetActor(candidateID, out Actor candidateActor))
+                    {
+                        throw new InvalidOperationException(
+                            $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
+                    }
+
+                    if (candidateActor is NPCActor)
+                        _npcActivityCandidateIDs.Add(candidateID);
+                }
+            }
+            finally
+            {
+                _npcActivityCandidateQueryBuffer.Clear();
+            }
+        }
+
+        private void ReevaluateNPCActivityCandidates()
+        {
+            try
+            {
+                foreach (Guid candidateID in _npcActivityCandidateIDs)
+                {
+                    if (!TryGetActor(candidateID, out Actor candidateActor))
+                        continue;
+                    if (candidateActor is not NPCActor npc)
+                    {
+                        throw new InvalidOperationException(
+                            $"NPC activity candidate '{candidateID}' is not an NPC actor.");
+                    }
+
+                    ReevaluateNPCActivity(npc);
+                }
+            }
+            finally
+            {
+                _npcActivityCandidateIDs.Clear();
+            }
         }
 
         private void OnActorInterestChanged(Actor actor, SceneID sceneID)
@@ -1437,6 +1676,27 @@ namespace Game.Server.Core
             if (_acceptedVisibilityMovements.Count == 0)
                 return;
 
+            _npcActivityCandidateIDs.Clear();
+            foreach (AcceptedVisibilityMovement movement in _acceptedVisibilityMovements)
+            {
+                if (movement.Actor is PlayerActor)
+                {
+                    AppendNPCActivityCandidates(
+                        movement.Context,
+                        movement.PreviousPosition,
+                        GameConfigurationManager.Config.ActorVisibilityExitRadius);
+                    AppendNPCActivityCandidates(
+                        movement.Context,
+                        movement.CurrentPosition,
+                        GameConfigurationManager.Config.ActorVisibilityEntryRadius);
+                }
+                else if (movement.Actor is NPCActor)
+                {
+                    _npcActivityCandidateIDs.Add(movement.Actor.ID);
+                }
+            }
+
+            ReevaluateNPCActivityCandidates();
             ServerInterestManager.Instance.ReevaluateActorVisibilityBatch(_acceptedVisibilityMovements);
 
             if (PerformanceTelemetry.IsEnabled && gameObjectSyncCount > 0)
@@ -1857,7 +2117,18 @@ namespace Game.Server.Core
 
             // Targets are live relationships, not part of spatial membership. Retire any
             // relationship that cannot survive the destination context before publishing it.
-            ClearIncompatibleTargetsForTransfer(actor, destinationContext);
+            if (actor is PlayerActor)
+                _npcActivityCandidateIDs.Clear();
+            try
+            {
+                ClearIncompatibleTargetsForTransfer(actor, destinationContext);
+            }
+            catch
+            {
+                if (actor is PlayerActor)
+                    _npcActivityCandidateIDs.Clear();
+                throw;
+            }
 
             bool spatialMembershipTransferred = false;
             bool actorContextTransferred = false;
@@ -2071,6 +2342,7 @@ namespace Game.Server.Core
                     }
                 }
 
+                _npcActivityCandidateIDs.Clear();
                 if (rollbackFailures.Count > 0)
                 {
                     throw new InvalidOperationException(
@@ -2079,6 +2351,38 @@ namespace Game.Server.Core
                 }
 
                 throw;
+            }
+
+            if (actor is PlayerActor transferredPlayer)
+            {
+                foreach (Guid candidateID in _npcActivityCandidateIDs)
+                {
+                    if (!TryGetActor(candidateID, out Actor candidateActor)
+                        || candidateActor is not NPCActor other
+                        || other.Owner.HasValue)
+                    {
+                        continue;
+                    }
+
+                    if (other.TryGetComponent<NPCBehavior>(out var npcBehavior))
+                        npcBehavior.RemoveThreatSource(transferredPlayer);
+                }
+
+                AppendNPCActivityCandidates(
+                    sourceContext,
+                    sourcePosition,
+                    GameConfigurationManager.Config.ActorVisibilityExitRadius);
+                AppendNPCActivityCandidates(
+                    destinationContext,
+                    destinationPosition,
+                    GameConfigurationManager.Config.ActorVisibilityEntryRadius);
+                ReevaluateNPCActivityCandidates();
+            }
+            else if (actor is NPCActor)
+            {
+                _npcActivityCandidateIDs.Clear();
+                _npcActivityCandidateIDs.Add(actor.ID);
+                ReevaluateNPCActivityCandidates();
             }
 
             try
@@ -2125,6 +2429,16 @@ namespace Game.Server.Core
                 {
                     ClearPendingAggro(ref state);
                     _npcAggroStates[other.ID] = state;
+                }
+
+                if (actor is PlayerActor transferringPlayer
+                    && other is NPCActor
+                    && other.Owner == null
+                    && !destinationContext.IsCompatibleWith(other.SpatialContext)
+                    && other.TryGetComponent<NPCBehavior>(out var npcBehavior)
+                    && npcBehavior.ThreatTable.ContainsKey(transferringPlayer))
+                {
+                    _npcActivityCandidateIDs.Add(other.ID);
                 }
 
                 if (!losesTarget)

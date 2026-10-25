@@ -171,6 +171,9 @@ namespace Game.Server.Core
             {
                 navigationState.Agent.ResetPath();
             }
+
+            if (npc is NPCActor && !npc.isDead)
+                ReevaluateNPCActivity(npc);
         }
 
         private void UpdateNPCNavigation()
