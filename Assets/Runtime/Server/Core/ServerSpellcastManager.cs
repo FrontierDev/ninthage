@@ -543,6 +543,16 @@ namespace Game.Server.Core
                 ctx.WorldPositionTarget = worldPositionTarget;
                 ctx.PositionTarget = ServerPhysicsManager.Instance.ToPhysicalPosition(worldPositionTarget);
             }
+            var isInstantCast = ctx.IsInstantCast();
+            if (!isInstantCast
+                && (float.IsNaN(spell.CastTime)
+                    || float.IsInfinity(spell.CastTime)
+                    || spell.CastTime <= 0f))
+            {
+                throw new InvalidOperationException(
+                    "A non-instant spell cast requires a finite positive cast time.");
+            }
+
             long castID = requestedCastID > 0 ? requestedCastID : checked(++_nextCastID);
             InvalidateActiveCast(caster.ID);
             _activeSpellCasts[caster.ID] = ctx;
@@ -550,7 +560,7 @@ namespace Game.Server.Core
 
             // Skip ECS and event invocation if the cast time is 0 or less
             // - just complete the cast immediately.
-            if (ctx.IsInstantCast())
+            if (isInstantCast)
             {
                 _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
                 {
@@ -574,14 +584,6 @@ namespace Game.Server.Core
             }
             else
             {
-                if (float.IsNaN(spell.CastTime)
-                    || float.IsInfinity(spell.CastTime)
-                    || spell.CastTime <= 0f)
-                {
-                    throw new InvalidOperationException(
-                        "A non-instant spell cast requires a finite positive cast time.");
-                }
-
                 var firstProgressTickID = GetFirstCastProgressTickID();
                 var durationTicks = ServerSimulationClock.GetNonShorteningTickCount(
                     spell.CastTime,
@@ -1323,9 +1325,10 @@ namespace Game.Server.Core
             }
 
             var component = _entityManager.GetComponentData<Systems.SpellCastComponent>(entity);
-            var completedProgressTicks = Math.Max(
-                0L,
-                ServerSimulationClock.CurrentTickID - component.FirstProgressTickID);
+            var currentTickID = ServerSimulationClock.CurrentTickID;
+            var completedProgressTicks = currentTickID < component.FirstProgressTickID
+                ? 0L
+                : checked(currentTickID - component.FirstProgressTickID + 1L);
             var elapsedProgressSeconds = completedProgressTicks
                 * (double)GameConfigurationManager.Config.ServerSimulationTickDuration;
             return Mathf.Max(
