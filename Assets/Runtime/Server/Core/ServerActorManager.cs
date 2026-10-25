@@ -8,7 +8,6 @@ using Game.Shared.Utility;
 using PurrNet;
 using System;
 using System.Collections.Generic;
-using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
@@ -21,6 +20,8 @@ namespace Game.Server.Core
     /// </summary>
     public sealed partial class ServerActorManager : MonoBehaviour
     {
+        #region Nested types
+
         private readonly struct AcceptedVisibilityMovement
         {
             public Actor Actor { get; }
@@ -40,6 +41,10 @@ namespace Game.Server.Core
                 Context = context;
             }
         }
+
+        #endregion
+
+        #region Static state and performance metrics
 
         private static readonly PerformanceMetricDefinition UPDATE_DURATION_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_MANAGER_UPDATE_DURATION,
@@ -200,6 +205,10 @@ namespace Game.Server.Core
                 PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
+        #endregion
+
+        #region Actor and ECS state
+
         // ECS Management.
         private EntityManager _entityManager;
         private EntityQuery _actorComponentQuery;
@@ -212,6 +221,10 @@ namespace Game.Server.Core
         private readonly List<Guid> _riftQueryCandidateIDs = new();
         private NetworkManager _networkManager;
         private ServerSpatialIndex _spatialIndex;
+
+        #endregion
+
+        #region Actor queries
 
         /// <summary>Finds the server actor associated with an actor identifier.</summary>
         /// <param name="actorID">The actor identifier to find.</param>
@@ -324,11 +337,15 @@ namespace Game.Server.Core
             Guid actorID,
             out WorldPosition position)
         {
-            if (!_actorEntities.TryGetValue(actorID, out var entity)
-                || !_entityManager.Exists(entity))
+            if (!_actorEntities.TryGetValue(actorID, out var entity))
             {
                 position = default;
                 return false;
+            }
+            if (!_entityManager.Exists(entity))
+            {
+                throw new InvalidOperationException(
+                    $"Actor '{actorID}' is mapped to an ECS entity that no longer exists.");
             }
 
             var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
@@ -441,16 +458,12 @@ namespace Game.Server.Core
                 centerDistance
                     - firstRadius
                     - secondRadius);
-            if (double.IsNaN(distance)
-                || double.IsInfinity(distance)
-                || distance < 0d)
-            {
-                throw new InvalidOperationException(
-                    $"Actor surface distance between {first.ID} and {second.ID} is not finite and nonnegative.");
-            }
-
             return distance;
         }
+
+        #endregion
+
+        #region NPC aggro state
 
         // NPC aggro tracking.
         private struct NPCAggroState
@@ -465,13 +478,14 @@ namespace Game.Server.Core
         private ServerSimulationRegistrationHandle _npcAggroSchedule;
         private int _npcAggroDecisionIntervalTicks;
 
+        #endregion
+
+        #region Lifecycle
+
         private void Awake()
         {
             if (_instance != null)
-            {
-                Debug.Error("ServerActorManager is already initialized!");
-                return;
-            }
+                throw new InvalidOperationException("ServerActorManager is already initialized.");
             if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
                 throw new InvalidOperationException("Server spatial indexing requires initialized game configuration.");
 
@@ -500,6 +514,9 @@ namespace Game.Server.Core
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
             _initialized = false;
 
             _npcAggroSchedule.Cancel();
@@ -547,6 +564,10 @@ namespace Game.Server.Core
             _instance = null;
             _networkManager = null;
         }
+
+        #endregion
+
+        #region Server simulation
 
         private ServerSpatialIndex GetSpatialIndex()
         {
@@ -652,6 +673,10 @@ namespace Game.Server.Core
             using var markerScope = LATE_UPDATE_MARKER.Begin();
             // Tick-scoped bridge telemetry is flushed by ProcessAuthoritativeTickCompleted.
         }
+
+        #endregion
+
+        #region Actor lifecycle
 
         /// <summary>
         /// Handles the spawn event after an explicit server spawn handoff has registered the
@@ -1014,6 +1039,10 @@ namespace Game.Server.Core
                 $"Actor {actorID} has no live accepted world position.");
         }
 
+        #endregion
+
+        #region Actor ownership and interest
+
         /// <summary>
         /// Updates ECS ownership and reinitializes the periodic validation baseline after an
         /// authoritative ownership transition.
@@ -1021,84 +1050,102 @@ namespace Game.Server.Core
         /// <param name="actor">The actor whose owner changed.</param>
         private void OnActorOwnerChanged(Actor actor)
         {
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            foreach (var entity in entities)
+            if (_actorEntities.TryGetValue(actor.ID, out var entity))
             {
-                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                if (component.ActorID == actor.ID)
+                if (!_entityManager.Exists(entity))
                 {
-                    var previousOwner = component.Owner;
-                    component.Owner = actor.Owner ?? default;
-                    _entityManager.SetComponentData(entity, component);
-
-                    // An unowned actor must have the same movement state as a newly registered NPC
-                    // before the next authoritative movement bridge runs.
-                    if (component.Owner == default)
-                    {
-                        EnsureNPCMovementComponents(entity, actor);
-                    }
-                    else
-                    {
-                        RemoveNPCNavigationRegistration(actor);
-                    }
-
-                    if (previousOwner != default
-                        && previousOwner != component.Owner
-                        && _playerActors.TryGetValue(previousOwner, out var previousActor)
-                        && previousActor == actor)
-                    {
-                        _pendingSpatialContextTransfers.Remove(previousOwner);
-                        RemovePlayerValidationState(previousOwner);
-                    }
-
-                    if (actor.Owner != null && component.Owner != default)
-                    {
-                        InitializePlayerValidationState(
-                            component.Owner,
-                            actor,
-                            ToWorldPosition(component.WorldPositionD));
-                    }
-
-                    Debug.Log("Actor owner changed on server: " + actor.Name + " (ID: " + actor.ID + ")");
-                    break;
+                    throw new InvalidOperationException(
+                        $"Actor '{actor.ID}' is mapped to an ECS entity that no longer exists.");
                 }
+
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                if (component.ActorID != actor.ID)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor entity mapping for '{actor.ID}' contains component actor '{component.ActorID}'.");
+                }
+
+                var previousOwner = component.Owner;
+                component.Owner = actor.Owner ?? default;
+                _entityManager.SetComponentData(entity, component);
+
+                // An unowned actor must have the same movement state as a newly registered NPC
+                // before the next authoritative movement bridge runs.
+                if (component.Owner == default)
+                {
+                    EnsureNPCMovementComponents(entity, actor);
+                }
+                else
+                {
+                    RemoveNPCNavigationRegistration(actor);
+                }
+
+                if (previousOwner != default
+                    && previousOwner != component.Owner
+                    && _playerActors.TryGetValue(previousOwner, out var previousActor)
+                    && previousActor == actor)
+                {
+                    _pendingSpatialContextTransfers.Remove(previousOwner);
+                    RemovePlayerValidationState(previousOwner);
+                }
+
+                if (actor.Owner != null && component.Owner != default)
+                {
+                    InitializePlayerValidationState(
+                        component.Owner,
+                        actor,
+                        ToWorldPosition(component.WorldPositionD));
+                }
+
+                Debug.Log("Actor owner changed on server: " + actor.Name + " (ID: " + actor.ID + ")");
             }
+
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(
                     OWNER_CHANGE_ENTITY_SCAN_COUNT_METRIC,
-                    entities.Length,
+                    0,
                     Time.frameCount);
-            entities.Dispose();
 
             TrackNPCForAggro(actor);
         }
 
         private void OnActorInterestChanged(Actor actor, SceneID sceneID)
         {
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            foreach (var entity in entities)
+            if (_actorEntities.TryGetValue(actor.ID, out var entity))
             {
-                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                if (component.ActorID == actor.ID)
+                if (!_entityManager.Exists(entity))
                 {
-                    component.CurrentScene = sceneID;
-                    _entityManager.SetComponentData(entity, component);
-
-                    string sceneName = "unknown";
-                    if (NetworkManager.main.sceneModule.TryGetSceneState(sceneID, out var state))
-                        sceneName = state.scene.name;
-
-                    Debug.Log("Actor interest changed on server: " + actor.Name + " (ID: " + actor.ID + ") to logical scene " + sceneName);
-                    break;
+                    throw new InvalidOperationException(
+                        $"Actor '{actor.ID}' is mapped to an ECS entity that no longer exists.");
                 }
+
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                if (component.ActorID != actor.ID)
+                {
+                    throw new InvalidOperationException(
+                        $"Actor entity mapping for '{actor.ID}' contains component actor '{component.ActorID}'.");
+                }
+
+                component.CurrentScene = sceneID;
+                _entityManager.SetComponentData(entity, component);
+
+                string sceneName = "unknown";
+                if (NetworkManager.main.sceneModule.TryGetSceneState(sceneID, out var state))
+                    sceneName = state.scene.name;
+
+                Debug.Log("Actor interest changed on server: " + actor.Name + " (ID: " + actor.ID + ") to logical scene " + sceneName);
             }
+
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(
                     INTEREST_CHANGE_ENTITY_SCAN_COUNT_METRIC,
-                    entities.Length,
+                    0,
                     Time.frameCount);
-            entities.Dispose();
         }
+
+        #endregion
+
+        #region NPC aggro processing
 
         /// <summary>Runs the lower-rate authoritative NPC proximity and aggro decision pass.</summary>
         private void UpdateNPCAggro(ServerSimulationTick tick)
@@ -1261,6 +1308,10 @@ namespace Game.Server.Core
             return ServerSimulationClock.GetNonShorteningTickCount(delaySeconds, fixedDeltaTime);
         }
 
+        #endregion
+
+        #region Authoritative ECS tick bridge
+
         /// <summary>
         /// Commits the newest authenticated player proposal before every authoritative ECS tick,
         /// while applying the periodic speed check against its fixed validation baseline.
@@ -1395,16 +1446,6 @@ namespace Game.Server.Core
             Actor actor,
             WorldPosition position)
         {
-            if (actor == null)
-                throw new ArgumentNullException(nameof(actor));
-            if (!actor.SpatialContext.IsValid)
-            {
-                throw new InvalidOperationException(
-                    $"Actor '{actor.ID}' has an invalid spatial context.");
-            }
-            if (!position.IsFinite)
-                throw new ArgumentException("Accepted actor position must be finite.", nameof(position));
-
             Vector2Int chunk = position.Chunk;
             string destinationSceneName = $"World_{chunk.x}_{chunk.y}";
             string sourceSceneName = actor.CurrentChunk;
@@ -1433,6 +1474,10 @@ namespace Game.Server.Core
 
             actor.CurrentChunk = destinationSceneName;
         }
+
+        #endregion
+
+        #region Instance validation and context transfer
 
         private void OnInstanceValidationToggleRequested(PlayerID playerID)
         {
@@ -1676,10 +1721,7 @@ namespace Game.Server.Core
                     else if (!_actorObjects.TryGetValue(actor.ID, out Actor currentRegisteredActor)
                         || !ReferenceEquals(currentRegisteredActor, actor)
                         || !actor.Owner.HasValue
-                        || actor.Owner.Value != owner
-                        || !_actorEntities.TryGetValue(actor.ID, out Entity currentEntity)
-                        || !_entityManager.Exists(currentEntity)
-                        || !_entityManager.HasComponent<Systems.ActorComponent>(currentEntity))
+                        || actor.Owner.Value != owner)
                     {
                         validationFailure = "the player actor is no longer live before transfer";
                     }
@@ -2166,6 +2208,8 @@ namespace Game.Server.Core
                 }
             }
         }
+
+        #endregion
 
     }
 }
