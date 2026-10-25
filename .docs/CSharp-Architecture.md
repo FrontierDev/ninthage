@@ -1243,7 +1243,11 @@ Not every feature uses every stage, but this captures the principal direction of
 | Position/network coordinate conversion | `Game.Server.Core.ServerPositionManager` |
 | Continuous server physics/NavMesh representation | `Game.Server.Core.ServerPhysicsManager` |
 | Server actor/GameObject-ECS bridge | `Game.Server.Core.ServerActorManager` |
-| Server time-based simulation | `Game.Server.Systems` systems |
+| Authoritative actor retirement | `Actor.RetireFromServer()` publication + `onServerActorDespawned` subsystem cleanup |
+| Server simulation tick identity/cadence | `Game.Server.Core.ServerSimulationClock` |
+| Server tick/mutation/event boundary | `Game.Server.Core.ServerECSManager` + `ServerSimulationEventBuffer` |
+| Server time-based ECS progression | `Game.Server.Systems` systems |
+| Timed gameplay creation/generation state | `ServerSpellCastManager`, `ServerAuraManager`, `ServerTickerManager`, `ServerCooldownManager` |
 | Authentication/account implementation | `Game.Server.Services` / `Game.Server.Persistence` |
 | Client world scene tracking | `Game.Client.Core.ClientWorldManager` |
 | Client floating origin | `Game.Client.Core.ClientPositionManager` |
