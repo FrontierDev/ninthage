@@ -1034,9 +1034,9 @@ Open-world NPC simulation uses three server-owned activity states:
 
 | State | Meaning |
 | --- | --- |
-| **Full** | The NPC is in combat or otherwise immediately gameplay-relevant, or is currently visible to at least one player. Full NPC perception, decision-making, patrol/navigation and combat behaviour are permitted. |
-| **Nearby** | The NPC is out of combat and not currently visible, but remains close enough to at least one player that it should stay partially active and be able to become Full without a noticeable wake delay. Ordinary patrol/navigation may continue as required, but the NPC does not independently poll for ordinary aggro acquisition. |
-| **Dormant** | The NPC is out of combat, is not currently visible to any player, and is outside the Nearby relevance band of every player in the same logical spatial context. It performs no ordinary patrol, perception, decision or NavMesh pursuit work. |
+| **Full** | The NPC is in combat, otherwise explicitly gameplay-relevant, or within the close gameplay-interaction envelope of at least one relevant player. Full NPC perception, decision-making, patrol/navigation and combat behaviour are permitted. |
+| **Nearby** | The NPC is out of combat and outside the Full gameplay-interaction envelope, but remains within the normal visual/network relevance envelope of at least one relevant player. It may therefore still be visible and should continue enough movement/presentation behaviour to look believable, but it does not independently poll for ordinary aggro acquisition. |
+| **Dormant** | The NPC is out of combat, outside the Full gameplay-interaction envelope, and outside normal visual/network relevance of every relevant player in the same logical spatial context. It performs no ordinary patrol, perception, decision or NavMesh pursuit work. |
 
 These are **simulation activity states**, not life/death, persistence, streaming or replication states. An NPC does not become dormant merely because combat ends, an environment scene unloads, or one observer disappears.
 
@@ -1046,25 +1046,46 @@ Player relevance is evaluated from authoritative actor state and spatial context
 
 - Alive and dead player actors count equally for NPC activity relevance.
 - A player stops contributing to NPC activity only when that player actor leaves the relevant logical spatial context or authoritative actor lifetime, such as through respawn elsewhere, world/instance transfer, logout or despawn.
-- If an NPC kills a player and combat ends, the dead player's nearby actor can therefore keep that NPC Full or Nearby according to ordinary relevance.
-- Network visibility is an input to activity selection but does not own the activity state.
+- If an NPC kills a player and combat ends, the dead player's actor can therefore keep that NPC Full or Nearby according to its distance from the NPC.
+- Full simulation relevance is deliberately **smaller** than visual/network relevance. Being visible does not by itself require Full simulation.
+- Network visibility does not own activity state. The activity system reuses the same configured visibility-distance envelope for the Nearby↔Dormant boundary, but activity remains server-owned simulation state.
 - Canonical double-precision actor positions and `ServerSpatialIndex` are the authoritative basis for distance/relevance decisions; `GameObject.scene`, streamed-environment lifetime and client-local transforms are not.
-- The exact outer Nearby radius is an engineering configuration/tuning value selected and measured during Stage 1.4 implementation. It is not a fixed player-facing design constant in this PDD.
 - Dead player actors count for **activity relevance**, but they are not valid targets for new ordinary hostile acquisition solely because they remain relevant for activity.
+
+The initial engineering distance model is:
+
+| Boundary | Entry | Exit | Purpose |
+| --- | ---: | ---: | --- |
+| **Full ↔ Nearby** | **40 m** | **48 m** | Close gameplay-interaction envelope. This comfortably contains typical MMORPG aggro distances and approximately 30 m spell ranges while providing hysteresis. |
+| **Nearby ↔ Dormant** | existing visibility entry **80 m** | existing visibility exit **96 m** | Reuse the normal visual/network relevance envelope; do not invent a farther pre-visibility wake band. |
+
+These are initial engineering values, not player-facing gameplay constants. They may be tuned from measured behaviour/performance, but the architectural relationship is fixed: **Full is substantially smaller than visual relevance; Nearby occupies the gap between close gameplay relevance and normal visibility; Dormant begins outside visual relevance.**
+
+Distance-state transitions are therefore:
+
+```text
+approaching:
+Dormant -- <= 80 m --> Nearby -- <= 40 m --> Full
+
+moving away:
+Full -- > 48 m --> Nearby -- > 96 m --> Dormant
+```
+
+A large movement/teleport may skip an intermediate state when the resulting authoritative distance clearly belongs in another state.
 
 The transition priority is:
 
 ```text
 mandatory combat / gameplay obligation
     ↓
-visible to a player
+inside Full gameplay envelope
     ↓
-nearby to a player
+inside visual/network relevance envelope
     ↓
-dormant
+Dormant
 ```
 
-Combat or another explicit gameplay obligation always overrides distance-based dormancy.
+Combat or another explicit gameplay obligation always forces Full regardless of distance.
 
 #### Ordinary aggro/perception broad phase
 
@@ -1105,7 +1126,7 @@ The perception owner must preserve these invariants:
 
 NPC-specific detection remains supported through an **effective detection range** evaluated for each genuinely local player/NPC candidate pair. It may incorporate the NPC's base aggro/detection range, NPC role or situational modifiers such as guard behaviour, and player stealth/detection interactions.
 
-Ordinary effective detection range must not exceed the Full-activity relevance envelope. An exceptional scripted encounter that must activate from farther away should explicitly create a gameplay obligation/Full activation rather than silently bypassing the activity model.
+Ordinary effective detection range must not exceed the **40 m Full-entry gameplay envelope**. Typical ordinary aggro ranges are expected to be substantially smaller than this; player spell ranges around 30 m also remain inside the Full envelope. An exceptional scripted encounter that must activate from farther away should explicitly create a gameplay obligation/Full activation rather than silently bypassing the activity model.
 
 #### Combat reset and dormancy
 
@@ -1127,9 +1148,9 @@ combat ends
 reset transient combat state
     ↓
 evaluate player relevance
-    ├─ visible / immediately relevant → Full
-    ├─ nearby but not visible → Nearby
-    └─ outside Nearby relevance → Dormant
+    ├─ combat/gameplay-forced or within Full envelope → Full
+    ├─ outside Full but within visual relevance → Nearby
+    └─ outside visual relevance → Dormant
 ```
 
 An NPC that leaves combat beside a player does **not** become dormant simply because combat ended.
