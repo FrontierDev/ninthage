@@ -28,7 +28,6 @@ namespace Game.Server.Core
 
         internal bool TryGetNavigationAgentType(out int agentTypeID)
         {
-            EnsureInitialized();
             if (_navigationData == null || !_navigationInstance.valid)
             {
                 agentTypeID = default;
@@ -41,30 +40,40 @@ namespace Game.Server.Core
 
         private static List<NavMeshBuildSource> CollectNavMeshSources(
             Dictionary<WorldChunkKey, GameObject[]> navigationRoots,
-            HashSet<WorldChunkKey> pendingNavigationUnloads)
+            HashSet<WorldChunkKey> pendingNavigationUnloads,
+            out int minChunkX,
+            out int maxChunkX,
+            out int minChunkZ,
+            out int maxChunkZ)
         {
             var sources = new List<NavMeshBuildSource>();
-            var chunkKeys = new List<WorldChunkKey>(navigationRoots.Keys);
-            chunkKeys.Sort((left, right) =>
+            var navigationEntries = new List<KeyValuePair<WorldChunkKey, GameObject[]>>(navigationRoots);
+            navigationEntries.Sort((left, right) =>
             {
-                int xComparison = left.ChunkCoord.x.CompareTo(right.ChunkCoord.x);
+                int xComparison = left.Key.ChunkCoord.x.CompareTo(right.Key.ChunkCoord.x);
                 return xComparison != 0
                     ? xComparison
-                    : left.ChunkCoord.y.CompareTo(right.ChunkCoord.y);
+                    : left.Key.ChunkCoord.y.CompareTo(right.Key.ChunkCoord.y);
             });
 
-            foreach (var chunkKey in chunkKeys)
+            minChunkX = int.MaxValue;
+            maxChunkX = int.MinValue;
+            minChunkZ = int.MaxValue;
+            maxChunkZ = int.MinValue;
+            var markups = new List<NavMeshBuildMarkup>();
+            var rootSources = new List<NavMeshBuildSource>();
+            foreach (var entry in navigationEntries)
             {
+                WorldChunkKey chunkKey = entry.Key;
                 if (pendingNavigationUnloads.Contains(chunkKey))
                     continue;
 
-                if (!navigationRoots.TryGetValue(chunkKey, out var roots) || roots == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Environment tile {chunkKey.ChunkCoord} has no registered navigation roots.");
-                }
+                minChunkX = Math.Min(minChunkX, chunkKey.ChunkCoord.x);
+                maxChunkX = Math.Max(maxChunkX, chunkKey.ChunkCoord.x);
+                minChunkZ = Math.Min(minChunkZ, chunkKey.ChunkCoord.y);
+                maxChunkZ = Math.Max(maxChunkZ, chunkKey.ChunkCoord.y);
 
-                foreach (var root in roots)
+                foreach (var root in entry.Value)
                 {
                     if (root == null)
                     {
@@ -72,8 +81,6 @@ namespace Game.Server.Core
                             $"Environment tile {chunkKey.ChunkCoord} has a null navigation root.");
                     }
 
-                    var markups = new List<NavMeshBuildMarkup>();
-                    var rootSources = new List<NavMeshBuildSource>();
                     NavMeshBuilder.CollectSources(
                         root.transform,
                         ~0,
@@ -91,7 +98,13 @@ namespace Game.Server.Core
         private void UpdateNavMesh()
         {
             bool hadNavigation = _navigationData != null && _navigationInstance.valid;
-            var sources = CollectNavMeshSources(_navigationRoots, _pendingNavigationUnloads);
+            var sources = CollectNavMeshSources(
+                _navigationRoots,
+                _pendingNavigationUnloads,
+                out int minChunkX,
+                out int maxChunkX,
+                out int minChunkZ,
+                out int maxChunkZ);
             if (sources.Count == 0)
             {
                 if (!hadNavigation)
@@ -111,33 +124,7 @@ namespace Game.Server.Core
                 return;
             }
 
-            if (!Game.Shared.GameConfigurationManager.IsInitialized
-                || Game.Shared.GameConfigurationManager.Config == null)
-            {
-                throw new InvalidOperationException("Continuous NavMesh construction requires initialized game configuration.");
-            }
-
             int chunkSize = Game.Shared.GameConfigurationManager.Config.ChunkSize;
-            if (chunkSize <= 0)
-                throw new InvalidOperationException("The shared chunk size must be positive for continuous NavMesh construction.");
-
-            int minChunkX = int.MaxValue;
-            int maxChunkX = int.MinValue;
-            int minChunkZ = int.MaxValue;
-            int maxChunkZ = int.MinValue;
-            foreach (var chunkKey in _navigationRoots.Keys)
-            {
-                if (_pendingNavigationUnloads.Contains(chunkKey))
-                    continue;
-
-                minChunkX = Math.Min(minChunkX, chunkKey.ChunkCoord.x);
-                maxChunkX = Math.Max(maxChunkX, chunkKey.ChunkCoord.x);
-                minChunkZ = Math.Min(minChunkZ, chunkKey.ChunkCoord.y);
-                maxChunkZ = Math.Max(maxChunkZ, chunkKey.ChunkCoord.y);
-            }
-
-            if (minChunkX == int.MaxValue)
-                throw new InvalidOperationException("Continuous NavMesh sources exist without registered environment tile keys.");
 
             double minX = (double)minChunkX * chunkSize - chunkSize * 0.5d;
             double maxX = (double)maxChunkX * chunkSize + chunkSize * 0.5d;
@@ -192,8 +179,7 @@ namespace Game.Server.Core
                     $"Environment tile {chunkKey.ChunkCoord} is already registered for navigation.");
             }
 
-            var storedRoots = (GameObject[])roots.Clone();
-            foreach (var root in storedRoots)
+            foreach (var root in roots)
             {
                 if (root == null)
                 {
@@ -202,7 +188,7 @@ namespace Game.Server.Core
                 }
             }
 
-            _navigationRoots.Add(chunkKey, storedRoots);
+            _navigationRoots.Add(chunkKey, roots);
             try
             {
                 UpdateNavMesh();
@@ -231,19 +217,13 @@ namespace Game.Server.Core
                     $"Environment tile {chunkKey.ChunkCoord} is not registered for navigation.");
             }
 
-            _pendingNavigationUnloads.Remove(chunkKey);
-            UpdateNavMesh();
+            bool wasPreparedForUnload = _pendingNavigationUnloads.Remove(chunkKey);
+            if (!wasPreparedForUnload)
+                UpdateNavMesh();
         }
 
         public void PrepareEnvironmentNavigationUnload(WorldChunkKey chunkKey)
         {
-            EnsureInitialized();
-            if (!chunkKey.Context.IsValid)
-            {
-                throw new ArgumentException(
-                    "Environment navigation unload preparation requires a valid world context.",
-                    nameof(chunkKey));
-            }
             if (!_navigationRoots.ContainsKey(chunkKey))
             {
                 throw new InvalidOperationException(
@@ -277,13 +257,6 @@ namespace Game.Server.Core
 
         public void CancelEnvironmentNavigationUnload(WorldChunkKey chunkKey)
         {
-            EnsureInitialized();
-            if (!chunkKey.Context.IsValid)
-            {
-                throw new ArgumentException(
-                    "Environment navigation unload cancellation requires a valid world context.",
-                    nameof(chunkKey));
-            }
             if (!_pendingNavigationUnloads.Remove(chunkKey))
             {
                 throw new InvalidOperationException(

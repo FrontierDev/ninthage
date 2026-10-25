@@ -12,7 +12,7 @@ namespace Game.Server.Core
         /// <param name="chunkKey">The context-qualified environment tile identity.</param>
         /// <param name="scene">The loaded Unity environment scene to register.</param>
         /// <exception cref="ArgumentException">
-        /// Thrown when the chunk context is invalid or the scene is not valid and loaded.
+        /// Thrown when the scene is not valid and loaded.
         /// </exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown when the tile is already registered or NavMesh registration fails.
@@ -21,13 +21,6 @@ namespace Game.Server.Core
             WorldChunkKey chunkKey,
             Scene scene)
         {
-            EnsureInitialized();
-            if (!chunkKey.Context.IsValid)
-            {
-                throw new ArgumentException(
-                    "The environment tile key must contain a valid context.",
-                    nameof(chunkKey));
-            }
             if (!scene.IsValid() || !scene.isLoaded)
             {
                 throw new ArgumentException(
@@ -68,13 +61,6 @@ namespace Game.Server.Core
         /// </exception>
         public void UnbindEnvironmentScene(WorldChunkKey chunkKey)
         {
-            EnsureInitialized();
-            if (!_navigationRoots.ContainsKey(chunkKey))
-            {
-                throw new InvalidOperationException(
-                    $"Environment tile {chunkKey.ChunkCoord} is not registered for navigation.");
-            }
-
             UnregisterEnvironmentNavigation(chunkKey);
         }
     }

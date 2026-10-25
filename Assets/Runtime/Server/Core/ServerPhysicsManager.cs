@@ -51,11 +51,11 @@ namespace Game.Server.Core
         }
 
         /// <summary>Converts a canonical world position directly into the continuous Unity frame.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown when any coordinate is non-finite or cannot be represented by a Unity float.
+        /// </exception>
         internal Vector3 ToPhysicalPosition(WorldPosition worldPosition)
         {
-            EnsureInitialized();
-            if (!worldPosition.IsFinite)
-                throw new ArgumentException("The world position must be finite.", nameof(worldPosition));
             if (!FitsContinuousFloat(worldPosition.x)
                 || !FitsContinuousFloat(worldPosition.y)
                 || !FitsContinuousFloat(worldPosition.z))
@@ -72,24 +72,18 @@ namespace Game.Server.Core
         }
 
         /// <summary>Reconstructs a canonical world position from the continuous Unity frame.</summary>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="physicalPosition"/> is non-finite.
+        /// </exception>
         internal WorldPosition ToWorldPosition(Vector3 physicalPosition)
         {
-            EnsureInitialized();
             if (!IsContinuousFinite(physicalPosition))
                 throw new ArgumentException("The physical position must be finite.", nameof(physicalPosition));
 
-            var worldPosition = new WorldPosition(
+            return new WorldPosition(
                 physicalPosition.x,
                 physicalPosition.y,
                 physicalPosition.z);
-            if (!worldPosition.IsFinite)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(physicalPosition),
-                    "The reconstructed world position must be finite.");
-            }
-
-            return worldPosition;
         }
 
         private static bool IsContinuousFinite(Vector3 value)
@@ -103,15 +97,6 @@ namespace Game.Server.Core
         {
             return !double.IsNaN(value) && !double.IsInfinity(value)
                 && value >= -float.MaxValue && value <= float.MaxValue;
-        }
-
-        private void EnsureInitialized()
-        {
-            if (!_initialized || _instance != this)
-            {
-                throw new InvalidOperationException(
-                    "ServerPhysicsManager is not initialized.");
-            }
         }
     }
 }

@@ -16,14 +16,11 @@ namespace Game.Server.Core
         /// <param name="hitDistance">Receives the hit distance when the ray hits; otherwise zero.</param>
         /// <returns><see langword="true"/> when the ray hits a collider; otherwise <see langword="false"/>.</returns>
         /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="worldOrigin"/> is non-finite.
+        /// Thrown when Unity returns a non-finite hit position.
         /// </exception>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when <paramref name="maxDistance"/> is non-finite or negative, or when the query origin or hit
-        /// cannot be represented in the continuous Unity frame.
-        /// </exception>
-        /// <exception cref="InvalidOperationException">
-        /// Thrown when the physics manager is not initialized.
+        /// Thrown when <paramref name="maxDistance"/> is non-finite or negative, or when the query origin cannot
+        /// be represented in the continuous Unity frame.
         /// </exception>
         public bool RaycastGround(
             WorldPosition worldOrigin,
@@ -32,9 +29,6 @@ namespace Game.Server.Core
             out WorldPosition hitWorldPosition,
             out float hitDistance)
         {
-            EnsureInitialized();
-            if (!worldOrigin.IsFinite)
-                throw new ArgumentException("The ray origin must be finite.", nameof(worldOrigin));
             if (float.IsNaN(maxDistance)
                 || float.IsInfinity(maxDistance)
                 || maxDistance < 0f)
