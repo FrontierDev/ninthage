@@ -334,6 +334,23 @@ namespace Game.Server.Core
             RemoveTickerNow(actor.ID, tickerID);
         }
 
+        /// <summary>Removes all tickers belonging to an actor.</summary>
+        /// <param name="actor">The actor whose tickers should be removed.</param>
+        /// <returns><see langword="true"/> when the actor is authoritative and cleanup completed.</returns>
+        public bool RemoveAllTickers(Actor actor)
+        {
+            if (actor == null || !TryFindActorEntity(actor.ID, out _))
+                return false;
+
+            while (_actorTickerIDs.TryGetValue(actor.ID, out var tickerIDs)
+                && tickerIDs.Count > 0)
+            {
+                RemoveTicker(actor, tickerIDs[tickerIDs.Count - 1]);
+            }
+
+            return true;
+        }
+
         /// <summary>Removes the ticker with a tag from an actor.</summary>
         /// <param name="actor">The actor owning the ticker.</param>
         /// <param name="tag">The ticker tag.</param>

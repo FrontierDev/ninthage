@@ -104,5 +104,11 @@ namespace Game.Shared.Runtime.Actors
 
             return threatTable.Remove(player);
         }
+
+        /// <summary>Clears all entries from this NPC's threat table.</summary>
+        public void ClearThreat()
+        {
+            threatTable.Clear();
+        }
     }
 }

@@ -368,6 +368,23 @@ namespace Game.Server.Core
             SendSnapshot(actor);
         }
 
+        /// <summary>Resets an actor's Resource-category stats to their authored reset baseline.</summary>
+        /// <param name="actor">The actor whose resource stats should be reset.</param>
+        /// <returns><see langword="true"/> when the actor has a stat container and was reset.</returns>
+        public bool ResetResources(Actor actor)
+        {
+            if (actor == null)
+                return false;
+
+            var container = actor.GetComponent<ActorStatContainer>();
+            if (container == null)
+                return false;
+
+            FillResourcesToMax(container);
+            SendSnapshot(actor);
+            return true;
+        }
+
         #endregion
 
         #region Regen
