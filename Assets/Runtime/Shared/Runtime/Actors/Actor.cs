@@ -37,6 +37,7 @@ namespace Game.Shared.Runtime.Actors
         [SerializeField]
         private readonly SyncVar<ActorPositionSnapshot> _acceptedPositionSnapshot = new();
         private long _lastClientAcceptedPositionTick = long.MinValue;
+        private bool _serverDespawnPublished;
 
         private float? _cachedHitboxRadius;
 
@@ -281,10 +282,20 @@ namespace Game.Shared.Runtime.Actors
             }
         }
 
+        /// <summary>Publishes authoritative server retirement once for this actor.</summary>
+        public void RetireFromServer()
+        {
+            if (_serverDespawnPublished)
+                return;
+
+            _serverDespawnPublished = true;
+            Game.Shared.Networking.ActorEndpoint.onServerActorDespawned?.Invoke(this);
+        }
+
         protected override void OnDestroy()
         {
             if (NetworkManager.isServerStatic)
-                Game.Shared.Networking.ActorEndpoint.onServerActorDespawned?.Invoke(this);
+                RetireFromServer();
             else
                 Game.Shared.Networking.ActorEndpoint.onActorDespawned?.Invoke(this);
 

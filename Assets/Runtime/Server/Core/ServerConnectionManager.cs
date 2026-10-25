@@ -181,11 +181,15 @@ namespace Game.Server.Core
                     Persistence.PlayerDatabase.SavePlayerAccount(account);
                 }
 
-                // Unregister from stat tracking and despawn the player actor.
-                if (ServerStatManager.IsInitialized)
-                    ServerStatManager.Instance.UnregisterActor(session.PlayerActor);
+                Actor playerActor = session.PlayerActor;
 
-                var identity = session.PlayerActor.GetComponent<PurrNet.NetworkIdentity>();
+                // Unregister from stat tracking before retiring and despawning the player actor.
+                if (ServerStatManager.IsInitialized)
+                    ServerStatManager.Instance.UnregisterActor(playerActor);
+
+                playerActor.RetireFromServer();
+
+                NetworkIdentity identity = playerActor.GetComponent<NetworkIdentity>();
                 if (identity != null)
                     identity.Despawn();
             }
