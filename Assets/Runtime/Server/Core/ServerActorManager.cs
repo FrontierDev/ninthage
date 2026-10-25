@@ -1006,9 +1006,14 @@ namespace Game.Server.Core
                 if (candidate.Owner == null)
                 {
                     if (retiredActor is PlayerActor && candidate is NPCActor)
+                    {
                         _npcActivityCandidateIDs.Add(candidate.ID);
-
-                    DropNPCTarget(candidate);
+                        DropNPCTarget(candidate, reevaluateActivity: false);
+                    }
+                    else
+                    {
+                        DropNPCTarget(candidate);
+                    }
                 }
                 else
                 {
@@ -2446,7 +2451,10 @@ namespace Game.Server.Core
 
                 if (other.Owner == null)
                 {
-                    DropNPCTarget(other);
+                    if (actor is PlayerActor && other is NPCActor)
+                        _npcActivityCandidateIDs.Add(other.ID);
+
+                    DropNPCTarget(other, reevaluateActivity: false);
                 }
                 else
                 {

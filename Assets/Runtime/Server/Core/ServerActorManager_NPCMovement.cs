@@ -111,7 +111,7 @@ namespace Game.Server.Core
             return stoppingDistance;
         }
 
-        internal void DropNPCTarget(Actor npc)
+        internal void DropNPCTarget(Actor npc, bool reevaluateActivity = true)
         {
             if (npc.Owner != null)
             {
@@ -172,7 +172,7 @@ namespace Game.Server.Core
                 navigationState.Agent.ResetPath();
             }
 
-            if (npc is NPCActor && !npc.isDead)
+            if (reevaluateActivity && npc is NPCActor && !npc.isDead)
                 ReevaluateNPCActivity(npc);
         }
 
