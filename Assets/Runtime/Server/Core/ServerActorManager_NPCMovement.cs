@@ -41,18 +41,21 @@ namespace Game.Server.Core
         }
 
         private readonly Dictionary<Guid, NPCNavigationState> _npcNavigationStates = new();
+        private readonly HashSet<Guid> _activeNPCNavigationIDs = new();
         private readonly List<KeyValuePair<Guid, NPCNavigationState>> _npcNavigationSnapshot = new();
 
         private void UpdateNPCNavigationRegistration(
             Actor actor,
             bool hasEnabledAgent,
-            NavMeshAgent agent)
+            NavMeshAgent agent,
+            bool activityEligible)
         {
             if (actor == null)
                 throw new ArgumentNullException(nameof(actor));
 
             if (!hasEnabledAgent || actor.Owner != null)
             {
+                _activeNPCNavigationIDs.Remove(actor.ID);
                 _npcNavigationStates.Remove(actor.ID);
                 return;
             }
@@ -67,6 +70,10 @@ namespace Game.Server.Core
                 && ReferenceEquals(existing.Actor, actor)
                 && ReferenceEquals(existing.Agent, agent))
             {
+                if (activityEligible && !existing.SuspendedForUnavailableNavigation)
+                    _activeNPCNavigationIDs.Add(actor.ID);
+                else
+                    _activeNPCNavigationIDs.Remove(actor.ID);
                 return;
             }
 
@@ -75,6 +82,10 @@ namespace Game.Server.Core
                 Actor = actor,
                 Agent = agent
             };
+            if (activityEligible)
+                _activeNPCNavigationIDs.Add(actor.ID);
+            else
+                _activeNPCNavigationIDs.Remove(actor.ID);
         }
 
         private void RemoveNPCNavigationRegistration(Actor actor)
@@ -85,8 +96,70 @@ namespace Game.Server.Core
             if (_npcNavigationStates.TryGetValue(actor.ID, out var state)
                 && ReferenceEquals(state.Actor, actor))
             {
+                _activeNPCNavigationIDs.Remove(actor.ID);
                 _npcNavigationStates.Remove(actor.ID);
             }
+        }
+
+        private void ApplyNPCNavigationActivityState(
+            Actor actor,
+            Systems.NPCActivityState activityState)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+
+            if (!_npcNavigationStates.TryGetValue(actor.ID, out var state))
+                return;
+
+            if (!ReferenceEquals(state.Actor, actor))
+            {
+                throw new InvalidOperationException(
+                    $"NPC navigation state for actor '{actor.ID}' belongs to a different actor instance.");
+            }
+            if (state.Agent == null)
+            {
+                throw new InvalidOperationException(
+                    $"NPC navigation state for actor '{actor.ID}' has no NavMeshAgent.");
+            }
+
+            if (activityState == Systems.NPCActivityState.Dormant)
+            {
+                _activeNPCNavigationIDs.Remove(actor.ID);
+                if (state.SuspendedForUnavailableNavigation)
+                    return;
+                if (!state.Agent.enabled)
+                {
+                    throw new InvalidOperationException(
+                        $"NPC '{actor.ID}' has an unsuspended disabled NavMeshAgent while entering Dormant.");
+                }
+                if (!state.Agent.isOnNavMesh)
+                {
+                    throw new InvalidOperationException(
+                        $"NPC '{actor.ID}' has an unsuspended NavMeshAgent that is not attached to a NavMesh while entering Dormant.");
+                }
+
+                if (state.Agent.hasPath)
+                    state.Agent.ResetPath();
+                return;
+            }
+
+            if (state.SuspendedForUnavailableNavigation)
+            {
+                _activeNPCNavigationIDs.Remove(actor.ID);
+                return;
+            }
+            if (!state.Agent.enabled)
+            {
+                throw new InvalidOperationException(
+                    $"NPC '{actor.ID}' has an unsuspended disabled NavMeshAgent while waking.");
+            }
+            if (!state.Agent.isOnNavMesh)
+            {
+                throw new InvalidOperationException(
+                    $"NPC '{actor.ID}' has an unsuspended NavMeshAgent that is not attached to a NavMesh while waking.");
+            }
+
+            _activeNPCNavigationIDs.Add(actor.ID);
         }
 
         private static float GetNPCPursuitStoppingDistance(Actor actor, Actor target)
@@ -181,8 +254,17 @@ namespace Game.Server.Core
             _npcNavigationSnapshot.Clear();
             try
             {
-                foreach (var entry in _npcNavigationStates)
-                    _npcNavigationSnapshot.Add(entry);
+                foreach (Guid actorID in _activeNPCNavigationIDs)
+                {
+                    if (!_npcNavigationStates.TryGetValue(actorID, out var state))
+                    {
+                        throw new InvalidOperationException(
+                            $"Active NPC navigation actor '{actorID}' has no navigation registration.");
+                    }
+
+                    _npcNavigationSnapshot.Add(
+                        new KeyValuePair<Guid, NPCNavigationState>(actorID, state));
+                }
 
                 foreach (var kvp in _npcNavigationSnapshot)
                 {
@@ -190,6 +272,7 @@ namespace Game.Server.Core
                     NPCNavigationState state = kvp.Value;
                     if (state.Actor == null)
                     {
+                        _activeNPCNavigationIDs.Remove(actorID);
                         _npcNavigationStates.Remove(actorID);
                         continue;
                     }
@@ -202,6 +285,7 @@ namespace Game.Server.Core
 
                     if (state.Actor.Owner != null)
                     {
+                        _activeNPCNavigationIDs.Remove(actorID);
                         _npcNavigationStates.Remove(actorID);
                         continue;
                     }
@@ -277,7 +361,14 @@ namespace Game.Server.Core
         private void EnsureNPCMovementComponents(Entity entity, Actor actor)
         {
             bool hasEnabledAgent = HasEnabledNavMeshAgent(actor, out NavMeshAgent agent);
-            UpdateNPCNavigationRegistration(actor, hasEnabledAgent, agent);
+            bool activityEligible = true;
+            if (actor is NPCActor)
+            {
+                var activity = _entityManager.GetComponentData<Systems.NPCActivityComponent>(entity);
+                activityEligible = activity.State != Systems.NPCActivityState.Dormant;
+            }
+
+            UpdateNPCNavigationRegistration(actor, hasEnabledAgent, agent, activityEligible);
 
             if (!_entityManager.HasComponent<Systems.MotionStateComponent>(entity))
             {
@@ -310,6 +401,7 @@ namespace Game.Server.Core
 
             if (actor.Owner.HasValue)
             {
+                _activeNPCNavigationIDs.Remove(actor.ID);
                 _npcNavigationStates.Remove(actor.ID);
                 return;
             }
@@ -339,6 +431,7 @@ namespace Game.Server.Core
                 agent.enabled = false;
             }
 
+            _activeNPCNavigationIDs.Remove(actor.ID);
             _npcNavigationStates.Remove(actor.ID);
         }
 
@@ -354,6 +447,7 @@ namespace Game.Server.Core
                     || state.Actor.Owner != null
                     || state.Agent == null)
                 {
+                    _activeNPCNavigationIDs.Remove(entry.Key);
                     _npcNavigationStates.Remove(entry.Key);
                     continue;
                 }
@@ -378,6 +472,7 @@ namespace Game.Server.Core
                 state.Agent.enabled = false;
                 state.SuspendedForUnavailableNavigation = true;
                 _npcNavigationStates[entry.Key] = state;
+                _activeNPCNavigationIDs.Remove(entry.Key);
             }
         }
 
@@ -401,6 +496,7 @@ namespace Game.Server.Core
                     || state.Actor.Owner != null
                     || state.Agent == null)
                 {
+                    _activeNPCNavigationIDs.Remove(entry.Key);
                     _npcNavigationStates.Remove(entry.Key);
                     continue;
                 }
@@ -420,6 +516,7 @@ namespace Game.Server.Core
                 foreach (var entry in suspendedStates)
                 {
                     NPCNavigationState state = entry.Value;
+                    _activeNPCNavigationIDs.Remove(entry.Key);
                     resumedStates.Add(entry);
                     state.Agent.enabled = true;
                     if (!state.Agent.isOnNavMesh)
@@ -431,6 +528,19 @@ namespace Game.Server.Core
 
                     state.SuspendedForUnavailableNavigation = false;
                     _npcNavigationStates[entry.Key] = state;
+
+                    var activity = _entityManager.GetComponentData<Systems.NPCActivityComponent>(
+                        _actors[entry.Key].Entity);
+                    if (activity.State == Systems.NPCActivityState.Dormant)
+                    {
+                        if (state.Agent.hasPath)
+                            state.Agent.ResetPath();
+                        _activeNPCNavigationIDs.Remove(entry.Key);
+                    }
+                    else
+                    {
+                        _activeNPCNavigationIDs.Add(entry.Key);
+                    }
                 }
             }
             catch (Exception exception)
@@ -439,6 +549,7 @@ namespace Game.Server.Core
                 foreach (var entry in resumedStates)
                 {
                     NPCNavigationState state = entry.Value;
+                    _activeNPCNavigationIDs.Remove(entry.Key);
                     try
                     {
                         state.Agent.enabled = false;
@@ -494,8 +605,17 @@ namespace Game.Server.Core
             _npcNavigationSnapshot.Clear();
             try
             {
-                foreach (var entry in _npcNavigationStates)
-                    _npcNavigationSnapshot.Add(entry);
+                foreach (Guid actorID in _activeNPCNavigationIDs)
+                {
+                    if (!_npcNavigationStates.TryGetValue(actorID, out var state))
+                    {
+                        throw new InvalidOperationException(
+                            $"Active NPC navigation actor '{actorID}' has no navigation registration.");
+                    }
+
+                    _npcNavigationSnapshot.Add(
+                        new KeyValuePair<Guid, NPCNavigationState>(actorID, state));
+                }
 
                 foreach (var entry in _npcNavigationSnapshot)
                 {
@@ -504,12 +624,14 @@ namespace Game.Server.Core
                     var actor = navigationState.Actor;
                     if (actor == null)
                     {
+                        _activeNPCNavigationIDs.Remove(actorID);
                         _npcNavigationStates.Remove(actorID);
                         continue;
                     }
 
                     if (!TryGetActorEntity(actor.ID, out var entity))
                     {
+                        _activeNPCNavigationIDs.Remove(actorID);
                         _npcNavigationStates.Remove(actorID);
                         continue;
                     }
@@ -542,6 +664,7 @@ namespace Game.Server.Core
             if (component.Owner != default || actor.Owner != null)
             {
                 _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(entity, false);
+                _activeNPCNavigationIDs.Remove(actor.ID);
                 _npcNavigationStates.Remove(actor.ID);
                 return false;
             }
@@ -557,6 +680,7 @@ namespace Game.Server.Core
 
             if (navigationState.Agent == null)
             {
+                _activeNPCNavigationIDs.Remove(actor.ID);
                 _npcNavigationStates.Remove(actor.ID);
                 _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(entity, true);
                 return false;
@@ -564,6 +688,7 @@ namespace Game.Server.Core
 
             if (!navigationState.Agent.enabled)
             {
+                _activeNPCNavigationIDs.Remove(actor.ID);
                 _npcNavigationStates.Remove(actor.ID);
                 _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(entity, true);
                 return false;

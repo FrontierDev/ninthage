@@ -93,6 +93,13 @@ namespace Game.Shared.Data.AuraEffectDefinitions
             if (target.TryGetComponent<NPCBehavior>(out var npcBehavior))
                 npcBehavior.OnDamaged(source, damage);
 
+            if (damage > 0
+                && target is NPCActor
+                && !target.isDead)
+            {
+                ActorEndpoint.onServerNPCDamaged?.Invoke(target);
+            }
+
             var snapshot = targetStats.BuildSnapshot(ActorStatReplicationMode.Observers);
             targetStats.Observers_ReceiveSnapshot(snapshot);
         }

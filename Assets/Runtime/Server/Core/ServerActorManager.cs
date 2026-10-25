@@ -559,6 +559,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorOwnerChanged += OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged += OnActorInterestChanged;
             ActorEndpoint.onActorDeath += OnActorDeath;
+            ActorEndpoint.onServerNPCDamaged += OnNPCDamaged;
             ActorEndpoint.onServerInstanceValidationToggleRequested += OnInstanceValidationToggleRequested;
             ActorEndpoint.onServerQueryActorsInRange += QueryActorsInRange;
             MovementEndpoint.onServerPositionProposal += OnServerPositionProposal;
@@ -592,6 +593,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorOwnerChanged -= OnActorOwnerChanged;
             ActorEndpoint.onServerActorInterestChanged -= OnActorInterestChanged;
             ActorEndpoint.onActorDeath -= OnActorDeath;
+            ActorEndpoint.onServerNPCDamaged -= OnNPCDamaged;
             ActorEndpoint.onServerInstanceValidationToggleRequested -= OnInstanceValidationToggleRequested;
             ActorEndpoint.onServerQueryActorsInRange -= QueryActorsInRange;
             MovementEndpoint.onServerPositionProposal -= OnServerPositionProposal;
@@ -623,6 +625,7 @@ namespace Game.Server.Core
             _npcPerceptionContextPlayerPositions.Clear();
             _npcPerceptionCandidateIDs.Clear();
             _npcNavigationStates.Clear();
+            _activeNPCNavigationIDs.Clear();
             _acceptedVisibilityMovements.Clear();
             _riftQueryCandidateIDs.Clear();
             _npcActivityCandidateIDs.Clear();
@@ -1295,6 +1298,30 @@ namespace Game.Server.Core
                 ClearPendingAggro(ref aggroState);
                 _npcAggroStates[actorID] = aggroState;
             }
+
+            ApplyNPCNavigationActivityState(registration.Actor, state);
+        }
+
+        private void OnNPCDamaged(Actor actor)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (actor is not NPCActor)
+            {
+                throw new InvalidOperationException(
+                    $"NPC damage notification received for non-NPC actor '{actor.ID}'.");
+            }
+            if (!_actors.TryGetValue(actor.ID, out var registration)
+                || !ReferenceEquals(registration.Actor, actor))
+            {
+                throw new InvalidOperationException(
+                    $"NPC damage notification received for unregistered or replaced actor '{actor.ID}'.");
+            }
+
+            if (actor.isDead)
+                return;
+
+            SetNPCActivityState(actor.ID, Systems.NPCActivityState.Full);
         }
 
         private void ReevaluateNPCActivity(Actor npc)

@@ -215,6 +215,13 @@ namespace Game.Shared.Data.SpellEffectDefinitions
             if (target.TryGetComponent<NPCBehavior>(out var npcBehavior))
                 npcBehavior.onDamaged?.Invoke(ctx.Caster, damage);
 
+            if (damage > 0
+                && target is NPCActor
+                && !target.isDead)
+            {
+                ActorEndpoint.onServerNPCDamaged?.Invoke(target);
+            }
+
             // Broadcast combat log entry to caster's observers
             var snapshot = targetStats.BuildSnapshot(ActorStatReplicationMode.Observers);
             targetStats.Observers_ReceiveSnapshot(snapshot);

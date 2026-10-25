@@ -98,6 +98,8 @@ namespace Game.Shared.Networking
         public static Action<Actor> onServerActorOwnerChanged;
         /// <summary>Raised when server actor interest changes.</summary>
         public static Action<Actor, SceneID> onServerActorInterestChanged;
+        /// <summary>Raised after positive damage has been committed to a surviving server NPC.</summary>
+        public static Action<Actor> onServerNPCDamaged;
         /// <summary>Raised when a client requests an instance validation toggle.</summary>
         public static Action<PlayerID> onServerInstanceValidationToggleRequested;
         /// <summary>

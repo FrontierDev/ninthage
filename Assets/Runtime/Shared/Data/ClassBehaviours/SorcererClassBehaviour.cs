@@ -194,6 +194,9 @@ namespace Game.Shared.Data.ClassBehaviours
                 health.BaseValue, health.FlatModifier, health.PercentModifier,
                 health.EffectiveMaximum, newCurrent));
 
+            if (target is NPCActor && !target.isDead)
+                ActorEndpoint.onServerNPCDamaged?.Invoke(target);
+
             targetStats.Observers_ReceiveSnapshot(targetStats.BuildSnapshot(ActorStatReplicationMode.Observers));
         }
 
