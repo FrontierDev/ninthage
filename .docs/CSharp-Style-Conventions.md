@@ -543,6 +543,135 @@ For simulation, ECS, networking, and persistence changes, validate the specific 
 
 Compilation and static review do not imply runtime correctness. Do not claim an edge case is fixed without test or proof; likewise, do not repeatedly request code changes for unproven edge cases.
 
+### 23.5 Establish an invariant once, at its owner
+
+Every important invariant should have one clear owner and one boundary where it is established. Code downstream of that boundary should normally trust it.
+
+Examples:
+
+- server startup validates configuration and constructs managers in a defined order;
+- actor registration establishes actor identity, spatial context, ECS entity mapping and required ECS components/buffers;
+- a world/scene registry establishes that a registered key refers to owned runtime state;
+- a spell/aura/ticker/cooldown manager validates authored duration or generation data when it creates the timed state;
+- a coordinate-conversion helper owns the numeric range needed by that conversion;
+- a public/network/request boundary validates external input before it enters trusted internal state.
+
+Do **not** repeatedly re-check the same invariant in every internal caller, hot loop or helper. In particular:
+
+- do not poll predecessor-manager `IsInitialized` state during ordinary gameplay when startup order already guarantees it;
+- do not revalidate actor IDs, ECS component shape, context validity or finite canonical state after registration solely as defensive programming;
+- do not perform a dictionary lookup and then re-prove that the returned object's ID matches the lookup key when the dictionary owner establishes that relationship;
+- do not replace a removed redundant check with `Debug.Assert`, another helper guard or a second fallback unless a distinct runtime failure remains possible.
+
+Impossible internal states may fail through the owned dictionary, ECS or API operation naturally. Add a bespoke failure only where it improves a real ownership boundary.
+
+When reviewing or changing invariant-heavy code, write the invariant explicitly:
+
+```text
+invariant
+→ owner that establishes it
+→ point where it may legitimately change
+→ consumers that may trust it
+```
+
+If no point exists where the truth can change between establishment and use, repeated validation is usually unnecessary work.
+
+### 23.6 Distinguish immutable guarantees from dynamic runtime state
+
+A check is required when the state can legitimately change before it is consumed. A check is not justified merely because a bad value can be imagined.
+
+**Normally trust once established:**
+
+- startup configuration and predecessor-manager availability;
+- registered actor ID ↔ ECS entity relationships;
+- required ECS component/buffer shape created during actor registration;
+- immutable scene/runtime keys held by an owned registry;
+- authored timing fields after their owning manager has validated and converted them;
+- canonical accepted positions handed directly from the authority that committed them.
+
+**Continue to validate/revalidate dynamic state:**
+
+- network ownership and player/session replacement;
+- actor/target liveness;
+- current cast, aura or ticker generation;
+- logical context after an operation that can transfer it;
+- scene loaded/unloaded/pending state;
+- NavMesh availability and enabled-agent state;
+- asynchronous completion after an `await`, callback, Addressables/PurrNet completion, or other suspension point;
+- data that external/network/user-authored input can still supply invalidly;
+- collection membership when callbacks can re-enter and mutate that collection.
+
+The rule is temporal: **can this state change between the point that proved it and this use?** If yes, revalidate at the use or resume boundary. If no, trust the owner.
+
+### 23.7 Lifecycle transitions are ordered contracts
+
+Construction, publication, retirement and destruction are architectural state transitions. Their order must be explicit.
+
+For process-wide/singleton managers:
+
+- initialise owned fields and subscriptions before publishing the singleton as ready;
+- duplicate construction fails fast; do not log-and-return and leave a half-live component;
+- teardown runs only on the exact instance that owns the singleton;
+- an unregistered duplicate must never unsubscribe callbacks, clear shared state or reset the live singleton;
+- teardown that may run after partial startup remains idempotent only where partial startup is a legitimate lifecycle state.
+
+For authoritative actors:
+
+- **authoritative gameplay retirement happens before network despawn**;
+- once `NetworkIdentity.Despawn()` begins, the actor must no longer remain in gameplay registries capable of generating ticks, effects, stat replication, combat logs or other RPCs;
+- explicit retirement may happen before Unity destroys the GameObject;
+- `OnDestroy` may remain a fallback, but the retirement publication must be exactly-once/idempotent so explicit retirement followed by destruction does not run gameplay teardown twice.
+
+Do not fix lifecycle-order bugs by scattering `isSpawned`, null or manager-readiness guards through RPC/effect code. Correct the owner transition.
+
+Rollback follows the same rule: retain rollback only for mutations that can genuinely fail after earlier state has changed. Do not maintain transaction code around a synchronous operation whose precondition has already been proved and which has no reentrant/suspending step before completion.
+
+### 23.8 Hot paths trust owners and avoid rediscovery
+
+Per-tick, per-actor, per-candidate and per-event code must not repeatedly rediscover state already indexed by its owner.
+
+Prefer:
+
+- direct `ActorID -> Entity` or other owner mappings over full ECS/query scans for a known ID;
+- registered component references/state over repeated `GetComponent` calls;
+- one dictionary lookup over `ContainsKey` followed by another lookup;
+- one query/buffer access over querying a buffer and then calling `GetBuffer` again;
+- one computation of derived values such as chunk/cell coordinates per operation;
+- immutable configuration cached at initialization when it is genuinely server-lifetime configuration.
+
+Do not add a new reverse index, cache or duplicate registry merely to eliminate a scan unless:
+1. the scan is material or on a proven hot path;
+2. no existing owner already provides the lookup;
+3. update/removal ownership for the new state is explicit.
+
+The first optimisation question is therefore **"which existing owner already knows this?"**, not **"what should we cache?"**.
+
+### 23.9 Allocation and snapshot discipline
+
+Avoid allocation churn in authoritative loops, but preserve mutation/reentrancy isolation.
+
+- Reuse private scratch lists/buffers when one owner controls their lifetime and clears them deterministically.
+- Do not call `ToArray()` merely to obtain a stable snapshot when a reusable owned list provides the same isolation.
+- Do not allocate temporary one-element collections when direct execution has identical semantics.
+- Do not allocate an ECB or other temporary command container on an idle tick when no command will be produced.
+- Preserve a real snapshot boundary when callbacks may enqueue, cancel or otherwise mutate the live source collection during iteration.
+- All queues that must observe the same mutation boundary must be snapshotted before any of them begin committing; allocation removal must not weaken that semantic boundary.
+
+A reusable buffer is temporary storage, **not a second source of truth**. It must not acquire independent lifecycle or authority semantics.
+
+### 23.10 Failure semantics must be explicit
+
+An operation that claims to perform work must either perform it or surface failure according to its contract.
+
+- A void command/queue method must not log an error and return as though the operation was accepted when nothing was queued.
+- Do not silently substitute an invalid prefab, scene, entity, context or registration with a fallback that violates the caller's requested operation.
+- Do not self-heal internal registries unless recovery is an explicit subsystem responsibility.
+- Idempotent absence is appropriate only for cleanup/cancellation APIs whose contract explicitly permits already-removed state.
+- Fail fast at the boundary that owns malformed authored/configuration/input data; do not defer the failure into a hot simulation loop.
+- Preserve graceful handling for external or asynchronous outcomes that are expected runtime possibilities.
+
+The project preference is **one clear failure at the responsible boundary**, not many defensive branches downstream.
+
 
 ## 24. Numeric Types and Precision
 
@@ -586,6 +715,13 @@ Choose numeric types according to **value semantics, range, required precision, 
 | Expression-bodied members | Allowed for properties and short methods |
 | `#region` | Allowed for meaningful organisation |
 | Public API documentation | XML documentation required |
+| Invariants | Establish once at the owning boundary; stable internal consumers trust them |
+| Dynamic/async state | Revalidate only where state can legitimately change or after suspension/reentrancy |
+| Singleton lifecycle | Publish after initialization; duplicate creation fails; only the registered instance tears down |
+| Actor teardown | Retire authoritative gameplay state before network despawn; `OnDestroy` is a one-shot fallback |
+| Hot-path lookup | Use existing owner mappings/references; avoid scans and repeated rediscovery |
+| Scratch/snapshots | Reuse owned temporary buffers where safe; preserve real mutation/reentrancy snapshot boundaries |
+| Failure semantics | Fail at the responsible boundary; no silent success/fallback for an operation that did not occur |
 | DTO/ECS fields | Public PascalCase fields allowed |
 | Normal filenames | Exact primary-type match |
 | Partial filenames | `TypeName_Section.cs` |
