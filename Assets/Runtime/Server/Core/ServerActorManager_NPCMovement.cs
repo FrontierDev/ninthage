@@ -2,6 +2,7 @@ using Actor = Game.Shared.Runtime.Actors.Actor;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
+using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
@@ -122,6 +123,33 @@ namespace Game.Server.Core
             if (target != null)
                 npc.SetTargetFromServer(null);
 
+            ActorEndpoint.onServerStopAutoAttack?.Invoke(npc);
+            ServerSpellCastManager.Instance.TryInterruptCast(npc.ID);
+
+            if (npc.TryGetComponent<NPCBehavior>(out var npcBehavior))
+                npcBehavior.ClearThreat();
+
+            ServerAuraManager.Instance.RemoveAllAuras(npc.ID);
+
+            if (!ServerTickerManager.Instance.RemoveAllTickers(npc))
+            {
+                throw new InvalidOperationException(
+                    $"Ticker owner could not clear live NPC actor '{npc.ID}'.");
+            }
+
+            if (!ServerCooldownManager.Instance.ClearAllCooldowns(npc.ID))
+            {
+                throw new InvalidOperationException(
+                    $"Cooldown owner could not clear live NPC actor '{npc.ID}'.");
+            }
+
+            if (npc.TryGetComponent<ActorStatContainer>(out _)
+                && !ServerStatManager.Instance.ResetResources(npc))
+            {
+                throw new InvalidOperationException(
+                    $"Stat owner could not reset resources for live NPC actor '{npc.ID}'.");
+            }
+
             if (_npcAggroStates.TryGetValue(npc.ID, out var aggroState))
             {
                 if (!ReferenceEquals(aggroState.NPC, npc))
@@ -143,8 +171,6 @@ namespace Game.Server.Core
             {
                 navigationState.Agent.ResetPath();
             }
-
-            ActorEndpoint.onServerStopAutoAttack?.Invoke(npc);
         }
 
         private void UpdateNPCNavigation()
