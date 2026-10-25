@@ -286,7 +286,7 @@ namespace Game.Server.Core
 
                 for (int i = 0; i < movements.Count; i++)
                 {
-                    ServerActorManager.AcceptedVisibilityMovement movement = movements[i];
+                    var movement = movements[i];
                     AppendVisibilityEvaluationKeys(
                         movement.Actor,
                         movement.Context,
@@ -310,7 +310,7 @@ namespace Game.Server.Core
             ActorSpatialContext currentContext,
             WorldPosition currentPosition)
         {
-            double radius = GameConfigurationManager.Config.ActorVisibilityExitRadius;
+            var radius = GameConfigurationManager.Config.ActorVisibilityExitRadius;
             _visibilityCandidateActorIDs.Clear();
 
             _visibilityCandidateQueryBuffer.Clear();
@@ -323,7 +323,7 @@ namespace Game.Server.Core
             for (int i = 0; i < _visibilityCandidateQueryBuffer.Count; i++)
                 _visibilityCandidateActorIDs.Add(_visibilityCandidateQueryBuffer[i]);
 
-            bool sameContextAndPosition = previousContext.Equals(currentContext)
+            var sameContextAndPosition = previousContext.Equals(currentContext)
                 && previousPosition.x == currentPosition.x
                 && previousPosition.y == currentPosition.y
                 && previousPosition.z == currentPosition.z;
@@ -342,19 +342,12 @@ namespace Game.Server.Core
 
             NetworkingPerformanceMetrics.RecordVisibilityCandidates(_visibilityCandidateActorIDs.Count);
 
-            foreach (Guid candidateID in _visibilityCandidateActorIDs)
+            foreach (var candidateID in _visibilityCandidateActorIDs)
             {
-                if (!ServerActorManager.Instance.TryGetActor(candidateID, out Actor candidateActor)
-                    || candidateActor == null)
+                if (!ServerActorManager.Instance.TryGetActor(candidateID, out var candidateActor))
                 {
                     throw new InvalidOperationException(
                         $"Spatial visibility candidate '{candidateID}' does not resolve to its live registered actor.");
-                }
-
-                if (candidateID == actor.ID && !ReferenceEquals(candidateActor, actor))
-                {
-                    throw new InvalidOperationException(
-                        $"Spatial visibility candidate '{candidateID}' does not match the moved actor instance.");
                 }
 
                 if (candidateID == actor.ID)
@@ -374,8 +367,8 @@ namespace Game.Server.Core
 
         private void EvaluateVisibilityKeys()
         {
-            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int visibilityEvaluationCount = 0;
+            var telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            var visibilityEvaluationCount = 0;
             try
             {
                 if (!_networkManager.TryGetModule<HierarchyFactory>(true, out var factory)
@@ -384,10 +377,9 @@ namespace Game.Server.Core
                     return;
                 }
 
-                foreach ((PlayerID observer, Guid subjectActorID) in _visibilityEvaluationKeys)
+                foreach (var (observer, subjectActorID) in _visibilityEvaluationKeys)
                 {
-                    if (!ServerActorManager.Instance.TryGetActorIdentity(subjectActorID, out NetworkIdentity subjectIdentity)
-                        || subjectIdentity == null)
+                    if (!ServerActorManager.Instance.TryGetActorIdentity(subjectActorID, out var subjectIdentity))
                     {
                         throw new InvalidOperationException(
                             $"Visibility subject '{subjectActorID}' does not resolve to its live registered NetworkIdentity.");
