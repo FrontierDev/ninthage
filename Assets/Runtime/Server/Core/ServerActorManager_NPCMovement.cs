@@ -41,8 +41,12 @@ namespace Game.Server.Core
         }
 
         private readonly Dictionary<Guid, NPCNavigationState> _npcNavigationStates = new();
+        private readonly List<KeyValuePair<Guid, NPCNavigationState>> _npcNavigationSnapshot = new();
 
-        private void UpdateNPCNavigationRegistration(Actor actor, bool hasEnabledAgent)
+        private void UpdateNPCNavigationRegistration(
+            Actor actor,
+            bool hasEnabledAgent,
+            NavMeshAgent agent)
         {
             if (actor == null)
                 throw new ArgumentNullException(nameof(actor));
@@ -53,7 +57,6 @@ namespace Game.Server.Core
                 return;
             }
 
-            var agent = actor.GetComponent<NavMeshAgent>();
             if (agent == null || !agent.enabled)
             {
                 throw new InvalidOperationException(
@@ -86,13 +89,8 @@ namespace Game.Server.Core
             }
         }
 
-        private static float GetNPCPursuitStoppingDistance(Actor actor)
+        private static float GetNPCPursuitStoppingDistance(Actor actor, Actor target)
         {
-            if (actor == null)
-                throw new ArgumentNullException(nameof(actor));
-            if (actor.Target == null)
-                throw new InvalidOperationException($"NPC {actor.ID} has no pursuit target.");
-
             var autoAttackSpell = GameConfigurationManager.Config.AutoAttackSpell;
             if (autoAttackSpell == null)
             {
@@ -102,7 +100,7 @@ namespace Game.Server.Core
 
             float stoppingDistance = autoAttackSpell.BaseRange
                 + actor.HitboxRadius
-                + actor.Target.HitboxRadius;
+                + target.HitboxRadius;
             if (float.IsNaN(stoppingDistance)
                 || float.IsInfinity(stoppingDistance)
                 || stoppingDistance < 0f)
@@ -115,27 +113,13 @@ namespace Game.Server.Core
 
         internal void DropNPCTarget(Actor npc)
         {
-            if (npc == null)
-                return;
             if (npc.Owner != null)
             {
                 throw new InvalidOperationException(
                     $"Actor '{npc.ID}' is player-owned and cannot use NPC target-drop handling.");
             }
 
-            if (!npc.SpatialContext.IsValid)
-            {
-                throw new InvalidOperationException(
-                    $"NPC '{npc.ID}' has an invalid spatial context.");
-            }
-
             Actor target = npc.Target;
-            if (target != null && !target.SpatialContext.IsValid)
-            {
-                throw new InvalidOperationException(
-                    $"NPC target '{target.ID}' has an invalid spatial context.");
-            }
-
             if (target != null)
                 npc.SetTargetFromServer(null);
 
@@ -154,7 +138,6 @@ namespace Game.Server.Core
             if (_npcNavigationStates.TryGetValue(npc.ID, out var navigationState)
                 && ReferenceEquals(navigationState.Actor, npc)
                 && navigationState.Agent != null
-                && navigationState.Agent == npc.GetComponent<NavMeshAgent>()
                 && navigationState.Agent.enabled
                 && navigationState.Agent.isOnNavMesh
                 && navigationState.Agent.hasPath)
@@ -167,112 +150,104 @@ namespace Game.Server.Core
 
         private void UpdateNPCNavigation()
         {
-            foreach (var kvp in new List<KeyValuePair<Guid, NPCNavigationState>>(_npcNavigationStates))
+            _npcNavigationSnapshot.Clear();
+            try
             {
-                Guid actorID = kvp.Key;
-                NPCNavigationState state = kvp.Value;
-                if (state.Actor == null)
-                {
-                    _npcNavigationStates.Remove(actorID);
-                    continue;
-                }
+                foreach (var entry in _npcNavigationStates)
+                    _npcNavigationSnapshot.Add(entry);
 
-                if (state.Actor.isDead)
+                foreach (var kvp in _npcNavigationSnapshot)
                 {
-                    RetireNPCNavigationOnDeath(state.Actor);
-                    continue;
-                }
+                    Guid actorID = kvp.Key;
+                    NPCNavigationState state = kvp.Value;
+                    if (state.Actor == null)
+                    {
+                        _npcNavigationStates.Remove(actorID);
+                        continue;
+                    }
 
-                if (state.Actor.Owner != null
-                    || state.Agent == null
-                    || state.Actor.GetComponent<NavMeshAgent>() != state.Agent)
-                {
-                    _npcNavigationStates.Remove(actorID);
-                    continue;
-                }
+                    if (state.Actor.isDead)
+                    {
+                        RetireNPCNavigationOnDeath(state.Actor);
+                        continue;
+                    }
 
-                if (state.SuspendedForUnavailableNavigation)
-                    continue;
+                    if (state.Actor.Owner != null || state.Agent == null)
+                    {
+                        _npcNavigationStates.Remove(actorID);
+                        continue;
+                    }
 
-                if (!state.Agent.enabled)
-                {
-                    _npcNavigationStates.Remove(actorID);
-                    continue;
-                }
+                    if (state.SuspendedForUnavailableNavigation)
+                        continue;
 
-                if (!state.Actor.SpatialContext.IsValid)
-                {
-                    throw new InvalidOperationException(
-                        $"NPC '{state.Actor.ID}' has an invalid spatial context.");
-                }
+                    if (!state.Agent.enabled)
+                    {
+                        _npcNavigationStates.Remove(actorID);
+                        continue;
+                    }
 
-                Actor target = state.Actor.Target;
-                if (target == null)
-                {
-                    if (state.Agent.isOnNavMesh && state.Agent.hasPath)
-                        state.Agent.ResetPath();
-                    continue;
-                }
+                    Actor target = state.Actor.Target;
+                    if (target == null)
+                    {
+                        if (state.Agent.isOnNavMesh && state.Agent.hasPath)
+                            state.Agent.ResetPath();
+                        continue;
+                    }
 
-                if (!target.SpatialContext.IsValid)
-                {
-                    throw new InvalidOperationException(
-                        $"NPC target '{target.ID}' has an invalid spatial context.");
-                }
+                    if (!state.Actor.SpatialContext.IsCompatibleWith(target.SpatialContext))
+                    {
+                        DropNPCTarget(state.Actor);
+                        continue;
+                    }
 
-                if (!state.Actor.SpatialContext.IsCompatibleWith(target.SpatialContext))
-                {
-                    DropNPCTarget(state.Actor);
-                    continue;
-                }
+                    if (target.isDead)
+                    {
+                        DropNPCTarget(state.Actor);
+                        continue;
+                    }
 
-                if (target.isDead)
-                {
-                    DropNPCTarget(state.Actor);
-                    continue;
-                }
+                    if (!TryGetAcceptedWorldPosition(target.ID, out WorldPosition targetWorldPosition))
+                    {
+                        throw new InvalidOperationException(
+                            $"NPC target {target.ID} has no live canonical ECS position.");
+                    }
 
-                if (!TryGetAcceptedWorldPosition(target.ID, out WorldPosition targetWorldPosition))
-                {
-                    throw new InvalidOperationException(
-                        $"NPC target {target.ID} has no live canonical ECS position.");
-                }
+                    if (state.Agent.pathPending)
+                        continue;
+                    if (!state.Agent.isOnNavMesh)
+                    {
+                        throw new InvalidOperationException(
+                            $"NPC {state.Actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
+                    }
 
-                if (state.Agent.pathPending)
-                    continue;
-                if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-                {
-                    throw new InvalidOperationException(
-                        "NPC navigation requires an initialized server physics manager.");
+                    state.Agent.stoppingDistance = GetNPCPursuitStoppingDistance(state.Actor, target);
+                    Vector3 physicalTargetPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(targetWorldPosition);
+                    if (!state.Agent.SetDestination(physicalTargetPosition))
+                    {
+                        throw new InvalidOperationException(
+                            $"NPC {state.Actor.ID} rejected pursuit destination for target {target.ID}. "
+                            + $"agentPosition={state.Agent.transform.position}; "
+                            + $"nextPosition={state.Agent.nextPosition}; "
+                            + $"targetWorld=({targetWorldPosition.x}, {targetWorldPosition.y}, {targetWorldPosition.z}); "
+                            + $"requestedPhysical=({physicalTargetPosition.x}, {physicalTargetPosition.y}, {physicalTargetPosition.z}); "
+                            + $"agentTypeID={state.Agent.agentTypeID}; "
+                            + $"areaMask={state.Agent.areaMask}; "
+                            + $"isOnNavMesh={state.Agent.isOnNavMesh}; "
+                            + $"pathPending={state.Agent.pathPending}.");
+                    }
                 }
-                if (!state.Agent.isOnNavMesh)
-                {
-                    throw new InvalidOperationException(
-                        $"NPC {state.Actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
-                }
-
-                state.Agent.stoppingDistance = GetNPCPursuitStoppingDistance(state.Actor);
-                Vector3 physicalTargetPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(targetWorldPosition);
-                if (!state.Agent.SetDestination(physicalTargetPosition))
-                {
-                    throw new InvalidOperationException(
-                        $"NPC {state.Actor.ID} rejected pursuit destination for target {target.ID}. "
-                        + $"agentPosition={state.Agent.transform.position}; "
-                        + $"nextPosition={state.Agent.nextPosition}; "
-                        + $"targetWorld=({targetWorldPosition.x}, {targetWorldPosition.y}, {targetWorldPosition.z}); "
-                        + $"requestedPhysical=({physicalTargetPosition.x}, {physicalTargetPosition.y}, {physicalTargetPosition.z}); "
-                        + $"agentTypeID={state.Agent.agentTypeID}; "
-                        + $"areaMask={state.Agent.areaMask}; "
-                        + $"isOnNavMesh={state.Agent.isOnNavMesh}; "
-                        + $"pathPending={state.Agent.pathPending}.");
-                }
+            }
+            finally
+            {
+                _npcNavigationSnapshot.Clear();
             }
         }
 
         private void EnsureNPCMovementComponents(Entity entity, Actor actor)
         {
-            bool hasEnabledAgent = HasEnabledNavMeshAgent(actor);
-            UpdateNPCNavigationRegistration(actor, hasEnabledAgent);
+            bool hasEnabledAgent = HasEnabledNavMeshAgent(actor, out NavMeshAgent agent);
+            UpdateNPCNavigationRegistration(actor, hasEnabledAgent, agent);
 
             if (_entityManager.HasComponent<Systems.MotionStateComponent>(entity))
             {
@@ -350,8 +325,7 @@ namespace Game.Server.Core
                 if (state.Actor == null
                     || state.Actor.isDead
                     || state.Actor.Owner != null
-                    || state.Agent == null
-                    || state.Actor.GetComponent<NavMeshAgent>() != state.Agent)
+                    || state.Agent == null)
                 {
                     _npcNavigationStates.Remove(entry.Key);
                     continue;
@@ -382,9 +356,7 @@ namespace Game.Server.Core
 
         internal void ResumeNPCNavigationAfterNavMeshAvailable()
         {
-            if (!ServerPhysicsManager.IsInitialized
-                || ServerPhysicsManager.Instance == null
-                || !ServerPhysicsManager.Instance.TryGetNavigationAgentType(out int agentTypeID))
+            if (!ServerPhysicsManager.Instance.TryGetNavigationAgentType(out int agentTypeID))
             {
                 throw new InvalidOperationException(
                     "Suspended NPC navigation cannot resume without a registered continuous NavMesh.");
@@ -400,8 +372,7 @@ namespace Game.Server.Core
                 if (state.Actor == null
                     || state.Actor.isDead
                     || state.Actor.Owner != null
-                    || state.Agent == null
-                    || state.Actor.GetComponent<NavMeshAgent>() != state.Agent)
+                    || state.Agent == null)
                 {
                     _npcNavigationStates.Remove(entry.Key);
                     continue;
@@ -464,17 +435,12 @@ namespace Game.Server.Core
             }
         }
 
-        private static bool HasEnabledNavMeshAgent(Actor actor)
+        private static bool HasEnabledNavMeshAgent(Actor actor, out NavMeshAgent agent)
         {
-            var agent = actor.GetComponent<NavMeshAgent>();
+            agent = actor.GetComponent<NavMeshAgent>();
             if (agent == null || !agent.enabled)
                 return false;
 
-            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-            {
-                throw new InvalidOperationException(
-                    "Enabled NPC NavMesh movement requires an initialized server physics manager.");
-            }
             if (!ServerPhysicsManager.Instance.TryGetNavigationAgentType(out int agentTypeID))
             {
                 throw new InvalidOperationException(
@@ -548,9 +514,19 @@ namespace Game.Server.Core
                 return false;
 
             var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
-            if (_npcNavigationStates.TryGetValue(actorObj.ID, out var navigationState)
-                && ReferenceEquals(navigationState.Actor, actorObj)
-                && navigationState.SuspendedForUnavailableNavigation)
+            if (!_npcNavigationStates.TryGetValue(actorObj.ID, out var navigationState)
+                || !ReferenceEquals(navigationState.Actor, actorObj))
+            {
+                if (motion.UsesNavMeshAgent)
+                {
+                    motion.UsesNavMeshAgent = false;
+                    _entityManager.SetComponentData(entity, motion);
+                }
+
+                return false;
+            }
+
+            if (navigationState.SuspendedForUnavailableNavigation)
             {
                 if (!motion.UsesNavMeshAgent)
                 {
@@ -561,16 +537,41 @@ namespace Game.Server.Core
                 return false;
             }
 
-            bool hasEnabledAgent = HasEnabledNavMeshAgent(actorObj);
-            UpdateNPCNavigationRegistration(actorObj, hasEnabledAgent);
-            if (motion.UsesNavMeshAgent != hasEnabledAgent)
+            if (navigationState.Agent == null)
             {
-                motion.UsesNavMeshAgent = hasEnabledAgent;
-                _entityManager.SetComponentData(entity, motion);
+                _npcNavigationStates.Remove(actorObj.ID);
+                if (motion.UsesNavMeshAgent)
+                {
+                    motion.UsesNavMeshAgent = false;
+                    _entityManager.SetComponentData(entity, motion);
+                }
+
+                return false;
             }
 
-            if (!hasEnabledAgent)
+            if (!navigationState.Agent.enabled)
+            {
+                _npcNavigationStates.Remove(actorObj.ID);
+                if (motion.UsesNavMeshAgent)
+                {
+                    motion.UsesNavMeshAgent = false;
+                    _entityManager.SetComponentData(entity, motion);
+                }
+
                 return false;
+            }
+
+            if (!navigationState.Agent.isOnNavMesh)
+            {
+                throw new InvalidOperationException(
+                    $"NPC {actorObj.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
+            }
+
+            if (!motion.UsesNavMeshAgent)
+            {
+                motion.UsesNavMeshAgent = true;
+                _entityManager.SetComponentData(entity, motion);
+            }
 
             WorldPosition worldPosition = ServerPhysicsManager.Instance.ToWorldPosition(
                 actorObj.transform.position);
@@ -597,11 +598,6 @@ namespace Game.Server.Core
                 component.WorldPositionD.x,
                 component.WorldPositionD.y,
                 component.WorldPositionD.z);
-            if (!worldPosition.IsFinite)
-            {
-                throw new InvalidOperationException(
-                    $"Actor {actorObj.ID} has an invalid canonical ECS world position.");
-            }
 
             actorObj.transform.position = ServerPhysicsManager.Instance.ToPhysicalPosition(worldPosition);
             return true;

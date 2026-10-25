@@ -107,8 +107,7 @@ namespace Game.Server.Core
             if (_pendingSpatialContextTransfers.Contains(sender))
                 return;
 
-            if (!_initialized
-                || ownershipEpoch <= 0
+            if (ownershipEpoch <= 0
                 || proposalSequence <= 0
                 || !position.IsFinite)
             {
@@ -118,10 +117,7 @@ namespace Game.Server.Core
             if (!_playerActors.TryGetValue(sender, out var actor)
                 || actor == null
                 || !actor.Owner.HasValue
-                || actor.Owner.Value != sender
-                || !actor.SpatialContext.IsValid
-                || !_actorEntities.TryGetValue(actor.ID, out var entity)
-                || !_entityManager.Exists(entity))
+                || actor.Owner.Value != sender)
             {
                 return;
             }
@@ -156,36 +152,19 @@ namespace Game.Server.Core
             {
                 var playerID = kvp.Key;
                 var actor = kvp.Value;
-                if (actor == null) continue;
+                if (actor == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' has no registered actor.");
+                }
 
                 if (!_nextValidationTickIDs.TryGetValue(playerID, out var nextValidationTickID))
-                    continue;
-                if (!_lastValidationTickIDs.TryGetValue(playerID, out var lastValidationTickID))
-                    continue;
+                {
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' has no validation deadline.");
+                }
 
                 bool validationDue = tick.TickID >= nextValidationTickID;
-                long validationIntervalTicks = 0;
-                long elapsedTickCount = 0;
-                if (validationDue)
-                {
-                    validationIntervalTicks = checked(nextValidationTickID - lastValidationTickID);
-                    elapsedTickCount = checked(tick.TickID - lastValidationTickID);
-                    if (validationIntervalTicks <= 0 || elapsedTickCount <= 0)
-                        throw new InvalidOperationException("Player position validation deadline state is invalid.");
-                }
-
-                if (!_actorEntities.TryGetValue(actor.ID, out var entity)
-                    || !_entityManager.Exists(entity))
-                {
-                    RemovePendingPositionProposal(playerID);
-                    continue;
-                }
-
-                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                var currentAcceptedPosition = ToWorldPosition(component.WorldPositionD);
-                if (!currentAcceptedPosition.IsFinite)
-                    throw new InvalidOperationException(
-                        $"Player '{playerID}' has an invalid canonical ECS position.");
 
                 bool hasEligibleProposal = false;
                 WorldPosition candidatePosition = default;
@@ -193,25 +172,48 @@ namespace Game.Server.Core
                 {
                     _pendingPositionProposals.Remove(playerID);
                     if (proposal.ActorID == actor.ID
-                        && proposal.SpatialContext.IsCompatibleWith(actor.SpatialContext)
-                        && proposal.OwnershipEpoch > 0
-                        && proposal.ProposalSequence > 0
-                        && proposal.Position.IsFinite)
+                        && proposal.SpatialContext.IsCompatibleWith(actor.SpatialContext))
                     {
                         hasEligibleProposal = true;
                         candidatePosition = proposal.Position;
                     }
                 }
 
+                if (!validationDue && !hasEligibleProposal)
+                    continue;
+
+                if (!_actorEntities.TryGetValue(actor.ID, out var entity))
+                {
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' has no corresponding ECS entity.");
+                }
+
+                if (!_entityManager.Exists(entity))
+                {
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' maps to a destroyed ECS entity.");
+                }
+
+                var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
+                var currentAcceptedPosition = ToWorldPosition(component.WorldPositionD);
+
                 if (!validationDue)
                 {
-                    if (hasEligibleProposal)
-                    {
-                        CommitPlayerPosition(entity, component, actor, candidatePosition);
-                        physicalTransformsChanged = true;
-                    }
+                    CommitPlayerPosition(entity, component, actor, candidatePosition);
+                    physicalTransformsChanged = true;
                     continue;
                 }
+
+                if (!_lastValidationTickIDs.TryGetValue(playerID, out var lastValidationTickID))
+                {
+                    throw new InvalidOperationException(
+                        $"Player '{playerID}' has no validation baseline tick.");
+                }
+
+                long validationIntervalTicks = checked(nextValidationTickID - lastValidationTickID);
+                long elapsedTickCount = checked(tick.TickID - lastValidationTickID);
+                if (validationIntervalTicks <= 0 || elapsedTickCount <= 0)
+                    throw new InvalidOperationException("Player position validation deadline state is invalid.");
 
                 if (!_periodicValidationBaselines.TryGetValue(playerID, out var baselinePosition))
                     throw new InvalidOperationException(
@@ -297,17 +299,13 @@ namespace Game.Server.Core
             WorldPosition position)
         {
             using var markerScope = PLAYER_ECS_SYNC_MARKER.Begin();
-            if (actor == null)
-                throw new ArgumentNullException(nameof(actor));
-            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-                throw new InvalidOperationException("Player position commit requires initialized server physics manager.");
 
             WorldPosition previousPosition = ToWorldPosition(component.WorldPositionD);
             var physicalPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(position);
             actor.transform.position = physicalPosition;
             component.WorldPositionD = new Unity.Mathematics.double3(position.x, position.y, position.z);
             _entityManager.SetComponentData(entity, component);
-            GetSpatialIndex().Move(component.ActorID, actor.SpatialContext, position);
+            _spatialIndex.Move(component.ActorID, actor.SpatialContext, position);
             EvaluateTransferColliderCrossing(actor, previousPosition, position);
             ActorEndpoint.onServerAcceptedPlayerPositionChanged?.Invoke(
                 actor,
@@ -319,15 +317,8 @@ namespace Game.Server.Core
             WorldPosition previousPosition,
             WorldPosition currentPosition)
         {
-            if (actor == null
-                || !actor.Owner.HasValue
-                || _pendingSpatialContextTransfers.Contains(actor.Owner.Value)
+            if (_pendingSpatialContextTransfers.Contains(actor.Owner.Value)
                 || AreWorldPositionsEqual(previousPosition, currentPosition))
-            {
-                return;
-            }
-            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null
-                || !ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
             {
                 return;
             }
@@ -470,37 +461,18 @@ namespace Game.Server.Core
             }
         }
 
-        private static void ProjectPlayerPhysicalPosition(
-            Actor actor,
-            WorldPosition position)
-        {
-            if (actor == null)
-                throw new ArgumentNullException(nameof(actor));
-            if (!position.IsFinite)
-                throw new ArgumentException("The player physical position must be finite.", nameof(position));
-            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-                throw new InvalidOperationException("Player physical projection requires initialized server physics manager.");
-
-            actor.transform.position = ServerPhysicsManager.Instance.ToPhysicalPosition(position);
-        }
-
         /// <summary>Sends a client correction and projects it into the continuous physical frame.</summary>
         private static void SendPlayerCorrection(
             PlayerID playerID,
             Actor actor,
             WorldPosition correctionPosition)
         {
-            if (actor == null)
-                throw new ArgumentNullException(nameof(actor));
-            if (!ServerPositionManager.IsInitialized || ServerPositionManager.Instance == null)
-                throw new InvalidOperationException("Player correction requires initialized server position manager.");
+            Vector3 physicalCorrectionPosition = ServerPhysicsManager.Instance.ToPhysicalPosition(correctionPosition);
 
             var (chunk, localPos) = ServerPositionManager.Instance.ToChunkLocal(correctionPosition);
             MovementEndpoint.Client_ServerCorrection(playerID, chunk, localPos);
 
-            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-                throw new InvalidOperationException("Player correction requires initialized server physics manager.");
-            ProjectPlayerPhysicalPosition(actor, correctionPosition);
+            actor.transform.position = physicalCorrectionPosition;
         }
 
         /// <summary>Moves a player's periodic validation window to the current authoritative tick.</summary>
@@ -562,18 +534,9 @@ namespace Game.Server.Core
 
         private static long GetValidationIntervalTicks()
         {
-            if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
-                throw new InvalidOperationException("Player position validation requires initialized server simulation configuration.");
-
-            ServerSimulationClock.ValidateConfiguration(GameConfigurationManager.Config);
-            float fixedDeltaTime = GameConfigurationManager.Config.ServerSimulationTickDuration;
-            double tickCountEstimate = VALIDATION_INTERVAL / (double)fixedDeltaTime;
-            if (double.IsInfinity(tickCountEstimate) || tickCountEstimate > long.MaxValue)
-                throw new ArgumentOutOfRangeException(
-                    nameof(VALIDATION_INTERVAL),
-                    "The player position validation interval cannot be represented by an authoritative tick deadline.");
-
-            return ServerSimulationClock.GetNonShorteningTickCount(VALIDATION_INTERVAL, fixedDeltaTime);
+            return ServerSimulationClock.GetNonShorteningTickCount(
+                VALIDATION_INTERVAL,
+                GameConfigurationManager.Config.ServerSimulationTickDuration);
         }
     }
 }
