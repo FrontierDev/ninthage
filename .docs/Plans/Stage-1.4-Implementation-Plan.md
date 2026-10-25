@@ -75,19 +75,72 @@ Rules:
 
 The 128/160 m band is deliberately outside the current 80/96 m actor-visibility band and provides a wake buffer before an approaching player can see the NPC.
 
-### 2.4 Initial decision cadence
+### 2.4 Ordinary perception cadence
 
-The initial configurable decision frequencies are:
+Ordinary proximity aggro uses one shared authoritative perception cadence:
 
-| Activity | Ordinary NPC perception/aggro cadence |
-| --- | ---: |
-| Full | existing `NPCAggroDecisionIntervalSeconds` = **0.2 s** |
-| Nearby | `NPCNearbyDecisionIntervalSeconds` = **1.0 s** |
+| Activity | Ordinary aggro/perception participation |
+| --- | --- |
+| Full | eligible for the shared existing `NPCAggroDecisionIntervalSeconds` cadence = **0.2 s** |
+| Nearby | **none** |
 | Dormant | **none** |
 
-All second-based settings are converted once to integer simulation-tick strides with `ServerSimulationClock.GetNonShorteningTickCount(...)`. Do not use independent frame timers or accumulated float countdowns.
+Nearby is a reduced activity/navigation state, not a reduced-rate aggro polling state.
 
-### 2.5 Dormant behaviour
+The existing 0.2 s authored setting is converted once to an integer simulation-tick stride with `ServerSimulationClock.GetNonShorteningTickCount(...)`. Do not introduce an independent Nearby perception timer, frame timer or accumulated float countdown.
+
+### 2.5 Spatially batched aggro broad phase
+
+The 0.2 s perception pass must not execute one spatial query per Full NPC and must not execute the same NPC decision branch once per player.
+
+The required broad-phase shape is:
+
+```text
+collect live player actors
+    ↓
+group players by compatible ActorSpatialContext
+    ↓
+for each context:
+    derive the union of spatial cells covered by the players' Full/acquisition envelope
+    ↓
+    traverse each unique covered cell once
+    ↓
+    collect unique Full, alive, out-of-combat, aggro-capable NPC IDs
+    ↓
+    for each unique NPC once:
+        evaluate spatially local, living player candidates
+        apply cheap validity/hostility/range filters
+        apply stealth/detection and other NPC-specific rules
+        perform expensive LoS only after cheap filters
+        choose/acquire at most one target
+```
+
+`ServerSpatialIndex` remains the sole spatial membership owner. Extend it with a narrow batch/cell-union query rather than creating a parallel player-cell or NPC-cell registry.
+
+The batch query must:
+
+- accept multiple authoritative player centres belonging to one compatible `ActorSpatialContext`;
+- use the existing spatial cell grid;
+- build a reusable set of unique intersecting cells for the supplied centres and broad-phase radius;
+- visit each unique cell at most once for that call;
+- append unique candidate actor IDs into caller-owned reusable output storage;
+- report examined unique-cell count and examined actor-candidate count for telemetry;
+- preserve the existing no-membership-mutation-during-query invariant;
+- perform no hostility, stealth, faction, aggro or target-selection logic itself.
+
+The broad-phase radius is the existing Full relevance envelope (`ActorVisibilityExitRadius`). Ordinary effective detection ranges must remain within that envelope. This keeps all normally detectable NPCs Full before acquisition can occur and avoids a second maximum-detection configuration value.
+
+After the batch query, `ServerActorManager` resolves only unique eligible NPCs and performs each NPC's acquisition decision once. It must restrict player comparisons to genuinely local players in the same compatible context; do not fall back to scanning every connected player for every candidate NPC.
+
+The exact player↔NPC pair checks that remain after spatial pruning are legitimate work. The optimisation target is redundant bucket traversal and repeated NPC decision entry, not eliminating necessary local relationship checks.
+
+Dead player actors:
+- **do** participate in activity relevance;
+- **do not** participate as ordinary hostile acquisition targets.
+
+NPC-specific effective detection range may incorporate base aggro range, NPC role/situational modifiers such as guards, and player stealth/detection effects. Apply cheap range/disposition/validity checks before expensive line-of-sight work.
+
+### 2.6 Dormant behaviour
 
 A Dormant NPC:
 
@@ -98,7 +151,7 @@ A Dormant NPC:
 - remains in `ServerSpatialIndex` so player movement can wake it;
 - may later drive a low-cost dormant/idle animation state, but animation work is not part of Stage 1.4.
 
-### 2.6 Out-of-combat reset
+### 2.7 Out-of-combat reset
 
 When the current implementation deliberately disengages an NPC, the reset boundary clears transient combat state before activity is reevaluated.
 
@@ -121,7 +174,7 @@ The reset does not alter ActorID, spawn-point identity, spatial context, canonic
 
 Future explicitly persistent/scripted encounter state requires its own opt-out/retention contract when such state is implemented. Stage 1.4 does not invent persistence metadata now.
 
-### 2.7 Representation
+### 2.8 Representation
 
 Initial Stage 1.4:
 
@@ -131,7 +184,7 @@ Initial Stage 1.4:
 | Spatial-index membership | retained | retained | retained |
 | Actor GameObject | retained | retained | retained |
 | PurrNet NetworkIdentity | retained | retained | retained |
-| ordinary perception decisions | 0.2 s | 1.0 s | none |
+| ordinary aggro/perception | shared 0.2 s pass | none | none |
 | ordinary NPC navigation manager work | yes | yes | no |
 | combat/pursuit | yes | no unless promoted Full | no |
 | environment-scene dependency | none | none | none |
@@ -145,12 +198,14 @@ Canonical NPC activity is stored on the server ECS entity in an `NPCActivityComp
 `ServerActorManager` owns:
 
 - activity transitions;
-- derived Full/Nearby scheduling eligibility;
+- Full NPC perception eligibility;
+- the shared ordinary perception/acquisition pass;
+- NPC-specific effective detection and target-acquisition decisions;
 - player-relevance reevaluation;
 - dormant navigation suspension/resume;
-- activity telemetry.
+- activity/perception telemetry.
 
-`ServerSpatialIndex` remains the spatial candidate owner.
+`ServerSpatialIndex` remains the sole spatial membership and broad-phase candidate owner. Its Stage 1.4 extension batches multiple player centres by unioning covered cells; it does not own hostility, stealth, detection or target choice.
 
 `ServerInterestManager`/PurrNet remain network-visibility projection owners and do not own activity.
 
@@ -164,7 +219,7 @@ Complete. Issue #258 recorded and owner approved the Full/Nearby/Dormant contrac
 
 ### Step 2 — Canonical activity state and configuration
 
-Add the ECS activity component, configuration values/validation, registration/ownership lifecycle, and transition helper. Preserve current behaviour by registering existing NPCs as Full until relevance driving is implemented.
+Add the ECS activity component, Nearby entry/exit configuration and validation, registration/ownership lifecycle, and transition helper. Preserve current behaviour by registering existing NPCs as Full until relevance driving is implemented. Do **not** add a Nearby perception cadence setting.
 
 ### Step 3 — Actor-level combat-reset primitives
 
@@ -178,13 +233,37 @@ Make `ServerActorManager.DropNPCTarget(...)` the current ordinary-NPC disengagem
 
 Drive activity from authoritative spawn/movement/despawn/context-transfer changes using `ServerSpatialIndex` and the exact thresholds in §2.3. Do not scan all NPCs each simulation tick.
 
-### Step 6 — Activity-aware NPC perception scheduling
+### Step 6 — Spatially batched Full-NPC perception
 
-Replace the single all-NPC 0.2 s pass with separate derived Full and Nearby eligibility sets and shared 0.2 s / 1.0 s schedules. Dormant NPCs receive no ordinary perception pass. Remove the current per-pass allocation of a new NPC-key list by reusing owned scratch storage.
+Replace the current all-NPC `UpdateNPCAggro(...)` pattern with one shared 0.2 s perception pass driven by player-occupied space.
+
+Implementation responsibilities:
+
+1. add the narrow multi-centre/cell-union broad-phase operation to `ServerSpatialIndex`;
+2. collect current player actors by compatible `ActorSpatialContext` without excluding dead players from **activity** relevance;
+3. for ordinary aggro acquisition, use only living valid player actors as target centres/candidates;
+4. batch the player centres for each context through the spatial-index cell union using `ActorVisibilityExitRadius` as the broad-phase envelope;
+5. collect/deduplicate Full, alive, out-of-combat, aggro-capable NPC candidates;
+6. evaluate each candidate NPC at most once in the perception pass;
+7. restrict that NPC's target checks to spatially local living players, not all connected players;
+8. retain the existing NPC-owned aggro delay/deadline semantics;
+9. apply cheap context/validity/hostility/effective-range checks before any expensive line-of-sight checks;
+10. reuse owned scratch sets/lists; do not allocate a new NPC-key snapshot per pass.
+
+Nearby and Dormant NPCs receive no ordinary aggro/perception polling.
+
+Add telemetry for:
+- player centres included;
+- unique spatial cells traversed;
+- spatial actor candidates examined;
+- unique NPC candidates produced;
+- local player↔NPC candidate pairs examined;
+- NPC acquisition decisions executed;
+- perception-pass duration.
 
 ### Step 7 — Dormant navigation and event-driven activation
 
-Remove Dormant NPCs from project-owned per-frame navigation work, stop/reset their active path once on dormancy, and restore navigation eligibility on wake without recreating the actor. Add immediate damage-driven promotion to Full through the existing `ActorEndpoint` boundary. Existing aggro acquisition already promotes within `ServerActorManager`; player movement/spawn/transfer promotion is owned by Step 5.
+Remove Dormant NPCs from project-owned per-frame navigation work, stop/reset their active path once on dormancy, and restore navigation eligibility on wake without recreating the actor. Add immediate damage-driven promotion to Full through the existing `ActorEndpoint` boundary. Ordinary aggro acquisition in Step 6 promotes the acquiring NPC to Full before target/combat commitment where it is not already Full; player movement/spawn/transfer activity promotion is owned by Step 5.
 
 ### Step 8 — Focused regression tests
 
@@ -195,7 +274,10 @@ Add only critical integration coverage for:
 - combat/damage forcing Full;
 - disengagement reset clearing transient combat state before dormancy;
 - cross-instance players never waking an NPC;
-- dormant NPCs performing no ordinary perception/navigation work and waking correctly.
+- Nearby and Dormant NPCs performing no ordinary aggro polling;
+- clustered players causing each covered spatial cell and each candidate NPC to be processed once per perception pass;
+- dead players retaining activity relevance while remaining invalid ordinary aggro targets;
+- dormant NPCs performing no ordinary navigation work and waking correctly.
 
 No production changes in the test issue.
 
@@ -206,8 +288,12 @@ Extend the existing performance harness for a full server-NPC activity workload 
 Measure:
 
 - Full/Nearby/Dormant counts;
-- NPC decisions executed;
-- spatial candidates examined;
+- player perception centres;
+- unique spatial cells traversed;
+- spatial actor candidates examined;
+- unique NPC candidates;
+- local player↔NPC candidate pairs examined;
+- NPC acquisition decisions executed;
 - actor-manager/aggro/navigation cost;
 - whole simulation tick p50/p95/p99;
 - allocation/GC;
@@ -218,7 +304,8 @@ Required comparisons:
 1. same large NPC population forced Full;
 2. same population distributed mostly Dormant;
 3. mass transition Dormant → Nearby/Full;
-4. density/context transition with zero cross-instance wake.
+4. dense-player clustering (including ~100 players in one local area) to verify cell traversal and NPC decision work do not multiply linearly with overlapping player envelopes;
+5. density/context transition with zero cross-instance wake.
 
 The Stage 1.4 gate passes only when Dormant steady-state CPU is demonstrably lower, wake spikes remain bounded, nearby combat remains responsive, and no cross-instance leakage occurs.
 
@@ -233,7 +320,8 @@ Stage 1.4 does not implement:
 - persistent NPC database state;
 - reconnect continuity;
 - new respawn/corpse timers;
-- new threat formulas or target-selection design;
+- new threat formulas or target-selection design beyond preserving the existing authoritative NPC choice while changing its broad-phase candidate discovery;
+- a parallel player/NPC spatial registry;
 - custom Jobs/Burst work without new measurements;
 - world-streaming redesign.
 

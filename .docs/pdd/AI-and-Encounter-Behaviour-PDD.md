@@ -1035,7 +1035,7 @@ Open-world NPC simulation uses three server-owned activity states:
 | State | Meaning |
 | --- | --- |
 | **Full** | The NPC is in combat or otherwise immediately gameplay-relevant, or is currently visible to at least one player. Full NPC perception, decision-making, patrol/navigation and combat behaviour are permitted. |
-| **Nearby** | The NPC is out of combat and not currently visible, but remains close enough to at least one player that it should stay partially active and be able to become Full without a noticeable wake delay. Perception/decision work may run at a reduced cadence and ordinary patrol/navigation may continue. |
+| **Nearby** | The NPC is out of combat and not currently visible, but remains close enough to at least one player that it should stay partially active and be able to become Full without a noticeable wake delay. Ordinary patrol/navigation may continue as required, but the NPC does not independently poll for ordinary aggro acquisition. |
 | **Dormant** | The NPC is out of combat, is not currently visible to any player, and is outside the Nearby relevance band of every player in the same logical spatial context. It performs no ordinary patrol, perception, decision or NavMesh pursuit work. |
 
 These are **simulation activity states**, not life/death, persistence, streaming or replication states. An NPC does not become dormant merely because combat ends, an environment scene unloads, or one observer disappears.
@@ -1049,7 +1049,8 @@ Player relevance is evaluated from authoritative actor state and spatial context
 - If an NPC kills a player and combat ends, the dead player's nearby actor can therefore keep that NPC Full or Nearby according to ordinary relevance.
 - Network visibility is an input to activity selection but does not own the activity state.
 - Canonical double-precision actor positions and `ServerSpatialIndex` are the authoritative basis for distance/relevance decisions; `GameObject.scene`, streamed-environment lifetime and client-local transforms are not.
-- The exact outer Nearby radius and reduced Nearby decision cadence are engineering configuration/tuning values to be selected and measured during Stage 1.4 implementation. They are not fixed player-facing design constants in this PDD.
+- The exact outer Nearby radius is an engineering configuration/tuning value selected and measured during Stage 1.4 implementation. It is not a fixed player-facing design constant in this PDD.
+- Dead player actors count for **activity relevance**, but they are not valid targets for new ordinary hostile acquisition solely because they remain relevant for activity.
 
 The transition priority is:
 
@@ -1064,6 +1065,47 @@ dormant
 ```
 
 Combat or another explicit gameplay obligation always overrides distance-based dormancy.
+
+#### Ordinary aggro/perception broad phase
+
+Ordinary proximity aggro must scale with **occupied player space**, not by making every NPC independently query for players and not by making every player independently execute the same NPC decision branch.
+
+The authoritative broad phase is therefore shared and spatially batched:
+
+```text
+authoritative perception cadence
+    ↓
+group live player actors by compatible ActorSpatialContext
+    ↓
+derive the union of spatial cells intersecting their ordinary acquisition envelope
+    ↓
+visit each unique intersecting spatial cell at most once for that context/pass
+    ↓
+collect and deduplicate eligible Full NPCs
+    ↓
+for each candidate NPC once
+    evaluate only spatially local valid player candidates
+    ↓
+NPC performs its authoritative detection/target-acquisition decision
+```
+
+The spatial broad phase belongs to `ServerSpatialIndex`. It may expose a project-owned batch/cell-union query, but Stage 1.4 must not create a second player or NPC spatial registry merely for perception.
+
+The perception owner must preserve these invariants:
+
+- a dense cluster of players does not cause the same candidate NPC's acquisition logic to run once per player;
+- a candidate NPC performs at most one ordinary acquisition decision per shared perception pass;
+- a spatial cell covered by multiple player acquisition envelopes is traversed at most once per compatible context/pass;
+- exact player↔NPC relationships are still evaluated where genuinely required; spatial batching removes redundant broad-phase traversal and repeated NPC decision entry, not the unavoidable local pair checks;
+- cheap filters such as context, target validity, hostility/disposition, squared distance and effective detection range run before expensive checks such as line-of-sight;
+- the NPC remains authoritative for whether it detects/acquires a player and which valid player it selects;
+- player actors originate the occupied-space broad phase, but do not themselves decide NPC aggro;
+- dead players continue to affect activity relevance but are excluded from ordinary hostile-target acquisition;
+- Nearby and Dormant NPCs perform no ordinary aggro polling.
+
+NPC-specific detection remains supported through an **effective detection range** evaluated for each genuinely local player/NPC candidate pair. It may incorporate the NPC's base aggro/detection range, NPC role or situational modifiers such as guard behaviour, and player stealth/detection interactions.
+
+Ordinary effective detection range must not exceed the Full-activity relevance envelope. An exceptional scripted encounter that must activate from farther away should explicitly create a gameplay obligation/Full activation rather than silently bypassing the activity model.
 
 #### Combat reset and dormancy
 
