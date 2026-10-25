@@ -1535,7 +1535,6 @@ namespace Game.Server.Core
             double fullExitRadiusSquared =
                 (double)GameConfigurationManager.Config.NPCFullExitRadius
                 * GameConfigurationManager.Config.NPCFullExitRadius;
-            bool actorLifetimeMayHaveChanged = false;
 
             _npcPerceptionContexts.Clear();
             _npcPerceptionContextPlayers.Clear();
@@ -1589,16 +1588,17 @@ namespace Game.Server.Core
 
                     foreach (Guid candidateID in _npcPerceptionCandidateIDs)
                     {
-                        if (!TryGetActor(candidateID, out Actor candidateActor))
+                        if (!TryGetActor(candidateID, out _))
                         {
-                            if (!actorLifetimeMayHaveChanged)
-                            {
-                                throw new InvalidOperationException(
-                                    $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
-                            }
-
-                            continue;
+                            throw new InvalidOperationException(
+                                $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
                         }
+                    }
+
+                    foreach (Guid candidateID in _npcPerceptionCandidateIDs)
+                    {
+                        if (!TryGetActor(candidateID, out Actor candidateActor))
+                            continue;
 
                         if (candidateActor is not NPCActor)
                             continue;
@@ -1704,7 +1704,6 @@ namespace Game.Server.Core
                             Debug.Log($"NPC '{state.NPC.Name}' aggroed player '{closest.Name}'.");
                             state.NPC.SetTargetFromServer(closest);
                             ActorEndpoint.onServerStartAutoAttack?.Invoke(state.NPC);
-                            actorLifetimeMayHaveChanged = true;
 
                             if (!_actors.TryGetValue(candidateID, out var currentRegistration)
                                 || !ReferenceEquals(currentRegistration.Actor, state.NPC))
