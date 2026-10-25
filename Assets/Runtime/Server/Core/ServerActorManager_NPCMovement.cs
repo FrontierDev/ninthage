@@ -171,18 +171,20 @@ namespace Game.Server.Core
                         continue;
                     }
 
-                    if (state.Actor.Owner != null || state.Agent == null)
+                    if (state.Actor.Owner != null)
                     {
                         _npcNavigationStates.Remove(actorID);
                         continue;
                     }
+
+                    if (state.Agent == null)
+                        continue;
 
                     if (state.SuspendedForUnavailableNavigation)
                         continue;
 
                     if (!state.Agent.enabled)
                     {
-                        _npcNavigationStates.Remove(actorID);
                         continue;
                     }
 
@@ -248,22 +250,19 @@ namespace Game.Server.Core
             bool hasEnabledAgent = HasEnabledNavMeshAgent(actor, out NavMeshAgent agent);
             UpdateNPCNavigationRegistration(actor, hasEnabledAgent, agent);
 
-            if (_entityManager.HasComponent<Systems.MotionStateComponent>(entity))
-            {
-                var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
-                motion.UsesNavMeshAgent = hasEnabledAgent;
-                _entityManager.SetComponentData(entity, motion);
-            }
-            else
+            if (!_entityManager.HasComponent<Systems.MotionStateComponent>(entity))
             {
                 _entityManager.AddComponentData(entity, new Systems.MotionStateComponent
                 {
                     VerticalVelocity = 0f,
                     IsGrounded = true,
-                    TimeSinceLastGround = 0f,
-                    UsesNavMeshAgent = hasEnabledAgent
+                    TimeSinceLastGround = 0f
                 });
             }
+
+            _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(
+                entity,
+                !hasEnabledAgent);
 
             if (!_entityManager.HasComponent<Systems.GroundDetectionComponent>(entity))
             {
@@ -511,54 +510,33 @@ namespace Game.Server.Core
             NPCNavigationState navigationState)
         {
             var actor = navigationState.Actor;
-            if (actor.isDead)
-                return false;
-
-            var motion = _entityManager.GetComponentData<Systems.MotionStateComponent>(entity);
             if (component.Owner != default || actor.Owner != null)
             {
-                if (motion.UsesNavMeshAgent)
-                {
-                    motion.UsesNavMeshAgent = false;
-                    _entityManager.SetComponentData(entity, motion);
-                }
-
+                _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(entity, false);
                 _npcNavigationStates.Remove(actor.ID);
                 return false;
             }
 
+            if (actor.isDead)
+                return false;
+
             if (navigationState.SuspendedForUnavailableNavigation)
             {
-                if (!motion.UsesNavMeshAgent)
-                {
-                    throw new InvalidOperationException(
-                        $"Suspended NPC {actor.ID} lost its NavMesh-driven motion classification.");
-                }
-
+                _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(entity, false);
                 return false;
             }
 
             if (navigationState.Agent == null)
             {
                 _npcNavigationStates.Remove(actor.ID);
-                if (motion.UsesNavMeshAgent)
-                {
-                    motion.UsesNavMeshAgent = false;
-                    _entityManager.SetComponentData(entity, motion);
-                }
-
+                _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(entity, true);
                 return false;
             }
 
             if (!navigationState.Agent.enabled)
             {
                 _npcNavigationStates.Remove(actor.ID);
-                if (motion.UsesNavMeshAgent)
-                {
-                    motion.UsesNavMeshAgent = false;
-                    _entityManager.SetComponentData(entity, motion);
-                }
-
+                _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(entity, true);
                 return false;
             }
 
@@ -568,11 +546,7 @@ namespace Game.Server.Core
                     $"NPC {actor.ID} has an enabled NavMeshAgent that is not attached to a NavMesh.");
             }
 
-            if (!motion.UsesNavMeshAgent)
-            {
-                motion.UsesNavMeshAgent = true;
-                _entityManager.SetComponentData(entity, motion);
-            }
+            _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(entity, false);
 
             var worldPosition = ServerPhysicsManager.Instance.ToWorldPosition(
                 actor.transform.position);

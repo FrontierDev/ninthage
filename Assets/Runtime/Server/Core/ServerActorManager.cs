@@ -776,6 +776,9 @@ namespace Game.Server.Core
 
                 // Add cooldown buffer for per-spell cooldown tracking.
                 _entityManager.AddBuffer<Systems.CooldownElement>(entity);
+                _entityManager.SetComponentEnabled<Systems.CooldownElement>(
+                    entity,
+                    false);
 
                 // Add aura buffer for active aura tracking.
                 _entityManager.AddBuffer<Systems.AuraElement>(entity);
@@ -1118,6 +1121,12 @@ namespace Game.Server.Core
                 else
                 {
                     RemoveNPCNavigationRegistration(actor);
+                    if (_entityManager.HasComponent<Systems.MotionStateComponent>(entity))
+                    {
+                        _entityManager.SetComponentEnabled<Systems.MotionStateComponent>(
+                            entity,
+                            false);
+                    }
                 }
 
                 if (previousOwner != default
@@ -1371,10 +1380,9 @@ namespace Game.Server.Core
                         component.WorldPositionD.z);
                     var actorContext = actor.SpatialContext;
 
-                    if (component.Owner == default
-                        && !actor.isDead
+                    if (!actor.isDead
                         && _entityManager.HasComponent<Systems.MotionStateComponent>(entity)
-                        && !_entityManager.GetComponentData<Systems.MotionStateComponent>(entity).UsesNavMeshAgent)
+                        && _entityManager.IsComponentEnabled<Systems.MotionStateComponent>(entity))
                     {
                         actor.transform.position = ServerPhysicsManager.Instance.ToPhysicalPosition(position);
                         gameObjectSyncCount++;

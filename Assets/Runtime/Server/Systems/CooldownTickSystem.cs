@@ -33,38 +33,31 @@ namespace Game.Server.Systems
         public void OnUpdate(ref SystemState state)
         {
             using var markerScope = COOLDOWN_TICK_MARKER.Begin();
-            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
-            int cooldownEntryCount = 0;
-            float fixedDeltaTime = SystemAPI.Time.DeltaTime;
-            ServerActorManager actorManager = ServerActorManager.Instance;
-            if (actorManager == null)
-            {
-                if (telemetryEnabled)
-                    PerformanceTelemetry.TryRecord(COOLDOWN_ENTRY_COUNT_METRIC, 0);
-                return;
-            }
+            var telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            var cooldownEntryCount = 0;
+            var currentTickID = ServerECSManager.CurrentSimulationTickID;
 
-            foreach (var (queriedBuffer, actor, entity) in
-                SystemAPI.Query<DynamicBuffer<CooldownElement>, RefRO<ActorComponent>>()
+            foreach (var (queriedBuffer, entity) in
+                SystemAPI.Query<DynamicBuffer<CooldownElement>>()
                          .WithEntityAccess())
             {
-                DynamicBuffer<CooldownElement> buffer = queriedBuffer;
-                if (!actorManager.TryGetActorEntity(actor.ValueRO.ActorID, out Entity authoritativeEntity)
-                    || authoritativeEntity != entity)
-                {
-                    continue;
-                }
+                var buffer = queriedBuffer;
 
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     var entry = buffer[i];
-                    entry.RemainingCooldown -= fixedDeltaTime;
 
-                    if (entry.RemainingCooldown <= 0f)
+                    if (currentTickID >= entry.ExpiryTickID)
                         buffer.RemoveAt(i);
-                    else
-                        buffer[i] = entry;
                 }
+
+                if (buffer.Length == 0)
+                {
+                    state.EntityManager.SetComponentEnabled<CooldownElement>(
+                        entity,
+                        false);
+                }
+
                 if (telemetryEnabled)
                     cooldownEntryCount += buffer.Length;
             }

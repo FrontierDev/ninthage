@@ -51,13 +51,6 @@ namespace Game.Server.Systems
                 SystemAPI.Query<RefRW<ActorComponent>, RefRW<MotionStateComponent>, RefRO<GroundDetectionComponent>>()
                          .WithEntityAccess())
             {
-                // Players own their vertical movement — only simulate gravity for NPC entities.
-                // NPCs with NavMeshAgent handle their own gravity and movement.
-                if (actor.ValueRO.Owner != default)
-                    continue;
-                if (motion.ValueRO.UsesNavMeshAgent)
-                    continue;
-
                 double3 previousPosition = actor.ValueRO.WorldPositionD;
 
                 float groundDetectionRadius = groundCheck.ValueRO.groundDetectionRadius;

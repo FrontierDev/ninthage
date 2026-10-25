@@ -556,8 +556,8 @@ namespace Game.Server.Core
                 {
                     SpellID = spell.BaseDefinition.DefinitionID,
                     CastID = castID,
+                    FirstProgressTickID = 0,
                     CompletionTickID = 0,
-                    RemainingCastTime = 0f,
                     TotalCastTime = 0f,
                     TotalTicks = 0f,
                     TimeSinceLastTick = 0f
@@ -574,16 +574,30 @@ namespace Game.Server.Core
             }
             else
             {
+                if (float.IsNaN(spell.CastTime)
+                    || float.IsInfinity(spell.CastTime)
+                    || spell.CastTime <= 0f)
+                {
+                    throw new InvalidOperationException(
+                        "A non-instant spell cast requires a finite positive cast time.");
+                }
+
+                var firstProgressTickID = GetFirstCastProgressTickID();
+                var durationTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                    spell.CastTime,
+                    GameConfigurationManager.Config.ServerSimulationTickDuration);
+                var completionTickID = checked(
+                    firstProgressTickID + durationTicks - 1L);
+
                 _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
                 {
                     SpellID = spell.BaseDefinition.DefinitionID,
                     CastID = castID,
-                    CompletionTickID = 0,
-                    RemainingCastTime = spell.CastTime,
+                    FirstProgressTickID = firstProgressTickID,
+                    CompletionTickID = completionTickID,
                     TotalCastTime = spell.CastTime,
                     TotalTicks = spell.TotalTicks,
                     TimeSinceLastTick = 0f
-
                 });
                 _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, true);
 
@@ -1179,6 +1193,15 @@ namespace Game.Server.Core
             return ServerActorManager.Instance.TryGetActorEntity(actorID, out actorEntity);
         }
 
+        private static long GetFirstCastProgressTickID()
+        {
+            var currentSimulationTickID = ServerECSManager.CurrentSimulationTickID;
+            if (currentSimulationTickID > 0)
+                return currentSimulationTickID;
+
+            return checked(ServerSimulationClock.CurrentTickID + 1L);
+        }
+
         private void QueueCompletionForNextBoundary(Guid actorID, string spellID, long castID, Entity sourceEntity)
         {
             ServerECSManager.QueueSimulationEvent(
@@ -1299,9 +1322,15 @@ namespace Game.Server.Core
                 return 0f;
             }
 
+            var component = _entityManager.GetComponentData<Systems.SpellCastComponent>(entity);
+            var completedProgressTicks = Math.Max(
+                0L,
+                ServerSimulationClock.CurrentTickID - component.FirstProgressTickID);
+            var elapsedProgressSeconds = completedProgressTicks
+                * (double)GameConfigurationManager.Config.ServerSimulationTickDuration;
             return Mathf.Max(
                 0f,
-                _entityManager.GetComponentData<Systems.SpellCastComponent>(entity).RemainingCastTime);
+                component.TotalCastTime - (float)elapsedProgressSeconds);
         }
 
         /// <summary>Attempts to interrupt an actor's active spell cast or cancel a pending start.</summary>

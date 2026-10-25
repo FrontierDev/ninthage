@@ -37,8 +37,12 @@ namespace Game.Server.Systems
         public float RegenAmount;
     }
 
-    /// <summary>Stores movement and gravity state for an actor.</summary>
-    public struct MotionStateComponent : IComponentData
+    /// <summary>
+    /// Stores movement and gravity state for an actor. Enabled means ECS owns this NPC's
+    /// gravity/motion update; disabled means ECS motion is not eligible because NavMesh or player
+    /// ownership excludes it.
+    /// </summary>
+    public struct MotionStateComponent : IComponentData, IEnableableComponent
     {
         /// <summary>The actor's current vertical velocity.</summary>
         public float VerticalVelocity;
@@ -46,8 +50,6 @@ namespace Game.Server.Systems
         public bool IsGrounded;
         /// <summary>The time since the actor was last grounded.</summary>
         public float TimeSinceLastGround;
-        /// <summary>Whether a NavMeshAgent owns actor movement.</summary>
-        public bool UsesNavMeshAgent;
     }
 
     /// <summary>Stores the server's ground-detection settings and last result.</summary>
@@ -66,25 +68,25 @@ namespace Game.Server.Systems
         public FixedString64Bytes SpellID;
         /// <summary>The unique cast generation associated with this active cast.</summary>
         public long CastID;
-        /// <summary>The authoritative tick on which this cast completes.</summary>
+        /// <summary>The first authoritative ECS tick that progresses this cast.</summary>
+        public long FirstProgressTickID;
+        /// <summary>The authoritative tick on which normal cast completion becomes due.</summary>
         public long CompletionTickID;
-        /// <summary>The remaining cast time.</summary>
-        public float RemainingCastTime;
-        /// <summary>The total cast duration.</summary>
+        /// <summary>The authored cast duration used solely by the existing channel-tick implementation, not cast-completion authority.</summary>
         public float TotalCastTime;
-        /// <summary>The number of channel ticks.</summary>
+        /// <summary>The authored channel tick count used solely by the existing channel-tick implementation, not cast-completion authority.</summary>
         public float TotalTicks;
-        /// <summary>The time since the last channel tick.</summary>
+        /// <summary>The accumulated channel progress used solely by the existing channel-tick implementation, not cast-completion authority.</summary>
         public float TimeSinceLastTick;
     }
 
     /// <summary>Stores a cooldown entry for an actor.</summary>
-    public struct CooldownElement : IBufferElementData
+    public struct CooldownElement : IBufferElementData, IEnableableComponent
     {
         /// <summary>The spell or cooldown identifier.</summary>
         public FixedString64Bytes SpellID;
-        /// <summary>The remaining cooldown duration.</summary>
-        public float RemainingCooldown;
+        /// <summary>The authoritative tick on which the cooldown becomes inactive.</summary>
+        public long ExpiryTickID;
     }
 
     /// <summary>Stores an active aura entry for an actor.</summary>

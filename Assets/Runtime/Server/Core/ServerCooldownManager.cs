@@ -119,6 +119,12 @@ namespace Game.Server.Core
 
             var fixedSpellID = new Unity.Collections.FixedString64Bytes(spellID);
             var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity);
+            var firstProgressTickID = GetFirstCooldownProgressTickID();
+            var durationTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                duration,
+                GameConfigurationManager.Config.ServerSimulationTickDuration);
+            var expiryTickID = checked(
+                firstProgressTickID + durationTicks - 1L);
 
             // Update existing entry or append a new one.
             bool found = false;
@@ -129,7 +135,7 @@ namespace Game.Server.Core
                     buffer[i] = new Systems.CooldownElement
                     {
                         SpellID = fixedSpellID,
-                        RemainingCooldown = duration
+                        ExpiryTickID = expiryTickID
                     };
                     found = true;
                     break;
@@ -141,9 +147,13 @@ namespace Game.Server.Core
                 buffer.Add(new Systems.CooldownElement
                 {
                     SpellID = fixedSpellID,
-                    RemainingCooldown = duration
+                    ExpiryTickID = expiryTickID
                 });
             }
+
+            _entityManager.SetComponentEnabled<Systems.CooldownElement>(
+                entity,
+                true);
         }
 
         /// <summary>Determines whether an actor currently has a cooldown.</summary>
@@ -168,15 +178,32 @@ namespace Game.Server.Core
             float pendingCooldown = _pendingCooldowns.TryGetValue((actorID, spellID), out float pending)
                 ? pending
                 : 0f;
+            var fixedTickDuration = GameConfigurationManager.Config.ServerSimulationTickDuration;
 
             var buffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity, true);
             for (int i = 0; i < buffer.Length; i++)
             {
                 if (buffer[i].SpellID == fixedSpellID)
-                    return Mathf.Max(buffer[i].RemainingCooldown, pendingCooldown);
+                {
+                    var remainingTicks = Math.Max(
+                        0L,
+                        buffer[i].ExpiryTickID - ServerSimulationClock.CurrentTickID);
+                    var remainingSeconds = (float)(remainingTicks
+                        * (double)fixedTickDuration);
+                    return Mathf.Max(remainingSeconds, pendingCooldown);
+                }
             }
 
             return pendingCooldown;
+        }
+
+        private static long GetFirstCooldownProgressTickID()
+        {
+            var currentSimulationTickID = ServerECSManager.CurrentSimulationTickID;
+            if (currentSimulationTickID > 0)
+                return currentSimulationTickID;
+
+            return checked(ServerSimulationClock.CurrentTickID + 1L);
         }
 
         private bool TryGetAuthoritativeActorEntity(Guid actorID, out Entity entity)
