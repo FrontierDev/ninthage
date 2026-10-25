@@ -224,6 +224,7 @@ namespace Game.Tests.Performance.Harness
         private bool _measurementStarted;
         private bool _churnStarted;
         private bool _churnRespawned;
+        private bool _timedStateStressPrepared;
         private long _nextSyntheticCastID;
         private int _measurementSpawnEventCount;
         private int _measurementDespawnEventCount;
@@ -268,6 +269,26 @@ namespace Game.Tests.Performance.Harness
         public int WakeSurgeCount => _wakeSurgeEntities.Count;
 
         public int IdleCount => _idleCount;
+
+        public void PrepareTimedStateStress()
+        {
+            if (!_timedStateStressEnabled || _timedStateStressPrepared)
+                return;
+
+            var entityManager = ServerECSManager.DefaultWorld.EntityManager;
+            for (var index = 0; index < _fixture.DataOnlyEntities.Count; index++)
+            {
+                var entity = _fixture.DataOnlyEntities[index];
+                if (!entityManager.Exists(entity))
+                    continue;
+                if (!entityManager.HasComponent<MotionStateComponent>(entity))
+                    throw new InvalidOperationException($"Timed-state stress entity {index} is missing MotionStateComponent.");
+
+                entityManager.SetComponentEnabled<MotionStateComponent>(entity, false);
+            }
+
+            _timedStateStressPrepared = true;
+        }
 
         public void AdvanceRamp(float elapsedSeconds, float durationSeconds)
         {
@@ -541,12 +562,12 @@ namespace Game.Tests.Performance.Harness
 
         private static long GetFirstProgressTickID()
         {
-            // The production simulation-tick accessor is internal to Game.Server. The public
-            // clock is the equivalent source available to this Editor-only harness between ticks.
-            var currentSimulationTickID = ServerSimulationClock.CurrentTickID;
-            return currentSimulationTickID > 0
-                ? currentSimulationTickID
-                : checked(currentSimulationTickID + 1L);
+            return GetFirstProgressTickID(ServerSimulationClock.CurrentTickID);
+        }
+
+        internal static long GetFirstProgressTickID(long currentSimulationTickID)
+        {
+            return checked(currentSimulationTickID + 1L);
         }
 
         internal static Test_PerformanceActivityEvent ResolveChurnEvent(

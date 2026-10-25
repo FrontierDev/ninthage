@@ -103,6 +103,13 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void TimedStateStressStartsNewStateOnTheNextSimulationTick()
+        {
+            Assert.That(Test_PerformanceActivityController.GetFirstProgressTickID(0L), Is.EqualTo(1L));
+            Assert.That(Test_PerformanceActivityController.GetFirstProgressTickID(100L), Is.EqualTo(101L));
+        }
+
+        [Test]
         public void ExplicitEditorServerWorldNameRejectsBlankValues()
         {
             Assert.Throws<ArgumentException>(() => ServerInitialization.Begin(null, string.Empty));

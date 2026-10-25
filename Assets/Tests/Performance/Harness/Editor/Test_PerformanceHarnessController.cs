@@ -700,6 +700,7 @@ namespace Game.Tests.Performance.Harness
                 yield break;
             }
 
+            _run.ActivityController.PrepareTimedStateStress();
             _run.MarkWorkloadApplied();
             _run.MarkPhaseComplete(PerformanceMeasurementPhase.Ramp);
             Test_PerformanceHarnessController.PersistActiveRun("running");
