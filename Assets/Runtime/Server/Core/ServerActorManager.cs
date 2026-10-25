@@ -2452,9 +2452,14 @@ namespace Game.Server.Core
                 if (other.Owner == null)
                 {
                     if (actor is PlayerActor && other is NPCActor)
+                    {
                         _npcActivityCandidateIDs.Add(other.ID);
-
-                    DropNPCTarget(other, reevaluateActivity: false);
+                        DropNPCTarget(other, reevaluateActivity: false);
+                    }
+                    else
+                    {
+                        DropNPCTarget(other);
+                    }
                 }
                 else
                 {
