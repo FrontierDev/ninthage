@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** NPC and creature taxonomy, factions and disposition, difficulty classifications, population roles, spawning, variants, reusable unit authoring, interaction capabilities, world populations, rares, bosses and content-authoring requirements  
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-25
 
 ---
 
@@ -685,6 +685,23 @@ Examples that may require persistence include:
 - other explicitly persistent content.
 
 A normal wolf does not require a database record simply because it spawned once.
+
+
+### 20.1 Out-of-combat reset and dormant NPCs
+
+NPC simulation activity uses the AI PDD's **Full**, **Nearby** and **Dormant** states.
+
+Dormancy is not a death, corpse or despawn state. A living NPC may become dormant only after it is out of combat and sufficiently irrelevant to all player actors in the same logical spatial context.
+
+Leaving combat does not itself make an NPC dormant. The NPC first performs its ordinary out-of-combat reset, then its activity state is selected from current player relevance.
+
+For ordinary open-world NPCs, the out-of-combat reset clears transient combat state rather than suspending it for later catch-up. This includes normal reset of Health/resources and clearing transient combat auras, tickers, threat, targets, cooldowns and comparable temporary encounter state as defined by the owning gameplay systems.
+
+Permanent authored state, scripted/encounter state and explicitly persistent NPC state are not discarded merely because the NPC becomes dormant.
+
+Dead player actors continue to count as player relevance for this decision. An NPC that has just killed a player therefore remains Full or Nearby when the player's dead actor is still within the corresponding relevance range.
+
+A dormant NPC remains logically present at its authoritative world position. Dormancy may later select a cheaper dormant/idle animation state, but does not by itself mean the NPC has despawned.
 
 ---
 

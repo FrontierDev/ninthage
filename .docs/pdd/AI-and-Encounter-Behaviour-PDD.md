@@ -1027,6 +1027,81 @@ The 5,000-entity scaling workload also distributes periodic/cast deadlines acros
 
 The measured campaigns were captured in the Unity Editor on Windows 11 with an AMD Ryzen 7 5700X (8 cores / 16 logical processors), Unity 6000.3.10f1. These results are appropriate for relative scaling and architectural decisions, not direct production hardware capacity claims.
 
+
+### 42.2 Stage 1.4 NPC activity-state contract
+
+Open-world NPC simulation uses three server-owned activity states:
+
+| State | Meaning |
+| --- | --- |
+| **Full** | The NPC is in combat or otherwise immediately gameplay-relevant, or is currently visible to at least one player. Full NPC perception, decision-making, patrol/navigation and combat behaviour are permitted. |
+| **Nearby** | The NPC is out of combat and not currently visible, but remains close enough to at least one player that it should stay partially active and be able to become Full without a noticeable wake delay. Perception/decision work may run at a reduced cadence and ordinary patrol/navigation may continue. |
+| **Dormant** | The NPC is out of combat, is not currently visible to any player, and is outside the Nearby relevance band of every player in the same logical spatial context. It performs no ordinary patrol, perception, decision or NavMesh pursuit work. |
+
+These are **simulation activity states**, not life/death, persistence, streaming or replication states. An NPC does not become dormant merely because combat ends, an environment scene unloads, or one observer disappears.
+
+#### Player relevance
+
+Player relevance is evaluated from authoritative actor state and spatial context.
+
+- Alive and dead player actors count equally for NPC activity relevance.
+- A player stops contributing to NPC activity only when that player actor leaves the relevant logical spatial context or authoritative actor lifetime, such as through respawn elsewhere, world/instance transfer, logout or despawn.
+- If an NPC kills a player and combat ends, the dead player's nearby actor can therefore keep that NPC Full or Nearby according to ordinary relevance.
+- Network visibility is an input to activity selection but does not own the activity state.
+- Canonical double-precision actor positions and `ServerSpatialIndex` are the authoritative basis for distance/relevance decisions; `GameObject.scene`, streamed-environment lifetime and client-local transforms are not.
+- The exact outer Nearby radius and reduced Nearby decision cadence are engineering configuration/tuning values to be selected and measured during Stage 1.4 implementation. They are not fixed player-facing design constants in this PDD.
+
+The transition priority is:
+
+```text
+mandatory combat / gameplay obligation
+    ↓
+visible to a player
+    ↓
+nearby to a player
+    ↓
+dormant
+```
+
+Combat or another explicit gameplay obligation always overrides distance-based dormancy.
+
+#### Combat reset and dormancy
+
+Dormancy does not suspend an unresolved combat encounter for later catch-up.
+
+When an NPC leaves combat, the normal NPC reset returns transient combat state to its authored out-of-combat baseline. This includes, where applicable:
+
+- Health/resources returning to the NPC's normal reset state;
+- current target and threat being cleared;
+- transient combat auras being removed;
+- combat tickers being removed;
+- combat cooldowns and other temporary combat state being reset.
+
+After that reset, activity is reevaluated independently:
+
+```text
+combat ends
+    ↓
+reset transient combat state
+    ↓
+evaluate player relevance
+    ├─ visible / immediately relevant → Full
+    ├─ nearby but not visible → Nearby
+    └─ outside Nearby relevance → Dormant
+```
+
+An NPC that leaves combat beside a player does **not** become dormant simply because combat ended.
+
+Because ordinary transient combat state is reset before dormancy, Stage 1.4 does not require suspended cooldown/aura/ticker catch-up for dormant open-world NPCs. Authored permanent, scripted, encounter or explicitly persistent state is not transient combat state and must not be erased merely because the NPC becomes dormant.
+
+#### Representation and future presentation
+
+Stage 1.4 dormancy is initially a simulation/behaviour optimisation, not an actor despawn or persistence boundary. The authoritative actor identity, spatial context and canonical position remain valid while dormant. Environment-scene unload does not destroy the actor solely because it became dormant.
+
+The initial implementation may retain the existing Actor GameObject/PurrNet representation while suspending expensive AI/navigation work. More aggressive dematerialisation into a cheaper representation is a future optimisation and must not be introduced implicitly as part of basic dormancy.
+
+Dormancy may later drive a deliberately low-cost dormant/idle animation state on clients or server-side presentation where appropriate, without changing the authoritative activity semantics above.
+
 ---
 
 ## 43. Current Implementation Baseline

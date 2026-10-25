@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Persistent worlds, world streaming, spatial partitioning, floating origin, actor visibility, seamless interiors, instanced spaces, map transitions and runtime scene authoring  
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-25
 
 ---
 
@@ -399,6 +399,23 @@ An actor may logically belong to a world region or instance without its GameObje
 Actor spatial ownership must therefore be determined from authoritative runtime spatial data, not from `GameObject.scene`.
 
 NPC lifecycle rules beyond this requirement belong to the NPC, AI and persistence systems.
+
+
+### 7.1 NPC simulation activity is independent from environment streaming
+
+Stage 1.4 defines NPC simulation activity as **Full**, **Nearby** or **Dormant**.
+
+These states do not change the persistent-actor-scene rule:
+
+- environment-scene unload does not itself despawn or dorm an actor;
+- dormancy does not remove authoritative ActorID, `ActorSpatialContext` or canonical `ActorComponent.WorldPositionD`;
+- server activity relevance is derived from authoritative player actors in the same logical spatial context, not from `GameObject.scene` or whether an environment tile happens to be loaded;
+- dead player actors remain valid relevance sources until their actor leaves the context/lifetime;
+- network visibility is related to, but does not own, simulation activity.
+
+A dormant NPC is an out-of-combat NPC outside the Nearby relevance band and not visible to any player. It may stop patrol, perception, decision and NavMesh work while remaining logically present in the world.
+
+The initial Stage 1.4 implementation does not require dormant actors to be dematerialised from their Actor GameObject or PurrNet identity. Any later lightweight/dematerialised representation must preserve the same authoritative identity, context and position and is a separate optimisation.
 
 ---
 
