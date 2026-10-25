@@ -84,7 +84,6 @@ namespace Game.Server.Core
         private long _catchUpCapHitCount;
         private long _deadlineMissesThisFrame;
         private bool _executingTick;
-        private bool _started;
 
         private enum ScheduleKind
         {
@@ -124,7 +123,7 @@ namespace Game.Server.Core
         public static ServerSimulationClock Active => _active;
 
         /// <summary>Gets whether the authoritative server clock is running.</summary>
-        public static bool IsRunning => _active != null && _active._started;
+        public static bool IsRunning => _active != null;
 
         /// <summary>Gets the tick currently being committed, or the last completed tick outside a tick callback.</summary>
         public static long CurrentTickID => _active == null ? 0 : _active._currentTickID;
@@ -292,7 +291,7 @@ namespace Game.Server.Core
 
         private static ServerSimulationClock RequireActive()
         {
-            if (_active == null || !_active._started)
+            if (_active == null)
                 throw new InvalidOperationException("The server simulation clock is not running.");
 
             return _active;
@@ -303,13 +302,11 @@ namespace Game.Server.Core
             _tickDurationSeconds = tickDurationSeconds;
             _maxCatchUpTicks = maxCatchUpTicks;
             _lastTimestamp = Stopwatch.GetTimestamp();
-            _started = true;
             enabled = true;
         }
 
         private void StopClock()
         {
-            _started = false;
             _executingTick = false;
             _scheduledWork.Clear();
             _pendingScheduledWork.Clear();
@@ -351,13 +348,15 @@ namespace Game.Server.Core
             if (registrationID == 0)
                 return;
 
-            foreach (var work in _scheduledWork)
+            for (int i = 0; i < _scheduledWork.Count; i++)
             {
+                ScheduledWork work = _scheduledWork[i];
                 if (work.RegistrationID == registrationID)
                 {
-                    work.Cancelled = true;
-                    if (!_executingTick)
-                        CommitScheduledWork();
+                    if (_executingTick)
+                        work.Cancelled = true;
+                    else
+                        _scheduledWork.RemoveAt(i);
                     return;
                 }
             }
@@ -374,9 +373,6 @@ namespace Game.Server.Core
 
         private void Update()
         {
-            if (!_started)
-                return;
-
             long scheduledThisFrame = 0;
             int executedThisFrame = 0;
             Exception failure = null;

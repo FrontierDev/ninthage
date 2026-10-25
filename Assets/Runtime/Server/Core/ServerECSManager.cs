@@ -1,4 +1,3 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Systems;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
@@ -6,7 +5,6 @@ using System;
 using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
-using UnityEngine;
 
 namespace Game.Server.Core
 {
@@ -58,13 +56,11 @@ namespace Game.Server.Core
         private static readonly PerformanceMarker ECS_INITIALIZATION_MARKER = new(ECS_INITIALIZATION_DURATION_METRIC, "Server.ECS.Initialization");
         private static SimulationSystemGroup _simulationSystemGroup;
         private static readonly ServerSimulationEventBuffer SIMULATION_EVENT_BUFFER = new();
-        private static bool _initialized = false;
         private static bool _mutationCommitActive;
         private static long _currentSimulationTickID;
-        private static bool _hasCurrentSimulationEvent;
         private static ServerSimulationEvent _currentSimulationEvent;
         /// <summary>Gets whether the server ECS world has been initialized.</summary>
-        public static bool Initialized => _initialized;
+        public static bool Initialized => DefaultWorld != null;
 
         /// <summary>Gets the authoritative tick currently being simulated.</summary>
         internal static long CurrentSimulationTickID => _currentSimulationTickID;
@@ -88,7 +84,7 @@ namespace Game.Server.Core
         /// <summary>Creates the server ECS world and registers its systems.</summary>
         public static void ServerInitializeECSWorlds()
         {
-            if (_initialized || DefaultWorld != null)
+            if (DefaultWorld != null)
                 throw new InvalidOperationException("The server ECS world is already initialized.");
             if (!Game.Shared.GameConfigurationManager.IsInitialized)
                 throw new InvalidOperationException("The game configuration must be initialized before the server ECS world.");
@@ -97,7 +93,6 @@ namespace Game.Server.Core
             SIMULATION_EVENT_BUFFER.Clear();
             _mutationCommitActive = false;
             _currentSimulationTickID = 0;
-            _hasCurrentSimulationEvent = false;
             _currentSimulationEvent = default;
 
             using var markerScope = ECS_INITIALIZATION_MARKER.Begin();
@@ -110,8 +105,8 @@ namespace Game.Server.Core
                 var systemGroup = world.GetOrCreateSystemManaged<SimulationSystemGroup>();
 
                 // Create and add systems to the world.
-                var testSystem = world.GetOrCreateSystem<WorldSpawnSystem>();
-                systemGroup.AddSystemToUpdateList(testSystem);
+                var worldSpawnSystem = world.GetOrCreateSystem<WorldSpawnSystem>();
+                systemGroup.AddSystemToUpdateList(worldSpawnSystem);
 
                 var actorUpdateSystem = world.GetOrCreateSystem<ActorUpdateSystem>();
                 systemGroup.AddSystemToUpdateList(actorUpdateSystem);
@@ -134,9 +129,8 @@ namespace Game.Server.Core
                 // Apply the explicit phase dependencies before the first simulation tick.
                 systemGroup.SortSystems();
 
-                DefaultWorld = world;
                 _simulationSystemGroup = systemGroup;
-                _initialized = true;
+                DefaultWorld = world;
             }
             catch
             {
@@ -149,9 +143,6 @@ namespace Game.Server.Core
         /// <summary>Runs the owned simulation group once for one authoritative tick.</summary>
         internal static void UpdateSimulation(ServerSimulationTick tick)
         {
-            if (!_initialized || DefaultWorld == null || _simulationSystemGroup == null)
-                throw new InvalidOperationException("The server ECS world is not ready for simulation.");
-
             SIMULATION_EVENT_BUFFER.BeginTick(tick.TickID);
             _currentSimulationTickID = tick.TickID;
             bool tickCompleted = false;
@@ -176,7 +167,6 @@ namespace Game.Server.Core
                     SIMULATION_EVENT_BUFFER.Clear();
                 _mutationCommitActive = false;
                 _currentSimulationTickID = 0;
-                _hasCurrentSimulationEvent = false;
                 _currentSimulationEvent = default;
             }
         }
@@ -190,9 +180,6 @@ namespace Game.Server.Core
             int operationID = 0,
             long castID = 0)
         {
-            if (!_initialized || _currentSimulationTickID <= 0)
-                throw new InvalidOperationException("Server simulation events require an active authoritative tick.");
-
             if (_mutationCommitActive)
             {
                 SIMULATION_EVENT_BUFFER.EnqueueForNextTick(
@@ -216,7 +203,7 @@ namespace Game.Server.Core
         internal static bool TryGetCurrentSimulationEvent(out ServerSimulationEvent simulationEvent)
         {
             simulationEvent = _currentSimulationEvent;
-            return _hasCurrentSimulationEvent;
+            return simulationEvent.TickID > 0;
         }
 
         /// <summary>Rejects buffered events for an actor whose authoritative lifetime ended.</summary>
@@ -266,11 +253,10 @@ namespace Game.Server.Core
 
         private static void DispatchSimulationEvent(ServerSimulationEvent simulationEvent)
         {
-            if (!IsLiveSimulationEvent(simulationEvent))
+            if (!IsCurrentActorGeneration(simulationEvent))
                 return;
 
             _currentSimulationEvent = simulationEvent;
-            _hasCurrentSimulationEvent = true;
             try
             {
                 switch (simulationEvent.Kind)
@@ -316,48 +302,18 @@ namespace Game.Server.Core
             }
             finally
             {
-                _hasCurrentSimulationEvent = false;
                 _currentSimulationEvent = default;
             }
         }
 
-        private static bool IsLiveSimulationEvent(ServerSimulationEvent simulationEvent)
+        private static bool IsCurrentActorGeneration(ServerSimulationEvent simulationEvent)
         {
-            if (DefaultWorld == null || !DefaultWorld.IsCreated)
-                return false;
-
-            if (ServerActorManager.Instance == null
-                || !ServerActorManager.Instance.TryGetActor(simulationEvent.ActorID, out var actor)
-                || actor == null
-                || actor.ID != simulationEvent.ActorID
-                || !ServerActorManager.Instance.TryGetActorEntity(simulationEvent.ActorID, out Entity authoritativeEntity)
-                || authoritativeEntity != simulationEvent.SourceEntity)
-            {
-                return false;
-            }
-
-            EntityManager entityManager = DefaultWorld.EntityManager;
-            if (!entityManager.Exists(simulationEvent.SourceEntity)
-                || !entityManager.HasComponent<ActorComponent>(simulationEvent.SourceEntity))
-            {
-                return false;
-            }
-
-            if (entityManager.GetComponentData<ActorComponent>(simulationEvent.SourceEntity).ActorID != simulationEvent.ActorID)
-                return false;
-
-            if (simulationEvent.Kind == ServerSimulationEventKind.SpellCastTick
-                || simulationEvent.Kind == ServerSimulationEventKind.SpellCastCompleted)
-            {
-                if (!entityManager.HasComponent<SpellCastComponent>(simulationEvent.SourceEntity))
-                    return false;
-
-                var spellCast = entityManager.GetComponentData<SpellCastComponent>(simulationEvent.SourceEntity);
-                return spellCast.CastID == simulationEvent.CastID
-                    && spellCast.SpellID == simulationEvent.DefinitionID;
-            }
-
-            return true;
+            ServerActorManager actorManager = ServerActorManager.Instance;
+            return actorManager != null
+                && actorManager.TryGetActorEntity(
+                    simulationEvent.ActorID,
+                    out Entity authoritativeEntity)
+                && authoritativeEntity == simulationEvent.SourceEntity;
         }
 
         /// <summary>Records the measured CPU duration of one complete authoritative tick.</summary>
@@ -397,18 +353,13 @@ namespace Game.Server.Core
             SIMULATION_EVENT_BUFFER.Clear();
             _mutationCommitActive = false;
             _currentSimulationTickID = 0;
-            _hasCurrentSimulationEvent = false;
             _currentSimulationEvent = default;
             World world = DefaultWorld;
-            DefaultWorld = null;
             _simulationSystemGroup = null;
-            _initialized = false;
+            DefaultWorld = null;
 
             if (world == null || !world.IsCreated)
                 return;
-
-            if (ScriptBehaviourUpdateOrder.IsWorldInCurrentPlayerLoop(world))
-                ScriptBehaviourUpdateOrder.RemoveWorldFromCurrentPlayerLoop(world);
 
             world.Dispose();
         }

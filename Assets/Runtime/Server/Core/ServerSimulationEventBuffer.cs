@@ -73,6 +73,7 @@ namespace Game.Server.Core
         private const int MAX_EVENTS_PER_TICK = 4096;
         private readonly List<ServerSimulationEvent> _events = new();
         private readonly List<ServerSimulationEvent> _stagedEvents = new();
+        private readonly List<ServerSimulationEvent> _dispatchEvents = new();
         private readonly HashSet<Guid> _cancelledActorIDs = new();
         private long _nextSequence;
         private long _tickID;
@@ -168,21 +169,23 @@ namespace Game.Server.Core
                 throw new InvalidOperationException("Server simulation event delivery is already in progress.");
 
             _events.Sort(CompareEvents);
-            ServerSimulationEvent[] snapshot = _events.ToArray();
+            _dispatchEvents.Clear();
+            _dispatchEvents.AddRange(_events);
             _events.Clear();
             _dispatching = true;
             try
             {
-                for (int i = 0; i < snapshot.Length && _active; i++)
+                for (int i = 0; i < _dispatchEvents.Count; i++)
                 {
-                    if (!_cancelledActorIDs.Contains(snapshot[i].ActorID))
-                        dispatcher(snapshot[i]);
+                    ServerSimulationEvent simulationEvent = _dispatchEvents[i];
+                    if (!_cancelledActorIDs.Contains(simulationEvent.ActorID))
+                        dispatcher(simulationEvent);
                 }
             }
             finally
             {
                 _dispatching = false;
-                EndTick();
+                _dispatchEvents.Clear();
             }
         }
 
@@ -197,10 +200,12 @@ namespace Game.Server.Core
         {
             _events.Clear();
             _stagedEvents.Clear();
+            _dispatchEvents.Clear();
             _cancelledActorIDs.Clear();
             _nextSequence = 0;
             _tickID = 0;
             _active = false;
+            _dispatching = false;
         }
 
         internal void CancelActor(Guid actorID)

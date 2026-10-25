@@ -82,6 +82,8 @@ namespace Game.Shared.Tests.Server
                 events[0],
                 Is.EqualTo(BufferHarness.Describe(10, "SpellCastTick", activeActor, CreateEntity(10, 1), "active", 1, 1)));
 
+            Assert.That(() => buffer.BeginTick(11), Throws.TypeOf<InvalidOperationException>());
+            buffer.EndTick();
             buffer.BeginTick(11);
             buffer.Dispatch(simulationEvent => events.Add(buffer.Describe(simulationEvent)));
 

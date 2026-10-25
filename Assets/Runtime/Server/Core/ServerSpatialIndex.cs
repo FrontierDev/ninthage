@@ -56,6 +56,11 @@ namespace Game.Server.Core
         {
             EnsureNoActiveQuery();
             ValidateActorID(actorID);
+            if (!context.IsValid)
+                throw new ArgumentException(
+                    "A valid world, map and instance context is required.",
+                    nameof(context));
+            ValidatePosition(acceptedPosition);
             var cell = CreateCellKey(context, acceptedPosition);
 
             if (_cellByActorID.ContainsKey(actorID))
@@ -74,7 +79,6 @@ namespace Game.Server.Core
         /// <param name="actorID">The indexed actor identifier.</param>
         /// <param name="context">The actor's authoritative world, map and instance context.</param>
         /// <param name="acceptedPosition">The accepted double-precision absolute position.</param>
-        /// <exception cref="ArgumentException">Thrown when the actor ID, context or position is invalid.</exception>
         /// <exception cref="ArgumentOutOfRangeException">
         /// Thrown when the position cannot be represented by the index's integral cell coordinates.
         /// </exception>
@@ -86,9 +90,6 @@ namespace Game.Server.Core
         public void Move(Guid actorID, ActorSpatialContext context, WorldPosition acceptedPosition)
         {
             EnsureNoActiveQuery();
-            ValidateActorID(actorID);
-            var destinationCell = CreateCellKey(context, acceptedPosition);
-
             if (!_cellByActorID.TryGetValue(actorID, out var currentCell))
             {
                 throw new KeyNotFoundException($"Actor '{actorID}' is not registered in the spatial index.");
@@ -101,6 +102,8 @@ namespace Game.Server.Core
                     $"Actor '{actorID}' cannot move to a different spatial context; "
                     + "context transfers require the dedicated transfer operation.");
             }
+
+            var destinationCell = CreateCellKey(context, acceptedPosition);
 
             // If the actor is already in the destination cell, no movement is necessary.
             if (currentCell.Equals(destinationCell))
@@ -119,16 +122,13 @@ namespace Game.Server.Core
         /// <param name="actorID">The indexed live actor identifier.</param>
         /// <param name="destinationContext">The actor's destination world, map and instance context.</param>
         /// <param name="destinationPosition">The destination accepted double-precision absolute position.</param>
-        /// <exception cref="ArgumentException">
-        /// Thrown when the actor ID, destination context or destination position is invalid.
-        /// </exception>
+        /// <exception cref="ArgumentException">Thrown when the destination context is invalid.</exception>
         /// <exception cref="ArgumentOutOfRangeException">
         /// Thrown when the destination position cannot be represented by the index's integral cell coordinates.
         /// </exception>
         /// <exception cref="KeyNotFoundException">Thrown when the actor is not currently indexed.</exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the existing membership is inconsistent, a destination insertion or source removal fails,
-        /// or a query is active.
+        /// Thrown when the existing membership is inconsistent, destination insertion fails, or a query is active.
         /// </exception>
         public void Transfer(
             Guid actorID,
@@ -136,45 +136,23 @@ namespace Game.Server.Core
             WorldPosition destinationPosition)
         {
             EnsureNoActiveQuery();
-            ValidateActorID(actorID);
-            var destinationCell = CreateCellKey(destinationContext, destinationPosition);
+            if (!destinationContext.IsValid)
+                throw new ArgumentException(
+                    "A valid destination actor spatial context is required.",
+                    nameof(destinationContext));
 
             if (!_cellByActorID.TryGetValue(actorID, out var currentCell))
             {
                 throw new KeyNotFoundException($"Actor '{actorID}' is not registered in the spatial index.");
             }
 
+            var destinationCell = CreateCellKey(destinationContext, destinationPosition);
             var currentBucket = GetExistingBucket(currentCell, actorID);
             if (currentCell.Equals(destinationCell))
                 return;
 
             AddActorToCell(actorID, destinationCell);
-            try
-            {
-                RemoveActorFromBucket(currentCell, currentBucket, actorID);
-            }
-            catch (Exception sourceRemovalException)
-            {
-                try
-                {
-                    if (!_actorIDsByCell.TryGetValue(destinationCell, out var destinationBucket))
-                    {
-                        throw new InvalidOperationException(
-                            $"Destination membership for actor '{actorID}' is missing during transfer rollback.");
-                    }
-
-                    RemoveActorFromBucket(destinationCell, destinationBucket, actorID);
-                }
-                catch (Exception rollbackException)
-                {
-                    throw new InvalidOperationException(
-                        $"Actor '{actorID}' transfer failed during source removal and destination rollback.",
-                        new AggregateException(sourceRemovalException, rollbackException));
-                }
-
-                throw;
-            }
-
+            RemoveActorFromBucket(currentCell, currentBucket, actorID);
             _cellByActorID[actorID] = destinationCell;
         }
 
@@ -204,31 +182,12 @@ namespace Game.Server.Core
                 throw new ArgumentNullException(nameof(removedActorIDs));
 
             var memberships = new List<KeyValuePair<Guid, SpatialCellKey>>();
-            var matchingActorIDs = new HashSet<Guid>();
             foreach (var pair in _cellByActorID)
             {
                 if (!pair.Value.Context.Equals(context))
                     continue;
 
-                GetExistingBucket(pair.Value, pair.Key);
                 memberships.Add(new KeyValuePair<Guid, SpatialCellKey>(pair.Key, pair.Value));
-                matchingActorIDs.Add(pair.Key);
-            }
-
-            foreach (var pair in _actorIDsByCell)
-            {
-                foreach (var actorID in pair.Value)
-                {
-                    if (!pair.Key.Context.Equals(context) && !matchingActorIDs.Contains(actorID))
-                        continue;
-
-                    if (!_cellByActorID.TryGetValue(actorID, out var reverseCell)
-                        || !reverseCell.Equals(pair.Key))
-                    {
-                        throw new InvalidOperationException(
-                            $"Spatial membership for actor '{actorID}' is inconsistent in context '{context}'.");
-                    }
-                }
             }
 
             foreach (var membership in memberships)
@@ -244,7 +203,6 @@ namespace Game.Server.Core
 
         /// <summary>Removes an actor and releases its empty spatial cell bucket.</summary>
         /// <param name="actorID">The indexed actor identifier.</param>
-        /// <exception cref="ArgumentException">Thrown when the actor ID is empty.</exception>
         /// <exception cref="KeyNotFoundException">Thrown when the actor is not currently indexed.</exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown when the existing membership is inconsistent with its cell bucket or a query is active.
@@ -252,7 +210,6 @@ namespace Game.Server.Core
         public void Remove(Guid actorID)
         {
             EnsureNoActiveQuery();
-            ValidateActorID(actorID);
 
             if (!_cellByActorID.TryGetValue(actorID, out var cell))
             {
@@ -329,7 +286,7 @@ namespace Game.Server.Core
         /// Call this synchronously at the authoritative tick boundary. Membership mutations are rejected while any
         /// query is active, and result ordering is unspecified; consumers requiring deterministic order must sort by actor ID.
         /// </remarks>
-        /// <exception cref="ArgumentException">Thrown when the context, centre or resolved position is invalid.</exception>
+        /// <exception cref="ArgumentException">Thrown when the context or centre is invalid.</exception>
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="resultBuffer"/> or <paramref name="acceptedPositionResolver"/> is null.
         /// </exception>
@@ -367,11 +324,6 @@ namespace Game.Server.Core
 
         private SpatialCellKey CreateCellKey(ActorSpatialContext context, WorldPosition position)
         {
-            if (!context.IsValid)
-                throw new ArgumentException("A valid world, map and instance context is required.", nameof(context));
-
-            ValidatePosition(position);
-
             return new SpatialCellKey(
                 context,
                 GetCellCoordinate(position.x, nameof(position.x)),
@@ -380,14 +332,10 @@ namespace Game.Server.Core
 
         private static void ValidatePosition(WorldPosition position)
         {
-            if (double.IsNaN(position.x) || double.IsInfinity(position.x)
-                || double.IsNaN(position.y) || double.IsInfinity(position.y)
-                || double.IsNaN(position.z) || double.IsInfinity(position.z))
-            {
+            if (!position.IsFinite)
                 throw new ArgumentException(
                     "An accepted position must have finite x, y and z coordinates.",
                     nameof(position));
-            }
         }
 
         private int QueryBuckets(
@@ -500,8 +448,6 @@ namespace Game.Server.Core
             double radiusSquared,
             bool includeVerticalDistance)
         {
-            ValidatePosition(candidate);
-
             double deltaX = candidate.x - center.x;
             double deltaZ = candidate.z - center.z;
             double distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
@@ -570,12 +516,7 @@ namespace Game.Server.Core
 
         private void RemoveActorFromBucket(SpatialCellKey cell, HashSet<Guid> bucket, Guid actorID)
         {
-            if (!bucket.Remove(actorID))
-            {
-                throw new InvalidOperationException(
-                    $"Spatial membership for actor '{actorID}' could not be removed from its cell bucket.");
-            }
-
+            bucket.Remove(actorID);
             if (bucket.Count == 0)
                 _actorIDsByCell.Remove(cell);
         }
@@ -584,13 +525,6 @@ namespace Game.Server.Core
         {
             public CellBounds(long minCellX, long maxCellX, long minCellZ, long maxCellZ)
             {
-                if (minCellX > maxCellX || minCellZ > maxCellZ)
-                {
-                    throw new ArgumentOutOfRangeException(
-                        nameof(minCellX),
-                        "The query bounds are not ordered within the representable spatial cell range.");
-                }
-
                 MinCellX = minCellX;
                 MaxCellX = maxCellX;
                 MinCellZ = minCellZ;

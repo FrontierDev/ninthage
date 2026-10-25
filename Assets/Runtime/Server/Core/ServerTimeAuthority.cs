@@ -54,8 +54,6 @@ namespace Game.Server.Core
 
             _monotonicFrequency = monotonicFrequency;
             _sourceID = Guid.NewGuid();
-            if (_sourceID == Guid.Empty)
-                throw new InvalidOperationException("The monotonic source identity could not be created.");
         }
 
         /// <summary>Reads a canonical UTC instant and its paired monotonic process timestamp.</summary>
