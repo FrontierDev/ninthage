@@ -343,8 +343,11 @@ namespace Game.Tests.Performance.Fixtures.Actors
             entityManager.AddComponentData(entity, new SpellCastComponent());
             entityManager.SetComponentEnabled<SpellCastComponent>(entity, false);
             entityManager.AddBuffer<CooldownElement>(entity);
+            entityManager.SetComponentEnabled<CooldownElement>(entity, false);
             entityManager.AddBuffer<AuraElement>(entity);
+            entityManager.SetComponentEnabled<AuraElement>(entity, false);
             entityManager.AddBuffer<TickerElement>(entity);
+            entityManager.SetComponentEnabled<TickerElement>(entity, false);
             return entity;
         }
 

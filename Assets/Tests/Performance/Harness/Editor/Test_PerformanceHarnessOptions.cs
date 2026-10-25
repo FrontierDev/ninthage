@@ -13,6 +13,7 @@ namespace Game.Tests.Performance.Harness
     {
         EcsDataOnlyMinimal,
         EcsDataOnlyActivity,
+        EcsDataOnlyTimedStateStress,
         FullNetworkedActors,
         StandaloneHeadlessServer,
         NetworkedClients,
@@ -57,7 +58,8 @@ namespace Game.Tests.Performance.Harness
             : ProfileID;
 
         public bool IsServerOnlyDataMode => WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
-            || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity;
+            || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity
+            || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress;
 
         public string ActorVariantID
         {
@@ -67,6 +69,7 @@ namespace Game.Tests.Performance.Harness
                     return Test_GraphicalFixtureLayout.PROFILE_ID + "-I-GEOMETRY";
                 return WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
                     || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity
+                    || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress
                     ? "S04-I-DATA"
                     : WorkloadMode == Test_PerformanceWorkloadMode.NetworkedClients
                         ? "S04-C-WAKE"

@@ -652,11 +652,14 @@ namespace Game.Tests.Performance.Harness
             AppendLog("Selected world fixture loaded: " + scene.path);
         }
 
-        public void CreateDataOnlyRuntime(bool activityEnabled)
+        public void CreateDataOnlyRuntime(Test_PerformanceWorkloadMode workloadMode)
         {
             FixtureRuntime = new Test_ActorFixtureRuntime(ActorProfile);
             FixtureRuntime.StartDataOnly(0);
-            ActivityController = new Test_PerformanceActivityController(FixtureRuntime, activityEnabled);
+            ActivityController = new Test_PerformanceActivityController(
+                FixtureRuntime,
+                workloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity,
+                workloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress);
             PreflightCompleted = true;
             AppendLog("Data-only ECS fixture prepared with zero entities for incremental ramp.");
         }

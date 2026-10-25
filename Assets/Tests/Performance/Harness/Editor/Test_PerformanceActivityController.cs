@@ -1,9 +1,11 @@
 using Game.Server.Core;
 using Game.Server.Systems;
+using Game.Shared;
 using Game.Shared.Performance;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -186,23 +188,72 @@ namespace Game.Tests.Performance.Harness
         private const int CHURN_COUNT = 5;
         private const float CHURN_DESPAWN_FRACTION = 0.25f;
         private const float CHURN_RESPAWN_FRACTION = 0.4f;
+        private const float SYNTHETIC_CAST_DURATION_SECONDS = 0.5f;
+        private const string SYNTHETIC_CAST_DEFINITION_ID = "fireball";
+        private const int TIMED_STRESS_COOLDOWNS_PER_ENTITY = 16;
+        private const int TIMED_STRESS_AURAS_PER_ENTITY = 4;
+        private const int TIMED_STRESS_TICKERS_PER_ENTITY = 4;
+        private const float TIMED_STRESS_INTERVAL_SECONDS = 1f;
+        private const float TIMED_STRESS_LIFETIME_SECONDS = 300f;
+        private static readonly FixedString64Bytes[] TIMED_STRESS_COOLDOWN_IDS =
+        {
+            new FixedString64Bytes("perf_cd_00"), new FixedString64Bytes("perf_cd_01"),
+            new FixedString64Bytes("perf_cd_02"), new FixedString64Bytes("perf_cd_03"),
+            new FixedString64Bytes("perf_cd_04"), new FixedString64Bytes("perf_cd_05"),
+            new FixedString64Bytes("perf_cd_06"), new FixedString64Bytes("perf_cd_07"),
+            new FixedString64Bytes("perf_cd_08"), new FixedString64Bytes("perf_cd_09"),
+            new FixedString64Bytes("perf_cd_10"), new FixedString64Bytes("perf_cd_11"),
+            new FixedString64Bytes("perf_cd_12"), new FixedString64Bytes("perf_cd_13"),
+            new FixedString64Bytes("perf_cd_14"), new FixedString64Bytes("perf_cd_15"),
+        };
+        private static readonly FixedString64Bytes[] TIMED_STRESS_AURA_IDS =
+        {
+            new FixedString64Bytes("perf_aura_00"), new FixedString64Bytes("perf_aura_01"),
+            new FixedString64Bytes("perf_aura_02"), new FixedString64Bytes("perf_aura_03"),
+        };
 
         private readonly Test_ActorFixtureRuntime _fixture;
         private readonly bool _activityEnabled;
+        private readonly bool _timedStateStressEnabled;
+        private readonly long _syntheticCastDurationTicks;
+        private readonly long _timedStressLifetimeTicks;
+        private readonly long _timedStressIntervalTicks;
         private readonly HashSet<Entity> _wakeSurgeEntities = new();
         private int _lastRampTarget;
         private int _idleCount;
         private bool _measurementStarted;
         private bool _churnStarted;
         private bool _churnRespawned;
+        private long _nextSyntheticCastID;
         private int _measurementSpawnEventCount;
         private int _measurementDespawnEventCount;
 
-        public Test_PerformanceActivityController(Test_ActorFixtureRuntime fixture, bool activityEnabled)
+        public Test_PerformanceActivityController(
+            Test_ActorFixtureRuntime fixture,
+            bool activityEnabled,
+            bool timedStateStressEnabled)
         {
             _fixture = fixture ?? throw new ArgumentNullException(nameof(fixture));
             _activityEnabled = activityEnabled;
+            _timedStateStressEnabled = timedStateStressEnabled;
+            _syntheticCastDurationTicks = activityEnabled || timedStateStressEnabled
+                ? GetNonShorteningTickCount(SYNTHETIC_CAST_DURATION_SECONDS)
+                : 0L;
+            _timedStressLifetimeTicks = timedStateStressEnabled
+                ? GetNonShorteningTickCount(TIMED_STRESS_LIFETIME_SECONDS)
+                : 0L;
+            _timedStressIntervalTicks = timedStateStressEnabled
+                ? GetNonShorteningTickCount(TIMED_STRESS_INTERVAL_SECONDS)
+                : 0L;
         }
+
+        internal static int TimedStressCooldownsPerEntity => TIMED_STRESS_COOLDOWNS_PER_ENTITY;
+
+        internal static int TimedStressAurasPerEntity => TIMED_STRESS_AURAS_PER_ENTITY;
+
+        internal static int TimedStressTickersPerEntity => TIMED_STRESS_TICKERS_PER_ENTITY;
+
+        internal static int TimedStressPeriodicEventsPerEntity => TIMED_STRESS_AURAS_PER_ENTITY + TIMED_STRESS_TICKERS_PER_ENTITY;
 
         public int RequestedCount => _fixture.Profile.population.accounting.ecs_data_only_npcs;
 
@@ -269,6 +320,15 @@ namespace Game.Tests.Performance.Harness
                 throw new ArgumentOutOfRangeException(nameof(elapsedSeconds));
             if (phaseDurationSeconds <= 0f)
                 throw new ArgumentOutOfRangeException(nameof(phaseDurationSeconds));
+
+            if (_timedStateStressEnabled)
+            {
+                MaintainTimedStateStress();
+                PatrollingCount = 0;
+                CombatCount = 0;
+                _idleCount = _fixture.DataOnlyEntityCount;
+                return;
+            }
 
             if (!_activityEnabled)
             {
@@ -366,18 +426,127 @@ namespace Game.Tests.Performance.Harness
                 if (!isCombat)
                     continue;
 
-                if (!entityManager.IsComponentEnabled<SpellCastComponent>(entity))
+                StartSyntheticCastIfDisabled(entityManager, entity);
+            }
+        }
+
+        private void MaintainTimedStateStress()
+        {
+            var entityManager = ServerECSManager.DefaultWorld.EntityManager;
+            var firstProgressTickID = GetFirstProgressTickID();
+            var lifetimeTicks = _timedStressLifetimeTicks;
+            var intervalTicks = _timedStressIntervalTicks;
+            var expiryTickID = checked(firstProgressTickID + lifetimeTicks - 1L);
+            var nextTickID = checked(firstProgressTickID + intervalTicks - 1L);
+
+            for (var index = 0; index < _fixture.DataOnlyEntities.Count; index++)
+            {
+                var entity = _fixture.DataOnlyEntities[index];
+                if (!entityManager.Exists(entity))
+                    continue;
+
+                StartSyntheticCastIfDisabled(entityManager, entity);
+
+                if (!entityManager.IsComponentEnabled<CooldownElement>(entity))
                 {
-                    entityManager.SetComponentData(entity, new SpellCastComponent
+                    var cooldowns = entityManager.GetBuffer<CooldownElement>(entity);
+                    if (cooldowns.Length != 0)
+                        throw new InvalidOperationException($"Timed-state stress cooldown buffer for entity {index} was not empty before initialization.");
+                    for (var slot = 0; slot < TIMED_STRESS_COOLDOWNS_PER_ENTITY; slot++)
                     {
-                        SpellID = new FixedString64Bytes("fireball"),
-                        TotalCastTime = 0.5f,
-                        TotalTicks = 0f,
-                        TimeSinceLastTick = 0f,
-                    });
-                    entityManager.SetComponentEnabled<SpellCastComponent>(entity, true);
+                        cooldowns.Add(new CooldownElement
+                        {
+                            SpellID = TIMED_STRESS_COOLDOWN_IDS[slot],
+                            ExpiryTickID = expiryTickID,
+                        });
+                    }
+                    entityManager.SetComponentEnabled<CooldownElement>(entity, true);
+                }
+
+                if (!entityManager.IsComponentEnabled<AuraElement>(entity))
+                {
+                    var auras = entityManager.GetBuffer<AuraElement>(entity);
+                    if (auras.Length != 0)
+                        throw new InvalidOperationException($"Timed-state stress aura buffer for entity {index} was not empty before initialization.");
+                    for (var slot = 0; slot < TIMED_STRESS_AURAS_PER_ENTITY; slot++)
+                    {
+                        auras.Add(new AuraElement
+                        {
+                            InstanceID = checked(index * TIMED_STRESS_AURAS_PER_ENTITY + slot + 1),
+                            AuraDefinitionID = TIMED_STRESS_AURA_IDS[slot],
+                            ExpiryTickID = expiryTickID,
+                            NextTickID = nextTickID,
+                            TickIntervalTicks = intervalTicks,
+                        });
+                    }
+                    entityManager.SetComponentEnabled<AuraElement>(entity, true);
+                }
+
+                if (!entityManager.IsComponentEnabled<TickerElement>(entity))
+                {
+                    var tickers = entityManager.GetBuffer<TickerElement>(entity);
+                    if (tickers.Length != 0)
+                        throw new InvalidOperationException($"Timed-state stress ticker buffer for entity {index} was not empty before initialization.");
+                    for (var slot = 0; slot < TIMED_STRESS_TICKERS_PER_ENTITY; slot++)
+                    {
+                        tickers.Add(new TickerElement
+                        {
+                            TickerID = checked(index * TIMED_STRESS_TICKERS_PER_ENTITY + slot + 1),
+                            ExpiryTickID = expiryTickID,
+                            NextTickID = nextTickID,
+                            TickIntervalTicks = intervalTicks,
+                        });
+                    }
+                    entityManager.SetComponentEnabled<TickerElement>(entity, true);
                 }
             }
+        }
+
+        private void StartSyntheticCastIfDisabled(EntityManager entityManager, Entity entity)
+        {
+            if (entityManager.IsComponentEnabled<SpellCastComponent>(entity))
+                return;
+
+            var firstProgressTickID = GetFirstProgressTickID();
+            var completionTickID = checked(firstProgressTickID + _syntheticCastDurationTicks - 1L);
+            entityManager.SetComponentData(entity, new SpellCastComponent
+            {
+                SpellID = new FixedString64Bytes(SYNTHETIC_CAST_DEFINITION_ID),
+                CastID = checked(++_nextSyntheticCastID),
+                FirstProgressTickID = firstProgressTickID,
+                CompletionTickID = completionTickID,
+                TotalCastTime = SYNTHETIC_CAST_DURATION_SECONDS,
+                TotalTicks = 0f,
+                TimeSinceLastTick = 0f,
+            });
+            entityManager.SetComponentEnabled<SpellCastComponent>(entity, true);
+        }
+
+        private static long GetNonShorteningTickCount(float seconds)
+        {
+            // Match ServerSimulationClock's decimal round-trip so nominal fixed-step
+            // multiples are not shortened or pushed out by binary floating-point noise.
+            var secondsDecimal = decimal.Parse(
+                seconds.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            var tickDurationDecimal = decimal.Parse(
+                GameConfigurationManager.Config.ServerSimulationTickDuration.ToString("R", CultureInfo.InvariantCulture),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture);
+            return Math.Max(
+                1L,
+                checked((long)Math.Ceiling(secondsDecimal / tickDurationDecimal)));
+        }
+
+        private static long GetFirstProgressTickID()
+        {
+            // The production simulation-tick accessor is internal to Game.Server. The public
+            // clock is the equivalent source available to this Editor-only harness between ticks.
+            var currentSimulationTickID = ServerSimulationClock.CurrentTickID;
+            return currentSimulationTickID > 0
+                ? currentSimulationTickID
+                : checked(currentSimulationTickID + 1L);
         }
 
         internal static Test_PerformanceActivityEvent ResolveChurnEvent(

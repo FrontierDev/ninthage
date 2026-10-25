@@ -687,7 +687,7 @@ namespace Game.Tests.Performance.Harness
             yield return WaitForServerReady();
             _run.RegisterServerMetrics();
             yield return LoadSelectedWorldFixture();
-            _run.CreateDataOnlyRuntime(_run.Options.WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity);
+            _run.CreateDataOnlyRuntime(_run.Options.WorkloadMode);
             _fixture = _run.FixtureRuntime;
             Test_PerformanceHarnessController.PersistActiveRun("running");
 

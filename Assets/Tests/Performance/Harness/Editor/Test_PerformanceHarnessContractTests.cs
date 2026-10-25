@@ -43,6 +43,66 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void TimedStateStressModeIsServerOnlyDataWithTheTrackedActorVariant()
+        {
+            var options = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress,
+            };
+
+            Assert.That(options.ActorVariantID, Is.EqualTo("S04-I-DATA"));
+            Assert.That(options.IsServerOnlyDataMode, Is.True);
+            Assert.That(options.ActorCount, Is.EqualTo(100));
+            Assert.That(options.Seed, Is.EqualTo(424242));
+            Assert.That(options.WorkloadMode.ToString(), Is.EqualTo("EcsDataOnlyTimedStateStress"));
+        }
+
+        [Test]
+        public void MinimalAndActivityModesRetainTheirExistingSelectionSemantics()
+        {
+            var minimal = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyMinimal,
+            };
+            var activity = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyActivity,
+            };
+
+            Assert.That(minimal.ActorVariantID, Is.EqualTo("S04-I-DATA"));
+            Assert.That(minimal.IsServerOnlyDataMode, Is.True);
+            Assert.That(activity.ActorVariantID, Is.EqualTo("S04-I-DATA"));
+            Assert.That(activity.IsServerOnlyDataMode, Is.True);
+        }
+
+        [Test]
+        public void TimedStateStressUsesTheRequiredBoundedEntryCounts()
+        {
+            const int actorCount = 100;
+
+            Assert.That(
+                actorCount * Test_PerformanceActivityController.TimedStressCooldownsPerEntity,
+                Is.EqualTo(1600));
+            Assert.That(
+                actorCount * Test_PerformanceActivityController.TimedStressAurasPerEntity,
+                Is.EqualTo(400));
+            Assert.That(
+                actorCount * Test_PerformanceActivityController.TimedStressTickersPerEntity,
+                Is.EqualTo(400));
+        }
+
+        [Test]
+        public void TimedStateStressPeriodicEventsRemainBelowTheServerEventBufferCapacity()
+        {
+            const int actorCount = 100;
+            const int serverEventBufferCapacity = 4096;
+            var synchronizedPeriodicEvents = actorCount * Test_PerformanceActivityController.TimedStressPeriodicEventsPerEntity;
+
+            Assert.That(synchronizedPeriodicEvents, Is.EqualTo(800));
+            Assert.That(synchronizedPeriodicEvents, Is.LessThan(serverEventBufferCapacity));
+        }
+
+        [Test]
         public void ExplicitEditorServerWorldNameRejectsBlankValues()
         {
             Assert.Throws<ArgumentException>(() => ServerInitialization.Begin(null, string.Empty));
