@@ -334,7 +334,6 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 VerticalVelocity = 0f,
                 IsGrounded = true,
                 TimeSinceLastGround = 0f,
-                UsesNavMeshAgent = false,
             });
             entityManager.AddComponentData(entity, new GroundDetectionComponent
             {

@@ -328,7 +328,6 @@ namespace Game.Tests.Performance.Harness
                 entityManager.SetComponentData(entity, actor);
                 var motion = entityManager.GetComponentData<MotionStateComponent>(entity);
                 motion.IsGrounded = true;
-                motion.UsesNavMeshAgent = true;
                 motion.VerticalVelocity = 0f;
                 entityManager.SetComponentData(entity, motion);
             }
@@ -372,7 +371,6 @@ namespace Game.Tests.Performance.Harness
                     entityManager.SetComponentData(entity, new SpellCastComponent
                     {
                         SpellID = new FixedString64Bytes("fireball"),
-                        RemainingCastTime = 0.5f,
                         TotalCastTime = 0.5f,
                         TotalTicks = 0f,
                         TimeSinceLastTick = 0f,

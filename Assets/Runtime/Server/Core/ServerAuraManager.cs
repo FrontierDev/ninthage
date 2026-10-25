@@ -279,7 +279,7 @@ namespace Game.Server.Core
             }
 
             ActorEndpoint.onServerAuraApplied?.Invoke(target.ID, definition.DefinitionID, instanceID);
-            definition.AuraBehaviour.OnApplied(caster, target, stacks);
+            definition.AuraBehaviour?.OnApplied(caster, target, stacks);
 
             Debug.Log($"Aura '{definition.DisplayName}' applied to {target.Name} by {caster.Name} (instance {instanceID})");
 
