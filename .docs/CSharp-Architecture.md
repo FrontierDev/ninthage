@@ -3,15 +3,15 @@
 **Status:** Current architecture reference  
 **Repository:** `FrontierDev/ninthage`  
 **Branch:** `dev`
-**Source revision:** `b23d62bb070423cf33ca490d3aa7b89d6b7d8412`
-**Snapshot date:** 2026-10-24
+**Source revision:** `6f5a6175bf7fbd385acf21ea3e058bef87122b7d`
+**Snapshot date:** 2026-10-25
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose and Scope
 
 This document describes the current C# architecture of the Ninth Age Unity project. It records how the codebase is organised, how the principal assemblies relate to one another, how client and server execution are selected and initialised, and how gameplay data, runtime actors, networking, server simulation, client presentation, world streaming, persistence, and editor tooling are divided across the project.
 
-This is a descriptive design reference for the code that exists at the source revision above. It does not define a future refactor and does not prescribe architectural changes.
+This is the current design reference for the code that exists at the source revision above. It is descriptive of the implementation, but the ownership, authority, lifecycle and simulation-boundary contracts recorded here are normative for changes to that implementation until explicitly revised. It does not by itself authorize a future refactor.
 
 **Mandatory third-party boundary:** Third-party code is read-only unless the user explicitly requests a change to the specific third-party code. This includes imported packages, plugins, SDKs, tools, and externally authored source anywhere in the repository (including `Assets/` and `Assets/Editor/`). **Never modify third-party namespaces**, identifiers, files, assembly definitions, metadata, or vendor-owned assets. Do not restyle, rename, relocate, patch, reformat, or regenerate them. Follow `AGENTS.md`; if the task requires a third-party change, stop and request explicit permission. GitHub issues, plans, general refactor requests, and coding standards do not grant that permission.
 
@@ -580,6 +580,106 @@ These services operate on shared data contracts while remaining server-owned imp
 
 These types connect shared endpoint callbacks and session state to server state.
 
+### 11.4 Server invariant and lifecycle contracts
+
+Server managers are not independent collections of defensive checks. Each authoritative subsystem establishes specific invariants that downstream project-owned code may trust.
+
+#### 11.4.1 Startup and manager publication
+
+Server startup order is an architectural guarantee.
+
+- Configuration is loaded and validated before the server ECS world and gameplay/world managers consume it.
+- A manager created after another required manager may trust that predecessor during ordinary synchronous gameplay instead of repeatedly polling its `IsInitialized` state.
+- A process-wide manager publishes its singleton only after its required fields/subscriptions are ready. Duplicate manager construction is an invalid startup state and fails immediately.
+- Manager teardown only acts when the component being destroyed is the registered singleton. An unregistered duplicate must not unsubscribe shared callbacks, clear global registries or reset the live singleton.
+
+There is one deliberate startup asymmetry in the simulation path: the authoritative simulation clock can run after the ECS world is ready but before all gameplay managers have been created. Therefore `ServerECSManager` retains nullable gameplay-manager calls during that startup interval. This is a real lifecycle condition, not a generic argument for repeated readiness polling elsewhere.
+
+#### 11.4.2 Actor and ECS authority
+
+`ServerActorManager` owns the authoritative relationship between:
+
+```text
+ActorID
+  ↕
+networked Actor GameObject
+  ↕
+server ECS Entity
+```
+
+Successful actor registration establishes, as one transaction:
+
+- the ActorID → Actor mapping;
+- the ActorID → Entity mapping;
+- valid actor spatial context and spatial-index membership;
+- the authoritative `ActorComponent`;
+- the spell-cast component;
+- cooldown, aura and ticker buffers;
+- movement components where applicable.
+
+Internal consumers resolving a known ActorID therefore use the actor manager's direct mapping. They do not scan every `ActorComponent` entity and do not repeatedly re-prove component ActorID equality or required-buffer existence.
+
+The authoritative ECS entity generation remains important for deferred events: `ServerSimulationEvent.SourceEntity` is compared with the actor manager's current ActorID → Entity mapping so an event from an earlier actor incarnation cannot be delivered to a replacement actor. The source entity is an identity token at this boundary, not a reason to rediscover and validate the entity's complete component shape during event dispatch.
+
+#### 11.4.3 Validation ownership
+
+Validation is performed where data crosses from untrusted or mutable state into an owned invariant.
+
+Examples include:
+
+- network/client request validation at the server authority boundary;
+- authored spell/aura/ticker/cooldown duration validation when the owning manager creates timed state;
+- coordinate representability at the conversion/index boundary that requires it;
+- scene/Addressables/PurrNet completion checks when asynchronous work resumes;
+- cast/aura/ticker generation checks when callbacks can replace or retire the current operation.
+
+Once those boundaries have established stable internal state, normal hot paths trust it.
+
+A check is retained when its truth can legitimately change between proof and use: actor/target liveness, player ownership, logical context transfer, scene loading/unloading, NavMesh state, callback reentrancy, pending mutation generation and asynchronous completion are all examples. Startup configuration, registered component shape and immutable registry keys are not revalidated merely because a theoretically bad value can be imagined.
+
+#### 11.4.4 Authoritative actor retirement precedes network despawn
+
+Network lifetime and gameplay authority are separate concerns.
+
+For an explicit player logout, teardown order is:
+
+```text
+persist required character/account state
+    ↓
+stop periodic stat tracking
+    ↓
+Actor.RetireFromServer()
+    ↓
+publish onServerActorDespawned exactly once
+    ↓
+remove combat / interest / simulation / timed-state / ECS / spatial registrations
+    ↓
+NetworkIdentity.Despawn()
+    ↓
+Unity object destruction
+```
+
+`Actor.RetireFromServer()` is idempotent. `Actor.OnDestroy()` calls it as a fallback for destruction paths that did not retire explicitly, but a player logout that already retired the actor does not publish server-despawn twice.
+
+The architectural invariant is:
+
+> Once `NetworkIdentity.Despawn()` begins, the actor is no longer authoritative gameplay state capable of generating combat, stat, spell, aura, ticker or other RPC-producing callbacks.
+
+RPC-side `isSpawned` guards are not the normal remedy for teardown-order bugs. If unspawned actors are still executing authoritative gameplay, the owner lifecycle is incorrect and must be fixed at retirement.
+
+#### 11.4.5 Asynchronous state is the exception to internal trust
+
+World streaming and network scene state deliberately keep stronger revalidation than ordinary synchronous manager code. `ServerWorldManager`, `ServerInterestManager` and `ServerPhysicsManager` can span PurrNet callbacks, Addressables completion, scene unloads and cancellation/rollback. State that could change while work is pending must be checked again when the operation resumes.
+
+The project therefore distinguishes:
+
+- **owned synchronous invariants**, established once and trusted;
+- **dynamic/reentrant state**, checked at the point of use;
+- **asynchronous state**, revalidated after suspension/completion;
+- **external input**, validated at its authority boundary.
+
+This distinction is the basis for removing defensive work without weakening real lifecycle safety.
+
 ## 12. Server ECS Architecture
 
 ### 12.1 ECS world
@@ -634,7 +734,63 @@ Depending on actor type and movement ownership, state can move in either directi
 - non-player actors without NavMesh ownership can have vertical motion simulated in ECS and applied back to their GameObject transform;
 - for enabled-`NavMeshAgent` NPCs, `ServerActorManager_NPCMovement` resolves the live target's canonical accepted `WorldPositionD`, projects it through `ServerPhysicsManager.ToPhysicalPosition(...)`, and submits that continuous-space destination to `NavMeshAgent.SetDestination(...)`. The pre-ECS bridge reconstructs the agent's physical transform through `ServerPhysicsManager.ToWorldPosition(...)` into `ActorComponent.WorldPositionD`. The GameObject transform is a physical representation, not an independent global position authority; there is no seam/hop/Warp handoff path.
 
-ECS systems also communicate completion/tick events back to the MonoBehaviour/domain layer through shared endpoint callbacks. `SpellCastSystem`, for example, decrements cast state in ECS and raises `ActorEndpoint` callbacks for cast ticks and cast completion.
+ECS systems communicate completion/tick state back to the MonoBehaviour/domain layer through the simulation event boundary rather than invoking gameplay callbacks during ECS traversal. Systems such as `SpellCastSystem`, `AuraTickSystem` and `ActorTickerSystem` queue immutable `ServerSimulationEvent` records. `ServerSimulationEventBuffer` stages and deterministically orders them, and `ServerECSManager` dispatches them to the appropriate `ActorEndpoint` callbacks after ECS structural work and managed mutation commits are complete.
+
+### 12.4 Simulation and timed-state boundary contracts
+
+The server simulation uses explicit ownership boundaries rather than treating ECS and managed gameplay as freely reentrant layers.
+
+#### Tick ownership
+
+`ServerSimulationClock` owns authoritative tick identity and cadence. `ServerECSManager` owns the body of one tick:
+
+```text
+BeginTick
+    ↓
+prepare + commit pending managed mutations
+    ↓
+actor pre-ECS bridge
+    ↓
+set ECS world time
+    ↓
+SimulationSystemGroup.Update
+    ↓
+actor post-ECS bridge
+    ↓
+commit spawn/domain structural work
+    ↓
+dispatch buffered simulation events
+    ↓
+EndTick (or Clear on failure)
+```
+
+The event buffer does not independently own the simulation lifetime. It owns event staging, ordering, cancellation and dispatch isolation.
+
+#### Mutation snapshots
+
+Spell, aura, ticker and cooldown callbacks can enqueue mutations while another subsystem is committing or while buffered events are being dispatched. To preserve one deterministic boundary:
+
+1. all four manager mutation queues are prepared/snapshotted before any manager begins committing;
+2. commit reads only the prepared snapshots;
+3. mutations created during a commit remain pending for the next boundary.
+
+Reusable scratch/snapshot lists may remove allocation, but they do not weaken this two-phase rule or become a second source of authority.
+
+#### Timed-state validation
+
+Timed gameplay managers own conversion from authored/runtime durations to coherent ECS timing state. They validate their subsystem-specific input once, calculate the authoritative tick deadlines/intervals and write the ECS component/buffer state.
+
+The ECS tick systems then trust those fields and perform deterministic progression. They do not revalidate global simulation configuration or every timing invariant for every entry on every tick. Dynamic generation checks remain in the managed owners when a cast, aura or ticker can be replaced or removed between event creation and event delivery.
+
+#### Hot-path lookup
+
+Known actors are resolved through `ServerActorManager`'s direct mappings rather than by full ECS actor scans. ECS systems use the buffers/components supplied by their queries rather than querying the same entity a second time. Immutable server-lifetime configuration may be cached at system creation where appropriate.
+
+This does not imply adding speculative caches or active-state indexes. Additional state is introduced only when an existing owner cannot answer the lookup and measured/architectural need justifies another lifecycle to maintain.
+
+#### Main-thread and job boundaries
+
+The current hybrid simulation intentionally retains managed/main-thread boundaries where systems call Unity Physics or enqueue managed simulation events. Jobs/Burst are appropriate only after the relevant data path is separated from UnityEngine objects, managed callbacks and structural mutation. The architecture does not add Burst annotations around code that remains fundamentally managed.
 
 ## 13. Client Architecture
 
@@ -1109,7 +1265,7 @@ The current Ninth Age C# architecture is centred on five responsibility domains:
 
 The server runtime combines networked GameObject actors with a Unity Entities simulation layer. Shared actor objects provide the network-visible gameplay identity, while server ECS entities and dynamic buffers hold selected simulation state such as positions, movement state, spell casts, cooldowns, auras, tickers and regeneration. `Game.Server.Core.ServerActorManager` and `Game.Shared.Networking.ActorEndpoint` callbacks bridge these two representations.
 
-Stage 1.2 is not complete. The continuous physical-space cleanup is a current foundation; remaining planned work includes accepted-position-driven environment interest, current actor visibility membership/range relevance, migration of remaining gameplay proximity consumers to the context-qualified spatial index, observer replication from canonical accepted position, and atomic logical-context transfer.
+Stage 1.2 is complete. The server foundation now uses canonical accepted positions, context-qualified spatial indexing and world/interest state, current visibility relevance, observer replication from authoritative position, and atomic logical-context transfer. The pre-Stage 1.3 cleanup also established explicit invariant ownership: stable synchronous state is validated once at its owner, dynamic/asynchronous state is revalidated where it can change, hot paths use existing direct mappings rather than rediscovery, and authoritative actor retirement occurs before network despawn.
 
 The world layer uses context-qualified addressable additive environment scenes, server-controlled scene interest, a persistent global actor scene, double-precision canonical actor positions, one continuous server physical/NavMesh space for the current runtime phase, and a client-side floating origin. The shared centred 256 m grid identifies client origin/network cells and authored environment tiles without partitioning server physics.
 
