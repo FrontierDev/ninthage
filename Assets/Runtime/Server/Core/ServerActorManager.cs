@@ -277,15 +277,6 @@ namespace Game.Server.Core
             WorldPosition center,
             double radius)
         {
-            if (!_initialized || _instance != this || _spatialIndex == null)
-                throw new InvalidOperationException("The server actor manager is not initialized for spatial queries.");
-            if (!context.IsValid)
-                throw new ArgumentException("A valid spatial context is required.", nameof(context));
-            if (!center.IsFinite)
-                throw new ArgumentException("A finite query centre is required.", nameof(center));
-            if (double.IsNaN(radius) || double.IsInfinity(radius) || radius < 0d)
-                throw new ArgumentOutOfRangeException(nameof(radius), radius, "Query radius must be finite and nonnegative.");
-
             _riftQueryCandidateIDs.Clear();
             QuerySpatialInRange(
                 context,
@@ -329,10 +320,8 @@ namespace Game.Server.Core
         /// <summary>Attempts to get an actor's canonical accepted absolute world position.</summary>
         /// <param name="actorID">The actor identifier.</param>
         /// <param name="position">Receives the canonical accepted absolute world position when found.</param>
-        /// <returns><see langword="true"/> when a live authoritative actor entity was found.</returns>
-        /// <exception cref="InvalidOperationException">
-        /// Thrown when the actor/entity mapping is inconsistent or the canonical position is non-finite.
-        /// </exception>
+        /// <returns><see langword="true"/> when the actor identifier has a registered ECS entity mapping.</returns>
+        /// <remarks>A mapped ECS entity is read directly; ECS lookup failures are not treated as an absent actor.</remarks>
         internal bool TryGetAcceptedWorldPosition(
             Guid actorID,
             out WorldPosition position)
@@ -342,29 +331,12 @@ namespace Game.Server.Core
                 position = default;
                 return false;
             }
-            if (!_entityManager.Exists(entity))
-            {
-                throw new InvalidOperationException(
-                    $"Actor '{actorID}' is mapped to an ECS entity that no longer exists.");
-            }
 
             var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-            if (component.ActorID != actorID)
-            {
-                throw new InvalidOperationException(
-                    $"Actor entity mapping for {actorID} references component actor {component.ActorID}.");
-            }
-
             position = new WorldPosition(
                 component.WorldPositionD.x,
                 component.WorldPositionD.y,
                 component.WorldPositionD.z);
-
-            if (!position.IsFinite)
-            {
-                throw new InvalidOperationException(
-                    $"Actor {actorID} has a non-finite canonical ECS world position.");
-            }
 
             return true;
         }
@@ -373,27 +345,19 @@ namespace Game.Server.Core
         /// <param name="first">The first live actor.</param>
         /// <param name="second">The second live actor.</param>
         /// <returns>The finite, nonnegative distance between accepted absolute positions.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when either actor is null.</exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when actor contexts or accepted positions are invalid or unavailable.
+        /// Thrown when actor contexts are incompatible, accepted positions are unavailable, or the distance is invalid.
         /// </exception>
         internal double GetAcceptedCenterDistance(
             Actor first,
             Actor second)
         {
-            if (first == null)
-                throw new ArgumentNullException(nameof(first));
-            if (second == null)
-                throw new ArgumentNullException(nameof(second));
-
             ActorSpatialContext firstContext = first.SpatialContext;
             ActorSpatialContext secondContext = second.SpatialContext;
-            if (!firstContext.IsValid
-                || !secondContext.IsValid
-                || !firstContext.IsCompatibleWith(secondContext))
+            if (!firstContext.IsCompatibleWith(secondContext))
             {
                 throw new InvalidOperationException(
-                    $"Cannot calculate actor distance for incompatible or invalid spatial contexts ({first.ID}, {second.ID}).");
+                    $"Cannot calculate actor distance for incompatible spatial contexts ({first.ID}, {second.ID}).");
             }
 
             if (!TryGetAcceptedWorldPosition(first.ID, out var firstPosition))
@@ -429,7 +393,6 @@ namespace Game.Server.Core
         /// <param name="first">The first live actor.</param>
         /// <param name="second">The second live actor.</param>
         /// <returns>The finite, nonnegative distance after subtracting both hitbox radii.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when either actor is null.</exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown when actor contexts, accepted positions, hitbox radii or the result are invalid.
         /// </exception>
@@ -509,7 +472,9 @@ namespace Game.Server.Core
             _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             _initialized = true;
-            EnsureNPCAggroScheduleRegistered();
+            _npcAggroSchedule = ServerSimulationClock.RegisterLowerRate(
+                _npcAggroDecisionIntervalTicks,
+                UpdateNPCAggro);
         }
 
         private void OnDestroy()
@@ -532,15 +497,6 @@ namespace Game.Server.Core
             MovementEndpoint.onServerPositionProposal -= OnServerPositionProposal;
             if (_networkManager != null)
                 _networkManager.onPlayerLeft -= OnPlayerLeft;
-
-            foreach (var actorID in _actorObjects.Keys)
-                RemoveSpatialMembership(actorID);
-
-            foreach (var actorID in _actorEntities.Keys)
-            {
-                if (!_actorObjects.ContainsKey(actorID))
-                    RemoveSpatialMembership(actorID);
-            }
 
             _actorObjects.Clear();
             _actorEntities.Clear();
@@ -579,8 +535,6 @@ namespace Game.Server.Core
 
         private void Update()
         {
-            if (!_initialized) return;
-            EnsureNPCAggroScheduleRegistered();
             UpdateNPCNavigation();
             using var markerScope = UPDATE_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
@@ -606,27 +560,6 @@ namespace Game.Server.Core
                 PerformanceTelemetry.TryRecord(
                     GC_GEN2_COLLECTION_COUNT_METRIC,
                     GC.CollectionCount(2));
-            }
-        }
-
-        private void EnsureNPCAggroScheduleRegistered()
-        {
-            if (!ServerSimulationClock.IsRunning)
-            {
-                if (_npcAggroSchedule.IsValid)
-                {
-                    _npcAggroSchedule.Cancel();
-                    _npcAggroSchedule = default;
-                }
-
-                return;
-            }
-
-            if (!_npcAggroSchedule.IsValid)
-            {
-                _npcAggroSchedule = ServerSimulationClock.RegisterLowerRate(
-                    _npcAggroDecisionIntervalTicks,
-                    UpdateNPCAggro);
             }
         }
 
@@ -669,7 +602,7 @@ namespace Game.Server.Core
 
         private void LateUpdate()
         {
-            if (!_initialized || !PerformanceTelemetry.IsEnabled) return;
+            if (!PerformanceTelemetry.IsEnabled) return;
             using var markerScope = LATE_UPDATE_MARKER.Begin();
             // Tick-scoped bridge telemetry is flushed by ProcessAuthoritativeTickCompleted.
         }
@@ -713,7 +646,7 @@ namespace Game.Server.Core
         /// <param name="spawnPosition">The resolved absolute position for the new actor.</param>
         private void OnActorSpawned(Actor actor, WorldPosition spawnPosition)
         {
-            if (actor == null || !_initialized || _spatialIndex == null)
+            if (actor == null)
                 return;
 
             bool hasExistingObject = _actorObjects.TryGetValue(actor.ID, out var existingActor);
@@ -799,12 +732,6 @@ namespace Game.Server.Core
             {
                 try
                 {
-                    if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
-                    {
-                        throw new InvalidOperationException(
-                            "Spawned actor visibility refresh requires initialized server interest management.");
-                    }
-
                     ServerInterestManager.Instance.ReevaluateActorVisibility(
                         actor,
                         actor.SpatialContext,
@@ -849,7 +776,7 @@ namespace Game.Server.Core
         /// <param name="actor">The actor being removed.</param>
         private void OnActorDespawned(Actor actor)
         {
-            if (actor == null || !_initialized)
+            if (actor == null)
                 return;
 
             bool hasRegisteredActor = _actorObjects.TryGetValue(actor.ID, out var registeredActor);
@@ -861,9 +788,7 @@ namespace Game.Server.Core
 
             RemoveCombatReferencesToActor(actor);
 
-            if (actor.Owner.HasValue
-                && ServerInterestManager.IsInitialized
-                && ServerInterestManager.Instance != null)
+            if (actor.Owner.HasValue)
                 ServerInterestManager.Instance.OnPlayerActorRemoved(actor);
 
             RemoveNPCNavigationRegistration(actor);
@@ -951,9 +876,6 @@ namespace Game.Server.Core
 
         private void RemoveSpatialMembership(Guid actorID)
         {
-            if (_spatialIndex == null || actorID == Guid.Empty)
-                return;
-
             try
             {
                 _spatialIndex.Remove(actorID);
@@ -1006,7 +928,26 @@ namespace Game.Server.Core
             }
 
             var behavior = actor.GetComponent<NPCBehavior>();
-            if (behavior == null || behavior.AggroRange <= 0f)
+            if (behavior == null)
+            {
+                _npcAggroStates.Remove(actor.ID);
+                return;
+            }
+
+            if (float.IsNaN(behavior.AggroRange)
+                || float.IsInfinity(behavior.AggroRange))
+            {
+                throw new InvalidOperationException(
+                    $"NPC '{actor.ID}' must have a finite aggro range.");
+            }
+            if (float.IsNaN(behavior.AggroDelay)
+                || float.IsInfinity(behavior.AggroDelay)
+                || behavior.AggroDelay < 0f)
+            {
+                throw new InvalidOperationException(
+                    $"NPC '{actor.ID}' must have a finite, non-negative aggro delay.");
+            }
+            if (behavior.AggroRange <= 0f)
             {
                 _npcAggroStates.Remove(actor.ID);
                 return;
@@ -1183,20 +1124,7 @@ namespace Game.Server.Core
                 }
 
                 float aggroRange = state.Behavior.AggroRange;
-                if (float.IsNaN(aggroRange)
-                    || float.IsInfinity(aggroRange)
-                    || aggroRange <= 0f)
-                {
-                    throw new InvalidOperationException(
-                        $"NPC '{state.NPC.ID}' must have a finite, strictly positive aggro range.");
-                }
-
                 WorldPosition npcPosition = GetRequiredAcceptedWorldPosition(state.NPC.ID);
-                if (!state.NPC.SpatialContext.IsValid)
-                {
-                    throw new InvalidOperationException(
-                        $"NPC '{state.NPC.ID}' has an invalid spatial context.");
-                }
 
                 _npcAggroCandidateIDs.Clear();
                 QuerySpatialInRange(
@@ -1225,7 +1153,14 @@ namespace Game.Server.Core
                     if (!(candidateActor is PlayerActor player) || player.isDead)
                         continue;
 
-                    double distance = GetAcceptedCenterDistance(state.NPC, player);
+                    WorldPosition playerPosition = GetRequiredAcceptedWorldPosition(player.ID);
+                    double deltaX = npcPosition.x - playerPosition.x;
+                    double deltaY = npcPosition.y - playerPosition.y;
+                    double deltaZ = npcPosition.z - playerPosition.z;
+                    double distance = Math.Sqrt(
+                        deltaX * deltaX
+                        + deltaY * deltaY
+                        + deltaZ * deltaZ);
                     if (closest == null
                         || distance < closestDistance
                         || (distance == closestDistance && player.ID.CompareTo(closest.ID) < 0))
@@ -1282,29 +1217,10 @@ namespace Game.Server.Core
 
         private static long GetNonShorteningAggroDelayTicks(float delaySeconds)
         {
-            if (float.IsNaN(delaySeconds)
-                || float.IsInfinity(delaySeconds)
-                || delaySeconds < 0f)
-            {
-                throw new InvalidOperationException(
-                    "NPCBehavior.AggroDelay must be finite and non-negative.");
-            }
-
             if (delaySeconds == 0f)
                 return 0;
 
-            if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
-                throw new InvalidOperationException("NPC aggro timing requires initialized server simulation configuration.");
-
             float fixedDeltaTime = GameConfigurationManager.Config.ServerSimulationTickDuration;
-            ServerSimulationClock.ValidateConfiguration(GameConfigurationManager.Config);
-            double tickCountEstimate = delaySeconds / (double)fixedDeltaTime;
-            if (double.IsInfinity(tickCountEstimate) || tickCountEstimate > long.MaxValue)
-            {
-                throw new InvalidOperationException(
-                    "NPCBehavior.AggroDelay cannot be represented by an authoritative tick deadline.");
-            }
-
             return ServerSimulationClock.GetNonShorteningTickCount(delaySeconds, fixedDeltaTime);
         }
 
@@ -1318,9 +1234,6 @@ namespace Game.Server.Core
         /// </summary>
         internal void ProcessAuthoritativeTick(ServerSimulationTick tick)
         {
-            if (!_initialized)
-                return;
-
             bool playerPhysicalTransformsChanged =
                 ValidatePlayerPositions(tick);
             if (playerPhysicalTransformsChanged)
@@ -1333,9 +1246,6 @@ namespace Game.Server.Core
         /// </summary>
         internal void ProcessAuthoritativeTickCompleted()
         {
-            if (!_initialized)
-                return;
-
             SynchronizeNPCTransformsFromECS();
             PublishAcceptedActorPositions(
                 ServerECSManager.CurrentSimulationTickID);
@@ -1352,13 +1262,6 @@ namespace Game.Server.Core
             {
                 Guid actorID = actorPair.Key;
                 Actor actor = actorPair.Value;
-                if (actor == null)
-                    throw new InvalidOperationException($"Actor registry contains a null actor for '{actorID}'.");
-                if (actor.ID != actorID)
-                {
-                    throw new InvalidOperationException(
-                        $"Actor registry entry '{actorID}' contains actor '{actor.ID}'.");
-                }
 
                 if (!_actorEntities.TryGetValue(actorID, out var entity))
                 {
@@ -1366,43 +1269,29 @@ namespace Game.Server.Core
                         $"Actor registry entry '{actorID}' has no corresponding ECS entity.");
                 }
 
-                if (!_entityManager.Exists(entity)
-                    || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
-                {
-                    throw new InvalidOperationException(
-                        $"Actor registry entry '{actorID}' does not resolve to an ECS actor entity.");
-                }
-
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                if (component.ActorID != actorID)
-                {
-                    throw new InvalidOperationException(
-                        $"Actor registry entry '{actorID}' resolves to ECS actor '{component.ActorID}'.");
-                }
-
                 var position = new WorldPosition(
                     component.WorldPositionD.x,
                     component.WorldPositionD.y,
                     component.WorldPositionD.z);
-                if (!position.IsFinite)
-                {
-                    throw new InvalidOperationException(
-                        $"Actor '{actorID}' has a non-finite canonical ECS world position.");
-                }
 
                 bool hasPreviousSnapshot = actor.TryGetAcceptedPositionSnapshot(
                     out ActorPositionSnapshot previousSnapshot);
                 ActorSpatialContext actorContext = actor.SpatialContext;
+                bool positionChanged = !hasPreviousSnapshot
+                    || !AreWorldPositionsEqual(previousSnapshot.Position, position);
 
-                GetSpatialIndex().Move(
-                    actorID,
-                    actorContext,
-                    position);
-                UpdateAcceptedActorChunkMembership(actor, position);
+                if (positionChanged)
+                {
+                    _spatialIndex.Move(
+                        actorID,
+                        actorContext,
+                        position);
+                    UpdateAcceptedActorChunkMembership(actor, position);
+                }
                 actor.SetAcceptedPositionSnapshotFromServer(position, tickID);
 
-                if (hasPreviousSnapshot
-                    && !AreWorldPositionsEqual(previousSnapshot.Position, position))
+                if (hasPreviousSnapshot && positionChanged)
                 {
                     _acceptedVisibilityMovements.Add(new AcceptedVisibilityMovement(
                         actor,
@@ -1412,23 +1301,8 @@ namespace Game.Server.Core
                 }
             }
 
-            foreach (var entityPair in _actorEntities)
-            {
-                if (!_actorObjects.ContainsKey(entityPair.Key))
-                {
-                    throw new InvalidOperationException(
-                        $"ECS actor registry entry '{entityPair.Key}' has no corresponding actor.");
-                }
-            }
-
             if (_acceptedVisibilityMovements.Count == 0)
                 return;
-
-            if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
-            {
-                throw new InvalidOperationException(
-                    "Accepted actor movement visibility refresh requires initialized server interest management.");
-            }
 
             for (int i = 0; i < _acceptedVisibilityMovements.Count; i++)
             {
@@ -1500,32 +1374,9 @@ namespace Game.Server.Core
                 return;
             }
 
-            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
-            {
-                NotifyInstanceValidationToggleFailure(
-                    playerID,
-                    actor,
-                    "required server managers are not initialized");
-                return;
-            }
-
             ActorSpatialContext sourceContext = actor.SpatialContext;
             ActorSpatialContext instanceA = ServerWorldManager.Instance.ValidationInstanceA;
             ActorSpatialContext instanceB = ServerWorldManager.Instance.ValidationInstanceB;
-            if (!instanceA.IsValid
-                || !instanceB.IsValid
-                || instanceA.InstanceID == Guid.Empty
-                || instanceB.InstanceID == Guid.Empty
-                || instanceA.Equals(instanceB)
-                || instanceA.WorldID != instanceB.WorldID
-                || !StringComparer.Ordinal.Equals(instanceA.MapID, instanceB.MapID))
-            {
-                NotifyInstanceValidationToggleFailure(
-                    playerID,
-                    actor,
-                    "server validation instances are invalid");
-                return;
-            }
 
             ActorSpatialContext destinationContext;
             string destinationLabel;
@@ -1619,23 +1470,12 @@ namespace Game.Server.Core
             ActorSpatialContext sourceContext = default;
             WorldPosition sourcePosition = default;
 
-            if (!_initialized
-                || !ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null
-                || !ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
-            {
-                validationFailure = "required server managers are not initialized";
-            }
-            else if (actor == null || !hasOwner)
+            if (actor == null || !hasOwner)
             {
                 validationFailure = "a live owned player actor is required";
             }
             else if (!_playerActors.TryGetValue(owner, out Actor playerActor)
-                || !ReferenceEquals(playerActor, actor)
-                || !_actorObjects.TryGetValue(actor.ID, out Actor registeredActor)
-                || !ReferenceEquals(registeredActor, actor)
-                || !_actorEntities.TryGetValue(actor.ID, out Entity entity)
-                || !_entityManager.Exists(entity)
-                || !_entityManager.HasComponent<Systems.ActorComponent>(entity))
+                || !ReferenceEquals(playerActor, actor))
             {
                 validationFailure = "the player actor is not the live exact registered actor";
             }
@@ -1718,9 +1558,7 @@ namespace Game.Server.Core
                     {
                         validationFailure = "the requesting player actor changed during destination readiness";
                     }
-                    else if (!_actorObjects.TryGetValue(actor.ID, out Actor currentRegisteredActor)
-                        || !ReferenceEquals(currentRegisteredActor, actor)
-                        || !actor.Owner.HasValue
+                    else if (!actor.Owner.HasValue
                         || actor.Owner.Value != owner)
                     {
                         validationFailure = "the player actor is no longer live before transfer";
@@ -1825,32 +1663,18 @@ namespace Game.Server.Core
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="actor"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when destination input is invalid or unchanged.</exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when authoritative actor state, required managers or destination environment are unavailable,
-        /// inconsistent, or a transfer/rollback operation fails.
+        /// Thrown when authoritative actor state or destination environment is unavailable, inconsistent,
+        /// or a transfer/rollback operation fails.
         /// </exception>
         internal void TransferActorSpatialContext(
             Actor actor,
             ActorSpatialContext destinationContext,
             WorldPosition destinationPosition)
         {
-            if (!_initialized)
-                throw new InvalidOperationException("Server actor manager is not initialized.");
-            GetSpatialIndex();
             if (actor == null)
                 throw new ArgumentNullException(nameof(actor));
 
             ActorSpatialContext sourceContext = actor.SpatialContext;
-            if (!sourceContext.IsValid)
-                throw new InvalidOperationException(
-                    $"Actor '{actor.ID}' has no valid source spatial context.");
-            if (!destinationContext.IsValid)
-                throw new ArgumentException(
-                    "A valid destination actor spatial context is required.",
-                    nameof(destinationContext));
-            if (!destinationPosition.IsFinite)
-                throw new ArgumentException(
-                    "A finite destination actor position is required.",
-                    nameof(destinationPosition));
             if (destinationContext.Equals(sourceContext))
                 throw new ArgumentException(
                     "A logical-context transfer requires a different destination context.",
@@ -1885,13 +1709,6 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     $"Actor '{actor.ID}' has a non-finite canonical source position.");
 
-            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
-                throw new InvalidOperationException(
-                    "Actor context transfer requires initialized server world management.");
-            if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-                throw new InvalidOperationException(
-                    "Actor context transfer requires initialized server physics management.");
-
             Vector2Int destinationChunk = destinationPosition.Chunk;
             bool transferRuntime = ServerWorldManager.Instance.IsTransferRuntime(destinationContext);
             if (!transferRuntime
@@ -1904,11 +1721,6 @@ namespace Game.Server.Core
             PlayerID? owner = actor.Owner;
             if (owner.HasValue)
             {
-                if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
-                {
-                    throw new InvalidOperationException(
-                        "Player actor context transfer requires initialized server interest management.");
-                }
                 if (!ServerInterestManager.Instance.IsPlayerDestinationEnvironmentReady(
                         owner.Value,
                         destinationContext,
@@ -2148,12 +1960,6 @@ namespace Game.Server.Core
 
             try
             {
-                if (!ServerInterestManager.IsInitialized || ServerInterestManager.Instance == null)
-                {
-                    throw new InvalidOperationException(
-                        "Committed actor context transfer visibility refresh requires initialized server interest management.");
-                }
-
                 ServerInterestManager.Instance.ReevaluateActorVisibility(
                     actor,
                     sourceContext,
