@@ -32,8 +32,6 @@ namespace Game.Server.Core
         {
             public Guid ActorID;
             public string Tag;
-            public float TickInterval;
-            public float Duration;
             public long TickIntervalTicks;
             public long DurationTicks;
             public Action<Actor> onTick;
@@ -180,8 +178,6 @@ namespace Game.Server.Core
             {
                 ActorID = actor.ID,
                 Tag = tag,
-                TickInterval = tickInterval,
-                Duration = duration,
                 TickIntervalTicks = tickIntervalTicks,
                 DurationTicks = durationTicks,
                 onTick = onTick,
@@ -256,16 +252,17 @@ namespace Game.Server.Core
                 ? 0
                 : checked(firstProgressTickID + registration.TickIntervalTicks - 1L);
 
-            _entityManager.GetBuffer<Systems.TickerElement>(entity).Add(new Systems.TickerElement
+            var buffer = _entityManager.GetBuffer<Systems.TickerElement>(entity);
+            buffer.Add(new Systems.TickerElement
             {
                 TickerID = tickerID,
-                RemainingDuration = registration.Duration,
-                TickInterval = registration.TickInterval,
-                TimeSinceLastTick = 0f,
                 ExpiryTickID = expiryTickID,
                 NextTickID = nextTickID,
                 TickIntervalTicks = registration.TickIntervalTicks
             });
+            _entityManager.SetComponentEnabled<Systems.TickerElement>(
+                entity,
+                true);
         }
 
         private void RemoveTickerNow(Guid actorID, int tickerID)
@@ -277,6 +274,13 @@ namespace Game.Server.Core
                 {
                     if (buffer[i].TickerID == tickerID)
                         buffer.RemoveAt(i);
+                }
+
+                if (buffer.Length == 0)
+                {
+                    _entityManager.SetComponentEnabled<Systems.TickerElement>(
+                        entity,
+                        false);
                 }
             }
 
@@ -382,7 +386,13 @@ namespace Game.Server.Core
             }
 
             if (TryFindActorEntity(actor.ID, out var entity))
-                _entityManager.GetBuffer<Systems.TickerElement>(entity).Clear();
+            {
+                var buffer = _entityManager.GetBuffer<Systems.TickerElement>(entity);
+                buffer.Clear();
+                _entityManager.SetComponentEnabled<Systems.TickerElement>(
+                    entity,
+                    false);
+            }
         }
 
         private static long GetFirstTickerProgressTickID()

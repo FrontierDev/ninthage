@@ -128,6 +128,9 @@ namespace Game.Server.Core
             if (TryFindActorEntity(actor.ID, out Entity targetEntity))
             {
                 _entityManager.GetBuffer<Systems.AuraElement>(targetEntity).Clear();
+                _entityManager.SetComponentEnabled<Systems.AuraElement>(
+                    targetEntity,
+                    false);
             }
         }
 
@@ -261,6 +264,10 @@ namespace Game.Server.Core
                 return false;
             }
 
+            _entityManager.SetComponentEnabled<Systems.AuraElement>(
+                entity,
+                true);
+
             var ctx = _activeAuras[instanceID];
 
             // Execute OnApply phase components.
@@ -315,8 +322,6 @@ namespace Game.Server.Core
                                 out entry.ExpiryTickID,
                                 out entry.NextTickID,
                                 out entry.TickIntervalTicks);
-                            entry.RemainingDuration = definition.BaseDuration;
-                            entry.TimeSinceLastTick = 0f;
                             buffer[i] = entry;
 
                             existing.Duration = definition.BaseDuration;
@@ -379,8 +384,6 @@ namespace Game.Server.Core
                                 out entry.ExpiryTickID,
                                 out entry.NextTickID,
                                 out entry.TickIntervalTicks);
-                            entry.RemainingDuration = existing.Duration;
-                            entry.TimeSinceLastTick = 0f;
                             buffer[i] = entry;
 
                             instanceID = entry.InstanceID;
@@ -429,9 +432,6 @@ namespace Game.Server.Core
             {
                 InstanceID = instanceID,
                 AuraDefinitionID = definition.DefinitionID,
-                RemainingDuration = definition.BaseDuration,
-                TickInterval = definition.BaseTickInterval,
-                TimeSinceLastTick = 0f,
                 ExpiryTickID = expiryTickID,
                 NextTickID = nextTickID,
                 TickIntervalTicks = tickIntervalTicks
@@ -476,9 +476,6 @@ namespace Game.Server.Core
             {
                 InstanceID = instanceID,
                 AuraDefinitionID = definition.DefinitionID,
-                RemainingDuration = definition.BaseDuration,
-                TickInterval = definition.BaseTickInterval,
-                TimeSinceLastTick = 0f,
                 ExpiryTickID = expiryTickID,
                 NextTickID = nextTickID,
                 TickIntervalTicks = tickIntervalTicks
@@ -653,6 +650,13 @@ namespace Game.Server.Core
                     buffer.RemoveAt(i);
                     break;
                 }
+
+                if (buffer.Length == 0)
+                {
+                    _entityManager.SetComponentEnabled<Systems.AuraElement>(
+                        entity,
+                        false);
+                }
             }
 
             ActorEndpoint.onServerAuraDispelled?.Invoke(target.ID, auraDefID, instanceID);
@@ -724,7 +728,11 @@ namespace Game.Server.Core
 
             if (TryFindActorEntity(actorID, out Entity entity))
             {
-                _entityManager.GetBuffer<Systems.AuraElement>(entity).Clear();
+                var buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
+                buffer.Clear();
+                _entityManager.SetComponentEnabled<Systems.AuraElement>(
+                    entity,
+                    false);
             }
 
             if (!hasCurrentActor)

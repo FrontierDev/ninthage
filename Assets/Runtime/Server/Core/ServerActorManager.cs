@@ -22,14 +22,14 @@ namespace Game.Server.Core
     {
         #region Nested types
 
-        private readonly struct AcceptedVisibilityMovement
+        internal readonly struct AcceptedVisibilityMovement
         {
-            public Actor Actor { get; }
-            public WorldPosition PreviousPosition { get; }
-            public WorldPosition CurrentPosition { get; }
-            public ActorSpatialContext Context { get; }
+            internal Actor Actor { get; }
+            internal WorldPosition PreviousPosition { get; }
+            internal WorldPosition CurrentPosition { get; }
+            internal ActorSpatialContext Context { get; }
 
-            public AcceptedVisibilityMovement(
+            internal AcceptedVisibilityMovement(
                 Actor actor,
                 WorldPosition previousPosition,
                 WorldPosition currentPosition,
@@ -779,9 +779,15 @@ namespace Game.Server.Core
 
                 // Add aura buffer for active aura tracking.
                 _entityManager.AddBuffer<Systems.AuraElement>(entity);
+                _entityManager.SetComponentEnabled<Systems.AuraElement>(
+                    entity,
+                    false);
 
                 // Add ticker buffer for generic time-based callbacks.
                 _entityManager.AddBuffer<Systems.TickerElement>(entity);
+                _entityManager.SetComponentEnabled<Systems.TickerElement>(
+                    entity,
+                    false);
 
                 _actors.Add(
                     actor.ID,
@@ -1396,16 +1402,7 @@ namespace Game.Server.Core
             if (_acceptedVisibilityMovements.Count == 0)
                 return;
 
-            for (int i = 0; i < _acceptedVisibilityMovements.Count; i++)
-            {
-                AcceptedVisibilityMovement movement = _acceptedVisibilityMovements[i];
-                ServerInterestManager.Instance.ReevaluateActorVisibility(
-                    movement.Actor,
-                    movement.Context,
-                    movement.PreviousPosition,
-                    movement.Context,
-                    movement.CurrentPosition);
-            }
+            ServerInterestManager.Instance.ReevaluateActorVisibilityBatch(_acceptedVisibilityMovements);
 
             if (PerformanceTelemetry.IsEnabled && gameObjectSyncCount > 0)
                 RecordTickSyncContribution(0, gameObjectSyncCount, tickID);

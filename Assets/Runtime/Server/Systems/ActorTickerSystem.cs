@@ -36,16 +36,16 @@ namespace Game.Server.Systems
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int tickerEntryCount = 0;
             long currentTickID = ServerECSManager.CurrentSimulationTickID;
-            float fixedDeltaTime = SystemAPI.Time.DeltaTime;
 
             foreach (var (queriedBuffer, actor, entity) in
                 SystemAPI.Query<DynamicBuffer<TickerElement>, RefRO<ActorComponent>>()
                          .WithEntityAccess())
             {
-                DynamicBuffer<TickerElement> buffer = queriedBuffer;
+                var buffer = queriedBuffer;
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     var entry = buffer[i];
+                    var nextTickAdvanced = false;
 
                     while (entry.TickIntervalTicks > 0
                         && entry.NextTickID <= currentTickID
@@ -58,6 +58,7 @@ namespace Game.Server.Systems
                             operationID: entry.TickerID);
 
                         entry.NextTickID = checked(entry.NextTickID + entry.TickIntervalTicks);
+                        nextTickAdvanced = true;
                     }
 
                     if (entry.ExpiryTickID != 0 && currentTickID >= entry.ExpiryTickID)
@@ -69,28 +70,19 @@ namespace Game.Server.Systems
                             entity,
                             operationID: entry.TickerID);
                     }
-                    else
+                    else if (nextTickAdvanced)
                     {
-                        if (entry.RemainingDuration != float.MaxValue)
-                        {
-                            long remainingTicks = checked(entry.ExpiryTickID - currentTickID);
-                            entry.RemainingDuration = (float)(remainingTicks * (double)fixedDeltaTime);
-                        }
-
-                        if (entry.TickIntervalTicks == 0)
-                        {
-                            entry.TimeSinceLastTick = 0f;
-                        }
-                        else
-                        {
-                            long lastTickBoundary = checked(entry.NextTickID - entry.TickIntervalTicks);
-                            long elapsedTicks = checked(currentTickID - lastTickBoundary);
-                            entry.TimeSinceLastTick = (float)(elapsedTicks * (double)fixedDeltaTime);
-                        }
-
                         buffer[i] = entry;
                     }
                 }
+
+                if (buffer.Length == 0)
+                {
+                    state.EntityManager.SetComponentEnabled<TickerElement>(
+                        entity,
+                        false);
+                }
+
                 if (telemetryEnabled)
                     tickerEntryCount += buffer.Length;
             }

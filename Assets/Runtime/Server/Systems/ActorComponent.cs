@@ -88,18 +88,12 @@ namespace Game.Server.Systems
     }
 
     /// <summary>Stores an active aura entry for an actor.</summary>
-    public struct AuraElement : IBufferElementData
+    public struct AuraElement : IBufferElementData, IEnableableComponent
     {
         /// <summary>The aura instance identifier.</summary>
         public int InstanceID;
         /// <summary>The aura definition identifier.</summary>
         public FixedString64Bytes AuraDefinitionID;
-        /// <summary>The remaining aura duration.</summary>
-        public float RemainingDuration;
-        /// <summary>The aura's tick interval.</summary>
-        public float TickInterval;
-        /// <summary>The time since the last aura tick.</summary>
-        public float TimeSinceLastTick;
         /// <summary>The authoritative tick on which the aura expires.</summary>
         public long ExpiryTickID;
         /// <summary>The next authoritative tick on which the aura ticks.</summary>
@@ -109,16 +103,10 @@ namespace Game.Server.Systems
     }
 
     /// <summary>Stores a generic time-based callback entry for an actor.</summary>
-    public struct TickerElement : IBufferElementData
+    public struct TickerElement : IBufferElementData, IEnableableComponent
     {
         /// <summary>The ticker identifier.</summary>
         public int TickerID;
-        /// <summary>The remaining ticker duration.</summary>
-        public float RemainingDuration; // float.MaxValue = indefinite
-        /// <summary>The ticker interval.</summary>
-        public float TickInterval;
-        /// <summary>The time since the last ticker callback.</summary>
-        public float TimeSinceLastTick;
         /// <summary>The authoritative tick on which the ticker expires, or zero for indefinite tickers.</summary>
         public long ExpiryTickID;
         /// <summary>The next authoritative tick on which the ticker ticks, or zero when disabled.</summary>

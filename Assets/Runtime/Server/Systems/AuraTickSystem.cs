@@ -36,16 +36,16 @@ namespace Game.Server.Systems
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int auraEntryCount = 0;
             long currentTickID = ServerECSManager.CurrentSimulationTickID;
-            float fixedDeltaTime = SystemAPI.Time.DeltaTime;
 
             foreach (var (queriedBuffer, actor, entity) in
                 SystemAPI.Query<DynamicBuffer<AuraElement>, RefRO<ActorComponent>>()
                          .WithEntityAccess())
             {
-                DynamicBuffer<AuraElement> buffer = queriedBuffer;
+                var buffer = queriedBuffer;
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     var entry = buffer[i];
+                    var nextTickAdvanced = false;
 
                     while (entry.TickIntervalTicks > 0
                         && entry.NextTickID <= currentTickID
@@ -59,6 +59,7 @@ namespace Game.Server.Systems
                             entry.InstanceID);
 
                         entry.NextTickID = checked(entry.NextTickID + entry.TickIntervalTicks);
+                        nextTickAdvanced = true;
                     }
 
                     if (currentTickID >= entry.ExpiryTickID)
@@ -71,25 +72,19 @@ namespace Game.Server.Systems
                             entry.AuraDefinitionID,
                             entry.InstanceID);
                     }
-                    else
+                    else if (nextTickAdvanced)
                     {
-                        long remainingTicks = checked(entry.ExpiryTickID - currentTickID);
-                        entry.RemainingDuration = (float)(remainingTicks * (double)fixedDeltaTime);
-
-                        if (entry.TickIntervalTicks == 0)
-                        {
-                            entry.TimeSinceLastTick = 0f;
-                        }
-                        else
-                        {
-                            long lastTickBoundary = checked(entry.NextTickID - entry.TickIntervalTicks);
-                            long elapsedTicks = checked(currentTickID - lastTickBoundary);
-                            entry.TimeSinceLastTick = (float)(elapsedTicks * (double)fixedDeltaTime);
-                        }
-
                         buffer[i] = entry;
                     }
                 }
+
+                if (buffer.Length == 0)
+                {
+                    state.EntityManager.SetComponentEnabled<AuraElement>(
+                        entity,
+                        false);
+                }
+
                 if (telemetryEnabled)
                     auraEntryCount += buffer.Length;
             }
