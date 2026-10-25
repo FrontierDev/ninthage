@@ -273,6 +273,8 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 
 ### Stage 1.4 — Actor lifecycle, simulation LOD and high-population AI
 
+**Detailed implementation plan:** [Stage 1.4 Implementation Plan](Stage-1.4-Implementation-Plan.md).  
+
 **Prerequisite:** 1.1–1.3.  
 **Unblocks:** NPC content production and dense-world simulation.
 
