@@ -216,7 +216,7 @@ namespace Game.Tests.Performance.Harness
         public const float MEASUREMENT_SECONDS = 5f;
         public const float RECOVERY_SECONDS = 1f;
         public const float SAMPLE_INTERVAL_SECONDS = 0.5f;
-        public const long MAX_TOTAL_ALLOCATED_BYTES = 4L * 1024L * 1024L * 1024L;
+        public const long MAX_WORKLOAD_ALLOCATED_GROWTH_BYTES = 4L * 1024L * 1024L * 1024L;
 
         private readonly StringBuilder _log = new();
         private readonly Test_PerformanceRunMetadata _metadata;
@@ -1538,7 +1538,14 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "focus", BuildFocusJson(), true);
             RawProperty(builder, "rendering", BuildRenderingJson(status), true);
             RawProperty(builder, "achieved", BuildAchievedJson(), true);
-            RawProperty(builder, "resources", $"{{\"total_allocated_bytes\":{UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong()},\"ceiling_bytes\":{MAX_TOTAL_ALLOCATED_BYTES},\"ceiling_status\":{Quote(status == PerformanceRunStatus.FailResource ? "exceeded" : "not_exceeded")}}}", true);
+            RawProperty(
+                builder,
+                "resources",
+                BuildResourceEvidenceJson(
+                    ActivityController == null ? (long?)null : ActivityController.BaselineAllocatedBytes,
+                    UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong(),
+                    status),
+                true);
             RawProperty(builder, "stop", $"{{\"phase\":{Quote(CurrentPhaseText())},\"reason_code\":{Quote(reasonCode)},\"message\":{Quote(message)}}}", true);
             RawProperty(builder, "correctness", $"{{\"status\":{Quote(correctnessStatus)},\"checked\":{checkedAssertions},\"failed\":{failedAssertions},\"unverified\":{unverified},\"cleanup\":{CleanupComplete.ToString().ToLowerInvariant()}}}", true);
             RawProperty(builder, "metrics", metrics, true);
@@ -1731,6 +1738,29 @@ namespace Game.Tests.Performance.Harness
                 throw new ArgumentException("An activity snapshot observation phase is required.", nameof(observationPhase));
 
             return $"{{\"snapshot_captured\":true,\"observation\":{Quote(observationPhase)},\"idle\":{snapshot.IdleCount},\"patrolling\":{snapshot.PatrollingCount},\"combat\":{snapshot.CombatCount},\"wake_surge\":{snapshot.WakeSurgeCount},\"spawn_events\":{snapshot.SpawnEventCount},\"despawn_events\":{snapshot.DespawnEventCount},\"spawn_events_total\":{snapshot.TotalSpawnEventCount},\"despawn_events_total\":{snapshot.TotalDespawnEventCount},\"wake_surge_is_subset_of_combat\":true}}";
+        }
+
+        internal static string BuildResourceEvidenceJson(
+            long? baselineAllocatedBytes,
+            long totalAllocatedBytes,
+            PerformanceRunStatus status)
+        {
+            var baselineJson = baselineAllocatedBytes.HasValue
+                ? baselineAllocatedBytes.Value.ToString(CultureInfo.InvariantCulture)
+                : "null";
+            var growthJson = baselineAllocatedBytes.HasValue
+                ? Test_PerformanceActivityController.GetAllocatedGrowthBytes(baselineAllocatedBytes.Value, totalAllocatedBytes).ToString(CultureInfo.InvariantCulture)
+                : "null";
+            var ceilingJson = MAX_WORKLOAD_ALLOCATED_GROWTH_BYTES.ToString(CultureInfo.InvariantCulture);
+            var ceilingStatus = baselineAllocatedBytes.HasValue
+                ? status == PerformanceRunStatus.FailResource ? "exceeded" : "not_exceeded"
+                : "unavailable";
+            return "{\"baseline_total_allocated_bytes\":" + baselineJson
+                + ",\"total_allocated_bytes\":" + totalAllocatedBytes.ToString(CultureInfo.InvariantCulture)
+                + ",\"allocated_growth_bytes\":" + growthJson
+                + ",\"growth_ceiling_bytes\":" + ceilingJson
+                + ",\"ceiling_basis\":" + Quote("growth_from_pre_workload_baseline")
+                + ",\"ceiling_status\":" + Quote(ceilingStatus) + "}";
         }
 
         private string BuildActivityJson()

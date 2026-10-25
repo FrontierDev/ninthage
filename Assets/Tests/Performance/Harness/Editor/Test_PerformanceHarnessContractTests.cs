@@ -103,6 +103,53 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void ResourceCeilingUsesPositiveGrowthFromTheWorkloadBaseline()
+        {
+            const long gibibyte = 1024L * 1024L * 1024L;
+            var baseline = 5L * gibibyte;
+
+            Assert.That(Test_PerformanceActivityController.GetAllocatedGrowthBytes(baseline, baseline), Is.EqualTo(0L));
+            Assert.That(Test_PerformanceActivityController.GetAllocatedGrowthBytes(baseline, baseline + gibibyte / 2L), Is.EqualTo(gibibyte / 2L));
+            Assert.That(Test_PerformanceActivityController.GetAllocatedGrowthBytes(baseline, baseline - gibibyte / 10L), Is.EqualTo(0L));
+            Assert.That(
+                Test_PerformanceActivityController.GetAllocatedGrowthBytes(baseline, 10L * gibibyte),
+                Is.GreaterThan(Test_PerformanceRun.MAX_WORKLOAD_ALLOCATED_GROWTH_BYTES));
+        }
+
+        [Test]
+        public void ResourceEvidenceReportsAbsoluteAndWorkloadRelativeMemory()
+        {
+            const long gibibyte = 1024L * 1024L * 1024L;
+            var baseline = 5L * gibibyte;
+            var total = baseline + gibibyte / 2L;
+            var resources = Test_PerformanceRun.BuildResourceEvidenceJson(
+                baseline,
+                total,
+                PerformanceRunStatus.CompleteMeasured);
+
+            Assert.That(resources, Does.Contain($"\"baseline_total_allocated_bytes\":{baseline}"));
+            Assert.That(resources, Does.Contain($"\"total_allocated_bytes\":{total}"));
+            Assert.That(resources, Does.Contain($"\"allocated_growth_bytes\":{gibibyte / 2L}"));
+            Assert.That(resources, Does.Contain($"\"growth_ceiling_bytes\":{Test_PerformanceRun.MAX_WORKLOAD_ALLOCATED_GROWTH_BYTES}"));
+            Assert.That(resources, Does.Contain("\"ceiling_basis\":\"growth_from_pre_workload_baseline\""));
+            Assert.That(resources, Does.Contain("\"ceiling_status\":\"not_exceeded\""));
+        }
+
+        [Test]
+        public void ResourceEvidenceLeavesGrowthUnavailableWithoutAWorkloadBaseline()
+        {
+            var resources = Test_PerformanceRun.BuildResourceEvidenceJson(
+                null,
+                5L * 1024L * 1024L * 1024L,
+                PerformanceRunStatus.BlockedPrerequisite);
+
+            Assert.That(resources, Does.Contain("\"baseline_total_allocated_bytes\":null"));
+            Assert.That(resources, Does.Contain("\"allocated_growth_bytes\":null"));
+            Assert.That(resources, Does.Contain($"\"growth_ceiling_bytes\":{Test_PerformanceRun.MAX_WORKLOAD_ALLOCATED_GROWTH_BYTES}"));
+            Assert.That(resources, Does.Contain("\"ceiling_status\":\"unavailable\""));
+        }
+
+        [Test]
         public void TimedStateStressStartsNewStateOnTheNextSimulationTick()
         {
             Assert.That(Test_PerformanceActivityController.GetFirstProgressTickID(0L), Is.EqualTo(1L));

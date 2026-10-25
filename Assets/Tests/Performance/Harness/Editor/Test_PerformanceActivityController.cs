@@ -213,6 +213,7 @@ namespace Game.Tests.Performance.Harness
         };
 
         private readonly Test_ActorFixtureRuntime _fixture;
+        private readonly long _baselineAllocatedBytes;
         private readonly bool _activityEnabled;
         private readonly bool _timedStateStressEnabled;
         private readonly long _syntheticCastDurationTicks;
@@ -235,6 +236,7 @@ namespace Game.Tests.Performance.Harness
             bool timedStateStressEnabled)
         {
             _fixture = fixture ?? throw new ArgumentNullException(nameof(fixture));
+            _baselineAllocatedBytes = Profiler.GetTotalAllocatedMemoryLong();
             _activityEnabled = activityEnabled;
             _timedStateStressEnabled = timedStateStressEnabled;
             _syntheticCastDurationTicks = activityEnabled || timedStateStressEnabled
@@ -269,6 +271,8 @@ namespace Game.Tests.Performance.Harness
         public int WakeSurgeCount => _wakeSurgeEntities.Count;
 
         public int IdleCount => _idleCount;
+
+        public long BaselineAllocatedBytes => _baselineAllocatedBytes;
 
         public void PrepareTimedStateStress()
         {
@@ -381,12 +385,20 @@ namespace Game.Tests.Performance.Harness
             PerformanceTelemetry.TryRecord(Test_PerformanceHarnessMetrics.TOTAL_ALLOCATED_BYTES, Profiler.GetTotalAllocatedMemoryLong(), frame, intervalSeconds);
         }
 
-        public void ThrowIfResourceCeilingExceeded(long maximumAllocatedBytes)
+        public void ThrowIfResourceCeilingExceeded(long maximumGrowthBytes)
         {
-            var allocatedBytes = Profiler.GetTotalAllocatedMemoryLong();
-            if (allocatedBytes > maximumAllocatedBytes)
+            var currentAllocatedBytes = Profiler.GetTotalAllocatedMemoryLong();
+            var allocatedGrowthBytes = GetAllocatedGrowthBytes(_baselineAllocatedBytes, currentAllocatedBytes);
+            if (allocatedGrowthBytes > maximumGrowthBytes)
                 throw new Test_PerformanceResourceCeilingException(
-                    $"Unity total allocated memory {allocatedBytes} exceeded the runner ceiling {maximumAllocatedBytes} bytes.");
+                    $"Unity allocated memory grew by {allocatedGrowthBytes} bytes from the pre-workload baseline "
+                    + $"of {_baselineAllocatedBytes} bytes to {currentAllocatedBytes} bytes, exceeding the workload-growth ceiling "
+                    + $"of {maximumGrowthBytes} bytes.");
+        }
+
+        internal static long GetAllocatedGrowthBytes(long baselineAllocatedBytes, long currentAllocatedBytes)
+        {
+            return Math.Max(0L, currentAllocatedBytes - baselineAllocatedBytes);
         }
 
         private void UpdatePatrolPositions(float elapsedSeconds)

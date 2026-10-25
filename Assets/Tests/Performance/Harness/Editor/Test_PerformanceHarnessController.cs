@@ -981,7 +981,7 @@ namespace Game.Tests.Performance.Harness
                     _run.RecordMeasurementSample();
                     nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
                 }
-                _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_TOTAL_ALLOCATED_BYTES);
+                _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_WORKLOAD_ALLOCATED_GROWTH_BYTES);
                 _run.RecordMeasurementFrame();
                 yield return null;
             }
@@ -1078,7 +1078,7 @@ namespace Game.Tests.Performance.Harness
                     _run.RecordMeasurementSample();
                     nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
                 }
-                _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_TOTAL_ALLOCATED_BYTES);
+                _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_WORKLOAD_ALLOCATED_GROWTH_BYTES);
                 _run.RecordMeasurementFrame();
                 yield return null;
             }
@@ -1103,7 +1103,7 @@ namespace Game.Tests.Performance.Harness
                     _run.RecordMeasurementSample();
                     nextSample += Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS;
                 }
-                _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_TOTAL_ALLOCATED_BYTES);
+                _run.ActivityController.ThrowIfResourceCeilingExceeded(Test_PerformanceRun.MAX_WORKLOAD_ALLOCATED_GROWTH_BYTES);
                 _run.RecordMeasurementFrame();
                 yield return null;
             }
