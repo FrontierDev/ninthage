@@ -10,7 +10,6 @@ using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
@@ -22,12 +21,10 @@ namespace Game.Server.Core
         private static ServerSpellCastManager _instance;
         /// <summary>Gets the active server spell-cast manager.</summary>
         public static ServerSpellCastManager Instance => _instance;
-        private static bool _initialized;
         /// <summary>Gets whether the spell-cast manager is initialized.</summary>
-        public static bool IsInitialized => _initialized;
+        public static bool IsInitialized => _instance != null;
 
         private EntityManager _entityManager;
-        private EntityQuery _actorComponentQuery;
 
         // Store active spell casts by actor ID for quick access during ticks and completion.
         private readonly Dictionary<Guid, SpellContext> _activeSpellCasts = new();
@@ -39,7 +36,7 @@ namespace Game.Server.Core
         private readonly Dictionary<Guid, List<long>> _pendingStartIDsByActor = new();
         private readonly Dictionary<long, SpellMutation> _pendingInterrupts = new();
         private readonly Dictionary<Guid, long> _pendingInterruptIDsByActor = new();
-        private SpellMutation[] _commitSnapshot;
+        private readonly List<SpellMutation> _commitSnapshot = new();
         private long _nextCastID;
         private Guid _delayedActionActorID;
         private long _delayedActionCastID;
@@ -104,17 +101,11 @@ namespace Game.Server.Core
 
         private void Awake()
         {
-            if (_instance != null && _instance != this)
-            {
-                Debug.Error("Multiple instances of ServerSpellCastManager detected! Destroying duplicate.");
-                Destroy(this);
-                return;
-            }
-            _instance = this;
+            if (_instance != null)
+                throw new InvalidOperationException("ServerSpellCastManager is already initialized.");
 
             var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             ActorEndpoint.onServerSpellCastStarted += OnSpellCastStarted;
             ActorEndpoint.onServerSpellCastTick += OnSpellCastTick;
@@ -124,11 +115,14 @@ namespace Game.Server.Core
             ActorEndpoint.onServerRequestSpellCastCancel += OnSpellCastCancelRequested;
             ActorEndpoint.onServerActorDespawned += OnActorDespawned;
 
-            _initialized = true;
+            _instance = this;
         }
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
             foreach (PendingAction pendingAction in _pendingActions)
                 pendingAction.Registration.Cancel();
 
@@ -141,7 +135,7 @@ namespace Game.Server.Core
             _pendingStartIDsByActor.Clear();
             _pendingInterrupts.Clear();
             _pendingInterruptIDsByActor.Clear();
-            _commitSnapshot = null;
+            _commitSnapshot.Clear();
 
             ActorEndpoint.onServerSpellCastStarted -= OnSpellCastStarted;
             ActorEndpoint.onServerSpellCastTick -= OnSpellCastTick;
@@ -152,7 +146,6 @@ namespace Game.Server.Core
             ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
 
             _instance = null;
-            _initialized = false;
         }
 
         private void OnSpellCastCancelRequested(Actor actor)
@@ -174,44 +167,49 @@ namespace Game.Server.Core
 
         internal void PreparePendingMutations()
         {
-            _commitSnapshot = _pendingMutations.TakeSnapshot();
+            _pendingMutations.TakeSnapshot(_commitSnapshot);
         }
 
         internal void CommitPendingMutations()
         {
-            SpellMutation[] mutations = _commitSnapshot ?? _pendingMutations.TakeSnapshot();
-            _commitSnapshot = null;
-            foreach (SpellMutation mutation in mutations)
+            try
             {
-                switch (mutation.Kind)
+                foreach (SpellMutation mutation in _commitSnapshot)
                 {
-                    case SpellMutationKind.Start:
-                        if (!TryTakePendingStart(mutation, out SpellMutation pendingStart))
-                            continue;
+                    switch (mutation.Kind)
+                    {
+                        case SpellMutationKind.Start:
+                            if (!TryTakePendingStart(mutation, out SpellMutation pendingStart))
+                                continue;
 
-                        if (pendingStart.Caster == null
-                            || ServerActorManager.Instance == null
-                            || !ServerActorManager.Instance.TryGetActor(pendingStart.ActorID, out var currentCaster)
-                            || currentCaster != pendingStart.Caster)
-                        {
-                            Debug.Warning($"Discarding spell start for retired actor {pendingStart.ActorID}.");
-                            continue;
-                        }
+                            if (pendingStart.Caster == null
+                                || ServerActorManager.Instance == null
+                                || !ServerActorManager.Instance.TryGetActor(pendingStart.ActorID, out var currentCaster)
+                                || currentCaster != pendingStart.Caster)
+                            {
+                                Debug.Warning($"Discarding spell start for retired actor {pendingStart.ActorID}.");
+                                continue;
+                            }
 
-                        OnSpellCastStartedNow(
-                            currentCaster,
-                            pendingStart.Spell,
-                            pendingStart.CastID,
-                            pendingStart.HasWorldPositionTarget,
-                            pendingStart.WorldPositionTarget);
-                        break;
-                    case SpellMutationKind.Interrupt:
-                        if (TryTakePendingInterrupt(mutation, out SpellMutation pendingInterrupt))
-                            CompleteDeferredInterrupt(pendingInterrupt);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(mutation.Kind), mutation.Kind, "Unknown spell mutation kind.");
+                            OnSpellCastStartedNow(
+                                currentCaster,
+                                pendingStart.Spell,
+                                pendingStart.CastID,
+                                pendingStart.HasWorldPositionTarget,
+                                pendingStart.WorldPositionTarget);
+                            break;
+                        case SpellMutationKind.Interrupt:
+                            if (TryTakePendingInterrupt(mutation, out SpellMutation pendingInterrupt))
+                                CompleteDeferredInterrupt(pendingInterrupt);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(mutation.Kind), mutation.Kind, "Unknown spell mutation kind.");
+                    }
                 }
+            }
+            finally
+            {
+                _commitSnapshot.Clear();
             }
         }
 
@@ -245,13 +243,6 @@ namespace Game.Server.Core
                         $"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' which requires a target, but no target was selected.");
                     return false;
                 }
-                if (!ServerActorManager.IsInitialized
-                    || ServerActorManager.Instance == null)
-                {
-                    throw new InvalidOperationException(
-                        "Targeted spell range validation requires initialized server actor manager.");
-                }
-
                 if (!ServerActorManager.Instance.TryGetActor(caster.Target.ID, out Actor currentTarget)
                     || !ReferenceEquals(currentTarget, caster.Target))
                 {
@@ -262,9 +253,7 @@ namespace Game.Server.Core
 
                 ActorSpatialContext casterContext = caster.SpatialContext;
                 ActorSpatialContext targetContext = caster.Target.SpatialContext;
-                if (!casterContext.IsValid
-                    || !targetContext.IsValid
-                    || !casterContext.IsCompatibleWith(targetContext))
+                if (!casterContext.IsCompatibleWith(targetContext))
                 {
                     Debug.Warning(
                         $"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' on a target in an incompatible spatial context.");
@@ -310,19 +299,8 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     "Spell target resolution requires a complete spell context and target definition.");
             }
-            if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
-            {
-                throw new InvalidOperationException(
-                    "Spell target resolution requires initialized server actor manager.");
-            }
-
             Actor caster = context.Caster;
             ActorSpatialContext spatialContext = caster.SpatialContext;
-            if (!spatialContext.IsValid)
-            {
-                throw new InvalidOperationException(
-                    $"Spell caster '{caster.ID}' has an invalid spatial context.");
-            }
 
             WorldPosition ResolveAcceptedPosition(Guid actorID)
             {
@@ -347,7 +325,7 @@ namespace Game.Server.Core
                 }
 
                 ActorSpatialContext targetContext = target.SpatialContext;
-                if (targetContext.IsValid && spatialContext.IsCompatibleWith(targetContext))
+                if (spatialContext.IsCompatibleWith(targetContext))
                     results.Add(target);
 
                 return results;
@@ -411,8 +389,7 @@ namespace Game.Server.Core
                         throw new InvalidOperationException(
                             $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
                     }
-                    if (!candidate.SpatialContext.IsValid
-                        || !spatialContext.IsCompatibleWith(candidate.SpatialContext))
+                    if (!spatialContext.IsCompatibleWith(candidate.SpatialContext))
                     {
                         throw new InvalidOperationException(
                             $"Spatial index returned actor '{candidateID}' from an incompatible context.");
@@ -482,8 +459,7 @@ namespace Game.Server.Core
                         throw new InvalidOperationException(
                             $"Spatial index returned actor '{candidateID}', but no live actor mapping exists.");
                     }
-                    if (!candidate.SpatialContext.IsValid
-                        || !spatialContext.IsCompatibleWith(candidate.SpatialContext))
+                    if (!spatialContext.IsCompatibleWith(candidate.SpatialContext))
                     {
                         throw new InvalidOperationException(
                             $"Spatial index returned actor '{candidateID}' from an incompatible context.");
@@ -545,139 +521,115 @@ namespace Game.Server.Core
                 return false;
             }
 
-            if (hasWorldPositionTarget && !worldPositionTarget.IsFinite)
-            {
-                Debug.Warning($"Actor {caster.Name} attempted to cast '{spell.BaseDefinition.DefinitionID}' with a non-finite ground target.");
-                return false;
-            }
-
             if (requiresWorldPositionTarget)
             {
-                if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null)
-                    throw new InvalidOperationException("Ground spell range validation requires initialized server actor manager.");
-                if (!caster.SpatialContext.IsValid)
-                    throw new InvalidOperationException($"Ground spell caster {caster.ID} has no valid authoritative spatial context.");
                 if (!IsGroundTargetInRange(caster, spell, worldPositionTarget))
                     return false;
             }
 
             if (!IsValidated(caster, spell)) return false;
 
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            try
+            if (!TryFindActorEntity(caster.ID, out Entity entity))
             {
-                foreach (var entity in entities)
+                Debug.Warning($"Could not find ECS entity for actor {caster.Name} (ID: {caster.ID})");
+                return false;
+            }
+
+            // Create the spell context here.
+            SpellContext ctx = new(spell, caster, caster.Target);
+            if (hasWorldPositionTarget)
+            {
+                ctx.HasWorldPositionTarget = true;
+                ctx.WorldPositionTarget = worldPositionTarget;
+                ctx.PositionTarget = ServerPhysicsManager.Instance.ToPhysicalPosition(worldPositionTarget);
+            }
+            long castID = requestedCastID > 0 ? requestedCastID : checked(++_nextCastID);
+            InvalidateActiveCast(caster.ID);
+            _activeSpellCasts[caster.ID] = ctx;
+            _activeCastIDs[caster.ID] = castID;
+
+            // Skip ECS and event invocation if the cast time is 0 or less
+            // - just complete the cast immediately.
+            if (ctx.IsInstantCast())
+            {
+                _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
                 {
-                    var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (component.ActorID != caster.ID) continue;
+                    SpellID = spell.BaseDefinition.DefinitionID,
+                    CastID = castID,
+                    CompletionTickID = 0,
+                    RemainingCastTime = 0f,
+                    TotalCastTime = 0f,
+                    TotalTicks = 0f,
+                    TimeSinceLastTick = 0f
+                });
+                _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
 
-                    // Create the spell context here.
-                    SpellContext ctx = new(spell, caster, caster.Target);
-                    if (hasWorldPositionTarget)
-                    {
-                        if (!ServerPhysicsManager.IsInitialized || ServerPhysicsManager.Instance == null)
-                            throw new InvalidOperationException("Ground spell context creation requires initialized server physics manager.");
+                // Trigger GCD for instant casts.
+                if (spell.BaseDefinition.TriggersGCD)
+                    ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
 
-                        ctx.HasWorldPositionTarget = true;
-                        ctx.WorldPositionTarget = worldPositionTarget;
-                        ctx.PositionTarget = ServerPhysicsManager.Instance.ToPhysicalPosition(worldPositionTarget);
-                    }
-                    long castID = requestedCastID > 0 ? requestedCastID : checked(++_nextCastID);
-                    InvalidateActiveCast(caster.ID);
-                    _activeSpellCasts[caster.ID] = ctx;
-                    _activeCastIDs[caster.ID] = castID;
-
-                    // Skip ECS and event invocation if the cast time is 0 or less 
-                    // - just complete the cast immediately.
-                    if (ctx.IsInstantCast())
-                    {
-                        _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
-                        {
-                            SpellID = spell.BaseDefinition.DefinitionID,
-                            CastID = castID,
-                            CompletionTickID = 0,
-                            RemainingCastTime = 0f,
-                            TotalCastTime = 0f,
-                            TotalTicks = 0f,
-                            TimeSinceLastTick = 0f
-                        });
-                        _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
-
-                        // Trigger GCD for instant casts.
-                        if (spell.BaseDefinition.TriggersGCD)
-                            ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
-
-                        // Instant cast - skip straight to completion.
-                        CompleteCastNow(caster.ID, spell.BaseDefinition.DefinitionID, castID, ctx);
-                        return true;
-                    }
-                    else
-                    {
-                        _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
-                        {
-                            SpellID = spell.BaseDefinition.DefinitionID,
-                            CastID = castID,
-                            CompletionTickID = 0,
-                            RemainingCastTime = spell.CastTime,
-                            TotalCastTime = spell.CastTime,
-                            TotalTicks = spell.TotalTicks,
-                            TimeSinceLastTick = 0f
-
-                        });
-                        _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, true);
-
-                        caster.GetComponent<ActorSpellcaster>()
-                              ?.Observers_StartSpellCast(spell.BaseDefinition.DefinitionID, spell.CastTime);
-
-                        Debug.Log($"Spell cast started: {caster.Name} casting '{spell.BaseDefinition.DisplayName}' ({spell.CastTime}s)");
-                    }
-
-                    // Trigger GCD for casted spells (at cast start).
-                    if (spell.BaseDefinition.TriggersGCD)
-                    {
-                        ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
-
-                        if (caster.Owner != null)
-                            caster.GetComponent<ActorSpellcaster>()?.Client_StartGlobalCooldown(caster.Owner.Value, GameConfigurationManager.Config.GlobalCooldownDuration);
-                    }
-
-                    // Channelled spells start their individual cooldown immediately.
-                    if (spell.BaseDefinition.IsChanneled && spell.Cooldown > 0f)
-                    {
-                        ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, spell.BaseDefinition.DefinitionID, spell.Cooldown);
-
-                        if (caster.Owner != null)
-                            caster.GetComponent<ActorSpellcaster>()?.Client_StartSpellCooldown(caster.Owner.Value, spell.BaseDefinition.DefinitionID, spell.Cooldown);
-                    }
-
-                    // Apply resource costs here.
-                    var statContainer = caster.GetComponent<ActorStatContainer>();
-                    foreach (var cost in spell.BaseDefinition.BaseResourceCosts)
-                    {
-                        if (cost.CastPhase != SpellCastPhase.OnCastStart) continue;
-
-                        var stat = statContainer.GetStat(cost.ResourceType.DefinitionID);
-                        float newCurrent = Mathf.Max(0f, stat.CurrentValue - cost.Amount);
-                        statContainer.SetStat(cost.ResourceType.DefinitionID, new StatInstance(
-                            stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
-                            stat.EffectiveMaximum, newCurrent));
-
-                        if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
-                            statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
-                        else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
-                            statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
-                    }
-
-                    return true;
-                }
+                // Instant cast - skip straight to completion.
+                CompleteCastNow(caster.ID, spell.BaseDefinition.DefinitionID, castID, ctx);
+                return true;
             }
-            finally
+            else
             {
-                entities.Dispose();
+                _entityManager.SetComponentData(entity, new Systems.SpellCastComponent
+                {
+                    SpellID = spell.BaseDefinition.DefinitionID,
+                    CastID = castID,
+                    CompletionTickID = 0,
+                    RemainingCastTime = spell.CastTime,
+                    TotalCastTime = spell.CastTime,
+                    TotalTicks = spell.TotalTicks,
+                    TimeSinceLastTick = 0f
+
+                });
+                _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, true);
+
+                caster.GetComponent<ActorSpellcaster>()
+                      ?.Observers_StartSpellCast(spell.BaseDefinition.DefinitionID, spell.CastTime);
+
+                Debug.Log($"Spell cast started: {caster.Name} casting '{spell.BaseDefinition.DisplayName}' ({spell.CastTime}s)");
             }
 
-            Debug.Warning($"Could not find ECS entity for actor {caster.Name} (ID: {caster.ID})");
-            return false;
+            // Trigger GCD for casted spells (at cast start).
+            if (spell.BaseDefinition.TriggersGCD)
+            {
+                ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
+
+                if (caster.Owner != null)
+                    caster.GetComponent<ActorSpellcaster>()?.Client_StartGlobalCooldown(caster.Owner.Value, GameConfigurationManager.Config.GlobalCooldownDuration);
+            }
+
+            // Channelled spells start their individual cooldown immediately.
+            if (spell.BaseDefinition.IsChanneled && spell.Cooldown > 0f)
+            {
+                ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, spell.BaseDefinition.DefinitionID, spell.Cooldown);
+
+                if (caster.Owner != null)
+                    caster.GetComponent<ActorSpellcaster>()?.Client_StartSpellCooldown(caster.Owner.Value, spell.BaseDefinition.DefinitionID, spell.Cooldown);
+            }
+
+            // Apply resource costs here.
+            var statContainer = caster.GetComponent<ActorStatContainer>();
+            foreach (var cost in spell.BaseDefinition.BaseResourceCosts)
+            {
+                if (cost.CastPhase != SpellCastPhase.OnCastStart) continue;
+
+                var stat = statContainer.GetStat(cost.ResourceType.DefinitionID);
+                float newCurrent = Mathf.Max(0f, stat.CurrentValue - cost.Amount);
+                statContainer.SetStat(cost.ResourceType.DefinitionID, new StatInstance(
+                    stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
+                    stat.EffectiveMaximum, newCurrent));
+
+                if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
+                    statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
+                    statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+            }
+
+            return true;
         }
 
         private static bool IsGroundTargetInRange(Actor caster, SpellOverride spell, WorldPosition targetPosition)
@@ -765,9 +717,6 @@ namespace Game.Server.Core
         {
             if (action == null)
                 return;
-
-            if (!ServerSimulationClock.IsRunning)
-                throw new InvalidOperationException("Delayed spell actions require a running server simulation clock.");
 
             float tickDuration = GameConfigurationManager.Config.ServerSimulationTickDuration;
             if (float.IsNaN(delay) || float.IsInfinity(delay) || delay < 0f)
@@ -1172,15 +1121,17 @@ namespace Game.Server.Core
                 return false;
 
             bool cancelled = false;
-            long[] pendingIDSnapshot = pendingIDs.ToArray();
-            foreach (long castID in pendingIDSnapshot)
+            for (int i = pendingIDs.Count - 1; i >= 0; i--)
             {
-                if (!_pendingStarts.ContainsKey(castID))
+                long castID = pendingIDs[i];
+                if (!_pendingStarts.Remove(castID))
                     continue;
 
-                RemovePendingStart(castID);
+                pendingIDs.RemoveAt(i);
                 cancelled = true;
             }
+
+            _pendingStartIDsByActor.Remove(actorID);
 
             return cancelled;
         }
@@ -1211,51 +1162,21 @@ namespace Game.Server.Core
 
         private void DisableCastComponent(Guid actorID, long castID)
         {
-            if (castID <= 0)
+            if (castID <= 0
+                || !TryFindActorEntity(actorID, out Entity entity))
                 return;
 
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            try
+            Systems.SpellCastComponent component =
+                _entityManager.GetComponentData<Systems.SpellCastComponent>(entity);
+            if (component.CastID == castID)
             {
-                foreach (var entity in entities)
-                {
-                    var actor = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
-                    if (actor.ActorID != actorID)
-                        continue;
-
-                    var component = _entityManager.GetComponentData<Systems.SpellCastComponent>(entity);
-                    if (component.CastID == castID)
-                        _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
-                    break;
-                }
-            }
-            finally
-            {
-                entities.Dispose();
+                _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, false);
             }
         }
 
-        private bool TryFindActorEntity(Guid actorID, out Entity actorEntity)
+        private static bool TryFindActorEntity(Guid actorID, out Entity actorEntity)
         {
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            try
-            {
-                foreach (var entity in entities)
-                {
-                    if (_entityManager.GetComponentData<Systems.ActorComponent>(entity).ActorID != actorID)
-                        continue;
-
-                    actorEntity = entity;
-                    return true;
-                }
-            }
-            finally
-            {
-                entities.Dispose();
-            }
-
-            actorEntity = Entity.Null;
-            return false;
+            return ServerActorManager.Instance.TryGetActorEntity(actorID, out actorEntity);
         }
 
         private void QueueCompletionForNextBoundary(Guid actorID, string spellID, long castID, Entity sourceEntity)
@@ -1289,17 +1210,8 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     "Single-target continuation range validation requires a complete spell context.");
             }
-            if (!ServerActorManager.IsInitialized
-                || ServerActorManager.Instance == null)
-            {
-                throw new InvalidOperationException(
-                    "Single-target continuation range validation requires initialized server actor manager.");
-            }
-
             if (!ServerActorManager.Instance.TryGetActor(context.ActorTarget.ID, out Actor currentTarget)
                 || !ReferenceEquals(currentTarget, context.ActorTarget)
-                || !context.Caster.SpatialContext.IsValid
-                || !context.ActorTarget.SpatialContext.IsValid
                 || !context.Caster.SpatialContext.IsCompatibleWith(context.ActorTarget.SpatialContext))
             {
                 ActorEndpoint.onServerSpellCastInterrupted?.Invoke(

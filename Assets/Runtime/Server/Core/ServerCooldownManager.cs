@@ -14,9 +14,8 @@ namespace Game.Server.Core
         private static ServerCooldownManager _instance;
         /// <summary>Gets the active server cooldown manager.</summary>
         public static ServerCooldownManager Instance => _instance;
-        private static bool _initialized;
         /// <summary>Gets whether the cooldown manager is initialized.</summary>
-        public static bool IsInitialized => _initialized;
+        public static bool IsInitialized => _instance != null;
 
         /// <summary>The identifier used for the global cooldown.</summary>
         public const string GCD_ID = "GCD";
@@ -24,7 +23,7 @@ namespace Game.Server.Core
         private EntityManager _entityManager;
         private readonly ServerSimulationMutationQueue<CooldownMutation> _pendingMutations = new();
         private readonly Dictionary<(Guid ActorID, string SpellID), float> _pendingCooldowns = new();
-        private CooldownMutation[] _commitSnapshot;
+        private readonly List<CooldownMutation> _commitSnapshot = new();
 
         private readonly struct CooldownMutation
         {
@@ -42,45 +41,47 @@ namespace Game.Server.Core
 
         private void Awake()
         {
-            if (_instance != null && _instance != this)
-            {
-                Debug.Error("Multiple instances of ServerCooldownManager detected! Destroying duplicate.");
-                Destroy(this);
-                return;
-            }
-            _instance = this;
+            if (_instance != null)
+                throw new InvalidOperationException("ServerCooldownManager is already initialized.");
 
             var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
 
             ActorEndpoint.onServerStartCooldown += StartCooldown;
 
-            _initialized = true;
+            _instance = this;
         }
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
             ActorEndpoint.onServerStartCooldown -= StartCooldown;
 
             _pendingMutations.Clear();
             _pendingCooldowns.Clear();
-            _commitSnapshot = null;
+            _commitSnapshot.Clear();
             _instance = null;
-            _initialized = false;
         }
 
         internal void PreparePendingMutations()
         {
-            _commitSnapshot = _pendingMutations.TakeSnapshot();
+            _pendingMutations.TakeSnapshot(_commitSnapshot);
             _pendingCooldowns.Clear();
         }
 
         internal void CommitPendingMutations()
         {
-            CooldownMutation[] mutations = _commitSnapshot ?? _pendingMutations.TakeSnapshot();
-            _commitSnapshot = null;
-            foreach (CooldownMutation mutation in mutations)
-                StartCooldownNow(mutation.ActorID, mutation.SpellID, mutation.Duration);
+            try
+            {
+                foreach (CooldownMutation mutation in _commitSnapshot)
+                    StartCooldownNow(mutation.ActorID, mutation.SpellID, mutation.Duration);
+            }
+            finally
+            {
+                _commitSnapshot.Clear();
+            }
         }
 
         /// <summary>Starts or refreshes a cooldown for an actor.</summary>
@@ -89,6 +90,15 @@ namespace Game.Server.Core
         /// <param name="duration">The cooldown duration in seconds.</param>
         public void StartCooldown(Guid actorID, string spellID, float duration)
         {
+            if (string.IsNullOrWhiteSpace(spellID))
+                throw new ArgumentException("A cooldown identifier is required.", nameof(spellID));
+            if (float.IsNaN(duration) || float.IsInfinity(duration) || duration <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(duration),
+                    "A cooldown duration must be finite and strictly positive.");
+            }
+
             if (ServerECSManager.IsMutationBoundaryActive)
             {
                 if (!TryGetAuthoritativeActorEntity(actorID, out _))
@@ -171,17 +181,7 @@ namespace Game.Server.Core
 
         private bool TryGetAuthoritativeActorEntity(Guid actorID, out Entity entity)
         {
-            if (ServerActorManager.Instance == null
-                || !ServerActorManager.Instance.TryGetActorEntity(actorID, out entity)
-                || !_entityManager.Exists(entity)
-                || !_entityManager.HasComponent<Systems.ActorComponent>(entity)
-                || !_entityManager.HasBuffer<Systems.CooldownElement>(entity))
-            {
-                entity = Entity.Null;
-                return false;
-            }
-
-            return _entityManager.GetComponentData<Systems.ActorComponent>(entity).ActorID == actorID;
+            return ServerActorManager.Instance.TryGetActorEntity(actorID, out entity);
         }
     }
 }

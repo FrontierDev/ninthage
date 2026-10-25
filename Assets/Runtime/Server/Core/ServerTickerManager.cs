@@ -4,7 +4,6 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using System;
 using System.Collections.Generic;
-using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
@@ -16,19 +15,17 @@ namespace Game.Server.Core
         private static ServerTickerManager _instance;
         /// <summary>Gets the active server ticker manager.</summary>
         public static ServerTickerManager Instance => _instance;
-        private static bool _initialized;
         /// <summary>Gets whether the ticker manager is initialized.</summary>
-        public static bool IsInitialized => _initialized;
+        public static bool IsInitialized => _instance != null;
 
         private EntityManager _entityManager;
-        private EntityQuery _actorComponentQuery;
 
         private readonly Dictionary<int, TickerRegistration> _tickers = new();
         private readonly Dictionary<(Guid, string), int> _tagIndex = new();
         private readonly Dictionary<Guid, List<int>> _actorTickerIDs = new();
         private readonly HashSet<int> _pendingTickerIDs = new();
         private readonly ServerSimulationMutationQueue<TickerMutation> _pendingMutations = new();
-        private TickerMutation[] _commitSnapshot;
+        private readonly List<TickerMutation> _commitSnapshot = new();
         private int _nextTickerID;
 
         private struct TickerRegistration
@@ -65,17 +62,11 @@ namespace Game.Server.Core
 
         private void Awake()
         {
-            if (_instance != null && _instance != this)
-            {
-                Debug.Error("Multiple instances of ServerTickerManager detected! Destroying duplicate.");
-                Destroy(this);
-                return;
-            }
-            _instance = this;
+            if (_instance != null)
+                throw new InvalidOperationException("ServerTickerManager is already initialized.");
 
             var world = ServerECSManager.DefaultWorld;
             _entityManager = world.EntityManager;
-            _actorComponentQuery = _entityManager.CreateEntityQuery(typeof(Systems.ActorComponent));
 
             ActorEndpoint.onServerActorTick += OnActorTick;
             ActorEndpoint.onServerActorTickerExpired += OnActorTickerExpired;
@@ -83,11 +74,14 @@ namespace Game.Server.Core
             ActorEndpoint.onServerRemoveTickerByTag += OnRemoveTickerByTagRequest;
             ActorEndpoint.onServerActorDespawned += OnActorDespawned;
 
-            _initialized = true;
+            _instance = this;
         }
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
             ActorEndpoint.onServerActorTick -= OnActorTick;
             ActorEndpoint.onServerActorTickerExpired -= OnActorTickerExpired;
             ActorEndpoint.onServerAddTicker -= OnAddTickerRequest;
@@ -99,53 +93,57 @@ namespace Game.Server.Core
             _actorTickerIDs.Clear();
             _pendingTickerIDs.Clear();
             _pendingMutations.Clear();
-            _commitSnapshot = null;
+            _commitSnapshot.Clear();
             _instance = null;
-            _initialized = false;
         }
 
         internal void PreparePendingMutations()
         {
-            _commitSnapshot = _pendingMutations.TakeSnapshot();
+            _pendingMutations.TakeSnapshot(_commitSnapshot);
         }
 
         internal void CommitPendingMutations()
         {
-            TickerMutation[] mutations = _commitSnapshot ?? _pendingMutations.TakeSnapshot();
-            _commitSnapshot = null;
-            foreach (TickerMutation mutation in mutations)
+            try
             {
-                switch (mutation.Kind)
+                foreach (TickerMutation mutation in _commitSnapshot)
                 {
-                    case TickerMutationKind.Add:
-                        if (!_pendingTickerIDs.Remove(mutation.TickerID)
-                            || !_tickers.TryGetValue(mutation.TickerID, out var registration)
-                            || registration.ActorID != mutation.ActorID)
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (!TryAddTickerNow(mutation.ActorID, mutation.TickerID))
+                    switch (mutation.Kind)
+                    {
+                        case TickerMutationKind.Add:
+                            if (!_pendingTickerIDs.Remove(mutation.TickerID)
+                                || !_tickers.TryGetValue(mutation.TickerID, out var registration)
+                                || registration.ActorID != mutation.ActorID)
                             {
-                                Debug.Warning($"Discarding ticker {mutation.TickerID} for retired actor {mutation.ActorID}.");
-                                RemoveRegistration(mutation.TickerID);
                                 continue;
                             }
-                        }
-                        catch
-                        {
-                            RemoveRegistration(mutation.TickerID);
-                            throw;
-                        }
-                        break;
-                    case TickerMutationKind.Remove:
-                        RemoveTickerNow(mutation.ActorID, mutation.TickerID);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(mutation.Kind), mutation.Kind, "Unknown ticker mutation kind.");
+
+                            try
+                            {
+                                if (!TryAddTickerNow(mutation.ActorID, mutation.TickerID))
+                                {
+                                    Debug.Warning($"Discarding ticker {mutation.TickerID} for retired actor {mutation.ActorID}.");
+                                    RemoveRegistration(mutation.TickerID);
+                                    continue;
+                                }
+                            }
+                            catch
+                            {
+                                RemoveRegistration(mutation.TickerID);
+                                throw;
+                            }
+                            break;
+                        case TickerMutationKind.Remove:
+                            RemoveTickerNow(mutation.ActorID, mutation.TickerID);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(mutation.Kind), mutation.Kind, "Unknown ticker mutation kind.");
+                    }
                 }
+            }
+            finally
+            {
+                _commitSnapshot.Clear();
             }
         }
 
@@ -162,7 +160,7 @@ namespace Game.Server.Core
         public int AddTicker(Actor actor, float tickInterval, float duration = float.MaxValue,
             Action<Actor> onTick = null, Action<Actor> onExpire = null, string tag = null)
         {
-            if (actor == null || !TryFindActorEntity(actor.ID, out _))
+            if (actor == null || !TryFindActorEntity(actor.ID, out Entity actorEntity))
             {
                 if (actor != null)
                     Debug.Warning($"Could not find ECS entity for actor {actor.Name} (ID: {actor.ID})");
@@ -213,12 +211,15 @@ namespace Game.Server.Core
 
             try
             {
-                if (!TryAddTickerNow(actor.ID, tickerID))
+                if (!_tickers.TryGetValue(tickerID, out var registration)
+                    || registration.ActorID != actor.ID)
                 {
                     RemoveRegistration(tickerID);
                     Debug.Warning($"Could not add ticker {tickerID} to actor {actor.Name} (ID: {actor.ID})");
                     return -1;
                 }
+
+                AddTickerToEntity(actorEntity, tickerID, registration);
             }
             catch
             {
@@ -233,12 +234,20 @@ namespace Game.Server.Core
         {
             if (!_tickers.TryGetValue(tickerID, out var registration)
                 || registration.ActorID != actorID
-                || !TryFindActorEntity(actorID, out var entity)
-                || !_entityManager.HasBuffer<Systems.TickerElement>(entity))
+                || !TryFindActorEntity(actorID, out Entity entity))
             {
                 return false;
             }
 
+            AddTickerToEntity(entity, tickerID, registration);
+            return true;
+        }
+
+        private void AddTickerToEntity(
+            Entity entity,
+            int tickerID,
+            TickerRegistration registration)
+        {
             long firstProgressTickID = GetFirstTickerProgressTickID();
             long expiryTickID = registration.DurationTicks == 0
                 ? 0
@@ -257,13 +266,11 @@ namespace Game.Server.Core
                 NextTickID = nextTickID,
                 TickIntervalTicks = registration.TickIntervalTicks
             });
-            return true;
         }
 
         private void RemoveTickerNow(Guid actorID, int tickerID)
         {
-            if (TryFindActorEntity(actorID, out var entity)
-                && _entityManager.HasBuffer<Systems.TickerElement>(entity))
+            if (TryFindActorEntity(actorID, out var entity))
             {
                 var buffer = _entityManager.GetBuffer<Systems.TickerElement>(entity);
                 for (int i = buffer.Length - 1; i >= 0; i--)
@@ -286,12 +293,8 @@ namespace Game.Server.Core
             if (!_tickers.Remove(tickerID, out var registration))
                 return;
 
-            if (registration.Tag != null
-                && _tagIndex.TryGetValue((registration.ActorID, registration.Tag), out int indexedTickerID)
-                && indexedTickerID == tickerID)
-            {
+            if (registration.Tag != null)
                 _tagIndex.Remove((registration.ActorID, registration.Tag));
-            }
             if (_actorTickerIDs.TryGetValue(registration.ActorID, out var list))
             {
                 list.Remove(tickerID);
@@ -300,27 +303,9 @@ namespace Game.Server.Core
             }
         }
 
-        private bool TryFindActorEntity(Guid actorID, out Entity actorEntity)
+        private static bool TryFindActorEntity(Guid actorID, out Entity actorEntity)
         {
-            var entities = _actorComponentQuery.ToEntityArray(Allocator.Temp);
-            try
-            {
-                foreach (var entity in entities)
-                {
-                    if (_entityManager.GetComponentData<Systems.ActorComponent>(entity).ActorID != actorID)
-                        continue;
-
-                    actorEntity = entity;
-                    return true;
-                }
-            }
-            finally
-            {
-                entities.Dispose();
-            }
-
-            actorEntity = Entity.Null;
-            return false;
+            return ServerActorManager.Instance.TryGetActorEntity(actorID, out actorEntity);
         }
 
         /// <summary>Removes a ticker from an actor.</summary>
@@ -363,10 +348,7 @@ namespace Game.Server.Core
         /// <returns><see langword="true"/> when a matching ticker exists.</returns>
         public bool HasTicker(Guid actorID, string tag)
         {
-            return _tagIndex.TryGetValue((actorID, tag), out int tickerID)
-                && _tickers.TryGetValue(tickerID, out var registration)
-                && registration.ActorID == actorID
-                && registration.Tag == tag;
+            return tag != null && _tagIndex.ContainsKey((actorID, tag));
         }
 
         // ── ECS event handlers ───────────────────────────────────────────────────────
@@ -375,8 +357,7 @@ namespace Game.Server.Core
         {
             if (!_tickers.TryGetValue(tickerID, out var reg) || reg.ActorID != actorID) return;
             if (reg.onTick == null) return;
-            if (ServerActorManager.Instance == null
-                || !ServerActorManager.Instance.TryGetActor(actorID, out var actor)) return;
+            if (!ServerActorManager.Instance.TryGetActor(actorID, out var actor)) return;
 
             reg.onTick(actor);
         }
@@ -388,30 +369,20 @@ namespace Game.Server.Core
             RemoveRegistration(tickerID);
 
             if (reg.onExpire != null
-                && ServerActorManager.Instance != null
                 && ServerActorManager.Instance.TryGetActor(actorID, out var actor))
                 reg.onExpire(actor);
         }
 
         private void OnActorDespawned(Actor actor)
         {
-            if (actor == null)
-                return;
-
-            if (_actorTickerIDs.TryGetValue(actor.ID, out var list))
+            while (_actorTickerIDs.TryGetValue(actor.ID, out List<int> tickerIDs)
+                && tickerIDs.Count > 0)
             {
-                // Copy to avoid modifying the list while iterating.
-                var ids = new List<int>(list);
-                foreach (var tickerID in ids)
-                    RemoveRegistration(tickerID);
+                RemoveRegistration(tickerIDs[tickerIDs.Count - 1]);
             }
-            _actorTickerIDs.Remove(actor.ID);
 
-            if (TryFindActorEntity(actor.ID, out var entity)
-                && _entityManager.HasBuffer<Systems.TickerElement>(entity))
-            {
+            if (TryFindActorEntity(actor.ID, out var entity))
                 _entityManager.GetBuffer<Systems.TickerElement>(entity).Clear();
-            }
         }
 
         private static long GetFirstTickerProgressTickID()
@@ -424,13 +395,7 @@ namespace Game.Server.Core
         }
 
         private static float GetConfiguredSimulationTickDuration()
-        {
-            if (!GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
-                throw new InvalidOperationException("Actor ticker timing requires initialized server simulation configuration.");
-
-            ServerSimulationClock.ValidateConfiguration(GameConfigurationManager.Config);
-            return GameConfigurationManager.Config.ServerSimulationTickDuration;
-        }
+            => GameConfigurationManager.Config.ServerSimulationTickDuration;
 
         private static long GetNonShorteningDurationTicks(float duration, float fixedDeltaTime)
         {
@@ -458,8 +423,6 @@ namespace Game.Server.Core
 
         private static long GetCeilingTickCount(float seconds, float fixedDeltaTime)
         {
-            if (float.IsNaN(fixedDeltaTime) || float.IsInfinity(fixedDeltaTime) || fixedDeltaTime <= 0f)
-                throw new InvalidOperationException("Actor ticker timing requires a finite positive simulation tick duration.");
             double tickCountEstimate = seconds / (double)fixedDeltaTime;
             if (double.IsInfinity(tickCountEstimate) || tickCountEstimate > long.MaxValue)
                 throw new ArgumentOutOfRangeException(

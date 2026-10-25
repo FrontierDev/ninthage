@@ -326,11 +326,11 @@ namespace Game.Server.Core
             _pending.Add(mutation);
         }
 
-        internal T[] TakeSnapshot()
+        internal void TakeSnapshot(List<T> snapshot)
         {
-            T[] snapshot = _pending.ToArray();
+            snapshot.Clear();
+            snapshot.AddRange(_pending);
             _pending.Clear();
-            return snapshot;
         }
 
         internal void Clear()

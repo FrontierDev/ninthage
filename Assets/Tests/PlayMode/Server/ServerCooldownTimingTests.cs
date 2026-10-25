@@ -223,6 +223,40 @@ namespace Game.Runtime.Tests.Server
             yield return null;
         }
 
+        [Test]
+        public void StartCooldownRejectsInvalidInput()
+        {
+            Assert.That(
+                () => _cooldownManager.StartCooldown(_actor.ID, null, 1f),
+                Throws.TypeOf<ArgumentException>());
+            Assert.That(
+                () => _cooldownManager.StartCooldown(_actor.ID, " ", 1f),
+                Throws.TypeOf<ArgumentException>());
+            Assert.That(
+                () => _cooldownManager.StartCooldown(_actor.ID, "invalid-zero", 0f),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(
+                () => _cooldownManager.StartCooldown(_actor.ID, "invalid-negative", -1f),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(
+                () => _cooldownManager.StartCooldown(_actor.ID, "invalid-nan", float.NaN),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(
+                () => _cooldownManager.StartCooldown(
+                    _actor.ID,
+                    "invalid-positive-infinity",
+                    float.PositiveInfinity),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+            Assert.That(
+                () => _cooldownManager.StartCooldown(
+                    _actor.ID,
+                    "invalid-negative-infinity",
+                    float.NegativeInfinity),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+
+            Assert.That(GetCooldownBufferCount(GetActorEntity(_actor)), Is.EqualTo(0));
+        }
+
         private static GameObject CreateActor(string objectName, Guid actorID, string actorName, out Actor actor)
         {
             var actorObject = new GameObject(objectName);
