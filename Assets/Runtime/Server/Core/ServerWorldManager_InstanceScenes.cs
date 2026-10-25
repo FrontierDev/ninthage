@@ -53,12 +53,8 @@ namespace Game.Server.Core
             string address,
             Action<bool, SceneID> onCompleted)
         {
-            if (!context.IsValid || !_transferRuntimes.ContainsKey(context))
+            if (!_transferRuntimes.ContainsKey(context))
                 throw new ArgumentException("A registered transfer runtime context is required.", nameof(context));
-            if (string.IsNullOrWhiteSpace(address))
-                throw new ArgumentException("A non-empty instance scene address is required.", nameof(address));
-            if (onCompleted == null)
-                throw new ArgumentNullException(nameof(onCompleted));
 
             var key = new InstanceSceneKey(context, address);
             if (_loadedInstanceScenes.TryGetValue(key, out SceneID loadedSceneID))
@@ -130,7 +126,6 @@ namespace Game.Server.Core
                 CompleteInstanceSceneLoad(key, requestedSceneID, false);
                 string reason = completedHandle.OperationException?.Message ?? "no exception details were provided";
                 Debug.Error($"[TransferInstanceScene] Addressables failed to load '{address}' for {context}: {reason}");
-                UnsubscribeLoadHandlers();
             }
 
             _pendingInstanceSceneLoadCleanup[key] = UnsubscribeLoadHandlers;
@@ -140,7 +135,6 @@ namespace Game.Server.Core
             }
             catch (Exception exception)
             {
-                UnsubscribeLoadHandlers();
                 CompleteInstanceSceneLoad(key, requestedSceneID, false);
                 Debug.Error($"[TransferInstanceScene] Load event registration for '{address}' in {context} failed: {exception.Message}");
                 throw;
@@ -159,8 +153,6 @@ namespace Game.Server.Core
         {
             var key = new InstanceSceneKey(context, address);
             if (!_loadedInstanceScenes.TryGetValue(key, out SceneID sceneID))
-                return;
-            if (_unloadingInstanceScenes.ContainsKey(sceneID))
                 return;
 
             _loadedInstanceScenes.Remove(key);

@@ -25,6 +25,7 @@ namespace Game.Server.Core
         private readonly Dictionary<SceneID, WorldChunkKey> _pendingUnloadOwners = new();
         private readonly Dictionary<WorldChunkKey, Action> _pendingLoadCleanup = new();
         private readonly HashSet<SceneID> _scenesAwaitingUnload = new();
+        private readonly List<SceneID> _sceneUnloadRetryBuffer = new();
         private Dictionary<WorldChunkKey, long> _pendingLoadTimestamps;
         private Dictionary<SceneID, long> _pendingUnloadTimestamps;
 
@@ -32,27 +33,33 @@ namespace Game.Server.Core
         {
             // PurrNet registers completed Addressables scene handles after its scene callbacks.
             // Defer failure cleanup until LateUpdate so UnloadSceneAsync uses that owned handle.
-            if (_scenesAwaitingUnload.Count == 0
-                || _networkManager == null
-                || _networkManager.sceneModule == null)
+            if (_scenesAwaitingUnload.Count == 0)
                 return;
 
-            var sceneIDs = new List<SceneID>(_scenesAwaitingUnload);
-            foreach (SceneID sceneID in sceneIDs)
+            _sceneUnloadRetryBuffer.Clear();
+            try
             {
-                if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out _))
-                    continue;
+                _sceneUnloadRetryBuffer.AddRange(_scenesAwaitingUnload);
+                foreach (SceneID sceneID in _sceneUnloadRetryBuffer)
+                {
+                    if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out _))
+                        continue;
 
-                try
-                {
-                    _networkManager.sceneModule.UnloadSceneAsync(sceneID);
-                    _scenesAwaitingUnload.Remove(sceneID);
+                    try
+                    {
+                        _networkManager.sceneModule.UnloadSceneAsync(sceneID);
+                        _scenesAwaitingUnload.Remove(sceneID);
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.Error(
+                            $"Failed to unload cleanup scene {sceneID}: {exception.Message}\n{exception.StackTrace}");
+                    }
                 }
-                catch (Exception exception)
-                {
-                    Debug.Error(
-                        $"Failed to unload cleanup scene {sceneID}: {exception.Message}\n{exception.StackTrace}");
-                }
+            }
+            finally
+            {
+                _sceneUnloadRetryBuffer.Clear();
             }
         }
 
@@ -153,8 +160,7 @@ namespace Game.Server.Core
                     chunkKey,
                     default,
                     false,
-                    $"Chunk load threw before PurrNet could assign a scene ID for {chunkKey}: {exception.Message}",
-                    null);
+                    $"Chunk load threw before PurrNet could assign a scene ID for {chunkKey}: {exception.Message}");
                 throw;
             }
 
@@ -164,8 +170,7 @@ namespace Game.Server.Core
                     chunkKey,
                     default,
                     false,
-                    $"Chunk load returned an invalid Addressables handle for {chunkKey}.",
-                    null);
+                    $"Chunk load returned an invalid Addressables handle for {chunkKey}.");
                 throw new InvalidOperationException($"PurrNet returned an invalid load handle for world scene '{address}'.");
             }
 
@@ -176,14 +181,13 @@ namespace Game.Server.Core
                     chunkKey,
                     default,
                     false,
-                    $"PurrNet did not assign a scene ID while loading chunk {chunkKey}.",
-                    null);
+                    $"PurrNet did not assign a scene ID while loading chunk {chunkKey}.");
                 throw new InvalidOperationException($"PurrNet did not assign a SceneID for world scene '{address}'.");
             }
             if (!_pendingSceneOwners.TryAdd(requestedSceneID, chunkKey))
             {
                 string errorMessage = $"PurrNet reused SceneID {requestedSceneID} for world scene '{address}'.";
-                CompletePendingChunkLoad(chunkKey, requestedSceneID, false, errorMessage, null);
+                CompletePendingChunkLoad(chunkKey, requestedSceneID, false, errorMessage);
                 throw new InvalidOperationException(errorMessage);
             }
 
@@ -202,8 +206,7 @@ namespace Game.Server.Core
                     chunkKey,
                     requestedSceneID,
                     false,
-                    $"Addressables failed to load chunk {chunkKey}: {exceptionMessage}",
-                    UnsubscribeLoadHandlers);
+                    $"Addressables failed to load chunk {chunkKey}: {exceptionMessage}");
             }
 
             _pendingLoadCleanup[chunkKey] = UnsubscribeLoadHandlers;
@@ -217,8 +220,7 @@ namespace Game.Server.Core
                     chunkKey,
                     requestedSceneID,
                     false,
-                    $"Chunk load event registration failed for {chunkKey}: {exception.Message}",
-                    UnsubscribeLoadHandlers);
+                    $"Chunk load event registration failed for {chunkKey}: {exception.Message}");
                 throw;
             }
         }
@@ -227,13 +229,10 @@ namespace Game.Server.Core
             WorldChunkKey chunkKey,
             SceneID sceneID,
             bool succeeded,
-            string failureMessage,
-            Action unsubscribe)
+            string failureMessage)
         {
             if (_pendingLoadCleanup.Remove(chunkKey, out var registeredCleanup))
                 registeredCleanup?.Invoke();
-            else if (unsubscribe != null && _pendingLoads.ContainsKey(chunkKey))
-                unsubscribe?.Invoke();
 
             if (sceneID != default
                 && _pendingSceneOwners.TryGetValue(sceneID, out WorldChunkKey owner)
@@ -275,13 +274,6 @@ namespace Game.Server.Core
             {
                 throw new InvalidOperationException(
                     $"World chunk {chunkKey} already has a pending unload for SceneID {sceneID}.");
-            }
-
-            if (!ServerPhysicsManager.IsInitialized
-                || ServerPhysicsManager.Instance == null)
-            {
-                throw new InvalidOperationException(
-                    "World chunk unload requires an initialized server physics manager.");
             }
 
             ServerPhysicsManager.Instance.PrepareEnvironmentNavigationUnload(chunkKey);
@@ -338,9 +330,6 @@ namespace Game.Server.Core
                 throw;
             }
             RecordPendingSceneOperations();
-            if (!_networkManager.sceneModule.TryGetSceneState(sceneID, out var sceneState)) return;
-            string sceneName = sceneState.scene.name;
-            Debug.Log($"Unloaded chunk {chunkCoord} (no remaining subscribers).");
         }
 
         private bool IsChunkUnloading(WorldChunkKey chunkKey)

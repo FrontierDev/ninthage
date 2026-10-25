@@ -34,19 +34,17 @@ namespace Game.Server.Core
         private sealed class PlayerInterestState
         {
             public ActorSpatialContext Context { get; }
+            public Vector2Int CenterChunk { get; }
             public HashSet<string> SceneNames { get; }
 
-            public PlayerInterestState(ActorSpatialContext context, HashSet<string> sceneNames)
+            public PlayerInterestState(
+                ActorSpatialContext context,
+                Vector2Int centerChunk,
+                HashSet<string> sceneNames)
             {
-                if (!context.IsValid)
-                    throw new ArgumentException(
-                        "A valid actor spatial context is required.",
-                        nameof(context));
-                if (sceneNames == null)
-                    throw new ArgumentNullException(nameof(sceneNames));
-
                 Context = context;
-                SceneNames = new HashSet<string>(sceneNames, StringComparer.Ordinal);
+                CenterChunk = centerChunk;
+                SceneNames = sceneNames;
             }
         }
 
@@ -76,10 +74,7 @@ namespace Game.Server.Core
         private void Awake()
         {
             if (_instance != null)
-            {
-                Debug.Error("ServerInterestManager is already initialized!");
-                return;
-            }
+                throw new InvalidOperationException("ServerInterestManager is already initialized.");
             _instance = this;
 
             // cache a reference to the network manager.
@@ -94,6 +89,9 @@ namespace Game.Server.Core
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
             Game.Shared.Networking.ActorEndpoint.onServerAcceptedPlayerPositionChanged -=
                 OnServerAcceptedPlayerPositionChanged;
 
@@ -157,13 +155,6 @@ namespace Game.Server.Core
             if (!actor.Owner.HasValue)
                 throw new InvalidOperationException(
                     $"Actor '{actor.ID}' has no player owner for interest management.");
-            if (!actor.SpatialContext.IsValid)
-                throw new InvalidOperationException(
-                    $"Actor '{actor.ID}' has no valid server-owned spatial context.");
-            if (!acceptedPosition.IsFinite)
-                throw new ArgumentException(
-                    "Accepted player position must be finite.",
-                    nameof(acceptedPosition));
 
             PlayerID playerID = actor.Owner.Value;
             Vector2Int centerChunk = acceptedPosition.Chunk;
@@ -171,14 +162,16 @@ namespace Game.Server.Core
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             ActorSpatialContext actorContext = actor.SpatialContext;
 
-            var newSet = GetSceneGrid(centerChunk);
-            bool destinationIsTransferRuntime = ServerWorldManager.Instance.IsTransferRuntime(actorContext);
-
             bool hasOldState = _actorInterest.TryGetValue(actor, out var oldState);
             if (hasOldState
-                && oldState.Context.Equals(actorContext)
-                && oldState.SceneNames.SetEquals(newSet))
+                && oldState.Context == actorContext
+                && oldState.CenterChunk == centerChunk)
+            {
                 return;
+            }
+
+            var newSet = GetSceneGrid(centerChunk);
+            bool destinationIsTransferRuntime = ServerWorldManager.Instance.IsTransferRuntime(actorContext);
 
             var oldSet = hasOldState
                 ? oldState.SceneNames
@@ -235,7 +228,7 @@ namespace Game.Server.Core
                 ApplySameContextSubscriptionChange(actor, actorContext, oldSet, newSet);
             }
 
-            _actorInterest[actor] = new PlayerInterestState(actorContext, newSet);
+            _actorInterest[actor] = new PlayerInterestState(actorContext, centerChunk, newSet);
 
             // Subscribe/unsubscribe chunk scenes for terrain loading.
             ProcessInterestChange(
@@ -263,27 +256,6 @@ namespace Game.Server.Core
             ActorSpatialContext currentContext,
             WorldPosition currentPosition)
         {
-            if (actor == null)
-                throw new ArgumentNullException(nameof(actor));
-            if (!previousContext.IsValid)
-                throw new ArgumentException("A valid previous actor spatial context is required.", nameof(previousContext));
-            if (!currentContext.IsValid)
-                throw new ArgumentException("A valid current actor spatial context is required.", nameof(currentContext));
-            if (!previousPosition.IsFinite)
-                throw new ArgumentException("A finite previous actor position is required.", nameof(previousPosition));
-            if (!currentPosition.IsFinite)
-                throw new ArgumentException("A finite current actor position is required.", nameof(currentPosition));
-
-            if (!_initialized)
-                return;
-            if (!ServerActorManager.IsInitialized || ServerActorManager.Instance == null
-                || !ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null
-                || !GameConfigurationManager.IsInitialized || GameConfigurationManager.Config == null)
-            {
-                throw new InvalidOperationException(
-                    "Actor visibility reevaluation requires initialized server actor, world and game configuration managers.");
-            }
-
             double radius = GameConfigurationManager.Config.ActorVisibilityExitRadius;
             _visibilityCandidateActorIDs.Clear();
 
@@ -320,9 +292,7 @@ namespace Game.Server.Core
             int visibilityEvaluationCount = 0;
             try
             {
-                NetworkManager networkManager = NetworkManager.main;
-                if (networkManager == null
-                    || !networkManager.TryGetModule<HierarchyFactory>(true, out var factory)
+                if (!_networkManager.TryGetModule<HierarchyFactory>(true, out var factory)
                     || !factory.TryGetHierarchy(ServerWorldManager.Instance.GlobalActorsSceneID, out var hierarchy))
                 {
                     return;
@@ -336,8 +306,7 @@ namespace Game.Server.Core
                 foreach (Guid candidateID in _visibilityCandidateActorIDs)
                 {
                     if (!ServerActorManager.Instance.TryGetActor(candidateID, out Actor candidateActor)
-                        || candidateActor == null
-                        || candidateActor.ID != candidateID)
+                        || candidateActor == null)
                     {
                         throw new InvalidOperationException(
                             $"Spatial visibility candidate '{candidateID}' does not resolve to its live registered actor.");
@@ -360,13 +329,6 @@ namespace Game.Server.Core
                         continue;
                     }
 
-                    NetworkIdentity candidateIdentity = candidateActor.GetComponent<NetworkIdentity>();
-                    if (candidateIdentity == null)
-                    {
-                        throw new InvalidOperationException(
-                            $"Actor '{candidateID}' has no NetworkIdentity for visibility reevaluation.");
-                    }
-
                     if (candidateActor.Owner.HasValue)
                     {
                         visibilityEvaluationCount++;
@@ -375,6 +337,13 @@ namespace Game.Server.Core
 
                     if (actor.Owner.HasValue)
                     {
+                        NetworkIdentity candidateIdentity = candidateActor.GetComponent<NetworkIdentity>();
+                        if (candidateIdentity == null)
+                        {
+                            throw new InvalidOperationException(
+                                $"Actor '{candidateID}' has no NetworkIdentity for visibility reevaluation.");
+                        }
+
                         visibilityEvaluationCount++;
                         hierarchy.EvaluateVisibility(actor.Owner.Value, candidateIdentity.transform);
                     }
@@ -502,13 +471,6 @@ namespace Game.Server.Core
             Vector2Int chunkCoord,
             Action onSubscribed = null)
         {
-            if (!context.IsValid)
-                throw new ArgumentException(
-                    "A valid actor spatial context is required.",
-                    nameof(context));
-            if (actor == null)
-                throw new ArgumentNullException(nameof(actor));
-
             ServerWorldManager.Instance.EnsureChunkLoaded(context, chunkCoord, (succeeded, sceneID) =>
             {
                 if (!succeeded)
@@ -579,23 +541,11 @@ namespace Game.Server.Core
             WorldPosition position,
             Action<bool> onCompleted)
         {
-            if (!context.IsValid)
-                throw new ArgumentException(
-                    "A valid actor spatial context is required.",
-                    nameof(context));
-            if (!position.IsFinite)
-                throw new ArgumentException(
-                    "Interest grid position must be finite.",
-                    nameof(position));
             if (onCompleted == null)
                 throw new ArgumentNullException(nameof(onCompleted));
-            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
-                throw new InvalidOperationException(
-                    "Interest grid preload requires an initialized server world manager.");
 
             ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
-            if (!runtimeContext.IsValid
-                || context.WorldID != runtimeContext.WorldID
+            if (context.WorldID != runtimeContext.WorldID
                 || !StringComparer.Ordinal.Equals(context.MapID, runtimeContext.MapID))
             {
                 throw new InvalidOperationException(
@@ -705,31 +655,12 @@ namespace Game.Server.Core
             WorldPosition position,
             Action<bool> onCompleted)
         {
-            if (!context.IsValid)
-                throw new ArgumentException(
-                    "A valid actor spatial context is required.",
-                    nameof(context));
             if (!position.IsFinite)
                 throw new ArgumentException(
                     "Destination position must be finite.",
                     nameof(position));
             if (onCompleted == null)
                 throw new ArgumentNullException(nameof(onCompleted));
-            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
-                throw new InvalidOperationException(
-                    "Destination readiness requires an initialized server world manager.");
-            if (!ServerSpawnManager.IsInitialized || ServerSpawnManager.Instance == null)
-                throw new InvalidOperationException(
-                    "Destination readiness requires an initialized server spawn manager.");
-
-            ActorSpatialContext runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
-            if (!runtimeContext.IsValid
-                || context.WorldID != runtimeContext.WorldID
-                || !StringComparer.Ordinal.Equals(context.MapID, runtimeContext.MapID))
-            {
-                throw new InvalidOperationException(
-                    "Destination context does not belong to the current server runtime.");
-            }
 
             Vector2Int centerChunk = position.Chunk;
             if (centerChunk.x == int.MinValue
@@ -802,9 +733,6 @@ namespace Game.Server.Core
             {
                 Debug.Error(
                     $"[InstanceReadiness] Destination environment preload could not start for {context}: {exception.Message}");
-                ServerSpawnManager.Instance.FailInstancePopulationPreparation(
-                    context,
-                    $"required destination environment preload could not start: {exception.Message}");
                 CompleteEnvironmentPreload(false);
             }
         }
@@ -819,15 +747,6 @@ namespace Game.Server.Core
             ActorSpatialContext context,
             WorldPosition position)
         {
-            if (!context.IsValid)
-                throw new ArgumentException(
-                    "A valid actor spatial context is required.",
-                    nameof(context));
-            if (!position.IsFinite)
-                throw new ArgumentException(
-                    "Interest grid position must be finite.",
-                    nameof(position));
-
             Vector2Int centerChunk = position.Chunk;
             foreach (var chunkCoord in GetGrid(centerChunk))
             {
@@ -1044,20 +963,9 @@ namespace Game.Server.Core
 
         private void RetirePlayerInterest(PlayerID playerID, Actor expectedActor)
         {
-            Actor interestActor = null;
             PlayerInterestState interestState = null;
             if (!ReferenceEquals(expectedActor, null))
-            {
-                foreach (KeyValuePair<Actor, PlayerInterestState> entry in _actorInterest)
-                {
-                    if (!ReferenceEquals(entry.Key, expectedActor))
-                        continue;
-
-                    interestActor = entry.Key;
-                    interestState = entry.Value;
-                    break;
-                }
-            }
+                _actorInterest.TryGetValue(expectedActor, out interestState);
 
             if (interestState != null)
             {
@@ -1075,7 +983,7 @@ namespace Game.Server.Core
                         UnsubscribePlayerFromChunk(expectedActor, interestState.Context, chunkCoord);
                 }
 
-                _actorInterest.Remove(interestActor);
+                _actorInterest.Remove(expectedActor);
             }
 
             if (!ReferenceEquals(expectedActor, null)

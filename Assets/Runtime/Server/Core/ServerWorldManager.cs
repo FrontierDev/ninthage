@@ -157,10 +157,7 @@ namespace Game.Server.Core
         private void Awake()
         {
             if (_instance != null)
-            {
-                Debug.Error("ServerWorldManager is already initialized!");
-                return;
-            }
+                throw new InvalidOperationException("ServerWorldManager is already initialized.");
             if (!_runtimeContext.IsValid)
                 throw new InvalidOperationException("The server world runtime context must be initialized before the world manager.");
             _instance = this;
@@ -181,6 +178,9 @@ namespace Game.Server.Core
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
             if (_networkManager != null && _networkManager.sceneModule != null)
             {
                 _networkManager.sceneModule.onSceneLoaded -= OnChunkSceneLoaded;
@@ -197,13 +197,10 @@ namespace Game.Server.Core
             _pendingUnloadOwners.Clear();
             _loadAfterUnloadCallbacks.Clear();
             _scenesAwaitingUnload.Clear();
-
-            if (_instance == this)
-            {
-                _instance = null;
-                _initialized = false;
-                ClearRuntimeContext();
-            }
+            _sceneUnloadRetryBuffer.Clear();
+            _instance = null;
+            _initialized = false;
+            ClearRuntimeContext();
         }
 
         private void OnChunkSceneLoaded(SceneID sceneID, bool asServer)
@@ -247,8 +244,7 @@ namespace Game.Server.Core
                         chunkKey,
                         sceneID,
                         false,
-                        $"World scene '{sceneName}' loaded for context key {chunkKey.ChunkCoord}, but its load is no longer pending.",
-                        null);
+                        $"World scene '{sceneName}' loaded for context key {chunkKey.ChunkCoord}, but its load is no longer pending.");
                     QueueSceneUnload(sceneID);
                     return;
                 }
@@ -258,8 +254,7 @@ namespace Game.Server.Core
                         chunkKey,
                         sceneID,
                         false,
-                        $"World scene '{sceneName}' loaded with a conflicting existing scene mapping for tile {chunkKey.ChunkCoord}.",
-                        null);
+                        $"World scene '{sceneName}' loaded with a conflicting existing scene mapping for tile {chunkKey.ChunkCoord}.");
                     QueueSceneUnload(sceneID);
                     return;
                 }
@@ -275,11 +270,6 @@ namespace Game.Server.Core
                 catch (Exception exception)
                 {
                     _transferCollidersByChunk.Remove(chunkKey);
-                    if (_loadedChunks.TryGetValue(chunkKey, out SceneID registeredSceneID)
-                        && registeredSceneID == sceneID)
-                    {
-                        _loadedChunks.Remove(chunkKey);
-                    }
 
                     string failure = exception.Message;
                     if (physicalBindingEstablished)
@@ -300,8 +290,7 @@ namespace Game.Server.Core
                             chunkKey,
                             sceneID,
                             false,
-                            $"World scene '{sceneName}' failed registration for chunk {chunkKey} with SceneID {sceneID}: {failure}",
-                            null);
+                            $"World scene '{sceneName}' failed registration for chunk {chunkKey} with SceneID {sceneID}: {failure}");
                     }
                     finally
                     {
@@ -317,7 +306,7 @@ namespace Game.Server.Core
                     _pendingLoadTimestamps.Remove(chunkKey);
                     RecordSceneDuration(SCENE_LOAD_DURATION_METRIC, startedTimestamp);
                 }
-                CompletePendingChunkLoad(chunkKey, sceneID, true, null, null);
+                CompletePendingChunkLoad(chunkKey, sceneID, true, null);
                 Debug.Log($"Scene '{sceneName}' loaded.");
             }
         }
@@ -424,15 +413,6 @@ namespace Game.Server.Core
             WorldPosition currentPosition,
             List<TransferColliderCandidate> resultBuffer)
         {
-            if (!actorContext.IsValid)
-                throw new ArgumentException("A valid actor spatial context is required.", nameof(actorContext));
-            if (!previousPosition.IsFinite)
-                throw new ArgumentException("Previous position must be finite.", nameof(previousPosition));
-            if (!currentPosition.IsFinite)
-                throw new ArgumentException("Current position must be finite.", nameof(currentPosition));
-            if (resultBuffer == null)
-                throw new ArgumentNullException(nameof(resultBuffer));
-
             int initialCount = resultBuffer.Count;
             if (_transferRuntimes.TryGetValue(actorContext, out TransferRuntime runtime))
             {
@@ -446,9 +426,11 @@ namespace Game.Server.Core
                 return 0;
 
             ActorSpatialContext context = CurrentRuntimeContext;
-            AppendTransferColliders(new WorldChunkKey(context, previousPosition.Chunk), resultBuffer);
-            if (currentPosition.Chunk != previousPosition.Chunk)
-                AppendTransferColliders(new WorldChunkKey(context, currentPosition.Chunk), resultBuffer);
+            Vector2Int previousChunk = previousPosition.Chunk;
+            Vector2Int currentChunk = currentPosition.Chunk;
+            AppendTransferColliders(new WorldChunkKey(context, previousChunk), resultBuffer);
+            if (currentChunk != previousChunk)
+                AppendTransferColliders(new WorldChunkKey(context, currentChunk), resultBuffer);
 
             return resultBuffer.Count - initialCount;
         }
@@ -466,13 +448,8 @@ namespace Game.Server.Core
             WorldChunkKey entranceChunk,
             TransferCollider entranceCollider)
         {
-            if (!_runtimeContext.IsValid)
-                throw new InvalidOperationException("The current server runtime context is not initialized.");
             if (entranceChunk.Context != _runtimeContext)
                 throw new ArgumentException("A transfer runtime must be created from a public world chunk.", nameof(entranceChunk));
-            if (entranceCollider == null)
-                throw new ArgumentNullException(nameof(entranceCollider));
-            entranceCollider.ValidateConfiguration();
 
             Guid instanceID;
             do
