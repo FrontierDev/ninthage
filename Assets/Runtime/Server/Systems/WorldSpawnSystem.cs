@@ -40,42 +40,51 @@ namespace Game.Server.Systems
             using var markerScope = WORLD_SPAWN_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int spawnCommandCount = 0;
-            var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+            EntityCommandBuffer ecb = default;
+            bool hasCommands = false;
             try
             {
-                foreach (var (spawnPoint, entity) in
-                    SystemAPI.Query<RefRW<SpawnPointComponent>>().WithEntityAccess())
+                foreach (var spawnPoint in
+                    SystemAPI.Query<RefRW<SpawnPointComponent>>())
                 {
-                    if (spawnPoint.ValueRO.Pending)
-                    {
-                        if (telemetryEnabled)
-                            spawnCommandCount++;
-                        // Create a spawn command entity for the bridge to consume
-                        var cmd = ecb.CreateEntity();
-                        ecb.AddComponent(cmd, new SpawnCommand
-                        {
-                            SpawnPointGUID = spawnPoint.ValueRO.SpawnPointGUID,
-                            WorldID = spawnPoint.ValueRO.WorldID,
-                            MapID = spawnPoint.ValueRO.MapID,
-                            InstanceID = spawnPoint.ValueRO.InstanceID,
-                            WorldPositionD = spawnPoint.ValueRO.WorldPositionD,
-                            ChunkCoord = spawnPoint.ValueRO.ChunkCoord,
-                            PrefabIndex = spawnPoint.ValueRO.PrefabIndex,
-                            SceneIndex = spawnPoint.ValueRO.SceneIndex,
-                            SceneName = spawnPoint.ValueRO.SceneName,
-                        });
+                    if (!spawnPoint.ValueRO.Pending)
+                        continue;
 
-                        spawnPoint.ValueRW.Pending = false;
+                    if (!hasCommands)
+                    {
+                        ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+                        hasCommands = true;
                     }
+
+                    if (telemetryEnabled)
+                        spawnCommandCount++;
+                    // Create a spawn command entity for the bridge to consume
+                    var cmd = ecb.CreateEntity();
+                    ecb.AddComponent(cmd, new SpawnCommand
+                    {
+                        SpawnPointGUID = spawnPoint.ValueRO.SpawnPointGUID,
+                        WorldID = spawnPoint.ValueRO.WorldID,
+                        MapID = spawnPoint.ValueRO.MapID,
+                        InstanceID = spawnPoint.ValueRO.InstanceID,
+                        WorldPositionD = spawnPoint.ValueRO.WorldPositionD,
+                        ChunkCoord = spawnPoint.ValueRO.ChunkCoord,
+                        PrefabIndex = spawnPoint.ValueRO.PrefabIndex,
+                        SceneIndex = spawnPoint.ValueRO.SceneIndex,
+                        SceneName = spawnPoint.ValueRO.SceneName,
+                    });
+
+                    spawnPoint.ValueRW.Pending = false;
                 }
 
                 // This is the ECS structural half of spawning. ServerECSManager commits the
                 // resulting domain spawn commands after the complete simulation group update.
-                ecb.Playback(state.EntityManager);
+                if (hasCommands)
+                    ecb.Playback(state.EntityManager);
             }
             finally
             {
-                ecb.Dispose();
+                if (hasCommands)
+                    ecb.Dispose();
             }
 
             if (telemetryEnabled)

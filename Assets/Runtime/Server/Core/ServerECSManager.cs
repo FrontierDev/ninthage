@@ -111,9 +111,6 @@ namespace Game.Server.Core
                 var actorUpdateSystem = world.GetOrCreateSystem<ActorUpdateSystem>();
                 systemGroup.AddSystemToUpdateList(actorUpdateSystem);
 
-                var resourceRegenSystem = world.GetOrCreateSystem<ResourceRegenSystem>();
-                systemGroup.AddSystemToUpdateList(resourceRegenSystem);
-
                 var spellCastSystem = world.GetOrCreateSystem<SpellCastSystem>();
                 systemGroup.AddSystemToUpdateList(spellCastSystem);
 

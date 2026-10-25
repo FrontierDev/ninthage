@@ -1,6 +1,5 @@
 using Game.Server.Core;
 using Game.Shared.Performance;
-using System;
 using Unity.Entities;
 
 namespace Game.Server.Systems
@@ -37,39 +36,16 @@ namespace Game.Server.Systems
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int tickerEntryCount = 0;
             long currentTickID = ServerECSManager.CurrentSimulationTickID;
-            if (currentTickID <= 0)
-                throw new InvalidOperationException("Actor ticker timing requires an active authoritative simulation tick.");
-
             float fixedDeltaTime = SystemAPI.Time.DeltaTime;
-            if (float.IsNaN(fixedDeltaTime) || float.IsInfinity(fixedDeltaTime) || fixedDeltaTime <= 0f)
-                throw new InvalidOperationException("Actor ticker timing requires a finite positive simulation tick duration.");
 
-            foreach (var (actor, entity) in
-                SystemAPI.Query<RefRO<ActorComponent>>().WithEntityAccess())
+            foreach (var (queriedBuffer, actor, entity) in
+                SystemAPI.Query<DynamicBuffer<TickerElement>, RefRO<ActorComponent>>()
+                         .WithEntityAccess())
             {
-                var buffer = SystemAPI.GetBuffer<TickerElement>(entity);
-
+                DynamicBuffer<TickerElement> buffer = queriedBuffer;
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     var entry = buffer[i];
-                    if (entry.RemainingDuration == float.MaxValue)
-                    {
-                        if (entry.ExpiryTickID != 0)
-                            throw new InvalidOperationException(
-                                $"Ticker {entry.TickerID} on actor {actor.ValueRO.ActorID} has an expiry deadline despite being indefinite.");
-                    }
-                    else if (entry.ExpiryTickID <= 0)
-                    {
-                        throw new InvalidOperationException(
-                            $"Ticker {entry.TickerID} on actor {actor.ValueRO.ActorID} has no authoritative expiry deadline.");
-                    }
-                    if (entry.TickIntervalTicks < 0
-                        || entry.TickIntervalTicks == 0 && entry.NextTickID != 0
-                        || entry.TickIntervalTicks > 0 && entry.NextTickID <= 0)
-                    {
-                        throw new InvalidOperationException(
-                            $"Ticker {entry.TickerID} on actor {actor.ValueRO.ActorID} has invalid authoritative tick state.");
-                    }
 
                     while (entry.TickIntervalTicks > 0
                         && entry.NextTickID <= currentTickID
@@ -109,12 +85,6 @@ namespace Game.Server.Systems
                         {
                             long lastTickBoundary = checked(entry.NextTickID - entry.TickIntervalTicks);
                             long elapsedTicks = checked(currentTickID - lastTickBoundary);
-                            if (elapsedTicks < 0 || elapsedTicks >= entry.TickIntervalTicks)
-                            {
-                                throw new InvalidOperationException(
-                                    $"Ticker {entry.TickerID} on actor {actor.ValueRO.ActorID} has inconsistent tick progress.");
-                            }
-
                             entry.TimeSinceLastTick = (float)(elapsedTicks * (double)fixedDeltaTime);
                         }
 

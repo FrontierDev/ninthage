@@ -118,7 +118,7 @@ namespace Game.Shared.Tests.Server
         }
 
         [Test]
-        public void FixedTicksUpdateTheSevenSystemsOnceInRegisteredOrderAndSetWorldTime()
+        public void FixedTicksUpdateTheSixSystemsOnceInRegisteredOrderAndSetWorldTime()
         {
             ServerSimulationClock clock = StartClock(4, 0.1f);
             World world = ServerECSManager.DefaultWorld;
@@ -130,7 +130,6 @@ namespace Game.Shared.Tests.Server
             {
                 typeof(WorldSpawnSystem),
                 typeof(ActorUpdateSystem),
-                typeof(ResourceRegenSystem),
                 typeof(SpellCastSystem),
                 typeof(CooldownTickSystem),
                 typeof(AuraTickSystem),
@@ -373,7 +372,6 @@ namespace Game.Shared.Tests.Server
             {
                 PerformanceMetricIds.SERVER_ECS_WORLD_SPAWN_DURATION,
                 PerformanceMetricIds.SERVER_ECS_ACTOR_UPDATE_DURATION,
-                PerformanceMetricIds.SERVER_ECS_RESOURCE_REGEN_DURATION,
                 PerformanceMetricIds.SERVER_ECS_SPELL_CAST_DURATION,
                 PerformanceMetricIds.SERVER_ECS_COOLDOWN_TICK_DURATION,
                 PerformanceMetricIds.SERVER_ECS_AURA_TICK_DURATION,

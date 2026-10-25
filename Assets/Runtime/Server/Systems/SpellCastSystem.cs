@@ -7,7 +7,7 @@ namespace Game.Server.Systems
 {
     /// <summary>Advances active spell casts and invokes spell callbacks.</summary>
     [DisableAutoCreation]
-    [UpdateAfter(typeof(ResourceRegenSystem))]
+    [UpdateAfter(typeof(ActorUpdateSystem))]
     public partial struct SpellCastSystem : ISystem
     {
         private static readonly PerformanceMetricDefinition SPELL_CAST_DURATION_METRIC = new(
@@ -38,8 +38,6 @@ namespace Game.Server.Systems
             int activeCastCount = 0;
             float fixedDeltaTime = SystemAPI.Time.DeltaTime;
             long currentTickID = ServerECSManager.CurrentSimulationTickID;
-            if (currentTickID <= 0)
-                throw new InvalidOperationException("Spell casts require an active authoritative simulation tick.");
 
             foreach (var (spellCast, actor, entity) in
                 SystemAPI.Query<RefRW<SpellCastComponent>, RefRO<ActorComponent>>()
@@ -115,8 +113,6 @@ namespace Game.Server.Systems
         {
             if (float.IsNaN(duration) || float.IsInfinity(duration) || duration <= 0f)
                 throw new InvalidOperationException("An active spell cast requires a finite positive duration.");
-            if (float.IsNaN(fixedDeltaTime) || float.IsInfinity(fixedDeltaTime) || fixedDeltaTime <= 0f)
-                throw new InvalidOperationException("Spell casts require a finite positive simulation tick duration.");
 
             return ServerSimulationClock.GetNonShorteningTickCount(duration, fixedDeltaTime);
         }

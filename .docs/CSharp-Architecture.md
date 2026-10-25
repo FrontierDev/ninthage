@@ -584,17 +584,19 @@ These types connect shared endpoint callbacks and session state to server state.
 
 ### 12.1 ECS world
 
-`ServerECSManager` constructs a dedicated Unity Entities `World` named `Default`, creates a `SimulationSystemGroup`, explicitly creates the project systems, adds them to the update list, and appends the world to Unity's current player loop.
+`ServerECSManager` constructs a dedicated Unity Entities `World` named `Default`, creates a `SimulationSystemGroup`, explicitly creates the project systems, and adds them to the update list. `ServerSimulationClock` manually drives this group once per authoritative fixed tick; the dedicated world is not added to Unity's player loop.
 
 The current server systems registered during startup are:
 
 - `WorldSpawnSystem`;
 - `ActorUpdateSystem`;
-- `ResourceRegenSystem`;
 - `SpellCastSystem`;
 - `CooldownTickSystem`;
 - `AuraTickSystem`;
 - `ActorTickerSystem`.
+
+`ResourceRegenSystem` and `ResourceRegenElement` remain defined placeholders, but
+`ResourceRegenSystem` is not scheduled until resource regeneration behavior is implemented.
 
 The server code also defines chunk-spawn component types used by the world-spawn path.
 
@@ -899,9 +901,12 @@ Time-dependent state that benefits from system iteration is represented in serve
 - cooldown timing;
 - aura timing;
 - generic ticker timing;
-- resource regeneration.
+- resource regeneration data reserved for a future implementation.
 
-Corresponding systems tick this state each update. When a timed operation reaches a gameplay boundary, the ECS system raises shared endpoint callbacks so the authoritative manager/runtime layer can resolve the associated game action.
+The active cast, cooldown, aura and ticker systems tick this state each authoritative update.
+Resource regeneration remains a defined future ECS timing responsibility. When a timed operation
+reaches a gameplay boundary, the ECS system raises shared endpoint callbacks so the authoritative
+manager/runtime layer can resolve the associated game action.
 
 ## 19. Persistence Architecture
 

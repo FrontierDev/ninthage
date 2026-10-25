@@ -25,37 +25,29 @@ namespace Game.Server.Systems
             PerformanceTelemetry.RegisterMetric(ACTOR_UPDATE_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
         }
 
-        private EntityQuery _motionQuery;
+        private float _gravity;
+        private int _groundLayerMask;
+        private float _maxFallSpeed;
 
-        /// <summary>Creates the query used by the actor movement system.</summary>
+        /// <summary>Caches immutable movement settings used by the actor movement system.</summary>
         public void OnCreate(ref SystemState state)
         {
             Debug.Log(" - Created ActorUpdateSystem.");
 
-            // Create query for all entities with ActorComponent and MotionStateComponent
-            _motionQuery = state.GetEntityQuery(
-                new EntityQueryDesc
-                {
-                    All = new[] {
-                        ComponentType.ReadWrite<ActorComponent>(),
-                        ComponentType.ReadWrite<MotionStateComponent>()
-                    }
-                });
+            var configuration = Game.Shared.GameConfigurationManager.Config;
+            _gravity = configuration.Gravity;
+            _maxFallSpeed = configuration.MaxFallSpeed;
+            _groundLayerMask = LayerMask.GetMask(configuration.GroundDetectionMaskName);
         }
 
         /// <summary>Applies server-side movement and gravity to eligible actors.</summary>
         public void OnUpdate(ref SystemState state)
         {
             using var markerScope = ACTOR_UPDATE_MARKER.Begin();
-            var gravity = Game.Shared.GameConfigurationManager.Config.Gravity;
-            var maxFallSpeed = Game.Shared.GameConfigurationManager.Config.MaxFallSpeed;
-            var groundDetectionRadius = Game.Shared.GameConfigurationManager.Config.GroundDetectionRadius;
-            var groundLayerName = Game.Shared.GameConfigurationManager.Config.GroundDetectionMaskName;
-            var groundLayerMask = LayerMask.GetMask(groundLayerName);
             var deltaTime = SystemAPI.Time.DeltaTime;
 
             foreach (var (actor, motion, groundCheck) in
-                SystemAPI.Query<RefRW<ActorComponent>, RefRW<MotionStateComponent>, RefRW<GroundDetectionComponent>>())
+                SystemAPI.Query<RefRW<ActorComponent>, RefRW<MotionStateComponent>, RefRO<GroundDetectionComponent>>())
             {
                 // Players own their vertical movement — only simulate gravity for NPC entities.
                 // NPCs with NavMeshAgent handle their own gravity and movement.
@@ -63,6 +55,8 @@ namespace Game.Server.Systems
                     continue;
                 if (motion.ValueRO.UsesNavMeshAgent)
                     continue;
+
+                float groundDetectionRadius = groundCheck.ValueRO.groundDetectionRadius;
 
                 var worldPosition = new WorldPosition(
                     actor.ValueRO.WorldPositionD.x,
@@ -79,7 +73,7 @@ namespace Game.Server.Systems
                 var hitGround = ServerPhysicsManager.Instance.RaycastGround(
                     rayOrigin,
                     maxRayDistance,
-                    groundLayerMask,
+                    _groundLayerMask,
                     out var hitWorldPosition,
                     out var hitDistance);
 
@@ -104,10 +98,10 @@ namespace Game.Server.Systems
                 {
                     motion.ValueRW.TimeSinceLastGround += deltaTime;
 
-                    motion.ValueRW.VerticalVelocity += gravity * deltaTime;
+                    motion.ValueRW.VerticalVelocity += _gravity * deltaTime;
 
-                    if (motion.ValueRW.VerticalVelocity < -maxFallSpeed)
-                        motion.ValueRW.VerticalVelocity = -maxFallSpeed;
+                    if (motion.ValueRW.VerticalVelocity < -_maxFallSpeed)
+                        motion.ValueRW.VerticalVelocity = -_maxFallSpeed;
 
                     actor.ValueRW.WorldPositionD.y += motion.ValueRW.VerticalVelocity * deltaTime;
                 }

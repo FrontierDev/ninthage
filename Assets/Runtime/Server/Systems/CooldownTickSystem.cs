@@ -36,19 +36,25 @@ namespace Game.Server.Systems
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int cooldownEntryCount = 0;
             float fixedDeltaTime = SystemAPI.Time.DeltaTime;
+            ServerActorManager actorManager = ServerActorManager.Instance;
+            if (actorManager == null)
+            {
+                if (telemetryEnabled)
+                    PerformanceTelemetry.TryRecord(COOLDOWN_ENTRY_COUNT_METRIC, 0);
+                return;
+            }
 
-            foreach (var (_, actor, entity) in
+            foreach (var (queriedBuffer, actor, entity) in
                 SystemAPI.Query<DynamicBuffer<CooldownElement>, RefRO<ActorComponent>>()
                          .WithEntityAccess())
             {
-                if (ServerActorManager.Instance == null
-                    || !ServerActorManager.Instance.TryGetActorEntity(actor.ValueRO.ActorID, out Entity authoritativeEntity)
+                DynamicBuffer<CooldownElement> buffer = queriedBuffer;
+                if (!actorManager.TryGetActorEntity(actor.ValueRO.ActorID, out Entity authoritativeEntity)
                     || authoritativeEntity != entity)
                 {
                     continue;
                 }
 
-                var buffer = SystemAPI.GetBuffer<CooldownElement>(entity);
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     var entry = buffer[i];

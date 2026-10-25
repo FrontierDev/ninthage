@@ -42,7 +42,6 @@ namespace Game.Server.Core
             ServerECSManager.RegisterPerformanceMetrics();
             WorldSpawnSystem.RegisterPerformanceMetrics();
             ActorUpdateSystem.RegisterPerformanceMetrics();
-            ResourceRegenSystem.RegisterPerformanceMetrics();
             SpellCastSystem.RegisterPerformanceMetrics();
             CooldownTickSystem.RegisterPerformanceMetrics();
             AuraTickSystem.RegisterPerformanceMetrics();
