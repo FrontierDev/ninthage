@@ -69,7 +69,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
         /// <summary>Creates data-only ECS state with no network identity or player owner.</summary>
         public void StartDataOnly()
         {
-            StartDataOnly(Test_ActorFixtureLayout.NPC_COUNT);
+            StartDataOnly(_profile.population.accounting.ecs_data_only_npcs);
             if (_dataOnlyEntities.Count != _profile.population.accounting.ecs_data_only_npcs)
                 throw new InvalidOperationException(
                     $"Data-only fixture created {_dataOnlyEntities.Count} ECS entities; expected {_profile.population.accounting.ecs_data_only_npcs}.");
@@ -83,7 +83,8 @@ namespace Game.Tests.Performance.Fixtures.Actors
             RequireRepresentation(Test_ActorFixtureRepresentation.ecs_data_only);
             CaptureBaselineEntityCount();
 
-            if (initialCount < 0 || initialCount > Test_ActorFixtureLayout.NPC_COUNT)
+            var maximumCount = _profile.population.accounting.ecs_data_only_npcs;
+            if (initialCount < 0 || initialCount > maximumCount)
                 throw new ArgumentOutOfRangeException(nameof(initialCount));
 
             SpawnDataOnly(initialCount);

@@ -1,5 +1,6 @@
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
+using Game.Shared;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,6 +15,7 @@ namespace Game.Tests.Performance.Harness
         EcsDataOnlyMinimal,
         EcsDataOnlyActivity,
         EcsDataOnlyTimedStateStress,
+        EcsDataOnlyTimedStateScale,
         FullNetworkedActors,
         StandaloneHeadlessServer,
         NetworkedClients,
@@ -53,13 +55,20 @@ namespace Game.Tests.Performance.Harness
 
         public bool IsGraphicalClient => WorkloadMode == Test_PerformanceWorkloadMode.GraphicalClient;
 
+        public bool IsTimedStateStress => WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress;
+
+        public bool IsTimedStateScale => WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale;
+
         public string EffectiveProfileID => IsGraphicalClient
             ? Test_GraphicalFixtureLayout.PROFILE_ID
-            : ProfileID;
+            : IsTimedStateScale
+                ? Test_ActorFixtureLayout.TIMED_SCALE_PROFILE_ID
+                : ProfileID;
 
         public bool IsServerOnlyDataMode => WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
             || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity
-            || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress;
+            || IsTimedStateStress
+            || IsTimedStateScale;
 
         public string ActorVariantID
         {
@@ -69,8 +78,10 @@ namespace Game.Tests.Performance.Harness
                     return Test_GraphicalFixtureLayout.PROFILE_ID + "-I-GEOMETRY";
                 return WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
                     || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity
-                    || WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress
+                    || IsTimedStateStress
                     ? "S04-I-DATA"
+                    : IsTimedStateScale
+                        ? Test_ActorFixtureLayout.TIMED_SCALE_VARIANT_ID
                     : WorkloadMode == Test_PerformanceWorkloadMode.NetworkedClients
                         ? "S04-C-WAKE"
                         : "S04-I-FULL";
@@ -92,18 +103,22 @@ namespace Game.Tests.Performance.Harness
                 return true;
             }
 
-            if (ProfileID != Test_ActorFixtureLayout.PROFILE_ID)
-                return Fail("Only the tracked profile P1-S0-04 is available to this runner.", out diagnostic);
             if (Seed != Test_ActorFixtureLayout.DEFAULT_SEED)
                 return Fail("The tracked world scenes are generated for seed 424242; regenerate a test fixture before selecting another seed.", out diagnostic);
-            if (ActorCount != Test_ActorFixtureLayout.NPC_COUNT)
+            if (!IsTimedStateScale && ProfileID != Test_ActorFixtureLayout.PROFILE_ID)
+                return Fail("Only the tracked profile P1-S0-04 is available to this runner.", out diagnostic);
+            if (!IsTimedStateScale && ActorCount != Test_ActorFixtureLayout.NPC_COUNT)
                 return Fail("The selected actor fixture has a fixed population of 100 NPCs; no partial or substituted population is supported.", out diagnostic);
+            if (IsTimedStateScale && !Test_ActorFixtureLayout.IsTimedStateScaleActorCount(ActorCount))
+                return Fail("Timed-state scaling supports only 100, 500, 1000, 2500 and 5000 actors.", out diagnostic);
+            if (IsTimedStateScale && WorldFixture != Test_WorldFixtureVariant.Outdoor)
+                return Fail("Timed-state scaling uses the tracked Outdoor world fixture only.", out diagnostic);
             if (DensityTier != Test_WorldFixtureDensityTier.D1_Default)
                 return Fail("The tracked world scenes are available only at density tier D1_Default.", out diagnostic);
 
-            if (!File.Exists(Test_ActorFixtureLayout.CATALOG_PATH)
+            if (!IsTimedStateScale && (!File.Exists(Test_ActorFixtureLayout.CATALOG_PATH)
                 || !File.Exists(Test_ActorFixtureLayout.SCENARIO_PATH)
-                || !File.Exists(Test_ActorFixtureLayout.ASSET_MANIFEST_PATH))
+                || !File.Exists(Test_ActorFixtureLayout.ASSET_MANIFEST_PATH)))
             {
                 return Fail("One or more tracked actor fixture inputs are missing; the runner will not substitute generated metadata.", out diagnostic);
             }
@@ -136,18 +151,36 @@ namespace Game.Tests.Performance.Harness
             if (!string.Equals(importedGUID, worldPlan.MetaGUID, StringComparison.Ordinal))
                 return Fail($"World fixture scene identity mismatch for {worldPlan.AssetPath}: expected {worldPlan.MetaGUID}, found {importedGUID}.", out diagnostic);
 
-            var catalog = Test_ActorFixtureLayout.BuildCatalog(Seed);
-            foreach (var profile in catalog.profiles)
+            if (IsTimedStateScale)
             {
-                if (profile.variant_id != ActorVariantID)
-                    continue;
-
-                actorProfile = profile;
-                break;
+                actorProfile = Test_ActorFixtureLayout.BuildTimedStateScaleProfile(ActorCount, Seed);
+                Test_ActorFixtureLayout.ValidateTimedStateScalePopulation(actorProfile);
+                var configuration = GameConfigurationManager.IsInitialized
+                    ? GameConfigurationManager.Config
+                    : AssetDatabase.LoadAssetAtPath<GameConfiguration>("Assets/Resources/GameConfiguration.asset");
+                if (configuration == null)
+                    return Fail("Game configuration is unavailable; timed-state event-bound validation requires the configured server simulation tick duration.", out diagnostic);
+                var castDurationTicks = Test_PerformanceActivityController.GetNonShorteningTickCount(0.5f, configuration.ServerSimulationTickDuration);
+                var intervalTicks = Test_PerformanceActivityController.GetNonShorteningTickCount(1f, configuration.ServerSimulationTickDuration);
+                var peak = Test_PerformanceActivityController.GetTimedStateScaleSyntheticEventPeak(ActorCount, castDurationTicks, intervalTicks);
+                if (peak >= Test_PerformanceActivityController.TIMED_STATE_EVENT_BUFFER_CAPACITY)
+                    return Fail($"Timed-state scaling tier {ActorCount} would produce {peak} synthetic events in one simulation tick, reaching the production event-buffer capacity of {Test_PerformanceActivityController.TIMED_STATE_EVENT_BUFFER_CAPACITY}.", out diagnostic);
             }
+            else
+            {
+                var catalog = Test_ActorFixtureLayout.BuildCatalog(Seed);
+                foreach (var profile in catalog.profiles)
+                {
+                    if (profile.variant_id != ActorVariantID)
+                        continue;
 
-            if (actorProfile == null)
-                return Fail($"Actor fixture variant '{ActorVariantID}' is absent from the deterministic catalog.", out diagnostic);
+                    actorProfile = profile;
+                    break;
+                }
+
+                if (actorProfile == null)
+                    return Fail($"Actor fixture variant '{ActorVariantID}' is absent from the deterministic catalog.", out diagnostic);
+            }
 
             Test_ActorFixtureLayout.ValidatePopulation(actorProfile);
             if (!IsServerOnlyDataMode)
@@ -393,6 +426,8 @@ namespace Game.Tests.Performance.Harness
                         ShowQueueAction(Test_PerformanceJobQueue.AddCurrentConfiguration(_options, out diagnostic), diagnostic);
                     if (GUILayout.Button("Supported baseline preset"))
                         ShowQueueAction(Test_PerformanceJobQueue.LoadSupportedBaselinePreset(out diagnostic), diagnostic);
+                    if (GUILayout.Button("Timed-state scaling preset"))
+                        ShowQueueAction(Test_PerformanceJobQueue.LoadTimedStateScalingPreset(out diagnostic), diagnostic);
                 }
                 var policyIndex = Test_PerformanceJobQueue.StopPolicy == Test_PerformanceCampaignStopPolicy.CONTINUE_AFTER_FAILURE ? 1 : 0;
                 var selectedPolicy = EditorGUILayout.Popup("Failure policy", policyIndex, new[] { "Stop on failure (safe default)", "Continue after failure" });

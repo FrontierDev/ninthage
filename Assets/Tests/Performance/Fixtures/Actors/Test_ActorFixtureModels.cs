@@ -20,11 +20,14 @@ namespace Game.Tests.Performance.Fixtures.Actors
         public const string SCHEMA_VERSION = "actor-fixture-catalog/v1";
         public const string SCENARIO_SCHEMA_VERSION = "actor-scenario/v1";
         public const string PROFILE_ID = "P1-S0-04";
+        public const string TIMED_SCALE_PROFILE_ID = "P1-S1.3-TIMED-SCALE";
+        public const string TIMED_SCALE_VARIANT_ID = "S13-TIMED-SCALE";
         public const string PROFILE_REVISION = "1.0.0";
         public const string SPEC_REVISION = "P1-STRESS-1.0.0";
         public const string GENERATOR_REVISION = "1.0.0";
         public const string ASSET_MANIFEST_SHA256 = "ad8a7c5ddced960ac7e028b5f75ff2e6f04ba6cf7ee6e2df946ef90d08e26842";
         public const int NPC_COUNT = 100;
+        public const string TIMED_SCALE_GROUP_ID = "timed-state-scale";
         public const int IDLE_COUNT = 95;
         public const int PATROL_COUNT = 4;
         public const int ENGAGED_COUNT = 1;
@@ -98,11 +101,125 @@ namespace Game.Tests.Performance.Fixtures.Actors
             return catalog;
         }
 
+        public static bool IsTimedStateScaleActorCount(int actorCount)
+        {
+            return actorCount == 100 || actorCount == 500 || actorCount == 1000 || actorCount == 2500 || actorCount == 5000;
+        }
+
+        public static Test_ActorFixtureProfile BuildTimedStateScaleProfile(int actorCount, int seed)
+        {
+            RequireTimedStateScaleActorCount(actorCount);
+            var profile = new Test_ActorFixtureProfile
+            {
+                profile_id = TIMED_SCALE_PROFILE_ID,
+                variant_id = TIMED_SCALE_VARIANT_ID,
+                revision = PROFILE_REVISION,
+                tier = "S1.3",
+                replicate_seed = seed,
+                representation = Test_ActorFixtureRepresentation.ecs_data_only.ToString(),
+                population = new Test_ActorFixturePopulation
+                {
+                    players = new Test_ActorFixturePlayerPopulation
+                    {
+                        requested = 0,
+                        connection_kind = "none_data_only",
+                        groups = Array.Empty<Test_ActorFixturePlayerGroup>(),
+                    },
+                    npcs = new Test_ActorFixtureNPCPopulation
+                    {
+                        requested = actorCount,
+                        representation = Test_ActorFixtureRepresentation.ecs_data_only.ToString(),
+                        groups = new[]
+                        {
+                            new Test_ActorFixtureNPCGroup
+                            {
+                                group_id = TIMED_SCALE_GROUP_ID,
+                                definition_id = "synthetic-stage-1-3-timed-state",
+                                prefab_path = string.Empty,
+                                role = "timed_state",
+                                count = actorCount,
+                                level_min = 1,
+                                level_max = 1,
+                                class_id = "synthetic",
+                                cluster_id = TIMED_SCALE_GROUP_ID,
+                                route_id = string.Empty,
+                                activity = new Test_ActorFixtureNPCActivityMix { idle = 1d, patrolling = 0d, engaged = 0d },
+                            },
+                        },
+                    },
+                    accounting = new Test_ActorFixtureAccounting
+                    {
+                        ecs_data_only_npcs = actorCount,
+                        full_gameobject_purrnet_npcs = 0,
+                        real_player_connections = 0,
+                        synthetic_network_players = 0,
+                    },
+                },
+                space = BuildTimedStateScaleSpace(actorCount),
+                environment = new Test_ActorFixtureEnvironment
+                {
+                    world_id = "fixture-world",
+                    map_id = "fixture-open-world",
+                    instance_id = null,
+                    origin_cell_size_m = 100,
+                    world_tile_size_m = 256,
+                    authored_grid_columns = 100,
+                    authored_grid_rows = (int)Math.Ceiling(actorCount / 100d),
+                    collision_enabled = false,
+                },
+                provenance = new Test_ActorFixtureProvenance
+                {
+                    fixture_generator = "Game.Tests.Performance.Fixtures.Actors.Test_ActorFixtureModels",
+                    generator_revision = GENERATOR_REVISION,
+                    input_path = "synthetic-stage-1.3-timed-state-scaling",
+                    asset_manifest_path = string.Empty,
+                    source_commit = "UNRESOLVED_UNTIL_COMMIT",
+                    source_sha256 = string.Empty,
+                    asset_manifest_sha256 = string.Empty,
+                },
+                required_features = new[] { "synthetic_stage_1_3_timed_state_scaling", "ecs_data_only_actor_state", "deterministic_lifecycle_ledger" },
+            };
+            ValidateTimedStateScalePopulation(profile);
+            return profile;
+        }
+
+        public static Test_ActorScenarioProfile BuildTimedStateScaleScenario(int actorCount, int seed)
+        {
+            RequireTimedStateScaleActorCount(actorCount);
+            return new Test_ActorScenarioProfile
+            {
+                variant_id = TIMED_SCALE_VARIANT_ID,
+                representation = Test_ActorFixtureRepresentation.ecs_data_only.ToString(),
+                requires_real_client = false,
+                load_ramp_rate_actors_per_s = actorCount / 120d,
+                preflight_timeout_s = 30d,
+                ramp_s = 120d,
+                warmup_s = 60d,
+                measurement_s = 300d,
+                recovery_s = 60d,
+                sample_interval_ms = 1000,
+                movement_routes = Array.Empty<Test_ActorMovementRoute>(),
+                ability_schedule = Array.Empty<Test_ActorAbilitySchedule>(),
+                events = Array.Empty<Test_ActorScenarioEvent>(),
+                deterministic_boundaries = new Test_ActorScenarioBoundaries
+                {
+                    preflight_start_s = 0d,
+                    ramp_start_s = 0d,
+                    warmup_start_s = 120d,
+                    measurement_start_s = 180d,
+                    measurement_end_s = 480d,
+                    recovery_end_s = 540d,
+                },
+            };
+        }
+
         /// <summary>Returns deterministic placement records for one profile.</summary>
         public static List<Test_ActorFixturePlacement> BuildPlacements(Test_ActorFixtureProfile profile)
         {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
+            if (profile.variant_id == TIMED_SCALE_VARIANT_ID)
+                return BuildTimedStateScalePlacements(profile);
 
             var placements = new List<Test_ActorFixturePlacement>(NPC_COUNT);
             var random = new Test_ActorFixtureRandom(profile.replicate_seed, profile.variant_id, "actors");
@@ -121,6 +238,11 @@ namespace Game.Tests.Performance.Fixtures.Actors
         {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
+            if (profile.variant_id == TIMED_SCALE_VARIANT_ID)
+            {
+                ValidateTimedStateScalePopulation(profile);
+                return;
+            }
             if (profile.population == null || profile.population.players == null || profile.population.npcs == null || profile.population.accounting == null)
                 throw new InvalidOperationException($"{profile.variant_id} is missing population accounting data.");
             if (profile.population.npcs.groups == null || profile.population.npcs.groups.Length != 3)
@@ -133,6 +255,34 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 throw new InvalidOperationException($"{profile.variant_id} representation accounting does not sum to {NPC_COUNT}.");
             if (profile.population.accounting.real_player_connections != profile.population.players.requested)
                 throw new InvalidOperationException($"{profile.variant_id} real-player accounting does not match requested players.");
+        }
+
+        public static void ValidateTimedStateScalePopulation(Test_ActorFixtureProfile profile)
+        {
+            if (profile == null)
+                throw new ArgumentNullException(nameof(profile));
+            if (profile.profile_id != TIMED_SCALE_PROFILE_ID || profile.variant_id != TIMED_SCALE_VARIANT_ID)
+                throw new InvalidOperationException("The timed-state scaling profile has an invalid synthetic identity.");
+            if (!IsTimedStateScaleActorCount(profile.population?.npcs?.requested ?? 0))
+                throw new InvalidOperationException("The timed-state scaling profile must use one of the five supported actor counts.");
+            if (profile.representation != Test_ActorFixtureRepresentation.ecs_data_only.ToString())
+                throw new InvalidOperationException("The timed-state scaling profile must be ECS data-only.");
+            if (profile.population == null || profile.population.players == null || profile.population.npcs == null || profile.population.accounting == null)
+                throw new InvalidOperationException("The timed-state scaling profile is missing population accounting data.");
+            var actorCount = profile.population.npcs.requested;
+            if (profile.population.players.requested != 0 || profile.population.players.groups == null || profile.population.players.groups.Length != 0
+                || profile.population.npcs.groups == null || profile.population.npcs.groups.Length != 1
+                || profile.population.npcs.groups[0].group_id != TIMED_SCALE_GROUP_ID
+                || profile.population.npcs.groups[0].count != actorCount
+                || profile.population.accounting.ecs_data_only_npcs != actorCount
+                || profile.population.accounting.full_gameobject_purrnet_npcs != 0
+                || profile.population.accounting.real_player_connections != 0
+                || profile.population.accounting.synthetic_network_players != 0)
+                throw new InvalidOperationException("The timed-state scaling profile population accounting is invalid.");
+            if (profile.required_features == null || Array.IndexOf(profile.required_features, "synthetic_stage_1_3_timed_state_scaling") < 0)
+                throw new InvalidOperationException("The timed-state scaling profile is missing its synthetic Stage 1.3 feature marker.");
+            if (profile.provenance == null || profile.provenance.input_path != "synthetic-stage-1.3-timed-state-scaling")
+                throw new InvalidOperationException("The timed-state scaling profile provenance is not synthetic Stage 1.3 state.");
         }
 
         /// <summary>Returns stable canonical input for the catalog hash.</summary>
@@ -361,6 +511,27 @@ namespace Game.Tests.Performance.Fixtures.Actors
             };
         }
 
+        private static Test_ActorFixtureSpace BuildTimedStateScaleSpace(int actorCount)
+        {
+            return new Test_ActorFixtureSpace
+            {
+                world_id = "fixture-world",
+                map_id = "fixture-open-world",
+                instance_id = null,
+                clusters = new[]
+                {
+                    new Test_ActorFixtureCluster
+                    {
+                        cluster_id = TIMED_SCALE_GROUP_ID,
+                        center_world_m = new[] { 0d, 0d, 0d },
+                        radius_m = 256d,
+                        players = 0,
+                        npcs = actorCount,
+                    },
+                },
+            };
+        }
+
         private static Test_ActorFixtureProvenance BuildProvenance()
         {
             return new Test_ActorFixtureProvenance
@@ -481,6 +652,45 @@ namespace Game.Tests.Performance.Fixtures.Actors
                     world_tile_z = (int)Math.Floor(z / 256d),
                 });
             }
+        }
+
+        private static List<Test_ActorFixturePlacement> BuildTimedStateScalePlacements(Test_ActorFixtureProfile profile)
+        {
+            ValidateTimedStateScalePopulation(profile);
+            var actorCount = profile.population.npcs.requested;
+            var placements = new List<Test_ActorFixturePlacement>(actorCount);
+            const int columns = 100;
+            var seedOffset = profile.replicate_seed % 17;
+            for (var index = 0; index < actorCount; index++)
+            {
+                var column = index % columns;
+                var row = index / columns;
+                var x = (column - (columns - 1) * 0.5d) * 4d + seedOffset * 0.01d;
+                var z = row * 4d + (profile.replicate_seed % 13) * 0.01d;
+                placements.Add(new Test_ActorFixturePlacement
+                {
+                    actor_fixture_id = $"{TIMED_SCALE_VARIANT_ID}/{TIMED_SCALE_GROUP_ID}/{index:D4}",
+                    group_id = TIMED_SCALE_GROUP_ID,
+                    representation = profile.representation,
+                    level = 1,
+                    class_id = "synthetic",
+                    cluster_id = TIMED_SCALE_GROUP_ID,
+                    world_x = x,
+                    world_y = 0d,
+                    world_z = z,
+                    origin_cell_x = (int)Math.Floor(x / 100d),
+                    origin_cell_z = (int)Math.Floor(z / 100d),
+                    world_tile_x = (int)Math.Floor(x / 256d),
+                    world_tile_z = (int)Math.Floor(z / 256d),
+                });
+            }
+            return placements;
+        }
+
+        private static void RequireTimedStateScaleActorCount(int actorCount)
+        {
+            if (!IsTimedStateScaleActorCount(actorCount))
+                throw new ArgumentOutOfRangeException(nameof(actorCount), actorCount, "Timed-state scaling supports only 100, 500, 1000, 2500 and 5000 actors.");
         }
 
         private static Test_ActorFixtureCluster FindCluster(Test_ActorFixtureSpace space, string clusterID)

@@ -1,0 +1,134 @@
+{
+    "schema_version": "performance-campaign/v1",
+    "campaign_id": "campaign-20261025T192114778Z-3c33ffa8",
+    "created_utc": "2026-10-25T19:21:14.7791570Z",
+    "updated_utc": "2026-10-25T19:38:28.8634634Z",
+    "started_utc": "",
+    "finished_utc": "",
+    "state": "cancelled",
+    "stop_policy": "stop_on_failure",
+    "pause_reason": "Draft cleared by the user.",
+    "queue_diagnostic": "The selected actor fixture has a fixed population of 100 NPCs; no partial or substituted population is supported.",
+    "stop_after_current": false,
+    "cancel_remaining": false,
+    "source": {
+        "captured_utc": "",
+        "git_branch": "",
+        "git_branch_status": "",
+        "git_branch_diagnostic": "",
+        "commit_sha": "",
+        "source_sha256": "",
+        "dirty": false,
+        "diff_sha256": "",
+        "packages_sha256": "",
+        "packages_lock_sha256": "",
+        "purrnet_sha256": "",
+        "hardware": "",
+        "operating_system": "",
+        "unity_version": "",
+        "graphics_device": "",
+        "graphics_settings": ""
+    },
+    "excluded_scenarios": [],
+    "profile_coverage": [
+        {
+            "profile_id": "P1-S0-01",
+            "mode": "server + rendered client / networked city",
+            "status": "BLOCKED",
+            "capability": "Blocked: generated city density, real authenticated clients, cross-tile interests and required telemetry are not available in the current runner.",
+            "runnable_alternative": "P1-S0-04 ECS data-only or P1-S0-06 isolated rendered geometry.",
+            "next_issue_or_stage": "#43-#52; later Stage 1.2/1.5 client and world-interest work."
+        },
+        {
+            "profile_id": "P1-S0-02",
+            "mode": "networked server + rendered clients / PvP combat",
+            "status": "BLOCKED",
+            "capability": "Blocked: repeatable faction, legal PvP target and multi-client correctness fixtures are not available.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#43-#52 and later Stage 1.2/1.5 combat and network qualification."
+        },
+        {
+            "profile_id": "P1-S0-03",
+            "mode": "networked server + rendered clients / boss and AoE",
+            "status": "BLOCKED",
+            "capability": "Blocked: authored boss encounter, legal AoE target fan-out and replayable combat fixtures are not available.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#45 and #51/#52 content and correctness verification."
+        },
+        {
+            "profile_id": "P1-S0-04",
+            "mode": "Editor server / ECS data-only and activity",
+            "status": "SUPPORTED-NOT-RUN",
+            "capability": "The existing runner supports ECS data-only minimal/activity snapshots; full PurrNet dormant and wake variants remain blocked.",
+            "runnable_alternative": "EcsDataOnlyMinimal and EcsDataOnlyActivity are the current runnable variants.",
+            "next_issue_or_stage": "Run five qualified repeats for each required metric; Stage 1.4 for true dormant/wake simulation."
+        },
+        {
+            "profile_id": "P1-S0-05",
+            "mode": "rendered client + streamed world / traversal",
+            "status": "BLOCKED",
+            "capability": "Blocked: the current harness does not execute the required six-tile route, streaming transitions and origin-boundary correctness contract.",
+            "runnable_alternative": "P1-S0-06 fixed Outdoor/Forest/Settlement rendered fixtures without a streaming claim.",
+            "next_issue_or_stage": "#44/#46/#49/#52 and Stages 1.2/1.6 streaming corrections."
+        },
+        {
+            "profile_id": "P1-S0-06",
+            "mode": "Editor rendered client / geometry, forest and settlement",
+            "status": "SUPPORTED-NOT-RUN",
+            "capability": "The existing graphical fixture runner supports isolated rendered Outdoor, Forest and Settlement routes; it does not qualify network density or production streaming.",
+            "runnable_alternative": "Outdoor, Forest and Settlement are the current runnable variants.",
+            "next_issue_or_stage": "Run five qualified repeats for each required metric; #44/#49/#52 for production-density and client telemetry expansion."
+        },
+        {
+            "profile_id": "P1-S0-07",
+            "mode": "server + rendered clients / login and reconnect bursts",
+            "status": "BLOCKED",
+            "capability": "Blocked: safe disposable account generation, real client admission and reconnect correctness are not available in the current runner.",
+            "runnable_alternative": "P1-S0-04 server data-only or P1-S0-06 rendered geometry.",
+            "next_issue_or_stage": "#46/#51 and Stages 1.7-1.8 reconnect and durable-session work."
+        },
+        {
+            "profile_id": "P1-S0-08",
+            "mode": "Editor server / long-duration authoritative soak",
+            "status": "BLOCKED",
+            "capability": "Blocked: the current harness has no compliant multi-hour churn, persistence, leak and scheduler-backlog observation contract.",
+            "runnable_alternative": "P1-S0-04 bounded short server measurement only; it is not a soak or production-capacity claim.",
+            "next_issue_or_stage": "#47-#51; Stage 1.1 scheduler telemetry and Stages 1.7-1.8 durability."
+        }
+    ],
+    "linked_campaign_id": "",
+    "makeup_for_job_id": "",
+    "jobs": [
+        {
+            "job_id": "job-20261025T192114782Z-74f29ac1",
+            "options": {
+                "ProfileID": "P1-S0-04",
+                "WorldFixture": 1,
+                "DensityTier": 1,
+                "WorkloadMode": 2,
+                "ActorCount": 500,
+                "Seed": 424242,
+                "GraphicalScenario": 1,
+                "ActorDensity": 0,
+                "WarmupSeconds": 2.0,
+                "MeasurementSeconds": 5.0
+            },
+            "repeat_count": 5,
+            "validation_state": "blocked",
+            "validation_diagnostic": "The selected actor fixture has a fixed population of 100 NPCs; no partial or substituted population is supported.",
+            "fixture_identity": {
+                "configuration_sha256": "",
+                "profile_id": "",
+                "profile_revision": "",
+                "actor_variant_id": "",
+                "world_fixture_id": "",
+                "world_scene_path": "",
+                "world_scene_guid": "",
+                "world_scene_hash": "",
+                "graphical_plan_hash": "",
+                "graphical_route_id": ""
+            }
+        }
+    ],
+    "attempts": []
+}

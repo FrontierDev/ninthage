@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Game.Server.Core;
+using Game.Shared;
 using Game.Shared.Performance;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
@@ -154,6 +155,158 @@ namespace Game.Tests.Performance.Harness
         {
             Assert.That(Test_PerformanceActivityController.GetFirstProgressTickID(0L), Is.EqualTo(1L));
             Assert.That(Test_PerformanceActivityController.GetFirstProgressTickID(100L), Is.EqualTo(101L));
+        }
+
+        [Test]
+        public void ExistingDataOnlyModesRemainFixedAtTheCanonicalPopulation()
+        {
+            var options = new Test_PerformanceHarnessOptions { ActorCount = 101 };
+            Assert.That(options.TryValidate(out var diagnostic, out _, out _), Is.False);
+            Assert.That(diagnostic, Does.Contain("fixed population of 100"));
+        }
+
+        [TestCase(100)]
+        [TestCase(500)]
+        [TestCase(1000)]
+        [TestCase(2500)]
+        [TestCase(5000)]
+        public void TimedStateScaleAcceptsOnlyTheSupportedTiers(int actorCount)
+        {
+            var profile = Test_ActorFixtureLayout.BuildTimedStateScaleProfile(actorCount, Test_ActorFixtureLayout.DEFAULT_SEED);
+            var scenario = Test_ActorFixtureLayout.BuildTimedStateScaleScenario(actorCount, Test_ActorFixtureLayout.DEFAULT_SEED);
+            var options = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale,
+                ActorCount = actorCount,
+            };
+
+            Assert.That(profile.population.npcs.requested, Is.EqualTo(actorCount));
+            Assert.That(profile.population.accounting.ecs_data_only_npcs, Is.EqualTo(actorCount));
+            Assert.That(options.IsTimedStateScale, Is.True);
+            Assert.That(options.IsServerOnlyDataMode, Is.True);
+            Assert.That(options.EffectiveProfileID, Is.EqualTo(Test_ActorFixtureLayout.TIMED_SCALE_PROFILE_ID));
+            Assert.That(options.ActorVariantID, Is.EqualTo(Test_ActorFixtureLayout.TIMED_SCALE_VARIANT_ID));
+            Assert.That(scenario.movement_routes, Is.Empty);
+            Assert.That(scenario.ability_schedule, Is.Empty);
+            Assert.That(scenario.events, Is.Empty);
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        [TestCase(101)]
+        [TestCase(750)]
+        [TestCase(5001)]
+        public void TimedStateScaleRejectsUnsupportedTiers(int actorCount)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => Test_ActorFixtureLayout.BuildTimedStateScaleProfile(actorCount, Test_ActorFixtureLayout.DEFAULT_SEED));
+            var options = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale,
+                ActorCount = actorCount,
+            };
+            Assert.That(options.TryValidate(out var diagnostic, out _, out _), Is.False);
+            Assert.That(diagnostic, Does.Contain("100, 500, 1000, 2500 and 5000"));
+        }
+
+        [Test]
+        public void TimedStateScaleKeepsTrackedSeedDensityAndOutdoorWorld()
+        {
+            var invalidDensity = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale,
+                DensityTier = (Test_WorldFixtureDensityTier)999,
+            };
+            var invalidSeed = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale,
+                Seed = 7,
+            };
+            var invalidWorld = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale,
+                WorldFixture = Test_WorldFixtureVariant.Forest,
+            };
+
+            Assert.That(invalidDensity.TryValidate(out var densityDiagnostic, out _, out _), Is.False);
+            Assert.That(densityDiagnostic, Does.Contain("D1_Default"));
+            Assert.That(invalidSeed.TryValidate(out var seedDiagnostic, out _, out _), Is.False);
+            Assert.That(seedDiagnostic, Does.Contain("seed 424242"));
+            Assert.That(invalidWorld.TryValidate(out var worldDiagnostic, out _, out _), Is.False);
+            Assert.That(worldDiagnostic, Does.Contain("Outdoor"));
+        }
+
+        [Test]
+        public void TimedStateScalePlacementsAreDeterministicUniqueAndComplete()
+        {
+            var profile = Test_ActorFixtureLayout.BuildTimedStateScaleProfile(5000, Test_ActorFixtureLayout.DEFAULT_SEED);
+            var first = Test_ActorFixtureLayout.BuildPlacements(profile);
+            var second = Test_ActorFixtureLayout.BuildPlacements(profile);
+            var ids = new System.Collections.Generic.HashSet<string>();
+
+            Assert.That(first.Count, Is.EqualTo(5000));
+            for (var index = 0; index < first.Count; index++)
+            {
+                Assert.That(ids.Add(first[index].actor_fixture_id), Is.True);
+                Assert.That(first[index].actor_fixture_id, Does.Contain(Test_ActorFixtureLayout.TIMED_SCALE_VARIANT_ID));
+                Assert.That(first[index].actor_fixture_id, Is.EqualTo(second[index].actor_fixture_id));
+                Assert.That(first[index].world_x, Is.EqualTo(second[index].world_x));
+                Assert.That(first[index].world_z, Is.EqualTo(second[index].world_z));
+            }
+        }
+
+        [TestCase(100, 100, 1600, 400, 400)]
+        [TestCase(500, 500, 8000, 2000, 2000)]
+        [TestCase(1000, 1000, 16000, 4000, 4000)]
+        [TestCase(2500, 2500, 40000, 10000, 10000)]
+        [TestCase(5000, 5000, 80000, 20000, 20000)]
+        public void TimedStateScaleEntryCountsPreserveThePerEntityLoad(int actorCount, int casts, int cooldowns, int auras, int tickers)
+        {
+            Assert.That(actorCount, Is.EqualTo(casts));
+            Assert.That(actorCount * Test_PerformanceActivityController.TimedStressCooldownsPerEntity, Is.EqualTo(cooldowns));
+            Assert.That(actorCount * Test_PerformanceActivityController.TimedStressAurasPerEntity, Is.EqualTo(auras));
+            Assert.That(actorCount * Test_PerformanceActivityController.TimedStressTickersPerEntity, Is.EqualTo(tickers));
+        }
+
+        [Test]
+        public void TimedStateScaleEventPeakUsesConfiguredTickDurationAndStaysBelowCapacity()
+        {
+            var configuration = AssetDatabase.LoadAssetAtPath<GameConfiguration>("Assets/Resources/GameConfiguration.asset");
+            Assert.That(configuration, Is.Not.Null);
+            var castTicks = Test_PerformanceActivityController.GetNonShorteningTickCount(0.5f, configuration.ServerSimulationTickDuration);
+            var intervalTicks = Test_PerformanceActivityController.GetNonShorteningTickCount(1f, configuration.ServerSimulationTickDuration);
+            foreach (var actorCount in new[] { 100, 500, 1000, 2500, 5000 })
+                Assert.That(Test_PerformanceActivityController.GetTimedStateScaleSyntheticEventPeak(actorCount, castTicks, intervalTicks), Is.LessThan(Test_PerformanceActivityController.TIMED_STATE_EVENT_BUFFER_CAPACITY));
+            Assert.That(castTicks, Is.EqualTo(10));
+            Assert.That(intervalTicks, Is.EqualTo(20));
+            Assert.That(Test_PerformanceActivityController.GetTimedStateScaleSyntheticEventPeak(5000, castTicks, intervalTicks), Is.EqualTo(2500));
+        }
+
+        [Test]
+        public void TimedStateStressRetainsFixedSynchronizedReferenceContract()
+        {
+            var options = new Test_PerformanceHarnessOptions { WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress };
+            Assert.That(options.IsTimedStateStress, Is.True);
+            Assert.That(options.IsTimedStateScale, Is.False);
+            Assert.That(options.ActorCount, Is.EqualTo(Test_ActorFixtureLayout.NPC_COUNT));
+            Assert.That(options.ActorVariantID, Is.EqualTo("S04-I-DATA"));
+            Assert.That(100 * Test_PerformanceActivityController.TimedStressPeriodicEventsPerEntity, Is.EqualTo(800));
+        }
+
+        [Test]
+        public void TimedStateScalingPresetDefinesFiveTiersAndTwentyFiveAttempts()
+        {
+            Assert.That(Test_PerformanceJobQueue.TIMED_STATE_SCALING_ACTOR_COUNTS, Is.EqualTo(new[] { 100, 500, 1000, 2500, 5000 }));
+            var presetOptions = Test_PerformanceJobQueue.BuildTimedStateScalingPresetOptions();
+            Assert.That(presetOptions.Count, Is.EqualTo(5));
+            for (var index = 0; index < presetOptions.Count; index++)
+            {
+                Assert.That(presetOptions[index].WorkloadMode, Is.EqualTo(Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale));
+                Assert.That(presetOptions[index].ActorCount, Is.EqualTo(Test_PerformanceJobQueue.TIMED_STATE_SCALING_ACTOR_COUNTS[index]));
+                Assert.That(presetOptions[index].WorldFixture, Is.EqualTo(Test_WorldFixtureVariant.Outdoor));
+                Assert.That(presetOptions[index].DensityTier, Is.EqualTo(Test_WorldFixtureDensityTier.D1_Default));
+                Assert.That(presetOptions[index].Seed, Is.EqualTo(Test_ActorFixtureLayout.DEFAULT_SEED));
+            }
+            Assert.That(Test_PerformanceJobQueue.TIMED_STATE_SCALING_ACTOR_COUNTS.Length * Test_PerformanceJobQueue.TIMED_STATE_SCALING_REPEAT_COUNT, Is.EqualTo(25));
         }
 
         [Test]

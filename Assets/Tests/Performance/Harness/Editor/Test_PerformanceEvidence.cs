@@ -530,10 +530,18 @@ namespace Game.Tests.Performance.Harness
                 return;
             }
 
-            var catalog = Test_ActorFixtureLayout.BuildCatalog(options.Seed);
-            var scenarioCatalog = Test_ActorFixtureLayout.BuildScenarioCatalog(options.Seed);
-            actorProfile = FindActorProfile(catalog, options.ActorVariantID);
-            scenario = FindScenario(scenarioCatalog, options.ActorVariantID);
+            if (options.IsTimedStateScale)
+            {
+                actorProfile = Test_ActorFixtureLayout.BuildTimedStateScaleProfile(options.ActorCount, options.Seed);
+                scenario = Test_ActorFixtureLayout.BuildTimedStateScaleScenario(options.ActorCount, options.Seed);
+            }
+            else
+            {
+                var catalog = Test_ActorFixtureLayout.BuildCatalog(options.Seed);
+                var scenarioCatalog = Test_ActorFixtureLayout.BuildScenarioCatalog(options.Seed);
+                actorProfile = FindActorProfile(catalog, options.ActorVariantID);
+                scenario = FindScenario(scenarioCatalog, options.ActorVariantID);
+            }
             var worldManifest = Test_WorldFixtureLayout.BuildManifest(new Test_WorldFixtureOptions
             {
                 Seed = options.Seed,
@@ -659,7 +667,8 @@ namespace Game.Tests.Performance.Harness
             ActivityController = new Test_PerformanceActivityController(
                 FixtureRuntime,
                 workloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyActivity,
-                workloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateStress);
+                Options.IsTimedStateStress,
+                Options.IsTimedStateScale);
             PreflightCompleted = true;
             AppendLog("Data-only ECS fixture prepared with zero entities for incremental ramp.");
         }
@@ -2200,6 +2209,9 @@ namespace Game.Tests.Performance.Harness
             Test_WorldFixturePlan world,
             Test_PerformanceRunMetadata metadata)
         {
+            var isTimedStateScale = actor.profile_id == Test_ActorFixtureLayout.TIMED_SCALE_PROFILE_ID;
+            var provenanceInputPath = isTimedStateScale ? actor.provenance?.input_path : Test_ActorFixtureLayout.CATALOG_PATH;
+            var provenanceAssetManifestPath = isTimedStateScale ? actor.provenance?.asset_manifest_path : Test_ActorFixtureLayout.ASSET_MANIFEST_PATH;
             var document = new FixtureDocument
             {
                 schema_version = "benchmark-fixture/v1",
@@ -2207,7 +2219,7 @@ namespace Game.Tests.Performance.Harness
                 {
                     id = actor.profile_id,
                     revision = actor.revision,
-                    spec_revision = Test_ActorFixtureLayout.SPEC_REVISION,
+                    spec_revision = isTimedStateScale ? Test_ActorFixtureLayout.TIMED_SCALE_PROFILE_ID : Test_ActorFixtureLayout.SPEC_REVISION,
                     variant = actor.variant_id,
                     tier = actor.tier,
                 },
@@ -2221,13 +2233,13 @@ namespace Game.Tests.Performance.Harness
                 },
                 provenance = new FixtureProvenance
                 {
-                    fixture_generator = "Game.Tests.Performance.Harness.Test_PerformanceEvidence",
-                    generator_revision = "1.0.0",
-                    input_path = Test_ActorFixtureLayout.CATALOG_PATH,
-                    asset_manifest_path = Test_ActorFixtureLayout.ASSET_MANIFEST_PATH,
+                    fixture_generator = isTimedStateScale ? actor.provenance?.fixture_generator : "Game.Tests.Performance.Harness.Test_PerformanceEvidence",
+                    generator_revision = isTimedStateScale ? actor.provenance?.generator_revision : "1.0.0",
+                    input_path = provenanceInputPath,
+                    asset_manifest_path = provenanceAssetManifestPath,
                     source_commit = metadata.Commit,
-                    source_sha256 = Test_PerformanceRunMetadata.HashFile(Path.Combine(metadata.Repository, Test_ActorFixtureLayout.CATALOG_PATH)),
-                    asset_manifest_sha256 = Test_PerformanceRunMetadata.HashFile(Path.Combine(metadata.Repository, Test_ActorFixtureLayout.ASSET_MANIFEST_PATH)),
+                    source_sha256 = ResolveProvenanceHash(metadata.Repository, provenanceInputPath, isTimedStateScale ? actor.provenance?.source_sha256 : null),
+                    asset_manifest_sha256 = ResolveProvenanceHash(metadata.Repository, provenanceAssetManifestPath, isTimedStateScale ? actor.provenance?.asset_manifest_sha256 : null),
                 },
                 required_features = actor.required_features,
                 population = BuildPopulation(actor),
@@ -2282,7 +2294,8 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "clocks", "{\"utc\":true,\"monotonic_source\":\"Unity telemetry session\"}", true);
             RawProperty(builder, "application_context", "{\"run_in_background\":" + Application.runInBackground.ToString().ToLowerInvariant() + "}", true);
             RawProperty(builder, "execution", "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":true,\"credentials\":\"none_for_server_only_data_fixture\"}", true);
-            RawProperty(builder, "runtime", $"{{\"scene_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"scene_path\":{Test_PerformanceRun.Quote(run.WorldPlan == null ? string.Empty : run.WorldPlan.AssetPath)},\"standalone_qualified\":false,\"network_clients_supported\":false}}", false);
+            RawProperty(builder, "runtime", $"{{\"scene_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"scene_path\":{Test_PerformanceRun.Quote(run.WorldPlan == null ? string.Empty : run.WorldPlan.AssetPath)},\"standalone_qualified\":false,\"network_clients_supported\":false}}", true);
+            RawProperty(builder, "workload", $"{{\"mode\":{Test_PerformanceRun.Quote(run.Options.WorkloadMode.ToString())},\"profile_id\":{Test_PerformanceRun.Quote(run.Options.EffectiveProfileID)},\"actor_variant_id\":{Test_PerformanceRun.Quote(run.Options.ActorVariantID)},\"actor_count\":{run.Options.ActorCount},\"world_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"density\":{Test_PerformanceRun.Quote(run.Options.DensityTier.ToString())},\"seed\":{run.Options.Seed}}}", false);
             builder.AppendLine();
             builder.Append('}');
             return builder.ToString();
@@ -2391,6 +2404,17 @@ namespace Game.Tests.Performance.Harness
             }
 
             return "unavailable";
+        }
+
+        private static string ResolveProvenanceHash(string projectRoot, string inputPath, string recordedHash)
+        {
+            if (string.IsNullOrEmpty(inputPath))
+                return recordedHash ?? string.Empty;
+
+            var absolutePath = Path.Combine(projectRoot, inputPath);
+            return File.Exists(absolutePath)
+                ? Test_PerformanceRunMetadata.HashFile(absolutePath)
+                : recordedHash ?? string.Empty;
         }
 
         private static FixturePopulation BuildPopulation(Test_ActorFixtureProfile actor)

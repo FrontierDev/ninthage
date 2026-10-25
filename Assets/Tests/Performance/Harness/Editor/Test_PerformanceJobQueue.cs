@@ -261,6 +261,8 @@ namespace Game.Tests.Performance.Harness
         public const int MAX_JOBS = 50;
         public const int MAX_REPEAT_COUNT = 20;
         public const int MAX_TOTAL_ATTEMPTS = 100;
+        internal static readonly int[] TIMED_STATE_SCALING_ACTOR_COUNTS = { 100, 500, 1000, 2500, 5000 };
+        internal const int TIMED_STATE_SCALING_REPEAT_COUNT = 5;
 
         private const string CAMPAIGNS_DIRECTORY_NAME = "Campaigns";
         private const string CAMPAIGN_FILE_NAME = "campaign.json";
@@ -611,6 +613,50 @@ namespace Game.Tests.Performance.Harness
             NotifyChanged();
             diagnostic = _manifest.queue_diagnostic;
             return _manifest.jobs.Count > 0;
+        }
+
+        public static bool LoadTimedStateScalingPreset(out string diagnostic)
+        {
+            diagnostic = null;
+            if (!CanEdit)
+                return FailUI("Only a draft campaign can load a preset.", out diagnostic);
+            if (!EnsureDraftCampaign(out diagnostic))
+                return false;
+
+            var candidates = BuildTimedStateScalingPresetOptions();
+            _manifest.jobs.Clear();
+            _manifest.excluded_scenarios.Clear();
+            _manifest.profile_coverage = BuildProfileCoverage();
+            _manifest.stop_policy = Test_PerformanceCampaignStopPolicy.STOP_ON_FAILURE;
+            _manifest.queue_diagnostic = null;
+            foreach (var candidate in candidates)
+            {
+                var job = BuildJob(candidate, out var validationDiagnostic);
+                if (job.validation_state != VALID)
+                {
+                    _manifest.excluded_scenarios.Add(job.DisplayName + ": " + validationDiagnostic);
+                    continue;
+                }
+                job.repeat_count = TIMED_STATE_SCALING_REPEAT_COUNT;
+                _manifest.jobs.Add(job);
+            }
+
+            if (_manifest.jobs.Count != candidates.Count)
+                _manifest.queue_diagnostic = "One or more timed-state scaling tiers failed ordinary fixture validation; no partial scaling preset was accepted.";
+            else if (CountRequestedAttempts() > MAX_TOTAL_ATTEMPTS)
+                _manifest.queue_diagnostic = $"The preset exceeds the bounded {MAX_TOTAL_ATTEMPTS}-attempt queue limit.";
+            Persist();
+            NotifyChanged();
+            diagnostic = _manifest.queue_diagnostic;
+            return _manifest.jobs.Count == candidates.Count && diagnostic == null;
+        }
+
+        internal static List<Test_PerformanceHarnessOptions> BuildTimedStateScalingPresetOptions()
+        {
+            var candidates = new List<Test_PerformanceHarnessOptions>(TIMED_STATE_SCALING_ACTOR_COUNTS.Length);
+            foreach (var actorCount in TIMED_STATE_SCALING_ACTOR_COUNTS)
+                candidates.Add(CreateTimedStateScaling(actorCount));
+            return candidates;
         }
 
         public static bool StartOrResume(out string diagnostic)
@@ -1516,6 +1562,21 @@ namespace Game.Tests.Performance.Harness
                 DensityTier = Test_WorldFixtureDensityTier.D1_Default,
                 WorkloadMode = mode,
                 ActorCount = Test_ActorFixtureLayout.NPC_COUNT,
+                Seed = Test_ActorFixtureLayout.DEFAULT_SEED,
+                WarmupSeconds = Test_GraphicalFixtureLayout.DEFAULT_WARMUP_SECONDS,
+                MeasurementSeconds = Test_GraphicalFixtureLayout.DEFAULT_MEASUREMENT_SECONDS,
+            };
+        }
+
+        private static Test_PerformanceHarnessOptions CreateTimedStateScaling(int actorCount)
+        {
+            return new Test_PerformanceHarnessOptions
+            {
+                ProfileID = Test_ActorFixtureLayout.PROFILE_ID,
+                WorldFixture = Test_WorldFixtureVariant.Outdoor,
+                DensityTier = Test_WorldFixtureDensityTier.D1_Default,
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale,
+                ActorCount = actorCount,
                 Seed = Test_ActorFixtureLayout.DEFAULT_SEED,
                 WarmupSeconds = Test_GraphicalFixtureLayout.DEFAULT_WARMUP_SECONDS,
                 MeasurementSeconds = Test_GraphicalFixtureLayout.DEFAULT_MEASUREMENT_SECONDS,

@@ -195,6 +195,7 @@ namespace Game.Tests.Performance.Harness
         private const int TIMED_STRESS_TICKERS_PER_ENTITY = 4;
         private const float TIMED_STRESS_INTERVAL_SECONDS = 1f;
         private const float TIMED_STRESS_LIFETIME_SECONDS = 300f;
+        internal const int TIMED_STATE_EVENT_BUFFER_CAPACITY = 4096;
         private static readonly FixedString64Bytes[] TIMED_STRESS_COOLDOWN_IDS =
         {
             new FixedString64Bytes("perf_cd_00"), new FixedString64Bytes("perf_cd_01"),
@@ -216,6 +217,7 @@ namespace Game.Tests.Performance.Harness
         private readonly long _baselineAllocatedBytes;
         private readonly bool _activityEnabled;
         private readonly bool _timedStateStressEnabled;
+        private readonly bool _timedStateScaleEnabled;
         private readonly long _syntheticCastDurationTicks;
         private readonly long _timedStressLifetimeTicks;
         private readonly long _timedStressIntervalTicks;
@@ -226,6 +228,8 @@ namespace Game.Tests.Performance.Harness
         private bool _churnStarted;
         private bool _churnRespawned;
         private bool _timedStateStressPrepared;
+        private bool _timedStateScaleEpochCaptured;
+        private long _timedStateScaleEpochTickID;
         private long _nextSyntheticCastID;
         private int _measurementSpawnEventCount;
         private int _measurementDespawnEventCount;
@@ -233,19 +237,21 @@ namespace Game.Tests.Performance.Harness
         public Test_PerformanceActivityController(
             Test_ActorFixtureRuntime fixture,
             bool activityEnabled,
-            bool timedStateStressEnabled)
+            bool timedStateStressEnabled,
+            bool timedStateScaleEnabled = false)
         {
             _fixture = fixture ?? throw new ArgumentNullException(nameof(fixture));
             _baselineAllocatedBytes = Profiler.GetTotalAllocatedMemoryLong();
             _activityEnabled = activityEnabled;
             _timedStateStressEnabled = timedStateStressEnabled;
-            _syntheticCastDurationTicks = activityEnabled || timedStateStressEnabled
+            _timedStateScaleEnabled = timedStateScaleEnabled;
+            _syntheticCastDurationTicks = activityEnabled || timedStateStressEnabled || timedStateScaleEnabled
                 ? GetNonShorteningTickCount(SYNTHETIC_CAST_DURATION_SECONDS)
                 : 0L;
-            _timedStressLifetimeTicks = timedStateStressEnabled
+            _timedStressLifetimeTicks = timedStateStressEnabled || timedStateScaleEnabled
                 ? GetNonShorteningTickCount(TIMED_STRESS_LIFETIME_SECONDS)
                 : 0L;
-            _timedStressIntervalTicks = timedStateStressEnabled
+            _timedStressIntervalTicks = timedStateStressEnabled || timedStateScaleEnabled
                 ? GetNonShorteningTickCount(TIMED_STRESS_INTERVAL_SECONDS)
                 : 0L;
         }
@@ -276,7 +282,7 @@ namespace Game.Tests.Performance.Harness
 
         public void PrepareTimedStateStress()
         {
-            if (!_timedStateStressEnabled || _timedStateStressPrepared)
+            if ((!_timedStateStressEnabled && !_timedStateScaleEnabled) || _timedStateStressPrepared)
                 return;
 
             DisableTimedStateStressMotion(0, _fixture.DataOnlyEntities.Count);
@@ -314,7 +320,7 @@ namespace Game.Tests.Performance.Harness
             {
                 var firstSpawnedEntityIndex = _fixture.DataOnlyEntityCount;
                 _fixture.SpawnDataOnly(count);
-                if (_timedStateStressEnabled)
+                if (_timedStateStressEnabled || _timedStateScaleEnabled)
                     DisableTimedStateStressMotion(firstSpawnedEntityIndex, count);
                 RecordSpawnEvent(count);
             }
@@ -354,8 +360,13 @@ namespace Game.Tests.Performance.Harness
             if (phaseDurationSeconds <= 0f)
                 throw new ArgumentOutOfRangeException(nameof(phaseDurationSeconds));
 
-            if (_timedStateStressEnabled)
+            if (_timedStateStressEnabled || _timedStateScaleEnabled)
             {
+                if (_timedStateScaleEnabled && !_timedStateScaleEpochCaptured)
+                {
+                    _timedStateScaleEpochTickID = GetFirstProgressTickID();
+                    _timedStateScaleEpochCaptured = true;
+                }
                 MaintainTimedStateStress();
                 PatrollingCount = 0;
                 CombatCount = 0;
@@ -474,11 +485,11 @@ namespace Game.Tests.Performance.Harness
         private void MaintainTimedStateStress()
         {
             var entityManager = ServerECSManager.DefaultWorld.EntityManager;
-            var firstProgressTickID = GetFirstProgressTickID();
+            var commonFirstProgressTickID = _timedStateScaleEnabled
+                ? _timedStateScaleEpochTickID
+                : GetFirstProgressTickID();
             var lifetimeTicks = _timedStressLifetimeTicks;
             var intervalTicks = _timedStressIntervalTicks;
-            var expiryTickID = checked(firstProgressTickID + lifetimeTicks - 1L);
-            var nextTickID = checked(firstProgressTickID + intervalTicks - 1L);
 
             for (var index = 0; index < _fixture.DataOnlyEntities.Count; index++)
             {
@@ -486,7 +497,12 @@ namespace Game.Tests.Performance.Harness
                 if (!entityManager.Exists(entity))
                     continue;
 
-                StartSyntheticCastIfDisabled(entityManager, entity);
+                var periodicFirstProgressTickID = _timedStateScaleEnabled
+                    ? checked(_timedStateScaleEpochTickID + index % intervalTicks)
+                    : commonFirstProgressTickID;
+                var expiryTickID = checked(periodicFirstProgressTickID + lifetimeTicks - 1L);
+                var nextTickID = checked(periodicFirstProgressTickID + intervalTicks - 1L);
+                StartSyntheticCastIfDisabled(entityManager, entity, index);
 
                 if (!entityManager.IsComponentEnabled<CooldownElement>(entity))
                 {
@@ -543,12 +559,18 @@ namespace Game.Tests.Performance.Harness
             }
         }
 
-        private void StartSyntheticCastIfDisabled(EntityManager entityManager, Entity entity)
+        private void StartSyntheticCastIfDisabled(EntityManager entityManager, Entity entity, int entityIndex = -1)
         {
             if (entityManager.IsComponentEnabled<SpellCastComponent>(entity))
                 return;
 
             var firstProgressTickID = GetFirstProgressTickID();
+            if (_timedStateScaleEnabled && entityIndex >= 0)
+            {
+                var castState = entityManager.GetComponentData<SpellCastComponent>(entity);
+                if (castState.CastID == 0)
+                    firstProgressTickID = checked(_timedStateScaleEpochTickID + entityIndex % _syntheticCastDurationTicks);
+            }
             var completionTickID = checked(firstProgressTickID + _syntheticCastDurationTicks - 1L);
             entityManager.SetComponentData(entity, new SpellCastComponent
             {
@@ -563,7 +585,7 @@ namespace Game.Tests.Performance.Harness
             entityManager.SetComponentEnabled<SpellCastComponent>(entity, true);
         }
 
-        private static long GetNonShorteningTickCount(float seconds)
+        internal static long GetNonShorteningTickCount(float seconds, float tickDuration)
         {
             // Match ServerSimulationClock's decimal round-trip so nominal fixed-step
             // multiples are not shortened or pushed out by binary floating-point noise.
@@ -572,12 +594,32 @@ namespace Game.Tests.Performance.Harness
                 NumberStyles.Float,
                 CultureInfo.InvariantCulture);
             var tickDurationDecimal = decimal.Parse(
-                GameConfigurationManager.Config.ServerSimulationTickDuration.ToString("R", CultureInfo.InvariantCulture),
+                tickDuration.ToString("R", CultureInfo.InvariantCulture),
                 NumberStyles.Float,
                 CultureInfo.InvariantCulture);
             return Math.Max(
                 1L,
                 checked((long)Math.Ceiling(secondsDecimal / tickDurationDecimal)));
+        }
+
+        private static long GetNonShorteningTickCount(float seconds)
+        {
+            return GetNonShorteningTickCount(seconds, GameConfigurationManager.Config.ServerSimulationTickDuration);
+        }
+
+        internal static int GetTimedStateScaleSyntheticEventPeak(int actorCount, long castDurationTicks, long intervalTicks)
+        {
+            if (actorCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(actorCount));
+            if (castDurationTicks <= 0)
+                throw new ArgumentOutOfRangeException(nameof(castDurationTicks));
+            if (intervalTicks <= 0)
+                throw new ArgumentOutOfRangeException(nameof(intervalTicks));
+
+            var maxCastCompletionsPerTick = (actorCount + castDurationTicks - 1L) / castDurationTicks;
+            var maxPeriodicEventsPerTick = ((actorCount + intervalTicks - 1L) / intervalTicks)
+                * TimedStressPeriodicEventsPerEntity;
+            return checked((int)(maxCastCompletionsPerTick + maxPeriodicEventsPerTick));
         }
 
         private static long GetFirstProgressTickID()
