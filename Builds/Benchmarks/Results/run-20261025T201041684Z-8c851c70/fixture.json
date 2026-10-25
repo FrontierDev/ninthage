@@ -1,0 +1,128 @@
+{
+    "schema_version": "benchmark-fixture/v1",
+    "profile": {
+        "id": "P1-S1.3-TIMED-SCALE",
+        "revision": "1.0.0",
+        "spec_revision": "P1-S1.3-TIMED-SCALE",
+        "variant": "S13-TIMED-SCALE",
+        "tier": "S1.3"
+    },
+    "random": {
+        "master_seed": 424242,
+        "replicate_seed": 424242,
+        "replicate_index": 0,
+        "derivation": "sha256-u32le-v1",
+        "streams": [
+            "world",
+            "actors",
+            "movement",
+            "abilities",
+            "lifecycle"
+        ]
+    },
+    "provenance": {
+        "fixture_generator": "Game.Tests.Performance.Fixtures.Actors.Test_ActorFixtureModels",
+        "generator_revision": "1.0.0",
+        "input_path": "synthetic-stage-1.3-timed-state-scaling",
+        "asset_manifest_path": "",
+        "source_commit": "411a476ab7aeabe68fcbc4526fa51a1e653dfcc5",
+        "source_sha256": "",
+        "asset_manifest_sha256": ""
+    },
+    "required_features": [
+        "synthetic_stage_1_3_timed_state_scaling",
+        "ecs_data_only_actor_state",
+        "deterministic_lifecycle_ledger"
+    ],
+    "population": {
+        "players": {
+            "requested": 0,
+            "groups": []
+        },
+        "npcs": {
+            "requested": 5000,
+            "groups": [
+                {
+                    "group_id": "timed-state-scale",
+                    "definition_id": "synthetic-stage-1-3-timed-state",
+                    "count": 5000,
+                    "class_id": "synthetic",
+                    "cluster_id": "timed-state-scale",
+                    "representation": "ecs_data_only",
+                    "activity": [
+                        1.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            ]
+        },
+        "accounting": {
+            "ecs_data_only_npcs": 5000,
+            "full_gameobject_purrnet_npcs": 0,
+            "real_player_connections": 0,
+            "synthetic_network_players": 0
+        }
+    },
+    "space": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": "",
+        "clusters": [
+            {
+                "cluster_id": "timed-state-scale",
+                "center_world_m": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "radius_m": 256.0,
+                "players": 0,
+                "npcs": 5000
+            }
+        ]
+    },
+    "environment": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": "",
+        "origin_cell_size_m": 100,
+        "world_tile_size_m": 256,
+        "fixture_scene": "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity",
+        "fixture_scene_hash": "08211f02e84ab7129469fb9324401e7a53ea9d9ff554a0bf4efe50a6c55cc29f",
+        "object_count": 33,
+        "navigable": true
+    },
+    "schedules": {
+        "movement_routes": [],
+        "ability_schedule": [],
+        "events": []
+    },
+    "network": {
+        "real_clients": 0,
+        "synthetic_clients": 0,
+        "representation": "ecs_data_only",
+        "authentication": "ordinary_login_required",
+        "transport": "ordinary_project_transport"
+    },
+    "timing": {
+        "preflight_timeout_s": 30.0,
+        "ramp_s": 2.0,
+        "warmup_s": 2.0,
+        "measurement_s": 5.0,
+        "recovery_s": 1.0,
+        "sample_interval_ms": 500
+    },
+    "stops": {
+        "max_duration_s": 45.0,
+        "max_actor_count": 5000,
+        "resource_ceiling": "runner records actual resource metrics; no substitute workload is used",
+        "conditions": [
+            "measurement_complete",
+            "timeout",
+            "resource_ceiling",
+            "correctness_failure",
+            "user_stop"
+        ]
+    }
+}
