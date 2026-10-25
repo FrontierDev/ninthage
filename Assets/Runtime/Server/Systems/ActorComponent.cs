@@ -8,6 +8,21 @@ using Unity.Mathematics;
 
 namespace Game.Server.Systems
 {
+    /// <summary>Identifies the authoritative server simulation activity state of an NPC.</summary>
+    public enum NPCActivityState : byte
+    {
+        Full,
+        Nearby,
+        Dormant
+    }
+
+    /// <summary>Stores the authoritative server simulation activity state for an NPC.</summary>
+    public struct NPCActivityComponent : IComponentData
+    {
+        /// <summary>The NPC's current server simulation activity state.</summary>
+        public NPCActivityState State;
+    }
+
     /// <summary>Stores authoritative actor state in the server ECS world.</summary>
     public struct ActorComponent : IComponentData
     {

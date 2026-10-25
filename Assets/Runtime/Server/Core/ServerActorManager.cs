@@ -760,6 +760,14 @@ namespace Game.Server.Core
                 _entityManager.AddComponentData(entity, new Systems.AcceptedPositionDirtyComponent());
                 _entityManager.SetComponentEnabled<Systems.AcceptedPositionDirtyComponent>(entity, false);
 
+                if (actor is NPCActor)
+                {
+                    _entityManager.AddComponentData(entity, new Systems.NPCActivityComponent
+                    {
+                        State = Systems.NPCActivityState.Full,
+                    });
+                }
+
                 if (actor.Owner == null)
                     EnsureNPCMovementComponents(entity, actor);
 
@@ -1112,6 +1120,9 @@ namespace Game.Server.Core
                 component.Owner = actor.Owner ?? default;
                 _entityManager.SetComponentData(entity, component);
 
+                if (actor is NPCActor && component.Owner != default)
+                    SetNPCActivityState(actor.ID, Systems.NPCActivityState.Full);
+
                 // An unowned actor must have the same movement state as a newly registered NPC
                 // before the next authoritative movement bridge runs.
                 if (component.Owner == default)
@@ -1156,6 +1167,22 @@ namespace Game.Server.Core
                     Time.frameCount);
 
             TrackNPCForAggro(actor);
+        }
+
+        private void SetNPCActivityState(Guid actorID, Systems.NPCActivityState state)
+        {
+            if (!_actors.TryGetValue(actorID, out var registration))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot set NPC activity for actor '{actorID}' because it is not registered.");
+            }
+
+            var component = _entityManager.GetComponentData<Systems.NPCActivityComponent>(registration.Entity);
+            if (component.State == state)
+                return;
+
+            component.State = state;
+            _entityManager.SetComponentData(registration.Entity, component);
         }
 
         private void OnActorInterestChanged(Actor actor, SceneID sceneID)

@@ -34,6 +34,12 @@ namespace Game.Shared
         [SerializeField]
         /// <summary>Gets or sets the actor visibility exit radius in metres.</summary>
         public float ActorVisibilityExitRadius = 96f;
+        [SerializeField]
+        /// <summary>Gets or sets the NPC Full entry radius in metres.</summary>
+        public float NPCFullEntryRadius = 40f;
+        [SerializeField]
+        /// <summary>Gets or sets the NPC Full exit radius in metres.</summary>
+        public float NPCFullExitRadius = 48f;
 
         [Header("Physics Settings")]
         [SerializeField]
@@ -144,11 +150,25 @@ namespace Game.Shared
             ValidatePositiveFinite(SpatialIndexCellWidth, nameof(SpatialIndexCellWidth));
             ValidatePositiveFinite(ActorVisibilityEntryRadius, nameof(ActorVisibilityEntryRadius));
             ValidatePositiveFinite(ActorVisibilityExitRadius, nameof(ActorVisibilityExitRadius));
+            ValidatePositiveFinite(NPCFullEntryRadius, nameof(NPCFullEntryRadius));
+            ValidatePositiveFinite(NPCFullExitRadius, nameof(NPCFullExitRadius));
 
             if (ActorVisibilityExitRadius < ActorVisibilityEntryRadius)
             {
                 throw new InvalidOperationException(
                     $"{nameof(ActorVisibilityExitRadius)} must be greater than or equal to {nameof(ActorVisibilityEntryRadius)}.");
+            }
+
+            if (NPCFullExitRadius < NPCFullEntryRadius)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(NPCFullExitRadius)} must be greater than or equal to {nameof(NPCFullEntryRadius)}.");
+            }
+
+            if (NPCFullExitRadius > ActorVisibilityEntryRadius)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(NPCFullExitRadius)} must be less than or equal to {nameof(ActorVisibilityEntryRadius)}.");
             }
         }
 

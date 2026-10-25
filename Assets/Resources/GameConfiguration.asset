@@ -18,6 +18,8 @@ MonoBehaviour:
   SpatialIndexCellWidth: 64
   ActorVisibilityEntryRadius: 80
   ActorVisibilityExitRadius: 96
+  NPCFullEntryRadius: 40
+  NPCFullExitRadius: 48
   Gravity: -9.81
   GroundDetectionRadius: 0.05
   GroundDetectionMaskName: Terrain
