@@ -52,6 +52,7 @@ namespace Game.Client
         {
             enabled = false;
             ActorEndpoint.onActorOwnershipTaken += OnActorOwnershipTaken;
+            ActorEndpoint.onActorOwnerChanged += OnActorOwnerChanged;
 
             if (ClientInputController.Instance != null)
             {
@@ -66,17 +67,40 @@ namespace Game.Client
         // Movement and proposal sequencing begin only after this object is the local actor owner.
         private void OnActorOwnershipTaken(Game.Shared.Runtime.Actors.Actor actor)
         {
-            if (actor.gameObject != gameObject) return;
+            if (actor == null
+                || actor.gameObject != gameObject
+                || NetworkManager.main == null
+                || !actor.Owner.HasValue
+                || actor.Owner.Value != NetworkManager.main.localPlayer)
+            {
+                return;
+            }
+
+            if (_instance == this && _actorMotor != null && _cc != null)
+            {
+                enabled = true;
+                return;
+            }
 
             _actorMotor = actor.GetComponent<ActorMotor>();
-            if (_actorMotor == null) return;
+            _cc = GetComponent<CharacterController>();
+            if (_actorMotor == null || _cc == null)
+            {
+                enabled = false;
+                _actorMotor = null;
+                _cc = null;
+                Debug.Error($"Cannot acquire local control for actor {actor.ID}: required movement components are missing.");
+                return;
+            }
 
             _ownershipEpoch = checked(_ownershipEpoch + 1);
             _proposalSequence = 0;
+            _currentMovementInput = Vector2.zero;
+            _jumpRequested = false;
             _instanceValidationTogglePending = false;
             ResetPositionProposalState();
-            _cc = GetComponent<CharacterController>();
             _instance = this;
+            MovementEndpoint.onServerCorrection -= OnServerCorrection;
             MovementEndpoint.onServerCorrection += OnServerCorrection;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Movement/Ownership] actor={actor.ID} epoch={_ownershipEpoch} proposal state reset.");
@@ -84,13 +108,43 @@ namespace Game.Client
             enabled = true;
         }
 
+        private void OnActorOwnerChanged(Game.Shared.Runtime.Actors.Actor actor)
+        {
+            if (actor == null || actor.gameObject != gameObject)
+                return;
+
+            if (NetworkManager.main != null
+                && actor.Owner.HasValue
+                && actor.Owner.Value == NetworkManager.main.localPlayer)
+            {
+                return;
+            }
+
+            RevokeLocalControl();
+        }
+
+        private void RevokeLocalControl()
+        {
+            enabled = false;
+            _currentMovementInput = Vector2.zero;
+            _jumpRequested = false;
+            _instanceValidationTogglePending = false;
+            ResetPositionProposalState();
+            MovementEndpoint.onServerCorrection -= OnServerCorrection;
+
+            if (_instance == this)
+                _instance = null;
+
+            _actorMotor = null;
+            _cc = null;
+        }
+
         private void OnDestroy()
         {
             ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
-            MovementEndpoint.onServerCorrection -= OnServerCorrection;
+            ActorEndpoint.onActorOwnerChanged -= OnActorOwnerChanged;
+            RevokeLocalControl();
             ActorEndpoint.onClientInstanceValidationToggleResult -= OnInstanceValidationToggleResult;
-            _instanceValidationTogglePending = false;
-            ResetPositionProposalState();
 
             if (ClientInputController.Instance != null)
             {
@@ -227,6 +281,9 @@ namespace Game.Client
         /// </summary>
         private void OnServerCorrection(Vector2Int chunk, Vector3 localPosition)
         {
+            if (!enabled || _cc == null || _actorMotor == null)
+                return;
+
             var correctedPos = ClientPositionManager.Instance.NetworkToLocal(chunk, localPosition);
             _cc.enabled = false;
             transform.position = correctedPos;
@@ -236,8 +293,17 @@ namespace Game.Client
             _actorMotor.isGrounded = true;
         }
 
-        private void OnMovementInput(Vector2 direction) => _currentMovementInput = direction;
-        private void OnJumpInput() => _jumpRequested = true;
+        private void OnMovementInput(Vector2 direction)
+        {
+            if (enabled)
+                _currentMovementInput = direction;
+        }
+
+        private void OnJumpInput()
+        {
+            if (enabled)
+                _jumpRequested = true;
+        }
         private void OnInteractInput() { /* TODO */ }
 
         private void OnInstanceValidationToggleInput()

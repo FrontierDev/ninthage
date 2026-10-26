@@ -3,6 +3,7 @@ using Game.Client.UI;
 using Game.Shared;
 using Game.Shared.Persistence;
 using Game.Shared.Runtime.Actors;
+using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -61,6 +62,7 @@ namespace Game.Client
             Game.Shared.Networking.AccountEndpoint.onCharacterListReceived += UpdateCharacterList;
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnterWorld;
             Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken += OnActorOwnershipTaken;
+            Game.Shared.Networking.ActorEndpoint.onActorOwnerChanged += OnActorOwnerChanged;
             Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
             Game.Shared.Networking.CharacterEndpoint.onClientLearnedSpell += OnClientLearnedSpell;
 
@@ -73,6 +75,7 @@ namespace Game.Client
             Game.Shared.Networking.AccountEndpoint.onCharacterListReceived -= UpdateCharacterList;
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnterWorld;
             Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
+            Game.Shared.Networking.ActorEndpoint.onActorOwnerChanged -= OnActorOwnerChanged;
             Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssigned;
             Game.Shared.Networking.CharacterEndpoint.onClientLearnedSpell -= OnClientLearnedSpell;
             _instance = null;
@@ -90,6 +93,27 @@ namespace Game.Client
             _playerActor = actor;
             Game.Client.Utility.PlaceholderText.LocalContainer = actor.GetComponent<ActorStatContainer>();
             Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned?.Invoke(actor);
+        }
+
+        private void OnActorOwnerChanged(Actor actor)
+        {
+            if (actor == null || actor != _playerActor)
+                return;
+
+            if (NetworkManager.main != null
+                && actor.Owner.HasValue
+                && actor.Owner.Value == NetworkManager.main.localPlayer)
+            {
+                return;
+            }
+
+            _playerActor = null;
+            var actorStatContainer = actor.GetComponent<ActorStatContainer>();
+            if (Game.Client.Utility.PlaceholderText.LocalContainer == actorStatContainer)
+                Game.Client.Utility.PlaceholderText.LocalContainer = null;
+
+            if (ClientInputController.Instance != null)
+                ClientInputController.Instance.SetInputMode(InputMode.Disabled);
         }
 
         private void OnPlayerActorAssigned(Actor actor)

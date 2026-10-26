@@ -233,6 +233,19 @@ namespace Game.Shared.Runtime.Actors
             }
         }
 
+        protected override void OnOwnerChanged(
+            PlayerID? oldOwner,
+            PlayerID? newOwner,
+            bool asServer)
+        {
+            base.OnOwnerChanged(oldOwner, newOwner, asServer);
+
+            if (asServer)
+                return;
+
+            SetOwner(newOwner);
+        }
+
         private void Update()
         {
             foreach (var kvp in _activeAuras)
@@ -450,6 +463,9 @@ namespace Game.Shared.Runtime.Actors
         /// <summary>Assigns the actor's owner and raises ownership callbacks.</summary>
         public void SetOwner(PlayerID? newOwner)
         {
+            if (Owner == newOwner)
+                return;
+
             var oldOwner = Owner;
             Owner = newOwner;
 
@@ -462,7 +478,10 @@ namespace Game.Shared.Runtime.Actors
                 Game.Shared.Networking.ActorEndpoint.onActorOwnerChanged?.Invoke(this);
             }
 
-            if (Owner == NetworkManager.main.localPlayer && !NetworkManager.isServerStatic)
+            if (!NetworkManager.isServerStatic
+                && NetworkManager.main != null
+                && newOwner.HasValue
+                && newOwner.Value == NetworkManager.main.localPlayer)
             {
                 Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken?.Invoke(this);
             }
