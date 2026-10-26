@@ -809,6 +809,7 @@ namespace Game.Tests.Performance.Harness
                 yield break;
             }
             _npcActivityController.ValidateMeasurementComplete();
+            _run.RefreshStage14NPCActivityEvidence(_npcActivityController, _fixture.SpawnedFullActorCount);
             _run.MarkPhaseComplete(PerformanceMeasurementPhase.Measurement);
 
             _run.BeginPhase(PerformanceMeasurementPhase.Recovery);

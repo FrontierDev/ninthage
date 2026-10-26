@@ -383,6 +383,17 @@ namespace Game.Tests.Performance.Harness
             File.WriteAllText(RunPath, Test_PerformanceEvidence.BuildRunJson(this, _metadata.Repository, _metadata), new UTF8Encoding(false));
         }
 
+        internal void RefreshStage14NPCActivityEvidence(Test_NPCActivityScenarioController controller, int achievedFullNPCCount)
+        {
+            if (!IsStage14NPCActivity)
+                throw new InvalidOperationException("Stage 1.4 evidence cannot be refreshed for a non-Stage 1.4 run.");
+            if (controller == null)
+                throw new ArgumentNullException(nameof(controller));
+            Stage14NPCActivityEvidence = controller.BuildEvidence(achievedFullNPCCount);
+            AppendLog($"Stage 1.4 scenario evidence refreshed: {Stage14NPCActivityEvidence.npc_activity_scenario}, players={Stage14NPCActivityEvidence.achieved_real_player_count}/{Stage14NPCActivityEvidence.required_real_player_count}, NPCs={Stage14NPCActivityEvidence.achieved_full_npc_count}/{Stage14NPCActivityEvidence.requested_npc_count}.");
+            File.WriteAllText(RunPath, Test_PerformanceEvidence.BuildRunJson(this, _metadata.Repository, _metadata), new UTF8Encoding(false));
+        }
+
         public string MeasurementSummary => BuildMeasurementDisplay();
 
         public string OrchestrationSummary => BuildOrchestrationDisplay();

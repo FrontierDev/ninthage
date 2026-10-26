@@ -373,7 +373,9 @@ namespace Game.Tests.Performance.Harness
                 "Phase timing",
                 _options.IsGraphicalClient
                     ? $"2 s ramp / {_options.WarmupSeconds:0.##} s warmup / {_options.MeasurementSeconds:0.##} s measurement / 1 s recovery"
-                    : "2 s ramp / 2 s warmup / 5 s measurement / 1 s recovery");
+                    : _options.IsStage14NPCActivity
+                        ? "120 s ramp / 60 s warmup / 300 s measurement / 60 s recovery / 1 s samples"
+                        : "2 s ramp / 2 s warmup / 5 s measurement / 1 s recovery");
             EditorGUILayout.LabelField(
                 "Population",
                 _options.IsGraphicalClient
