@@ -414,7 +414,7 @@ namespace Game.Shared.Performance
             ? SampleCount / (double)AttemptedSampleCount
             : (double?)null;
 
-        public double? CoverageRatio => RetentionRatio;
+        public double? CoverageRatio => ValidInputCoverageRatio;
 
         public bool IsReservoirSampled => CapacityOverflowCount > 0;
 

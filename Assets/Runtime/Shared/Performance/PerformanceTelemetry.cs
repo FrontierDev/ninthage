@@ -134,7 +134,7 @@ namespace Game.Shared.Performance
         // reserves a small context partition, leaving 9,872 statistical slots.
         public const int RECOMMENDED_SAMPLES_PER_METRIC = 10000;
         internal const int MAX_REGISTERED_METRICS = 256;
-        // A result with more than this measurement loss cannot advertise representative statistics.
+        // A result with more than this invalid-input loss cannot advertise representative statistics.
         internal const double MAX_MEASUREMENT_DROP_RATIO = 0.05d;
         private static PerformanceSession _session;
 
@@ -407,7 +407,7 @@ namespace Game.Shared.Performance
                 reasonCode = "MEASUREMENT_SAMPLE_COVERAGE";
                 message = string.Format(
                     CultureInfo.InvariantCulture,
-                    "Metric '{0}' retained only {1:P2} of its measurement samples; the configured minimum coverage is {2:P0}.",
+                    "Metric '{0}' accepted only {1:P2} of its finite measurement inputs; the configured minimum valid-input coverage is {2:P0}.",
                     coverageFailureMetricID,
                     coverageRatio,
                     1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO);
@@ -688,12 +688,12 @@ namespace Game.Shared.Performance
                         && registration.Observation != PerformanceMetricObservation.Estimated))
                     continue;
 
-                coverageRatio = registration.Buffer.MeasurementAttemptedCount > 0
-                    ? registration.Buffer.MeasurementRetainedCount
-                        / (double)registration.Buffer.MeasurementAttemptedCount
-                    : 0d;
-                if (registration.Buffer.MeasurementAttemptedCount > 0
-                    && coverageRatio < 1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO)
+                PerformanceMetricSnapshot snapshot = registration.Buffer.CreateSnapshot();
+                if (!snapshot.CoverageRatio.HasValue)
+                    continue;
+
+                coverageRatio = snapshot.CoverageRatio.Value;
+                if (coverageRatio < 1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO)
                 {
                     metricID = registration.Definition.MetricId;
                     return true;

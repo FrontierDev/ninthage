@@ -1085,6 +1085,68 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void Stage14SteadyScenarioAllowsMissingActivityEventSamples()
+        {
+            var run = CreateStage14TelemetryContractRun(Test_NPCActivityScenario.ForcedFull);
+            try
+            {
+                SetTelemetrySummary(run, BuildStage14TelemetrySummary(true, false, false));
+
+                Assert.That(InvokeRequiredStage14Telemetry(run, out var missingTelemetry), Is.True, missingTelemetry);
+                Assert.That(missingTelemetry, Is.Empty);
+            }
+            finally
+            {
+                DeleteTelemetryContractRun(run);
+            }
+        }
+
+        [Test]
+        public void Stage14EventScenarioRequiresActivityEventSamples()
+        {
+            var run = CreateStage14TelemetryContractRun(Test_NPCActivityScenario.MassWake);
+            try
+            {
+                SetTelemetrySummary(run, BuildStage14TelemetrySummary(true, true, false));
+
+                Assert.That(InvokeRequiredStage14Telemetry(run, out var missingTelemetry), Is.False);
+                Assert.That(missingTelemetry, Does.Contain(PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_TRANSITION_COUNT));
+            }
+            finally
+            {
+                DeleteTelemetryContractRun(run);
+            }
+        }
+
+        [Test]
+        public void Stage14ReportSeparatesFixturePopulationFromServerWideActivityTelemetry()
+        {
+            var stage14Run = CreateStage14TelemetryContractRun(Test_NPCActivityScenario.ForcedFull);
+            var ordinaryRun = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions());
+            try
+            {
+                SetStage14Evidence(stage14Run);
+                SetTelemetrySummary(stage14Run, BuildStage14ActivityTelemetrySummary());
+                InvokeWriteReport(stage14Run);
+                var stage14Report = File.ReadAllText(stage14Run.ReportPath);
+
+                Assert.That(stage14Report, Does.Contain("Full-networked fixture NPCs achieved"));
+                Assert.That(stage14Report, Does.Not.Contain("Measured activity snapshot: `unverified`"));
+                Assert.That(stage14Report, Does.Contain("Server-wide NPC activity telemetry: Full mean=103 (min=103, max=103); Nearby mean=0 (min=0, max=0); Dormant mean=0 (min=0, max=0)."));
+                Assert.That(stage14Report, Does.Contain("Server-wide activity counters include ordinary-world NPCs as well as benchmark fixture NPCs."));
+
+                InvokeWriteReport(ordinaryRun);
+                var ordinaryReport = File.ReadAllText(ordinaryRun.ReportPath);
+                Assert.That(ordinaryReport, Does.Contain("Measured activity snapshot: `unverified`"));
+            }
+            finally
+            {
+                DeleteTelemetryContractRun(stage14Run);
+                DeleteTelemetryContractRun(ordinaryRun);
+            }
+        }
+
+        [Test]
         public void TelemetryEnabledAndDisabledFakeSchedulesHaveEquivalentOutcomes()
         {
             var disabledOutcome = RunFakeSchedule(false);
@@ -1808,6 +1870,134 @@ namespace Game.Tests.Performance.Harness
                 if (Directory.Exists(run.ResultsDirectory))
                     Directory.Delete(run.ResultsDirectory, true);
             }
+        }
+
+        private static Test_PerformanceRun CreateStage14TelemetryContractRun(Test_NPCActivityScenario scenario)
+        {
+            return Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.FullNetworkedActors,
+                NPCActivityScenario = scenario,
+            });
+        }
+
+        private static void DeleteTelemetryContractRun(Test_PerformanceRun run)
+        {
+            if (run != null && Directory.Exists(run.ResultsDirectory))
+                Directory.Delete(run.ResultsDirectory, true);
+        }
+
+        private static void SetTelemetrySummary(Test_PerformanceRun run, string summary)
+        {
+            var field = typeof(Test_PerformanceRun).GetField("_telemetrySummary", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null);
+            field.SetValue(run, summary);
+        }
+
+        private static bool InvokeRequiredStage14Telemetry(Test_PerformanceRun run, out string missingTelemetry)
+        {
+            var method = typeof(Test_PerformanceRun).GetMethod("HasRequiredStage14Telemetry", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null);
+            var arguments = new object[] { null };
+            var result = (bool)method.Invoke(run, arguments);
+            missingTelemetry = (string)arguments[0];
+            return result;
+        }
+
+        private static void SetStage14Evidence(Test_PerformanceRun run)
+        {
+            var property = typeof(Test_PerformanceRun).GetProperty(nameof(Test_PerformanceRun.Stage14NPCActivityEvidence));
+            Assert.That(property, Is.Not.Null);
+            var setter = property.GetSetMethod(true);
+            Assert.That(setter, Is.Not.Null);
+            setter.Invoke(run, new object[]
+            {
+                new Test_NPCActivityScenarioEvidence
+                {
+                    npc_activity_scenario = Test_NPCActivityScenario.ForcedFull.ToString(),
+                    requested_npc_count = 100,
+                    achieved_full_npc_count = 100,
+                    required_real_player_count = 1,
+                    achieved_real_player_count = 1,
+                },
+            });
+        }
+
+        private static void InvokeWriteReport(Test_PerformanceRun run)
+        {
+            var method = typeof(Test_PerformanceRun).GetMethod("WriteReport", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null);
+            method.Invoke(run, new object[]
+            {
+                PerformanceRunStatus.CompleteMeasured,
+                "TEST_REPORT",
+                "The test intentionally rendered the evidence report.",
+            });
+        }
+
+        private static string BuildStage14TelemetrySummary(bool includeActivityEvents, bool reevaluationMeasured, bool transitionMeasured)
+        {
+            var metricIDs = new List<string>
+            {
+                PerformanceMetricIds.SERVER_ACTORS_FULL_COUNT,
+                PerformanceMetricIds.SERVER_ACTORS_NEARBY_COUNT,
+                PerformanceMetricIds.SERVER_ACTORS_DORMANT_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_PLAYER_CENTER_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_UNIQUE_CELL_COUNT,
+                PerformanceMetricIds.SERVER_SPATIAL_CANDIDATE_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_UNIQUE_NPC_CANDIDATE_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_LOCAL_PAIR_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_DECISION_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_AGGRO_DURATION,
+                PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_NAVIGATION_DURATION,
+                PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_NAVIGATION_SYNC_DURATION,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_NAVIGATION_ACTIVE_COUNT,
+                PerformanceMetricIds.SERVER_SIMULATION_TICK_DURATION,
+                PerformanceMetricIds.SERVER_SIMULATION_TICK_BACKLOG,
+                PerformanceMetricIds.SERVER_SIMULATION_DEADLINE_MISS_COUNT,
+                PerformanceMetricIds.SERVER_SIMULATION_CATCH_UP_CAP_HIT_COUNT,
+                PerformanceMetricIds.SERVER_MEMORY_TOTAL_ALLOCATED_BYTES,
+                PerformanceMetricIds.SERVER_MEMORY_MONO_USED_BYTES,
+                PerformanceMetricIds.SERVER_MEMORY_MONO_HEAP_BYTES,
+                PerformanceMetricIds.SERVER_MEMORY_GC_GEN0_COLLECTION_COUNT,
+                PerformanceMetricIds.SERVER_MEMORY_GC_GEN1_COLLECTION_COUNT,
+                PerformanceMetricIds.SERVER_MEMORY_GC_GEN2_COLLECTION_COUNT,
+            };
+            if (includeActivityEvents)
+            {
+                metricIDs.Add(PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_REEVALUATION_DURATION);
+                metricIDs.Add(PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_TRANSITION_COUNT);
+            }
+
+            var metrics = metricIDs.Select(metricID =>
+            {
+                if (metricID == PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_REEVALUATION_DURATION)
+                    return BuildTelemetryMetricJson(metricID, reevaluationMeasured ? 1 : 0, reevaluationMeasured);
+                if (metricID == PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_TRANSITION_COUNT)
+                    return BuildTelemetryMetricJson(metricID, transitionMeasured ? 1 : 0, transitionMeasured);
+                return BuildTelemetryMetricJson(metricID, 1, true);
+            });
+            return "{\"metrics\":[" + string.Join(",", metrics) + "]}";
+        }
+
+        private static string BuildStage14ActivityTelemetrySummary()
+        {
+            return "{\"metrics\":["
+                + BuildTelemetryMetricJson(PerformanceMetricIds.SERVER_ACTORS_FULL_COUNT, 1, true, 103d)
+                + "," + BuildTelemetryMetricJson(PerformanceMetricIds.SERVER_ACTORS_NEARBY_COUNT, 1, true, 0d)
+                + "," + BuildTelemetryMetricJson(PerformanceMetricIds.SERVER_ACTORS_DORMANT_COUNT, 1, true, 0d)
+                + "]}";
+        }
+
+        private static string BuildTelemetryMetricJson(string metricID, int sampleCount, bool measured, double value = 1d)
+        {
+            var observation = measured ? "measured" : "unavailable";
+            var reason = measured ? "" : "no_measurement_samples";
+            return "{\"metric_id\":\"" + metricID + "\",\"observation\":\"" + observation + "\",\"sample_count\":" + sampleCount
+                + ",\"min\":" + value.ToString("R", CultureInfo.InvariantCulture)
+                + ",\"max\":" + value.ToString("R", CultureInfo.InvariantCulture)
+                + ",\"mean\":" + value.ToString("R", CultureInfo.InvariantCulture)
+                + ",\"p50\":1,\"reason\":\"" + reason + "\"}";
         }
 
         private static Test_FakeScheduleOutcome RunFakeSchedule(bool telemetryEnabled)

@@ -1338,7 +1338,7 @@ namespace Game.Tests.Performance.Harness
 
         private bool HasRequiredStage14Telemetry(out string missingTelemetry)
         {
-            var required = new[]
+            var required = new List<string>
             {
                 PerformanceMetricIds.SERVER_ACTORS_FULL_COUNT,
                 PerformanceMetricIds.SERVER_ACTORS_NEARBY_COUNT,
@@ -1353,8 +1353,6 @@ namespace Game.Tests.Performance.Harness
                 PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_NAVIGATION_DURATION,
                 PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_NAVIGATION_SYNC_DURATION,
                 PerformanceMetricIds.SERVER_ACTOR_NPC_NAVIGATION_ACTIVE_COUNT,
-                PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_REEVALUATION_DURATION,
-                PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_TRANSITION_COUNT,
                 PerformanceMetricIds.SERVER_SIMULATION_TICK_DURATION,
                 PerformanceMetricIds.SERVER_SIMULATION_TICK_BACKLOG,
                 PerformanceMetricIds.SERVER_SIMULATION_DEADLINE_MISS_COUNT,
@@ -1366,6 +1364,12 @@ namespace Game.Tests.Performance.Harness
                 PerformanceMetricIds.SERVER_MEMORY_GC_GEN1_COLLECTION_COUNT,
                 PerformanceMetricIds.SERVER_MEMORY_GC_GEN2_COLLECTION_COUNT,
             };
+            if (Options.NPCActivityScenario == Test_NPCActivityScenario.MassWake
+                || Options.NPCActivityScenario == Test_NPCActivityScenario.CrossInstance)
+            {
+                required.Add(PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_REEVALUATION_DURATION);
+                required.Add(PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_TRANSITION_COUNT);
+            }
             var missing = new List<string>();
             Test_PerformanceTelemetrySummaryDocument telemetry;
             try
@@ -2075,7 +2079,7 @@ namespace Game.Tests.Performance.Harness
                 {
                     builder.AppendLine("- NPC activity scenario: `" + Stage14NPCActivityEvidence.npc_activity_scenario + "`");
                     builder.AppendLine("- Real players achieved: `" + Stage14NPCActivityEvidence.achieved_real_player_count + "/" + Stage14NPCActivityEvidence.required_real_player_count + "`");
-                    builder.AppendLine("- Full NPCs achieved: `" + Stage14NPCActivityEvidence.achieved_full_npc_count + "/" + Stage14NPCActivityEvidence.requested_npc_count + "`");
+                    builder.AppendLine("- Full-networked fixture NPCs achieved: `" + Stage14NPCActivityEvidence.achieved_full_npc_count + "/" + Stage14NPCActivityEvidence.requested_npc_count + "`");
                 }
                 if (IsStage14NPCActivity)
                 {
@@ -2095,7 +2099,11 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine("- Peak ECS entities observed: `" + PeakEntityCount + "`");
             builder.AppendLine("- Post-cleanup fixture entities: `" + (PostCleanupObserved ? PostCleanupFixtureEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
             builder.AppendLine("- Post-cleanup total actor entities: `" + (PostCleanupObserved ? PostCleanupActorEntityCount.ToString(CultureInfo.InvariantCulture) : "unverified") + "`");
-            if (_activitySnapshot != null)
+            if (IsStage14NPCActivity)
+            {
+                builder.AppendLine(BuildStage14ActivityTelemetryReportLine());
+            }
+            else if (_activitySnapshot != null)
             {
                 builder.AppendLine("- Measured activity snapshot (`" + _activitySnapshotPhase + "`, before teardown): idle=`" + _activitySnapshot.IdleCount + "`, patrolling=`" + _activitySnapshot.PatrollingCount + "`, combat=`" + _activitySnapshot.CombatCount + "`, wake surge=`" + _activitySnapshot.WakeSurgeCount + "`");
                 builder.AppendLine("- Measured activity events: spawn=`" + _activitySnapshot.SpawnEventCount + "`, despawn=`" + _activitySnapshot.DespawnEventCount + "`");
@@ -2184,6 +2192,38 @@ namespace Game.Tests.Performance.Harness
                 case ".log": return "text/plain";
                 default: return "application/octet-stream";
             }
+        }
+
+        private string BuildStage14ActivityTelemetryReportLine()
+        {
+            Test_PerformanceTelemetrySummaryDocument telemetry;
+            try
+            {
+                telemetry = JsonUtility.FromJson<Test_PerformanceTelemetrySummaryDocument>(_telemetrySummary);
+            }
+            catch (Exception)
+            {
+                return "- Server-wide NPC activity telemetry: unavailable; see summary.json metric reasons.";
+            }
+
+            var full = FindMetric(telemetry, PerformanceMetricIds.SERVER_ACTORS_FULL_COUNT);
+            var nearby = FindMetric(telemetry, PerformanceMetricIds.SERVER_ACTORS_NEARBY_COUNT);
+            var dormant = FindMetric(telemetry, PerformanceMetricIds.SERVER_ACTORS_DORMANT_COUNT);
+            if (!IsMeasuredMetric(full) || !IsMeasuredMetric(nearby) || !IsMeasuredMetric(dormant))
+                return "- Server-wide NPC activity telemetry: unavailable; see summary.json metric reasons.";
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "- Server-wide NPC activity telemetry: Full mean={0} (min={1}, max={2}); Nearby mean={3} (min={4}, max={5}); Dormant mean={6} (min={7}, max={8}).\n- Server-wide activity counters include ordinary-world NPCs as well as benchmark fixture NPCs.",
+                full.mean,
+                full.min,
+                full.max,
+                nearby.mean,
+                nearby.min,
+                nearby.max,
+                dormant.mean,
+                dormant.min,
+                dormant.max);
         }
 
         private int GetRealPlayerCount()
@@ -2457,6 +2497,9 @@ namespace Game.Tests.Performance.Harness
             public string metric_id;
             public string observation;
             public int sample_count;
+            public double min;
+            public double max;
+            public double mean;
             public double p50;
         }
 
