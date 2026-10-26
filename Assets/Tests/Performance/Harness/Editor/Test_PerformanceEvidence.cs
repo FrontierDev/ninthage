@@ -21,6 +21,8 @@ namespace Game.Tests.Performance.Harness
     [Serializable]
     internal sealed class Test_PerformanceRunMetadata
     {
+        private const string SOURCE_SCOPE_PATHSPEC = "-- . \":(exclude)Builds/Benchmarks/Results/**\"";
+
         public string Repository;
         public string GitBranch;
         public string GitBranchStatus;
@@ -43,8 +45,8 @@ namespace Game.Tests.Performance.Harness
             if (commit.Length != 40 || !IsHex(commit))
                 throw new InvalidOperationException("Could not capture the full Git commit SHA for the benchmark run.");
 
-            var status = RunGit(projectRoot, "status --porcelain");
-            var diff = RunGit(projectRoot, "diff --binary HEAD --");
+            var status = RunGit(projectRoot, "status --porcelain " + SOURCE_SCOPE_PATHSPEC);
+            var diff = RunGit(projectRoot, "diff --binary HEAD " + SOURCE_SCOPE_PATHSPEC);
             var branch = RunGit(projectRoot, "branch --show-current").Trim();
             var machineIdentity = string.Join("|", SystemInfo.operatingSystem, SystemInfo.processorType, SystemInfo.processorCount.ToString(CultureInfo.InvariantCulture));
             return new Test_PerformanceRunMetadata
@@ -2477,7 +2479,7 @@ namespace Game.Tests.Performance.Harness
                 ? "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":false,\"credentials\":\"ordinary_login_required\"}"
                 : "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":true,\"credentials\":\"none_for_server_only_data_fixture\"}", true);
             RawProperty(builder, "runtime", $"{{\"scene_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"scene_path\":{Test_PerformanceRun.Quote(run.WorldPlan == null ? string.Empty : run.WorldPlan.AssetPath)},\"standalone_qualified\":false,\"network_clients_supported\":{run.IsStage14NPCActivity.ToString().ToLowerInvariant()}}}", true);
-            RawProperty(builder, "workload", $"{{\"mode\":{Test_PerformanceRun.Quote(run.Options.WorkloadMode.ToString())},\"profile_id\":{Test_PerformanceRun.Quote(run.Options.EffectiveProfileID)},\"actor_variant_id\":{Test_PerformanceRun.Quote(run.Options.ActorVariantID)},\"actor_count\":{run.Options.ActorCount},\"world_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"density\":{Test_PerformanceRun.Quote(run.Options.DensityTier.ToString())},\"seed\":{run.Options.Seed}}}", false);
+            RawProperty(builder, "workload", $"{{\"mode\":{Test_PerformanceRun.Quote(run.Options.WorkloadMode.ToString())},\"profile_id\":{Test_PerformanceRun.Quote(run.Options.EffectiveProfileID)},\"actor_variant_id\":{Test_PerformanceRun.Quote(run.Options.ActorVariantID)},\"actor_count\":{run.Options.ActorCount},\"world_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"density\":{Test_PerformanceRun.Quote(run.Options.DensityTier.ToString())},\"seed\":{run.Options.Seed}}}", run.IsStage14NPCActivity);
             if (run.IsStage14NPCActivity)
                 RawProperty(builder, "npc_activity", BuildStage14NPCActivityEvidenceJson(run.Stage14NPCActivityEvidence), false);
             builder.AppendLine();

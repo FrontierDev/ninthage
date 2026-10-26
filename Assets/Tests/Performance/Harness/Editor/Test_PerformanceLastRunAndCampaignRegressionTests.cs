@@ -3,9 +3,11 @@ using Game.Tests.Performance.Fixtures.Actors;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using UnityEngine;
 using UnityEditor;
 
@@ -16,6 +18,7 @@ namespace Game.Tests.Performance.Harness
     {
         private readonly List<string> _createdResultDirectories = new();
         private readonly List<string> _createdCampaignDirectories = new();
+        private readonly List<string> _createdMetadataRepositories = new();
         private string _createdCampaignID;
 
         [TearDown]
@@ -44,6 +47,12 @@ namespace Game.Tests.Performance.Harness
             {
                 if (Directory.Exists(directory))
                     Directory.Delete(directory, true);
+            }
+
+            foreach (var repository in _createdMetadataRepositories)
+            {
+                if (Directory.Exists(repository))
+                    Directory.Delete(repository, true);
             }
         }
 
@@ -907,6 +916,103 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void Stage14RunJsonParsesForBlockedPopulatedAndLegacyServerRuns()
+        {
+            var blocked = CreateBlockedRun(new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.FullNetworkedActors,
+                ActorCount = 100,
+                NPCActivityScenario = Test_NPCActivityScenario.MassWake,
+            });
+            var blockedView = Test_PerformanceResultReader.ReadFinalized(blocked.ResultsDirectory);
+            Assert.That(blockedView.IsVerified, Is.True, blockedView.ErrorMessage);
+            Assert.That(blockedView.Status, Is.EqualTo("BLOCKED-PREREQUISITE"));
+            Assert.That(blockedView.StopReason, Is.EqualTo("PREREQUISITE_BLOCKED"));
+
+            var populated = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.FullNetworkedActors,
+                ActorCount = 100,
+                NPCActivityScenario = Test_NPCActivityScenario.MassWake,
+            });
+            _createdResultDirectories.Add(populated.ResultsDirectory);
+            SetStage14Evidence(populated, new Test_NPCActivityScenarioEvidence
+            {
+                npc_activity_scenario = Test_NPCActivityScenario.MassWake.ToString(),
+                requested_npc_count = 100,
+                achieved_full_npc_count = 100,
+                required_real_player_count = 1,
+                achieved_real_player_count = 1,
+                anchor_actor_id = "anchor",
+                anchor_initial_context = "world/map/instance",
+                anchor_initial_position = new[] { 1d, 2d, 3d },
+                mass_wake_cluster_centre = new[] { 141d, 2d, 3d },
+                mass_wake_reached = true,
+            });
+            populated.Block("BLOCKED-PREREQUISITE: test evidence only.");
+            var populatedView = Test_PerformanceResultReader.ReadFinalized(populated.ResultsDirectory);
+            Assert.That(populatedView.IsVerified, Is.True, populatedView.ErrorMessage);
+            Assert.That(File.ReadAllText(populated.RunPath), Does.Contain("\"mass_wake_reached\":true"));
+
+            var legacy = CreateBlockedRun(new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyMinimal,
+                ActorCount = 100,
+            });
+            var legacyView = Test_PerformanceResultReader.ReadFinalized(legacy.ResultsDirectory);
+            Assert.That(legacyView.IsVerified, Is.True, legacyView.ErrorMessage);
+            Assert.That(File.ReadAllText(legacy.RunPath), Does.Not.Contain("npc_activity"));
+        }
+
+        [Test]
+        public void MetadataCaptureExcludesBenchmarkOutputWithStableSourceIdentity()
+        {
+            var repository = CreateMetadataRepository();
+            var clean = Test_PerformanceRunMetadata.Capture(repository);
+
+            var outputDirectory = Path.Combine(repository, "Builds", "Benchmarks", "Results", "run-output");
+            Directory.CreateDirectory(outputDirectory);
+            File.WriteAllText(Path.Combine(outputDirectory, "run.json"), "generated");
+            var outputOnly = Test_PerformanceRunMetadata.Capture(repository);
+
+            Assert.That(clean.Dirty, Is.False);
+            Assert.That(outputOnly.Dirty, Is.False);
+            Assert.That(outputOnly.DiffSha256, Is.EqualTo(clean.DiffSha256));
+
+            var sourcePath = Path.Combine(repository, "Assets", "SourceOwned.cs");
+            File.WriteAllText(sourcePath, "changed");
+            var sourceOnly = Test_PerformanceRunMetadata.Capture(repository);
+            File.WriteAllText(Path.Combine(outputDirectory, "summary.json"), "generated again");
+            var sourceAndOutput = Test_PerformanceRunMetadata.Capture(repository);
+
+            Assert.That(sourceOnly.Dirty, Is.True);
+            Assert.That(sourceAndOutput.Dirty, Is.True);
+            Assert.That(sourceAndOutput.DiffSha256, Is.EqualTo(sourceOnly.DiffSha256));
+        }
+
+        [Test]
+        public void CampaignAndRunMetadataUseTheSameSourceScope()
+        {
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var runMetadata = Test_PerformanceRunMetadata.Capture(projectRoot);
+            var captureMethod = typeof(Test_PerformanceJobQueue).GetMethod(
+                "CaptureSourceIdentity",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(captureMethod, Is.Not.Null);
+            var arguments = new object[] { null };
+            var campaignMetadata = captureMethod.Invoke(null, arguments) as Test_PerformanceCampaignSource;
+
+            Assert.That(arguments[0] as string, Is.Null.Or.Empty);
+            Assert.That(campaignMetadata, Is.Not.Null);
+            Assert.That(campaignMetadata.commit_sha, Is.EqualTo(runMetadata.Commit));
+            Assert.That(campaignMetadata.dirty, Is.EqualTo(runMetadata.Dirty));
+            Assert.That(campaignMetadata.diff_sha256, Is.EqualTo(runMetadata.DiffSha256));
+            Assert.That(campaignMetadata.packages_sha256, Is.EqualTo(runMetadata.PackagesSha256));
+            Assert.That(campaignMetadata.packages_lock_sha256, Is.EqualTo(runMetadata.PackagesLockSha256));
+            Assert.That(campaignMetadata.purrnet_sha256, Is.EqualTo(runMetadata.PurrNetSha256));
+        }
+
+        [Test]
         public void OptionsAndJobsCaptureIndependentImmutableSnapshots()
         {
             var options = new Test_PerformanceHarnessOptions();
@@ -1326,6 +1432,75 @@ namespace Game.Tests.Performance.Harness
             var view = Test_PerformanceResultReader.ReadFinalized(directory);
             Assert.That(view.IsVerified, Is.False, context);
             Assert.That(view.ErrorMessage, Is.Not.Null.And.Not.Empty, context);
+        }
+
+        private Test_PerformanceRun CreateBlockedRun(Test_PerformanceHarnessOptions options)
+        {
+            var run = Test_PerformanceRun.Create(options);
+            _createdResultDirectories.Add(run.ResultsDirectory);
+            run.Block("BLOCKED-PREREQUISITE: test evidence only.");
+            return run;
+        }
+
+        private static void SetStage14Evidence(Test_PerformanceRun run, Test_NPCActivityScenarioEvidence evidence)
+        {
+            var evidenceProperty = typeof(Test_PerformanceRun).GetProperty(
+                nameof(Test_PerformanceRun.Stage14NPCActivityEvidence),
+                BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(evidenceProperty, Is.Not.Null);
+            evidenceProperty.SetValue(run, evidence);
+
+            var metadataField = typeof(Test_PerformanceRun).GetField("_metadata", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(metadataField, Is.Not.Null);
+            var metadata = metadataField.GetValue(run) as Test_PerformanceRunMetadata;
+            Assert.That(metadata, Is.Not.Null);
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            File.WriteAllText(
+                run.RunPath,
+                Test_PerformanceEvidence.BuildRunJson(run, projectRoot, metadata),
+                new UTF8Encoding(false));
+        }
+
+        private string CreateMetadataRepository()
+        {
+            var repository = Path.Combine(Path.GetTempPath(), "ninthage-metadata-" + Guid.NewGuid().ToString("N"));
+            _createdMetadataRepositories.Add(repository);
+            Directory.CreateDirectory(Path.Combine(repository, "Packages"));
+            Directory.CreateDirectory(Path.Combine(repository, "Assets", "ThirdParty", "PurrNet"));
+            Directory.CreateDirectory(Path.Combine(repository, "Assets"));
+            File.WriteAllText(Path.Combine(repository, "Packages", "manifest.json"), "manifest");
+            File.WriteAllText(Path.Combine(repository, "Packages", "packages-lock.json"), "lock");
+            File.WriteAllText(Path.Combine(repository, "Assets", "ThirdParty", "PurrNet", "Runtime.cs"), "purrnet");
+            File.WriteAllText(Path.Combine(repository, "Assets", "SourceOwned.cs"), "baseline");
+
+            RunGitForTest(repository, "init --quiet");
+            RunGitForTest(repository, "config user.email test@ninthage.invalid");
+            RunGitForTest(repository, "config user.name NinthAgeTests");
+            RunGitForTest(repository, "add --all");
+            RunGitForTest(repository, "commit --quiet -m baseline");
+            return repository;
+        }
+
+        private static void RunGitForTest(string repository, string arguments)
+        {
+            using (var process = new Process())
+            {
+                process.StartInfo = new ProcessStartInfo
+                {
+                    FileName = "git",
+                    Arguments = arguments,
+                    WorkingDirectory = repository,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+                Assert.That(process.Start(), Is.True, "Git could not be started for metadata regression coverage.");
+                var error = process.StandardError.ReadToEnd();
+                process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+                Assert.That(process.ExitCode, Is.EqualTo(0), $"Git '{arguments}' failed: {error}");
+            }
         }
 
         private string CreateCampaignDirectory(string campaignID)
