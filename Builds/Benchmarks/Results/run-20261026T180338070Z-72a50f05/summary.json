@@ -1,0 +1,23 @@
+{
+"schema_version":"benchmark-summary/v1",
+"run_id":"run-20261026T180338070Z-72a50f05",
+"fixture_sha256":"f6017abf59bac8550404cfabc7567a7b8c7b7673c4234ea9d28ad93ae92384a1",
+"status":"FAIL-INSTRUMENTATION",
+"started_utc":"2026-10-26T18:03:38.0709250Z",
+"finished_utc":"2026-10-26T18:05:15.8169507Z",
+"phase_completion":{"preflight":true,"ramp":false,"warmup":false,"measurement":false,"recovery":false},
+"measurement":{"configured_seconds":300,"actual_elapsed_seconds":null,"timing_known":false,"measured_frame_count":0,"measured_sample_count":0,"pause_gap_detected":false,"max_frame_delivery_gap_seconds":null,"pause_gap_reason":"timing_unknown"},
+"phase_timing":{"timing_domain":"mixed_monotonic_domains_after_reload","ramp":{"started_utc":"2026-10-26T18:04:33.2577492Z","completed_utc":"","configured_seconds":120,"actual_elapsed_seconds":null,"timing_known":true},"warmup":{"started_utc":"","completed_utc":"","configured_seconds":null,"actual_elapsed_seconds":null,"timing_known":false},"measurement":{"started_utc":"","completed_utc":"","configured_seconds":300,"actual_elapsed_seconds":null,"timing_known":false},"recovery":{"started_utc":"","completed_utc":"","configured_seconds":null,"actual_elapsed_seconds":null,"timing_known":false}},
+"orchestration":{"queue_dispatch_utc":"2026-10-26T18:03:38.0860327Z","play_mode_entered_utc":"2026-10-26T18:03:46.6168077Z","workload_finalized_utc":"","play_mode_exited_utc":"2026-10-26T18:05:16.3577178Z","scene_restored_utc":"2026-10-26T18:05:16.9508736Z","queue_dispatch_to_play_mode_entered_seconds":null,"workload_finalized_to_play_mode_exited_seconds":null,"play_mode_exit_to_scene_restored_seconds":0.5925784,"total_attempt_wall_clock_seconds":98.8804667,"scene_restoration_status":"restored","scene_restoration_diagnostic":"","timing_domain":"mixed_monotonic_domains_after_reload"},
+"focus":{"context":"unknown","observation_known":true,"run_in_background":true,"transition_count":0,"focused_frame_count":0,"unfocused_frame_count":0,"unknown_focus_frame_count":0,"focused_seconds":null,"unfocused_seconds":null,"unknown_focus_seconds":null},
+"rendering":{"execution_status":"not_applicable","qualification_status":"not_applicable"},
+"achieved":{"connected_players":1,"authenticated_players":1,"in_world_players":1,"npc_actors":100,"ecs_entities":0,"network_identities":100,"gameobjects":100,"scene_tiles_loaded":0,"renders_visible":null,"accepted_abilities":0,"population":{"requested_ecs_entities":0,"requested_full_npc_count":100,"achieved_full_npc_count":100,"ramp_completed_ecs_entities":0,"measurement_start_ecs_entities":0,"measurement_end_ecs_entities":0,"peak_ecs_entities":100,"post_cleanup_fixture_entities":null,"post_cleanup_total_actor_entities":null},"activity":{"snapshot_captured":false,"observation":"unverified","idle":0,"patrolling":0,"combat":0,"wake_surge":0,"spawn_events":0,"despawn_events":0,"spawn_events_total":0,"despawn_events_total":0,"wake_surge_is_subset_of_combat":true}},
+"npc_activity":{"npc_activity_scenario":"ForcedFull","requested_npc_count":100,"achieved_full_npc_count":100,"required_real_player_count":1,"achieved_real_player_count":1,"anchor_actor_id":"e6f0c887-556c-4ed4-ba4e-b1ea73df5c9f","anchor_initial_context":"cbd55248-65b6-44ae-afbf-fc9873931cf7/main-world/00000000-0000-0000-0000-000000000000","anchor_initial_position":[0,5,0]},
+"resources":{"baseline_total_allocated_bytes":null,"total_allocated_bytes":2270089885,"allocated_growth_bytes":null,"growth_ceiling_bytes":4294967296,"ceiling_basis":"growth_from_pre_workload_baseline","ceiling_status":"unavailable"},
+"stop":{"phase":"ramp","reason_code":"CLEANUP_FAILED","message":"The performance run and its teardown both failed. (The performance harness runner was destroyed while Play Mode was still active. Active scene: 'Assets/Tests/Performance/Harness/Editor/PerformanceHarnessServer.unity', selected fixture: '<unavailable>', fixture unload attempted: False, cleanup completed: False.) (Object reference not set to an instance of an object)"},
+"correctness":{"status":"failed","checked":0,"failed":1,"unverified":["standalone_headless","networked_clients"],"cleanup":false},
+"metrics":[],
+"raw_files":[],
+"warnings":["Editor Play Mode is not standalone headless execution.","No synthetic network clients or authentication bypass were used.","No successful measured result should be interpreted from this run status."]
+
+}

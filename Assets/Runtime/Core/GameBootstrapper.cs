@@ -1,4 +1,5 @@
 using System.Collections;
+using Game.Shared.Runtime;
 using Unity.Entities;
 using UnityEngine;
 
@@ -26,8 +27,10 @@ namespace Game.Core
             _instance = this;
             DontDestroyOnLoad(gameObject);
 
-            // Detect execution context and route accordingly
-            if (IsHeadlessServer())
+            var headlessServer = IsHeadlessServer();
+            Runtime.Initialize(ResolveRuntimeRole(headlessServer, forceServerMode));
+
+            if (headlessServer)
             {
                 // Server mode: no rendering, no input—pure simulation
                 Game.Server.Core.ServerInitialization.Begin(this);
@@ -59,6 +62,13 @@ namespace Game.Core
             var hasNoGraphics = SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null;
 
             return isBatchMode || hasNoGraphics;
+        }
+
+        private static RuntimeRole ResolveRuntimeRole(bool headlessServer, bool forceServerMode)
+        {
+            return headlessServer || forceServerMode
+                ? RuntimeRole.Server
+                : RuntimeRole.Client;
         }
         #endregion
     }

@@ -1,5 +1,6 @@
 using Game.Server.Core;
 using Game.Shared.Performance;
+using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using Game.Tests.Performance.Fixtures;
@@ -1130,6 +1131,7 @@ namespace Game.Tests.Performance.Harness
         private IEnumerator WaitForServerReady()
         {
             ThrowIfStopRequested();
+            ValidateStage14RuntimeRole();
             var deadline = Time.realtimeSinceStartup + _run.EffectivePreflightTimeoutSeconds;
             while (!Game.Shared.GameConfigurationManager.IsInitialized
                 || !ServerECSManager.Initialized
@@ -1154,6 +1156,17 @@ namespace Game.Tests.Performance.Harness
                 yield return null;
             }
             ThrowIfStopRequested();
+        }
+
+        private void ValidateStage14RuntimeRole()
+        {
+            if (!_run.IsStage14NPCActivity)
+                return;
+            if (Runtime.Role != RuntimeRole.Server || !Runtime.IsServer())
+            {
+                throw new Test_ActorFixturePreconditionException(
+                    "Stage 1.4 requires the shared runtime role to be Server; the bootstrap selected an inconsistent runtime role.");
+            }
         }
 
         private IEnumerator WaitForStage14Players()
