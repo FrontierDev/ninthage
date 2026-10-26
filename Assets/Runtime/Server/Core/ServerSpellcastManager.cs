@@ -115,6 +115,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerSpellCastInterrupted += OnSpellCastInterrupted;
             ActorEndpoint.onServerRequestSpellCastCancel += OnSpellCastCancelRequested;
             ActorEndpoint.onServerActorDespawned += OnActorDespawned;
+            ActorEndpoint.onServerActorObserverAdded += OnActorObserverAdded;
 
             _instance = this;
         }
@@ -145,6 +146,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerSpellCastDelayedAction -= OnSpellCastDelayedAction;
             ActorEndpoint.onServerRequestSpellCastCancel -= OnSpellCastCancelRequested;
             ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
+            ActorEndpoint.onServerActorObserverAdded -= OnActorObserverAdded;
 
             _instance = null;
         }
@@ -164,6 +166,39 @@ namespace Game.Server.Core
             _activeCastIDs.Remove(actor.ID);
             CancelPendingStarts(actor.ID);
             RemovePendingInterrupt(actor.ID);
+        }
+
+        private void OnActorObserverAdded(Actor actor, PlayerID playerID)
+        {
+            if (actor == null
+                || !_activeCastIDs.TryGetValue(actor.ID, out long castID)
+                || !_activeSpellCasts.TryGetValue(actor.ID, out SpellContext activeContext))
+            {
+                return;
+            }
+
+            string spellID = activeContext?.Spell?.BaseDefinition?.DefinitionID;
+            if (!TryGetCurrentCast(actor.ID, spellID, castID, out SpellContext context))
+                return;
+
+            if (context.Caster != actor)
+            {
+                throw new InvalidOperationException(
+                    $"Active spell cast for actor {actor.ID} references a different caster instance.");
+            }
+
+            float remainingCastTime = GetRemainingCastTime(actor.ID);
+            if (remainingCastTime <= 0f)
+                return;
+
+            ActorSpellcaster spellcaster = actor.GetComponent<ActorSpellcaster>();
+            if (spellcaster == null)
+            {
+                throw new InvalidOperationException(
+                    $"Active spell cast for actor {actor.ID} has no ActorSpellcaster component.");
+            }
+
+            spellcaster.PublishActiveCastBootstrap(playerID, spellID, remainingCastTime);
         }
 
         internal void PreparePendingMutations()

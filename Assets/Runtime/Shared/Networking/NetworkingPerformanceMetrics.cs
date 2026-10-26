@@ -601,7 +601,7 @@ namespace Game.Shared.Networking
         public static int EstimateStatEntryPayloadBytes(StatSnapshotEntry value)
         {
             return (value.StatID == null ? 0 : Encoding.UTF8.GetByteCount(value.StatID))
-                + sizeof(float) * 2;
+                + sizeof(float) * 4;
         }
 
         public static int EstimateStatSnapshotPayloadBytes(StatSnapshot value)

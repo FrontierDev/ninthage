@@ -302,6 +302,19 @@ namespace Game.Shared.Runtime.Actors
             base.OnDestroy();
         }
 
+        protected override void OnObserverAdded(PlayerID player)
+        {
+            base.OnObserverAdded(player);
+
+            if (!isServer)
+                return;
+
+            ActorEndpoint.onServerActorObserverAdded?.Invoke(this, player);
+
+            NetworkingPerformanceMetrics.RecordCombatCriticalTargetPublication();
+            Client_BootstrapTarget(player, _target);
+        }
+
         /// <summary>Gets the actor's display name.</summary>
         public virtual string GetName()
         {
@@ -389,6 +402,21 @@ namespace Game.Shared.Runtime.Actors
         public void Observers_SetTarget(Actor newTarget)
         {
             ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_TARGET_HANDLER_INVOCATION_COUNT);
+            ApplyReplicatedTarget(newTarget);
+        }
+
+        [TargetRpc]
+        public void Client_BootstrapTarget(
+            PlayerID playerID,
+            Actor newTarget,
+            RPCInfo info = default)
+        {
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_TARGET_HANDLER_INVOCATION_COUNT);
+            ApplyReplicatedTarget(newTarget);
+        }
+
+        private void ApplyReplicatedTarget(Actor newTarget)
+        {
             var oldTarget = _target;
             _target = newTarget;
 

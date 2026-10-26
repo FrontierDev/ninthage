@@ -5,6 +5,7 @@ using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Runtime.Spellcasting.SpellModifiers;
 using Game.Shared.Utility;
 using PurrNet;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -388,6 +389,36 @@ namespace Game.Shared.Runtime.Actors
         public void Observers_StartSpellCast(string spellID, float finalCastTime, RPCInfo rpcInfo = default)
         {
             ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_SPELL_CAST_HANDLER_INVOCATION_COUNT);
+            ApplySpellCastStartOnClient(spellID, finalCastTime);
+        }
+
+        /// <summary>Publishes the current cast presentation privately to a newly added observer.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
+        public void PublishActiveCastBootstrap(
+            PlayerID playerID,
+            string spellID,
+            float remainingCastTime)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may publish active cast bootstraps.");
+
+            NetworkingPerformanceMetrics.RecordCombatCriticalTargetPublication();
+            Client_BootstrapSpellCast(playerID, spellID, remainingCastTime);
+        }
+
+        [TargetRpc]
+        public void Client_BootstrapSpellCast(
+            PlayerID playerID,
+            string spellID,
+            float remainingCastTime,
+            RPCInfo info = default)
+        {
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_SPELL_CAST_HANDLER_INVOCATION_COUNT);
+            ApplySpellCastStartOnClient(spellID, remainingCastTime);
+        }
+
+        private void ApplySpellCastStartOnClient(string spellID, float finalCastTime)
+        {
             _isCasting = true;
             ActorEndpoint.onSpellCastStarted?.Invoke(GetComponent<Actor>(), spellID, finalCastTime);
         }

@@ -29,6 +29,8 @@ namespace Game.Shared.Networking
             int startPosition = telemetryEnabled ? packer.positionInBits : 0;
             packer.Write(value.StatID);
             packer.Write(value.EffectiveMax);
+            packer.Write(value.FlatModifier);
+            packer.Write(value.PercentModifier);
             packer.Write(value.Current);
 
             if (telemetryEnabled)
@@ -47,14 +49,20 @@ namespace Game.Shared.Networking
             int startPosition = telemetryEnabled ? packer.positionInBits : 0;
             string statID = default;
             float effectiveMax = default;
+            float flatModifier = default;
+            float percentModifier = default;
             float current = default;
             packer.Read(ref statID);
             packer.Read(ref effectiveMax);
+            packer.Read(ref flatModifier);
+            packer.Read(ref percentModifier);
             packer.Read(ref current);
             value = new StatSnapshotEntry
             {
                 StatID = statID,
                 EffectiveMax = effectiveMax,
+                FlatModifier = flatModifier,
+                PercentModifier = percentModifier,
                 Current = current
             };
 

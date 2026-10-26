@@ -94,6 +94,8 @@ namespace Game.Shared.Networking
         public static Action<Actor> onServerActorSpawned;
         /// <summary>Raised when an actor is despawned on the server.</summary>
         public static Action<Actor> onServerActorDespawned;
+        /// <summary>Raised when a player becomes an observer of a server actor.</summary>
+        public static Action<Actor, PlayerID> onServerActorObserverAdded;
         /// <summary>Raised when a server actor owner changes.</summary>
         public static Action<Actor> onServerActorOwnerChanged;
         /// <summary>Raised when server actor interest changes.</summary>
