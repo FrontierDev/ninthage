@@ -521,25 +521,58 @@ namespace Game.Shared.Runtime.Actors
         public void Observers_ApplyAura(string auraID, int instancedID, float duration, int stacks, RPCInfo info = default)
         {
             ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT);
-            // Get the aura definition.
+            ApplyAuraOnClient(auraID, instancedID, duration, stacks);
+        }
+
+        /// <summary>Publishes one authoritative aura snapshot to a newly added observer.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
+        public void PublishAuraBootstrapToObserver(
+            PlayerID playerID,
+            string auraID,
+            int instanceID,
+            float remainingDuration,
+            int stacks)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may publish aura observer bootstraps.");
+
+            NetworkingPerformanceMetrics.RecordCombatCriticalTargetPublication();
+            Client_BootstrapAura(playerID, auraID, instanceID, remainingDuration, stacks);
+        }
+
+        [TargetRpc]
+        public void Client_BootstrapAura(
+            PlayerID playerID,
+            string auraID,
+            int instanceID,
+            float remainingDuration,
+            int stacks,
+            RPCInfo info = default)
+        {
+            ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_AURA_HANDLER_INVOCATION_COUNT);
+            ApplyAuraOnClient(auraID, instanceID, remainingDuration, stacks);
+        }
+
+        private void ApplyAuraOnClient(string auraID, int instanceID, float duration, int stacks)
+        {
             AuraDefinition def = AuraDefinitionLibrary.Instance.GetDefinition(auraID);
 
-            if (_activeAuras.TryGetValue(instancedID, out var existingAura))
+            if (_activeAuras.TryGetValue(instanceID, out var existingAura))
             {
                 existingAura.SetDuration(duration);
                 existingAura.SetStacks(stacks);
 
-                _activeAuras[instancedID] = existingAura; // Update the dictionary entry.
+                _activeAuras[instanceID] = existingAura; // Update the dictionary entry.
 
-                ActorEndpoint.onClientUpdateAura?.Invoke(existingAura, this, instancedID);
+                ActorEndpoint.onClientUpdateAura?.Invoke(existingAura, this, instanceID);
             }
             else
             {
                 // If it's a new aura, create an instance and add it to the dictionary.
-                var newAura = new AuraInstance(instancedID, def, null, this, duration, stacks);
-                _activeAuras.Add(instancedID, newAura);
+                var newAura = new AuraInstance(instanceID, def, null, this, duration, stacks);
+                _activeAuras.Add(instanceID, newAura);
 
-                ActorEndpoint.onClientApplyAura?.Invoke(newAura, this, instancedID);
+                ActorEndpoint.onClientApplyAura?.Invoke(newAura, this, instanceID);
             }
         }
 

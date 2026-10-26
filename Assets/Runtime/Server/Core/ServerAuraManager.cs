@@ -80,6 +80,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerAuraExpired += OnAuraExpired;
             ActorEndpoint.onServerAuraDispelled += OnAuraDispelled;
             ActorEndpoint.onServerActorDespawned += OnActorDespawned;
+            ActorEndpoint.onServerActorObserverAdded += OnActorObserverAdded;
 
             _instance = this;
         }
@@ -94,6 +95,7 @@ namespace Game.Server.Core
             ActorEndpoint.onServerAuraExpired -= OnAuraExpired;
             ActorEndpoint.onServerAuraDispelled -= OnAuraDispelled;
             ActorEndpoint.onServerActorDespawned -= OnActorDespawned;
+            ActorEndpoint.onServerActorObserverAdded -= OnActorObserverAdded;
 
             _activeAuras.Clear();
             _pendingMutations.Clear();
@@ -132,6 +134,51 @@ namespace Game.Server.Core
                 _entityManager.SetComponentEnabled<Systems.AuraElement>(
                     targetEntity,
                     false);
+            }
+        }
+
+        private void OnActorObserverAdded(Actor actor, PlayerID playerID)
+        {
+            if (actor == null || !TryFindActorEntity(actor.ID, out Entity entity))
+                return;
+
+            if (!_entityManager.IsComponentEnabled<Systems.AuraElement>(entity))
+                return;
+
+            DynamicBuffer<Systems.AuraElement> buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
+            if (buffer.Length == 0)
+                return;
+
+            long currentTickID = ServerSimulationClock.CurrentTickID;
+            float tickDuration = GameConfigurationManager.Config.ServerSimulationTickDuration;
+
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                Systems.AuraElement entry = buffer[i];
+                if (_pendingRemovalInstanceIDs.Contains(entry.InstanceID))
+                    continue;
+
+                if (!_activeAuras.TryGetValue(entry.InstanceID, out AuraContext context)
+                    || context == null
+                    || context.TargetID != actor.ID
+                    || context.Definition == null
+                    || context.Definition.DefinitionID != entry.AuraDefinitionID.ToString())
+                {
+                    throw new InvalidOperationException(
+                        $"Aura bootstrap state mismatch for actor {actor.ID}, instance {entry.InstanceID}.");
+                }
+
+                long remainingTicks = entry.ExpiryTickID - currentTickID;
+                if (remainingTicks <= 0)
+                    continue;
+
+                float remainingDuration = remainingTicks * tickDuration;
+                actor.PublishAuraBootstrapToObserver(
+                    playerID,
+                    context.Definition.DefinitionID,
+                    entry.InstanceID,
+                    remainingDuration,
+                    context.Stacks);
             }
         }
 
