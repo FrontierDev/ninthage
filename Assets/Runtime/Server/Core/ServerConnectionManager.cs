@@ -15,6 +15,14 @@ namespace Game.Server.Core
     /// <summary>Maintains authoritative connection, account, and session state.</summary>
     public class ServerConnectionManager : PurrMonoBehaviour
     {
+        private const double NETWORK_TELEMETRY_INTERVAL_SECONDS = 1d;
+
+        private struct ConnectionTelemetryWindow
+        {
+            public long PayloadBytes;
+            public long MessageCount;
+        }
+
         private static ServerConnectionManager _instance;
         /// <summary>Gets the active server connection manager.</summary>
         public static ServerConnectionManager Instance
@@ -37,6 +45,9 @@ namespace Game.Server.Core
 
         private Dictionary<PlayerID, PlayerAccountData> _connectedPlayers = new();
         private Dictionary<PlayerID, PlayerSessionData> _sessionData = new();
+        // Current outbound interval only; _transport.connections remains the live connection authority.
+        private Dictionary<Connection, ConnectionTelemetryWindow> _outboundTelemetryWindows = new();
+        private double _networkTelemetryElapsedSeconds;
 
         #region Lifecycle
         private void Awake()
@@ -63,6 +74,10 @@ namespace Game.Server.Core
             }
             manager.onPlayerJoined += OnPlayerJoined;
             manager.onPlayerLeft += OnPlayerLeft;
+            PerformanceTelemetry.SessionStarted += OnPerformanceSessionStarted;
+            PerformanceTelemetry.SessionEnded += OnPerformanceSessionEnded;
+            if (PerformanceTelemetry.IsEnabled)
+                ResetOutboundTelemetryWindow();
             _initialized = true;
         }
 
@@ -82,12 +97,60 @@ namespace Game.Server.Core
             }
             manager.onPlayerJoined -= OnPlayerJoined;
             manager.onPlayerLeft -= OnPlayerLeft;
+            PerformanceTelemetry.SessionStarted -= OnPerformanceSessionStarted;
+            PerformanceTelemetry.SessionEnded -= OnPerformanceSessionEnded;
+            ResetOutboundTelemetryWindow();
             _networkManager = null;
             _connectedPlayers.Clear();
             _sessionData.Clear();
             _initialized = false;
         }
+
+        private void Update()
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
+
+            _networkTelemetryElapsedSeconds += Time.unscaledDeltaTime;
+            if (_networkTelemetryElapsedSeconds < NETWORK_TELEMETRY_INTERVAL_SECONDS)
+                return;
+
+            double intervalSeconds = _networkTelemetryElapsedSeconds;
+            if (_transport != null && _transport.connections.Count > 0)
+            {
+                foreach (Connection connection in _transport.connections)
+                {
+                    _outboundTelemetryWindows.TryGetValue(connection, out ConnectionTelemetryWindow window);
+                    PerformanceTelemetry.TryRecord(
+                        NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_SENT,
+                        window.PayloadBytes,
+                        intervalSeconds: intervalSeconds);
+                    PerformanceTelemetry.TryRecord(
+                        NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT,
+                        window.MessageCount,
+                        intervalSeconds: intervalSeconds);
+                }
+            }
+
+            ResetOutboundTelemetryWindow();
+        }
         #endregion
+
+        private void OnPerformanceSessionStarted()
+        {
+            ResetOutboundTelemetryWindow();
+        }
+
+        private void OnPerformanceSessionEnded()
+        {
+            ResetOutboundTelemetryWindow();
+        }
+
+        private void ResetOutboundTelemetryWindow()
+        {
+            _outboundTelemetryWindows.Clear();
+            _networkTelemetryElapsedSeconds = 0d;
+        }
 
         private void OnTransportConnected(Connection connection, bool asServer)
         {
@@ -103,6 +166,7 @@ namespace Game.Server.Core
         {
             if (asServer)
             {
+                _outboundTelemetryWindows.Remove(connection);
                 if (PerformanceTelemetry.IsEnabled)
                     PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_DISCONNECTED_COUNT, 1);
                 RecordLiveConnectionCount();
@@ -117,8 +181,15 @@ namespace Game.Server.Core
 
         private void OnTransportDataSent(Connection connection, ByteData data, bool asServer)
         {
-            if (asServer && PerformanceTelemetry.IsEnabled)
-                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_TRANSPORT_PAYLOAD_BYTES_SENT, data.length);
+            if (!asServer || !PerformanceTelemetry.IsEnabled)
+                return;
+
+            PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_TRANSPORT_PAYLOAD_BYTES_SENT, data.length);
+
+            _outboundTelemetryWindows.TryGetValue(connection, out ConnectionTelemetryWindow window);
+            window.PayloadBytes = checked(window.PayloadBytes + (long)data.length);
+            window.MessageCount = checked(window.MessageCount + 1L);
+            _outboundTelemetryWindows[connection] = window;
         }
 
         private void RecordLiveConnectionCount()

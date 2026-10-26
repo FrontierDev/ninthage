@@ -128,6 +128,7 @@ namespace Game.Shared.Runtime.Actors
             // TODO: Validate first...
             AddTalent(talentID, rank);
 
+            NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
             Client_UpdateTalents(rpcInfo.sender, new List<SavedTalentEntry> { new SavedTalentEntry { TalentID = talentID, Rank = rank } });
         }
 
@@ -139,6 +140,7 @@ namespace Game.Shared.Runtime.Actors
             if (rank == 0) RemoveTalent(talentID);
             else AddTalent(talentID, rank);
 
+            NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
             Client_UpdateTalents(rpcInfo.sender, new List<SavedTalentEntry> { new SavedTalentEntry { TalentID = talentID, Rank = rank } });
         }
 

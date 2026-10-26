@@ -182,6 +182,26 @@ namespace Game.Shared.Performance
         public const string CLIENT_DISCONNECTED_COUNT = "client.connection.disconnected_count";
         public const string SERVER_TRANSPORT_PAYLOAD_BYTES_SENT = "server.transport.payload_bytes_sent";
         public const string SERVER_TRANSPORT_PAYLOAD_BYTES_RECEIVED = "server.transport.payload_bytes_received";
+        public const string SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_SENT =
+            "server.transport.connection.payload_bytes_sent";
+        public const string SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT =
+            "server.transport.connection.message_count_sent";
+        public const string SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT =
+            "server.replication.combat_critical.publication_count";
+        public const string SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT =
+            "server.replication.combat_critical.recipient_count";
+        public const string SERVER_REPLICATION_MOVEMENT_PRESENTATION_PUBLICATION_COUNT =
+            "server.replication.movement_presentation.publication_count";
+        public const string SERVER_REPLICATION_MOVEMENT_PRESENTATION_RECIPIENT_COUNT =
+            "server.replication.movement_presentation.recipient_count";
+        public const string SERVER_REPLICATION_OWNER_PRIVATE_PUBLICATION_COUNT =
+            "server.replication.owner_private.publication_count";
+        public const string SERVER_REPLICATION_OWNER_PRIVATE_RECIPIENT_COUNT =
+            "server.replication.owner_private.recipient_count";
+        public const string SERVER_REPLICATION_COSMETIC_TRANSIENT_PUBLICATION_COUNT =
+            "server.replication.cosmetic_transient.publication_count";
+        public const string SERVER_REPLICATION_COSMETIC_TRANSIENT_RECIPIENT_COUNT =
+            "server.replication.cosmetic_transient.recipient_count";
         public const string CLIENT_CONNECTION_ATTEMPT_COUNT = "client.connection.attempt_count";
         public const string CLIENT_LIVE_CONNECTION_COUNT = "client.connection.live_count";
         public const string CLIENT_TRANSPORT_PAYLOAD_BYTES_SENT = "client.transport.payload_bytes_sent";

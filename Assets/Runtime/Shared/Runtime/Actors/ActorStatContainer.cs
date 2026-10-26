@@ -86,13 +86,19 @@ namespace Game.Shared.Runtime.Actors
 
             var observerSnapshot = BuildSnapshot(ActorStatReplicationMode.Observers);
             if (observerSnapshot.Stats.Length > 0)
+            {
+                NetworkingPerformanceMetrics.RecordCombatCriticalTargetPublication();
                 Client_ReceiveSnapshot(player, observerSnapshot);
+            }
 
             if (owner.HasValue && owner.Value == player)
             {
                 var ownerSnapshot = BuildSnapshot(ActorStatReplicationMode.Owner);
                 if (ownerSnapshot.Stats.Length > 0)
+                {
+                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                     Client_ReceiveSnapshot(player, ownerSnapshot);
+                }
             }
         }
 
@@ -137,9 +143,15 @@ namespace Game.Shared.Runtime.Actors
                 SetStat(statID, new StatInstance(stat.BaseValue, stat.FlatModifier, stat.PercentModifier, stat.EffectiveMaximum, newCurrent));
                 var def = ActorStatDefinitionLibrary.Instance.GetDefinition(statID);
                 if (def.ReplicationMode == ActorStatReplicationMode.Observers)
+                {
+                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(GetComponent<NetworkIdentity>());
                     Observers_ReceiveSnapshot(BuildSnapshot(ActorStatReplicationMode.Observers));
+                }
                 else if (def.ReplicationMode == ActorStatReplicationMode.Owner)
+                {
+                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                     Client_ReceiveSnapshot(GetComponent<Actor>().Owner.Value, BuildSnapshot(ActorStatReplicationMode.Owner));
+                }
             }
             else
             {

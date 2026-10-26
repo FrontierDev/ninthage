@@ -2,6 +2,7 @@ using System;
 using System.Text;
 
 using Game.Shared.Performance;
+using PurrNet;
 
 namespace Game.Shared.Networking
 {
@@ -69,6 +70,66 @@ namespace Game.Shared.Networking
             PerformanceMetricSide.Server,
             "purrnet_payload",
             "transport_message");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_SENT = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_SENT,
+            PerformanceMetricUnit.Bytes,
+            PerformanceMetricSide.Server,
+            "purrnet_payload",
+            "connection_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "purrnet_payload",
+            "connection_interval");
+        public static readonly PerformanceMetricDefinition SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT = Metric(
+            PerformanceMetricIds.SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "replication_source",
+            "server_publication");
+        public static readonly PerformanceMetricDefinition SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT = Metric(
+            PerformanceMetricIds.SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "replication_source",
+            "server_publication");
+        public static readonly PerformanceMetricDefinition SERVER_REPLICATION_MOVEMENT_PRESENTATION_PUBLICATION_COUNT = Metric(
+            PerformanceMetricIds.SERVER_REPLICATION_MOVEMENT_PRESENTATION_PUBLICATION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "replication_source",
+            "server_publication");
+        public static readonly PerformanceMetricDefinition SERVER_REPLICATION_MOVEMENT_PRESENTATION_RECIPIENT_COUNT = Metric(
+            PerformanceMetricIds.SERVER_REPLICATION_MOVEMENT_PRESENTATION_RECIPIENT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "replication_source",
+            "server_publication");
+        public static readonly PerformanceMetricDefinition SERVER_REPLICATION_OWNER_PRIVATE_PUBLICATION_COUNT = Metric(
+            PerformanceMetricIds.SERVER_REPLICATION_OWNER_PRIVATE_PUBLICATION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "replication_source",
+            "server_publication");
+        public static readonly PerformanceMetricDefinition SERVER_REPLICATION_OWNER_PRIVATE_RECIPIENT_COUNT = Metric(
+            PerformanceMetricIds.SERVER_REPLICATION_OWNER_PRIVATE_RECIPIENT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "replication_source",
+            "server_publication");
+        public static readonly PerformanceMetricDefinition SERVER_REPLICATION_COSMETIC_TRANSIENT_PUBLICATION_COUNT = Metric(
+            PerformanceMetricIds.SERVER_REPLICATION_COSMETIC_TRANSIENT_PUBLICATION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "replication_source",
+            "server_publication");
+        public static readonly PerformanceMetricDefinition SERVER_REPLICATION_COSMETIC_TRANSIENT_RECIPIENT_COUNT = Metric(
+            PerformanceMetricIds.SERVER_REPLICATION_COSMETIC_TRANSIENT_RECIPIENT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "replication_source",
+            "server_publication");
         public static readonly PerformanceMetricDefinition CLIENT_CONNECTION_ATTEMPT_COUNT = Metric(
             PerformanceMetricIds.CLIENT_CONNECTION_ATTEMPT_COUNT,
             PerformanceMetricUnit.Count,
@@ -305,6 +366,16 @@ namespace Game.Shared.Networking
             RegisterMeasured(SERVER_LIVE_CONNECTION_COUNT);
             RegisterMeasured(SERVER_TRANSPORT_PAYLOAD_BYTES_SENT);
             RegisterMeasured(SERVER_TRANSPORT_PAYLOAD_BYTES_RECEIVED);
+            RegisterMeasured(SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_SENT);
+            RegisterMeasured(SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT);
+            RegisterMeasured(SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT);
+            RegisterMeasured(SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT);
+            RegisterMeasured(SERVER_REPLICATION_MOVEMENT_PRESENTATION_PUBLICATION_COUNT);
+            RegisterMeasured(SERVER_REPLICATION_MOVEMENT_PRESENTATION_RECIPIENT_COUNT);
+            RegisterMeasured(SERVER_REPLICATION_OWNER_PRIVATE_PUBLICATION_COUNT);
+            RegisterMeasured(SERVER_REPLICATION_OWNER_PRIVATE_RECIPIENT_COUNT);
+            RegisterMeasured(SERVER_REPLICATION_COSMETIC_TRANSIENT_PUBLICATION_COUNT);
+            RegisterMeasured(SERVER_REPLICATION_COSMETIC_TRANSIENT_RECIPIENT_COUNT);
 
             RegisterMeasured(VISIBILITY_EVALUATION_COUNT);
             RegisterMeasured(VISIBILITY_ACCEPTED_COUNT);
@@ -401,6 +472,82 @@ namespace Game.Shared.Networking
         {
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(VISIBILITY_CANDIDATE_COUNT, candidateCount);
+        }
+
+        /// <summary>Records one combat-critical observer publication and its intended observer fan-out.</summary>
+        public static void RecordCombatCriticalObserverPublication(NetworkIdentity identity)
+        {
+            RecordObserverPublication(
+                SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT,
+                SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT,
+                identity);
+        }
+
+        /// <summary>Records one combat-critical targeted publication.</summary>
+        public static void RecordCombatCriticalTargetPublication()
+        {
+            RecordTargetPublication(
+                SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT,
+                SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT);
+        }
+
+        /// <summary>Records one movement-presentation observer publication and its intended observer fan-out.</summary>
+        public static void RecordMovementPresentationObserverPublication(NetworkIdentity identity)
+        {
+            RecordObserverPublication(
+                SERVER_REPLICATION_MOVEMENT_PRESENTATION_PUBLICATION_COUNT,
+                SERVER_REPLICATION_MOVEMENT_PRESENTATION_RECIPIENT_COUNT,
+                identity);
+        }
+
+        /// <summary>Records one movement-presentation targeted publication.</summary>
+        public static void RecordMovementPresentationTargetPublication()
+        {
+            RecordTargetPublication(
+                SERVER_REPLICATION_MOVEMENT_PRESENTATION_PUBLICATION_COUNT,
+                SERVER_REPLICATION_MOVEMENT_PRESENTATION_RECIPIENT_COUNT);
+        }
+
+        /// <summary>Records one owner-private targeted publication.</summary>
+        public static void RecordOwnerPrivateTargetPublication()
+        {
+            RecordTargetPublication(
+                SERVER_REPLICATION_OWNER_PRIVATE_PUBLICATION_COUNT,
+                SERVER_REPLICATION_OWNER_PRIVATE_RECIPIENT_COUNT);
+        }
+
+        /// <summary>Records one cosmetic observer publication and its intended observer fan-out.</summary>
+        public static void RecordCosmeticObserverPublication(NetworkIdentity identity)
+        {
+            RecordObserverPublication(
+                SERVER_REPLICATION_COSMETIC_TRANSIENT_PUBLICATION_COUNT,
+                SERVER_REPLICATION_COSMETIC_TRANSIENT_RECIPIENT_COUNT,
+                identity);
+        }
+
+        private static void RecordObserverPublication(
+            PerformanceMetricDefinition publicationMetric,
+            PerformanceMetricDefinition recipientMetric,
+            NetworkIdentity identity)
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
+            if (identity == null)
+                throw new ArgumentNullException(nameof(identity));
+
+            PerformanceTelemetry.TryRecord(publicationMetric, 1);
+            PerformanceTelemetry.TryRecord(recipientMetric, identity.observers.Count);
+        }
+
+        private static void RecordTargetPublication(
+            PerformanceMetricDefinition publicationMetric,
+            PerformanceMetricDefinition recipientMetric)
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
+
+            PerformanceTelemetry.TryRecord(publicationMetric, 1);
+            PerformanceTelemetry.TryRecord(recipientMetric, 1);
         }
 
         /// <summary>

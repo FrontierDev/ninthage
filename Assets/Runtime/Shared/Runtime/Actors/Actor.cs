@@ -370,6 +370,7 @@ namespace Game.Shared.Runtime.Actors
         public void Server_SetTarget(Actor newTarget)
         {
             _target = newTarget;
+            NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(GetComponent<NetworkIdentity>());
             Observers_SetTarget(newTarget);
         }
 
@@ -379,6 +380,7 @@ namespace Game.Shared.Runtime.Actors
         public void SetTargetFromServer(Actor newTarget)
         {
             _target = newTarget;
+            NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(GetComponent<NetworkIdentity>());
             Observers_SetTarget(newTarget);
         }
 

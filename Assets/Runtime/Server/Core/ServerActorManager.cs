@@ -2013,6 +2013,7 @@ namespace Game.Server.Core
                         position);
                     UpdateAcceptedActorChunkMembership(actor, position, registration.Identity);
                     actor.SetAcceptedPositionSnapshotFromServer(position, tickID);
+                    NetworkingPerformanceMetrics.RecordMovementPresentationObserverPublication(registration.Identity);
                     _acceptedVisibilityMovements.Add(new AcceptedVisibilityMovement(
                         actor,
                         previousSnapshot.Position,

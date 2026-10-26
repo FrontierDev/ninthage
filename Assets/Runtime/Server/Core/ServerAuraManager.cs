@@ -4,6 +4,7 @@ using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
+using PurrNet;
 using System;
 using System.Collections.Generic;
 using Unity.Entities;
@@ -283,6 +284,7 @@ namespace Game.Server.Core
 
             Debug.Log($"Aura '{definition.DisplayName}' applied to {target.Name} by {caster.Name} (instance {instanceID})");
 
+            NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(target.GetComponent<NetworkIdentity>());
             target.Observers_ApplyAura(definition.DefinitionID, instanceID, ctx.Duration, ctx.Stacks);
 
             return true;
@@ -517,6 +519,7 @@ namespace Game.Server.Core
                     ExecuteAuraComponent(ctx, component);
             }
 
+            NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(target.GetComponent<NetworkIdentity>());
             target.Observers_TickAura(instanceID, ctx.Stacks, ctx.Duration);
         }
 
@@ -544,6 +547,7 @@ namespace Game.Server.Core
 
             ctx.Definition.AuraBehaviour?.OnRemoved(ctx.Caster, target);
 
+            NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(target.GetComponent<NetworkIdentity>());
             target.Observers_ExpireAura(instanceID);
             Debug.Log($"Aura '{ctx.Definition.DisplayName}' expired on {target.Name} (instance {instanceID})");
         }
@@ -571,6 +575,7 @@ namespace Game.Server.Core
 
             ctx.Definition.AuraBehaviour?.OnRemoved(ctx.Caster, target);
 
+            NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(target.GetComponent<NetworkIdentity>());
             target.Observers_DispelAura(instanceID);
             Debug.Log($"Aura '{ctx.Definition.DisplayName}' dispelled from {target.Name} (instance {instanceID})");
         }

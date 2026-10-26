@@ -349,6 +349,7 @@ namespace Game.Shared.Runtime.Actors
         private void SendDelta(List<InventorySlotChange> changes)
         {
             if (!owner.HasValue) return;
+            NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
             Client_UpdateInventory(owner.Value, new InventoryDelta(changes));
         }
 

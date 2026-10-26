@@ -2,9 +2,11 @@ using Actor = Game.Shared.Runtime.Actors.Actor;
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Data;
+using Game.Shared.Networking;
 using Game.Shared.Persistence;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
+using PurrNet;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -474,16 +476,25 @@ namespace Game.Server.Core
             // Broadcast observer stats (health, mana, etc.) to all observers except owner.
             var observerSnapshot = container.BuildSnapshot(ActorStatReplicationMode.Observers);
             if (observerSnapshot.Stats.Length > 0)
+            {
+                NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(actor.GetComponent<NetworkIdentity>());
                 container.Observers_ReceiveSnapshot(observerSnapshot);
+            }
 
             // Send owner + observer stats to the owner via TargetRpc.
             if (actor.IsPlayer && actor.Owner.HasValue)
             {
                 var ownerSnapshot = container.BuildSnapshot(ActorStatReplicationMode.Owner);
                 if (observerSnapshot.Stats.Length > 0)
+                {
+                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                     container.Client_ReceiveSnapshot(actor.Owner.Value, observerSnapshot);
+                }
                 if (ownerSnapshot.Stats.Length > 0)
+                {
+                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                     container.Client_ReceiveSnapshot(actor.Owner.Value, ownerSnapshot);
+                }
             }
         }
 

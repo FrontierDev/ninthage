@@ -7,6 +7,7 @@ using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using Game.Shared.Utility;
+using PurrNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -603,8 +604,15 @@ namespace Game.Server.Core
                 });
                 _entityManager.SetComponentEnabled<Systems.SpellCastComponent>(entity, true);
 
-                caster.GetComponent<ActorSpellcaster>()
-                      ?.Observers_StartSpellCast(spell.BaseDefinition.DefinitionID, spell.CastTime);
+                var casterSpellcaster = caster.GetComponent<ActorSpellcaster>();
+                if (casterSpellcaster != null)
+                {
+                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
+                        casterSpellcaster.GetComponent<NetworkIdentity>());
+                    casterSpellcaster.Observers_StartSpellCast(
+                        spell.BaseDefinition.DefinitionID,
+                        spell.CastTime);
+                }
 
                 Debug.Log($"Spell cast started: {caster.Name} casting '{spell.BaseDefinition.DisplayName}' ({spell.CastTime}s)");
             }
@@ -615,7 +623,16 @@ namespace Game.Server.Core
                 ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, ServerCooldownManager.GCD_ID, GameConfigurationManager.Config.GlobalCooldownDuration);
 
                 if (caster.Owner != null)
-                    caster.GetComponent<ActorSpellcaster>()?.Client_StartGlobalCooldown(caster.Owner.Value, GameConfigurationManager.Config.GlobalCooldownDuration);
+                {
+                    var casterSpellcaster = caster.GetComponent<ActorSpellcaster>();
+                    if (casterSpellcaster != null)
+                    {
+                        NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
+                        casterSpellcaster.Client_StartGlobalCooldown(
+                            caster.Owner.Value,
+                            GameConfigurationManager.Config.GlobalCooldownDuration);
+                    }
+                }
             }
 
             // Channelled spells start their individual cooldown immediately.
@@ -624,7 +641,17 @@ namespace Game.Server.Core
                 ActorEndpoint.onServerStartCooldown?.Invoke(caster.ID, spell.BaseDefinition.DefinitionID, spell.Cooldown);
 
                 if (caster.Owner != null)
-                    caster.GetComponent<ActorSpellcaster>()?.Client_StartSpellCooldown(caster.Owner.Value, spell.BaseDefinition.DefinitionID, spell.Cooldown);
+                {
+                    var casterSpellcaster = caster.GetComponent<ActorSpellcaster>();
+                    if (casterSpellcaster != null)
+                    {
+                        NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
+                        casterSpellcaster.Client_StartSpellCooldown(
+                            caster.Owner.Value,
+                            spell.BaseDefinition.DefinitionID,
+                            spell.Cooldown);
+                    }
+                }
             }
 
             // Apply resource costs here.
@@ -640,9 +667,16 @@ namespace Game.Server.Core
                     stat.EffectiveMaximum, newCurrent));
 
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
+                {
+                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
+                        ctx.Caster.GetComponent<NetworkIdentity>());
                     statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                }
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
+                {
+                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                     statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                }
             }
 
             return true;
@@ -712,13 +746,28 @@ namespace Game.Server.Core
                     stat.EffectiveMaximum, newCurrent));
 
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
+                {
+                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
+                        ctx.Caster.GetComponent<NetworkIdentity>());
                     statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                }
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
+                {
+                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                     statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                }
             }
 
             if (IsCurrentCast(actorID, spellID, castID, ctx))
-                ctx.Caster.GetComponent<ActorSpellcaster>()?.Observers_TickSpellCast(spellID);
+            {
+                var casterSpellcaster = ctx.Caster.GetComponent<ActorSpellcaster>();
+                if (casterSpellcaster != null)
+                {
+                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
+                        casterSpellcaster.GetComponent<NetworkIdentity>());
+                    casterSpellcaster.Observers_TickSpellCast(spellID);
+                }
+            }
         }
 
         /// <summary>
@@ -844,7 +893,13 @@ namespace Game.Server.Core
             // ctx.Definition.BaseResourceCosts[i].RefundOnInterrupt
 
             // Notify clients
-            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observers_InterruptSpellCast(spellID);
+            var casterSpellcaster = ctx.Caster.GetComponent<ActorSpellcaster>();
+            if (casterSpellcaster != null)
+            {
+                NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
+                    casterSpellcaster.GetComponent<NetworkIdentity>());
+                casterSpellcaster.Observers_InterruptSpellCast(spellID);
+            }
             Debug.Log($"Spell cast interrupted: {ctx.Caster.Name} stopped casting '{spellID}'");
         }
 
@@ -909,7 +964,12 @@ namespace Game.Server.Core
                 if (ctx.Caster.Owner != null)
                 {
                     var owner = ctx.Caster.Owner.Value;
-                    ctx.Caster.GetComponent<ActorSpellcaster>()?.Client_StartSpellCooldown(owner, spellID, ctx.Spell.Cooldown);
+                    var cooldownCasterSpellcaster = ctx.Caster.GetComponent<ActorSpellcaster>();
+                    if (cooldownCasterSpellcaster != null)
+                    {
+                        NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
+                        cooldownCasterSpellcaster.Client_StartSpellCooldown(owner, spellID, ctx.Spell.Cooldown);
+                    }
                     Debug.Log($"Started cooldown for spell '{spellID}' on actor {ctx.Caster.Name} (ID: {actorID}) with duration {ctx.Spell.Cooldown}s");
                 }
             }
@@ -927,9 +987,16 @@ namespace Game.Server.Core
                     stat.EffectiveMaximum, newCurrent));
 
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
+                {
+                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
+                        ctx.Caster.GetComponent<NetworkIdentity>());
                     statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                }
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
+                {
+                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                     statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                }
             }
 
             // If it was a weapon skill, add experience to the character's weapon skill.
@@ -951,7 +1018,13 @@ namespace Game.Server.Core
 
             // Notify the observers that the cast has completed, 
             // so they can resolve the spell effects and targets.
-            ctx.Caster.GetComponent<ActorSpellcaster>()?.Observers_FinishSpellCast(spellID);
+            var casterSpellcaster = ctx.Caster.GetComponent<ActorSpellcaster>();
+            if (casterSpellcaster != null)
+            {
+                NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
+                    casterSpellcaster.GetComponent<NetworkIdentity>());
+                casterSpellcaster.Observers_FinishSpellCast(spellID);
+            }
             ctx.Caster.GetComponent<ActorEvents>()?.onServerSpellCastComplete?.Invoke(ctx);
             Debug.Log($"Spell cast completed: {ctx.Caster.Name} finished '{spellID}'");
         }

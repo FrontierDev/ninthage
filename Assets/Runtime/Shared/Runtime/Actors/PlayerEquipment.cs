@@ -137,6 +137,7 @@ namespace Game.Shared.Runtime.Actors
             if (Game.Shared.Runtime.Runtime.IsServer())
             {
                 CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
+                NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                 Client_UpdateEquipment(owner.Value, delta);
             }
 
@@ -161,6 +162,7 @@ namespace Game.Shared.Runtime.Actors
 
                     if (Game.Shared.Runtime.Runtime.IsServer())
                     {
+                        NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
                         Client_UpdateEquipment(owner.Value, delta);
                         GetComponent<ActorSpellcaster>().RecalculateOverrides();
                         CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
