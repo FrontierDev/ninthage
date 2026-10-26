@@ -1,0 +1,172 @@
+{
+    "schema_version": "benchmark-fixture/v1",
+    "profile": {
+        "id": "P1-S1.4-NPC-ACTIVITY",
+        "revision": "1.0.0",
+        "spec_revision": "P1-S1.4-NPC-ACTIVITY",
+        "variant": "S14-FORCEDFULL",
+        "tier": "S1.4"
+    },
+    "random": {
+        "master_seed": 424242,
+        "replicate_seed": 424242,
+        "replicate_index": 0,
+        "derivation": "sha256-u32le-v1",
+        "streams": [
+            "world",
+            "actors",
+            "movement",
+            "abilities",
+            "lifecycle"
+        ]
+    },
+    "provenance": {
+        "fixture_generator": "Game.Tests.Performance.Harness.Test_PerformanceEvidence",
+        "generator_revision": "1.0.0",
+        "input_path": "stage-1.4-npc-activity-profile",
+        "asset_manifest_path": "Assets/Tests/Performance/Fixtures/Actors/actor-asset-manifest.json",
+        "source_commit": "f6ed231dc06b4987a33ab57cc484234e9099cafa",
+        "source_sha256": "",
+        "asset_manifest_sha256": "ad8a7c5ddced960ac7e028b5f75ff2e6f04ba6cf7ee6e2df946ef90d08e26842"
+    },
+    "required_features": [
+        "stage_1_4_npc_activity",
+        "real_authenticated_players",
+        "full_gameobject_purrnet_npcs",
+        "canonical_activity_telemetry"
+    ],
+    "population": {
+        "players": {
+            "requested": 1,
+            "groups": [
+                {
+                    "group_id": "player-anchor",
+                    "count": 1,
+                    "class_id": "fighter",
+                    "role": "real_player",
+                    "cluster_id": "player-anchor"
+                }
+            ]
+        },
+        "npcs": {
+            "requested": 100,
+            "groups": [
+                {
+                    "group_id": "npc-idle",
+                    "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+                    "count": 99,
+                    "class_id": "fighter",
+                    "cluster_id": "npc-idle",
+                    "representation": "networked_gameobject_ecs",
+                    "activity": [
+                        1.0,
+                        0.0,
+                        0.0
+                    ]
+                },
+                {
+                    "group_id": "npc-engaged",
+                    "definition_id": "6e50fb82-1724-4040-afec-88fabc925ae0",
+                    "count": 1,
+                    "class_id": "sorcerer",
+                    "cluster_id": "npc-engaged",
+                    "representation": "networked_gameobject_ecs",
+                    "activity": [
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                }
+            ]
+        },
+        "accounting": {
+            "ecs_data_only_npcs": 0,
+            "full_gameobject_purrnet_npcs": 100,
+            "real_player_connections": 1,
+            "synthetic_network_players": 0
+        }
+    },
+    "space": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": "",
+        "clusters": [
+            {
+                "cluster_id": "player-anchor",
+                "center_world_m": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "radius_m": 20.0,
+                "players": 1,
+                "npcs": 1
+            },
+            {
+                "cluster_id": "npc-idle",
+                "center_world_m": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "radius_m": 150.0,
+                "players": 0,
+                "npcs": 99
+            },
+            {
+                "cluster_id": "npc-engaged",
+                "center_world_m": [
+                    6.0,
+                    0.0,
+                    0.0
+                ],
+                "radius_m": 1.0,
+                "players": 0,
+                "npcs": 1
+            }
+        ]
+    },
+    "environment": {
+        "world_id": "fixture-world",
+        "map_id": "fixture-open-world",
+        "instance_id": "",
+        "origin_cell_size_m": 100,
+        "world_tile_size_m": 256,
+        "fixture_scene": "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity",
+        "fixture_scene_hash": "08211f02e84ab7129469fb9324401e7a53ea9d9ff554a0bf4efe50a6c55cc29f",
+        "object_count": 33,
+        "navigable": true
+    },
+    "schedules": {
+        "movement_routes": [],
+        "ability_schedule": [],
+        "events": []
+    },
+    "network": {
+        "real_clients": 1,
+        "synthetic_clients": 0,
+        "representation": "networked_gameobject_ecs",
+        "authentication": "ordinary_login_required",
+        "transport": "ordinary_project_transport"
+    },
+    "timing": {
+        "preflight_timeout_s": 120.0,
+        "ramp_s": 120.0,
+        "warmup_s": 60.0,
+        "measurement_s": 300.0,
+        "recovery_s": 60.0,
+        "sample_interval_ms": 1000
+    },
+    "stops": {
+        "max_duration_s": 660.0,
+        "max_actor_count": 100,
+        "resource_ceiling": "runner records actual resource metrics; no substitute workload is used",
+        "conditions": [
+            "measurement_complete",
+            "timeout",
+            "resource_ceiling",
+            "correctness_failure",
+            "user_stop"
+        ]
+    }
+}
