@@ -25,7 +25,7 @@
         "generator_revision": "1.0.0",
         "input_path": "stage-1.4-npc-activity-profile",
         "asset_manifest_path": "Assets/Tests/Performance/Fixtures/Actors/actor-asset-manifest.json",
-        "source_commit": "f6ed231dc06b4987a33ab57cc484234e9099cafa",
+        "source_commit": "d6eb9c31428fb6e64da7205e384525bdf244cb75",
         "source_sha256": "",
         "asset_manifest_sha256": "ad8a7c5ddced960ac7e028b5f75ff2e6f04ba6cf7ee6e2df946ef90d08e26842"
     },
@@ -87,8 +87,8 @@
         }
     },
     "space": {
-        "world_id": "fixture-world",
-        "map_id": "fixture-open-world",
+        "world_id": "",
+        "map_id": "",
         "instance_id": "",
         "clusters": [
             {
@@ -127,15 +127,16 @@
         ]
     },
     "environment": {
-        "world_id": "fixture-world",
-        "map_id": "fixture-open-world",
+        "authority": "ordinary_authoritative_server",
+        "world_id": "",
+        "map_id": "",
         "instance_id": "",
         "origin_cell_size_m": 100,
         "world_tile_size_m": 256,
-        "fixture_scene": "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity",
-        "fixture_scene_hash": "08211f02e84ab7129469fb9324401e7a53ea9d9ff554a0bf4efe50a6c55cc29f",
-        "object_count": 33,
-        "navigable": true
+        "fixture_scene": "",
+        "fixture_scene_hash": "",
+        "object_count": 0,
+        "navigable": false
     },
     "schedules": {
         "movement_routes": [],

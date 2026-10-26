@@ -14,6 +14,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Game.Tests.Performance.Fixtures.Actors
 {
@@ -169,15 +170,13 @@ namespace Game.Tests.Performance.Fixtures.Actors
             foreach (var placement in placements)
             {
                 _pendingFullPlacements.Enqueue(placement);
-                var sourceChunk = new WorldChunkKey(
-                    ServerWorldManager.Instance.CurrentRuntimeContext,
-                    new Vector2Int(
-                        placement.world_tile_x,
-                        placement.world_tile_z));
                 var worldPosition = new WorldPosition(
                     placement.world_x,
                     placement.world_y,
                     placement.world_z);
+                var sourceChunk = new WorldChunkKey(
+                    ServerWorldManager.Instance.CurrentRuntimeContext,
+                    worldPosition.Chunk);
 
                 ServerSpawnManager.Instance.SpawnAt(
                     sourceChunk,
@@ -206,6 +205,21 @@ namespace Game.Tests.Performance.Fixtures.Actors
             if (SpawnedFullActorCount != _profile.population.npcs.requested)
                 throw new InvalidOperationException(
                     $"Full actor fixture observed {SpawnedFullActorCount} actors; expected {_profile.population.npcs.requested}.");
+
+            foreach (var actor in _fullActors)
+            {
+                var npc = actor as NPCActor;
+                Require(npc != null, $"Spawned Stage 1.4 actor '{actor?.name}' is not the ordinary NPCActor representation.");
+                Require(actor.GetComponent<ActorMotor>() != null,
+                    $"Spawned Stage 1.4 NPC '{actor.ID}' is missing the ordinary ActorMotor component.");
+                var agent = actor.GetComponent<NavMeshAgent>();
+                Require(agent != null && agent.enabled,
+                    $"Spawned Stage 1.4 NPC '{actor.ID}' does not have the ordinary enabled NavMeshAgent movement component.");
+                Require(agent.isOnNavMesh,
+                    $"Spawned Stage 1.4 NPC '{actor.ID}' is not attached to the ordinary authoritative NavMesh.");
+                Require(actor.TryGetAcceptedPositionSnapshot(out var snapshot) && snapshot.Position.IsFinite,
+                    $"Spawned Stage 1.4 NPC '{actor.ID}' has no finite accepted authoritative position.");
+            }
         }
 
         /// <summary>Assigns a real player target and starts the legal server-side engaged schedule.</summary>

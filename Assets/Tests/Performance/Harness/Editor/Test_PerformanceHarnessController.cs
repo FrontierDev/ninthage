@@ -1,5 +1,7 @@
 using Game.Server.Core;
 using Game.Shared.Performance;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
@@ -33,6 +35,11 @@ namespace Game.Tests.Performance.Harness
         public string finalizedStatus;
         public string finalizedReasonCode;
         public string finalizedMessage;
+        public string stage14RuntimeWorldID;
+        public string stage14RuntimeMapID;
+        public string stage14RuntimeInstanceID;
+        public int[] stage14RuntimeChunkX;
+        public int[] stage14RuntimeChunkZ;
         public bool worldFixtureLoaded;
         public bool preflightCompleted;
         public bool workloadApplied;
@@ -751,8 +758,8 @@ namespace Game.Tests.Performance.Harness
         private IEnumerator ExecuteStage14NPCActivityCore()
         {
             yield return WaitForStage14Players();
+            ValidateStage14RuntimeAuthority();
             _run.RegisterServerMetrics();
-            yield return LoadSelectedWorldFixture();
 
             var prefab = Test_ActorFixturePreflight.ValidateFull(
                 _run.ActorProfile,
@@ -764,15 +771,24 @@ namespace Game.Tests.Performance.Harness
                 _run.Options.NPCActivityScenario,
                 _npcActivityPlayerCapture.AnchorPosition,
                 passiveAggroRange);
-            Test_ActorFixturePreflight.ValidateAuthoritativeGround(
-                _run.WorldPlan.FixtureID,
+            var requiredChunks = BuildStage14RequiredChunks(placements);
+            var requiredChunkCoordinates = new List<Vector2Int>(requiredChunks.Count);
+            foreach (var requiredChunk in requiredChunks)
+                requiredChunkCoordinates.Add(requiredChunk.ChunkCoord);
+            _run.SetStage14RuntimeEnvironment(
+                ServerWorldManager.Instance.CurrentRuntimeContext,
+                requiredChunkCoordinates);
+            yield return EnsureStage14PlacementChunks(requiredChunks);
+            var resolvedPlacements = Test_ActorFixturePreflight.ResolveAuthoritativeGround(
                 placements,
                 _run.Options.NPCActivityScenario);
+            if (ServerWorldManager.Instance.CurrentRuntimeContext != _run.Stage14RuntimeContext)
+                throw new Test_ActorFixturePreconditionException("Stage 1.4 ordinary authoritative runtime context changed before NPC spawn.");
             _fixture = new Test_ActorFixtureRuntime(_run.ActorProfile);
             _fixture.StartFullActors(
                 ServerWorldManager.Instance.GlobalActorsSceneID,
                 _npcActivityPlayerCapture.Anchor,
-                placements);
+                resolvedPlacements);
             _run.SetFullNetworkedRuntime(_fixture);
             Test_PerformanceHarnessController.PersistActiveRun("running");
             yield return _fixture.WaitForFullSpawn(_run.EffectivePreflightTimeoutSeconds);
@@ -780,7 +796,7 @@ namespace Game.Tests.Performance.Harness
                 _run.Options.NPCActivityScenario,
                 _npcActivityPlayerCapture,
                 _run.ActorProfile,
-                placements,
+                resolvedPlacements,
                 passiveAggroRange);
             _run.AttachStage14NPCActivityEvidence(_npcActivityController, _fixture.SpawnedFullActorCount);
             _fixture.StartEngagementForGroup("npc-engaged", 1);
@@ -824,6 +840,128 @@ namespace Game.Tests.Performance.Harness
                 PerformanceRunStatus.CompleteMeasured,
                 "MEASUREMENT_COMPLETE",
                 "The Stage 1.4 full networked NPC activity workload was measured and cleaned up successfully.");
+        }
+
+        private void ValidateStage14RuntimeAuthority()
+        {
+            if (!ServerWorldManager.IsInitialized || ServerWorldManager.Instance == null)
+                throw new Test_ActorFixturePreconditionException("Stage 1.4 requires the ordinary authoritative ServerWorldManager.");
+
+            var runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            if (!runtimeContext.IsValid)
+                throw new Test_ActorFixturePreconditionException("Stage 1.4 requires a valid ordinary authoritative server runtime context.");
+            if (_npcActivityPlayerCapture == null || _npcActivityPlayerCapture.Anchor == null)
+                throw new Test_ActorFixturePreconditionException("Stage 1.4 did not capture a real authenticated anchor PlayerActor.");
+            if (_npcActivityPlayerCapture.Context != runtimeContext
+                || _npcActivityPlayerCapture.Anchor.SpatialContext != runtimeContext)
+            {
+                throw new Test_ActorFixturePreconditionException(
+                    $"Stage 1.4 anchor PlayerActor '{_npcActivityPlayerCapture.Anchor.ID}' is not in the ordinary authoritative runtime context '{runtimeContext.WorldID}/{runtimeContext.MapID}/{runtimeContext.InstanceID}'.");
+            }
+            foreach (var player in _npcActivityPlayerCapture.Players)
+            {
+                if (player == null
+                    || player.SpatialContext != runtimeContext
+                    || !player.TryGetAcceptedPositionSnapshot(out var playerSnapshot)
+                    || !playerSnapshot.Position.IsFinite)
+                {
+                    throw new Test_ActorFixturePreconditionException(
+                        $"Stage 1.4 real player '{player?.ID.ToString() ?? "<null>"}' is not represented by a finite accepted position in the ordinary authoritative runtime context.");
+                }
+            }
+            if (!_npcActivityPlayerCapture.Anchor.TryGetAcceptedPositionSnapshot(out var snapshot)
+                || !snapshot.Position.IsFinite)
+            {
+                throw new Test_ActorFixturePreconditionException(
+                    $"Stage 1.4 anchor PlayerActor '{_npcActivityPlayerCapture.Anchor.ID}' has no finite accepted authoritative position.");
+            }
+
+            _npcActivityPlayerCapture.AnchorPosition = snapshot.Position;
+        }
+
+        private List<WorldChunkKey> BuildStage14RequiredChunks(IReadOnlyList<Test_ActorFixturePlacement> placements)
+        {
+            var runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            var requiredChunks = new HashSet<WorldChunkKey>();
+            foreach (var placement in placements)
+            {
+                if (placement == null)
+                    throw new Test_ActorFixturePreconditionException("Stage 1.4 placement generation returned a null placement before ordinary-world chunk provisioning.");
+
+                var position = new WorldPosition(placement.world_x, placement.world_y, placement.world_z);
+                if (!position.IsFinite)
+                {
+                    throw new Test_ActorFixturePreconditionException(
+                        $"Stage 1.4 placement '{placement.actor_fixture_id}' has a non-finite position before ordinary-world chunk provisioning: ({placement.world_x:R}, {placement.world_y:R}, {placement.world_z:R}).");
+                }
+
+                requiredChunks.Add(new WorldChunkKey(runtimeContext, position.Chunk));
+            }
+
+            var orderedChunks = new List<WorldChunkKey>(requiredChunks);
+            orderedChunks.Sort((left, right) =>
+            {
+                var xComparison = left.ChunkCoord.x.CompareTo(right.ChunkCoord.x);
+                return xComparison != 0 ? xComparison : left.ChunkCoord.y.CompareTo(right.ChunkCoord.y);
+            });
+            return orderedChunks;
+        }
+
+        private IEnumerator EnsureStage14PlacementChunks(IReadOnlyList<WorldChunkKey> requiredChunks)
+        {
+            var worldManager = ServerWorldManager.Instance;
+            var runtimeContext = worldManager.CurrentRuntimeContext;
+            foreach (var requiredChunk in requiredChunks)
+            {
+                if (requiredChunk.Context != runtimeContext)
+                    throw new Test_ActorFixturePreconditionException("Stage 1.4 required ordinary-world chunks do not match the current authoritative runtime context.");
+            }
+            var deadline = Time.realtimeSinceStartup + _run.EffectivePreflightTimeoutSeconds;
+            foreach (var requiredChunk in requiredChunks)
+            {
+                var chunk = requiredChunk.ChunkCoord;
+                if (worldManager.IsChunkLoaded(runtimeContext, chunk))
+                    continue;
+
+                var completed = false;
+                var succeeded = false;
+                try
+                {
+                    worldManager.EnsureChunkLoaded(
+                        runtimeContext,
+                        chunk,
+                        (success, _) =>
+                        {
+                            succeeded = success;
+                            completed = true;
+                        });
+                }
+                catch (Exception exception)
+                {
+                    throw new Test_ActorFixturePreconditionException(
+                        $"Stage 1.4 ordinary-world chunk '{chunk}' could not be loaded through ServerWorldManager: {exception.Message}");
+                }
+
+                while (!completed)
+                {
+                    ThrowIfStopRequested();
+                    if (Time.realtimeSinceStartup >= deadline)
+                    {
+                        throw new Test_ActorFixturePreconditionException(
+                            $"Stage 1.4 ordinary-world chunk '{chunk}' did not load through ServerWorldManager within the bounded preflight timeout.");
+                    }
+                    yield return null;
+                }
+
+                if (!succeeded || !worldManager.IsChunkLoaded(runtimeContext, chunk))
+                {
+                    throw new Test_ActorFixturePreconditionException(
+                        $"Stage 1.4 ordinary-world chunk '{chunk}' failed to load through ServerWorldManager before NPC spawn.");
+                }
+            }
+
+            if (worldManager.CurrentRuntimeContext != runtimeContext)
+                throw new Test_ActorFixturePreconditionException("Stage 1.4 ordinary authoritative runtime context changed during chunk provisioning.");
         }
 
         private IEnumerator ExecuteGraphicalCore()

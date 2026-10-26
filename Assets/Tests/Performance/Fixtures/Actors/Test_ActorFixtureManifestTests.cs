@@ -127,9 +127,9 @@ namespace Game.Tests.Performance.Fixtures.Actors
         {
             var position = new WorldPosition(128d, 0d, 128d);
             var exception = Assert.Throws<Test_ActorFixturePreconditionException>(() =>
-                Test_ActorFixturePreflight.ResolveGroundLayerMask("Outdoor", "MissingGroundLayerForRegression", position));
+                Test_ActorFixturePreflight.ResolveGroundLayerMask("ordinary server world", "MissingGroundLayerForRegression", position));
 
-            Assert.That(exception.Message, Does.Contain("Outdoor"));
+            Assert.That(exception.Message, Does.Contain("ordinary server world"));
             Assert.That(exception.Message, Does.Contain("MissingGroundLayerForRegression"));
             Assert.That(exception.Message, Does.Contain("(128, 0, 128)"));
         }

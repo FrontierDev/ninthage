@@ -1,5 +1,6 @@
 using Game.Server.Core;
 using Game.Shared.Performance;
+using Game.Shared.Runtime.Actors;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
@@ -241,6 +242,8 @@ namespace Game.Tests.Performance.Harness
         private bool _focusState;
         private bool _focusStateActive;
         private bool _focusObservationForcedUnknown;
+        private readonly List<Vector2Int> _stage14RuntimeChunks = new();
+        private ActorSpatialContext _stage14RuntimeContext;
         private PerformanceRunStatus _finalStatus;
         private string _finalReasonCode;
         private string _finalMessage;
@@ -357,6 +360,10 @@ namespace Game.Tests.Performance.Harness
         public bool IsGraphicalClient => Options.IsGraphicalClient;
 
         public bool IsStage14NPCActivity => Options.IsStage14NPCActivity;
+
+        public ActorSpatialContext Stage14RuntimeContext => _stage14RuntimeContext;
+
+        public IReadOnlyList<Vector2Int> Stage14RuntimeChunks => _stage14RuntimeChunks;
 
         public float EffectivePreflightTimeoutSeconds => IsStage14NPCActivity ? 120f : PREFLIGHT_TIMEOUT_SECONDS;
 
@@ -581,6 +588,8 @@ namespace Game.Tests.Performance.Harness
             {
                 actorProfile = Test_ActorFixtureLayout.BuildStage14NPCActivityProfile(options.NPCActivityScenario, options.ActorCount, options.Seed);
                 scenario = Test_ActorFixtureLayout.BuildStage14NPCActivityScenario(options.NPCActivityScenario, options.ActorCount, options.Seed);
+                worldPlan = null;
+                return;
             }
             else
             {
@@ -731,6 +740,35 @@ namespace Game.Tests.Performance.Harness
             AppendLog("Stage 1.4 full networked NPC fixture prepared with real-player anchoring.");
         }
 
+        public void SetStage14RuntimeEnvironment(ActorSpatialContext context, IReadOnlyList<Vector2Int> requiredChunks)
+        {
+            if (!IsStage14NPCActivity)
+                throw new InvalidOperationException("An ordinary runtime environment can only be attached to a Stage 1.4 run.");
+            if (!context.IsValid)
+                throw new ArgumentException("The Stage 1.4 runtime context must be valid.", nameof(context));
+            if (requiredChunks == null || requiredChunks.Count == 0)
+                throw new ArgumentException("Stage 1.4 runtime environment must include at least one required chunk.", nameof(requiredChunks));
+
+            var uniqueChunks = new HashSet<Vector2Int>();
+            foreach (var chunk in requiredChunks)
+            {
+                if (!uniqueChunks.Add(chunk))
+                    throw new ArgumentException("Stage 1.4 runtime environment contains a duplicate required chunk: " + chunk, nameof(requiredChunks));
+            }
+
+            _stage14RuntimeContext = context;
+            _stage14RuntimeChunks.Clear();
+            _stage14RuntimeChunks.AddRange(requiredChunks);
+            _stage14RuntimeChunks.Sort((left, right) =>
+            {
+                var xComparison = left.x.CompareTo(right.x);
+                return xComparison != 0 ? xComparison : left.y.CompareTo(right.y);
+            });
+            AppendLog(
+                $"Stage 1.4 ordinary runtime environment captured: world={context.WorldID}, map={context.MapID}, instance={context.InstanceID}, chunks={_stage14RuntimeChunks.Count.ToString(CultureInfo.InvariantCulture)}.");
+            File.WriteAllText(RunPath, Test_PerformanceEvidence.BuildRunJson(this, _metadata.Repository, _metadata), new UTF8Encoding(false));
+        }
+
         public Test_GraphicalFixtureRuntime CreateGraphicalRuntime()
         {
             if (!IsGraphicalClient || GraphicalPlan == null)
@@ -772,6 +810,13 @@ namespace Game.Tests.Performance.Harness
                 finalizedStatus = Finalized ? StatusText(_finalStatus) : null,
                 finalizedReasonCode = Finalized ? _finalReasonCode : null,
                 finalizedMessage = Finalized ? _finalMessage : null,
+                stage14RuntimeWorldID = _stage14RuntimeContext.IsValid ? _stage14RuntimeContext.WorldID.ToString() : null,
+                stage14RuntimeMapID = _stage14RuntimeContext.IsValid ? _stage14RuntimeContext.MapID : null,
+                stage14RuntimeInstanceID = _stage14RuntimeContext.IsValid && _stage14RuntimeContext.InstanceID != Guid.Empty
+                    ? _stage14RuntimeContext.InstanceID.ToString()
+                    : null,
+                stage14RuntimeChunkX = BuildStage14RuntimeChunkCoordinates(true),
+                stage14RuntimeChunkZ = BuildStage14RuntimeChunkCoordinates(false),
                 worldFixtureLoaded = WorldFixtureLoaded,
                 preflightCompleted = PreflightCompleted,
                 workloadApplied = WorkloadApplied,
@@ -812,6 +857,7 @@ namespace Game.Tests.Performance.Harness
             Finalized = state.finalized;
             if (Finalized)
                 RestoreFinalizationFields(state);
+            RestoreStage14RuntimeEnvironment(state);
             WorldFixtureLoaded = state.worldFixtureLoaded;
             PreflightCompleted = state.preflightCompleted;
             WorkloadApplied = state.workloadApplied;
@@ -860,6 +906,45 @@ namespace Game.Tests.Performance.Harness
                 AppendLog("Telemetry session restarted after restoring the pending Editor run.");
         }
 
+        private int[] BuildStage14RuntimeChunkCoordinates(bool xAxis)
+        {
+            if (!IsStage14NPCActivity || _stage14RuntimeChunks.Count == 0)
+                return Array.Empty<int>();
+
+            var coordinates = new int[_stage14RuntimeChunks.Count];
+            for (var index = 0; index < _stage14RuntimeChunks.Count; index++)
+                coordinates[index] = xAxis ? _stage14RuntimeChunks[index].x : _stage14RuntimeChunks[index].y;
+            return coordinates;
+        }
+
+        private void RestoreStage14RuntimeEnvironment(Test_PerformancePendingRunState state)
+        {
+            _stage14RuntimeContext = default;
+            _stage14RuntimeChunks.Clear();
+            if (!IsStage14NPCActivity
+                || string.IsNullOrEmpty(state.stage14RuntimeWorldID)
+                || string.IsNullOrEmpty(state.stage14RuntimeMapID))
+                return;
+
+            if (!Guid.TryParse(state.stage14RuntimeWorldID, out var worldID))
+                throw new InvalidOperationException("The pending Stage 1.4 runtime world ID is invalid.");
+            var instanceID = Guid.Empty;
+            if (!string.IsNullOrEmpty(state.stage14RuntimeInstanceID)
+                && !Guid.TryParse(state.stage14RuntimeInstanceID, out instanceID))
+                throw new InvalidOperationException("The pending Stage 1.4 runtime instance ID is invalid.");
+
+            var chunkX = state.stage14RuntimeChunkX ?? Array.Empty<int>();
+            var chunkZ = state.stage14RuntimeChunkZ ?? Array.Empty<int>();
+            if (chunkX.Length != chunkZ.Length || chunkX.Length == 0)
+                throw new InvalidOperationException("The pending Stage 1.4 runtime required chunk coordinates are incomplete.");
+
+            _stage14RuntimeContext = instanceID == Guid.Empty
+                ? ActorSpatialContext.CreatePublic(worldID, state.stage14RuntimeMapID)
+                : ActorSpatialContext.CreateInstanced(worldID, state.stage14RuntimeMapID, instanceID);
+            for (var index = 0; index < chunkX.Length; index++)
+                _stage14RuntimeChunks.Add(new Vector2Int(chunkX[index], chunkZ[index]));
+        }
+
         public void MarkWorkloadApplied()
         {
             if (IsGraphicalClient)
@@ -883,8 +968,8 @@ namespace Game.Tests.Performance.Harness
 
             if (IsStage14NPCActivity)
             {
-                if (!WorldFixtureLoaded || FixtureRuntime == null || FixtureRuntime.SpawnedFullActorCount != RequestedActorCount)
-                    throw new InvalidOperationException("The Stage 1.4 full networked fixture must be spawned before marking the workload active.");
+                if (FixtureRuntime == null || FixtureRuntime.SpawnedFullActorCount != RequestedActorCount)
+                    throw new InvalidOperationException("The Stage 1.4 full networked NPC population must be spawned before marking the workload active.");
                 RampCompletedEntityCount = FixtureRuntime.SpawnedFullActorCount;
                 ObserveEntityCount(RampCompletedEntityCount);
                 PerformanceTelemetry.MarkWorkloadApplied();
@@ -1146,7 +1231,8 @@ namespace Game.Tests.Performance.Harness
             }
 
             _measurementSamplesAvailable = HasMeasurementSamples();
-            if (IsStage14NPCActivity && status != PerformanceRunStatus.BlockedPrerequisite
+            if (IsStage14NPCActivity
+                && status == PerformanceRunStatus.CompleteMeasured
                 && !HasRequiredStage14Telemetry(out var missingTelemetry))
             {
                 status = PerformanceRunStatus.FailInstrumentation;
@@ -1966,7 +2052,9 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine("- Status: `" + StatusText(status) + "`");
             builder.AppendLine("- Run ID: `" + RunID + "`");
             builder.AppendLine("- Profile: `" + Options.EffectiveProfileID + "`");
-            builder.AppendLine("- World fixture: `" + (IsGraphicalClient ? GraphicalPlan.ScenarioID : Options.WorldFixture.ToString()) + "` (`" + (WorldPlan == null ? "unavailable" : WorldPlan.AssetPath) + "`)");
+            builder.AppendLine(IsStage14NPCActivity
+                ? "- Ordinary runtime environment: `ordinary_authoritative_server`"
+                : "- World fixture: `" + (IsGraphicalClient ? GraphicalPlan.ScenarioID : Options.WorldFixture.ToString()) + "` (`" + (WorldPlan == null ? "unavailable" : WorldPlan.AssetPath) + "`)");
             builder.AppendLine("- Workload: `" + Options.WorkloadMode + "`");
             builder.AppendLine("- Seed: `" + Options.Seed.ToString(CultureInfo.InvariantCulture) + "`");
             builder.AppendLine("- Git commit: `" + _metadata.Commit + "` (dirty: `" + _metadata.Dirty.ToString().ToLowerInvariant() + "`)");
@@ -1988,6 +2076,17 @@ namespace Game.Tests.Performance.Harness
                     builder.AppendLine("- NPC activity scenario: `" + Stage14NPCActivityEvidence.npc_activity_scenario + "`");
                     builder.AppendLine("- Real players achieved: `" + Stage14NPCActivityEvidence.achieved_real_player_count + "/" + Stage14NPCActivityEvidence.required_real_player_count + "`");
                     builder.AppendLine("- Full NPCs achieved: `" + Stage14NPCActivityEvidence.achieved_full_npc_count + "/" + Stage14NPCActivityEvidence.requested_npc_count + "`");
+                }
+                if (IsStage14NPCActivity)
+                {
+                    var runtimeContext = _stage14RuntimeContext.IsValid
+                        ? _stage14RuntimeContext.WorldID + "/" + _stage14RuntimeContext.MapID + "/" + (_stage14RuntimeContext.InstanceID == Guid.Empty ? "public" : _stage14RuntimeContext.InstanceID.ToString())
+                        : "unavailable";
+                    var runtimeChunks = new string[_stage14RuntimeChunks.Count];
+                    for (var index = 0; index < _stage14RuntimeChunks.Count; index++)
+                        runtimeChunks[index] = _stage14RuntimeChunks[index].x.ToString(CultureInfo.InvariantCulture) + "," + _stage14RuntimeChunks[index].y.ToString(CultureInfo.InvariantCulture);
+                    builder.AppendLine("- Ordinary runtime context: `" + runtimeContext + "`");
+                    builder.AppendLine("- Ordinary runtime chunks: `" + string.Join(", ", runtimeChunks) + "`");
                 }
             }
             builder.AppendLine("- Ramp-completed ECS entities: `" + RampCompletedEntityCount + "`");
@@ -2425,8 +2524,10 @@ namespace Game.Tests.Performance.Harness
                 },
                 required_features = actor.required_features,
                 population = BuildPopulation(actor),
-                space = BuildSpace(actor.space),
-                environment = BuildEnvironment(actor.environment, world),
+                space = isStage14NPCActivity ? BuildStage14Space(actor.space) : BuildSpace(actor.space),
+                environment = isStage14NPCActivity
+                    ? BuildOrdinaryRuntimeEnvironment(actor.environment)
+                    : BuildEnvironment(actor.environment, world),
                 schedules = BuildSchedules(scenario),
                 network = new FixtureNetwork
                 {
@@ -2478,13 +2579,30 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "execution", run.IsStage14NPCActivity
                 ? "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":false,\"credentials\":\"ordinary_login_required\"}"
                 : "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":true,\"credentials\":\"none_for_server_only_data_fixture\"}", true);
-            RawProperty(builder, "runtime", $"{{\"scene_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"scene_path\":{Test_PerformanceRun.Quote(run.WorldPlan == null ? string.Empty : run.WorldPlan.AssetPath)},\"standalone_qualified\":false,\"network_clients_supported\":{run.IsStage14NPCActivity.ToString().ToLowerInvariant()}}}", true);
-            RawProperty(builder, "workload", $"{{\"mode\":{Test_PerformanceRun.Quote(run.Options.WorkloadMode.ToString())},\"profile_id\":{Test_PerformanceRun.Quote(run.Options.EffectiveProfileID)},\"actor_variant_id\":{Test_PerformanceRun.Quote(run.Options.ActorVariantID)},\"actor_count\":{run.Options.ActorCount},\"world_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"density\":{Test_PerformanceRun.Quote(run.Options.DensityTier.ToString())},\"seed\":{run.Options.Seed}}}", run.IsStage14NPCActivity);
+            RawProperty(builder, "runtime", run.IsStage14NPCActivity
+                ? BuildStage14RuntimeJson(run)
+                : $"{{\"scene_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"scene_path\":{Test_PerformanceRun.Quote(run.WorldPlan == null ? string.Empty : run.WorldPlan.AssetPath)},\"standalone_qualified\":false,\"network_clients_supported\":false}}", true);
+            var worldFixture = run.IsStage14NPCActivity ? "null" : Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString());
+            RawProperty(builder, "workload", $"{{\"mode\":{Test_PerformanceRun.Quote(run.Options.WorkloadMode.ToString())},\"profile_id\":{Test_PerformanceRun.Quote(run.Options.EffectiveProfileID)},\"actor_variant_id\":{Test_PerformanceRun.Quote(run.Options.ActorVariantID)},\"actor_count\":{run.Options.ActorCount},\"world_fixture\":{worldFixture},\"density\":{Test_PerformanceRun.Quote(run.Options.DensityTier.ToString())},\"seed\":{run.Options.Seed}}}", run.IsStage14NPCActivity);
             if (run.IsStage14NPCActivity)
                 RawProperty(builder, "npc_activity", BuildStage14NPCActivityEvidenceJson(run.Stage14NPCActivityEvidence), false);
             builder.AppendLine();
             builder.Append('}');
             return builder.ToString();
+        }
+
+        private static string BuildStage14RuntimeJson(Test_PerformanceRun run)
+        {
+            var context = run.Stage14RuntimeContext;
+            var worldID = context.IsValid ? Test_PerformanceRun.Quote(context.WorldID.ToString()) : "null";
+            var mapID = context.IsValid ? Test_PerformanceRun.Quote(context.MapID) : "null";
+            var instanceID = context.IsValid && context.InstanceID != Guid.Empty
+                ? Test_PerformanceRun.Quote(context.InstanceID.ToString())
+                : "null";
+            var contextKind = !context.IsValid
+                ? "unavailable"
+                : context.InstanceID == Guid.Empty ? "public" : "instance";
+            return $"{{\"environment_authority\":\"ordinary_authoritative_server\",\"scene_fixture\":null,\"scene_path\":null,\"context_kind\":{Test_PerformanceRun.Quote(contextKind)},\"world_id\":{worldID},\"map_id\":{mapID},\"instance_id\":{instanceID},\"required_chunks\":{BuildChunkArrayJson(run.Stage14RuntimeChunks)},\"standalone_qualified\":false,\"network_clients_supported\":true}}";
         }
 
         private static string BuildStage14NPCActivityEvidenceJson(Test_NPCActivityScenarioEvidence evidence)
@@ -2498,7 +2616,11 @@ namespace Game.Tests.Performance.Harness
                 + ",\"achieved_real_player_count\":" + evidence.achieved_real_player_count.ToString(CultureInfo.InvariantCulture)
                 + ",\"anchor_actor_id\":" + Test_PerformanceRun.Quote(evidence.anchor_actor_id)
                 + ",\"anchor_initial_context\":" + Test_PerformanceRun.Quote(evidence.anchor_initial_context)
-                + ",\"anchor_initial_position\":" + BuildDoubleArrayJson(evidence.anchor_initial_position);
+                + ",\"anchor_initial_position\":" + BuildDoubleArrayJson(evidence.anchor_initial_position)
+                + ",\"authoritative_world_id\":" + Test_PerformanceRun.Quote(evidence.authoritative_world_id)
+                + ",\"authoritative_map_id\":" + Test_PerformanceRun.Quote(evidence.authoritative_map_id)
+                + ",\"authoritative_instance_id\":" + Test_PerformanceRun.Quote(evidence.authoritative_instance_id)
+                + ",\"ordinary_runtime_chunks\":" + BuildStringArrayJson(evidence.ordinary_runtime_chunks);
             if (string.Equals(evidence.npc_activity_scenario, Test_NPCActivityScenario.MassWake.ToString(), StringComparison.Ordinal))
                 json += ",\"mass_wake_cluster_centre\":" + BuildDoubleArrayJson(evidence.mass_wake_cluster_centre)
                     + ",\"mass_wake_reached\":" + evidence.mass_wake_reached.ToString().ToLowerInvariant();
@@ -2515,6 +2637,26 @@ namespace Game.Tests.Performance.Harness
             var formatted = new string[values.Length];
             for (var index = 0; index < values.Length; index++)
                 formatted[index] = values[index].ToString("R", CultureInfo.InvariantCulture);
+            return "[" + string.Join(",", formatted) + "]";
+        }
+
+        private static string BuildStringArrayJson(string[] values)
+        {
+            if (values == null)
+                return "null";
+            var formatted = new string[values.Length];
+            for (var index = 0; index < values.Length; index++)
+                formatted[index] = Test_PerformanceRun.Quote(values[index]);
+            return "[" + string.Join(",", formatted) + "]";
+        }
+
+        private static string BuildChunkArrayJson(IReadOnlyList<Vector2Int> chunks)
+        {
+            if (chunks == null || chunks.Count == 0)
+                return "[]";
+            var formatted = new string[chunks.Count];
+            for (var index = 0; index < chunks.Count; index++)
+                formatted[index] = "[" + chunks[index].x.ToString(CultureInfo.InvariantCulture) + "," + chunks[index].y.ToString(CultureInfo.InvariantCulture) + "]";
             return "[" + string.Join(",", formatted) + "]";
         }
 
@@ -2745,10 +2887,37 @@ namespace Game.Tests.Performance.Harness
             return new FixtureSpace { world_id = space.world_id, map_id = space.map_id, instance_id = space.instance_id, clusters = clusters.ToArray() };
         }
 
+        private static FixtureSpace BuildStage14Space(Test_ActorFixtureSpace space)
+        {
+            var result = BuildSpace(space);
+            result.world_id = string.Empty;
+            result.map_id = string.Empty;
+            result.instance_id = null;
+            return result;
+        }
+
+        private static FixtureEnvironment BuildOrdinaryRuntimeEnvironment(Test_ActorFixtureEnvironment environment)
+        {
+            return new FixtureEnvironment
+            {
+                authority = "ordinary_authoritative_server",
+                world_id = string.Empty,
+                map_id = string.Empty,
+                instance_id = null,
+                origin_cell_size_m = environment.origin_cell_size_m,
+                world_tile_size_m = environment.world_tile_size_m,
+                fixture_scene = string.Empty,
+                fixture_scene_hash = string.Empty,
+                object_count = 0,
+                navigable = false,
+            };
+        }
+
         private static FixtureEnvironment BuildEnvironment(Test_ActorFixtureEnvironment environment, Test_WorldFixturePlan world)
         {
             return new FixtureEnvironment
             {
+                authority = "generated_world_fixture",
                 world_id = environment.world_id,
                 map_id = environment.map_id,
                 instance_id = environment.instance_id,
@@ -2799,7 +2968,7 @@ namespace Game.Tests.Performance.Harness
         [Serializable] private sealed class FixtureAccounting { public int ecs_data_only_npcs; public int full_gameobject_purrnet_npcs; public int real_player_connections; public int synthetic_network_players; }
         [Serializable] private sealed class FixtureSpace { public string world_id; public string map_id; public string instance_id; public FixtureCluster[] clusters; }
         [Serializable] private sealed class FixtureCluster { public string cluster_id; public double[] center_world_m; public double radius_m; public int players; public int npcs; }
-        [Serializable] private sealed class FixtureEnvironment { public string world_id; public string map_id; public string instance_id; public int origin_cell_size_m; public int world_tile_size_m; public string fixture_scene; public string fixture_scene_hash; public int object_count; public bool navigable; }
+        [Serializable] private sealed class FixtureEnvironment { public string authority; public string world_id; public string map_id; public string instance_id; public int origin_cell_size_m; public int world_tile_size_m; public string fixture_scene; public string fixture_scene_hash; public int object_count; public bool navigable; }
         [Serializable] private sealed class FixtureSchedules { public Test_ActorMovementRoute[] movement_routes; public Test_ActorAbilitySchedule[] ability_schedule; public Test_ActorScenarioEvent[] events; }
         [Serializable] private sealed class FixtureNetwork { public int real_clients; public int synthetic_clients; public string representation; public string authentication; public string transport; }
         [Serializable] private sealed class FixtureTiming { public float preflight_timeout_s; public float ramp_s; public float warmup_s; public float measurement_s; public float recovery_s; public int sample_interval_ms; }

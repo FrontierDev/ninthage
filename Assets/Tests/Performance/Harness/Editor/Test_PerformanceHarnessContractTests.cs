@@ -2,13 +2,16 @@ using NUnit.Framework;
 using Game.Server.Core;
 using Game.Shared;
 using Game.Shared.Performance;
+using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -311,6 +314,42 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void Stage14ValidationDoesNotResolveAWorldFixture()
+        {
+            var options = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.FullNetworkedActors,
+                WorldFixture = Test_WorldFixtureVariant.Forest,
+            };
+
+            Assert.That(options.TryValidate(out var diagnostic, out var worldPlan, out var actorProfile), Is.True, diagnostic);
+            Assert.That(worldPlan, Is.Null);
+            Assert.That(actorProfile, Is.Not.Null);
+        }
+
+        [Test]
+        public void Stage14ExecutionDoesNotInjectAWorldFixtureScene()
+        {
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var controllerPath = Path.Combine(
+                projectRoot,
+                "Assets/Tests/Performance/Harness/Editor/Test_PerformanceHarnessController.cs");
+            var source = File.ReadAllText(controllerPath);
+            var methodStart = source.IndexOf("private IEnumerator ExecuteStage14NPCActivityCore()", StringComparison.Ordinal);
+            var methodEnd = source.IndexOf("private void ValidateStage14RuntimeAuthority()", methodStart, StringComparison.Ordinal);
+            Assert.That(methodStart, Is.GreaterThanOrEqualTo(0), controllerPath);
+            Assert.That(methodEnd, Is.GreaterThan(methodStart), controllerPath);
+            var stage14Source = source.Substring(methodStart, methodEnd - methodStart);
+
+            Assert.That(stage14Source, Does.Not.Contain("LoadSelectedWorldFixture"));
+            Assert.That(stage14Source, Does.Not.Contain("EditorSceneManager.LoadSceneAsyncInPlayMode"));
+            Assert.That(stage14Source, Does.Not.Contain("Test_WorldFixture_Outdoor"));
+            Assert.That(stage14Source, Does.Contain("EnsureStage14PlacementChunks"));
+            Assert.That(stage14Source, Does.Contain("ResolveAuthoritativeGround"));
+            Assert.That(stage14Source, Does.Contain("StartFullActors"));
+        }
+
+        [Test]
         public void ExplicitEditorServerWorldNameRejectsBlankValues()
         {
             Assert.Throws<ArgumentException>(() => ServerInitialization.Begin(null, string.Empty));
@@ -324,37 +363,68 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
-        public void OutdoorFixtureStage14SpawnAreaPassesAuthoritativeGroundPreflightWhenServerIsRunning()
+        public void Stage14SpawnAreaGroundResolvesInOrdinaryRuntimeWhenServerIsRunning()
         {
-            if (!GameConfigurationManager.IsInitialized || !ServerPhysicsManager.IsInitialized)
-                Assert.Ignore("Authoritative ground validation requires the running Stage 1.4 server scene.");
+            if (!GameConfigurationManager.IsInitialized
+                || !ServerPhysicsManager.IsInitialized
+                || !ServerWorldManager.IsInitialized
+                || ServerWorldManager.Instance == null)
+                Assert.Ignore("Authoritative ground resolution requires the running Stage 1.4 server scene.");
 
-            const string outdoorScenePath = "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity";
-            Assert.That(AssetDatabase.LoadAssetAtPath<SceneAsset>(outdoorScenePath), Is.Not.Null, outdoorScenePath);
-            var existingScene = SceneManager.GetSceneByPath(outdoorScenePath);
-            var openedByTest = !(existingScene.IsValid() && existingScene.isLoaded);
-            var scene = openedByTest
-                ? EditorSceneManager.OpenScene(outdoorScenePath, OpenSceneMode.Additive)
-                : existingScene;
-            try
+            if (!Test_NPCActivityScenarioController.TryCaptureRealPlayers(1, false, out var playerCapture, out var diagnostic))
+                Assert.Ignore(diagnostic);
+            Assert.That(playerCapture.Context, Is.EqualTo(ServerWorldManager.Instance.CurrentRuntimeContext));
+
+            var profile = Test_ActorFixtureLayout.BuildStage14NPCActivityProfile(
+                Test_NPCActivityScenario.ForcedFull,
+                100,
+                Test_ActorFixtureLayout.DEFAULT_SEED);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Test_ActorFixtureLayout.NPC_PREFAB_PATH);
+            Assert.That(prefab, Is.Not.Null, Test_ActorFixtureLayout.NPC_PREFAB_PATH);
+            var passiveAggroRange = Test_ActorFixturePreflight.GetNPCPassiveAggroRange(prefab);
+            var placements = Test_ActorFixtureLayout.BuildStage14NPCActivityPlacements(
+                profile,
+                Test_NPCActivityScenario.ForcedFull,
+                playerCapture.AnchorPosition,
+                passiveAggroRange);
+            AssertRequiredChunksLoaded(placements, playerCapture.Context);
+            AssertGroundResolutionPreservesHorizontalCoordinates(placements, Test_NPCActivityScenario.ForcedFull);
+
+            var massWakePlacements = Test_ActorFixtureLayout.BuildStage14NPCActivityPlacements(
+                profile,
+                Test_NPCActivityScenario.MassWake,
+                new WorldPosition(playerCapture.AnchorPosition.x + 140d, playerCapture.AnchorPosition.y, playerCapture.AnchorPosition.z),
+                passiveAggroRange);
+            AssertRequiredChunksLoaded(massWakePlacements, playerCapture.Context);
+            AssertGroundResolutionPreservesHorizontalCoordinates(massWakePlacements, Test_NPCActivityScenario.MassWake);
+        }
+
+        private static void AssertRequiredChunksLoaded(
+            IReadOnlyList<Test_ActorFixturePlacement> placements,
+            ActorSpatialContext context)
+        {
+            foreach (var placement in placements)
             {
-                var profile = Test_ActorFixtureLayout.BuildCatalog().profiles[1];
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Test_ActorFixtureLayout.NPC_PREFAB_PATH);
-                var placements = Test_ActorFixtureLayout.BuildStage14NPCActivityPlacements(
-                    profile,
-                    Test_NPCActivityScenario.ForcedFull,
-                    new WorldPosition(128d, 0d, 128d),
-                    Test_ActorFixturePreflight.GetNPCPassiveAggroRange(prefab));
-
-                Test_ActorFixturePreflight.ValidateAuthoritativeGround(
-                    "Outdoor",
-                    placements,
-                    Test_NPCActivityScenario.ForcedFull);
+                var chunk = new WorldPosition(placement.world_x, placement.world_y, placement.world_z).Chunk;
+                if (!ServerWorldManager.Instance.IsChunkLoaded(context, chunk))
+                    Assert.Ignore($"The ordinary runtime chunk {chunk} is not loaded for the ground-resolution contract test.");
             }
-            finally
+        }
+
+        private static void AssertGroundResolutionPreservesHorizontalCoordinates(
+            IReadOnlyList<Test_ActorFixturePlacement> placements,
+            Test_NPCActivityScenario scenario)
+        {
+            var originalX = placements.Select(placement => placement.world_x).ToArray();
+            var originalZ = placements.Select(placement => placement.world_z).ToArray();
+            var resolvedPlacements = Test_ActorFixturePreflight.ResolveAuthoritativeGround(placements, scenario);
+            Assert.That(resolvedPlacements, Is.SameAs(placements));
+            for (var index = 0; index < resolvedPlacements.Count; index++)
             {
-                if (openedByTest && scene.IsValid() && scene.isLoaded)
-                    EditorSceneManager.CloseScene(scene, true);
+                var placement = resolvedPlacements[index];
+                Assert.That(placement.world_x, Is.EqualTo(originalX[index]));
+                Assert.That(placement.world_z, Is.EqualTo(originalZ[index]));
+                Assert.That(new WorldPosition(placement.world_x, placement.world_y, placement.world_z).IsFinite, Is.True);
             }
         }
 
@@ -857,6 +927,31 @@ namespace Game.Tests.Performance.Harness
                 "The test intentionally exercised the timeout terminal state.");
             Assert.That(timeoutSummary, Does.Contain("\"status\":\"FAIL-TIMEOUT\""));
             Assert.That(timeoutSummary, Does.Contain("\"reason_code\":\"PREFLIGHT_TIMEOUT\""));
+        }
+
+        [Test]
+        public void Stage14PreMeasurementFailurePreservesItsTerminalReasonWithoutTelemetry()
+        {
+            var summary = CompleteStage14CreatedRun(
+                PerformanceRunStatus.FailProvision,
+                "GROUND_PREFLIGHT_FAILED",
+                "The test intentionally exercised a pre-measurement provisioning failure.");
+
+            Assert.That(summary, Does.Contain("\"status\":\"FAIL-PROVISION\""));
+            Assert.That(summary, Does.Contain("\"reason_code\":\"GROUND_PREFLIGHT_FAILED\""));
+            Assert.That(summary, Does.Not.Contain("MISSING_REQUIRED_TELEMETRY"));
+        }
+
+        [Test]
+        public void OtherwiseCompleteStage14RunRejectsMissingRequiredTelemetry()
+        {
+            var summary = CompleteStage14CreatedRun(
+                PerformanceRunStatus.CompleteMeasured,
+                "MEASUREMENT_COMPLETE",
+                "The test intentionally omitted required Stage 1.4 telemetry.");
+
+            Assert.That(summary, Does.Contain("\"status\":\"FAIL-INSTRUMENTATION\""));
+            Assert.That(summary, Does.Contain("\"reason_code\":\"MISSING_REQUIRED_TELEMETRY\""));
         }
 
         [Test]
@@ -1538,6 +1633,34 @@ namespace Game.Tests.Performance.Harness
             string message)
         {
             var run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions());
+            try
+            {
+                run.Complete(status, reasonCode, message);
+                return File.ReadAllText(run.SummaryPath);
+            }
+            finally
+            {
+                if (PerformanceTelemetry.IsEnabled)
+                {
+                    PerformanceTelemetry.StopSession(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "TEST_CLEANUP",
+                        "Telemetry contract test cleanup.");
+                }
+                if (Directory.Exists(run.ResultsDirectory))
+                    Directory.Delete(run.ResultsDirectory, true);
+            }
+        }
+
+        private static string CompleteStage14CreatedRun(
+            PerformanceRunStatus status,
+            string reasonCode,
+            string message)
+        {
+            var run = Test_PerformanceRun.Create(new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.FullNetworkedActors,
+            });
             try
             {
                 run.Complete(status, reasonCode, message);

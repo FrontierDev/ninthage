@@ -133,33 +133,36 @@ namespace Game.Tests.Performance.Harness
                 return Fail("One or more tracked actor fixture inputs are missing; the runner will not substitute generated metadata.", out diagnostic);
             }
 
-            var manifestPath = "Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json";
-            if (!File.Exists(manifestPath))
-                return Fail($"World fixture manifest is missing: {manifestPath}", out diagnostic);
-
-            var manifest = JsonUtility.FromJson<Test_WorldFixtureManifest>(File.ReadAllText(manifestPath));
-            if (manifest == null || manifest.Scenes == null)
-                return Fail($"World fixture manifest is malformed: {manifestPath}", out diagnostic);
-
-            foreach (var plan in manifest.Scenes)
+            if (!IsStage14NPCActivity)
             {
-                if (plan.Variant != WorldFixture.ToString())
-                    continue;
+                var manifestPath = "Assets/Tests/Performance/Fixtures/Worlds/world-fixture-manifest.json";
+                if (!File.Exists(manifestPath))
+                    return Fail($"World fixture manifest is missing: {manifestPath}", out diagnostic);
 
-                worldPlan = plan;
-                break;
+                var manifest = JsonUtility.FromJson<Test_WorldFixtureManifest>(File.ReadAllText(manifestPath));
+                if (manifest == null || manifest.Scenes == null)
+                    return Fail($"World fixture manifest is malformed: {manifestPath}", out diagnostic);
+
+                foreach (var plan in manifest.Scenes)
+                {
+                    if (plan.Variant != WorldFixture.ToString())
+                        continue;
+
+                    worldPlan = plan;
+                    break;
+                }
+
+                if (worldPlan == null)
+                    return Fail($"World fixture variant '{WorldFixture}' is absent from {manifestPath}.", out diagnostic);
+                if (worldPlan.Status != "Ready")
+                    return Fail($"World fixture variant '{WorldFixture}' is not ready: {worldPlan.BlockedReason}", out diagnostic);
+                if (AssetDatabase.LoadAssetAtPath<SceneAsset>(worldPlan.AssetPath) == null || !File.Exists(worldPlan.AssetPath))
+                    return Fail($"World fixture scene is missing or not imported: {worldPlan.AssetPath}", out diagnostic);
+
+                var importedGUID = AssetDatabase.AssetPathToGUID(worldPlan.AssetPath);
+                if (!string.Equals(importedGUID, worldPlan.MetaGUID, StringComparison.Ordinal))
+                    return Fail($"World fixture scene identity mismatch for {worldPlan.AssetPath}: expected {worldPlan.MetaGUID}, found {importedGUID}.", out diagnostic);
             }
-
-            if (worldPlan == null)
-                return Fail($"World fixture variant '{WorldFixture}' is absent from {manifestPath}.", out diagnostic);
-            if (worldPlan.Status != "Ready")
-                return Fail($"World fixture variant '{WorldFixture}' is not ready: {worldPlan.BlockedReason}", out diagnostic);
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(worldPlan.AssetPath) == null || !File.Exists(worldPlan.AssetPath))
-                return Fail($"World fixture scene is missing or not imported: {worldPlan.AssetPath}", out diagnostic);
-
-            var importedGUID = AssetDatabase.AssetPathToGUID(worldPlan.AssetPath);
-            if (!string.Equals(importedGUID, worldPlan.MetaGUID, StringComparison.Ordinal))
-                return Fail($"World fixture scene identity mismatch for {worldPlan.AssetPath}: expected {worldPlan.MetaGUID}, found {importedGUID}.", out diagnostic);
 
             if (IsTimedStateScale)
             {

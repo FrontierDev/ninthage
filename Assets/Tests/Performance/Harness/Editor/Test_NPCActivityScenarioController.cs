@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using UnityEngine;
 
 namespace Game.Tests.Performance.Harness
 {
@@ -31,6 +32,10 @@ namespace Game.Tests.Performance.Harness
         public string anchor_actor_id;
         public string anchor_initial_context;
         public double[] anchor_initial_position;
+        public string authoritative_world_id;
+        public string authoritative_map_id;
+        public string authoritative_instance_id;
+        public string[] ordinary_runtime_chunks;
         public double[] mass_wake_cluster_centre;
         public bool mass_wake_reached;
         public string context_transition_source;
@@ -50,6 +55,7 @@ namespace Game.Tests.Performance.Harness
         private readonly ActorSpatialContext _initialContext;
         private readonly WorldPosition _anchorInitialPosition;
         private readonly WorldPosition _massWakeClusterCentre;
+        private readonly IReadOnlyList<Test_ActorFixturePlacement> _placements;
         private readonly int _requestedNPCCount;
         private readonly float _passiveAggroRange;
         private bool _massWakeArmed;
@@ -80,6 +86,7 @@ namespace Game.Tests.Performance.Harness
             _initialContext = playerCapture.Context;
             _anchorInitialPosition = playerCapture.AnchorPosition;
             _massWakeClusterCentre = new WorldPosition(_anchorInitialPosition.x + 140d, _anchorInitialPosition.y, _anchorInitialPosition.z);
+            _placements = placements;
             _requestedNPCCount = profile.population.npcs.requested;
             _passiveAggroRange = passiveAggroRange;
             ValidatePlacements(placements, profile.population.npcs.requested);
@@ -269,6 +276,10 @@ namespace Game.Tests.Performance.Harness
                 anchor_actor_id = _anchor.ID.ToString(),
                 anchor_initial_context = FormatContext(_initialContext),
                 anchor_initial_position = new[] { _anchorInitialPosition.x, _anchorInitialPosition.y, _anchorInitialPosition.z },
+                authoritative_world_id = _initialContext.WorldID.ToString(),
+                authoritative_map_id = _initialContext.MapID,
+                authoritative_instance_id = _initialContext.InstanceID == Guid.Empty ? null : _initialContext.InstanceID.ToString(),
+                ordinary_runtime_chunks = BuildRequiredChunkEvidence(),
                 mass_wake_cluster_centre = _scenario == Test_NPCActivityScenario.MassWake
                     ? new[] { _massWakeClusterCentre.x, _massWakeClusterCentre.y, _massWakeClusterCentre.z }
                     : null,
@@ -340,6 +351,21 @@ namespace Game.Tests.Performance.Harness
             var x = first.x - second.x;
             var z = first.z - second.z;
             return Math.Sqrt(x * x + z * z);
+        }
+
+        private string[] BuildRequiredChunkEvidence()
+        {
+            var chunks = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var placement in _placements)
+            {
+                var chunk = new WorldPosition(placement.world_x, placement.world_y, placement.world_z).Chunk;
+                chunks.Add(
+                    chunk.x.ToString(CultureInfo.InvariantCulture)
+                    + ","
+                    + chunk.y.ToString(CultureInfo.InvariantCulture));
+            }
+
+            return chunks.ToArray();
         }
 
         private static string FormatContext(ActorSpatialContext context)
