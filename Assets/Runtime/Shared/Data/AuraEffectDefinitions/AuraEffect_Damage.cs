@@ -101,12 +101,12 @@ namespace Game.Shared.Data.AuraEffectDefinitions
             }
 
             var snapshot = targetStats.BuildSnapshot(ActorStatReplicationMode.Observers);
-            targetStats.Observers_ReceiveSnapshot(snapshot);
+            targetStats.PublishObserverSnapshot(snapshot);
         }
 
         private void NotifyDamage(Actor source, Actor target, ActorStatContainer targetStats, int damage)
         {
-            source.Observers_ReceivedCombatLogEntry(new CombatLogEntry
+            source.PublishCombatLogToObservers(new CombatLogEntry
             {
                 Source = source,
                 Target = target,

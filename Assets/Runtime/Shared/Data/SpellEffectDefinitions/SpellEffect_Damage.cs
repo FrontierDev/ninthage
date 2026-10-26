@@ -114,7 +114,7 @@ namespace Game.Shared.Data.SpellEffectDefinitions
                 float delay = distance / ProjectileSpeed;
 
                 ctx.Caster.GetComponent<ActorVFXController>()
-                    ?.Observers_SpawnProjectile(target, ProjectileAddressablePath, ProjectileSpeed);
+                    ?.PublishProjectile(target, ProjectileAddressablePath, ProjectileSpeed);
 
                 Actor capturedTarget = target;
                 ActorEndpoint.onServerSpellCastDelayedAction?.Invoke(delay, () =>
@@ -165,7 +165,7 @@ namespace Game.Shared.Data.SpellEffectDefinitions
 
             if (!IsHit(casterStats, casterLevel, targetLevel))
             {
-                ctx.Caster.Observers_ReceivedCombatLogEntry(new CombatLogEntry
+                ctx.Caster.PublishCombatLogToObservers(new CombatLogEntry
                 {
                     Source = ctx.Caster,
                     Target = target,
@@ -180,7 +180,7 @@ namespace Game.Shared.Data.SpellEffectDefinitions
 
             if (IsResisted(casterStats, targetStats, out var resistResult))
             {
-                ctx.Caster.Observers_ReceivedCombatLogEntry(new CombatLogEntry
+                ctx.Caster.PublishCombatLogToObservers(new CombatLogEntry
                 {
                     Source = ctx.Caster,
                     Target = target,
@@ -224,13 +224,13 @@ namespace Game.Shared.Data.SpellEffectDefinitions
 
             // Broadcast combat log entry to caster's observers
             var snapshot = targetStats.BuildSnapshot(ActorStatReplicationMode.Observers);
-            targetStats.Observers_ReceiveSnapshot(snapshot);
+            targetStats.PublishObserverSnapshot(snapshot);
 
             // Invoke events on the caster based on the hit result
             InvokeEvents(SpellActorEventTarget.Caster, ctx, target);
             InvokeEvents(SpellActorEventTarget.Target, ctx, target);
 
-            ctx.Caster.Observers_ReceivedCombatLogEntry(new CombatLogEntry
+            ctx.Caster.PublishCombatLogToObservers(new CombatLogEntry
             {
                 Source = ctx.Caster,
                 Target = target,

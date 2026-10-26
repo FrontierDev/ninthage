@@ -49,9 +49,9 @@ namespace Game.Shared.Data.ClassBehaviours
                 stat.EffectiveMaximum, newCurrent));
 
             if (def.ReplicationMode == ActorStatReplicationMode.Observers)
-                statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
             else if (def.ReplicationMode == ActorStatReplicationMode.Owner)
-                statContainer.Client_ReceiveSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                statContainer.PublishOwnerSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
 
         }
     }

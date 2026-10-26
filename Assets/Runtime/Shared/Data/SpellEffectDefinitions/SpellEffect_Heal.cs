@@ -75,7 +75,7 @@ namespace Game.Shared.Data.SpellEffectDefinitions
                 float delay = distance / ProjectileSpeed;
 
                 ctx.Caster.GetComponent<ActorVFXController>()
-                    ?.Observers_SpawnProjectile(target, ProjectileAddressablePath, ProjectileSpeed);
+                    ?.PublishProjectile(target, ProjectileAddressablePath, ProjectileSpeed);
 
                 Actor capturedTarget = target;
                 ActorEndpoint.onServerSpellCastDelayedAction?.Invoke(delay, () =>
@@ -118,10 +118,10 @@ namespace Game.Shared.Data.SpellEffectDefinitions
                       $"Target health: {newCurrent}/{health.EffectiveMaximum}");
 
             var snapshot = targetStats.BuildSnapshot(ActorStatReplicationMode.Observers);
-            targetStats.Observers_ReceiveSnapshot(snapshot);
+            targetStats.PublishObserverSnapshot(snapshot);
 
             // Receive the combat log on the observers of the caster.
-            ctx.Caster.Observers_ReceivedCombatLogEntry(new CombatLogEntry
+            ctx.Caster.PublishCombatLogToObservers(new CombatLogEntry
             {
                 Source = ctx.Caster,
                 Target = target,

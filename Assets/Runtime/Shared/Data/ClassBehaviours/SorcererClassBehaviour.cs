@@ -173,7 +173,7 @@ namespace Game.Shared.Data.ClassBehaviours
                 ApplyRiftPulseDamage(caster, target);
             }
 
-            caster.GetComponent<ActorVFXController>()?.Observers_TriggerEffect(rift.VFXID);
+            caster.GetComponent<ActorVFXController>()?.PublishTriggerEffect(rift.VFXID);
         }
 
 
@@ -197,7 +197,7 @@ namespace Game.Shared.Data.ClassBehaviours
             if (target is NPCActor && !target.isDead)
                 ActorEndpoint.onServerNPCDamaged?.Invoke(target);
 
-            targetStats.Observers_ReceiveSnapshot(targetStats.BuildSnapshot(ActorStatReplicationMode.Observers));
+            targetStats.PublishObserverSnapshot(targetStats.BuildSnapshot(ActorStatReplicationMode.Observers));
         }
 
         /// <summary>
@@ -245,9 +245,9 @@ namespace Game.Shared.Data.ClassBehaviours
 
             var surgeDef = ActorStatDefinitionLibrary.Instance.GetDefinition("surge");
             if (surgeDef.ReplicationMode == ActorStatReplicationMode.Observers)
-                statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
             else if (surgeDef.ReplicationMode == ActorStatReplicationMode.Owner)
-                statContainer.Client_ReceiveSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                statContainer.PublishOwnerSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
 
             Debug.Log($"Surge generated: {surgeGain} ({totalManaCost} mana × {surgeRatio} ratio) for {actor.Name}");
         }
@@ -278,9 +278,9 @@ namespace Game.Shared.Data.ClassBehaviours
                 stat.EffectiveMaximum, newCurrent));
 
             if (def.ReplicationMode == ActorStatReplicationMode.Observers)
-                statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
             else if (def.ReplicationMode == ActorStatReplicationMode.Owner)
-                statContainer.Client_ReceiveSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                statContainer.PublishOwnerSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
 
             UpdateInstabilityState(actor, oldPercent, newPercent);
         }
@@ -341,9 +341,9 @@ namespace Game.Shared.Data.ClassBehaviours
                 stat.EffectiveMaximum, newCurrent));
 
             if (def.ReplicationMode == ActorStatReplicationMode.Observers)
-                statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
             else if (def.ReplicationMode == ActorStatReplicationMode.Owner)
-                statContainer.Client_ReceiveSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                statContainer.PublishOwnerSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
 
             UpdateInstabilityState(actor, oldPercent, newPercent);
         }
@@ -373,9 +373,9 @@ namespace Game.Shared.Data.ClassBehaviours
 
             var surgeDef = ActorStatDefinitionLibrary.Instance.GetDefinition("surge");
             if (surgeDef.ReplicationMode == ActorStatReplicationMode.Observers)
-                statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
             else if (surgeDef.ReplicationMode == ActorStatReplicationMode.Owner)
-                statContainer.Client_ReceiveSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                statContainer.PublishOwnerSnapshot(actor.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
         }
 
         /// <summary>
@@ -395,7 +395,7 @@ namespace Game.Shared.Data.ClassBehaviours
                 health.BaseValue, health.FlatModifier, health.PercentModifier,
                 health.EffectiveMaximum, newCurrent));
 
-            actor.Client_ReceiveCombatLogEntry(actor.Owner.Value, new CombatLogEntry
+            actor.PublishCombatLogToTarget(actor.Owner.Value, new CombatLogEntry
             {
                 Source = actor,
                 Target = actor,
@@ -408,7 +408,7 @@ namespace Game.Shared.Data.ClassBehaviours
                     : new()
             });
 
-            statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+            statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
         }
     }
 }

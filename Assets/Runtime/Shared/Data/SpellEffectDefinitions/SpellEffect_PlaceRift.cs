@@ -60,7 +60,7 @@ namespace Game.Shared.Data.SpellEffectDefinitions
             {
                 int effectId = Time.time.GetHashCode(); // Generate a unique ID for this effect instance
                 ctx.Caster.GetComponent<ActorVFXController>()
-                    ?.Observers_SpawnEffectAtPosition(effectId, RiftPrefabAddressablePath, ctx.WorldPositionTarget, Duration);
+                    ?.PublishEffectAtPosition(effectId, RiftPrefabAddressablePath, ctx.WorldPositionTarget, Duration);
                 ClassBehaviour.RegisterRift(
                     ctx.Caster,
                     ctx.Caster.SpatialContext,

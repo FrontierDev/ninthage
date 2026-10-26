@@ -452,6 +452,28 @@ namespace Game.Shared.Runtime.Actors
             SpawnPointGUID = spawnPointGUID;
         }
 
+        /// <summary>Publishes a combat-log entry to this actor's current observers.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
+        public void PublishCombatLogToObservers(CombatLogEntry entry)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may publish combat-log entries.");
+
+            NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(GetComponent<NetworkIdentity>());
+            Observers_ReceivedCombatLogEntry(entry);
+        }
+
+        /// <summary>Publishes a combat-log entry to a specific player.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
+        public void PublishCombatLogToTarget(PlayerID playerID, CombatLogEntry entry)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may publish combat-log entries.");
+
+            NetworkingPerformanceMetrics.RecordCombatCriticalTargetPublication();
+            Client_ReceiveCombatLogEntry(playerID, entry);
+        }
+
         [ObserversRpc]
         /// This is called on the CASTER of the spell.
         public void Observers_ReceivedCombatLogEntry(CombatLogEntry entry, RPCInfo info = default)

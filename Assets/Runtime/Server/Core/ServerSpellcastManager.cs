@@ -667,16 +667,9 @@ namespace Game.Server.Core
                     stat.EffectiveMaximum, newCurrent));
 
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
-                {
-                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
-                        ctx.Caster.GetComponent<NetworkIdentity>());
-                    statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
-                }
+                    statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
-                {
-                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
-                    statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
-                }
+                    statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
             }
 
             return true;
@@ -746,16 +739,9 @@ namespace Game.Server.Core
                     stat.EffectiveMaximum, newCurrent));
 
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
-                {
-                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
-                        ctx.Caster.GetComponent<NetworkIdentity>());
-                    statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
-                }
+                    statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
-                {
-                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
-                    statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
-                }
+                    statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
             }
 
             if (IsCurrentCast(actorID, spellID, castID, ctx))
@@ -987,16 +973,9 @@ namespace Game.Server.Core
                     stat.EffectiveMaximum, newCurrent));
 
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
-                {
-                    NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(
-                        ctx.Caster.GetComponent<NetworkIdentity>());
-                    statContainer.Observers_ReceiveSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
-                }
+                    statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
-                {
-                    NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
-                    statContainer.Client_ReceiveSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
-                }
+                    statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
             }
 
             // If it was a weapon skill, add experience to the character's weapon skill.

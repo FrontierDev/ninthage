@@ -88,12 +88,12 @@ namespace Game.Shared.Data.AuraEffectDefinitions
                 health.EffectiveMaximum, newCurrent));
 
             var snapshot = targetStats.BuildSnapshot(ActorStatReplicationMode.Observers);
-            targetStats.Observers_ReceiveSnapshot(snapshot);
+            targetStats.PublishObserverSnapshot(snapshot);
         }
 
         private void NotifyHealing(Actor source, Actor target, int healing)
         {
-            source.Observers_ReceivedCombatLogEntry(new CombatLogEntry
+            source.PublishCombatLogToObservers(new CombatLogEntry
             {
                 Source = source,
                 Target = target,
