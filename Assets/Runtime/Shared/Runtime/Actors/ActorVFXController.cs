@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using Game.Shared.Utility;
 using PurrNet;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,6 +28,39 @@ namespace Game.Shared.Runtime.Actors
         public void RegisterEffect(int id, GameObject go)
         {
             _activeVFX[id] = go;
+        }
+
+        /// <summary>Publishes a transient effect at an authoritative world position to actor observers.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
+        public void PublishEffectAtPosition(int id, string addressablePath, WorldPosition position, float lifetime)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may publish actor visual effects.");
+
+            NetworkingPerformanceMetrics.RecordCosmeticObserverPublication(GetComponent<NetworkIdentity>());
+            Observers_SpawnEffectAtPosition(id, addressablePath, position, lifetime);
+        }
+
+        /// <summary>Publishes a transient projectile effect to actor observers.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
+        public void PublishProjectile(Actor target, string addressablePath, float speed)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may publish actor visual effects.");
+
+            NetworkingPerformanceMetrics.RecordCosmeticObserverPublication(GetComponent<NetworkIdentity>());
+            Observers_SpawnProjectile(target, addressablePath, speed);
+        }
+
+        /// <summary>Publishes a transient trigger effect to actor observers.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
+        public void PublishTriggerEffect(int id)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may publish actor visual effects.");
+
+            NetworkingPerformanceMetrics.RecordCosmeticObserverPublication(GetComponent<NetworkIdentity>());
+            Observers_TriggerEffect(id);
         }
 
         /// <summary>

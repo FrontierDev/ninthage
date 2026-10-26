@@ -1,6 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using PurrNet;
+using System;
 using UnityEngine;
 
 namespace Game.Shared.Runtime.Actors
@@ -20,6 +21,17 @@ namespace Game.Shared.Runtime.Actors
                 _audioSource = gameObject.AddComponent<AudioSource>();
                 _audioSource.spatialBlend = 1f; // 3D audio
             }
+        }
+
+        /// <summary>Publishes a transient spatial sound effect to actor observers.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
+        public void PublishSFX(string addressablePath)
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Only the server may publish actor sound effects.");
+
+            NetworkingPerformanceMetrics.RecordCosmeticObserverPublication(GetComponent<NetworkIdentity>());
+            Observers_PlaySFX(addressablePath);
         }
 
         /// <summary>
