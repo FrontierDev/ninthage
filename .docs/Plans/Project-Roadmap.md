@@ -155,11 +155,13 @@ Retain and productionise existing hybrid ECS/GameObject, PurrNet, headless-serve
 
 Implement the Account, Character and Persistence PDD's production direction:
 
-- immutable AccountID and CharacterID; relational server persistence, constraints, explicit schema and migrations; migration away from whole-file JSON;
+- establish the Master Server as the central identity/persistence service authority; immutable AccountID and CharacterID, relational SQL storage, constraints, explicit schema and migrations; migrate away from whole-file JSON;
 - transactional item/ownership/progression changes; character roster, inventory/equipment, progression, persistent position and timed-state continuity;
 - quest/reputation/profession persistence foundations as those systems come online; deletion/restoration and backup/restore foundations;
-- one authoritative session per account, ownership/character-selection validation, reconnect/disconnect grace, server restart and world/instance restoration;
-- non-blocking persistence integration with the simulation loop and measurable burst/concurrency behaviour.
+- Master Server-owned one authoritative session per account across World Servers, ownership/character-selection validation, initial world registration/admission authorisation, reconnect/disconnect grace, server restart and world/instance restoration;
+- non-blocking authorised World Server-to-central-persistence integration with the simulation loop and measurable burst/concurrency behaviour.
+
+**Locked deployment boundary:** one persistent world is simulated in one World Server process on one physical machine, including all its maps and private instances. World Servers connect to a separate Master Server; the Master Server does not run gameplay. Phase 1 establishes the identity, storage and session/control-plane foundation on the initial single-world test deployment; Phase 3 expands this to concurrently hosted independent World Server machines. Multi-machine sharding of one world is not part of Ninth Age's approved architecture.
 
 ### Release, content and operational foundations
 
@@ -320,6 +322,19 @@ Complete/generalise the World Runtime and Instancing PDD architecture:
 - group-aware transitions;
 - reconnect into the correct runtime context.
 
+### Multi-world server hosting and Master Server integration
+
+Implement the distributed **service topology**, without distributing any single world's simulation:
+
+- operate multiple distinct World Server processes on **separate physical machines**, exactly one persistent `WorldID` per process/machine, with every map and instance of that world owned locally;
+- resolve permanent world IDs and world metadata through the Master Server's central registry rather than the temporary Stage 1.2 launch-generated GUIDs;
+- implement authenticated World Server registration, heartbeat/availability and safe withdrawal from world selection;
+- provide Master Server-backed world discovery, explicit player world selection, admission authorisation and routing to the selected World Server;
+- implement authorised cross-world character transfer with preserved persistent gameplay state, exactly one active account session/character actor and failure-safe source/destination handoff;
+- validate independent world restarts/failures without cross-world actor leakage or duplicate sessions.
+
+**Non-goals:** server-to-server simulation-region handoff, a world split over several machines, separate dungeon/instance servers and a Master Server simulation loop.
+
 ### World authoring
 
 Productionise the World Editor and associated tooling:
@@ -360,7 +375,7 @@ Expand, tune and enforce the Phase 1 budgets against authored-zone density for:
 
 ## Exit milestone — One Complete Zone
 
-A representative zone can be traversed continuously, including settlement, wilderness and at least one seamless interior, with stable world streaming, floating origin, actor interest and representative visual density.
+A representative zone can be traversed continuously, including settlement, wilderness and at least one seamless interior, with stable world streaming, floating origin, actor interest and representative visual density. At least two independent World Servers on separate machines can register with the Master Server, appear in world selection and support an authorised state-preserving cross-world transfer while each retains all its own maps/instances.
 
 ---
 
@@ -470,14 +485,15 @@ Implement the Economy PDD:
 
 - Say/Yell/emotes;
 - whispers;
-- party/raid/guild chat;
-- General/Trade/LFG channels;
+- party/raid/guild chat, including Master Server-routed cross-world delivery where membership spans worlds;
+- General/Trade/LFG channels scoped to one WorldID, not a global Master Server broadcast;
 - custom channels;
 - rich links;
 - local history;
 - spam/flood controls;
 - reporting context;
-- blocks.
+- blocks;
+- cross-world presence, permissions and message routing through the Master Server rather than direct World Server-to-World Server chat links.
 
 ### Friends and guilds
 
@@ -636,6 +652,7 @@ Extend Phase 1 benchmarking and hardening to production-representative scale:
 - migration rehearsal;
 - instance cleanup;
 - world-state recovery;
+- Master Server unavailability/recovery, world-registration/heartbeat expiry, inter-server message failure and cross-world transfer interruption without duplicate character authority;
 - graceful failure when dependencies are unavailable.
 
 ### Player experience

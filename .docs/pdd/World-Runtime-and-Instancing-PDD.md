@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Persistent worlds, world streaming, spatial partitioning, floating origin, actor visibility, seamless interiors, instanced spaces, map transitions and runtime scene authoring  
-**Last updated:** 2026-10-25
+**Last updated:** 2026-10-26
 
 ---
 
@@ -13,7 +13,7 @@ This document defines the intended world-runtime and instancing model for **Nint
 
 It is authoritative for:
 
-- player-selectable persistent worlds;
+- player-selectable persistent worlds and the one-world/one-machine hosting contract;
 - the relationship between absolute world coordinates and client-local coordinates;
 - open-world spatial streaming;
 - world-content and terrain tiles;
@@ -92,6 +92,10 @@ Several runtime instances may use the same underlying Unity scene assets while m
 Ninth Age uses explicit persistent worlds rather than invisible open-world layering.
 
 Players should normally remain on the world they selected until they deliberately leave it.
+
+### 2.8 One world, one authoritative host
+
+Each persistent world runs in **one World Server process on one physical machine**. All its maps, public areas, private instances, actors and gameplay simulation remain inside that process. Neither map streaming nor runtime instancing distributes a world across additional server processes or machines.
 
 ---
 
@@ -203,9 +207,13 @@ The game must not routinely collapse layers or move players between open-world c
 
 A player's character is not intrinsically bound to only one world. Persistent character state may move between worlds according to the game's world-selection rules.
 
-The system should support a future concept of a **home world**, allowing systems such as player housing, persistent community identity or other world-specific ownership to attach significance to a chosen world if later PDDs require it.
+The Account, Character and Persistence PDD defines an account-owned **HomeWorldID**. World-specific housing, community identity or ownership uses that durable relationship when its own PDD permits it.
 
-A logical world does not need to correspond permanently to one physical machine. The infrastructure may later distribute a world across multiple server processes while preserving the player's perception of one coherent world.
+**Locked hosting topology:** exactly one active **World Server process on one physical machine** owns each persistent `WorldID`. That process hosts the world's open map, all detached maps and all public/private instances. World servers are separate machines/processes, not shards of a shared simulation; multiple worlds are supported by running multiple independent World Servers. No single world is partitioned across machines, and no map or instance is offloaded to a separate simulation server.
+
+Every World Server connects to a separate **Master Server** service. The Master Server owns the global world directory, persistent world identities, account authentication, character persistence/session authority and coordination of world selection, transfers and cross-world social communication. It does **not** run world ticks, ECS simulation, actor movement, combat, AI or instance simulation. The World Server remains authoritative for live gameplay within its one world. A client's admission to a World Server must be authorised through the Master Server; the exact transport and deployment configuration belong to the later implementation contracts.
+
+World identities must remain stable across restarts once the production Master Server/world registry is introduced. The temporary Stage 1.2 launch-generated `WorldID` in §18.3 is explicitly a prototype exception, not the multi-world implementation.
 
 ---
 
@@ -298,11 +306,11 @@ The existing client floating-origin system remains the current precision mechani
 
 Streamed NavMesh content must form a **continuous navigation domain** wherever authored terrain is traversable. Whether Unity stores that contribution as one dataset or several adjacent `NavMeshData` objects is an implementation detail; a 256 m content boundary must not be visible to gameplay navigation.
 
-A **simulation region** remains a long-term coarse server-ownership concept, but it is no longer derived from fixed floor division of environment-tile coordinates. Future regions are large authored world areas chosen around geography, gameplay and operational scaling. Their boundaries should be rare and intentionally placed at natural or designed transition points where ordinary NPC pursuit does not need to continue across the boundary, such as major mountain barriers/passes, controlled river crossings, tunnels, gates or transport transitions.
+A **simulation region**, if introduced, remains a long-term coarse **in-process World Server** organisation concept; it is not derived from fixed floor division of environment-tile coordinates. Regions may be large authored areas chosen around geography and gameplay, but they do not assign simulation work to a different process or machine. Their boundaries may align with authored AI/encounter limits where justified, never with routine tile-streaming seams.
 
-Within one simulation region, physics and NavMesh movement are continuous. An authored simulation-region boundary may also be an AI/encounter leash boundary where appropriate. A future server-worker transfer across such a boundary is a separate authority-transfer problem and must not be implemented as routine `NavMeshAgent` seam search/Warp between nearby streamed tiles.
+Within a region, physics and NavMesh movement remain continuous. If the World Server later uses several internal physical regions, the required representation/precision handling stays in that same process and must be explicitly designed; ordinary traversal is not a `NavMeshAgent` seam-search/Warp or a cross-server transfer.
 
-The authoritative logical `ActorSpatialContext` remains independent of environment scenes, client floating origin and future simulation-region/worker ownership.
+The authoritative logical `ActorSpatialContext` remains independent of environment scenes, client floating origin and any future in-process simulation-region organisation.
 
 ### 5.6 Superseded fixed-grid simulation-region experiment
 
@@ -899,20 +907,20 @@ A **public-world instance** means the common non-private simulation for one spec
 
 The position authority is deliberately separate from this context identity. `Actor.SpatialContext` is the immutable server-assigned `(WorldID, MapID, InstanceID)` value; it is not inferred from a movement proposal, scene, chunk-interest request or floating-origin frame. The accepted position and context are published together at the authoritative tick boundary, and a proposal with missing or mismatched context is rejected rather than repaired from `CurrentChunk` or `SceneID`.
 
-Future simulation-region/worker ownership is separate from this full logical context. A simulation region is a large authored server-ownership area, not a 256 m origin/environment cell, 64 m spatial-index cell, scene identity or replacement for actor context. During the current single-area implementation, actors share one continuous server physical/navigation space for the active map instance. The actor's canonical absolute ECS position remains independent of any future worker or simulation-region ownership.
+Simulation-region ownership, if introduced, remains **internal to the one World Server process** and separate from this full logical context. A simulation region is not a separate machine/process, a 256 m origin/environment cell, a 64 m spatial-index cell, a scene identity or a replacement for actor context. During the current single-area implementation, actors share one continuous server physical/navigation space for the active map instance. The actor's canonical absolute ECS position remains independent of any future in-process simulation-region ownership.
 
 Stage 1.2 first introduces this value contract in Shared code. Server-owned lifecycle/spawn integration resolves and assigns the actor's **real authoritative context** before publication. The approved *temporary single-world test-hosting contract* for this integration is defined below. No client-supplied context authority, implicit scene-derived identity or persistent-world allocation service is approved.
 
 ### 18.3 Stage 1.2 single-world test-server launch and spawn context
 
-**Approved initial deployment:** one server process hosts **one public world**, initially using the authored main-world logical map. The process is launched with an explicit human-readable world/server name, such as `world101` (for example, a `--world world101` launch option). This **launch name is not the `WorldID`** and must not be parsed as a GUID, derived from a scene, or used as a replacement for the context identifier.
+**Approved topology (including the initial test deployment):** one World Server process on one machine hosts **one public world and, when implemented, every map and private instance belonging to that world**, initially using the authored main-world logical map. The process is launched with an explicit human-readable world/server name, such as `world101` (for example, a `--world world101` launch option). This **launch name is not the `WorldID`** and must not be parsed as a GUID, derived from a scene, or used as a replacement for the context identifier.
 
 - **`WorldID`:** The server creates a new, nonempty `System.Guid` **once per process launch**, before spawns are accepted. The same GUID is reused for every actor in that hosted world's runtime until shutdown. **For this single-server/single-world testing phase, a restart deliberately creates a different GUID even if the launch name remains `world101`.** This temporary identity is not yet a durable identifier for persistent world-keyed records, server restarts, inter-server handoff or multiplayer world selection. A future persistent-world implementation must resolve stable world GUIDs from authoritative world records instead.
 - **`MapID`:** The server obtains the **canonical case-sensitive string identifier of the selected authored logical map**. For the present single-map prototype, the **explicit canonical main-map ID is `main-world`**, owned by the server's map/runtime setup; it must be **intentionally supplied by that server-owned setup**, not inferred from `SceneID`, chunk names, `GameObject.scene`, transforms, or a client interest request. A different logical map, such as an instanced zone, uses its own map ID even when it shares scene assets.
 - **`InstanceID`:** `Guid.Empty` denotes the public simulation of this world and logical map. Future private runtime instances receive nonempty GUIDs from their **server-local instance owner**, unique within that server's live instance scope. No cross-server instance-ID coordination is needed under this model; the full identity remains `(WorldID, MapID, InstanceID)`.
 - **Ownership and lifetime:** The server startup path validates the explicit launch name, establishes the runtime `WorldID` and initial authored `MapID`, and makes the resulting `ActorSpatialContext.CreatePublic(worldID, mapID)` available through a single server-owned runtime/world authority (reuse `ServerWorldManager` where appropriate). A valid context must exist **before any actor spawn is committed**, and it must be cleared on shutdown. There must be **no newly invented global mutable fallback, duplicate source-of-truth map or per-player context registry** for this prototype.
 - **Spawn assignment:** For explicitly supported initial **public main-map** player/NPC spawns, `ServerSpawnManager` consumes the server-owned current public context, then assigns that context and authoritative double-precision position to the actor **before** publishing `ActorEndpoint.onServerActorSpawned`. An absent launch name, uninitialised context, unsupported different-map/private-instance spawn, or any invalid identity **fails explicitly** rather than silently substituting the public/main-map context. Existing prefab, reservation, owner/session and spawn rollback behaviour is preserved.
-- **Future scope:** Multiple hosted worlds, persistent GUID resolution, world selection, cross-server movement, detached-map selection, instance creation and instance transfer require distinct later work. When supported, each spawn must carry or resolve its explicitly authorised map/instance context at the source; it must never inherit the main-world context merely because the same server or Unity scene is involved.
+- **Future scope:** Master-registered persistent world GUIDs, multiple World Server machines (each hosting exactly one world), world selection, cross-world character transfer, detached-map selection, instance creation and instance transfer require distinct later work. This never permits hosting multiple worlds in one World Server process or splitting one world over multiple machines. When supported, each spawn must carry or resolve its explicitly authorised map/instance context at the source; it must never inherit the main-world context merely because the same server or Unity scene is involved.
 
 This is a deliberate **prototype exception** to the long-term persistent-world lifetime described in §4; it changes neither the `System.Guid` representation nor the immutable, fully qualified identity/equality rules in §§18.1–18.2.
 
@@ -1061,9 +1069,9 @@ The current implementation target is one continuous server physics/NavMesh space
 
 `ServerPhysicsManager` owns physical/query mechanics and environment collider/NavMesh binding. `ServerPositionManager` remains outside physical lifetime and may provide world/chunk transport conversions only.
 
-Future simulation regions are large authored areas intended for coarse worker ownership or deliberate world partitioning. They are not generated by fixed-size floor division of streamed tiles. Boundaries should be chosen where world geography and encounter design permit clean transitions and where ordinary NPC pursuit is intentionally prevented or reset.
+Future simulation regions, if needed, are large authored **in-process** areas for internal workload/precision management. They are not generated by fixed-size floor division of streamed tiles, and they never assign actors or maps to a second process/machine. Any authored boundary must preserve deliberate gameplay transition and NPC pursuit rules.
 
-No small concurrent-region capacity is an architectural requirement. Any later worker/region capacity is an operational deployment limit derived from measured workload, not a gameplay-space cap and not a reason to subdivide a nearby continuous world prematurely.
+No small concurrent-region capacity is an architectural requirement. Any later in-process region capacity is a measured internal resource limit, not a cross-machine deployment scheme, gameplay-space cap or reason to subdivide a nearby continuous world prematurely.
 
 ### 23.5 Add range-based actor visibility
 
@@ -1154,3 +1162,5 @@ The system satisfies this design when all of the following are possible:
 16. Players on different private instances cannot see or interact with one another merely because they share equivalent coordinates.
 17. Normal open-world population management does not silently migrate players between invisible layers.
 18. Scene loads and instance transitions cleanly release unused runtime resources.
+19. Each persistent world, including all maps and instances, is simulated by exactly one World Server process on one machine; no world simulation is distributed to another process.
+20. Multiple World Servers register with a Master Server, which resolves durable world identity and centrally authorises world admission and transfers without becoming a gameplay simulator.

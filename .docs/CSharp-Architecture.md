@@ -5,6 +5,7 @@
 **Branch:** `dev`
 **Source revision:** `6f5a6175bf7fbd385acf21ea3e058bef87122b7d`
 **Snapshot date:** 2026-10-25
+**Documentation contract updated:** 2026-10-26 (future Master/World Server topology; source snapshot unchanged)
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose and Scope
@@ -19,10 +20,12 @@ References to third-party dependencies in this architecture are descriptive only
 
 ## 2. Architectural Overview
 
-Ninth Age is implemented as a single Unity project that can run in two principal execution modes:
+Ninth Age is currently implemented as a single Unity project that can run in two principal execution modes:
 
 - a graphical game client;
-- a headless authoritative server.
+- a headless authoritative World Server.
+
+**Approved future deployment contract (not claimed as implemented at this source revision):** each persistent world runs in exactly one World Server process on one physical machine, with all maps and public/private instances inside that process. Distinct worlds run on distinct World Server machines. A separate Master Server service owns global world registration, account/character persistence, authentication, session/admission and inter-world coordination, but performs no gameplay simulation. The current JSON/local-session prototype does not yet provide that service; Stages 1.7–1.8 establish its foundation and Phase 3 implements multiple concurrent world machines.
 
 The C# code is separated into client, server, shared, core bootstrap, and editor concerns. The high-level dependency flow is:
 
@@ -544,7 +547,7 @@ The main server managers are MonoBehaviour-based, process-wide components create
 
 `ServerPositionManager` owns chunk/local position and network transport conversion. It does not own active physical state, colliders, NavMesh lifetime or physics queries.
 
-`ServerPhysicsManager` owns the current continuous server physical/NavMesh representation. `ToPhysicalPosition(WorldPosition)` and `ToWorldPosition(Vector3)` convert between canonical absolute positions and the single Unity physical frame; `RaycastGround(...)` executes continuous physical queries; and context-qualified environment navigation roots keyed by `WorldChunkKey` feed one streamed continuous NavMesh representation. It also owns navigation-aware environment unload preparation/cancellation. It does **not** own `ActorComponent.WorldPositionD`, an actor-position cache, actor physical-region membership, environment scene loading, gameplay target selection or future worker-region policy.
+`ServerPhysicsManager` owns the current continuous server physical/NavMesh representation. `ToPhysicalPosition(WorldPosition)` and `ToWorldPosition(Vector3)` convert between canonical absolute positions and the single Unity physical frame; `RaycastGround(...)` executes continuous physical queries; and context-qualified environment navigation roots keyed by `WorldChunkKey` feed one streamed continuous NavMesh representation. It also owns navigation-aware environment unload preparation/cancellation. It does **not** own `ActorComponent.WorldPositionD`, an actor-position cache, actor physical-region membership, environment scene loading, gameplay target selection or future **in-process** simulation-region policy.
 
 `ServerSpawnManager` owns spawning flows.
 
@@ -1006,7 +1009,7 @@ Normal floating-origin selection is driven by the player's actual position cross
 
 The authoritative server does not mirror the client's floating-origin shifts. Canonical accepted actor position remains double precision in `ActorComponent.WorldPositionD`. For the current tested world scale, `ServerPhysicsManager` projects finite canonical coordinates directly into one continuous Unity `Vector3` physical frame and reconstructs physical results back into `WorldPosition`. A streamed 256 m environment/origin-cell boundary therefore does not create a server physical frame boundary.
 
-This direct-float server representation is the current implementation, not a claim that one Unity process can represent an arbitrarily large future world indefinitely. Any later physical partitioning/server-worker ownership model is deferred until precision, workload or deployment evidence requires it, and future coarse regions are not implied by the 256 m streaming/FPO grid.
+This direct-float server representation is the current implementation, not a claim that one Unity process can represent an arbitrarily large future world indefinitely. Any later physical partitioning remains internal to the **single World Server process** and must preserve one-machine ownership of all its maps, instances and actors. Off-process simulation workers or sharding one world across machines are not approved; future coarse in-process regions are not implied by the 256 m streaming/FPO grid.
 
 This separates large-scale authoritative coordinates from the float coordinate space used by Unity rendering and normal GameObject transforms.
 

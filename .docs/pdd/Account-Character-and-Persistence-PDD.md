@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Account ownership, character records, character-slot limits, home-world ownership, naming identity, sessions, login/logout, disconnect recovery, world transfer, persisted gameplay state, transactional persistence, deletion/recovery, persistence-neutral gameplay boundaries, relational database direction and migration from the current JSON persistence prototype  
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-26
 
 ---
 
@@ -29,7 +29,8 @@ It is authoritative for:
 - persistence transaction requirements;
 - migration away from whole-file JSON persistence;
 - high-level relational database requirements;
-- schema migration and auditability.
+- schema migration and auditability;
+- Master Server ownership of cross-world identity, durable records and session coordination.
 
 This document does not own:
 
@@ -66,6 +67,14 @@ A player must not be able to gain an advantage by deliberately:
 - causing a runtime actor to despawn.
 
 This principle governs Health, resources, cooldowns, auras, death state, inventory, durability, quests, progression and all other persistent or time-dependent character state.
+
+### 2.1 Master Server and World Server authority
+
+**One persistent world is simulated by one World Server process on one physical machine, including every map and instance in that world.** World Servers connect to a separate Master Server; they never distribute their world simulation to other machines.
+
+The **Master Server** is the global authority for account and character identities, durable roster/home-world data, authentication, one-account/one-session ownership, persistent world registration and inter-world transfer coordination. Its server-owned persistence boundary governs access to the central relational database. It is not authoritative for live movement, combat, NPC/AI execution or any world simulation tick.
+
+Each **World Server** owns its world's live authoritative actors and gameplay state. It loads and commits durable character changes through the approved central persistence boundary without allowing direct gameplay/ECS code to depend on SQL or block the simulation tick. The exact inter-server protocol, transport and operational placement of database services remain implementation details, but a world-local JSON file or process-local account/session dictionary cannot become the production global authority.
 
 ---
 
@@ -249,7 +258,7 @@ The name may be released only after permanent deletion, subject to any future re
 
 An account may have only **one active gameplay session** at a time.
 
-The system must never allow two simultaneous authoritative gameplay sessions for one AccountID.
+The system must never allow two simultaneous authoritative gameplay sessions for one AccountID. **The Master Server enforces this across all World Servers**, not merely within one process.
 
 A reconnect may resume/reclaim the existing session/runtime actor where appropriate.
 
@@ -293,7 +302,7 @@ Entering the world must server-validate:
 - saved state can be resolved/migrated;
 - persistent definitions required by critical character identity still exist.
 
-The client must not be able to submit arbitrary character data as authoritative state.
+The client must not be able to submit arbitrary character data as authoritative state. Master-authorised world admission must bind the authenticated AccountID, selected CharacterID and intended WorldID; a World Server must not accept an unverified client-selected character or world as authoritative.
 
 ---
 
@@ -919,7 +928,7 @@ The persistence/session design must prevent:
 - two characters from the same account being active simultaneously;
 - reconnect spawning duplicate actors.
 
-If the architecture becomes multi-process/multi-node, session ownership must be coordinated outside a process-local dictionary.
+Because Ninth Age runs multiple World Servers on separate machines, the Master Server **must** coordinate globally exclusive account sessions outside any World Server process-local dictionary. World registration, admission, reconnect and transfer must preserve that single authority; a stale or disconnected World Server must not independently admit a second active session.
 
 ---
 
@@ -955,14 +964,18 @@ Exact package/runtime versions must remain compatible with the chosen Unity/head
 Conceptually:
 
 ```text
-Authoritative Game Server
+World Server (live character/gameplay authority)
+        ↓ authorised asynchronous persistence operations
+Master Server (global identity/session/persistence service authority)
         ↓
 Persistence / Repository / Service Layer
         ↓
 ORM / SQL access layer
         ↓
-Relational SQL Database
+Central Relational SQL Database
 ```
+
+World Server processes must not each create their own independent account/character store. Central durable ownership, transactional concurrency and one-account/one-session enforcement apply across all worlds.
 
 Gameplay components should not scatter direct database queries throughout:
 
@@ -1354,7 +1367,7 @@ Examples:
 
 ## 59. Concurrency
 
-Persistence operations must assume multiple server requests/processes may eventually act concurrently.
+Persistence operations must support **concurrent requests from multiple World Server machines**. This is part of the approved topology, not an optional future sharding feature.
 
 Correctness must not depend on:
 
@@ -1445,6 +1458,10 @@ The following are locked:
 38. Missing critical definitions fail safe rather than silently substituting content.
 39. Significant economic/admin ownership changes should be auditable.
 40. Client disconnect, login, restart and transfer are not gameplay reset mechanisms.
+41. One World Server process on one physical machine hosts one world and all its maps/instances.
+42. A separate Master Server centrally owns account/character identity, durable persistence authority and one-account/one-session coordination across World Servers.
+43. World Server gameplay simulation remains local; the Master Server does not simulate maps, instances, actors, AI or combat.
+44. World admission and cross-world transfer require Master Server authorisation and preserve character identity/state without concurrent authoritative actors.
 
 ---
 
@@ -1608,7 +1625,7 @@ Characters have globally unique two-part names, immutable IDs and 12 account-wid
 
 Health, resources, cooldowns, auras, death and timed restrictions are handled according to their actual gameplay semantics rather than blindly reset at login.
 
-Production persistence moves from the current monolithic JSON prototype to a relational SQL-backed server architecture, using the EF Core/PostgreSQL structure in `FrontierDev/webrpgapp` as the implementation reference: explicit entities, relationships, constraints, transactions, migrations and selective JSONB only where appropriate.
+Production persistence moves from the current monolithic JSON prototype to a **Master Server-owned central** relational SQL-backed architecture, using the EF Core/PostgreSQL structure in `FrontierDev/webrpgapp` as the implementation reference: explicit entities, relationships, constraints, transactions, migrations and selective JSONB only where appropriate. World Servers retain live gameplay authority while accessing the central persistence boundary asynchronously.
 
 The resulting persistence boundary should be mechanically boring to the player:
 

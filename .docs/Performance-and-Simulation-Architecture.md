@@ -3,7 +3,7 @@
 **Status:** Stages 1.1–1.3 implemented and owner accepted; Stage 1.4 activity-state contract approved on 25 October 2026.
 **Scope:** Historical Phase 1.0 baseline, Stage 1.1 as-built simulation/time integration, and forward-looking Phase 1 technical contracts.
 **Source baseline:** Original `f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f`; Stage 1.1 reviewed on `dev` through `4db4aed1e18c7d7fbd92421f160d4d982d22f53c` (#106 rev 1).
-**Updated:** 2026-10-25
+**Updated:** 2026-10-26
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose, authority and interpretation
@@ -21,6 +21,8 @@ Authority follows [MMORPG Master PDD](MMORPG-Master-PDD.md): the Master PDD defi
 - [Combat System PDD](pdd/Combat-System-PDD.md) — cast, aura, cooldown, combat and spatial execution semantics.
 - [Graphical Approach PDD](pdd/Graphical-Approach-PDD.md) — URP-facing rendering, LOD and art performance requirements.
 - [Live Content and Versioning PDD](pdd/Live-Content-and-Versioning-PDD.md) — immutable compatible release/content state and controlled Addressables ownership.
+
+**Approved hosting boundary:** one World Server process on one physical machine simulates one persistent world, including all its maps/instances. Every World Server connects to a separate Master Server for global identity, persistence/session authority, world registry/admission and later cross-world communication. The Master Server does not run Unity/ECS gameplay simulation. Multi-process world sharding and off-process instance simulation are prohibited; any later simulation-region design is strictly in-process.
 
 **Terminology:** **Current** means verified in project-owned source at the reviewed revision, not confirmed by a running Unity build. **Required contract** means the technical invariant later stages must meet. **Deferred** means the named Stage 1 issue owns implementation. **Open** means the relevant PDD or implementation decision does not yet fix a value or method; a benchmark or engineering issue must not silently invent player-facing behaviour.
 
@@ -282,7 +284,7 @@ For the current tested world scale, a server Unity transform is a finite-float p
 
 Environment scenes retain their authored world-space adjacency when streamed. Streamed NavMesh content must form one continuous navigation domain wherever authored terrain is traversable. Whether Unity stores that contribution as one `NavMeshData` or several adjacent data objects is an implementation detail; a streamed-tile boundary must not be visible to gameplay navigation.
 
-A future **simulation region** remains a coarse server/world-worker ownership concept only. It is not derived from floor-dividing 256 m tile coordinates, has no current small fixed capacity, and is not part of ordinary traversal. If future precision, workload or deployment evidence requires partitioning, regions are authored as large world areas around geography, gameplay and operational boundaries. A worker transfer across such a boundary is a separate authority-transfer problem, not routine nearby-tile seam search or `NavMeshAgent.Warp`.
+A future **simulation region**, if justified by precision or workload evidence, is an **in-process World Server** partition only. It is not derived from floor-dividing 256 m tile coordinates, has no current small fixed capacity and is not part of ordinary traversal. Such regions may organise work within one World Server but can never move world simulation, navigation or authoritative actors to another server process/machine. Ordinary tile crossing remains continuous and never creates an inter-server handoff or a `NavMeshAgent.Warp` seam search.
 
 The fixed 1×1/2×2/4×4/8×8/16×16 region-sizing experiment from Issue #147 is **historical evidence, not an active architecture requirement**. Its NavMesh build-cost, isolation and precision measurements remain useful for future comparison, but the temporary 4×4 span and eight-active-region engineering result must not be treated as current production configuration or capacity.
 
@@ -291,7 +293,7 @@ The fixed 1×1/2×2/4×4/8×8/16×16 region-sizing experiment from Issue #147 is
 - **NavMesh-driven NPC:** Unity navigation provides motion in the continuous server physical/NavMesh space. The pre-ECS bridge converts that result through `ServerPhysicsManager` and commits one absolute double-precision position to `WorldPositionD`.
 - **ECS-driven NPC:** ECS updates `WorldPositionD`. Physics queries and materialised GameObject projection route through `ServerPhysicsManager`, which converts between canonical absolute state and the current continuous physical representation.
 - **GameObject transforms:** are physical/presentation materialisations. They never become a second gameplay-distance or world-position authority.
-- **Physical membership:** there is no per-actor fixed simulation-region membership in the current phase. Logical `ActorSpatialContext` and canonical `WorldPositionD` remain independent of streamed tile boundaries and any future authored worker ownership.
+- **Physical membership:** there is no per-actor fixed simulation-region membership in the current phase. Logical `ActorSpatialContext` and canonical `WorldPositionD` remain independent of streamed tile boundaries and any future **in-process** simulation-region ownership.
 
 Crossing a streamed 256 m environment/origin boundary changes neither server physics frame nor logical context. It may independently change client floating origin and environment streaming interest, but ordinary NPC pursuit continues through normal NavMesh movement without calculated seam search, Warp or target-state mutation.
 
@@ -320,7 +322,7 @@ A rejected position is never published to the spatial index or observer path. Sa
 | Spatial broad phase | `ServerSpatialIndex` | A second precise accepted-position store |
 | Environment tile streaming | `ServerWorldManager` / supported PurrNet scene lifecycle | Physical/NavMesh ownership or actor physics state |
 | Continuous server physical/NavMesh representation | `ServerPhysicsManager` | Logical context, gameplay teleport policy, accepted actor position or environment scene loading |
-| Future authored simulation-region / worker ownership | Deferred architecture selected from precision/workload/deployment evidence | Fixed tile-floor partitioning, ordinary traversal seams or current gameplay target state |
+| Future in-process simulation-region ownership | Deferred internal World Server design selected from precision/workload evidence | Cross-machine world sharding, fixed tile-floor partitioning, ordinary traversal seams or current gameplay target state |
 | Observer position output | Project-owned server replication path | Server gameplay position mutation |
 | Position/network conversion | `ServerPositionManager` | Collider, NavMesh or physics-query lifetime |
 | Client floating origin | Client position/world presentation | Server absolute position or logical context |
@@ -531,10 +533,10 @@ This table is a **responsibility specification**, not a new named C# API declara
 | **1.4** | **Approved contract:** three NPC activity states — Full, Nearby and Dormant. Combat/gameplay obligations and player relevance select activity; dead player actors count for relevance. Dormant NPCs are out of combat, not visible to any player and outside the Nearby band, and suspend ordinary patrol/perception/decision/NavMesh work while retaining authoritative identity/context/position. | Exact Nearby outer radius and reduced decision cadence remain engineering configuration/performance-tuning values for the Stage 1.4 implementation and benchmark. Lightweight actor dematerialisation is not required by the initial implementation. |
 | **1.5** | PurrNet-supported observer policy, prioritised update frequency, bandwidth/accounting and correct instance/range observer set. | Existing chunk visibility is not a network budget/priority implementation. |
 | **1.6** | Content streaming and renderer LOD/culling contracts, resource/Addressables lifetime budgets, client pooling policies and origin-shift performance. | No guarantees of GPU/object throughput without measurement. |
-| **1.7–1.8** | Transactional persistent actor/character identity, timestamps, session restoration and reconnect-safe actor lifetime. | Current JSON and immediate disconnect/despawn do not meet PDD continuity requirements. |
+| **1.7–1.8** | Master Server-owned central account/character persistence and global session/admission authority, transactional actor/character state, timestamps, restoration and reconnect-safe lifetime; initial single-world server registration. | Current JSON and immediate disconnect/despawn do not meet PDD continuity requirements; concurrent multi-world deployment and transfer are Phase 3. |
 | **1.9–1.11** | Immutable content/version compatibility, operational metrics/CI and integrated stress sign-off on documented hardware. | No production capacity or performance guarantee is established here. |
 
-Implementations should provide a direct project-owned integration against existing Managers/Endpoints where practical; do not create a generic message bus, new network transport or speculative multi-process sharding framework. If a future measurement demonstrates a different internal owner is necessary, document and validate the change **without altering PDD-owned player behaviour**.
+Implementations should provide a direct project-owned integration against existing Managers/Endpoints where practical; do not create a generic message bus, unapproved gameplay network transport or any multi-process world-sharding framework. The specific Master Server connectivity/persistence/session boundary is required in Stages 1.7–1.8 and later extended for Phase 3 multi-world hosting, but it must remain separate from world gameplay simulation. If a future measurement demonstrates a different internal owner is necessary, document and validate the change **without altering PDD-owned player behaviour**.
 
 ## 11. Measurable invariants and benchmark evidence
 

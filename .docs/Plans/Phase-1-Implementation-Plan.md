@@ -3,7 +3,7 @@
 **Phase:** 1 — Core Runtime and Production Infrastructure  
 **Branch:** `dev`  
 **Status:** In progress — Stages 1.0/1.1 complete; Stage 1.2 foundations are partially implemented and the continuous server physical-space cleanup is pending  
-**Last updated:** 2026-10-24  
+**Last updated:** 2026-10-26  
 **Parent roadmap:** [Project Roadmap](Project-Roadmap.md)  
 **Implementation baseline:** Existing Phase 0 runtime; not a greenfield replacement
 
@@ -43,8 +43,10 @@ Preserve these established decisions:
 5. **Runtime world/map/instance identity is independent of Unity scene identity.** Two private instances may share authored scenes or equivalent coordinates without seeing or affecting each other.
 6. **PostgreSQL-oriented relational persistence**, transactional ownership and progression, and persistence-neutral gameplay boundaries.
 7. **Addressables content updates and immutable release artifacts** rather than an alternative bespoke asset patcher.
+8. **One world / one process / one physical machine.** Every map, public area, private instance and simulated actor of a persistent world remains inside its one World Server process. Distinct worlds have distinct World Server machines; no cross-machine world sharding or separate instance-hosting processes.
+9. **A separate Master Server owns the global control plane**: durable world registry, authentication, account/character persistence service authority, one-account/one-session exclusivity, world admission/transfer coordination and later cross-world social routing. It does not run Unity world simulation. The Stage 1.2 launch-generated `WorldID` remains an intentionally temporary test identifier until the durable registry is integrated.
 
-Phase 1 establishes common mechanisms and verifies them under synthetic stress. Full zone production, sophisticated AI content, private-dungeon gameplay, multi-machine world sharding, final art-density tuning, final capacity promises and deployment at commercial scale remain later work.
+Phase 1 establishes common mechanisms and verifies them under synthetic stress. Full zone production, sophisticated AI content, private-dungeon gameplay, **concurrent multi-world hosting and cross-world transfers (Phase 3)**, final art-density tuning, final capacity promises and deployment at commercial scale remain later work. Splitting a single world across machines is prohibited by the approved topology, not deferred future work.
 
 ## 3. Execution rules
 
@@ -126,7 +128,7 @@ At Stage 1.2 completion:
 - environment streaming tiles and client origin/network cells share one 256 m `GameConfiguration.ChunkSize` grid while remaining separate responsibilities; that grid is **not** a server physics partition and spatial-index cells remain separate;
 - the active public map/runtime instance uses one continuous server Unity physics/NavMesh space across its streamed detailed environment for the current implementation phase;
 - ordinary 256 m tile/FPO crossings do not change server physics frame, perform `NavMeshAgent.Warp`, or alter gameplay target state merely because a streaming/presentation boundary was crossed;
-- future large authored simulation-region/worker boundaries are a later coarse ownership concern, are deliberately placed around geography/gameplay/operations, and are not derived from fixed floor division of environment-tile coordinates;
+- future large authored simulation regions, if needed, are **within the same World Server process**, not cross-machine workers, and are not derived from fixed floor division of environment-tile coordinates;
 - actor visibility, targeting, aggro, AoE and proximity queries cannot cross incompatible world/map/instance contexts;
 - observer relevance and world-content interest derive from server-accepted position, not client interest claims or local transforms;
 - query and update cost scale with relevant local candidates rather than total world actor count for representative workloads;
@@ -210,7 +212,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
     - Validate destination context/position, preload/admit required runtime state, then atomically update actor context, canonical position and spatial membership.
     - A failed transfer leaves the old context/membership intact.
     - Provide explicit context teardown without stale indexed actors.
-    - Do not conflate this logical transfer with a future server-worker/simulation-region ownership transfer.
+    - Do not conflate this same-process logical-context transfer with inter-world migration through the Master Server; any future in-process simulation-region transition remains a separate internal concern.
 
 11. **Qualify actor/identity subscription registries by logical context.**
     - Replace bare scene-name keys for actor/network-identity registries with context-qualified tile/runtime identity where the registry represents gameplay visibility.
@@ -328,17 +330,19 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 **Prerequisite:** 1.0; final timed-state integration depends on 1.1 and lifecycle contracts in 1.4.  
 **May proceed in parallel with:** 1.2–1.6 for schema design and independent storage work.
 
+**Architecture prerequisite:** Before persistence implementation, document the Master Server/World Server ownership and service boundaries, including how durable WorldIDs will be allocated. This must not change the temporary Stage 1.2 test-server ID contract retroactively.
+
 **Implement:**
 
 - Follow the Account, Character and Persistence PDD: immutable `AccountID`/`CharacterID`, account-owned home world, durable roster, relational ownership/state entities, database constraints, schema migrations and auditable high-value transactions.
-- Replace whole-file `player_data.json` authority with a server-owned SQL persistence boundary. Use the PDD's PostgreSQL / EF Core + Npgsql reference direction, subject to explicit Unity/headless runtime compatibility validation; do not quietly substitute a different provider.
-- Keep gameplay and ECS systems independent of database APIs. Define async work, concurrency, ordering and bounded queues so database operations cannot block or unpredictably stall the authoritative simulation tick.
-- Implement creation/selection, inventory/equipment, progression, world/map/instance location and relevant timed state; add quest, reputation and profession schema foundations consistent with currently available gameplay state, without implementing Phase 4–5 gameplay systems prematurely.
+- Replace whole-file `player_data.json` authority with **Master Server-owned central SQL persistence services** shared by all future World Servers. Use the PDD's PostgreSQL / EF Core + Npgsql reference direction, subject to explicit Unity/headless runtime compatibility validation; do not quietly substitute a different provider. No World Server-local account/character database is the production authority.
+- Keep gameplay and ECS systems independent of database APIs. Define the authorised World Server-to-Master Server persistence boundary with async work, concurrency, ordering and bounded queues so database operations cannot block or unpredictably stall the authoritative simulation tick; do not require a speculative multi-world message bus in Stage 1.7.
+- Implement creation/selection, inventory/equipment, progression, world/map/instance location and relevant timed state; establish stable persistent WorldID/world-record schema as the eventual Master Server authority while preserving the test-server exception until integration. Add quest, reputation and profession schema foundations consistent with currently available gameplay state, without implementing Phase 4–5 gameplay systems prematurely.
 - Preserve Health/resources, cooldowns, persistent auras, death state, offline progression rules and anti-relog-exploit invariants. Reconstruct derived statistics rather than persisting duplicated computed output.
 - Implement explicit JSON prototype-data import/migration with idempotency, diagnostics and rollback/backup rehearsal. Validate concurrent transactions, interrupted saves, restart and round-trip consistency.
 - Provide soft delete/restore identity and name-reservation foundations where required by the PDD.
 
-**Gate:** All existing meaningful character state persists through relog/restart; competing or interrupted economic/progression operations cannot duplicate ownership; failed database dependencies fail explicitly without corrupting authoritative state; load bursts have measured tick impact.
+**Gate:** All existing meaningful character state persists through relog/restart via the central Master Server-owned persistence boundary; competing or interrupted economic/progression operations cannot duplicate ownership; failed database dependencies fail explicitly without corrupting authoritative state; load bursts have measured tick impact. The durable account/character/world schema does not rely on process-local identity or the Stage 1.2 transient WorldID.
 
 ### Stage 1.8 — Sessions, authentication and reconnect authority
 
@@ -346,13 +350,13 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 
 **Implement:**
 
-- Distinguish account, gameplay session, selected character, runtime actor and network connection; enforce **one authoritative session per account**.
-- Implement authoritative ownership/character-selection validation, login/logout eligibility and disconnect-grace semantics consistent with the persistence PDD.
+- Distinguish account, gameplay session, selected character, runtime actor and network connection; enforce **one authoritative session per account through the Master Server**, globally rather than through a World Server-local dictionary.
+- Implement Master Server-controlled authentication, ownership/character-selection validation and world-admission authorisation, with World Server-controlled gameplay actor/session attachment, login/logout eligibility and disconnect-grace semantics consistent with the persistence PDD.
 - Reclaim the correct actor and world/map/instance context on reconnect where permitted; do not respawn a clean character or reset combat-relevant state.
-- Account for simultaneous login attempts, transient connection loss, server restart, invalid location recovery and authentication-rate safeguards appropriate to the baseline.
+- Establish the initial one-world World Server registration/availability/heartbeat and authenticated admission boundary with the Master Server; full concurrent multi-world discovery, selection and state-preserving transfers are Phase 3 work. Account for simultaneous login attempts, transient connection loss, server restart, invalid location recovery and authentication-rate safeguards appropriate to the baseline.
 - Test multi-client connection races and mass reconnects under load.
 
-**Gate:** No duplicate authoritative sessions/actors or lost/duplicated items; reconnect and restart preserve relevant state; burst traffic has bounded, measured server and persistence effects.
+**Gate:** No duplicate authoritative sessions/actors or lost/duplicated items; the Master Server is the sole account/session admission authority even with multiple connection attempts; the initial World Server can register and authenticate admission against it; reconnect and restart preserve relevant state; burst traffic has bounded, measured server and persistence effects.
 
 ### Stage 1.9 — Release identity, compatibility and Addressables content delivery
 
@@ -467,9 +471,9 @@ The diagram illustrates **integration dependencies**, not a demand to leave inde
 
 - **Phase 2 gameplay and combat:** use the authoritative clock, simulation scheduler, spatial queries, actor ownership and relevance-aware replication; never independently create per-frame global entity scans.
 - **Phase 2 NPCs/AI:** implement authored decision logic above the shared activity/AI scheduling model; expensive perception must respect spatial and instance membership.
-- **Phase 3 world runtime:** expand tile authoring, world-streaming LOD, instance features and interiors through the established resource and spatial boundaries; do not conflate logical instance with scene.
+- **Phase 3 world runtime:** expand tile authoring, world-streaming LOD, instance features and interiors through the established resource and spatial boundaries; do not conflate logical instance with scene. Operate multiple separate World Server machines registered with the Master Server (one world and all its maps/instances per machine), implement world selection, routing and authoritative state-preserving inter-world transfers; never shard one world's gameplay simulation.
 - **Phase 3 presentation:** author art according to the Phase 1 renderer/LOD/culling/streaming contracts, then tune quality and density through measured budgets.
-- **Phases 4–7 gameplay breadth:** integrate new persistent state through transactional server persistence and versioned definitions; use established networking and metrics.
+- **Phases 4–7 gameplay breadth:** integrate new persistent state through transactional central persistence and versioned definitions; Phase 5 cross-world social/chat routing uses the Master Server and local world-specific/spatial channels remain World Server-scoped.
 - **Phase 8 hardening:** increase validated density, soak duration, supported capacity and fault tolerance, rather than first introducing scheduling, spatial indexing, activity tiers or observability.
 
 ## 7. Issue decomposition and evidence requirements
