@@ -1,4 +1,5 @@
 using Game.Tests.Performance.Fixtures;
+using Game.Shared;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -129,8 +130,13 @@ namespace Game.Tests.Performance.Fixtures.Editor
                 var metadata = fixtureRoot.AddComponent<Test_WorldFixtureMetadata>();
                 metadata.Set(plan, seed, Test_WorldFixtureLayout.FIXTURE_VERSION);
 
+                var configuredGroundLayer = -1;
                 foreach (var spawn in plan.Spawns)
-                    CreateSpawn(fixtureRoot.transform, spawn);
+                {
+                    if (spawn.Kind == "Ground" && configuredGroundLayer < 0)
+                        configuredGroundLayer = ResolveConfiguredGroundLayer();
+                    CreateSpawn(fixtureRoot.transform, spawn, configuredGroundLayer);
+                }
 
                 if (plan.IsNavigable)
                     AddNavigationSurface(fixtureRoot, plan);
@@ -169,7 +175,7 @@ namespace Game.Tests.Performance.Fixtures.Editor
             navigationSurface.BuildNavMesh();
         }
 
-        private static void CreateSpawn(Transform parent, Test_WorldFixtureSpawn spawn)
+        private static void CreateSpawn(Transform parent, Test_WorldFixtureSpawn spawn, int configuredGroundLayer)
         {
             var worldPosition = new Vector3((float)spawn.WorldX, (float)spawn.WorldY, (float)spawn.WorldZ);
             var scale = new Vector3(spawn.ScaleX, spawn.ScaleY, spawn.ScaleZ);
@@ -180,6 +186,9 @@ namespace Game.Tests.Performance.Fixtures.Editor
                 ground.transform.SetParent(parent, true);
                 ground.transform.position = worldPosition;
                 ground.transform.localScale = scale;
+                if (configuredGroundLayer < 0)
+                    throw new InvalidOperationException($"Ground spawn '{spawn.SpawnID}' has no resolved configured ground layer.");
+                ground.layer = configuredGroundLayer;
                 ground.GetComponent<Renderer>().sharedMaterial = GetMaterial(spawn.MaterialVariant);
                 return;
             }
@@ -267,6 +276,27 @@ namespace Game.Tests.Performance.Fixtures.Editor
             }
 
             return material;
+        }
+
+        private static int ResolveConfiguredGroundLayer()
+        {
+            if (!GameConfigurationManager.IsInitialized)
+                GameConfigurationManager.Initialize();
+
+            var configuration = GameConfigurationManager.Config;
+            if (configuration == null)
+                throw new InvalidOperationException("Could not generate ground fixture geometry because GameConfigurationManager.Config is unavailable.");
+
+            var layerName = configuration.GroundDetectionMaskName;
+            if (string.IsNullOrWhiteSpace(layerName))
+                throw new InvalidOperationException("Could not generate ground fixture geometry because the configured ground detection layer name is empty.");
+
+            var layerIndex = LayerMask.NameToLayer(layerName);
+            if (layerIndex < 0)
+                throw new InvalidOperationException(
+                    $"Could not generate ground fixture geometry because configured ground detection layer '{layerName}' does not exist in the Unity layer configuration.");
+
+            return layerIndex;
         }
 
         private static void EnsureFixtureMaterials()

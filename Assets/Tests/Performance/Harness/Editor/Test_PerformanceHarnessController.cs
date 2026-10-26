@@ -764,6 +764,10 @@ namespace Game.Tests.Performance.Harness
                 _run.Options.NPCActivityScenario,
                 _npcActivityPlayerCapture.AnchorPosition,
                 passiveAggroRange);
+            Test_ActorFixturePreflight.ValidateAuthoritativeGround(
+                _run.WorldPlan.FixtureID,
+                placements,
+                _run.Options.NPCActivityScenario);
             _fixture = new Test_ActorFixtureRuntime(_run.ActorProfile);
             _fixture.StartFullActors(
                 ServerWorldManager.Instance.GlobalActorsSceneID,

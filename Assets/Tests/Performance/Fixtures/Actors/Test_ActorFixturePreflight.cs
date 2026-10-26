@@ -1,8 +1,11 @@
 using Game.Server.Core;
+using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using PurrNet;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -82,6 +85,86 @@ namespace Game.Tests.Performance.Fixtures.Actors
             return behavior.AggroRange;
         }
 
+        /// <summary>Resolves the configured runtime ground layer for an authoritative preflight query.</summary>
+        public static int ResolveGroundLayerMask(string fixtureIdentity, string configuredLayerName, WorldPosition testedPosition)
+        {
+            Require(!string.IsNullOrWhiteSpace(fixtureIdentity), "The ground preflight fixture identity is empty.");
+            if (string.IsNullOrWhiteSpace(configuredLayerName))
+                throw new Test_ActorFixturePreconditionException(
+                    $"Authoritative ground preflight failed for fixture '{fixtureIdentity}': configured ground layer '<empty>' is missing at tested position {FormatPosition(testedPosition)}.");
+
+            var layerIndex = LayerMask.NameToLayer(configuredLayerName);
+            if (layerIndex < 0)
+                throw new Test_ActorFixturePreconditionException(
+                    $"Authoritative ground preflight failed for fixture '{fixtureIdentity}': configured ground layer '{configuredLayerName}' is missing at tested position {FormatPosition(testedPosition)}.");
+
+            return LayerMask.GetMask(configuredLayerName);
+        }
+
+        /// <summary>
+        /// Validates every Stage 1.4 placement against the same authoritative ground query used by runtime movement.
+        /// </summary>
+        public static void ValidateAuthoritativeGround(
+            string fixtureIdentity,
+            IReadOnlyList<Test_ActorFixturePlacement> placements,
+            Test_NPCActivityScenario scenario)
+        {
+            Require(!string.IsNullOrWhiteSpace(fixtureIdentity), "The Stage 1.4 ground preflight fixture identity is empty.");
+            Require(placements != null && placements.Count > 0,
+                $"Authoritative ground preflight for fixture '{fixtureIdentity}' received no Stage 1.4 placements.");
+            Require(GameConfigurationManager.IsInitialized && GameConfigurationManager.Config != null,
+                $"Authoritative ground preflight for fixture '{fixtureIdentity}' cannot read the initialized game configuration.");
+            Require(ServerPhysicsManager.IsInitialized && ServerPhysicsManager.Instance != null,
+                $"Authoritative ground preflight for fixture '{fixtureIdentity}' requires an initialized ServerPhysicsManager.");
+            Require(placements[0] != null,
+                $"Authoritative ground preflight for fixture '{fixtureIdentity}' received a null placement for scenario '{scenario}'.");
+
+            var configuration = GameConfigurationManager.Config;
+            var firstPosition = new WorldPosition(placements[0].world_x, placements[0].world_y, placements[0].world_z);
+            var groundLayerMask = ResolveGroundLayerMask(
+                fixtureIdentity,
+                configuration.GroundDetectionMaskName,
+                firstPosition);
+            var groundDetectionRadius = configuration.GroundDetectionRadius;
+            Require(!float.IsNaN(groundDetectionRadius)
+                && !float.IsInfinity(groundDetectionRadius)
+                && groundDetectionRadius >= 0f,
+                $"Authoritative ground preflight for fixture '{fixtureIdentity}' has invalid configured ground detection radius '{groundDetectionRadius:R}'.");
+            var maxDistance = groundDetectionRadius * 2f + 10f;
+
+            foreach (var placement in placements)
+            {
+                Require(placement != null,
+                    $"Authoritative ground preflight for fixture '{fixtureIdentity}' received a null placement for scenario '{scenario}'.");
+                var testedPosition = new WorldPosition(placement.world_x, placement.world_y, placement.world_z);
+                Require(testedPosition.IsFinite,
+                    $"Authoritative ground preflight failed for fixture '{fixtureIdentity}', configured ground layer '{configuration.GroundDetectionMaskName}', scenario '{scenario}': tested position {FormatPosition(testedPosition)} is not finite.");
+
+                var rayOrigin = new WorldPosition(
+                    testedPosition.x,
+                    testedPosition.y + groundDetectionRadius,
+                    testedPosition.z);
+                var hitGround = ServerPhysicsManager.Instance.RaycastGround(
+                    rayOrigin,
+                    maxDistance,
+                    groundLayerMask,
+                    out var hitWorldPosition,
+                    out var hitDistance);
+                if (!hitGround)
+                {
+                    throw new Test_ActorFixturePreconditionException(
+                        $"Authoritative ground preflight failed for fixture '{fixtureIdentity}', configured ground layer '{configuration.GroundDetectionMaskName}', scenario '{scenario}', placement '{placement.actor_fixture_id}' at tested position {FormatPosition(testedPosition)}: no ground hit was returned.");
+                }
+
+                Require(hitWorldPosition.IsFinite
+                    && !float.IsNaN(hitDistance)
+                    && !float.IsInfinity(hitDistance)
+                    && hitDistance >= 0f
+                    && hitDistance <= maxDistance,
+                    $"Authoritative ground preflight failed for fixture '{fixtureIdentity}', configured ground layer '{configuration.GroundDetectionMaskName}', scenario '{scenario}', placement '{placement.actor_fixture_id}' at tested position {FormatPosition(testedPosition)}: returned an invalid hit distance or position.");
+            }
+        }
+
         /// <summary>Validates every authored input used by the scenario schedule.</summary>
         public static void ValidateRequiredAssets()
         {
@@ -156,6 +239,11 @@ namespace Game.Tests.Performance.Fixtures.Actors
         {
             if (!condition)
                 throw new Test_ActorFixturePreconditionException(message);
+        }
+
+        private static string FormatPosition(WorldPosition position)
+        {
+            return $"({position.x:R}, {position.y:R}, {position.z:R})";
         }
     }
 

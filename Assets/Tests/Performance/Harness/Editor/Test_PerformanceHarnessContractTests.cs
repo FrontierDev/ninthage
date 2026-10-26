@@ -2,6 +2,7 @@ using NUnit.Framework;
 using Game.Server.Core;
 using Game.Shared;
 using Game.Shared.Performance;
+using Game.Shared.Utility;
 using Game.Tests.Performance.Fixtures;
 using Game.Tests.Performance.Fixtures.Actors;
 using System;
@@ -320,6 +321,41 @@ namespace Game.Tests.Performance.Harness
         public void ExplicitEditorServerWorldNameDoesNotUseCommandLineResolution()
         {
             Assert.Throws<ArgumentNullException>(() => ServerInitialization.Begin(null, "performance-harness"));
+        }
+
+        [Test]
+        public void OutdoorFixtureStage14SpawnAreaPassesAuthoritativeGroundPreflightWhenServerIsRunning()
+        {
+            if (!GameConfigurationManager.IsInitialized || !ServerPhysicsManager.IsInitialized)
+                Assert.Ignore("Authoritative ground validation requires the running Stage 1.4 server scene.");
+
+            const string outdoorScenePath = "Assets/Tests/Performance/Fixtures/Worlds/Test_WorldFixture_Outdoor.unity";
+            Assert.That(AssetDatabase.LoadAssetAtPath<SceneAsset>(outdoorScenePath), Is.Not.Null, outdoorScenePath);
+            var existingScene = SceneManager.GetSceneByPath(outdoorScenePath);
+            var openedByTest = !(existingScene.IsValid() && existingScene.isLoaded);
+            var scene = openedByTest
+                ? EditorSceneManager.OpenScene(outdoorScenePath, OpenSceneMode.Additive)
+                : existingScene;
+            try
+            {
+                var profile = Test_ActorFixtureLayout.BuildCatalog().profiles[1];
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Test_ActorFixtureLayout.NPC_PREFAB_PATH);
+                var placements = Test_ActorFixtureLayout.BuildStage14NPCActivityPlacements(
+                    profile,
+                    Test_NPCActivityScenario.ForcedFull,
+                    new WorldPosition(128d, 0d, 128d),
+                    Test_ActorFixturePreflight.GetNPCPassiveAggroRange(prefab));
+
+                Test_ActorFixturePreflight.ValidateAuthoritativeGround(
+                    "Outdoor",
+                    placements,
+                    Test_NPCActivityScenario.ForcedFull);
+            }
+            finally
+            {
+                if (openedByTest && scene.IsValid() && scene.isLoaded)
+                    EditorSceneManager.CloseScene(scene, true);
+            }
         }
 
         [Test]

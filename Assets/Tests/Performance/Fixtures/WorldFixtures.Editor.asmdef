@@ -3,6 +3,7 @@
     "rootNamespace": "Game.Tests.Performance.Fixtures",
     "references": [
         "GUID:8d1e6a3b5c7f4a29b0e2d6f8c4a1b735",
+        "GUID:59f8dc0912e4f8743b9d94199c53f968",
         "Unity.AI.Navigation"
     ],
     "optionalUnityReferences": [

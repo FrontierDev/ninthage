@@ -1,4 +1,5 @@
 using Game.Tests.Performance.Fixtures;
+using Game.Shared;
 using NUnit.Framework;
 using System.IO;
 using UnityEditor;
@@ -169,6 +170,12 @@ namespace Game.Tests.Performance.Fixtures.Editor
                 DensityTier = Test_WorldFixtureDensityTier.D1_Default,
                 FixtureVersion = Test_WorldFixtureLayout.FIXTURE_VERSION,
             });
+            var configuration = AssetDatabase.LoadAssetAtPath<GameConfiguration>("Assets/Resources/GameConfiguration.asset");
+            Assert.That(configuration, Is.Not.Null);
+            Assert.That(configuration.GroundDetectionMaskName, Is.Not.Null.And.Not.Empty);
+            var configuredGroundLayer = LayerMask.NameToLayer(configuration.GroundDetectionMaskName);
+            Assert.That(configuredGroundLayer, Is.GreaterThanOrEqualTo(0),
+                $"Configured ground layer '{configuration.GroundDetectionMaskName}' must exist in the Unity layer configuration.");
 
             foreach (var expectedPlan in expectedManifest.Scenes)
             {
@@ -196,7 +203,7 @@ namespace Game.Tests.Performance.Fixtures.Editor
                     Assert.That(metadata.Variant, Is.EqualTo(expectedPlan.Variant), expectedPlan.AssetPath);
                     Assert.That(metadata.Status, Is.EqualTo(expectedPlan.Status), expectedPlan.AssetPath);
                     Assert.That(metadata.Seed, Is.EqualTo(Test_WorldFixtureLayout.DEFAULT_SEED), expectedPlan.AssetPath);
-                    AssertSpawnMetadata(expectedPlan, fixtureRoot);
+                    AssertSpawnMetadata(expectedPlan, fixtureRoot, configuredGroundLayer);
                 }
                 finally
                 {
@@ -246,7 +253,7 @@ namespace Game.Tests.Performance.Fixtures.Editor
             return null;
         }
 
-        private static void AssertSpawnMetadata(Test_WorldFixturePlan expectedPlan, GameObject fixtureRoot)
+        private static void AssertSpawnMetadata(Test_WorldFixturePlan expectedPlan, GameObject fixtureRoot, int configuredGroundLayer)
         {
             Assert.That(expectedPlan.Spawns, Is.Not.Null, expectedPlan.AssetPath);
             foreach (var expectedSpawn in expectedPlan.Spawns)
@@ -261,6 +268,10 @@ namespace Game.Tests.Performance.Fixtures.Editor
                 if (expectedSpawn.Kind == "Ground")
                 {
                     Assert.That(metadata, Is.Null, $"Ground spawn '{expectedSpawn.SpawnID}' unexpectedly has spawn metadata.");
+                    Assert.That(
+                        spawnRoot.layer,
+                        Is.EqualTo(configuredGroundLayer),
+                        $"Ground spawn '{expectedSpawn.SpawnID}' in '{expectedPlan.AssetPath}' is not assigned to the configured ground layer.");
                     continue;
                 }
 

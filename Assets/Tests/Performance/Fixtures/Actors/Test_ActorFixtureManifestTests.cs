@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
+using Game.Shared.Utility;
 
 namespace Game.Tests.Performance.Fixtures.Actors
 {
@@ -119,6 +120,18 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 Test_ActorFixturePreflight.ValidateFull(profile, 0, default));
 
             Assert.That(exception.Message, Does.Contain("running PurrNet server"));
+        }
+
+        [Test]
+        public void MissingConfiguredGroundLayerIsReportedAsPreconditionFailure()
+        {
+            var position = new WorldPosition(128d, 0d, 128d);
+            var exception = Assert.Throws<Test_ActorFixturePreconditionException>(() =>
+                Test_ActorFixturePreflight.ResolveGroundLayerMask("Outdoor", "MissingGroundLayerForRegression", position));
+
+            Assert.That(exception.Message, Does.Contain("Outdoor"));
+            Assert.That(exception.Message, Does.Contain("MissingGroundLayerForRegression"));
+            Assert.That(exception.Message, Does.Contain("(128, 0, 128)"));
         }
 
         [Test]
