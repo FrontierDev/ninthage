@@ -377,6 +377,11 @@ namespace Game.Tests.Performance.Harness
             Assert.That(sentinelSource, Does.Contain("STAGE14_ENGAGEMENT_SENTINEL_TIMEOUT_SECONDS"));
             Assert.That(sentinelSource, Does.Contain("finally"));
             Assert.That(sentinelSource, Does.Contain("StopEngagementForGroup(\"npc-engaged\")"));
+            Assert.That(sentinelSource, Does.Contain("GetSentinelReacquisitionObservationSeconds"));
+            Assert.That(sentinelSource, Does.Contain("observationDeadline"));
+            Assert.That(sentinelSource, Does.Contain("ValidateEngagementStopped"));
+            Assert.That(sentinelSource, Does.Contain("NPCAggroDecisionIntervalSeconds"));
+            Assert.That(sentinelSource, Does.Contain("ServerSimulationTickDuration"));
             Assert.That(sentinelSource, Does.Contain("ValidatePlayerReferencesForSentinel"));
         }
 
@@ -402,9 +407,14 @@ namespace Game.Tests.Performance.Harness
             Assert.That(startSource, Does.Contain("SetTargetFromServer(_realPlayerTarget)"));
             Assert.That(startSource, Does.Contain("Server_StartAutoAttack()"));
             Assert.That(startSource, Does.Contain("ActorEndpoint.onServerStartAutoAttack +="));
+            Assert.That(startSource, Does.Contain("ActorEndpoint.onServerStopAutoAttack +="));
             Assert.That(stopSource, Does.Contain("Server_StopAutoAttack()"));
-            Assert.That(stopSource, Does.Contain("SetTargetFromServer(null)"));
-            Assert.That(stopSource, Does.Contain("ActorEndpoint.onServerStartAutoAttack -="));
+            Assert.That(stopSource, Does.Not.Contain("SetTargetFromServer(null)"));
+            Assert.That(stopSource, Does.Not.Contain("ActorEndpoint.onServerStartAutoAttack -="));
+            Assert.That(stopSource, Does.Contain("TryGetActor(actor.ID"));
+            Assert.That(stopSource, Does.Contain("ReferenceEquals(actor.Target, _realPlayerTarget)"));
+            Assert.That(stopSource, Does.Contain("_restartedSentinelEngagementActorIDs"));
+            Assert.That(source, Does.Contain("ActorEndpoint.onServerStopAutoAttack -="));
             Assert.That(startSource + stopSource, Does.Not.Contain("SetComponentData"));
             Assert.That(startSource + stopSource, Does.Not.Contain("EntityManager"));
         }

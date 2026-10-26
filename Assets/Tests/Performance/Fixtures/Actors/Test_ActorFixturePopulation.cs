@@ -33,6 +33,8 @@ namespace Game.Tests.Performance.Fixtures.Actors
         private readonly HashSet<Guid> _fullActorIDs = new();
         private readonly HashSet<Guid> _sentinelEngagementActorIDs = new();
         private readonly HashSet<Guid> _observedSentinelEngagementActorIDs = new();
+        private readonly HashSet<Guid> _observedSentinelEngagementStopActorIDs = new();
+        private readonly HashSet<Guid> _restartedSentinelEngagementActorIDs = new();
         private int _baselineActorEntityCount;
         private bool _subscribed;
         private bool _disposed;
@@ -254,10 +256,14 @@ namespace Game.Tests.Performance.Fixtures.Actors
 
             _sentinelEngagementActorIDs.Clear();
             _observedSentinelEngagementActorIDs.Clear();
+            _observedSentinelEngagementStopActorIDs.Clear();
+            _restartedSentinelEngagementActorIDs.Clear();
             foreach (var actor in selectedActors)
                 _sentinelEngagementActorIDs.Add(actor.ID);
             ActorEndpoint.onServerStartAutoAttack -= ObserveSentinelEngagementStart;
+            ActorEndpoint.onServerStopAutoAttack -= ObserveSentinelEngagementStop;
             ActorEndpoint.onServerStartAutoAttack += ObserveSentinelEngagementStart;
+            ActorEndpoint.onServerStopAutoAttack += ObserveSentinelEngagementStop;
 
             foreach (var actor in selectedActors)
             {
@@ -282,6 +288,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 if (actor == null
                     || actor.isDead
                     || !_observedSentinelEngagementActorIDs.Contains(actor.ID)
+                    || _restartedSentinelEngagementActorIDs.Contains(actor.ID)
                     || !ReferenceEquals(actor.Target, _realPlayerTarget))
                     return false;
             }
@@ -301,12 +308,38 @@ namespace Game.Tests.Performance.Fixtures.Actors
                     continue;
 
                 actor.Server_StopAutoAttack();
-                actor.SetTargetFromServer(null);
             }
+        }
 
-            ActorEndpoint.onServerStartAutoAttack -= ObserveSentinelEngagementStart;
-            _sentinelEngagementActorIDs.Clear();
-            _observedSentinelEngagementActorIDs.Clear();
+        /// <summary>Validates that the selected sentinel stopped without losing its live target or registration.</summary>
+        public void ValidateEngagementStopped(IReadOnlyList<Actor> actors)
+        {
+            ThrowIfDisposed();
+            if (actors == null || actors.Count == 0)
+                throw new InvalidOperationException("The Stage 1.4 engagement sentinel selection is empty.");
+
+            foreach (var actor in actors)
+            {
+                if (actor == null || actor.isDead)
+                    throw new InvalidOperationException("The Stage 1.4 engagement sentinel died before ramp.");
+                if (!ServerActorManager.IsInitialized
+                    || ServerActorManager.Instance == null
+                    || !ServerActorManager.Instance.TryGetActor(actor.ID, out var registeredActor)
+                    || !ReferenceEquals(registeredActor, actor))
+                {
+                    throw new InvalidOperationException(
+                        $"The Stage 1.4 engagement sentinel '{actor.ID}' is no longer registered before ramp.");
+                }
+                if (!ReferenceEquals(actor.Target, _realPlayerTarget))
+                    throw new InvalidOperationException(
+                        $"The Stage 1.4 engagement sentinel '{actor.ID}' lost its real player target before ramp.");
+                if (!_observedSentinelEngagementStopActorIDs.Contains(actor.ID))
+                    throw new InvalidOperationException(
+                        $"The Stage 1.4 engagement sentinel '{actor.ID}' did not observe the ordinary auto-attack stop event.");
+                if (_restartedSentinelEngagementActorIDs.Contains(actor.ID))
+                    throw new InvalidOperationException(
+                        $"The Stage 1.4 engagement sentinel '{actor.ID}' restarted ordinary auto-attack after it was stopped.");
+            }
         }
 
         /// <summary>Requests one supported server-only ability cast for each actor in a group.</summary>
@@ -343,8 +376,11 @@ namespace Game.Tests.Performance.Fixtures.Actors
             }
 
             ActorEndpoint.onServerStartAutoAttack -= ObserveSentinelEngagementStart;
+            ActorEndpoint.onServerStopAutoAttack -= ObserveSentinelEngagementStop;
             _sentinelEngagementActorIDs.Clear();
             _observedSentinelEngagementActorIDs.Clear();
+            _observedSentinelEngagementStopActorIDs.Clear();
+            _restartedSentinelEngagementActorIDs.Clear();
 
             foreach (var actor in _fullActors.ToArray())
             {
@@ -475,8 +511,17 @@ namespace Game.Tests.Performance.Fixtures.Actors
 
         private void ObserveSentinelEngagementStart(Actor actor)
         {
+            if (actor == null || !_sentinelEngagementActorIDs.Contains(actor.ID))
+                return;
+
+            if (!_observedSentinelEngagementActorIDs.Add(actor.ID))
+                _restartedSentinelEngagementActorIDs.Add(actor.ID);
+        }
+
+        private void ObserveSentinelEngagementStop(Actor actor)
+        {
             if (actor != null && _sentinelEngagementActorIDs.Contains(actor.ID))
-                _observedSentinelEngagementActorIDs.Add(actor.ID);
+                _observedSentinelEngagementStopActorIDs.Add(actor.ID);
         }
 
         private void SubscribeToLifecycle()

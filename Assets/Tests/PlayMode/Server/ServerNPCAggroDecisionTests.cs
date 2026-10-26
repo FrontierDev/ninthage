@@ -213,6 +213,36 @@ namespace Game.Runtime.Tests.Server
             Assert.That(_npc.Target, Is.SameAs(_player));
             Assert.That(_startAutoAttackCount, Is.EqualTo(1));
             Assert.That(_npc.transform.position.y, Is.EqualTo(0f).Within(0.01f));
+
+            var stopAutoAttackCount = 0;
+            void OnStopAutoAttack(Actor actor)
+            {
+                if (ReferenceEquals(actor, _npc))
+                    stopAutoAttackCount++;
+            }
+
+            ActorEndpoint.onServerStopAutoAttack += OnStopAutoAttack;
+            try
+            {
+                _npc.Server_StopAutoAttack();
+                Assert.That(stopAutoAttackCount, Is.EqualTo(1));
+                Assert.That(_npc.Target, Is.SameAs(_player));
+
+                var npcBehavior = _npc.GetComponent<NPCBehavior>();
+                var observationSeconds = npcBehavior.AggroDelay
+                    + _configuration.NPCAggroDecisionIntervalSeconds
+                    + _configuration.ServerSimulationTickDuration;
+                var observationTicks = Mathf.CeilToInt(observationSeconds / _configuration.ServerSimulationTickDuration) + 1;
+                AdvanceTicks(observationTicks);
+
+                Assert.That(_npc.Target, Is.SameAs(_player));
+                Assert.That(_startAutoAttackCount, Is.EqualTo(1));
+                Assert.That(_player.isDead, Is.False);
+            }
+            finally
+            {
+                ActorEndpoint.onServerStopAutoAttack -= OnStopAutoAttack;
+            }
         }
 
         [UnityTest]

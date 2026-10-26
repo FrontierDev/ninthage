@@ -1,0 +1,20 @@
+{
+"schema_version":"benchmark-run/v1",
+"run_id":"run-20261026T185614762Z-78326441",
+"fixture":{"path":"fixture.json","sha256":"37e7803c31e2c3a68e5f08e08f346d3bc8de47fbd72fb800b298a9f6457f3dd1"},
+"git":{"repository":"C:\\Users\\recip\\Unity\\NinthAge","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-26T18:56:11.5297304Z","commit_sha":"1eff54b2753d01c5ec5366c2ab7e62580922d511","dirty":true,"diff_sha256":"2cbcca70e239805b2faacb184332392c6bd29c722fcccd92e92d7515e9bef220"},
+"unity":{"version":"6000.3.10f1","platform":"WindowsEditor"},
+"packages":{"manifest_sha256":"8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90","lock_sha256":"933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9"},
+"purrnet":{"source":"Assets/ThirdParty/PurrNet","sha256":"e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941"},
+"build":{"kind":"editor_playmode_server","target":"Unity Editor","subtarget":"test_only_performance_harness","development":true,"deep_profiling":false,"executable":null,"identity_note":"No standalone player was built or launched."},
+"render":{"mode":"server_only","graphical_client":false,"frames_rendered":null},
+"hardware":{"host_id":"editor-host-2557e243b63e","description":"Windows 11  (10.0.26200)|AMD Ryzen 7 5700X 8-Core Processor |16","system_memory_bytes":17085497344,"graphics_device":"NVIDIA GeForce RTX 4060 Ti"},
+"process":{"unity_editor_pid":18924,"server_processes":1,"client_processes":1,"synthetic_clients":0},
+"clocks":{"utc":true,"monotonic_source":"Unity telemetry session"},
+"application_context":{"run_in_background":true},
+"execution":{"entrypoint":"Tools/Performance/Test Workload Runner","ordinary_runtime_path":true,"force_server_mode":false,"credentials":"ordinary_login_required"},
+"runtime":{"environment_authority":"ordinary_authoritative_server","scene_fixture":null,"scene_path":null,"context_kind":"public","world_id":"f435af3e-1875-429e-860d-6d9efff2e6a6","map_id":"main-world","instance_id":null,"required_chunks":[[0,0]],"standalone_qualified":false,"network_clients_supported":true},
+"workload":{"mode":"FullNetworkedActors","profile_id":"P1-S1.4-NPC-ACTIVITY","actor_variant_id":"S14-FORCEDFULL","actor_count":100,"world_fixture":null,"density":"D1_Default","seed":424242},
+"npc_activity":{"npc_activity_scenario":"ForcedFull","requested_npc_count":100,"achieved_full_npc_count":100,"required_real_player_count":1,"achieved_real_player_count":1,"anchor_actor_id":"8b6a752a-027a-4278-a94f-9559e8339719","anchor_initial_context":"f435af3e-1875-429e-860d-6d9efff2e6a6/main-world/00000000-0000-0000-0000-000000000000","anchor_initial_position":[0,5,0],"authoritative_world_id":"f435af3e-1875-429e-860d-6d9efff2e6a6","authoritative_map_id":"main-world","authoritative_instance_id":"","ordinary_runtime_chunks":["0,0"]}
+
+}

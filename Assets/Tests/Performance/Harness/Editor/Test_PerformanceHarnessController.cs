@@ -868,7 +868,47 @@ namespace Game.Tests.Performance.Harness
                 _fixture.StopEngagementForGroup("npc-engaged");
             }
 
+            var observationSeconds = GetSentinelReacquisitionObservationSeconds(sentinelActors);
+            var observationDeadline = Time.realtimeSinceStartup + observationSeconds;
+            while (Time.realtimeSinceStartup < observationDeadline)
+            {
+                ThrowIfStopRequested();
+                _npcActivityController.ValidatePlayerReferencesForSentinel();
+                yield return null;
+            }
+
+            _fixture.ValidateEngagementStopped(sentinelActors);
             _npcActivityController.ValidatePlayerReferencesForSentinel();
+        }
+
+        private static float GetSentinelReacquisitionObservationSeconds(IReadOnlyList<Actor> sentinelActors)
+        {
+            if (sentinelActors == null || sentinelActors.Count != 1 || sentinelActors[0] == null)
+                throw new InvalidOperationException("Stage 1.4 requires exactly one live engagement sentinel.");
+
+            var behavior = sentinelActors[0].GetComponent<NPCBehavior>();
+            if (behavior == null)
+                throw new Test_ActorFixturePreconditionException("The Stage 1.4 engagement sentinel has no NPCBehavior component.");
+            if (!Game.Shared.GameConfigurationManager.IsInitialized
+                || Game.Shared.GameConfigurationManager.Config == null)
+            {
+                throw new Test_ActorFixturePreconditionException(
+                    "Stage 1.4 cannot observe sentinel reacquisition without initialized game configuration.");
+            }
+
+            var configuration = Game.Shared.GameConfigurationManager.Config;
+            var observationSeconds = behavior.AggroDelay
+                + configuration.NPCAggroDecisionIntervalSeconds
+                + configuration.ServerSimulationTickDuration;
+            if (float.IsNaN(observationSeconds)
+                || float.IsInfinity(observationSeconds)
+                || observationSeconds <= 0f)
+            {
+                throw new Test_ActorFixturePreconditionException(
+                    "Stage 1.4 sentinel reacquisition observation window is not finite and positive.");
+            }
+
+            return observationSeconds;
         }
 
         private void ValidateStage14RuntimeAuthority()
