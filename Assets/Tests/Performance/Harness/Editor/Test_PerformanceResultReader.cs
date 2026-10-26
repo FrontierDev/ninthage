@@ -642,6 +642,8 @@ namespace Game.Tests.Performance.Harness
                 var retainedSampleCount = metric.retained_sample_count > 0 ? metric.retained_sample_count : metric.sample_count;
                 var metricJson = FindMetricJson(summaryJson, metric.metric_id);
                 var hasCapacityOverflowCount = metricJson != null && HasJsonProperty(metricJson, "capacity_overflow_count");
+                var hasValidSampleCoverage = metricJson != null && HasJsonProperty(metricJson, "valid_sample_coverage");
+                var hasCurrentCoverageSemantics = hasCapacityOverflowCount || hasValidSampleCoverage;
                 var hasLegacyCoverageSemantics = TryGetLegacyCoverageSemantics(
                     metricJson,
                     metric.retention_policy,
@@ -677,26 +679,29 @@ namespace Game.Tests.Performance.Harness
                     throw new InvalidDataException("summary.json reports samples for an unmeasured metric: " + metric.metric_id);
                 if (metric.attempted_sample_count > 0)
                 {
+                    var validInputCoverage = (metric.attempted_sample_count - metric.rejected_sample_count)
+                        / (double)metric.attempted_sample_count;
                     var retention = retainedSampleCount / (double)metric.attempted_sample_count;
-                    metric.effective_measurement_coverage = retention;
+                    var qualificationCoverage = hasCurrentCoverageSemantics ? validInputCoverage : retention;
+                    metric.effective_measurement_coverage = qualificationCoverage;
                     if (hasLegacyCoverageSemantics)
                     {
                         metric.legacy_coverage_semantics = legacyDiagnostic;
                     }
-                    else if (metricJson == null || IsJsonPropertyNull(metricJson, "measurement_coverage") || Math.Abs(metric.measurement_coverage - retention) > 0.0000001d)
+                    else if (metricJson == null || IsJsonPropertyNull(metricJson, "measurement_coverage") || Math.Abs(metric.measurement_coverage - qualificationCoverage) > 0.0000001d)
                     {
                         throw new InvalidDataException("summary.json measurement coverage does not match retained/attempted samples: " + metric.metric_id);
                     }
-                    if (HasJsonProperty(metricJson, "valid_sample_coverage")
+                    if (hasValidSampleCoverage
                         && (IsJsonPropertyNull(metricJson, "valid_sample_coverage")
                             || Math.Abs(ReadJsonNumber(metricJson, "valid_sample_coverage")
-                                - (metric.attempted_sample_count - metric.rejected_sample_count) / (double)metric.attempted_sample_count) > 0.0000001d))
+                                - validInputCoverage) > 0.0000001d))
                     {
                         throw new InvalidDataException("summary.json valid sample coverage does not match rejected/attempted samples: " + metric.metric_id);
                     }
                     if (string.IsNullOrEmpty(metric.legacy_coverage_semantics)
                         && IsMeasuredObservation(metric.observation)
-                        && retention < 1d - MEASUREMENT_DROP_RATIO)
+                        && qualificationCoverage < 1d - MEASUREMENT_DROP_RATIO)
                         throw new InvalidDataException("summary.json reports a measured metric below the retention policy: " + metric.metric_id);
                 }
                 else
