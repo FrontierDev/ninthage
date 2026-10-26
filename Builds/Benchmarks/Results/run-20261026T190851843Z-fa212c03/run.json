@@ -1,8 +1,8 @@
 {
 "schema_version":"benchmark-run/v1",
-"run_id":"run-20261026T185614762Z-78326441",
-"fixture":{"path":"fixture.json","sha256":"37e7803c31e2c3a68e5f08e08f346d3bc8de47fbd72fb800b298a9f6457f3dd1"},
-"git":{"repository":"C:\\Users\\recip\\Unity\\NinthAge","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-26T18:56:11.5297304Z","commit_sha":"1eff54b2753d01c5ec5366c2ab7e62580922d511","dirty":true,"diff_sha256":"2cbcca70e239805b2faacb184332392c6bd29c722fcccd92e92d7515e9bef220"},
+"run_id":"run-20261026T190851843Z-fa212c03",
+"fixture":{"path":"fixture.json","sha256":"30f0d9f53b666d95b0a644c38d62a19d1e87289fefff3e9a703b9c3eca1cfef7"},
+"git":{"repository":"C:\\Users\\recip\\Unity\\NinthAge","branch":"dev","branch_status":"named","branch_diagnostic":"","captured_utc":"2026-10-26T19:08:51.3997889Z","commit_sha":"8170235f87beae53dca98dfca9ce0e21a1d9c61c","dirty":true,"diff_sha256":"155fb7445a8ee66491d25082a9430bf63db4646f630242c72789bef9e0c92d2e"},
 "unity":{"version":"6000.3.10f1","platform":"WindowsEditor"},
 "packages":{"manifest_sha256":"8d45b883217f48705f8b8c06544fc362f7972b391d302786dbde0fd2d8606a90","lock_sha256":"933a4d97a9bd17fa89939b99509bdbca107a4e296e70fb2cf3155aab6b96adf9"},
 "purrnet":{"source":"Assets/ThirdParty/PurrNet","sha256":"e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941"},
@@ -13,8 +13,8 @@
 "clocks":{"utc":true,"monotonic_source":"Unity telemetry session"},
 "application_context":{"run_in_background":true},
 "execution":{"entrypoint":"Tools/Performance/Test Workload Runner","ordinary_runtime_path":true,"force_server_mode":false,"credentials":"ordinary_login_required"},
-"runtime":{"environment_authority":"ordinary_authoritative_server","scene_fixture":null,"scene_path":null,"context_kind":"public","world_id":"f435af3e-1875-429e-860d-6d9efff2e6a6","map_id":"main-world","instance_id":null,"required_chunks":[[0,0]],"standalone_qualified":false,"network_clients_supported":true},
+"runtime":{"environment_authority":"ordinary_authoritative_server","scene_fixture":null,"scene_path":null,"context_kind":"public","world_id":"acda00f3-5630-4431-aaa2-53e0debdf3ba","map_id":"main-world","instance_id":null,"required_chunks":[[0,0]],"standalone_qualified":false,"network_clients_supported":true},
 "workload":{"mode":"FullNetworkedActors","profile_id":"P1-S1.4-NPC-ACTIVITY","actor_variant_id":"S14-FORCEDFULL","actor_count":100,"world_fixture":null,"density":"D1_Default","seed":424242},
-"npc_activity":{"npc_activity_scenario":"ForcedFull","requested_npc_count":100,"achieved_full_npc_count":100,"required_real_player_count":1,"achieved_real_player_count":1,"anchor_actor_id":"8b6a752a-027a-4278-a94f-9559e8339719","anchor_initial_context":"f435af3e-1875-429e-860d-6d9efff2e6a6/main-world/00000000-0000-0000-0000-000000000000","anchor_initial_position":[0,5,0],"authoritative_world_id":"f435af3e-1875-429e-860d-6d9efff2e6a6","authoritative_map_id":"main-world","authoritative_instance_id":"","ordinary_runtime_chunks":["0,0"]}
+"npc_activity":{"npc_activity_scenario":"ForcedFull","requested_npc_count":100,"achieved_full_npc_count":100,"required_real_player_count":1,"achieved_real_player_count":1,"anchor_actor_id":"435ab4d2-45f0-461c-a68a-811cc97d1734","anchor_initial_context":"acda00f3-5630-4431-aaa2-53e0debdf3ba/main-world/00000000-0000-0000-0000-000000000000","anchor_initial_position":[0,5,0],"authoritative_world_id":"acda00f3-5630-4431-aaa2-53e0debdf3ba","authoritative_map_id":"main-world","authoritative_instance_id":"","ordinary_runtime_chunks":["0,0"]}
 
 }

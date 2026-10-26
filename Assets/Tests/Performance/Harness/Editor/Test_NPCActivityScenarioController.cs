@@ -1,4 +1,5 @@
 using Game.Shared.Networking;
+using Game.Shared.Data;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using Game.Tests.Performance.Fixtures.Actors;
@@ -14,10 +15,90 @@ namespace Game.Tests.Performance.Harness
     /// <summary>Captures the real player actors used by a Stage 1.4 scenario.</summary>
     internal sealed class Test_NPCActivityPlayerCapture
     {
+        private const string STAT_HEALTH = "health";
+        private const float TEMPORARY_HEALTH_VALUE = 1e30f;
+        private readonly Dictionary<PlayerActor, StatInstance> _originalHealthStats = new();
+        private bool _healthProtectionActive;
+        private bool _healthRestored;
+
         public IReadOnlyList<PlayerActor> Players { get; set; }
         public PlayerActor Anchor { get; set; }
         public ActorSpatialContext Context { get; set; }
         public WorldPosition AnchorPosition { get; set; }
+
+        public void ProtectHealth()
+        {
+            if (_healthProtectionActive)
+                return;
+            if (Players == null || Players.Count == 0)
+                throw new InvalidOperationException("Cannot protect health without captured Stage 1.4 players.");
+
+            _originalHealthStats.Clear();
+            foreach (var player in Players)
+            {
+                if (player == null)
+                    throw new InvalidOperationException("Cannot protect health for a missing captured Stage 1.4 player.");
+                if (!player.TryGetComponent<ActorStatContainer>(out var statContainer))
+                    throw new InvalidOperationException($"Captured Stage 1.4 PlayerActor '{player.ID}' has no ActorStatContainer.");
+                if (!statContainer.TryGetStat(STAT_HEALTH, out var health) || health == null)
+                    throw new InvalidOperationException($"Captured Stage 1.4 PlayerActor '{player.ID}' has no health StatInstance.");
+
+                _originalHealthStats.Add(player, health);
+            }
+
+            _healthProtectionActive = true;
+            _healthRestored = false;
+            foreach (var player in Players)
+            {
+                var statContainer = player.GetComponent<ActorStatContainer>();
+                var health = _originalHealthStats[player];
+                statContainer.SetStat(STAT_HEALTH, new StatInstance(
+                    health.BaseValue,
+                    health.FlatModifier,
+                    health.PercentModifier,
+                    TEMPORARY_HEALTH_VALUE,
+                    TEMPORARY_HEALTH_VALUE));
+                ReplicateHealth(statContainer);
+            }
+        }
+
+        public void RestoreHealth()
+        {
+            if (!_healthProtectionActive || _healthRestored)
+                return;
+
+            foreach (var entry in _originalHealthStats)
+            {
+                if (entry.Key == null)
+                    throw new InvalidOperationException("Cannot restore health because a captured Stage 1.4 player was destroyed.");
+                if (!entry.Key.TryGetComponent<ActorStatContainer>(out _))
+                    throw new InvalidOperationException($"Cannot restore health because captured Stage 1.4 PlayerActor '{entry.Key.ID}' lost its ActorStatContainer.");
+            }
+
+            foreach (var entry in _originalHealthStats)
+            {
+                var statContainer = entry.Key.GetComponent<ActorStatContainer>();
+                statContainer.SetStat(STAT_HEALTH, entry.Value);
+                ReplicateHealth(statContainer);
+            }
+
+            _healthRestored = true;
+            _healthProtectionActive = false;
+            _originalHealthStats.Clear();
+        }
+
+        private static void ReplicateHealth(ActorStatContainer statContainer)
+        {
+            var currentHealth = statContainer.GetStat(STAT_HEALTH);
+            var snapshot = statContainer.BuildSnapshot(ActorStatReplicationMode.Observers);
+            if (snapshot.Stats.Length > 0)
+            {
+                statContainer.Observers_ReceiveSnapshot(snapshot);
+                // The RPC applies a snapshot locally as well as sending it. Reassign the current instance
+                // after replication so server-side stat identity and base/modifier values are preserved.
+                statContainer.SetStat(STAT_HEALTH, currentHealth);
+            }
+        }
     }
 
     /// <summary>Evidence fields specific to one Stage 1.4 NPC activity run.</summary>

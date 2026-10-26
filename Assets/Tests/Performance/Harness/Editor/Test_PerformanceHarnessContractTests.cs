@@ -439,6 +439,47 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void Stage14PlayerHealthProtectionRestoresTheCapturedStatInstanceOnEveryExitPath()
+        {
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var capturePath = Path.Combine(
+                projectRoot,
+                "Assets/Tests/Performance/Harness/Editor/Test_NPCActivityScenarioController.cs");
+            var controllerPath = Path.Combine(
+                projectRoot,
+                "Assets/Tests/Performance/Harness/Editor/Test_PerformanceHarnessController.cs");
+            var captureSource = File.ReadAllText(capturePath);
+            var controllerSource = File.ReadAllText(controllerPath);
+
+            Assert.That(captureSource, Does.Contain("Dictionary<PlayerActor, StatInstance> _originalHealthStats"));
+            Assert.That(captureSource, Does.Contain("TryGetStat(STAT_HEALTH, out var health)"));
+            Assert.That(captureSource, Does.Contain("TEMPORARY_HEALTH_VALUE = 1e30f"));
+            Assert.That(captureSource, Does.Contain("statContainer.SetStat(STAT_HEALTH, new StatInstance("));
+            Assert.That(captureSource, Does.Contain("statContainer.SetStat(STAT_HEALTH, entry.Value)"));
+            Assert.That(captureSource, Does.Contain("ReplicateHealth(statContainer)"));
+
+            var executeStart = controllerSource.IndexOf("private IEnumerator Execute()", StringComparison.Ordinal);
+            var executeEnd = controllerSource.IndexOf("private void FinalizeRun()", executeStart, StringComparison.Ordinal);
+            Assert.That(executeStart, Is.GreaterThanOrEqualTo(0), controllerPath);
+            Assert.That(executeEnd, Is.GreaterThan(executeStart), controllerPath);
+            var executeSource = controllerSource.Substring(executeStart, executeEnd - executeStart);
+            Assert.That(executeSource, Does.Contain("finally"));
+            Assert.That(executeSource, Does.Contain("RestoreStage14PlayerHealth();"));
+
+            var destroyStart = controllerSource.IndexOf("private void OnDestroy()", StringComparison.Ordinal);
+            Assert.That(destroyStart, Is.GreaterThan(executeEnd), controllerPath);
+            var destroySource = controllerSource.Substring(destroyStart);
+            Assert.That(destroySource, Does.Contain("RestoreStage14PlayerHealth();"));
+
+            var stage14Start = controllerSource.IndexOf("private IEnumerator ExecuteStage14NPCActivityCore()", StringComparison.Ordinal);
+            var stage14End = controllerSource.IndexOf("private void ValidateStage14RuntimeAuthority()", stage14Start, StringComparison.Ordinal);
+            Assert.That(stage14Start, Is.GreaterThanOrEqualTo(0), controllerPath);
+            Assert.That(stage14End, Is.GreaterThan(stage14Start), controllerPath);
+            var stage14Source = controllerSource.Substring(stage14Start, stage14End - stage14Start);
+            Assert.That(stage14Source, Does.Contain("_npcActivityPlayerCapture.ProtectHealth();"));
+        }
+
+        [Test]
         public void ExplicitEditorServerWorldNameRejectsBlankValues()
         {
             Assert.Throws<ArgumentException>(() => ServerInitialization.Begin(null, string.Empty));

@@ -647,16 +647,24 @@ namespace Game.Tests.Performance.Harness
 
         private IEnumerator Execute()
         {
-            yield return DriveNested(ExecuteCore(), RecordExecutionFailure);
-            if ((_fixture != null || _graphicalFixture != null) && !_cleanupCompleted)
-                yield return DriveNested(CleanupFixture(), RecordCleanupFailure);
-            if (_selectedWorldScene.IsValid() && _selectedWorldScene.isLoaded && !_sceneUnloadAttempted)
-                yield return DriveNested(UnloadSelectedWorldFixture(), RecordSceneCleanupFailure);
+            try
+            {
+                yield return DriveNested(ExecuteCore(), RecordExecutionFailure);
+                if ((_fixture != null || _graphicalFixture != null) && !_cleanupCompleted)
+                    yield return DriveNested(CleanupFixture(), RecordCleanupFailure);
+                if (_selectedWorldScene.IsValid() && _selectedWorldScene.isLoaded && !_sceneUnloadAttempted)
+                    yield return DriveNested(UnloadSelectedWorldFixture(), RecordSceneCleanupFailure);
 
-            FinalizeRun();
+                RestoreStage14PlayerHealth();
+                FinalizeRun();
 
-            Test_PerformanceHarnessController.Complete(_run);
-            Destroy(gameObject);
+                Test_PerformanceHarnessController.Complete(_run);
+                Destroy(gameObject);
+            }
+            finally
+            {
+                RestoreStage14PlayerHealth();
+            }
         }
 
         private void FinalizeRun()
@@ -761,6 +769,7 @@ namespace Game.Tests.Performance.Harness
         private IEnumerator ExecuteStage14NPCActivityCore()
         {
             yield return WaitForStage14Players();
+            _npcActivityPlayerCapture.ProtectHealth();
             ValidateStage14RuntimeAuthority();
             _run.RegisterServerMetrics();
 
@@ -1143,6 +1152,24 @@ namespace Game.Tests.Performance.Harness
         private void RecordSceneCleanupFailure(Exception exception)
         {
             SetPendingFailure(exception, new Test_PerformanceFailureClassification("SCENE_CLEANUP_FAILED", PerformanceRunStatus.FailCorrectness));
+        }
+
+        private void RestoreStage14PlayerHealth()
+        {
+            if (_npcActivityPlayerCapture == null)
+                return;
+
+            try
+            {
+                _npcActivityPlayerCapture.RestoreHealth();
+            }
+            catch (Exception exception)
+            {
+                if (_run != null && !_run.Finalized)
+                    RecordCleanupFailure(exception);
+                else
+                    UnityEngine.Debug.LogException(exception);
+            }
         }
 
         private void SetPendingFailure(Exception exception, Test_PerformanceFailureClassification classification)
@@ -1586,7 +1613,11 @@ namespace Game.Tests.Performance.Harness
 
         private void OnDestroy()
         {
-            if (_run == null || _run.Finalized)
+            if (_run == null)
+                return;
+
+            RestoreStage14PlayerHealth();
+            if (_run.Finalized)
                 return;
 
             var playModeIsActive = Application.isPlaying && EditorApplication.isPlaying;
