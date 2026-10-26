@@ -25,7 +25,7 @@
         "generator_revision": "1.0.0",
         "input_path": "stage-1.4-npc-activity-profile",
         "asset_manifest_path": "Assets/Tests/Performance/Fixtures/Actors/actor-asset-manifest.json",
-        "source_commit": "d6eb9c31428fb6e64da7205e384525bdf244cb75",
+        "source_commit": "87edbc182da80ab683c68b4c86d2ac754483d659",
         "source_sha256": "",
         "asset_manifest_sha256": "ad8a7c5ddced960ac7e028b5f75ff2e6f04ba6cf7ee6e2df946ef90d08e26842"
     },
