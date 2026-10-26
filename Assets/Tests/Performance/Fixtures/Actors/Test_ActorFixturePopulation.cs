@@ -31,6 +31,8 @@ namespace Game.Tests.Performance.Fixtures.Actors
         private readonly Queue<Test_ActorFixturePlacement> _pendingFullPlacements = new();
         private readonly Dictionary<Actor, Test_ActorFixturePlacement> _fullActorPlacements = new();
         private readonly HashSet<Guid> _fullActorIDs = new();
+        private readonly HashSet<Guid> _sentinelEngagementActorIDs = new();
+        private readonly HashSet<Guid> _observedSentinelEngagementActorIDs = new();
         private int _baselineActorEntityCount;
         private bool _subscribed;
         private bool _disposed;
@@ -220,32 +222,91 @@ namespace Game.Tests.Performance.Fixtures.Actors
             }
         }
 
-        /// <summary>Assigns a real player target and starts the legal server-side engaged schedule.</summary>
-        public void StartEngagementForGroup(string groupID, int count)
+        /// <summary>Assigns a real player target and starts the bounded server-side engagement sentinel.</summary>
+        public IReadOnlyList<Actor> StartEngagementForGroup(string groupID, int count)
         {
             ThrowIfDisposed();
             RequireRepresentation(Test_ActorFixtureRepresentation.networked_gameobject_ecs);
             Require(_realPlayerTarget != null, "A real player target must be supplied before engagement starts.");
             Require(count > 0, "Engagement count must be positive.");
 
-            var started = 0;
-            for (var index = 0; index < _fullActors.Count && started < count; index++)
+            var selectedActors = new List<Actor>(count);
+            for (var index = 0; index < _fullActors.Count && selectedActors.Count < count; index++)
             {
                 var actor = _fullActors[index];
                 if (!_fullActorPlacements.TryGetValue(actor, out var placement) || placement.group_id != groupID)
                     continue;
 
+                selectedActors.Add(actor);
+                if (selectedActors.Count == count)
+                    break;
+            }
+
+            if (selectedActors.Count != count)
+                throw new InvalidOperationException(
+                    $"Could not start engagement for group '{groupID}': requested {count}, available {selectedActors.Count}.");
+
+            foreach (var actor in selectedActors)
+            {
+                Require(actor.GetComponent<ActorSpellcaster>() != null,
+                    $"Actor '{actor.name}' has no ActorSpellcaster component.");
+            }
+
+            _sentinelEngagementActorIDs.Clear();
+            _observedSentinelEngagementActorIDs.Clear();
+            foreach (var actor in selectedActors)
+                _sentinelEngagementActorIDs.Add(actor.ID);
+            ActorEndpoint.onServerStartAutoAttack -= ObserveSentinelEngagementStart;
+            ActorEndpoint.onServerStartAutoAttack += ObserveSentinelEngagementStart;
+
+            foreach (var actor in selectedActors)
+            {
                 var spellcaster = actor.GetComponent<ActorSpellcaster>();
-                Require(spellcaster != null, $"Actor '{actor.name}' has no ActorSpellcaster component.");
                 spellcaster.LearnSpell("cleave");
                 actor.SetTargetFromServer(_realPlayerTarget);
                 actor.Server_StartAutoAttack();
-                started++;
             }
 
-            if (started != count)
-                throw new InvalidOperationException(
-                    $"Could not start engagement for group '{groupID}': requested {count}, available {started}.");
+            return selectedActors;
+        }
+
+        /// <summary>Gets whether the selected sentinel actors entered the ordinary target and auto-attack path.</summary>
+        public bool IsEngagementResponsive(IReadOnlyList<Actor> actors)
+        {
+            ThrowIfDisposed();
+            if (actors == null || actors.Count == 0)
+                return false;
+
+            foreach (var actor in actors)
+            {
+                if (actor == null
+                    || actor.isDead
+                    || !_observedSentinelEngagementActorIDs.Contains(actor.ID)
+                    || !ReferenceEquals(actor.Target, _realPlayerTarget))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>Stops the selected sentinel actors through the ordinary server combat APIs.</summary>
+        public void StopEngagementForGroup(string groupID)
+        {
+            ThrowIfDisposed();
+            foreach (var actor in _fullActors)
+            {
+                if (!_sentinelEngagementActorIDs.Contains(actor.ID)
+                    || !_fullActorPlacements.TryGetValue(actor, out var placement)
+                    || placement.group_id != groupID)
+                    continue;
+
+                actor.Server_StopAutoAttack();
+                actor.SetTargetFromServer(null);
+            }
+
+            ActorEndpoint.onServerStartAutoAttack -= ObserveSentinelEngagementStart;
+            _sentinelEngagementActorIDs.Clear();
+            _observedSentinelEngagementActorIDs.Clear();
         }
 
         /// <summary>Requests one supported server-only ability cast for each actor in a group.</summary>
@@ -280,6 +341,10 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 LastCleanupReport = BuildCleanupReport();
                 return LastCleanupReport;
             }
+
+            ActorEndpoint.onServerStartAutoAttack -= ObserveSentinelEngagementStart;
+            _sentinelEngagementActorIDs.Clear();
+            _observedSentinelEngagementActorIDs.Clear();
 
             foreach (var actor in _fullActors.ToArray())
             {
@@ -406,6 +471,12 @@ namespace Game.Tests.Performance.Fixtures.Actors
 
             _fullActors.Remove(actor);
             DespawnedFullActorCount++;
+        }
+
+        private void ObserveSentinelEngagementStart(Actor actor)
+        {
+            if (actor != null && _sentinelEngagementActorIDs.Contains(actor.ID))
+                _observedSentinelEngagementActorIDs.Add(actor.ID);
         }
 
         private void SubscribeToLifecycle()

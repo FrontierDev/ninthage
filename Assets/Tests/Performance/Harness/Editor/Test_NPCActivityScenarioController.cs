@@ -264,6 +264,11 @@ namespace Game.Tests.Performance.Harness
                 throw new Test_NPCActivityWorkloadNotAchievedException("WORKLOAD_NOT_ACHIEVED: CrossInstance did not observe the anchor PlayerActor enter a different spatial context during measurement.");
         }
 
+        public void ValidatePlayerReferencesForSentinel()
+        {
+            ValidatePlayerReferences();
+        }
+
         public Test_NPCActivityScenarioEvidence BuildEvidence(int achievedFullNPCCount)
         {
             return new Test_NPCActivityScenarioEvidence

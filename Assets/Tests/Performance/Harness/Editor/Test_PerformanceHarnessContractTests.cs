@@ -350,6 +350,85 @@ namespace Game.Tests.Performance.Harness
         }
 
         [Test]
+        public void Stage14EngagementSentinelCompletesBeforeRamp()
+        {
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var controllerPath = Path.Combine(
+                projectRoot,
+                "Assets/Tests/Performance/Harness/Editor/Test_PerformanceHarnessController.cs");
+            var source = File.ReadAllText(controllerPath);
+            var coreStart = source.IndexOf("private IEnumerator ExecuteStage14NPCActivityCore()", StringComparison.Ordinal);
+            var coreEnd = source.IndexOf("private void ValidateStage14RuntimeAuthority()", coreStart, StringComparison.Ordinal);
+            Assert.That(coreStart, Is.GreaterThanOrEqualTo(0), controllerPath);
+            Assert.That(coreEnd, Is.GreaterThan(coreStart), controllerPath);
+            var coreSource = source.Substring(coreStart, coreEnd - coreStart);
+            var sentinelStart = coreSource.IndexOf("RunStage14EngagementSentinel", StringComparison.Ordinal);
+            var rampStart = coreSource.IndexOf("_run.BeginPhase(PerformanceMeasurementPhase.Ramp)", StringComparison.Ordinal);
+
+            Assert.That(coreSource, Does.Contain("StartEngagementForGroup(\"npc-engaged\", 1)"));
+            Assert.That(sentinelStart, Is.GreaterThanOrEqualTo(0));
+            Assert.That(rampStart, Is.GreaterThan(sentinelStart));
+
+            var sentinelMethodStart = source.IndexOf("private IEnumerator RunStage14EngagementSentinel", StringComparison.Ordinal);
+            var sentinelMethodEnd = source.IndexOf("private void ValidateStage14RuntimeAuthority()", sentinelMethodStart, StringComparison.Ordinal);
+            Assert.That(sentinelMethodStart, Is.GreaterThanOrEqualTo(0), controllerPath);
+            Assert.That(sentinelMethodEnd, Is.GreaterThan(sentinelMethodStart), controllerPath);
+            var sentinelSource = source.Substring(sentinelMethodStart, sentinelMethodEnd - sentinelMethodStart);
+            Assert.That(sentinelSource, Does.Contain("STAGE14_ENGAGEMENT_SENTINEL_TIMEOUT_SECONDS"));
+            Assert.That(sentinelSource, Does.Contain("finally"));
+            Assert.That(sentinelSource, Does.Contain("StopEngagementForGroup(\"npc-engaged\")"));
+            Assert.That(sentinelSource, Does.Contain("ValidatePlayerReferencesForSentinel"));
+        }
+
+        [Test]
+        public void Stage14EngagementSentinelUsesProductionTargetAndCombatApis()
+        {
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var populationPath = Path.Combine(
+                projectRoot,
+                "Assets/Tests/Performance/Fixtures/Actors/Test_ActorFixturePopulation.cs");
+            var source = File.ReadAllText(populationPath);
+            var startMethod = source.IndexOf("public IReadOnlyList<Actor> StartEngagementForGroup", StringComparison.Ordinal);
+            var responsiveMethod = source.IndexOf("public bool IsEngagementResponsive", startMethod, StringComparison.Ordinal);
+            var stopMethod = source.IndexOf("public void StopEngagementForGroup", responsiveMethod, StringComparison.Ordinal);
+            var requestMethod = source.IndexOf("public void RequestAbilitySchedule", stopMethod, StringComparison.Ordinal);
+            Assert.That(startMethod, Is.GreaterThanOrEqualTo(0), populationPath);
+            Assert.That(responsiveMethod, Is.GreaterThan(startMethod), populationPath);
+            Assert.That(stopMethod, Is.GreaterThan(responsiveMethod), populationPath);
+            Assert.That(requestMethod, Is.GreaterThan(stopMethod), populationPath);
+
+            var startSource = source.Substring(startMethod, responsiveMethod - startMethod);
+            var stopSource = source.Substring(stopMethod, requestMethod - stopMethod);
+            Assert.That(startSource, Does.Contain("SetTargetFromServer(_realPlayerTarget)"));
+            Assert.That(startSource, Does.Contain("Server_StartAutoAttack()"));
+            Assert.That(startSource, Does.Contain("ActorEndpoint.onServerStartAutoAttack +="));
+            Assert.That(stopSource, Does.Contain("Server_StopAutoAttack()"));
+            Assert.That(stopSource, Does.Contain("SetTargetFromServer(null)"));
+            Assert.That(stopSource, Does.Contain("ActorEndpoint.onServerStartAutoAttack -="));
+            Assert.That(startSource + stopSource, Does.Not.Contain("SetComponentData"));
+            Assert.That(startSource + stopSource, Does.Not.Contain("EntityManager"));
+        }
+
+        [Test]
+        public void Stage14PlayerReferenceValidationRemainsStrict()
+        {
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var controllerPath = Path.Combine(
+                projectRoot,
+                "Assets/Tests/Performance/Harness/Editor/Test_NPCActivityScenarioController.cs");
+            var source = File.ReadAllText(controllerPath);
+            var validationStart = source.IndexOf("private void ValidatePlayerReferences()", StringComparison.Ordinal);
+            var validationEnd = source.IndexOf("private static string FormatContext", validationStart, StringComparison.Ordinal);
+            Assert.That(validationStart, Is.GreaterThanOrEqualTo(0), controllerPath);
+            Assert.That(validationEnd, Is.GreaterThan(validationStart), controllerPath);
+            var validationSource = source.Substring(validationStart, validationEnd - validationStart);
+
+            Assert.That(validationSource, Does.Contain("player == null || player.isDead || player.Owner == null"));
+            Assert.That(validationSource, Does.Contain("ChunkSubscriptions.PLAYER_ACTORS"));
+            Assert.That(validationSource, Does.Contain("TryGetAcceptedPositionSnapshot"));
+        }
+
+        [Test]
         public void ExplicitEditorServerWorldNameRejectsBlankValues()
         {
             Assert.Throws<ArgumentException>(() => ServerInitialization.Begin(null, string.Empty));

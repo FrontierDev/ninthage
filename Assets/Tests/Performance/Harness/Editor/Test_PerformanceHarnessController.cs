@@ -615,6 +615,8 @@ namespace Game.Tests.Performance.Harness
     /// <summary>Runs one real server-only fixture execution inside ordinary Play Mode.</summary>
     internal sealed class Test_PerformanceHarnessBehaviour : MonoBehaviour
     {
+        private const float STAGE14_ENGAGEMENT_SENTINEL_TIMEOUT_SECONDS = 10f;
+
         private Test_PerformanceRun _run;
         private Test_ActorFixtureRuntime _fixture;
         private Test_NPCActivityScenarioController _npcActivityController;
@@ -800,7 +802,8 @@ namespace Game.Tests.Performance.Harness
                 resolvedPlacements,
                 passiveAggroRange);
             _run.AttachStage14NPCActivityEvidence(_npcActivityController, _fixture.SpawnedFullActorCount);
-            _fixture.StartEngagementForGroup("npc-engaged", 1);
+            var sentinelActors = _fixture.StartEngagementForGroup("npc-engaged", 1);
+            yield return RunStage14EngagementSentinel(sentinelActors);
 
             _run.BeginPhase(PerformanceMeasurementPhase.Ramp);
             Test_PerformanceHarnessController.PersistActiveRun("running");
@@ -841,6 +844,31 @@ namespace Game.Tests.Performance.Harness
                 PerformanceRunStatus.CompleteMeasured,
                 "MEASUREMENT_COMPLETE",
                 "The Stage 1.4 full networked NPC activity workload was measured and cleaned up successfully.");
+        }
+
+        private IEnumerator RunStage14EngagementSentinel(IReadOnlyList<Actor> sentinelActors)
+        {
+            var deadline = Time.realtimeSinceStartup + STAGE14_ENGAGEMENT_SENTINEL_TIMEOUT_SECONDS;
+            try
+            {
+                while (!_fixture.IsEngagementResponsive(sentinelActors))
+                {
+                    ThrowIfStopRequested();
+                    if (Time.realtimeSinceStartup >= deadline)
+                    {
+                        throw new Test_NPCActivityWorkloadNotAchievedException(
+                            "WORKLOAD_NOT_ACHIEVED: The nearby Stage 1.4 engagement sentinel did not enter the ordinary target/auto-attack path within the bounded sentinel timeout.");
+                    }
+
+                    yield return null;
+                }
+            }
+            finally
+            {
+                _fixture.StopEngagementForGroup("npc-engaged");
+            }
+
+            _npcActivityController.ValidatePlayerReferencesForSentinel();
         }
 
         private void ValidateStage14RuntimeAuthority()
