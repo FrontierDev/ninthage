@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Text chat, spatial communication, whispers, party/raid/guild channels, public channels, custom channels, free-text and authored emotes, account-level friends and blocking, social presence, rich chat links, client chat history, spam prevention, reporting and moderation  
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-26
 
 ---
 
@@ -940,7 +940,9 @@ Cross-world channels include at minimum:
 - Custom channels;
 - Party/Raid/Raid Warning whenever those groups span worlds.
 
-These channels must not assume all recipients are connected to one physical game-server process.
+Each persistent world (including its maps and instances) runs on exactly one World Server process/machine. **The Master Server is the shared cross-world communication and presence-routing authority.** A World Server submits authenticated sender/channel context to that service; the Master Server validates global identity, membership, blocks and permissions and routes eligible messages to the World Servers that host recipients. The destination World Servers deliver to their connected recipients. The route must not depend on a direct peer-to-peer link between World Servers, assume recipients share a process, or grant a World Server authority over another world's gameplay.
+
+The exact reliable inter-server transport, routing message format and delivery/ordering guarantees are implementation contracts for Phase 5, built on the Master Server/world-registry foundation from Phases 1 and 3.
 
 ---
 
@@ -953,7 +955,7 @@ World-specific channels include:
 - Looking for Group;
 - future authored public community channels unless explicitly declared otherwise.
 
-Spatial channels are narrower still because they require matching spatial/instance context and range.
+Spatial channels are narrower still because they require matching spatial/instance context and range. Say/Yell/spatial emotes are evaluated and delivered by the **local World Server** using authoritative context and distance; the Master Server does not evaluate world positions or run spatial chat simulation.
 
 ---
 
@@ -972,6 +974,8 @@ The server/service layer is authoritative for:
 - rate limiting;
 - report evidence;
 - rich-link validation where required.
+
+The Master Server owns cross-world sender identity, global presence, social membership/block enforcement and cross-world route decisions. The local World Server owns authoritative spatial eligibility and delivery to its connected clients; world-specific public channels remain scoped to the sender's `WorldID`. The Master Server must not broadcast General/Trade/LFG across worlds or permit a sender to supply an untrusted WorldID/ChannelID to bypass routing permissions.
 
 Clients render messages but do not authoritatively decide who should receive them.
 
@@ -1184,7 +1188,7 @@ The following decisions are locked by this PDD:
 45. Reports preserve authoritative message/context evidence.
 46. System messages are distinct from player chat.
 47. Combat Log is distinct from player communication.
-48. Cross-world communication must not assume one physical game-server process.
+48. Cross-world communication routes through the Master Server across the one-world/one-process/one-machine World Servers; local spatial communication remains the World Server's responsibility.
 49. Ordinary chat messages are not long-term gameplay persistence.
 50. Built-in voice chat is not part of the initial communication system.
 
@@ -1266,7 +1270,7 @@ Ninth Age treats communication according to what it represents.
 
 Say, Yell and free-text `/e` / `/me` are grounded in authoritative physical proximity and instance context.
 
-Whispers, guild chat, custom channels and qualifying group communication work across persistent worlds because they represent social relationships rather than physical sound.
+Whispers, guild chat, custom channels and qualifying group communication work across persistent worlds through the Master Server because they represent social relationships rather than physical sound. Each World Server simulates only its own world's actors, maps and instances.
 
 Default public channels remain world-specific so each persistent world can develop a recognisable community.
 

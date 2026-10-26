@@ -3,7 +3,7 @@
 **Status:** Authoritative design index and project-level design baseline  
 **Project:** Ninth Age  
 **Scope:** Product-wide MMORPG design, subsystem ownership, PDD hierarchy, cross-system principles and unresolved product decisions  
-**Last updated:** 2026-10-07
+**Last updated:** 2026-10-26
 
 ---
 
@@ -138,7 +138,9 @@ Detailed world structure belongs in the **World and Zone Design PDD** and **Dung
 
 ### 4.3 Persistent Client–Server Game
 
-The game uses a graphical client and a headless authoritative server.
+The game uses graphical clients, **one headless authoritative World Server process on one physical machine per persistent world**, and a separate **Master Server** coordinating the World Servers. Each World Server runs every map/instance and all gameplay simulation for its one world; no world is sharded across machines or assigned additional instance-server processes. The Master Server owns global identity, persistence/session coordination, world discovery/admission and cross-world social routing, but never runs gameplay simulation.
+
+This is a locked project-wide server topology. The [World Runtime and Instancing PDD](pdd/World-Runtime-and-Instancing-PDD.md) owns the detailed runtime boundary, and the [Account, Character and Persistence PDD](pdd/Account-Character-and-Persistence-PDD.md) owns the central identity/session/durable-state contract.
 
 The exact technical model is defined by the C# architecture documentation. Product PDDs must nevertheless identify:
 
@@ -724,7 +726,7 @@ This document defines:
 
 - proximity Say, Yell and free-text emotes;
 - `/e` and `/me` as aliases;
-- cross-world online whispers;
+- Master Server-routed cross-world online whispers;
 - party/raid/guild communication routing;
 - permission-controlled private guild chat;
 - world-specific General, Trade and Looking for Group channels;
@@ -918,13 +920,13 @@ This document defines:
 - 12 character slots per account;
 - account-owned HomeWorldID and Legacy state;
 - globally unique two-part character names;
-- one-account/one-session authority;
+- Master Server-owned, cross-World-Server one-account/one-session authority;
 - login/logout and 30-second disconnect-grace behaviour;
 - combat/damage restrictions on logout and world transfer;
 - persistence-neutral Health/resource/cooldown/aura semantics;
 - 30-day soft character deletion and restoration;
 - transactional ownership/progression persistence;
-- migration away from whole-file JSON storage;
+- migration away from whole-file JSON storage to Master Server-owned central persistence;
 - relational SQL persistence with PostgreSQL / EF-Core-style architecture based on the `FrontierDev/webrpgapp` reference;
 - schema migration, integrity and auditability requirements.
 
@@ -939,6 +941,8 @@ This document defines:
 This should define the product requirements that sit between world design and technical scene streaming:
 
 - what players perceive as one continuous world;
+- one persistent world per World Server process and physical machine, with all its maps/instances in that process and no cross-machine world simulation;
+- central Master Server registration, world selection/admission and transfer coordination without gameplay simulation;
 - world partition expectations;
 - dungeon/instance boundaries;
 - who shares a world instance;
