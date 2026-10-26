@@ -59,6 +59,7 @@ namespace Game.Tests.Performance.Harness
         public int activityDespawnEventCount;
         public int activityTotalSpawnEventCount;
         public int activityTotalDespawnEventCount;
+        public Test_NPCActivityScenarioEvidence stage14NPCActivityEvidence;
         public Test_PerformanceObservabilityState observability;
 
         public SceneSetup[] RestoreSceneSetup()
@@ -81,6 +82,7 @@ namespace Game.Tests.Performance.Harness
         public int densityTier;
         public int workloadMode;
         public int actorCount;
+        public int npcActivityScenario;
         public int seed;
         public int graphicalScenario;
         public int actorDensity;
@@ -95,6 +97,7 @@ namespace Game.Tests.Performance.Harness
                 densityTier = (int)options.DensityTier,
                 workloadMode = (int)options.WorkloadMode,
                 actorCount = options.ActorCount,
+                npcActivityScenario = (int)options.NPCActivityScenario,
                 seed = options.Seed,
                 graphicalScenario = (int)options.GraphicalScenario,
                 actorDensity = (int)options.ActorDensity,
@@ -112,6 +115,7 @@ namespace Game.Tests.Performance.Harness
                 DensityTier = (Test_WorldFixtureDensityTier)densityTier,
                 WorkloadMode = (Test_PerformanceWorkloadMode)workloadMode,
                 ActorCount = actorCount,
+                NPCActivityScenario = (Test_NPCActivityScenario)npcActivityScenario,
                 Seed = seed,
                 GraphicalScenario = (Test_GraphicalScenario)graphicalScenario,
                 ActorDensity = (Test_GraphicalActorDensity)actorDensity,
@@ -605,6 +609,8 @@ namespace Game.Tests.Performance.Harness
     {
         private Test_PerformanceRun _run;
         private Test_ActorFixtureRuntime _fixture;
+        private Test_NPCActivityScenarioController _npcActivityController;
+        private Test_NPCActivityPlayerCapture _npcActivityPlayerCapture;
         private Test_GraphicalFixtureRuntime _graphicalFixture;
         private Scene _selectedWorldScene;
         private bool _cleanupCompleted;
@@ -685,6 +691,11 @@ namespace Game.Tests.Performance.Harness
             }
 
             yield return WaitForServerReady();
+            if (_run.IsStage14NPCActivity)
+            {
+                yield return ExecuteStage14NPCActivityCore();
+                yield break;
+            }
             _run.RegisterServerMetrics();
             yield return LoadSelectedWorldFixture();
             _run.CreateDataOnlyRuntime(_run.Options.WorkloadMode);
@@ -735,6 +746,79 @@ namespace Game.Tests.Performance.Harness
                 PerformanceRunStatus.CompleteMeasured,
                 "MEASUREMENT_COMPLETE",
                 "The requested data-only population was measured and cleaned up successfully.");
+        }
+
+        private IEnumerator ExecuteStage14NPCActivityCore()
+        {
+            yield return WaitForStage14Players();
+            _run.RegisterServerMetrics();
+            yield return LoadSelectedWorldFixture();
+
+            var prefab = Test_ActorFixturePreflight.ValidateFull(
+                _run.ActorProfile,
+                _npcActivityPlayerCapture.Players.Count,
+                ServerWorldManager.Instance.GlobalActorsSceneID);
+            var passiveAggroRange = Test_ActorFixturePreflight.GetNPCPassiveAggroRange(prefab);
+            var placements = Test_ActorFixtureLayout.BuildStage14NPCActivityPlacements(
+                _run.ActorProfile,
+                _run.Options.NPCActivityScenario,
+                _npcActivityPlayerCapture.AnchorPosition,
+                passiveAggroRange);
+            _fixture = new Test_ActorFixtureRuntime(_run.ActorProfile);
+            _fixture.StartFullActors(
+                ServerWorldManager.Instance.GlobalActorsSceneID,
+                _npcActivityPlayerCapture.Anchor,
+                placements);
+            _run.SetFullNetworkedRuntime(_fixture);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            yield return _fixture.WaitForFullSpawn(_run.EffectivePreflightTimeoutSeconds);
+            _npcActivityController = new Test_NPCActivityScenarioController(
+                _run.Options.NPCActivityScenario,
+                _npcActivityPlayerCapture,
+                _run.ActorProfile,
+                placements,
+                passiveAggroRange);
+            _run.AttachStage14NPCActivityEvidence(_npcActivityController, _fixture.SpawnedFullActorCount);
+            _fixture.StartEngagementForGroup("npc-engaged", 1);
+
+            _run.BeginPhase(PerformanceMeasurementPhase.Ramp);
+            Test_PerformanceHarnessController.PersistActiveRun("running");
+            yield return RunStage14Ramp();
+            if (_run.StopRequested)
+            {
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the Stage 1.4 run during ramp.");
+                yield break;
+            }
+            _run.MarkWorkloadApplied();
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Ramp);
+
+            _run.BeginPhase(PerformanceMeasurementPhase.Warmup);
+            yield return RunStage14Warmup();
+            if (_run.StopRequested)
+            {
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the Stage 1.4 run during warmup.");
+                yield break;
+            }
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Warmup);
+
+            _run.BeginPhase(PerformanceMeasurementPhase.Measurement);
+            yield return RunStage14Measurement();
+            if (_run.StopRequested)
+            {
+                yield return StopAndClean("USER_STOPPED", PerformanceRunStatus.FailCorrectness, "The user deliberately stopped the Stage 1.4 run during measurement.");
+                yield break;
+            }
+            _npcActivityController.ValidateMeasurementComplete();
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Measurement);
+
+            _run.BeginPhase(PerformanceMeasurementPhase.Recovery);
+            yield return RunStage14Recovery();
+            _run.MarkPhaseComplete(PerformanceMeasurementPhase.Recovery);
+            yield return CleanupFixture();
+            SetRequestedResult(
+                PerformanceRunStatus.CompleteMeasured,
+                "MEASUREMENT_COMPLETE",
+                "The Stage 1.4 full networked NPC activity workload was measured and cleaned up successfully.");
         }
 
         private IEnumerator ExecuteGraphicalCore()
@@ -874,6 +958,8 @@ namespace Game.Tests.Performance.Harness
         {
             if (exception is Test_PerformanceUserStopException)
                 return new Test_PerformanceFailureClassification("USER_STOPPED", PerformanceRunStatus.FailCorrectness);
+            if (exception is Test_NPCActivityWorkloadNotAchievedException)
+                return new Test_PerformanceFailureClassification("WORKLOAD_NOT_ACHIEVED", PerformanceRunStatus.FailCorrectness);
             if (exception is Test_ActorFixturePreconditionException)
                 return new Test_PerformanceFailureClassification("FIXTURE_PRECONDITION_FAILED", PerformanceRunStatus.FailProvision);
             if (exception is Test_PerformancePrerequisiteException)
@@ -901,7 +987,7 @@ namespace Game.Tests.Performance.Harness
         private IEnumerator WaitForServerReady()
         {
             ThrowIfStopRequested();
-            var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
+            var deadline = Time.realtimeSinceStartup + _run.EffectivePreflightTimeoutSeconds;
             while (!Game.Shared.GameConfigurationManager.IsInitialized
                 || !ServerECSManager.Initialized
                 || !ServerWorldManager.IsInitialized
@@ -927,10 +1013,30 @@ namespace Game.Tests.Performance.Harness
             ThrowIfStopRequested();
         }
 
+        private IEnumerator WaitForStage14Players()
+        {
+            var requiredCount = Test_ActorFixtureLayout.GetStage14NPCActivityRequiredPlayerCount(_run.Options.NPCActivityScenario);
+            var requireDenseCluster = _run.Options.NPCActivityScenario == Test_NPCActivityScenario.DensePlayerCluster;
+            var deadline = Time.realtimeSinceStartup + _run.EffectivePreflightTimeoutSeconds;
+            string diagnostic = null;
+            while (!Test_NPCActivityScenarioController.TryCaptureRealPlayers(
+                requiredCount,
+                requireDenseCluster,
+                out _npcActivityPlayerCapture,
+                out diagnostic))
+            {
+                ThrowIfStopRequested();
+                if (Time.realtimeSinceStartup >= deadline)
+                    throw new Test_PerformancePrerequisiteException("BLOCKED-PREREQUISITE: Stage 1.4 real-player preflight did not complete: " + diagnostic);
+                yield return null;
+            }
+            ThrowIfStopRequested();
+        }
+
         private IEnumerator WaitForClientReady()
         {
             ThrowIfStopRequested();
-            var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
+            var deadline = Time.realtimeSinceStartup + _run.EffectivePreflightTimeoutSeconds;
             while (!Game.Shared.GameConfigurationManager.IsInitialized
                 || !Game.Client.ClientWorldManager.Initialized
                 || !Game.Client.ClientPositionManager.Initialized)
@@ -951,7 +1057,7 @@ namespace Game.Tests.Performance.Harness
             if (operation == null)
                 throw new InvalidOperationException("Unity did not create a load operation for the selected world fixture.");
 
-            var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
+            var deadline = Time.realtimeSinceStartup + _run.EffectivePreflightTimeoutSeconds;
             while (!operation.isDone)
             {
                 ThrowIfStopRequested();
@@ -987,6 +1093,87 @@ namespace Game.Tests.Performance.Harness
             }
             _run.ActivityController.AdvanceRamp(Test_PerformanceRun.RAMP_SECONDS, Test_PerformanceRun.RAMP_SECONDS);
             _run.ObserveEntityCount(_fixture.DataOnlyEntityCount);
+        }
+
+        private IEnumerator RunStage14Ramp()
+        {
+            var start = Time.realtimeSinceStartup;
+            var nextSample = 0f;
+            while (Time.realtimeSinceStartup - start < _run.EffectiveRampSeconds)
+            {
+                ThrowIfStopRequested();
+                var elapsed = Time.realtimeSinceStartup - start;
+                _run.ObserveEntityCount(_fixture.SpawnedFullActorCount);
+                if (elapsed >= nextSample)
+                {
+                    RecordStage14Sample();
+                    nextSample += _run.EffectiveSampleIntervalSeconds;
+                }
+                _run.RecordMeasurementFrame();
+                yield return null;
+            }
+            _run.ObserveEntityCount(_fixture.SpawnedFullActorCount);
+        }
+
+        private IEnumerator RunStage14Warmup()
+        {
+            var start = Time.realtimeSinceStartup;
+            var nextSample = 0f;
+            while (Time.realtimeSinceStartup - start < _run.EffectiveWarmupSeconds)
+            {
+                ThrowIfStopRequested();
+                var elapsed = Time.realtimeSinceStartup - start;
+                _run.ObserveEntityCount(_fixture.SpawnedFullActorCount);
+                if (elapsed >= nextSample)
+                {
+                    RecordStage14Sample();
+                    nextSample += _run.EffectiveSampleIntervalSeconds;
+                }
+                _run.RecordMeasurementFrame();
+                yield return null;
+            }
+        }
+
+        private IEnumerator RunStage14Measurement()
+        {
+            var start = Time.realtimeSinceStartup;
+            var nextSample = 0f;
+            while (Time.realtimeSinceStartup - start < _run.EffectiveMeasurementSeconds)
+            {
+                ThrowIfStopRequested();
+                var elapsed = Time.realtimeSinceStartup - start;
+                _npcActivityController.ObserveMeasurement(elapsed);
+                _run.ObserveEntityCount(_fixture.SpawnedFullActorCount);
+                if (elapsed >= nextSample)
+                {
+                    RecordStage14Sample();
+                    nextSample += _run.EffectiveSampleIntervalSeconds;
+                }
+                _run.RecordMeasurementFrame();
+                yield return null;
+            }
+            _npcActivityController.ObserveMeasurement(_run.EffectiveMeasurementSeconds);
+        }
+
+        private IEnumerator RunStage14Recovery()
+        {
+            var start = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - start < _run.EffectiveRecoverySeconds)
+            {
+                ThrowIfStopRequested();
+                yield return null;
+            }
+        }
+
+        private void RecordStage14Sample()
+        {
+            var frame = UnityEngine.Time.frameCount;
+            PerformanceTelemetry.TryRecord(Test_PerformanceHarnessMetrics.ECS_ENTITY_COUNT, _fixture.SpawnedFullActorCount, frame);
+            PerformanceTelemetry.TryRecord(
+                Test_PerformanceHarnessMetrics.TOTAL_ALLOCATED_BYTES,
+                UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong(),
+                frame);
+            _run.RecordMeasurementSample();
         }
 
         private IEnumerator RunGraphicalRamp()
@@ -1145,7 +1332,7 @@ namespace Game.Tests.Performance.Harness
             _run.CaptureActivitySnapshot("measurement_interrupted_pre_cleanup");
             _fixture.Cleanup();
             _run.CaptureCleanupReport(_fixture.LastCleanupReport);
-            yield return _fixture.WaitForCleanup(Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS);
+            yield return _fixture.WaitForCleanup(_run.EffectivePreflightTimeoutSeconds);
             _run.MarkCleanupComplete();
             _cleanupCompleted = true;
             Test_PerformanceHarnessController.PersistActiveRun("running");
@@ -1158,7 +1345,7 @@ namespace Game.Tests.Performance.Harness
             if (operation == null)
                 throw new InvalidOperationException("Unity did not create a scene unload operation for the selected world fixture.");
 
-            var deadline = Time.realtimeSinceStartup + Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS;
+            var deadline = Time.realtimeSinceStartup + _run.EffectivePreflightTimeoutSeconds;
             while (!operation.isDone)
             {
                 if (Time.realtimeSinceStartup >= deadline)

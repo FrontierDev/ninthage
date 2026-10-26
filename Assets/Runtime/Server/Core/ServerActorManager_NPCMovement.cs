@@ -26,6 +26,30 @@ namespace Game.Server.Core
             PerformanceMetricSide.Server,
             "actor_manager",
             "server_tick");
+        private static readonly PerformanceMetricDefinition NPC_NAVIGATION_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_NAVIGATION_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_navigation",
+            "server_update");
+        private static readonly PerformanceMetricDefinition NPC_NAVIGATION_SYNC_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_NAVIGATION_SYNC_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_navigation",
+            "server_tick");
+        private static readonly PerformanceMetricDefinition NPC_NAVIGATION_ACTIVE_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_NAVIGATION_ACTIVE_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_navigation",
+            "server_update");
+        private static readonly PerformanceMarker NPC_NAVIGATION_MARKER = new(
+            NPC_NAVIGATION_DURATION_METRIC,
+            "Server.ActorManager.UpdateNPCNavigation");
+        private static readonly PerformanceMarker NPC_NAVIGATION_SYNC_MARKER = new(
+            NPC_NAVIGATION_SYNC_DURATION_METRIC,
+            "Server.ActorManager.SynchronizeNPCPositionsToECS");
         private const int TICK_ENTITY_SCAN_SAMPLE_CAPACITY = PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC;
 
         private long _pendingTickID = -1;
@@ -251,6 +275,13 @@ namespace Game.Server.Core
 
         private void UpdateNPCNavigation()
         {
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            using var markerScope = NPC_NAVIGATION_MARKER.Begin();
+            if (telemetryEnabled)
+                PerformanceTelemetry.TryRecord(
+                    NPC_NAVIGATION_ACTIVE_COUNT_METRIC,
+                    _activeNPCNavigationIDs.Count);
+
             _npcNavigationSnapshot.Clear();
             try
             {
@@ -600,6 +631,7 @@ namespace Game.Server.Core
 
         private void SynchronizeNPCPositionsToECS()
         {
+            using var markerScope = NPC_NAVIGATION_SYNC_MARKER.Begin();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             int syncCount = 0;
             _npcNavigationSnapshot.Clear();

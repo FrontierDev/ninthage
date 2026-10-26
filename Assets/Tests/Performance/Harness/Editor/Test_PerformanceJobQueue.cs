@@ -263,6 +263,7 @@ namespace Game.Tests.Performance.Harness
         public const int MAX_TOTAL_ATTEMPTS = 100;
         internal static readonly int[] TIMED_STATE_SCALING_ACTOR_COUNTS = { 100, 500, 1000, 2500, 5000 };
         internal const int TIMED_STATE_SCALING_REPEAT_COUNT = 5;
+        internal const int STAGE_14_NPC_ACTIVITY_REPEAT_COUNT = 5;
 
         private const string CAMPAIGNS_DIRECTORY_NAME = "Campaigns";
         private const string CAMPAIGN_FILE_NAME = "campaign.json";
@@ -649,6 +650,54 @@ namespace Game.Tests.Performance.Harness
             NotifyChanged();
             diagnostic = _manifest.queue_diagnostic;
             return _manifest.jobs.Count == candidates.Count && diagnostic == null;
+        }
+
+        public static bool LoadStage14NPCActivityPreset(out string diagnostic)
+        {
+            diagnostic = null;
+            if (!CanEdit)
+                return FailUI("Only a draft campaign can load a preset.", out diagnostic);
+            if (!EnsureDraftCampaign(out diagnostic))
+                return false;
+
+            var candidates = BuildStage14NPCActivityPresetOptions();
+            _manifest.jobs.Clear();
+            _manifest.excluded_scenarios.Clear();
+            _manifest.profile_coverage = BuildProfileCoverage();
+            _manifest.stop_policy = Test_PerformanceCampaignStopPolicy.STOP_ON_FAILURE;
+            _manifest.queue_diagnostic = null;
+            foreach (var candidate in candidates)
+            {
+                var job = BuildJob(candidate, out var validationDiagnostic);
+                job.repeat_count = STAGE_14_NPC_ACTIVITY_REPEAT_COUNT;
+                _manifest.jobs.Add(job);
+                if (job.validation_state != VALID)
+                    _manifest.excluded_scenarios.Add(job.DisplayName + ": " + validationDiagnostic);
+            }
+
+            if (_manifest.jobs.Count != 6)
+                _manifest.queue_diagnostic = "The Stage 1.4 preset must contain exactly six scenario jobs.";
+            else if (_manifest.jobs.Exists(job => job.validation_state != VALID))
+                _manifest.queue_diagnostic = "One or more Stage 1.4 scenarios failed ordinary fixture validation; no partial preset was accepted.";
+            else if (CountRequestedAttempts() > MAX_TOTAL_ATTEMPTS)
+                _manifest.queue_diagnostic = $"The preset exceeds the bounded {MAX_TOTAL_ATTEMPTS}-attempt queue limit.";
+            Persist();
+            NotifyChanged();
+            diagnostic = _manifest.queue_diagnostic;
+            return _manifest.jobs.Count == 6 && diagnostic == null;
+        }
+
+        internal static List<Test_PerformanceHarnessOptions> BuildStage14NPCActivityPresetOptions()
+        {
+            return new List<Test_PerformanceHarnessOptions>
+            {
+                CreateStage14NPCActivity(Test_NPCActivityScenario.ForcedFull, 1000),
+                CreateStage14NPCActivity(Test_NPCActivityScenario.MostlyDormant, 1000),
+                CreateStage14NPCActivity(Test_NPCActivityScenario.MassWake, 1000),
+                CreateStage14NPCActivity(Test_NPCActivityScenario.DensePlayerControl, 1000),
+                CreateStage14NPCActivity(Test_NPCActivityScenario.DensePlayerCluster, 1000),
+                CreateStage14NPCActivity(Test_NPCActivityScenario.CrossInstance, 1000),
+            };
         }
 
         internal static List<Test_PerformanceHarnessOptions> BuildTimedStateScalingPresetOptions()
@@ -1583,6 +1632,22 @@ namespace Game.Tests.Performance.Harness
             };
         }
 
+        private static Test_PerformanceHarnessOptions CreateStage14NPCActivity(Test_NPCActivityScenario scenario, int actorCount)
+        {
+            return new Test_PerformanceHarnessOptions
+            {
+                ProfileID = Test_ActorFixtureLayout.STAGE_14_NPC_ACTIVITY_PROFILE_ID,
+                WorldFixture = Test_WorldFixtureVariant.Outdoor,
+                DensityTier = Test_WorldFixtureDensityTier.D1_Default,
+                WorkloadMode = Test_PerformanceWorkloadMode.FullNetworkedActors,
+                ActorCount = actorCount,
+                NPCActivityScenario = scenario,
+                Seed = Test_ActorFixtureLayout.DEFAULT_SEED,
+                WarmupSeconds = 60f,
+                MeasurementSeconds = 300f,
+            };
+        }
+
         private static Test_PerformanceHarnessOptions CreateGraphicalBaseline(Test_GraphicalScenario scenario)
         {
             return new Test_PerformanceHarnessOptions
@@ -1636,6 +1701,15 @@ namespace Game.Tests.Performance.Harness
                     capability = "The existing runner supports ECS data-only minimal/activity snapshots; full PurrNet dormant and wake variants remain blocked.",
                     runnable_alternative = "EcsDataOnlyMinimal and EcsDataOnlyActivity are the current runnable variants.",
                     next_issue_or_stage = "Run five qualified repeats for each required metric; Stage 1.4 for true dormant/wake simulation.",
+                },
+                new Test_PerformanceProfileCoverage
+                {
+                    profile_id = Test_ActorFixtureLayout.STAGE_14_NPC_ACTIVITY_PROFILE_ID,
+                    mode = "Editor server / full networked NPC activity with real players",
+                    status = "SUPPORTED-NOT-RUN",
+                    capability = "Stage 1.4 scenarios use ordinary authenticated PlayerActor entries and full PurrNet NPCs; no synthetic network players are counted.",
+                    runnable_alternative = "ForcedFull, MostlyDormant, MassWake, DensePlayerControl, DensePlayerCluster and CrossInstance presets.",
+                    next_issue_or_stage = "Run five qualified repeats for each Stage 1.4 scenario after manual real-client and movement validation.",
                 },
                 new Test_PerformanceProfileCoverage
                 {

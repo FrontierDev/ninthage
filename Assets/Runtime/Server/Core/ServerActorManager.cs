@@ -195,12 +195,36 @@ namespace Game.Server.Core
             PerformanceMetricSide.Server,
             "actor_manager",
             "lifetime");
+        private static readonly PerformanceMetricDefinition FULL_NPC_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTORS_FULL_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_activity",
+            "server_update");
+        private static readonly PerformanceMetricDefinition NEARBY_NPC_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTORS_NEARBY_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_activity",
+            "server_update");
         private static readonly PerformanceMetricDefinition DORMANT_ACTOR_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_ACTORS_DORMANT_COUNT,
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
-            "actor_manager",
+            "actor_manager.npc_activity",
             "server_update");
+        private static readonly PerformanceMetricDefinition NPC_ACTIVITY_REEVALUATION_DURATION_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_REEVALUATION_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_activity",
+            "activity_candidate_batch");
+        private static readonly PerformanceMetricDefinition NPC_ACTIVITY_TRANSITION_COUNT_METRIC = new(
+            PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_TRANSITION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "actor_manager.npc_activity",
+            "activity_candidate_batch");
         private static readonly PerformanceMetricDefinition SPATIAL_CANDIDATE_COUNT_METRIC = new(
             PerformanceMetricIds.SERVER_SPATIAL_CANDIDATE_COUNT,
             PerformanceMetricUnit.Count,
@@ -210,6 +234,9 @@ namespace Game.Server.Core
         private static readonly PerformanceMarker UPDATE_MARKER = new(UPDATE_DURATION_METRIC, "Server.ActorManager.Update");
         private static readonly PerformanceMarker LATE_UPDATE_MARKER = new(LATE_UPDATE_DURATION_METRIC, "Server.ActorManager.LateUpdate");
         private static readonly PerformanceMarker NPC_AGGRO_MARKER = new(NPC_AGGRO_DURATION_METRIC, "Server.ActorManager.ScheduledNPCAggro");
+        private static readonly PerformanceMarker NPC_ACTIVITY_REEVALUATION_MARKER = new(
+            NPC_ACTIVITY_REEVALUATION_DURATION_METRIC,
+            "Server.ActorManager.ReevaluateNPCActivityCandidates");
         private const int ACTOR_EVENT_SCAN_SAMPLE_CAPACITY = 1024;
 
         private static ServerActorManager _instance;
@@ -250,11 +277,24 @@ namespace Game.Server.Core
             PerformanceTelemetry.RegisterMetric(INTEREST_CHANGE_ENTITY_SCAN_COUNT_METRIC, ACTOR_EVENT_SCAN_SAMPLE_CAPACITY);
             PerformanceTelemetry.RegisterMetric(ALLOC_HEAVY_OPERATION_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(SPAWN_EVENT_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(FULL_NPC_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(NEARBY_NPC_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(DORMANT_ACTOR_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(
-                DORMANT_ACTOR_COUNT_METRIC,
-                0,
-                PerformanceMetricObservation.Unavailable,
-                "The server has no project-owned dormant actor state probe.");
+                NPC_ACTIVITY_REEVALUATION_DURATION_METRIC,
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(
+                NPC_ACTIVITY_TRANSITION_COUNT_METRIC,
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(
+                NPC_NAVIGATION_DURATION_METRIC,
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(
+                NPC_NAVIGATION_SYNC_DURATION_METRIC,
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
+            PerformanceTelemetry.RegisterMetric(
+                NPC_NAVIGATION_ACTIVE_COUNT_METRIC,
+                PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(
                 SPATIAL_CANDIDATE_COUNT_METRIC,
                 PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
@@ -276,6 +316,10 @@ namespace Game.Server.Core
         private readonly HashSet<Guid> _npcActivityCandidateIDs = new();
         private readonly List<Guid> _npcActivityCandidateQueryBuffer = new();
         private readonly List<Guid> _npcActivityPlayerQueryBuffer = new();
+        // Telemetry projections only; NPCActivityComponent.State remains the activity authority.
+        private int _fullNPCCount;
+        private int _nearbyNPCCount;
+        private int _dormantNPCCount;
         private NetworkManager _networkManager;
         private ServerSpatialIndex _spatialIndex;
 
@@ -631,6 +675,9 @@ namespace Game.Server.Core
             _npcActivityCandidateIDs.Clear();
             _npcActivityCandidateQueryBuffer.Clear();
             _npcActivityPlayerQueryBuffer.Clear();
+            _fullNPCCount = 0;
+            _nearbyNPCCount = 0;
+            _dormantNPCCount = 0;
             _pendingTickID = -1;
             _pendingTickEntityScanCount = 0;
             _pendingTickGameObjectSyncCount = 0;
@@ -661,6 +708,9 @@ namespace Game.Server.Core
             {
                 PerformanceTelemetry.TryRecord(ECS_ACTOR_COUNT_METRIC, _actorComponentQuery.CalculateEntityCount());
                 PerformanceTelemetry.TryRecord(NETWORK_GAMEOBJECT_COUNT_METRIC, _actors.Count);
+                PerformanceTelemetry.TryRecord(FULL_NPC_COUNT_METRIC, _fullNPCCount);
+                PerformanceTelemetry.TryRecord(NEARBY_NPC_COUNT_METRIC, _nearbyNPCCount);
+                PerformanceTelemetry.TryRecord(DORMANT_ACTOR_COUNT_METRIC, _dormantNPCCount);
                 PerformanceTelemetry.TryRecord(
                     TOTAL_ALLOCATED_MEMORY_METRIC,
                     UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong());
@@ -788,6 +838,7 @@ namespace Game.Server.Core
             bool entityCreated = false;
             bool registrationPublished = false;
             bool playerValidationStateTouched = false;
+            bool npcActivityCountRegistered = false;
             Entity entity = default;
             try
             {
@@ -817,6 +868,8 @@ namespace Game.Server.Core
                     {
                         State = Systems.NPCActivityState.Full,
                     });
+                    IncrementNPCActivityCount(Systems.NPCActivityState.Full);
+                    npcActivityCountRegistered = true;
                 }
 
                 if (actor.Owner == null)
@@ -874,6 +927,19 @@ namespace Game.Server.Core
             catch (Exception registrationException)
             {
                 var rollbackFailures = new List<Exception>();
+                try
+                {
+                    if (npcActivityCountRegistered)
+                    {
+                        DecrementNPCActivityCount(Systems.NPCActivityState.Full);
+                        npcActivityCountRegistered = false;
+                    }
+                }
+                catch (Exception rollbackException)
+                {
+                    rollbackFailures.Add(rollbackException);
+                }
+
                 try
                 {
                     if (spatialMembershipInserted)
@@ -972,6 +1038,12 @@ namespace Game.Server.Core
                 if (_actors.TryGetValue(actor.ID, out var registration)
                     && _entityManager.Exists(registration.Entity))
                 {
+                    if (actor is NPCActor)
+                    {
+                        var activity = _entityManager.GetComponentData<Systems.NPCActivityComponent>(
+                            registration.Entity);
+                        DecrementNPCActivityCount(activity.State);
+                    }
                     _entityManager.DestroyEntity(registration.Entity);
                 }
             }
@@ -1012,7 +1084,15 @@ namespace Game.Server.Core
             ServerECSManager.InvalidateActorSimulationEvents(actor.ID);
 
             if (_entityManager.Exists(registration.Entity))
+            {
+                if (actor is NPCActor)
+                {
+                    var activity = _entityManager.GetComponentData<Systems.NPCActivityComponent>(
+                        registration.Entity);
+                    DecrementNPCActivityCount(activity.State);
+                }
                 _entityManager.DestroyEntity(registration.Entity);
+            }
 
             _actors.Remove(actor.ID);
 
@@ -1288,10 +1368,13 @@ namespace Game.Server.Core
             if (component.State == state)
                 return;
 
-            bool leavingFull = component.State == Systems.NPCActivityState.Full
+            Systems.NPCActivityState previousState = component.State;
+            bool leavingFull = previousState == Systems.NPCActivityState.Full
                 && state != Systems.NPCActivityState.Full;
             component.State = state;
             _entityManager.SetComponentData(registration.Entity, component);
+            DecrementNPCActivityCount(previousState);
+            IncrementNPCActivityCount(state);
 
             if (leavingFull && _npcAggroStates.TryGetValue(actorID, out var aggroState))
             {
@@ -1500,6 +1583,9 @@ namespace Game.Server.Core
 
         private void ReevaluateNPCActivityCandidates()
         {
+            bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
+            int transitionCount = 0;
+            using var markerScope = NPC_ACTIVITY_REEVALUATION_MARKER.Begin();
             try
             {
                 foreach (Guid candidateID in _npcActivityCandidateIDs)
@@ -1512,12 +1598,79 @@ namespace Game.Server.Core
                             $"NPC activity candidate '{candidateID}' is not an NPC actor.");
                     }
 
+                    Systems.NPCActivityState previousState = default;
+                    if (telemetryEnabled)
+                    {
+                        previousState = _entityManager.GetComponentData<Systems.NPCActivityComponent>(
+                            _actors[candidateID].Entity).State;
+                    }
+
                     ReevaluateNPCActivity(npc);
+
+                    if (telemetryEnabled
+                        && _actors.TryGetValue(candidateID, out var registration)
+                        && ReferenceEquals(registration.Actor, npc)
+                        && _entityManager.Exists(registration.Entity))
+                    {
+                        Systems.NPCActivityState currentState = _entityManager.GetComponentData<Systems.NPCActivityComponent>(
+                            registration.Entity).State;
+                        if (previousState != currentState)
+                            transitionCount++;
+                    }
                 }
+
+                if (telemetryEnabled)
+                    PerformanceTelemetry.TryRecord(
+                        NPC_ACTIVITY_TRANSITION_COUNT_METRIC,
+                        transitionCount);
             }
             finally
             {
                 _npcActivityCandidateIDs.Clear();
+            }
+        }
+
+        private void IncrementNPCActivityCount(Systems.NPCActivityState state)
+        {
+            switch (state)
+            {
+                case Systems.NPCActivityState.Full:
+                    _fullNPCCount++;
+                    break;
+                case Systems.NPCActivityState.Nearby:
+                    _nearbyNPCCount++;
+                    break;
+                case Systems.NPCActivityState.Dormant:
+                    _dormantNPCCount++;
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Cannot increment NPC activity count for unsupported state '{state}'.");
+            }
+        }
+
+        private void DecrementNPCActivityCount(Systems.NPCActivityState state)
+        {
+            switch (state)
+            {
+                case Systems.NPCActivityState.Full:
+                    if (_fullNPCCount == 0)
+                        throw new InvalidOperationException("Cannot decrement the zero Full NPC activity count.");
+                    _fullNPCCount--;
+                    break;
+                case Systems.NPCActivityState.Nearby:
+                    if (_nearbyNPCCount == 0)
+                        throw new InvalidOperationException("Cannot decrement the zero Nearby NPC activity count.");
+                    _nearbyNPCCount--;
+                    break;
+                case Systems.NPCActivityState.Dormant:
+                    if (_dormantNPCCount == 0)
+                        throw new InvalidOperationException("Cannot decrement the zero Dormant NPC activity count.");
+                    _dormantNPCCount--;
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Cannot decrement NPC activity count for unsupported state '{state}'.");
             }
         }
 

@@ -138,7 +138,21 @@ namespace Game.Tests.Performance.Fixtures.Actors
         /// </summary>
         public void StartFullActors(SceneID sceneID, Actor realPlayerTarget)
         {
+            StartFullActors(sceneID, realPlayerTarget, Test_ActorFixtureLayout.BuildPlacements(_profile));
+        }
+
+        /// <summary>Spawns an exact caller-built full-actor placement list through the authoritative spawn queue.</summary>
+        public void StartFullActors(
+            SceneID sceneID,
+            Actor realPlayerTarget,
+            IReadOnlyList<Test_ActorFixturePlacement> placements)
+        {
             ThrowIfDisposed();
+            if (placements == null)
+                throw new ArgumentNullException(nameof(placements));
+            if (placements.Count != _profile.population.npcs.requested)
+                throw new InvalidOperationException(
+                    $"Full actor fixture received {placements.Count} placements; expected {_profile.population.npcs.requested}.");
             var connectedRealPlayers = NetworkManager.main == null ? -1 : NetworkManager.main.playerCount;
             var prefab = Test_ActorFixturePreflight.ValidateFull(
                 _profile,
@@ -152,7 +166,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
             CaptureBaselineEntityCount();
             SubscribeToLifecycle();
 
-            foreach (var placement in Test_ActorFixtureLayout.BuildPlacements(_profile))
+            foreach (var placement in placements)
             {
                 _pendingFullPlacements.Enqueue(placement);
                 var sourceChunk = new WorldChunkKey(
@@ -185,13 +199,13 @@ namespace Game.Tests.Performance.Fixtures.Actors
             {
                 if (Time.realtimeSinceStartup >= deadline)
                     throw new TimeoutException(
-                        $"Timed out waiting for full actor spawn events: {SpawnedFullActorCount}/{Test_ActorFixtureLayout.NPC_COUNT} observed.");
+                        $"Timed out waiting for full actor spawn events: {SpawnedFullActorCount}/{_profile.population.npcs.requested} observed.");
                 yield return null;
             }
 
-            if (SpawnedFullActorCount != Test_ActorFixtureLayout.NPC_COUNT)
+            if (SpawnedFullActorCount != _profile.population.npcs.requested)
                 throw new InvalidOperationException(
-                    $"Full actor fixture observed {SpawnedFullActorCount} actors; expected {Test_ActorFixtureLayout.NPC_COUNT}.");
+                    $"Full actor fixture observed {SpawnedFullActorCount} actors; expected {_profile.population.npcs.requested}.");
         }
 
         /// <summary>Assigns a real player target and starts the legal server-side engaged schedule.</summary>
@@ -288,7 +302,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
             {
                 if (Time.realtimeSinceStartup >= deadline)
                     throw new TimeoutException(
-                        $"Timed out waiting for full actor despawn events: {DespawnedFullActorCount}/{Test_ActorFixtureLayout.NPC_COUNT} observed.");
+                        $"Timed out waiting for full actor despawn events: {DespawnedFullActorCount}/{_profile.population.npcs.requested} observed.");
                 yield return null;
             }
 

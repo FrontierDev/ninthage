@@ -31,6 +31,7 @@ namespace Game.Tests.Performance.Harness
         public Test_WorldFixtureDensityTier DensityTier = Test_WorldFixtureDensityTier.D1_Default;
         public Test_PerformanceWorkloadMode WorkloadMode = Test_PerformanceWorkloadMode.EcsDataOnlyMinimal;
         public int ActorCount = Test_ActorFixtureLayout.NPC_COUNT;
+        public Test_NPCActivityScenario NPCActivityScenario = Test_NPCActivityScenario.ForcedFull;
         public int Seed = Test_ActorFixtureLayout.DEFAULT_SEED;
         public Test_GraphicalScenario GraphicalScenario = Test_GraphicalScenario.Outdoor;
         public Test_GraphicalActorDensity ActorDensity = Test_GraphicalActorDensity.None;
@@ -45,6 +46,7 @@ namespace Game.Tests.Performance.Harness
                 DensityTier = DensityTier,
                 WorkloadMode = WorkloadMode,
                 ActorCount = ActorCount,
+                NPCActivityScenario = NPCActivityScenario,
                 Seed = Seed,
                 GraphicalScenario = GraphicalScenario,
                 ActorDensity = ActorDensity,
@@ -59,10 +61,14 @@ namespace Game.Tests.Performance.Harness
 
         public bool IsTimedStateScale => WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyTimedStateScale;
 
+        public bool IsStage14NPCActivity => WorkloadMode == Test_PerformanceWorkloadMode.FullNetworkedActors;
+
         public string EffectiveProfileID => IsGraphicalClient
             ? Test_GraphicalFixtureLayout.PROFILE_ID
             : IsTimedStateScale
                 ? Test_ActorFixtureLayout.TIMED_SCALE_PROFILE_ID
+                : IsStage14NPCActivity
+                    ? Test_ActorFixtureLayout.STAGE_14_NPC_ACTIVITY_PROFILE_ID
                 : ProfileID;
 
         public bool IsServerOnlyDataMode => WorkloadMode == Test_PerformanceWorkloadMode.EcsDataOnlyMinimal
@@ -84,6 +90,8 @@ namespace Game.Tests.Performance.Harness
                         ? Test_ActorFixtureLayout.TIMED_SCALE_VARIANT_ID
                     : WorkloadMode == Test_PerformanceWorkloadMode.NetworkedClients
                         ? "S04-C-WAKE"
+                    : IsStage14NPCActivity
+                        ? "S14-" + NPCActivityScenario.ToString().ToUpperInvariant()
                         : "S04-I-FULL";
             }
         }
@@ -105,10 +113,12 @@ namespace Game.Tests.Performance.Harness
 
             if (Seed != Test_ActorFixtureLayout.DEFAULT_SEED)
                 return Fail("The tracked world scenes are generated for seed 424242; regenerate a test fixture before selecting another seed.", out diagnostic);
-            if (!IsTimedStateScale && ProfileID != Test_ActorFixtureLayout.PROFILE_ID)
+            if (!IsTimedStateScale && !IsStage14NPCActivity && ProfileID != Test_ActorFixtureLayout.PROFILE_ID)
                 return Fail("Only the tracked profile P1-S0-04 is available to this runner.", out diagnostic);
-            if (!IsTimedStateScale && ActorCount != Test_ActorFixtureLayout.NPC_COUNT)
+            if (!IsTimedStateScale && !IsStage14NPCActivity && ActorCount != Test_ActorFixtureLayout.NPC_COUNT)
                 return Fail("The selected actor fixture has a fixed population of 100 NPCs; no partial or substituted population is supported.", out diagnostic);
+            if (IsStage14NPCActivity && !Test_ActorFixtureLayout.IsStage14NPCActivityActorCount(ActorCount))
+                return Fail("Stage 1.4 NPC activity supports only 100, 500 and 1000 NPCs.", out diagnostic);
             if (IsTimedStateScale && !Test_ActorFixtureLayout.IsTimedStateScaleActorCount(ActorCount))
                 return Fail("Timed-state scaling supports only 100, 500, 1000, 2500 and 5000 actors.", out diagnostic);
             if (IsTimedStateScale && WorldFixture != Test_WorldFixtureVariant.Outdoor)
@@ -116,7 +126,7 @@ namespace Game.Tests.Performance.Harness
             if (DensityTier != Test_WorldFixtureDensityTier.D1_Default)
                 return Fail("The tracked world scenes are available only at density tier D1_Default.", out diagnostic);
 
-            if (!IsTimedStateScale && (!File.Exists(Test_ActorFixtureLayout.CATALOG_PATH)
+            if (!IsTimedStateScale && !IsStage14NPCActivity && (!File.Exists(Test_ActorFixtureLayout.CATALOG_PATH)
                 || !File.Exists(Test_ActorFixtureLayout.SCENARIO_PATH)
                 || !File.Exists(Test_ActorFixtureLayout.ASSET_MANIFEST_PATH)))
             {
@@ -166,6 +176,10 @@ namespace Game.Tests.Performance.Harness
                 if (peak >= Test_PerformanceActivityController.TIMED_STATE_EVENT_BUFFER_CAPACITY)
                     return Fail($"Timed-state scaling tier {ActorCount} would produce {peak} synthetic events in one simulation tick, reaching the production event-buffer capacity of {Test_PerformanceActivityController.TIMED_STATE_EVENT_BUFFER_CAPACITY}.", out diagnostic);
             }
+            else if (IsStage14NPCActivity)
+            {
+                actorProfile = Test_ActorFixtureLayout.BuildStage14NPCActivityProfile(NPCActivityScenario, ActorCount, Seed);
+            }
             else
             {
                 var catalog = Test_ActorFixtureLayout.BuildCatalog(Seed);
@@ -183,7 +197,7 @@ namespace Game.Tests.Performance.Harness
             }
 
             Test_ActorFixtureLayout.ValidatePopulation(actorProfile);
-            if (!IsServerOnlyDataMode)
+            if (!IsServerOnlyDataMode && !IsStage14NPCActivity)
                 return Fail(GetUnsupportedModeDiagnostic(), out diagnostic);
 
             return true;
@@ -194,7 +208,7 @@ namespace Game.Tests.Performance.Harness
             switch (WorkloadMode)
             {
                 case Test_PerformanceWorkloadMode.FullNetworkedActors:
-                    return "Full networked actors require a real authenticated client through the ordinary login path; this runner does not launch or synthesize clients.";
+                    return "Full networked actor execution requires the Stage 1.4 NPC activity scenario branch.";
                 case Test_PerformanceWorkloadMode.StandaloneHeadlessServer:
                     return "Standalone headless execution is blocked: no public or test-owned standalone launch hook is available to this runner.";
                 case Test_PerformanceWorkloadMode.NetworkedClients:
@@ -340,6 +354,8 @@ namespace Game.Tests.Performance.Harness
                 _options.DensityTier = (Test_WorldFixtureDensityTier)EditorGUILayout.EnumPopup("Density tier", _options.DensityTier);
                 if (!_options.IsGraphicalClient)
                     _options.ActorCount = EditorGUILayout.IntField("Actor count", _options.ActorCount);
+                if (_options.IsStage14NPCActivity)
+                    _options.NPCActivityScenario = (Test_NPCActivityScenario)EditorGUILayout.EnumPopup("NPC activity scenario", _options.NPCActivityScenario);
                 _options.Seed = EditorGUILayout.IntField("Seed", _options.Seed);
 
                 if (_options.IsGraphicalClient)
@@ -362,7 +378,9 @@ namespace Game.Tests.Performance.Harness
                 "Population",
                 _options.IsGraphicalClient
                     ? "World objects from the selected tracked scene; actors require a real supported client session."
-                    : "Fixture-defined 100 NPCs; selected count must remain 100");
+                    : _options.IsStage14NPCActivity
+                        ? $"Stage 1.4 {_options.NPCActivityScenario}: {_options.ActorCount} full networked NPCs and real players supplied by the ordinary login path."
+                        : "Fixture-defined 100 NPCs; selected count must remain 100");
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -428,6 +446,8 @@ namespace Game.Tests.Performance.Harness
                         ShowQueueAction(Test_PerformanceJobQueue.LoadSupportedBaselinePreset(out diagnostic), diagnostic);
                     if (GUILayout.Button("Timed-state scaling preset"))
                         ShowQueueAction(Test_PerformanceJobQueue.LoadTimedStateScalingPreset(out diagnostic), diagnostic);
+                    if (GUILayout.Button("Stage 1.4 NPC activity preset"))
+                        ShowQueueAction(Test_PerformanceJobQueue.LoadStage14NPCActivityPreset(out diagnostic), diagnostic);
                 }
                 var policyIndex = Test_PerformanceJobQueue.StopPolicy == Test_PerformanceCampaignStopPolicy.CONTINUE_AFTER_FAILURE ? 1 : 0;
                 var selectedPolicy = EditorGUILayout.Popup("Failure policy", policyIndex, new[] { "Stop on failure (safe default)", "Continue after failure" });

@@ -270,6 +270,8 @@ namespace Game.Tests.Performance.Harness
             _observability.run_in_background = Application.runInBackground;
             _observability.measurement.configured_seconds = options.IsGraphicalClient
                 ? options.MeasurementSeconds
+                : options.IsStage14NPCActivity
+                    ? 300f
                 : MEASUREMENT_SECONDS;
             _observability.expected_visible_object_count = graphicalPlan == null ? 0 : graphicalPlan.RequestedObjectCount;
         }
@@ -346,13 +348,40 @@ namespace Game.Tests.Performance.Harness
 
         public Test_PerformanceActivityController ActivityController { get; private set; }
 
+        public Test_NPCActivityScenarioEvidence Stage14NPCActivityEvidence { get; private set; }
+
         public Test_GraphicalFixtureRuntime GraphicalRuntime { get; private set; }
 
         public bool IsGraphicalClient => Options.IsGraphicalClient;
 
+        public bool IsStage14NPCActivity => Options.IsStage14NPCActivity;
+
+        public float EffectivePreflightTimeoutSeconds => IsStage14NPCActivity ? 120f : PREFLIGHT_TIMEOUT_SECONDS;
+
+        public float EffectiveRampSeconds => IsStage14NPCActivity ? 120f : RAMP_SECONDS;
+
+        public float EffectiveWarmupSeconds => IsStage14NPCActivity ? 60f : IsGraphicalClient ? Options.WarmupSeconds : WARMUP_SECONDS;
+
+        public float EffectiveMeasurementSeconds => IsStage14NPCActivity ? 300f : IsGraphicalClient ? Options.MeasurementSeconds : MEASUREMENT_SECONDS;
+
+        public float EffectiveRecoverySeconds => IsStage14NPCActivity ? 60f : RECOVERY_SECONDS;
+
+        public float EffectiveSampleIntervalSeconds => IsStage14NPCActivity ? 1f : SAMPLE_INTERVAL_SECONDS;
+
         public int RequestedActorCount => Options.ActorCount;
 
         public string FixtureHash => Test_PerformanceRunMetadata.HashFile(FixturePath);
+
+        internal void AttachStage14NPCActivityEvidence(Test_NPCActivityScenarioController controller, int achievedFullNPCCount)
+        {
+            if (!IsStage14NPCActivity)
+                throw new InvalidOperationException("Stage 1.4 evidence cannot be attached to a non-Stage 1.4 run.");
+            if (controller == null)
+                throw new ArgumentNullException(nameof(controller));
+            Stage14NPCActivityEvidence = controller.BuildEvidence(achievedFullNPCCount);
+            AppendLog($"Stage 1.4 scenario captured: {Stage14NPCActivityEvidence.npc_activity_scenario}, players={Stage14NPCActivityEvidence.achieved_real_player_count}/{Stage14NPCActivityEvidence.required_real_player_count}, NPCs={Stage14NPCActivityEvidence.achieved_full_npc_count}/{Stage14NPCActivityEvidence.requested_npc_count}.");
+            File.WriteAllText(RunPath, Test_PerformanceEvidence.BuildRunJson(this, _metadata.Repository, _metadata), new UTF8Encoding(false));
+        }
 
         public string MeasurementSummary => BuildMeasurementDisplay();
 
@@ -535,6 +564,11 @@ namespace Game.Tests.Performance.Harness
                 actorProfile = Test_ActorFixtureLayout.BuildTimedStateScaleProfile(options.ActorCount, options.Seed);
                 scenario = Test_ActorFixtureLayout.BuildTimedStateScaleScenario(options.ActorCount, options.Seed);
             }
+            else if (options.IsStage14NPCActivity)
+            {
+                actorProfile = Test_ActorFixtureLayout.BuildStage14NPCActivityProfile(options.NPCActivityScenario, options.ActorCount, options.Seed);
+                scenario = Test_ActorFixtureLayout.BuildStage14NPCActivityScenario(options.NPCActivityScenario, options.ActorCount, options.Seed);
+            }
             else
             {
                 var catalog = Test_ActorFixtureLayout.BuildCatalog(options.Seed);
@@ -673,6 +707,17 @@ namespace Game.Tests.Performance.Harness
             AppendLog("Data-only ECS fixture prepared with zero entities for incremental ramp.");
         }
 
+        public void SetFullNetworkedRuntime(Test_ActorFixtureRuntime fixture)
+        {
+            if (!IsStage14NPCActivity)
+                throw new InvalidOperationException("A full networked runtime can only be attached to a Stage 1.4 run.");
+            if (fixture == null)
+                throw new ArgumentNullException(nameof(fixture));
+            FixtureRuntime = fixture;
+            PreflightCompleted = true;
+            AppendLog("Stage 1.4 full networked NPC fixture prepared with real-player anchoring.");
+        }
+
         public Test_GraphicalFixtureRuntime CreateGraphicalRuntime()
         {
             if (!IsGraphicalClient || GraphicalPlan == null)
@@ -740,6 +785,7 @@ namespace Game.Tests.Performance.Harness
                 activityDespawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.DespawnEventCount,
                 activityTotalSpawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.TotalSpawnEventCount,
                 activityTotalDespawnEventCount = _activitySnapshot == null ? 0 : _activitySnapshot.TotalDespawnEventCount,
+                stage14NPCActivityEvidence = Stage14NPCActivityEvidence,
                 observability = _observability,
             };
         }
@@ -783,6 +829,7 @@ namespace Game.Tests.Performance.Harness
                     state.activityTotalDespawnEventCount);
                 _activitySnapshotPhase = "restored_pre_cleanup";
             }
+            Stage14NPCActivityEvidence = state.stage14NPCActivityEvidence;
             if (state.observability != null)
             {
                 CopyObservability(state.observability, _observability);
@@ -821,6 +868,18 @@ namespace Game.Tests.Performance.Harness
                 return;
             }
 
+            if (IsStage14NPCActivity)
+            {
+                if (!WorldFixtureLoaded || FixtureRuntime == null || FixtureRuntime.SpawnedFullActorCount != RequestedActorCount)
+                    throw new InvalidOperationException("The Stage 1.4 full networked fixture must be spawned before marking the workload active.");
+                RampCompletedEntityCount = FixtureRuntime.SpawnedFullActorCount;
+                ObserveEntityCount(RampCompletedEntityCount);
+                PerformanceTelemetry.MarkWorkloadApplied();
+                WorkloadApplied = true;
+                AppendLog("Requested full networked NPC population applied: " + FixtureRuntime.SpawnedFullActorCount.ToString(CultureInfo.InvariantCulture));
+                return;
+            }
+
             if (!WorldFixtureLoaded || FixtureRuntime == null || ActivityController == null)
                 throw new InvalidOperationException("The selected world and workload must be applied before marking the workload active.");
             if (FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
@@ -842,9 +901,9 @@ namespace Game.Tests.Performance.Harness
 
             if (phase == PerformanceMeasurementPhase.Measurement)
             {
-                if (!IsGraphicalClient && (FixtureRuntime == null || ActivityController == null))
+                if (!IsGraphicalClient && !IsStage14NPCActivity && (FixtureRuntime == null || ActivityController == null))
                     throw new InvalidOperationException("The data-only fixture must exist before measurement begins.");
-                if (!IsGraphicalClient && FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
+                if (!IsGraphicalClient && !IsStage14NPCActivity && FixtureRuntime.DataOnlyEntityCount != RequestedActorCount)
                 {
                     throw new InvalidOperationException(
                         $"Measurement cannot begin with {FixtureRuntime.DataOnlyEntityCount} ECS entities; expected {RequestedActorCount}.");
@@ -861,12 +920,12 @@ namespace Game.Tests.Performance.Harness
             phaseTiming.timing_known = true;
             if (phase == PerformanceMeasurementPhase.Measurement)
             {
-                if (!IsGraphicalClient)
+                if (!IsGraphicalClient && !IsStage14NPCActivity)
                     ActivityController.BeginMeasurement();
                 MeasurementStarted = true;
                 MeasurementStartEntityCount = IsGraphicalClient
                     ? GraphicalRuntime.ActualObjectCount
-                    : FixtureRuntime.DataOnlyEntityCount;
+                    : IsStage14NPCActivity ? FixtureRuntime.SpawnedFullActorCount : FixtureRuntime.DataOnlyEntityCount;
                 ObserveEntityCount(MeasurementStartEntityCount);
                 _observability.measurement_frame_count = 0;
                 _observability.measurement_sample_count = 0;
@@ -1074,6 +1133,13 @@ namespace Game.Tests.Performance.Harness
             }
 
             _measurementSamplesAvailable = HasMeasurementSamples();
+            if (IsStage14NPCActivity && status != PerformanceRunStatus.BlockedPrerequisite
+                && !HasRequiredStage14Telemetry(out var missingTelemetry))
+            {
+                status = PerformanceRunStatus.FailInstrumentation;
+                finalReason = "MISSING_REQUIRED_TELEMETRY";
+                finalMessage = "FAIL-INSTRUMENTATION: required Stage 1.4 telemetry was unavailable or unmeasured: " + missingTelemetry;
+            }
             if (IsGraphicalClient)
                 EvaluateGraphicalRenderingEvidence();
             var graphicalLifecycleIncomplete = IsGraphicalClient
@@ -1101,7 +1167,8 @@ namespace Game.Tests.Performance.Harness
                     || MeasurementEndEntityCount != RequestedActorCount
                     || PeakEntityCount < RequestedActorCount
                     || !MeasurementStarted
-                    || !ActivitySnapshotCaptured
+                    || (!IsStage14NPCActivity && !ActivitySnapshotCaptured)
+                    || (IsStage14NPCActivity && Stage14NPCActivityEvidence == null)
                     || !CleanupComplete);
             if (status == PerformanceRunStatus.CompleteMeasured
                 && (graphicalLifecycleIncomplete || serverLifecycleIncomplete))
@@ -1168,6 +1235,57 @@ namespace Game.Tests.Performance.Harness
                     return true;
             }
             return false;
+        }
+
+        private bool HasRequiredStage14Telemetry(out string missingTelemetry)
+        {
+            var required = new[]
+            {
+                PerformanceMetricIds.SERVER_ACTORS_FULL_COUNT,
+                PerformanceMetricIds.SERVER_ACTORS_NEARBY_COUNT,
+                PerformanceMetricIds.SERVER_ACTORS_DORMANT_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_PLAYER_CENTER_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_UNIQUE_CELL_COUNT,
+                PerformanceMetricIds.SERVER_SPATIAL_CANDIDATE_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_UNIQUE_NPC_CANDIDATE_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_LOCAL_PAIR_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_PERCEPTION_DECISION_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_AGGRO_DURATION,
+                PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_NAVIGATION_DURATION,
+                PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_NAVIGATION_SYNC_DURATION,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_NAVIGATION_ACTIVE_COUNT,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_REEVALUATION_DURATION,
+                PerformanceMetricIds.SERVER_ACTOR_NPC_ACTIVITY_TRANSITION_COUNT,
+                PerformanceMetricIds.SERVER_SIMULATION_TICK_DURATION,
+                PerformanceMetricIds.SERVER_SIMULATION_TICK_BACKLOG,
+                PerformanceMetricIds.SERVER_SIMULATION_DEADLINE_MISS_COUNT,
+                PerformanceMetricIds.SERVER_SIMULATION_CATCH_UP_CAP_HIT_COUNT,
+                PerformanceMetricIds.SERVER_MEMORY_TOTAL_ALLOCATED_BYTES,
+                PerformanceMetricIds.SERVER_MEMORY_MONO_USED_BYTES,
+                PerformanceMetricIds.SERVER_MEMORY_MONO_HEAP_BYTES,
+                PerformanceMetricIds.SERVER_MEMORY_GC_GEN0_COLLECTION_COUNT,
+                PerformanceMetricIds.SERVER_MEMORY_GC_GEN1_COLLECTION_COUNT,
+                PerformanceMetricIds.SERVER_MEMORY_GC_GEN2_COLLECTION_COUNT,
+            };
+            var missing = new List<string>();
+            Test_PerformanceTelemetrySummaryDocument telemetry;
+            try
+            {
+                telemetry = JsonUtility.FromJson<Test_PerformanceTelemetrySummaryDocument>(_telemetrySummary);
+            }
+            catch (Exception exception)
+            {
+                missingTelemetry = "telemetry summary could not be parsed: " + exception.Message;
+                return false;
+            }
+            foreach (var metricID in required)
+            {
+                var metric = FindMetric(telemetry, metricID);
+                if (metric == null || metric.sample_count <= 0 || string.Equals(metric.observation, "unavailable", StringComparison.OrdinalIgnoreCase))
+                    missing.Add(metricID);
+            }
+            missingTelemetry = string.Join(", ", missing);
+            return missing.Count == 0;
         }
 
         private void EvaluateGraphicalRenderingEvidence()
@@ -1267,13 +1385,13 @@ namespace Game.Tests.Performance.Harness
             switch (phase)
             {
                 case PerformanceMeasurementPhase.Ramp:
-                    return RAMP_SECONDS;
+                    return EffectiveRampSeconds;
                 case PerformanceMeasurementPhase.Warmup:
-                    return IsGraphicalClient ? Options.WarmupSeconds : WARMUP_SECONDS;
+                    return EffectiveWarmupSeconds;
                 case PerformanceMeasurementPhase.Measurement:
                     return _observability.measurement.configured_seconds;
                 case PerformanceMeasurementPhase.Recovery:
-                    return RECOVERY_SECONDS;
+                    return EffectiveRecoverySeconds;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(phase), phase, null);
             }
@@ -1547,6 +1665,8 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "focus", BuildFocusJson(), true);
             RawProperty(builder, "rendering", BuildRenderingJson(status), true);
             RawProperty(builder, "achieved", BuildAchievedJson(), true);
+            if (IsStage14NPCActivity)
+                RawProperty(builder, "npc_activity", BuildStage14NPCActivityEvidenceJson(), true);
             RawProperty(
                 builder,
                 "resources",
@@ -1577,6 +1697,38 @@ namespace Game.Tests.Performance.Harness
                 + ",\"pause_gap_reason\":" + Quote(_observability.pause_gap_detectable
                     ? _observability.pause_gap_detected ? "frame_delivery_gap_over_1s" : "none_over_1s"
                     : "timing_unknown") + "}";
+        }
+
+        private string BuildStage14NPCActivityEvidenceJson()
+        {
+            var evidence = Stage14NPCActivityEvidence;
+            if (evidence == null)
+                return "null";
+            var json = "{\"npc_activity_scenario\":" + Quote(evidence.npc_activity_scenario)
+                + ",\"requested_npc_count\":" + evidence.requested_npc_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"achieved_full_npc_count\":" + evidence.achieved_full_npc_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"required_real_player_count\":" + evidence.required_real_player_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"achieved_real_player_count\":" + evidence.achieved_real_player_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"anchor_actor_id\":" + Quote(evidence.anchor_actor_id)
+                + ",\"anchor_initial_context\":" + Quote(evidence.anchor_initial_context)
+                + ",\"anchor_initial_position\":" + BuildDoubleArrayJson(evidence.anchor_initial_position);
+            if (string.Equals(evidence.npc_activity_scenario, Test_NPCActivityScenario.MassWake.ToString(), StringComparison.Ordinal))
+                json += ",\"mass_wake_cluster_centre\":" + BuildDoubleArrayJson(evidence.mass_wake_cluster_centre)
+                    + ",\"mass_wake_reached\":" + evidence.mass_wake_reached.ToString().ToLowerInvariant();
+            if (string.Equals(evidence.npc_activity_scenario, Test_NPCActivityScenario.CrossInstance.ToString(), StringComparison.Ordinal))
+                json += ",\"context_transition_source\":" + Quote(evidence.context_transition_source)
+                    + ",\"context_transition_destination\":" + Quote(evidence.context_transition_destination);
+            return json + "}";
+        }
+
+        private static string BuildDoubleArrayJson(double[] values)
+        {
+            if (values == null)
+                return "null";
+            var formatted = new string[values.Length];
+            for (var index = 0; index < values.Length; index++)
+                formatted[index] = values[index].ToString("R", CultureInfo.InvariantCulture);
+            return "[" + string.Join(",", formatted) + "]";
         }
 
         private string BuildPhaseTimingJson()
@@ -1733,6 +1885,12 @@ namespace Game.Tests.Performance.Harness
                 : RampCompletedEntityCount;
             var postCleanupFixtureEntities = PostCleanupObserved ? PostCleanupFixtureEntityCount.ToString(CultureInfo.InvariantCulture) : "null";
             var postCleanupActorEntities = PostCleanupObserved ? PostCleanupActorEntityCount.ToString(CultureInfo.InvariantCulture) : "null";
+            if (IsStage14NPCActivity)
+            {
+                var stage14NPCCount = Stage14NPCActivityEvidence == null ? 0 : Stage14NPCActivityEvidence.achieved_full_npc_count;
+                var stage14PlayerCount = Stage14NPCActivityEvidence == null ? 0 : Stage14NPCActivityEvidence.achieved_real_player_count;
+                return $"{{\"connected_players\":{stage14PlayerCount},\"authenticated_players\":{stage14PlayerCount},\"in_world_players\":{stage14PlayerCount},\"npc_actors\":{stage14NPCCount},\"ecs_entities\":{measuredEntityCount},\"network_identities\":{stage14NPCCount},\"gameobjects\":{stage14NPCCount},\"scene_tiles_loaded\":{(WorldFixtureLoaded ? 1 : 0)},\"renders_visible\":null,\"accepted_abilities\":0,\"population\":{{\"requested_ecs_entities\":0,\"requested_full_npc_count\":{RequestedActorCount},\"achieved_full_npc_count\":{stage14NPCCount},\"ramp_completed_ecs_entities\":{RampCompletedEntityCount},\"measurement_start_ecs_entities\":{MeasurementStartEntityCount},\"measurement_end_ecs_entities\":{MeasurementEndEntityCount},\"peak_ecs_entities\":{PeakEntityCount},\"post_cleanup_fixture_entities\":{postCleanupFixtureEntities},\"post_cleanup_total_actor_entities\":{postCleanupActorEntities}}},\"activity\":{BuildActivityJson()}}}";
+            }
             return $"{{\"connected_players\":{GetRealPlayerCount()},\"authenticated_players\":0,\"in_world_players\":0,\"npc_actors\":0,\"ecs_entities\":{measuredEntityCount},\"network_identities\":0,\"gameobjects\":0,\"scene_tiles_loaded\":{(WorldFixtureLoaded ? 1 : 0)},\"renders_visible\":null,\"accepted_abilities\":0,\"population\":{{\"requested_ecs_entities\":{RequestedActorCount},\"ramp_completed_ecs_entities\":{RampCompletedEntityCount},\"measurement_start_ecs_entities\":{MeasurementStartEntityCount},\"measurement_end_ecs_entities\":{MeasurementEndEntityCount},\"peak_ecs_entities\":{PeakEntityCount},\"post_cleanup_fixture_entities\":{postCleanupFixtureEntities},\"post_cleanup_total_actor_entities\":{postCleanupActorEntities}}},\"activity\":{BuildActivityJson()}}}";
         }
 
@@ -1809,7 +1967,15 @@ namespace Game.Tests.Performance.Harness
             }
             else
             {
-                builder.AppendLine("- Requested ECS entities: `" + RequestedActorCount + "`");
+                builder.AppendLine(IsStage14NPCActivity
+                    ? "- Requested full networked NPCs: `" + RequestedActorCount + "`"
+                    : "- Requested ECS entities: `" + RequestedActorCount + "`");
+                if (IsStage14NPCActivity && Stage14NPCActivityEvidence != null)
+                {
+                    builder.AppendLine("- NPC activity scenario: `" + Stage14NPCActivityEvidence.npc_activity_scenario + "`");
+                    builder.AppendLine("- Real players achieved: `" + Stage14NPCActivityEvidence.achieved_real_player_count + "/" + Stage14NPCActivityEvidence.required_real_player_count + "`");
+                    builder.AppendLine("- Full NPCs achieved: `" + Stage14NPCActivityEvidence.achieved_full_npc_count + "/" + Stage14NPCActivityEvidence.requested_npc_count + "`");
+                }
             }
             builder.AppendLine("- Ramp-completed ECS entities: `" + RampCompletedEntityCount + "`");
             builder.AppendLine("- Measurement-start ECS entities: `" + MeasurementStartEntityCount + "`");
@@ -1843,7 +2009,9 @@ namespace Game.Tests.Performance.Harness
             builder.AppendLine();
             builder.AppendLine(IsGraphicalClient
                 ? "This is an Editor Play Mode rendered-client measurement. It does not qualify authenticated player density, normal PurrNet world streaming, or multi-client network behavior."
-                : "This is an Editor Play Mode server measurement. It does not qualify standalone headless capacity, graphical client rendering, authentication throughput, or multi-client network behavior.");
+                : IsStage14NPCActivity
+                    ? "This is an Editor Play Mode full-networked NPC measurement using real PlayerActor connections. It does not qualify standalone headless capacity or production-scale client capacity."
+                    : "This is an Editor Play Mode server measurement. It does not qualify standalone headless capacity, graphical client rendering, authentication throughput, or multi-client network behavior.");
             if (status == PerformanceRunStatus.BlockedPrerequisite)
                 builder.AppendLine("No workload execution occurred.");
             if (!string.IsNullOrEmpty(ValidationDiagnostic))
@@ -2210,7 +2378,8 @@ namespace Game.Tests.Performance.Harness
             Test_PerformanceRunMetadata metadata)
         {
             var isTimedStateScale = actor.profile_id == Test_ActorFixtureLayout.TIMED_SCALE_PROFILE_ID;
-            var provenanceInputPath = isTimedStateScale ? actor.provenance?.input_path : Test_ActorFixtureLayout.CATALOG_PATH;
+            var isStage14NPCActivity = actor.profile_id == Test_ActorFixtureLayout.STAGE_14_NPC_ACTIVITY_PROFILE_ID;
+            var provenanceInputPath = isTimedStateScale || isStage14NPCActivity ? actor.provenance?.input_path : Test_ActorFixtureLayout.CATALOG_PATH;
             var provenanceAssetManifestPath = isTimedStateScale ? actor.provenance?.asset_manifest_path : Test_ActorFixtureLayout.ASSET_MANIFEST_PATH;
             var document = new FixtureDocument
             {
@@ -2219,7 +2388,7 @@ namespace Game.Tests.Performance.Harness
                 {
                     id = actor.profile_id,
                     revision = actor.revision,
-                    spec_revision = isTimedStateScale ? Test_ActorFixtureLayout.TIMED_SCALE_PROFILE_ID : Test_ActorFixtureLayout.SPEC_REVISION,
+                    spec_revision = isTimedStateScale ? Test_ActorFixtureLayout.TIMED_SCALE_PROFILE_ID : isStage14NPCActivity ? Test_ActorFixtureLayout.STAGE_14_NPC_ACTIVITY_PROFILE_ID : Test_ActorFixtureLayout.SPEC_REVISION,
                     variant = actor.variant_id,
                     tier = actor.tier,
                 },
@@ -2256,16 +2425,16 @@ namespace Game.Tests.Performance.Harness
                 },
                 timing = new FixtureTiming
                 {
-                    preflight_timeout_s = Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS,
-                    ramp_s = Test_PerformanceRun.RAMP_SECONDS,
-                    warmup_s = Test_PerformanceRun.WARMUP_SECONDS,
-                    measurement_s = Test_PerformanceRun.MEASUREMENT_SECONDS,
-                    recovery_s = Test_PerformanceRun.RECOVERY_SECONDS,
-                    sample_interval_ms = (int)(Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS * 1000f),
+                    preflight_timeout_s = isStage14NPCActivity ? 120f : Test_PerformanceRun.PREFLIGHT_TIMEOUT_SECONDS,
+                    ramp_s = isStage14NPCActivity ? 120f : Test_PerformanceRun.RAMP_SECONDS,
+                    warmup_s = isStage14NPCActivity ? 60f : Test_PerformanceRun.WARMUP_SECONDS,
+                    measurement_s = isStage14NPCActivity ? 300f : Test_PerformanceRun.MEASUREMENT_SECONDS,
+                    recovery_s = isStage14NPCActivity ? 60f : Test_PerformanceRun.RECOVERY_SECONDS,
+                    sample_interval_ms = (int)(isStage14NPCActivity ? 1000f : Test_PerformanceRun.SAMPLE_INTERVAL_SECONDS * 1000f),
                 },
                 stops = new FixtureStops
                 {
-                    max_duration_s = 45f,
+                    max_duration_s = isStage14NPCActivity ? 660f : 45f,
                     max_actor_count = actor.population.npcs.requested,
                     resource_ceiling = "runner records actual resource metrics; no substitute workload is used",
                     conditions = new[] { "measurement_complete", "timeout", "resource_ceiling", "correctness_failure", "user_stop" },
@@ -2290,15 +2459,50 @@ namespace Game.Tests.Performance.Harness
             RawProperty(builder, "build", "{\"kind\":\"editor_playmode_server\",\"target\":\"Unity Editor\",\"subtarget\":\"test_only_performance_harness\",\"development\":true,\"deep_profiling\":false,\"executable\":null,\"identity_note\":\"No standalone player was built or launched.\"}", true);
             RawProperty(builder, "render", "{\"mode\":\"server_only\",\"graphical_client\":false,\"frames_rendered\":null}", true);
             RawProperty(builder, "hardware", $"{{\"host_id\":{Test_PerformanceRun.Quote(metadata.HostID)},\"description\":{Test_PerformanceRun.Quote(metadata.Hardware)},\"system_memory_bytes\":{metadata.MemoryBytes.ToString(CultureInfo.InvariantCulture)},\"graphics_device\":{Test_PerformanceRun.Quote(SystemInfo.graphicsDeviceName)}}}", true);
-            RawProperty(builder, "process", $"{{\"unity_editor_pid\":{metadata.ProcessID},\"server_processes\":1,\"client_processes\":0,\"synthetic_clients\":0}}", true);
+            RawProperty(builder, "process", $"{{\"unity_editor_pid\":{metadata.ProcessID},\"server_processes\":1,\"client_processes\":{(run.IsStage14NPCActivity ? run.ActorProfile.population.players.requested : 0)},\"synthetic_clients\":0}}", true);
             RawProperty(builder, "clocks", "{\"utc\":true,\"monotonic_source\":\"Unity telemetry session\"}", true);
             RawProperty(builder, "application_context", "{\"run_in_background\":" + Application.runInBackground.ToString().ToLowerInvariant() + "}", true);
-            RawProperty(builder, "execution", "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":true,\"credentials\":\"none_for_server_only_data_fixture\"}", true);
-            RawProperty(builder, "runtime", $"{{\"scene_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"scene_path\":{Test_PerformanceRun.Quote(run.WorldPlan == null ? string.Empty : run.WorldPlan.AssetPath)},\"standalone_qualified\":false,\"network_clients_supported\":false}}", true);
+            RawProperty(builder, "execution", run.IsStage14NPCActivity
+                ? "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":false,\"credentials\":\"ordinary_login_required\"}"
+                : "{\"entrypoint\":\"Tools/Performance/Test Workload Runner\",\"ordinary_runtime_path\":true,\"force_server_mode\":true,\"credentials\":\"none_for_server_only_data_fixture\"}", true);
+            RawProperty(builder, "runtime", $"{{\"scene_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"scene_path\":{Test_PerformanceRun.Quote(run.WorldPlan == null ? string.Empty : run.WorldPlan.AssetPath)},\"standalone_qualified\":false,\"network_clients_supported\":{run.IsStage14NPCActivity.ToString().ToLowerInvariant()}}}", true);
             RawProperty(builder, "workload", $"{{\"mode\":{Test_PerformanceRun.Quote(run.Options.WorkloadMode.ToString())},\"profile_id\":{Test_PerformanceRun.Quote(run.Options.EffectiveProfileID)},\"actor_variant_id\":{Test_PerformanceRun.Quote(run.Options.ActorVariantID)},\"actor_count\":{run.Options.ActorCount},\"world_fixture\":{Test_PerformanceRun.Quote(run.Options.WorldFixture.ToString())},\"density\":{Test_PerformanceRun.Quote(run.Options.DensityTier.ToString())},\"seed\":{run.Options.Seed}}}", false);
+            if (run.IsStage14NPCActivity)
+                RawProperty(builder, "npc_activity", BuildStage14NPCActivityEvidenceJson(run.Stage14NPCActivityEvidence), false);
             builder.AppendLine();
             builder.Append('}');
             return builder.ToString();
+        }
+
+        private static string BuildStage14NPCActivityEvidenceJson(Test_NPCActivityScenarioEvidence evidence)
+        {
+            if (evidence == null)
+                return "null";
+            var json = "{\"npc_activity_scenario\":" + Test_PerformanceRun.Quote(evidence.npc_activity_scenario)
+                + ",\"requested_npc_count\":" + evidence.requested_npc_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"achieved_full_npc_count\":" + evidence.achieved_full_npc_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"required_real_player_count\":" + evidence.required_real_player_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"achieved_real_player_count\":" + evidence.achieved_real_player_count.ToString(CultureInfo.InvariantCulture)
+                + ",\"anchor_actor_id\":" + Test_PerformanceRun.Quote(evidence.anchor_actor_id)
+                + ",\"anchor_initial_context\":" + Test_PerformanceRun.Quote(evidence.anchor_initial_context)
+                + ",\"anchor_initial_position\":" + BuildDoubleArrayJson(evidence.anchor_initial_position);
+            if (string.Equals(evidence.npc_activity_scenario, Test_NPCActivityScenario.MassWake.ToString(), StringComparison.Ordinal))
+                json += ",\"mass_wake_cluster_centre\":" + BuildDoubleArrayJson(evidence.mass_wake_cluster_centre)
+                    + ",\"mass_wake_reached\":" + evidence.mass_wake_reached.ToString().ToLowerInvariant();
+            if (string.Equals(evidence.npc_activity_scenario, Test_NPCActivityScenario.CrossInstance.ToString(), StringComparison.Ordinal))
+                json += ",\"context_transition_source\":" + Test_PerformanceRun.Quote(evidence.context_transition_source)
+                    + ",\"context_transition_destination\":" + Test_PerformanceRun.Quote(evidence.context_transition_destination);
+            return json + "}";
+        }
+
+        private static string BuildDoubleArrayJson(double[] values)
+        {
+            if (values == null)
+                return "null";
+            var formatted = new string[values.Length];
+            for (var index = 0; index < values.Length; index++)
+                formatted[index] = values[index].ToString("R", CultureInfo.InvariantCulture);
+            return "[" + string.Join(",", formatted) + "]";
         }
 
         public static string BuildGraphicalFixtureJson(

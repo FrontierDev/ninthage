@@ -1,4 +1,5 @@
 using Game.Tests.Performance.Fixtures;
+using Game.Tests.Performance.Fixtures.Actors;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -942,9 +943,18 @@ namespace Game.Tests.Performance.Harness
             Assert.That(wrongSeed.TryValidate(out var seedDiagnostic, out _, out _), Is.False);
             Assert.That(seedDiagnostic, Does.Contain("seed 424242"));
 
+            var stage14 = new Test_PerformanceHarnessOptions
+            {
+                WorkloadMode = Test_PerformanceWorkloadMode.FullNetworkedActors,
+                ActorCount = 1000,
+                NPCActivityScenario = Test_NPCActivityScenario.ForcedFull,
+            };
+            Assert.That(stage14.TryValidate(out var stage14Diagnostic, out _, out var stage14Profile), Is.True, stage14Diagnostic);
+            Assert.That(stage14Profile.profile_id, Is.EqualTo(Test_ActorFixtureLayout.STAGE_14_NPC_ACTIVITY_PROFILE_ID));
+            Assert.That(stage14.EffectiveProfileID, Is.EqualTo(Test_ActorFixtureLayout.STAGE_14_NPC_ACTIVITY_PROFILE_ID));
+
             foreach (var mode in new[]
             {
-                Test_PerformanceWorkloadMode.FullNetworkedActors,
                 Test_PerformanceWorkloadMode.StandaloneHeadlessServer,
                 Test_PerformanceWorkloadMode.NetworkedClients,
             })

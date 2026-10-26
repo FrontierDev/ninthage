@@ -106,6 +106,20 @@ namespace Game.Shared.Performance
         public const string SERVER_SIMULATION_DEADLINE_MISS_COUNT = "server.simulation.deadline_miss_count";
         public const string SERVER_SIMULATION_CATCH_UP_CAP_HIT_COUNT = "server.simulation.catch_up_cap_hit_count";
         public const string SERVER_ACTORS_DORMANT_COUNT = "server.actors.dormant_count";
+        public const string SERVER_ACTORS_FULL_COUNT =
+            "server.actors.full_count";
+        public const string SERVER_ACTORS_NEARBY_COUNT =
+            "server.actors.nearby_count";
+        public const string SERVER_ACTOR_NPC_ACTIVITY_REEVALUATION_DURATION =
+            "server.actor.npc_activity.reevaluation_duration";
+        public const string SERVER_ACTOR_NPC_ACTIVITY_TRANSITION_COUNT =
+            "server.actor.npc_activity.transition_count";
+        public const string SERVER_ACTOR_NPC_NAVIGATION_ACTIVE_COUNT =
+            "server.actor.npc_navigation.active_count";
+        public const string SERVER_ACTOR_MANAGER_NPC_NAVIGATION_DURATION =
+            "server.actor_manager.npc_navigation_duration";
+        public const string SERVER_ACTOR_MANAGER_NPC_NAVIGATION_SYNC_DURATION =
+            "server.actor_manager.npc_navigation_sync_duration";
         public const string SERVER_SPATIAL_CANDIDATE_COUNT = "server.spatial.candidate_count";
         public const string SERVER_NETWORK_PAYLOAD_BYTES = "server.network.payload_bytes";
         public const string SERVER_MEMORY_TOTAL_ALLOCATED_BYTES = "server.memory.total_allocated_bytes";

@@ -61,9 +61,25 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 $"NPC prefab '{Test_ActorFixtureLayout.NPC_PREFAB_PATH}' has no NPCActor.");
             Require(prefab.GetComponent<NPCStatProfile>() != null,
                 $"NPC prefab '{Test_ActorFixtureLayout.NPC_PREFAB_PATH}' has no NPCStatProfile.");
+            var behavior = prefab.GetComponent<NPCBehavior>();
+            Require(behavior != null, $"NPC prefab '{Test_ActorFixtureLayout.NPC_PREFAB_PATH}' has no NPCBehavior.");
+            Require(!float.IsNaN(behavior.AggroRange) && !float.IsInfinity(behavior.AggroRange) && behavior.AggroRange > 0f,
+                $"NPC prefab '{Test_ActorFixtureLayout.NPC_PREFAB_PATH}' has no positive finite NPCBehavior.AggroRange.");
             Require(prefab.GetComponent<ActorSpellcaster>() != null,
                 $"NPC prefab '{Test_ActorFixtureLayout.NPC_PREFAB_PATH}' has no ActorSpellcaster.");
             return prefab;
+        }
+
+        /// <summary>Returns the authored passive aggro range after full-actor asset validation.</summary>
+        public static float GetNPCPassiveAggroRange(GameObject prefab)
+        {
+            if (prefab == null)
+                throw new ArgumentNullException(nameof(prefab));
+            var behavior = prefab.GetComponent<NPCBehavior>();
+            Require(behavior != null, $"NPC prefab '{prefab.name}' has no NPCBehavior.");
+            Require(!float.IsNaN(behavior.AggroRange) && !float.IsInfinity(behavior.AggroRange) && behavior.AggroRange > 0f,
+                $"NPC prefab '{prefab.name}' has no positive finite NPCBehavior.AggroRange.");
+            return behavior.AggroRange;
         }
 
         /// <summary>Validates every authored input used by the scenario schedule.</summary>

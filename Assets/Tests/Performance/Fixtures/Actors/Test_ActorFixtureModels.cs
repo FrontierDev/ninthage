@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using Game.Shared.Utility;
 
 namespace Game.Tests.Performance.Fixtures.Actors
 {
@@ -13,6 +14,17 @@ namespace Game.Tests.Performance.Fixtures.Actors
         networked_gameobject_ecs,
     }
 
+    /// <summary>Describes the real-player scenario used by the Stage 1.4 NPC activity workload.</summary>
+    public enum Test_NPCActivityScenario
+    {
+        ForcedFull,
+        MostlyDormant,
+        MassWake,
+        DensePlayerControl,
+        DensePlayerCluster,
+        CrossInstance,
+    }
+
     /// <summary>Builds deterministic seeded actor and activity manifests.</summary>
     public static class Test_ActorFixtureLayout
     {
@@ -21,6 +33,7 @@ namespace Game.Tests.Performance.Fixtures.Actors
         public const string SCENARIO_SCHEMA_VERSION = "actor-scenario/v1";
         public const string PROFILE_ID = "P1-S0-04";
         public const string TIMED_SCALE_PROFILE_ID = "P1-S1.3-TIMED-SCALE";
+        public const string STAGE_14_NPC_ACTIVITY_PROFILE_ID = "P1-S1.4-NPC-ACTIVITY";
         public const string TIMED_SCALE_VARIANT_ID = "S13-TIMED-SCALE";
         public const string PROFILE_REVISION = "1.0.0";
         public const string SPEC_REVISION = "P1-STRESS-1.0.0";
@@ -104,6 +117,220 @@ namespace Game.Tests.Performance.Fixtures.Actors
         public static bool IsTimedStateScaleActorCount(int actorCount)
         {
             return actorCount == 100 || actorCount == 500 || actorCount == 1000 || actorCount == 2500 || actorCount == 5000;
+        }
+
+        public static bool IsStage14NPCActivityActorCount(int actorCount)
+        {
+            return actorCount == 100 || actorCount == 500 || actorCount == 1000;
+        }
+
+        public static Test_ActorFixtureProfile BuildStage14NPCActivityProfile(
+            Test_NPCActivityScenario scenario,
+            int actorCount,
+            int seed)
+        {
+            RequireStage14NPCActivityScenario(scenario);
+            RequireStage14NPCActivityActorCount(actorCount);
+            var profile = new Test_ActorFixtureProfile
+            {
+                profile_id = STAGE_14_NPC_ACTIVITY_PROFILE_ID,
+                variant_id = "S14-" + scenario.ToString().ToUpperInvariant(),
+                revision = PROFILE_REVISION,
+                tier = "S1.4",
+                replicate_seed = seed,
+                representation = Test_ActorFixtureRepresentation.networked_gameobject_ecs.ToString(),
+                population = new Test_ActorFixturePopulation
+                {
+                    players = new Test_ActorFixturePlayerPopulation
+                    {
+                        requested = GetStage14NPCActivityRequiredPlayerCount(scenario),
+                        connection_kind = "real_purrnet",
+                        groups = new[]
+                        {
+                            new Test_ActorFixturePlayerGroup
+                            {
+                                group_id = "player-anchor",
+                                class_id = "fighter",
+                                role = "real_player",
+                                count = GetStage14NPCActivityRequiredPlayerCount(scenario),
+                                cluster_id = "player-anchor",
+                                activity = new Test_ActorFixtureActivityMix { idle = 1d, travelling = 0d, combat = 0d },
+                            },
+                        },
+                    },
+                    npcs = new Test_ActorFixtureNPCPopulation
+                    {
+                        requested = actorCount,
+                        representation = Test_ActorFixtureRepresentation.networked_gameobject_ecs.ToString(),
+                        groups = new[]
+                        {
+                            BuildStage14NPCGroup("npc-idle", actorCount - 1, "idle", "fighter"),
+                            BuildStage14NPCGroup("npc-engaged", 1, "engaged", "sorcerer"),
+                        },
+                    },
+                    accounting = new Test_ActorFixtureAccounting
+                    {
+                        ecs_data_only_npcs = 0,
+                        full_gameobject_purrnet_npcs = actorCount,
+                        real_player_connections = GetStage14NPCActivityRequiredPlayerCount(scenario),
+                        synthetic_network_players = 0,
+                    },
+                },
+                space = new Test_ActorFixtureSpace
+                {
+                    world_id = "fixture-world",
+                    map_id = "fixture-open-world",
+                    instance_id = null,
+                    clusters = new[]
+                    {
+                        new Test_ActorFixtureCluster { cluster_id = "player-anchor", center_world_m = new[] { 0d, 0d, 0d }, radius_m = 20d, players = GetStage14NPCActivityRequiredPlayerCount(scenario), npcs = 1 },
+                        new Test_ActorFixtureCluster { cluster_id = "npc-idle", center_world_m = new[] { 0d, 0d, 0d }, radius_m = 150d, players = 0, npcs = actorCount - 1 },
+                        new Test_ActorFixtureCluster { cluster_id = "npc-engaged", center_world_m = new[] { 6d, 0d, 0d }, radius_m = 1d, players = 0, npcs = 1 },
+                    },
+                },
+                environment = new Test_ActorFixtureEnvironment
+                {
+                    world_id = "fixture-world",
+                    map_id = "fixture-open-world",
+                    instance_id = null,
+                    origin_cell_size_m = 100,
+                    world_tile_size_m = 256,
+                    authored_grid_columns = 1,
+                    authored_grid_rows = 1,
+                    collision_enabled = true,
+                },
+                provenance = new Test_ActorFixtureProvenance
+                {
+                    fixture_generator = "Game.Tests.Performance.Fixtures.Actors.Test_ActorFixtureModels",
+                    generator_revision = GENERATOR_REVISION,
+                    input_path = "stage-1.4-npc-activity-profile",
+                    asset_manifest_path = ASSET_MANIFEST_PATH,
+                    source_commit = "UNRESOLVED_UNTIL_COMMIT",
+                    source_sha256 = string.Empty,
+                    asset_manifest_sha256 = string.Empty,
+                },
+                required_features = new[]
+                {
+                    "stage_1_4_npc_activity",
+                    "real_authenticated_players",
+                    "full_gameobject_purrnet_npcs",
+                    "canonical_activity_telemetry",
+                },
+            };
+            ValidatePopulation(profile);
+            return profile;
+        }
+
+        public static Test_ActorScenarioProfile BuildStage14NPCActivityScenario(
+            Test_NPCActivityScenario scenario,
+            int actorCount,
+            int seed)
+        {
+            RequireStage14NPCActivityScenario(scenario);
+            RequireStage14NPCActivityActorCount(actorCount);
+            return new Test_ActorScenarioProfile
+            {
+                variant_id = "S14-" + scenario.ToString().ToUpperInvariant(),
+                representation = Test_ActorFixtureRepresentation.networked_gameobject_ecs.ToString(),
+                requires_real_client = true,
+                load_ramp_rate_actors_per_s = actorCount / 120d,
+                preflight_timeout_s = 120d,
+                ramp_s = 120d,
+                warmup_s = 60d,
+                measurement_s = 300d,
+                recovery_s = 60d,
+                sample_interval_ms = 1000,
+                movement_routes = Array.Empty<Test_ActorMovementRoute>(),
+                ability_schedule = Array.Empty<Test_ActorAbilitySchedule>(),
+                events = Array.Empty<Test_ActorScenarioEvent>(),
+                deterministic_boundaries = new Test_ActorScenarioBoundaries
+                {
+                    preflight_start_s = 0d,
+                    ramp_start_s = 0d,
+                    warmup_start_s = 120d,
+                    measurement_start_s = 180d,
+                    measurement_end_s = 480d,
+                    recovery_end_s = 540d,
+                },
+            };
+        }
+
+        public static List<Test_ActorFixturePlacement> BuildStage14NPCActivityPlacements(
+            Test_ActorFixtureProfile profile,
+            Test_NPCActivityScenario scenario,
+            WorldPosition anchorPosition,
+            float passiveAggroRange)
+        {
+            if (profile == null)
+                throw new ArgumentNullException(nameof(profile));
+            RequireStage14NPCActivityScenario(scenario);
+            if (profile.profile_id != STAGE_14_NPC_ACTIVITY_PROFILE_ID)
+                throw new InvalidOperationException("Stage 1.4 placements require the Stage 1.4 NPC activity profile.");
+            if (!anchorPosition.IsFinite)
+                throw new ArgumentException("The Stage 1.4 anchor position must be finite.", nameof(anchorPosition));
+            if (float.IsNaN(passiveAggroRange) || float.IsInfinity(passiveAggroRange) || passiveAggroRange < 0f)
+                throw new ArgumentOutOfRangeException(nameof(passiveAggroRange));
+            if (!Game.Shared.GameConfigurationManager.IsInitialized)
+                throw new Test_ActorFixturePreconditionException("Game configuration is not initialized for Stage 1.4 placement preflight.");
+
+            var fullEntryRadius = Game.Shared.GameConfigurationManager.Config.NPCFullEntryRadius;
+            var placements = new List<Test_ActorFixturePlacement>(profile.population.npcs.requested);
+            var random = new Test_ActorFixtureRandom(profile.replicate_seed, profile.variant_id, "stage-1-4-npc-activity");
+            var engagedPosition = new WorldPosition(anchorPosition.x + 6d, anchorPosition.y, anchorPosition.z);
+            placements.Add(BuildStage14Placement(profile, "npc-engaged", 0, 15, 20, "sorcerer", "npc-engaged", engagedPosition));
+
+            if (scenario == Test_NPCActivityScenario.MassWake)
+            {
+                var clusterCenter = new WorldPosition(anchorPosition.x + 140d, anchorPosition.y, anchorPosition.z);
+                for (var index = 0; index < profile.population.npcs.requested - 1; index++)
+                {
+                    var angle = random.NextDouble() * Math.PI * 2d;
+                    var radius = Math.Sqrt(random.NextDouble()) * 8d;
+                    placements.Add(BuildStage14Placement(
+                        profile,
+                        "npc-idle",
+                        index + 1,
+                        5,
+                        10,
+                        "fighter",
+                        "npc-idle",
+                        new WorldPosition(clusterCenter.x + Math.Cos(angle) * radius, clusterCenter.y, clusterCenter.z + Math.Sin(angle) * radius)));
+                }
+                return placements;
+            }
+
+            var lowerRadius = scenario == Test_NPCActivityScenario.MostlyDormant
+                ? 110d
+                : passiveAggroRange + 2d;
+            var upperRadius = scenario == Test_NPCActivityScenario.MostlyDormant
+                ? 150d
+                : Math.Min(39d, fullEntryRadius);
+            if (lowerRadius >= upperRadius)
+            {
+                throw new Test_ActorFixturePreconditionException(
+                    $"Stage 1.4 passive NPC placement has no valid annulus below 40m: aggro range {passiveAggroRange:R}, full-entry radius {fullEntryRadius:R}.");
+            }
+
+            for (var index = 0; index < profile.population.npcs.requested - 1; index++)
+            {
+                var angle = random.NextDouble() * Math.PI * 2d;
+                var radius = lowerRadius + random.NextDouble() * (upperRadius - lowerRadius);
+                placements.Add(BuildStage14Placement(
+                    profile,
+                    "npc-idle",
+                    index + 1,
+                    5,
+                    10,
+                    "fighter",
+                    "npc-idle",
+                    new WorldPosition(anchorPosition.x + Math.Cos(angle) * radius, anchorPosition.y, anchorPosition.z + Math.Sin(angle) * radius)));
+            }
+            return placements;
+        }
+
+        public static int GetStage14NPCActivityRequiredPlayerCount(Test_NPCActivityScenario scenario)
+        {
+            return scenario == Test_NPCActivityScenario.DensePlayerCluster ? 100 : 1;
         }
 
         public static Test_ActorFixtureProfile BuildTimedStateScaleProfile(int actorCount, int seed)
@@ -220,6 +447,8 @@ namespace Game.Tests.Performance.Fixtures.Actors
                 throw new ArgumentNullException(nameof(profile));
             if (profile.variant_id == TIMED_SCALE_VARIANT_ID)
                 return BuildTimedStateScalePlacements(profile);
+            if (profile.profile_id == STAGE_14_NPC_ACTIVITY_PROFILE_ID)
+                throw new InvalidOperationException("Stage 1.4 NPC activity placements require the real-player anchor and scenario-specific builder.");
 
             var placements = new List<Test_ActorFixturePlacement>(NPC_COUNT);
             var random = new Test_ActorFixtureRandom(profile.replicate_seed, profile.variant_id, "actors");
@@ -241,6 +470,11 @@ namespace Game.Tests.Performance.Fixtures.Actors
             if (profile.variant_id == TIMED_SCALE_VARIANT_ID)
             {
                 ValidateTimedStateScalePopulation(profile);
+                return;
+            }
+            if (profile.profile_id == STAGE_14_NPC_ACTIVITY_PROFILE_ID)
+            {
+                ValidateStage14NPCActivityPopulation(profile);
                 return;
             }
             if (profile.population == null || profile.population.players == null || profile.population.npcs == null || profile.population.accounting == null)
@@ -613,6 +847,93 @@ namespace Game.Tests.Performance.Fixtures.Actors
                     recovery_end_s = 540d,
                 },
             };
+        }
+
+        private static void ValidateStage14NPCActivityPopulation(Test_ActorFixtureProfile profile)
+        {
+            if (!IsStage14NPCActivityActorCount(profile.population?.npcs?.requested ?? 0))
+                throw new InvalidOperationException("Stage 1.4 NPC activity supports only 100, 500 and 1000 NPCs.");
+            if (profile.representation != Test_ActorFixtureRepresentation.networked_gameobject_ecs.ToString())
+                throw new InvalidOperationException("Stage 1.4 NPC activity requires full networked GameObject/ECS actors.");
+            if (profile.population == null || profile.population.players == null || profile.population.npcs == null || profile.population.accounting == null
+                || profile.population.players.groups == null || profile.population.players.groups.Length != 1
+                || profile.population.npcs.groups == null || profile.population.npcs.groups.Length != 2)
+                throw new InvalidOperationException("Stage 1.4 NPC activity population accounting is incomplete.");
+            var actorCount = profile.population.npcs.requested;
+            if (profile.population.npcs.groups[0].group_id != "npc-idle"
+                || profile.population.npcs.groups[0].count != actorCount - 1
+                || profile.population.npcs.groups[1].group_id != "npc-engaged"
+                || profile.population.npcs.groups[1].count != 1
+                || profile.population.accounting.ecs_data_only_npcs != 0
+                || profile.population.accounting.full_gameobject_purrnet_npcs != actorCount
+                || profile.population.accounting.synthetic_network_players != 0
+                || profile.population.accounting.real_player_connections != profile.population.players.requested
+                || profile.population.players.requested < 1)
+                throw new InvalidOperationException("Stage 1.4 NPC activity population counts do not match the required real-player/full-NPC contract.");
+        }
+
+        private static Test_ActorFixtureNPCGroup BuildStage14NPCGroup(string groupID, int count, string role, string classID)
+        {
+            return new Test_ActorFixtureNPCGroup
+            {
+                group_id = groupID,
+                definition_id = "6e50fb82-1724-4040-afec-88fabc925ae0",
+                prefab_path = NPC_PREFAB_PATH,
+                role = role,
+                count = count,
+                level_min = role == "engaged" ? 15 : 5,
+                level_max = role == "engaged" ? 20 : 10,
+                class_id = classID,
+                cluster_id = groupID,
+                route_id = string.Empty,
+                activity = new Test_ActorFixtureNPCActivityMix
+                {
+                    idle = role == "idle" ? 1d : 0d,
+                    patrolling = 0d,
+                    engaged = role == "engaged" ? 1d : 0d,
+                },
+            };
+        }
+
+        private static Test_ActorFixturePlacement BuildStage14Placement(
+            Test_ActorFixtureProfile profile,
+            string groupID,
+            int index,
+            int levelMin,
+            int levelMax,
+            string classID,
+            string clusterID,
+            WorldPosition position)
+        {
+            var level = levelMin + (index % (levelMax - levelMin + 1));
+            return new Test_ActorFixturePlacement
+            {
+                actor_fixture_id = $"{profile.variant_id}/{groupID}/{index:D4}",
+                group_id = groupID,
+                representation = profile.representation,
+                level = level,
+                class_id = classID,
+                cluster_id = clusterID,
+                world_x = position.x,
+                world_y = position.y,
+                world_z = position.z,
+                origin_cell_x = (int)Math.Floor(position.x / 100d),
+                origin_cell_z = (int)Math.Floor(position.z / 100d),
+                world_tile_x = (int)Math.Floor(position.x / 256d),
+                world_tile_z = (int)Math.Floor(position.z / 256d),
+            };
+        }
+
+        private static void RequireStage14NPCActivityActorCount(int actorCount)
+        {
+            if (!IsStage14NPCActivityActorCount(actorCount))
+                throw new ArgumentOutOfRangeException(nameof(actorCount), actorCount, "Stage 1.4 NPC activity supports only 100, 500 and 1000 NPCs.");
+        }
+
+        private static void RequireStage14NPCActivityScenario(Test_NPCActivityScenario scenario)
+        {
+            if (!Enum.IsDefined(typeof(Test_NPCActivityScenario), scenario))
+                throw new ArgumentOutOfRangeException(nameof(scenario), scenario, "The Stage 1.4 NPC activity scenario is not supported.");
         }
 
         private static void AddPlacements(
