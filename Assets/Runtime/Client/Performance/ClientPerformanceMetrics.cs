@@ -168,6 +168,26 @@ namespace Game.Client.Performance
             PerformanceMetricUnit.Count,
             "presentation",
             "presentation_event");
+        internal static readonly PerformanceMetricDefinition FCT_POOL_RETAINED_COUNT = Metric(
+            PerformanceMetricIds.CLIENT_FCT_POOL_RETAINED_COUNT,
+            PerformanceMetricUnit.Count,
+            "presentation",
+            "client_process");
+        internal static readonly PerformanceMetricDefinition FCT_POOL_CREATE_COUNT = Metric(
+            PerformanceMetricIds.CLIENT_FCT_POOL_CREATE_COUNT,
+            PerformanceMetricUnit.Count,
+            "presentation",
+            "presentation_event");
+        internal static readonly PerformanceMetricDefinition FCT_POOL_REUSE_COUNT = Metric(
+            PerformanceMetricIds.CLIENT_FCT_POOL_REUSE_COUNT,
+            PerformanceMetricUnit.Count,
+            "presentation",
+            "presentation_event");
+        internal static readonly PerformanceMetricDefinition FCT_POOL_DESTROY_COUNT = Metric(
+            PerformanceMetricIds.CLIENT_FCT_POOL_DESTROY_COUNT,
+            PerformanceMetricUnit.Count,
+            "presentation",
+            "presentation_event");
         internal static readonly PerformanceMetricDefinition DRAW_CALL_COUNT = Metric(
             PerformanceMetricIds.CLIENT_DRAW_CALL_COUNT,
             PerformanceMetricUnit.Count,
@@ -280,6 +300,10 @@ namespace Game.Client.Performance
             RegisterMeasured(UI_TRANSIENT_COUNT);
             RegisterMeasured(UI_TRANSIENT_SPAWN_COUNT);
             RegisterMeasured(UI_TRANSIENT_RELEASE_COUNT);
+            RegisterMeasured(FCT_POOL_RETAINED_COUNT);
+            RegisterMeasured(FCT_POOL_CREATE_COUNT);
+            RegisterMeasured(FCT_POOL_REUSE_COUNT);
+            RegisterMeasured(FCT_POOL_DESTROY_COUNT);
 
             RegisterMeasured(DRAW_CALL_COUNT);
             RegisterMeasured(BATCH_COUNT);

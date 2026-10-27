@@ -6,8 +6,10 @@ using Game.Shared.Networking;
 using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Pool;
 using UnityEngine.Serialization;
 
 namespace Game.Client.UI
@@ -23,11 +25,18 @@ namespace Game.Client.UI
         /// </summary>
         public static UI_FCTManager Instance => _instance;
 
-        private readonly HashSet<UI_FloatingCombatText> _trackedTransients = new();
+        private readonly HashSet<UI_FloatingCombatText> _activeTransients = new();
+        private ObjectPool<UI_FloatingCombatText> _pool;
+        private bool _isDestroying;
+        private bool _isClearingPool;
 
         [Header("Prefab")]
         [FormerlySerializedAs("fctPrefab")]
         [SerializeField] private GameObject _fctPrefab;
+
+        [Header("Pooling")]
+        [Min(1)]
+        [SerializeField] private int _poolCapacity = 64;
 
         [Header("Colors")]
         [FormerlySerializedAs("autoHitColor")]
@@ -53,41 +62,66 @@ namespace Game.Client.UI
 
         private void Awake()
         {
-            if (_instance != null) return;
+            if (_instance != null && !ReferenceEquals(_instance, this))
+            {
+                Debug.Error("UI_FCTManager is already initialized.");
+                Destroy(this);
+                return;
+            }
+
+            if (_poolCapacity <= 0)
+                throw new InvalidOperationException($"{nameof(_poolCapacity)} must be greater than zero.");
+
             _instance = this;
+            _pool = new ObjectPool<UI_FloatingCombatText>(
+                CreatePooledTransient,
+                OnTakeFromPool,
+                OnReturnedToPool,
+                DestroyPooledTransient,
+                collectionCheck: true,
+                defaultCapacity: Mathf.Min(_poolCapacity, 16),
+                maxSize: _poolCapacity);
 
             PerformanceTelemetry.SessionStarted += OnTelemetrySessionStarted;
             if (PerformanceTelemetry.IsEnabled)
-                ReconcileTransientTracking();
+                OnTelemetrySessionStarted();
         }
 
         private void Start()
         {
             ActorEndpoint.onCombatLogEntryReceived += OnCombatLogEntryReceived;
             CharacterEndpoint.onClientExperienceUpdated += OnExperienceUpdated;
+            ClientWorldManager.Instance.onWorldPresentationEnding += OnWorldPresentationEnding;
         }
 
         private void LateUpdate()
         {
             if (PerformanceTelemetry.IsEnabled)
-                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_COUNT, _activeTransientCount);
+            {
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_COUNT, _activeTransients.Count);
+                PerformanceTelemetry.TryRecord(
+                    ClientPerformanceMetrics.FCT_POOL_RETAINED_COUNT,
+                    _pool?.CountInactive ?? 0);
+            }
         }
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
+            _isDestroying = true;
             ActorEndpoint.onCombatLogEntryReceived -= OnCombatLogEntryReceived;
             CharacterEndpoint.onClientExperienceUpdated -= OnExperienceUpdated;
             PerformanceTelemetry.SessionStarted -= OnTelemetrySessionStarted;
+            if (ClientWorldManager.Initialized)
+                ClientWorldManager.Instance.onWorldPresentationEnding -= OnWorldPresentationEnding;
 
-            foreach (UI_FloatingCombatText transient in _trackedTransients)
-            {
-                if (transient != null)
-                    transient.Released -= OnTransientReleased;
-            }
-            _trackedTransients.Clear();
+            ClearOwnedTransients();
+            _pool.Dispose();
+            _pool = null;
 
-            if (_instance == this)
-                _instance = null;
+            _instance = null;
         }
 
         private void OnExperienceUpdated(int level, int experience, int delta)
@@ -99,10 +133,7 @@ namespace Game.Client.UI
             float spreadX = UnityEngine.Random.Range(-_randomSpreadX, _randomSpreadX);
             Vector3 direction = (Vector3.up + Vector3.right * spreadX).normalized;
 
-            GameObject fctObj = Instantiate(_fctPrefab, spawnPos, Quaternion.identity, UI_WorldSpace.Instance.fctContainer);
-            var fct = fctObj.GetComponent<UI_FloatingCombatText>();
-            fct.Initialize(content, color, direction, 1, 3);
-            TrackTransient(fct);
+            ActivateTransient(spawnPos, content, color, direction, 1f, 3f);
         }
 
         private void OnCombatLogEntryReceived(CombatLogEntry entry)
@@ -180,78 +211,204 @@ namespace Game.Client.UI
             float spreadX = UnityEngine.Random.Range(-_randomSpreadX, _randomSpreadX);
             Vector3 direction = ((entry.Target != ClientAccountManager.PlayerActor ? Vector3.up : Vector3.down) + Vector3.right * spreadX).normalized;
 
-            GameObject fctObj = Instantiate(_fctPrefab, spawnPos, Quaternion.identity, UI_WorldSpace.Instance.fctContainer);
-            var fct = fctObj.GetComponent<UI_FloatingCombatText>();
-            fct.Initialize(content, color, direction, sizeMultiplier, durationMultiplier);
-            TrackTransient(fct);
+            ActivateTransient(spawnPos, content, color, direction, sizeMultiplier, durationMultiplier);
         }
 
-        private void TrackTransient(UI_FloatingCombatText transient)
+        private UI_FloatingCombatText CreatePooledTransient()
         {
-            if (!PerformanceTelemetry.IsEnabled || transient == null)
-                return;
+            var worldSpace = UI_WorldSpace.Instance;
+            if (worldSpace == null || worldSpace.fctContainer == null)
+                throw new InvalidOperationException("UI_WorldSpace.fctContainer is required to create a pooled FCT.");
+            if (_fctPrefab == null)
+                throw new InvalidOperationException("UI_FCTManager requires an FCT prefab.");
 
-            if (!_trackedTransients.Add(transient))
-                return;
+            var fctObject = Instantiate(_fctPrefab, worldSpace.fctContainer);
+            var transient = fctObject.GetComponent<UI_FloatingCombatText>();
+            if (transient == null)
+            {
+                Destroy(fctObject);
+                throw new InvalidOperationException("The FCT prefab is missing UI_FloatingCombatText.");
+            }
 
-            transient.Released += OnTransientReleased;
-            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_SPAWN_COUNT, 1);
-            RecordTransientCount(1);
+            fctObject.SetActive(false);
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.FCT_POOL_CREATE_COUNT, 1);
+            return transient;
         }
 
-        private void OnTransientReleased(UI_FloatingCombatText transient)
+        private void OnTakeFromPool(UI_FloatingCombatText transient)
         {
-            if (!_trackedTransients.Remove(transient))
+            if (transient == null || transient.gameObject == null)
+                throw new InvalidOperationException("Cannot take a destroyed FCT from the pool.");
+
+            var worldSpace = UI_WorldSpace.Instance;
+            if (worldSpace == null || worldSpace.fctContainer == null)
+                throw new InvalidOperationException("UI_WorldSpace.fctContainer is required to take a pooled FCT.");
+
+            if (transient.transform.parent != worldSpace.fctContainer)
+                transient.transform.SetParent(worldSpace.fctContainer);
+            transient.gameObject.SetActive(true);
+        }
+
+        private void OnReturnedToPool(UI_FloatingCombatText transient)
+        {
+            if (transient == null || transient.gameObject == null)
+                throw new InvalidOperationException("Cannot return a destroyed FCT to the pool.");
+
+            transient.ResetForPool();
+            transient.gameObject.SetActive(false);
+        }
+
+        private void DestroyPooledTransient(UI_FloatingCombatText transient)
+        {
+            if (transient == null || transient.gameObject == null)
+                return;
+
+            Destroy(transient.gameObject);
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.FCT_POOL_DESTROY_COUNT, 1);
+        }
+
+        private UI_FloatingCombatText AcquireTransient(Vector3 spawnPosition)
+        {
+            if (_pool == null)
+                throw new InvalidOperationException("The FCT pool is not initialized.");
+
+            var worldSpace = UI_WorldSpace.Instance;
+            if (worldSpace == null || worldSpace.fctContainer == null)
+                throw new InvalidOperationException("UI_WorldSpace.fctContainer is required to acquire a pooled FCT.");
+
+            var reused = _pool.CountInactive > 0;
+            var transient = _pool.Get();
+            if (reused && PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.FCT_POOL_REUSE_COUNT, 1);
+
+            transient.transform.SetParent(worldSpace.fctContainer);
+            transient.transform.position = spawnPosition;
+            transient.transform.rotation = Quaternion.identity;
+            transient.transform.localScale = Vector3.one;
+            RecordTransientGauges();
+            return transient;
+        }
+
+        private void ActivateTransient(
+            Vector3 spawnPosition,
+            string content,
+            Color color,
+            Vector3 direction,
+            float sizeMultiplier,
+            float durationMultiplier)
+        {
+            var transient = AcquireTransient(spawnPosition);
+            if (!_activeTransients.Add(transient))
+                throw new InvalidOperationException("An FCT was acquired more than once.");
+
+            transient.ReleaseRequested += OnTransientReleaseRequested;
+            transient.DestroyedUnexpectedly += OnTransientDestroyedUnexpectedly;
+            try
+            {
+                transient.Activate(content, color, direction, sizeMultiplier, durationMultiplier);
+            }
+            catch
+            {
+                transient.ReleaseRequested -= OnTransientReleaseRequested;
+                transient.DestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
+                _activeTransients.Remove(transient);
+                _pool.Release(transient);
+                throw;
+            }
+
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_SPAWN_COUNT, 1);
+            RecordTransientGauges();
+        }
+
+        private void OnTransientReleaseRequested(UI_FloatingCombatText transient)
+        {
+            if (!_activeTransients.Remove(transient))
                 return;
 
             if (transient != null)
-                transient.Released -= OnTransientReleased;
+            {
+                transient.ReleaseRequested -= OnTransientReleaseRequested;
+                transient.DestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
+            }
+
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_RELEASE_COUNT, 1);
-            RecordTransientCount(-1);
+            _pool.Release(transient);
+            RecordTransientGauges();
         }
 
-        private void RecordTransientCount(int delta)
+        private void OnTransientDestroyedUnexpectedly(UI_FloatingCombatText transient)
         {
-            _activeTransientCount = Mathf.Max(0, _activeTransientCount + delta);
+            if (!_activeTransients.Remove(transient))
+                return;
+
+            if (transient != null)
+            {
+                transient.ReleaseRequested -= OnTransientReleaseRequested;
+                transient.DestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
+            }
+
             if (PerformanceTelemetry.IsEnabled)
-                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_COUNT, _activeTransientCount);
+            {
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_RELEASE_COUNT, 1);
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.FCT_POOL_DESTROY_COUNT, 1);
+            }
+            Debug.Error("An active pool-owned FCT was destroyed outside the manager/pool lifecycle.");
+            RecordTransientGauges();
+        }
+
+        private void OnWorldPresentationEnding()
+        {
+            ClearOwnedTransients();
+        }
+
+        private void ClearOwnedTransients()
+        {
+            if (_pool == null)
+                return;
+
+            _isClearingPool = true;
+            try
+            {
+                var activeTransients = new List<UI_FloatingCombatText>(_activeTransients);
+                foreach (var transient in activeTransients)
+                {
+                    if (transient != null)
+                        transient.Cancel();
+                }
+
+                _activeTransients.RemoveWhere(transient => transient == null);
+                if (_activeTransients.Count != 0)
+                    throw new InvalidOperationException("Active FCT ownership did not settle during cleanup.");
+
+                _pool.Clear();
+            }
+            finally
+            {
+                _isClearingPool = false;
+            }
+
+            RecordTransientGauges();
         }
 
         private void OnTelemetrySessionStarted()
         {
-            ReconcileTransientTracking();
+            RecordTransientGauges();
         }
 
-        private void ReconcileTransientTracking()
+        private void RecordTransientGauges()
         {
-            _trackedTransients.RemoveWhere(transient => transient == null);
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
 
-            Transform container = UI_WorldSpace.Instance != null
-                ? UI_WorldSpace.Instance.fctContainer
-                : null;
-            if (container != null)
-            {
-                UI_FloatingCombatText[] existingTransients = container.GetComponentsInChildren<UI_FloatingCombatText>(true);
-                for (int i = 0; i < existingTransients.Length; i++)
-                {
-                    UI_FloatingCombatText transient = existingTransients[i];
-                    if (transient == null || !_trackedTransients.Add(transient))
-                        continue;
-
-                    transient.Released += OnTransientReleased;
-                }
-            }
-
-            _activeTransientCount = 0;
-            foreach (UI_FloatingCombatText transient in _trackedTransients)
-            {
-                if (transient != null)
-                    _activeTransientCount++;
-            }
+            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.UI_TRANSIENT_COUNT, _activeTransients.Count);
+            PerformanceTelemetry.TryRecord(
+                ClientPerformanceMetrics.FCT_POOL_RETAINED_COUNT,
+                _pool?.CountInactive ?? 0);
         }
-
-        private int _activeTransientCount;
 
         private Color GetHitTypeColor(SpellHitType hitType)
         {

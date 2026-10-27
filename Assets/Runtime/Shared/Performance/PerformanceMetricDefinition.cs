@@ -294,6 +294,10 @@ namespace Game.Shared.Performance
         public const string CLIENT_UI_TRANSIENT_COUNT = "client.ui.transient_count";
         public const string CLIENT_UI_TRANSIENT_SPAWN_COUNT = "client.ui.transient_spawn_count";
         public const string CLIENT_UI_TRANSIENT_RELEASE_COUNT = "client.ui.transient_release_count";
+        public const string CLIENT_FCT_POOL_RETAINED_COUNT = "client.ui.fct.pool_retained_count";
+        public const string CLIENT_FCT_POOL_CREATE_COUNT = "client.ui.fct.pool_create_count";
+        public const string CLIENT_FCT_POOL_REUSE_COUNT = "client.ui.fct.pool_reuse_count";
+        public const string CLIENT_FCT_POOL_DESTROY_COUNT = "client.ui.fct.pool_destroy_count";
         public const string CLIENT_DRAW_CALL_COUNT = "client.graphics.draw_call_count";
         public const string CLIENT_BATCH_COUNT = "client.graphics.batch_count";
         public const string CLIENT_TRIANGLE_COUNT = "client.graphics.triangle_count";
