@@ -47,6 +47,16 @@ namespace Game.Client
                 _characterSelectionWindow.PopulateCharacterList(characters);
         }
 
+        private void OnDestroy()
+        {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
+            Game.Shared.Networking.AccountEndpoint.onCharacterListReceived -= OnCharacterListReceived;
+            Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnteringWorld;
+            _instance = null;
+        }
+
         private void Start()
         {
             _sceneCamera.Prioritize();

@@ -46,6 +46,15 @@ namespace Game.Client
             Game.Shared.Networking.AccountEndpoint.onCharacterCreated += OnCharacterCreated;
         }
 
+        private void OnDestroy()
+        {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
+            Game.Shared.Networking.AccountEndpoint.onCharacterCreated -= OnCharacterCreated;
+            _instance = null;
+        }
+
         private void Start()
         {
             _sceneCamera.Prioritize();

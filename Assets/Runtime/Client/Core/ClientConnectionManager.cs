@@ -9,6 +9,7 @@ using PurrNet;
 using PurrNet.Transports;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -60,6 +61,7 @@ namespace Game.Client
         private ITransport _transport;
         private bool _authenticatedForCurrentConnection;
         private bool _inWorldForCurrentConnection;
+        private readonly HashSet<string> _pendingConnectionUISceneUnloads = new();
 
         #region Lifecycle
         private void Awake()
@@ -85,11 +87,14 @@ namespace Game.Client
                 _transport.onDataReceived += OnTransportDataReceived;
                 _transport.onDataSent += OnTransportDataSent;
             }
+            SceneManager.sceneLoaded += OnConnectionUISceneLoaded;
             _initialized = true;
         }
 
         private void OnDestroy()
         {
+            SceneManager.sceneLoaded -= OnConnectionUISceneLoaded;
+
             if (_networkManager != null)
                 _networkManager.onClientConnectionState -= OnClientConnectionStateChanged;
 
@@ -172,8 +177,50 @@ namespace Game.Client
                     {
                         Destroy(accountManager);
                     }
+                    CleanupConnectionUIScenes();
                     break;
             }
+        }
+
+        private void OnConnectionUISceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (scene.name != "CharacterSelection" && scene.name != "CharacterCreation")
+                return;
+
+            if (CurrentConnectionState != ConnectionState.Disconnected)
+                return;
+
+            RequestConnectionUISceneUnload(scene.name);
+        }
+
+        private void CleanupConnectionUIScenes()
+        {
+            RequestConnectionUISceneUnload("CharacterSelection");
+            RequestConnectionUISceneUnload("CharacterCreation");
+        }
+
+        private void RequestConnectionUISceneUnload(string sceneName)
+        {
+            if (sceneName != "CharacterSelection" && sceneName != "CharacterCreation")
+                throw new ArgumentException($"Unsupported connection UI scene: {sceneName}", nameof(sceneName));
+
+            if (_pendingConnectionUISceneUnloads.Contains(sceneName))
+                return;
+
+            var scene = SceneManager.GetSceneByName(sceneName);
+            if (!scene.IsValid() || !scene.isLoaded)
+                return;
+
+            _pendingConnectionUISceneUnloads.Add(sceneName);
+            var unloadOperation = SceneManager.UnloadSceneAsync(scene);
+            if (unloadOperation == null)
+            {
+                _pendingConnectionUISceneUnloads.Remove(sceneName);
+                Debug.Error($"Failed to request unload for connection UI scene '{sceneName}'.");
+                return;
+            }
+
+            unloadOperation.completed += _ => _pendingConnectionUISceneUnloads.Remove(sceneName);
         }
 
         /// <summary>
