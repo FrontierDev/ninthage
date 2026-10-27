@@ -22,6 +22,7 @@ namespace Game.Server.Core
         private const string PROFILING_ARGUMENT = "--profiling";
         private const string CONTROL_PORT_ARGUMENT = "--control-port";
         private const int DEFAULT_CONTROL_PORT = 8890;
+        private const int SERVER_PLAYER_LOOP_TARGET_FRAME_RATE = 60;
 
         private readonly struct ServerLaunchOptions
         {
@@ -94,6 +95,7 @@ namespace Game.Server.Core
         public static void Begin(MonoBehaviour host)
         {
             ValidateHost(host);
+            ConfigureDedicatedServerPlayerLoop();
             ServerLaunchOptions launchOptions = ResolveLaunchOptions();
             BeginInternal(host, launchOptions.WorldName, launchOptions.ProfilingEnabled, launchOptions.ControlPort);
         }
@@ -154,6 +156,13 @@ namespace Game.Server.Core
         {
             if (host == null)
                 throw new ArgumentNullException(nameof(host));
+        }
+
+        private static void ConfigureDedicatedServerPlayerLoop()
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = SERVER_PLAYER_LOOP_TARGET_FRAME_RATE;
+            Debug.Log($"Dedicated server player loop target: {SERVER_PLAYER_LOOP_TARGET_FRAME_RATE} Hz.");
         }
 
         private static void InitializeWorldRuntimeContext(string launchWorldName)

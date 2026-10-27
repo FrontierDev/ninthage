@@ -119,7 +119,6 @@ namespace Game.Shared.Performance
         public const string SERVER_MEMORY_GC_GEN1_COLLECTION_COUNT = "server.memory.gc_gen1_collection_count";
         public const string SERVER_MEMORY_GC_GEN2_COLLECTION_COUNT = "server.memory.gc_gen2_collection_count";
         public const string SERVER_ACTOR_MANAGER_UPDATE_DURATION = "server.actor_manager.update_duration";
-        public const string SERVER_ACTOR_MANAGER_LATE_UPDATE_DURATION = "server.actor_manager.late_update_duration";
         public const string SERVER_ACTOR_MANAGER_NPC_AGGRO_DURATION = "server.actor_manager.npc_aggro_duration";
         public const string SERVER_ACTOR_NPC_PERCEPTION_PLAYER_CENTER_COUNT =
             "server.actor.npc_perception.player_center_count";

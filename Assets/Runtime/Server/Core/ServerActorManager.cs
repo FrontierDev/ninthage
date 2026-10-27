@@ -69,12 +69,6 @@ namespace Game.Server.Core
             PerformanceMetricSide.Server,
             "actor_manager",
             "server_update");
-        private static readonly PerformanceMetricDefinition LATE_UPDATE_DURATION_METRIC = new(
-            PerformanceMetricIds.SERVER_ACTOR_MANAGER_LATE_UPDATE_DURATION,
-            PerformanceMetricUnit.Milliseconds,
-            PerformanceMetricSide.Server,
-            "actor_manager",
-            "server_update");
         private static readonly PerformanceMetricDefinition NPC_AGGRO_DURATION_METRIC = new(
             PerformanceMetricIds.SERVER_ACTOR_MANAGER_NPC_AGGRO_DURATION,
             PerformanceMetricUnit.Milliseconds,
@@ -232,7 +226,6 @@ namespace Game.Server.Core
             "actor_manager.npc_aggro",
             "server_update");
         private static readonly PerformanceMarker UPDATE_MARKER = new(UPDATE_DURATION_METRIC, "Server.ActorManager.Update");
-        private static readonly PerformanceMarker LATE_UPDATE_MARKER = new(LATE_UPDATE_DURATION_METRIC, "Server.ActorManager.LateUpdate");
         private static readonly PerformanceMarker NPC_AGGRO_MARKER = new(NPC_AGGRO_DURATION_METRIC, "Server.ActorManager.ScheduledNPCAggro");
         private static readonly PerformanceMarker NPC_ACTIVITY_REEVALUATION_MARKER = new(
             NPC_ACTIVITY_REEVALUATION_DURATION_METRIC,
@@ -249,7 +242,6 @@ namespace Game.Server.Core
         internal static void RegisterPerformanceMetrics()
         {
             PerformanceTelemetry.RegisterMetric(UPDATE_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
-            PerformanceTelemetry.RegisterMetric(LATE_UPDATE_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(NPC_AGGRO_DURATION_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(NPC_PERCEPTION_PLAYER_CENTER_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
             PerformanceTelemetry.RegisterMetric(NPC_PERCEPTION_UNIQUE_CELL_COUNT_METRIC, PerformanceTelemetry.RECOMMENDED_SAMPLES_PER_METRIC);
@@ -701,8 +693,8 @@ namespace Game.Server.Core
 
         private void Update()
         {
-            UpdateNPCNavigation();
             using var markerScope = UPDATE_MARKER.Begin();
+            UpdateNPCNavigation();
             bool telemetryEnabled = PerformanceTelemetry.IsEnabled;
             if (telemetryEnabled)
             {
@@ -767,13 +759,6 @@ namespace Game.Server.Core
             }
 
             return checked((int)intervalTicks);
-        }
-
-        private void LateUpdate()
-        {
-            if (!PerformanceTelemetry.IsEnabled) return;
-            using var markerScope = LATE_UPDATE_MARKER.Begin();
-            // Tick-scoped bridge telemetry is flushed by ProcessAuthoritativeTickCompleted.
         }
 
         #endregion
