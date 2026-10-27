@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using Game.Shared.Utility;
 using PurrNet;
+using PurrNet.Transports;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -70,7 +71,7 @@ namespace Game.Shared.Runtime.Actors
         /// <param name="addressablePath">Addressable key for the prefab to instantiate.</param>
         /// <param name="position">Authoritative absolute world position.</param>
         /// <param name="lifetime">Seconds until the object is auto-destroyed. 0 = prefab manages its own lifecycle.</param>
-        [ObserversRpc]
+        [ObserversRpc(channel: Channel.UnreliableSequenced)]
         public void Observers_SpawnEffectAtPosition(int id, string addressablePath, WorldPosition position, float lifetime)
         {
             if (!position.IsFinite)
@@ -89,7 +90,7 @@ namespace Game.Shared.Runtime.Actors
         /// The projectile is initialized to move towards the target's projectile target transform.
         /// Trajectory properties (arc, deviation) are configured on the projectile prefab.
         /// </summary>
-        [ObserversRpc]
+        [ObserversRpc(channel: Channel.UnreliableSequenced)]
         public void Observers_SpawnProjectile(Actor target, string addressablePath, float speed)
         {
             ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_VFX_HANDLER_INVOCATION_COUNT);
@@ -100,7 +101,7 @@ namespace Game.Shared.Runtime.Actors
         /// Tells all clients to fire the one-shot trigger effect on the VFX
         /// registered under <paramref name="id"/>. Only that specific effect is triggered.
         /// </summary>
-        [ObserversRpc]
+        [ObserversRpc(channel: Channel.UnreliableSequenced)]
         public void Observers_TriggerEffect(int id)
         {
             ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_VFX_HANDLER_INVOCATION_COUNT);

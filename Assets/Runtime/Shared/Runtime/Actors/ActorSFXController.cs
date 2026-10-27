@@ -1,6 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Networking;
 using PurrNet;
+using PurrNet.Transports;
 using System;
 using UnityEngine;
 
@@ -37,7 +38,7 @@ namespace Game.Shared.Runtime.Actors
         /// <summary>
         /// Play a spatial sound effect on this actor. Call via RPC from all clients.
         /// </summary>
-        [ObserversRpc]
+        [ObserversRpc(channel: Channel.UnreliableSequenced)]
         public void Observers_PlaySFX(string addressablePath)
         {
             ActorEndpoint.RecordRpcHandlerInvocation(NetworkingPerformanceMetrics.RPC_ACTOR_CLIENT_SFX_HANDLER_INVOCATION_COUNT);
