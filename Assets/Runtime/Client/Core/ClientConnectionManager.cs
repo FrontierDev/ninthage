@@ -66,6 +66,13 @@ namespace Game.Client
         #region Lifecycle
         private void Awake()
         {
+            if (_instance != null && !ReferenceEquals(_instance, this))
+            {
+                Debug.Error("ClientConnectionManager is already initialized.");
+                Destroy(this);
+                return;
+            }
+
             _instance = this;
             ClientInitializeManager();
         }
@@ -93,6 +100,9 @@ namespace Game.Client
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
             SceneManager.sceneLoaded -= OnConnectionUISceneLoaded;
 
             if (_networkManager != null)
@@ -108,8 +118,7 @@ namespace Game.Client
                 _transport = null;
             }
 
-            if (_instance == this)
-                _instance = null;
+            _instance = null;
             _connectionState = ConnectionState.Disconnected;
             _authenticatedForCurrentConnection = false;
             _inWorldForCurrentConnection = false;

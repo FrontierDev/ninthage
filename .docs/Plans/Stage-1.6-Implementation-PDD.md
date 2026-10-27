@@ -329,7 +329,7 @@ Shared cache ownership must be explicit. Do not introduce a project-wide generic
 - the loaded `AudioClip`;
 - the corresponding valid `AsyncOperationHandle<AudioClip>`.
 
-Eviction removes the LRU record and releases that record's handle. Owner destruction releases every pending and cached handle exactly once. Failed operations are removed from pending state and cleaned up.
+Eviction removes the LRU record and releases that record's handle. Owner destruction invalidates publication immediately. Completed cached handles are released during owner cleanup. An Addressables operation that is still in flight remains owned by its already-registered completion callback; that callback must observe the destroyed-owner state, publish nothing, and release the terminal handle exactly once. No pending operation is released both from `OnDestroy()` and again from its completion callback. Failed operations are removed from pending state and cleaned up.
 
 The cache remains a presentation cache, not persistent gameplay state.
 

@@ -94,7 +94,7 @@ namespace Game.Client
 
             var activeInstances = new List<GameObject>(_activeVFX.Keys);
             foreach (var instance in activeInstances)
-                ReleaseActiveVFX(instance, true);
+                RequestActiveVFXDestruction(instance);
 
             if (ReferenceEquals(_instance, this))
             {
@@ -418,10 +418,21 @@ namespace Game.Client
 
         private void OnActiveVFXDestroyed(GameObject instance)
         {
-            ReleaseActiveVFX(instance, false);
+            CompleteActiveVFXRelease(instance);
         }
 
-        private void ReleaseActiveVFX(GameObject instance, bool destroyInstance)
+        private void RequestActiveVFXDestruction(GameObject instance)
+        {
+            if (!_activeVFX.TryGetValue(instance, out var ownership))
+                return;
+
+            if (ownership.IsRegisteredEffect && ownership.Actor != null)
+                ownership.Actor.UnregisterEffect(ownership.EffectID, instance);
+            if (instance != null)
+                Destroy(instance);
+        }
+
+        private void CompleteActiveVFXRelease(GameObject instance)
         {
             if (!_activeVFX.TryGetValue(instance, out var ownership))
                 return;
@@ -431,8 +442,6 @@ namespace Game.Client
                 ownership.Notifier.onDestroyed -= OnActiveVFXDestroyed;
             if (ownership.IsRegisteredEffect && ownership.Actor != null)
                 ownership.Actor.UnregisterEffect(ownership.EffectID, instance);
-            if (destroyInstance && instance != null)
-                Destroy(instance);
 
             if (ownership.Handle.IsValid())
             {
@@ -450,7 +459,7 @@ namespace Game.Client
         {
             var activeInstances = new List<GameObject>(_activeVFX.Keys);
             foreach (var instance in activeInstances)
-                ReleaseActiveVFX(instance, true);
+                RequestActiveVFXDestruction(instance);
         }
 
         private void RecordVFXOwnershipCounts()

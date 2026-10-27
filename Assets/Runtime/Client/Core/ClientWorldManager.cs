@@ -97,6 +97,13 @@ namespace Game.Client
         #region Lifecycle
         private void Awake()
         {
+            if (_instance != null && !ReferenceEquals(_instance, this))
+            {
+                Debug.LogError("ClientWorldManager is already initialized.");
+                Destroy(this);
+                return;
+            }
+
             _instance = this;
 
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorldRequested;
@@ -108,6 +115,9 @@ namespace Game.Client
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnteringWorldRequested;
             PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
             _isWorldReady = false;
@@ -379,6 +389,9 @@ namespace Game.Client
             _isWorldReady = false;
             int generation = ++_worldPresentationGeneration;
             onWorldPresentationEnding?.Invoke();
+            _loadedScenes.Clear();
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.TRACKED_SCENE_COUNT, 0);
 
             long startedTimestamp = PerformanceTelemetry.IsEnabled
                 ? System.Diagnostics.Stopwatch.GetTimestamp()
@@ -429,19 +442,28 @@ namespace Game.Client
                 RecordPendingSceneOperations();
             }
 
+            bool blockedCleanupReported = false;
             while (NetworkManager.main.TryGetModule<ScenesModule>(false, out _))
+            {
+                if (!blockedCleanupReported
+                    && ClientConnectionManager.CurrentConnectionState != ConnectionState.Disconnected)
+                {
+                    Debug.LogError(
+                        "World presentation cleanup cannot reach the PurrNet scene terminal condition while the client remains connected; cleanup will remain blocked until disconnect.");
+                    blockedCleanupReported = true;
+                }
+
                 yield return null;
+            }
 
             if (generation != _worldPresentationGeneration
                 || _worldPresentationState != WorldPresentationState.CleaningUp)
                 yield break;
 
-            _loadedScenes.Clear();
             _worldPresentationCleanupCoroutine = null;
             _worldPresentationState = WorldPresentationState.Idle;
             if (PerformanceTelemetry.IsEnabled)
             {
-                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.TRACKED_SCENE_COUNT, 0);
                 ClientPerformanceMetrics.TryRecordDuration(
                     ClientPerformanceMetrics.WORLD_PRESENTATION_CLEANUP_DURATION,
                     startedTimestamp);

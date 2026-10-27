@@ -114,7 +114,7 @@ namespace Game.Client
                     || ClientWorldManager.Instance.WorldPresentationGeneration != generation
                     || !_worldEntered)
                 {
-                    ReleaseCameraInstanceAndHandle();
+                    ReleaseCompletedCameraHandle();
 
                     bool canRetry = !_isDestroying
                         && ClientWorldManager.Initialized
@@ -137,7 +137,7 @@ namespace Game.Client
                     || loadHandle.Result[0] == null)
                 {
                     Debug.Error("Failed to load a valid PlayerCamera prefab from Addressables.");
-                    ReleaseCameraInstanceAndHandle();
+                    ReleaseCompletedCameraHandle();
                     return;
                 }
 
@@ -145,7 +145,7 @@ namespace Game.Client
                     || actorTransform == null
                     || !ReferenceEquals(_pendingActor, actor))
                 {
-                    ReleaseCameraInstanceAndHandle();
+                    ReleaseCompletedCameraHandle();
 
                     bool canRetry = !_isDestroying
                         && ClientWorldManager.Initialized
@@ -164,19 +164,24 @@ namespace Game.Client
                 var cameraPrefab = loadHandle.Result[0];
                 var playerCamera = Instantiate(cameraPrefab, actorTransform);
                 playerCamera.name = "PlayerCamera";
+                _playerCameraInstance = playerCamera;
 
-                var cinemachineCamera = playerCamera.GetComponentInChildren<CinemachineCamera>();
+                var lifetimeNotifier = _playerCameraInstance.GetComponent<ClientCameraLifetimeNotifier>();
+                if (lifetimeNotifier == null)
+                    lifetimeNotifier = _playerCameraInstance.AddComponent<ClientCameraLifetimeNotifier>();
+                lifetimeNotifier.onDestroyed += OnPlayerCameraDestroyed;
+
+                var cinemachineCamera = _playerCameraInstance.GetComponentInChildren<CinemachineCamera>();
                 if (cinemachineCamera == null)
                 {
-                    Destroy(playerCamera);
                     Debug.Error("PlayerCamera prefab is missing a CinemachineCamera component.");
-                    ReleaseCameraInstanceAndHandle();
+                    _cameraInitialized = false;
+                    Destroy(_playerCameraInstance);
                     return;
                 }
 
                 cinemachineCamera.Prioritize();
                 cinemachineCamera.Follow = actorTransform;
-                _playerCameraInstance = playerCamera;
                 CameraPivot = _playerCameraInstance.transform;
                 _cameraInitialized = true;
                 Debug.Log("Player camera instantiated and parented to player actor.");
@@ -195,34 +200,42 @@ namespace Game.Client
             _worldEntered = false;
             _pendingActor = null;
             CameraPivot = null;
+            _cameraInitialized = false;
 
             if (_playerCameraInstance != null)
-            {
                 Destroy(_playerCameraInstance);
-                _playerCameraInstance = null;
-            }
 
-            if (_cameraLoadHandleOwned && !_cameraLoadPending)
-                ReleaseCameraInstanceAndHandle();
+            if (_cameraLoadHandleOwned && !_cameraLoadPending && _playerCameraInstance == null)
+                ReleaseCompletedCameraHandle();
             else
-            {
-                _cameraInitialized = false;
                 RecordCameraHandleCount();
-            }
         }
 
-        private void ReleaseCameraInstanceAndHandle()
+        private void OnPlayerCameraDestroyed(GameObject instance)
+        {
+            if (!ReferenceEquals(_playerCameraInstance, instance))
+            {
+                Debug.Error("[CameraManager] Destroyed PlayerCamera instance is not owned by this manager.");
+                return;
+            }
+
+            _playerCameraInstance = null;
+            CameraPivot = null;
+            _cameraInitialized = false;
+
+            if (_cameraLoadHandleOwned && !_cameraLoadPending)
+                ReleaseCompletedCameraHandle();
+            else
+                RecordCameraHandleCount();
+        }
+
+        private void ReleaseCompletedCameraHandle()
         {
             if (_cameraLoadPending)
                 throw new InvalidOperationException("Cannot release a pending PlayerCamera load.");
 
             if (_playerCameraInstance != null)
-            {
-                if (CameraPivot == _playerCameraInstance.transform)
-                    CameraPivot = null;
-                Destroy(_playerCameraInstance);
-                _playerCameraInstance = null;
-            }
+                throw new InvalidOperationException("Cannot release a PlayerCamera handle while its instance is alive.");
 
             if (_cameraLoadHandleOwned)
             {
@@ -237,7 +250,6 @@ namespace Game.Client
                 _cameraLoadHandleOwned = false;
             }
 
-            _cameraInitialized = false;
             RecordCameraHandleCount();
         }
 
@@ -263,23 +275,17 @@ namespace Game.Client
             _worldEntered = false;
             _pendingActor = null;
             CameraPivot = null;
+            _cameraInitialized = false;
 
             if (_playerCameraInstance != null)
-            {
                 Destroy(_playerCameraInstance);
-                _playerCameraInstance = null;
-            }
 
-            if (_cameraLoadHandleOwned && !_cameraLoadPending)
-                ReleaseCameraInstanceAndHandle();
+            if (_cameraLoadHandleOwned && !_cameraLoadPending && _playerCameraInstance == null)
+                ReleaseCompletedCameraHandle();
             else
-            {
-                _cameraInitialized = false;
                 RecordCameraHandleCount();
-            }
 
-            if (ReferenceEquals(_instance, this))
-                _instance = null;
+            _instance = null;
         }
     }
 }
