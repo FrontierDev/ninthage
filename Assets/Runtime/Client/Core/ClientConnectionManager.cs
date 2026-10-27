@@ -161,6 +161,9 @@ namespace Game.Client
                     if (wasConnecting) Debug.Warning("Connection failed (authentication rejected or server unreachable).");
                     else Debug.Warning("Disconnected from server.");
 
+                    if (ClientWorldManager.Initialized)
+                        ClientWorldManager.Instance.EndWorldPresentation();
+
                     // Dismiss the loading screen and return to the main menu.
                     // Destroy the client account manager to clear any character data, etc. that may have been loaded.
                     LoadingScreen.Instance.Finish();
@@ -169,9 +172,6 @@ namespace Game.Client
                     {
                         Destroy(accountManager);
                     }
-
-                    // Unload scenes.
-                    Debug.Warning($"Scene unloading has not been implemented yet.");
                     break;
             }
         }

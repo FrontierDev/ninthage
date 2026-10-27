@@ -2,6 +2,8 @@ using Game.Client.Performance;
 using Game.Client.UI;
 using Game.Shared.Performance;
 using PurrNet;
+using PurrNet.Modules;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Profiling;
@@ -22,6 +24,15 @@ namespace Game.Client
         private static readonly PerformanceMarker SCENE_UNLOAD_MARKER = new(
             ClientPerformanceMetrics.SCENE_UNLOAD_CALLBACK_DURATION,
             "Client.WorldManager.SceneUnload");
+
+        private enum WorldPresentationState
+        {
+            Idle,
+            Entering,
+            Ready,
+            TearingDown
+        }
+
         private static ClientWorldManager _instance;
         /// <summary>
         /// Gets the shared client-side instance.
@@ -44,12 +55,35 @@ namespace Game.Client
         public static bool Initialized => _initialized;
 
         private bool _isWorldReady;
+        private WorldPresentationState _worldPresentationState;
+        private int _worldPresentationGeneration;
+        private AsyncOperation _globalWorldLoadOperation;
+        private AsyncOperation _globalWorldUnloadOperation;
+        private Coroutine _worldPresentationTeardownCoroutine;
+        private readonly Dictionary<SceneID, Scene> _loadedScenes = new();
+
         /// <summary>
         /// Gets whether the streamed client world has crossed the entered-world boundary.
         /// </summary>
         public bool IsWorldReady => _isWorldReady;
 
-        private List<Scene> _loadedScenes = new();
+        /// <summary>
+        /// Gets whether a client world-presentation session is entering or ready.
+        /// </summary>
+        public bool IsWorldPresentationActive =>
+            _worldPresentationState == WorldPresentationState.Entering
+            || _worldPresentationState == WorldPresentationState.Ready;
+
+        /// <summary>
+        /// Gets the current world-presentation generation.
+        /// </summary>
+        public int WorldPresentationGeneration => _worldPresentationGeneration;
+
+        /// <summary>
+        /// Occurs after the current world-presentation generation has been invalidated and before teardown begins.
+        /// </summary>
+        public event Action onWorldPresentationEnding;
+
         private long _globalWorldLoadTimestamp;
         private FrameTiming[] _frameTimings;
         private ProfilerRecorder _drawCallsRecorder;
@@ -67,6 +101,8 @@ namespace Game.Client
 
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorldRequested;
             PerformanceTelemetry.SessionEnded += OnTelemetrySessionEnded;
+            NetworkManager.main.sceneModule.onSceneLoaded += OnSceneLoaded;
+            NetworkManager.main.sceneModule.onSceneUnloaded += OnSceneUnloaded;
             _initialized = true;
         }
 
@@ -76,7 +112,7 @@ namespace Game.Client
             PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
             _isWorldReady = false;
 
-            if (NetworkManager.main != null)
+            if (NetworkManager.main != null && NetworkManager.main.sceneModule != null)
             {
                 NetworkManager.main.sceneModule.onSceneLoaded -= OnSceneLoaded;
                 NetworkManager.main.sceneModule.onSceneUnloaded -= OnSceneUnloaded;
@@ -188,8 +224,18 @@ namespace Game.Client
 
         private void OnEnteringWorldRequested(Game.Shared.Persistence.CharacterData characterData, string sceneName)
         {
+            if (_worldPresentationState != WorldPresentationState.Idle)
+            {
+                Debug.LogError(
+                    $"Cannot enter world presentation while the current state is {_worldPresentationState}.");
+                return;
+            }
+
+            Vector2Int spawnChunk = ParseChunkCoordinate(sceneName);
+            int generation = ++_worldPresentationGeneration;
             _isWorldReady = false;
-            StartCoroutine(OnEnteringWorld(sceneName));
+            _worldPresentationState = WorldPresentationState.Entering;
+            StartCoroutine(EnterWorldPresentation(spawnChunk, generation));
         }
 
         /// <summary>
@@ -197,30 +243,43 @@ namespace Game.Client
         /// </summary>
         public void OnSceneLoaded(SceneID sceneID, bool asServer)
         {
+            if (asServer)
+                return;
+
+            if (_worldPresentationState != WorldPresentationState.Entering
+                && _worldPresentationState != WorldPresentationState.Ready)
+                return;
+
             if (!NetworkManager.main.sceneModule.TryGetSceneState(sceneID, out var state)) return;
-            if (state.scene.name.StartsWith("World"))
+            if (!state.scene.name.StartsWith("World"))
+                return;
+
+            if (_loadedScenes.ContainsKey(sceneID))
+                return;
+
+            _loadedScenes.Add(sceneID, state.scene);
+            if (PerformanceTelemetry.IsEnabled)
             {
-                if (_loadedScenes.Contains(state.scene)) return;
-
-                _loadedScenes.Add(state.scene);
-                if (PerformanceTelemetry.IsEnabled)
-                {
-                    PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.SCENE_LOAD_COUNT, 1);
-                    PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.STREAMED_SCENE_LOAD_COUNT, 1);
-                }
-
-                // Offset the new scene to match the current floating origin.
-                using var markerScope = SCENE_ACTIVATION_MARKER.Begin();
-                ClientPositionManager.Instance.ApplyOriginToScene(state.scene);
-                RecordPendingSceneOperations();
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.SCENE_LOAD_COUNT, 1);
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.STREAMED_SCENE_LOAD_COUNT, 1);
             }
+
+            // Offset the new scene to match the current floating origin.
+            using var markerScope = SCENE_ACTIVATION_MARKER.Begin();
+            ClientPositionManager.Instance.ApplyOriginToScene(state.scene);
+            RecordPendingSceneOperations();
         }
 
         private void OnSceneUnloaded(SceneID sceneID, bool asServer)
         {
+            if (asServer)
+                return;
+
             // PurrNet owns the unload request, so only callback cleanup duration is observable here.
             using var markerScope = SCENE_UNLOAD_MARKER.Begin();
-            _loadedScenes.RemoveAll(s => !s.isLoaded);
+            if (!_loadedScenes.Remove(sceneID))
+                return;
+
             if (PerformanceTelemetry.IsEnabled)
             {
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.SCENE_UNLOAD_COUNT, 1);
@@ -229,16 +288,15 @@ namespace Game.Client
             }
         }
 
-        private IEnumerator OnEnteringWorld(string sceneName)
+        private IEnumerator EnterWorldPresentation(Vector2Int spawnChunk, int generation)
         {
             LoadingScreenController.Instance.Show(2);
 
-            var spawnChunk = ParseChunkCoordinate(sceneName);
-            ClientPositionManager.Instance.SetOriginChunk(spawnChunk);
+            if (generation != _worldPresentationGeneration
+                || _worldPresentationState != WorldPresentationState.Entering)
+                yield break;
 
-            // Subscribe BEFORE loading global_world to avoid missing scene callbacks
-            NetworkManager.main.sceneModule.onSceneLoaded += OnSceneLoaded;
-            NetworkManager.main.sceneModule.onSceneUnloaded += OnSceneUnloaded;
+            ClientPositionManager.Instance.SetOriginChunk(spawnChunk);
 
             if (PerformanceTelemetry.IsEnabled)
             {
@@ -246,8 +304,23 @@ namespace Game.Client
                 RecordPendingSceneOperations();
             }
 
-            var loadOp = SceneManager.LoadSceneAsync("global_world", LoadSceneMode.Additive);
-            yield return new WaitUntil(() => loadOp.isDone);
+            _globalWorldLoadOperation = SceneManager.LoadSceneAsync("global_world", LoadSceneMode.Additive);
+            RecordPendingSceneOperations();
+            if (_globalWorldLoadOperation == null)
+            {
+                _globalWorldLoadTimestamp = 0;
+                Debug.LogError("Failed to start the client global_world scene load.");
+                EndWorldPresentation();
+                yield break;
+            }
+
+            while (!_globalWorldLoadOperation.isDone)
+                yield return null;
+
+            if (generation != _worldPresentationGeneration
+                || _worldPresentationState != WorldPresentationState.Entering)
+                yield break;
+
             if (_globalWorldLoadTimestamp > 0)
             {
                 ClientPerformanceMetrics.TryRecordDuration(
@@ -257,17 +330,122 @@ namespace Game.Client
                 if (PerformanceTelemetry.IsEnabled)
                     PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.SCENE_LOAD_COUNT, 1);
             }
+
+            var globalWorld = SceneManager.GetSceneByName("global_world");
+            if (!globalWorld.IsValid() || !globalWorld.isLoaded)
+            {
+                Debug.LogError("The client global_world scene load completed without a valid loaded scene.");
+                EndWorldPresentation();
+                yield break;
+            }
+
             using (SCENE_ACTIVATION_MARKER.Begin())
-                SceneManager.SetActiveScene(SceneManager.GetSceneByName("global_world"));
+                SceneManager.SetActiveScene(globalWorld);
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.SCENE_ACTIVATION_COUNT, 1);
+
+            _globalWorldLoadOperation = null;
             RecordPendingSceneOperations();
 
-            yield return new WaitUntil(() => _loadedScenes.Count >= 9);
+            while (_loadedScenes.Count < 9)
+            {
+                if (generation != _worldPresentationGeneration
+                    || _worldPresentationState != WorldPresentationState.Entering)
+                    yield break;
 
+                yield return null;
+            }
+
+            if (generation != _worldPresentationGeneration
+                || _worldPresentationState != WorldPresentationState.Entering)
+                yield break;
+
+            _worldPresentationState = WorldPresentationState.Ready;
             _isWorldReady = true;
             Game.Shared.Networking.AccountEndpoint.onEnteredWorld?.Invoke();
             LoadingScreenController.Instance.Finish();
+        }
+
+        /// <summary>
+        /// Ends the current client world-presentation session and begins owned scene teardown.
+        /// </summary>
+        public void EndWorldPresentation()
+        {
+            if (_worldPresentationState == WorldPresentationState.Idle
+                || _worldPresentationState == WorldPresentationState.TearingDown)
+                return;
+
+            _worldPresentationState = WorldPresentationState.TearingDown;
+            _isWorldReady = false;
+            int generation = ++_worldPresentationGeneration;
+            onWorldPresentationEnding?.Invoke();
+
+            long startedTimestamp = PerformanceTelemetry.IsEnabled
+                ? System.Diagnostics.Stopwatch.GetTimestamp()
+                : 0;
+            _worldPresentationTeardownCoroutine = StartCoroutine(
+                CompleteWorldPresentationTeardown(generation, startedTimestamp));
+        }
+
+        private IEnumerator CompleteWorldPresentationTeardown(int generation, long startedTimestamp)
+        {
+            if (_globalWorldLoadOperation != null)
+            {
+                while (!_globalWorldLoadOperation.isDone)
+                    yield return null;
+
+                _globalWorldLoadOperation = null;
+                RecordPendingSceneOperations();
+            }
+
+            var globalWorld = SceneManager.GetSceneByName("global_world");
+            if (globalWorld.IsValid() && globalWorld.isLoaded)
+            {
+                if (SceneManager.GetActiveScene() == globalWorld)
+                {
+                    var mainMenu = SceneManager.GetSceneByName("MainMenu");
+                    if (!mainMenu.IsValid() || !mainMenu.isLoaded)
+                    {
+                        Debug.LogError(
+                            "Cannot unload active global_world because the MainMenu scene is not loaded.");
+                        yield break;
+                    }
+
+                    SceneManager.SetActiveScene(mainMenu);
+                }
+
+                _globalWorldUnloadOperation = SceneManager.UnloadSceneAsync(globalWorld);
+                RecordPendingSceneOperations();
+                if (_globalWorldUnloadOperation == null)
+                {
+                    Debug.LogError("Failed to start the client global_world scene unload.");
+                    yield break;
+                }
+
+                while (!_globalWorldUnloadOperation.isDone)
+                    yield return null;
+
+                _globalWorldUnloadOperation = null;
+                RecordPendingSceneOperations();
+            }
+
+            while (NetworkManager.main.TryGetModule<ScenesModule>(false, out _))
+                yield return null;
+
+            if (generation != _worldPresentationGeneration
+                || _worldPresentationState != WorldPresentationState.TearingDown)
+                yield break;
+
+            _loadedScenes.Clear();
+            _worldPresentationTeardownCoroutine = null;
+            _worldPresentationState = WorldPresentationState.Idle;
+            if (PerformanceTelemetry.IsEnabled)
+            {
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.TRACKED_SCENE_COUNT, 0);
+                ClientPerformanceMetrics.TryRecordDuration(
+                    ClientPerformanceMetrics.WORLD_PRESENTATION_TEARDOWN_DURATION,
+                    startedTimestamp);
+            }
         }
 
         private void RecordPendingSceneOperations()
@@ -277,7 +455,11 @@ namespace Game.Client
 
             // PurrNet's internal streamed-scene queue is not exposed by its callback API.
             // This sample covers only the project-owned global scene load above.
-            int pendingOperationCount = _globalWorldLoadTimestamp > 0 ? 1 : 0;
+            int pendingOperationCount = 0;
+            if (_globalWorldLoadOperation != null && !_globalWorldLoadOperation.isDone)
+                pendingOperationCount++;
+            if (_globalWorldUnloadOperation != null && !_globalWorldUnloadOperation.isDone)
+                pendingOperationCount++;
             PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.PENDING_SCENE_OPERATION_COUNT, pendingOperationCount);
         }
         #endregion
@@ -288,7 +470,7 @@ namespace Game.Client
         public void GetWorldScenes(List<Scene> buffer)
         {
             buffer.Clear();
-            buffer.AddRange(_loadedScenes);
+            buffer.AddRange(_loadedScenes.Values);
         }
 
         private static Vector2Int ParseChunkCoordinate(string sceneName)
