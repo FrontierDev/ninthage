@@ -281,11 +281,11 @@ Add only critical integration coverage for:
 
 No production changes in the test issue.
 
-### Step 9 — Stage 1.4 performance campaign and close-out
+### Step 9 — Stage 1.4 close-out and performance hand-off
 
-Extend the existing performance harness for a full server-NPC activity workload using the existing real authenticated player requirement; do not synthesize network clients.
+Stage 1.4 closes on actor-lifecycle/simulation-activity correctness, ownership and focused regression coverage.
 
-Measure:
+Do **not** run a dedicated Stage 1.4 population/perception performance campaign as a completion gate. Preserve the telemetry added by this stage so the later integrated Phase 1 performance programme can evaluate:
 
 - Full/Nearby/Dormant counts;
 - player perception centres;
@@ -295,19 +295,19 @@ Measure:
 - local player↔NPC candidate pairs examined;
 - NPC acquisition decisions executed;
 - actor-manager/aggro/navigation cost;
-- whole simulation tick p50/p95/p99;
+- whole simulation tick timing;
 - allocation/GC;
 - mass wake transition cost.
 
-Required comparisons:
+The intended later comparisons remain:
 
 1. same large NPC population forced Full;
 2. same population distributed mostly Dormant;
 3. mass transition Dormant → Nearby/Full;
-4. dense-player clustering (including ~100 players in one local area) to verify cell traversal and NPC decision work do not multiply linearly with overlapping player envelopes;
+4. dense-player clustering to verify overlapping player envelopes do not multiply work incorrectly;
 5. density/context transition with zero cross-instance wake.
 
-The Stage 1.4 gate passes only when Dormant steady-state CPU is demonstrably lower, wake spikes remain bounded, nearby combat remains responsive, and no cross-instance leakage occurs.
+Those comparisons are executed in Stages 1.10–1.11 after the server/client foundations are assembled. Stage 1.4 smoke validation may confirm that counters/timers change on representative transitions, but it must not expand into a density/capacity/soak benchmark campaign.
 
 ## 5. Non-goals
 
@@ -331,4 +331,4 @@ Each production step requires owner validation before its dependent step proceed
 
 Production-code issues and regression-test issues remain separate.
 
-The final performance campaign is run only after the production sequence and focused regression coverage are accepted.
+After the production sequence and focused regression coverage are accepted, Stage 1.4 hands its instrumentation to Stages 1.10–1.11. No Stage 1.4 performance campaign is required before dependent foundation work proceeds.
