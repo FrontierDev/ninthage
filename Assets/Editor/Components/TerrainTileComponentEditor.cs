@@ -329,7 +329,7 @@ namespace Game.Editor.Components
 
             SerializedObject so = serializedObject;
             so.Update();
-            EditorGUILayout.PropertyField(so.FindProperty("_showPoiMarker"), new GUIContent("Show Marker"));
+            EditorGUILayout.PropertyField(so.FindProperty("_showPOIMarker"), new GUIContent("Show Marker"));
             using (new EditorGUI.DisabledGroupScope(!terrainTile.ShowPOIMarker))
             {
                 EditorGUILayout.PropertyField(so.FindProperty("_poiLabel"), new GUIContent("Label"));
