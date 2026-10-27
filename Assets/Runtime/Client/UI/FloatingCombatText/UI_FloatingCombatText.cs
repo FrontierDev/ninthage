@@ -10,8 +10,8 @@ namespace Game.Client.UI
     /// </summary>
     public sealed class UI_FloatingCombatText : MonoBehaviour
     {
-        internal Action<UI_FloatingCombatText> ReleaseRequested;
-        internal Action<UI_FloatingCombatText> DestroyedUnexpectedly;
+        internal Action<UI_FloatingCombatText> onReleaseRequested;
+        internal Action<UI_FloatingCombatText> onDestroyedUnexpectedly;
 
         [FormerlySerializedAs("text")]
         [SerializeField] private TextMeshProUGUI _text;
@@ -64,8 +64,8 @@ namespace Game.Client.UI
             if (_isActive)
                 throw new InvalidOperationException("Cannot reset active floating combat text for the pool.");
 
-            ReleaseRequested = null;
-            DestroyedUnexpectedly = null;
+            onReleaseRequested = null;
+            onDestroyedUnexpectedly = null;
             _text.text = string.Empty;
             _text.color = Color.white;
             _floatDirection = Vector3.zero;
@@ -115,8 +115,8 @@ namespace Game.Client.UI
                 return;
 
             _isActive = false;
-            var callback = ReleaseRequested;
-            ReleaseRequested = null;
+            var callback = onReleaseRequested;
+            onReleaseRequested = null;
             callback?.Invoke(this);
         }
 
@@ -125,15 +125,15 @@ namespace Game.Client.UI
             if (_isActive)
             {
                 _isActive = false;
-                ReleaseRequested = null;
-                var callback = DestroyedUnexpectedly;
-                DestroyedUnexpectedly = null;
+                onReleaseRequested = null;
+                var callback = onDestroyedUnexpectedly;
+                onDestroyedUnexpectedly = null;
                 callback?.Invoke(this);
                 return;
             }
 
-            ReleaseRequested = null;
-            DestroyedUnexpectedly = null;
+            onReleaseRequested = null;
+            onDestroyedUnexpectedly = null;
         }
     }
 }

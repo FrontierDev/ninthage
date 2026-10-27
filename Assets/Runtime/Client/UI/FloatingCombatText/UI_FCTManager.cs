@@ -27,8 +27,6 @@ namespace Game.Client.UI
 
         private readonly HashSet<UI_FloatingCombatText> _activeTransients = new();
         private ObjectPool<UI_FloatingCombatText> _pool;
-        private bool _isDestroying;
-        private bool _isClearingPool;
 
         [Header("Prefab")]
         [FormerlySerializedAs("fctPrefab")]
@@ -110,7 +108,6 @@ namespace Game.Client.UI
             if (!ReferenceEquals(_instance, this))
                 return;
 
-            _isDestroying = true;
             ActorEndpoint.onCombatLogEntryReceived -= OnCombatLogEntryReceived;
             CharacterEndpoint.onClientExperienceUpdated -= OnExperienceUpdated;
             PerformanceTelemetry.SessionStarted -= OnTelemetrySessionStarted;
@@ -303,16 +300,16 @@ namespace Game.Client.UI
             if (!_activeTransients.Add(transient))
                 throw new InvalidOperationException("An FCT was acquired more than once.");
 
-            transient.ReleaseRequested += OnTransientReleaseRequested;
-            transient.DestroyedUnexpectedly += OnTransientDestroyedUnexpectedly;
+            transient.onReleaseRequested += OnTransientReleaseRequested;
+            transient.onDestroyedUnexpectedly += OnTransientDestroyedUnexpectedly;
             try
             {
                 transient.Activate(content, color, direction, sizeMultiplier, durationMultiplier);
             }
             catch
             {
-                transient.ReleaseRequested -= OnTransientReleaseRequested;
-                transient.DestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
+                transient.onReleaseRequested -= OnTransientReleaseRequested;
+                transient.onDestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
                 _activeTransients.Remove(transient);
                 _pool.Release(transient);
                 throw;
@@ -330,8 +327,8 @@ namespace Game.Client.UI
 
             if (transient != null)
             {
-                transient.ReleaseRequested -= OnTransientReleaseRequested;
-                transient.DestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
+                transient.onReleaseRequested -= OnTransientReleaseRequested;
+                transient.onDestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
             }
 
             if (PerformanceTelemetry.IsEnabled)
@@ -347,8 +344,8 @@ namespace Game.Client.UI
 
             if (transient != null)
             {
-                transient.ReleaseRequested -= OnTransientReleaseRequested;
-                transient.DestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
+                transient.onReleaseRequested -= OnTransientReleaseRequested;
+                transient.onDestroyedUnexpectedly -= OnTransientDestroyedUnexpectedly;
             }
 
             if (PerformanceTelemetry.IsEnabled)
@@ -370,26 +367,18 @@ namespace Game.Client.UI
             if (_pool == null)
                 return;
 
-            _isClearingPool = true;
-            try
+            var activeTransients = new List<UI_FloatingCombatText>(_activeTransients);
+            foreach (var transient in activeTransients)
             {
-                var activeTransients = new List<UI_FloatingCombatText>(_activeTransients);
-                foreach (var transient in activeTransients)
-                {
-                    if (transient != null)
-                        transient.Cancel();
-                }
-
-                _activeTransients.RemoveWhere(transient => transient == null);
-                if (_activeTransients.Count != 0)
-                    throw new InvalidOperationException("Active FCT ownership did not settle during cleanup.");
-
-                _pool.Clear();
+                if (transient != null)
+                    transient.Cancel();
             }
-            finally
-            {
-                _isClearingPool = false;
-            }
+
+            _activeTransients.RemoveWhere(transient => transient == null);
+            if (_activeTransients.Count != 0)
+                throw new InvalidOperationException("Active FCT ownership did not settle during cleanup.");
+
+            _pool.Clear();
 
             RecordTransientGauges();
         }
