@@ -51,7 +51,7 @@ At Stage 1.6 completion:
 - client rendering, streaming and resource-lifetime telemetry is present and smoke-tested so later performance work can measure the real runtime without adding another profiling framework;
 - GPU instancing, SRP Batcher tuning and any later GPU-driven/impostor/HLOD optimisation are **not** selected or globally enabled by Stage 1.6 merely to chase benchmark results;
 - day/night and future weather hooks remain compatible with the rendering contract, but complete weather/environment systems are not implemented here;
-- Stage 1.6 closes on foundation correctness, explicit ownership, focused regression coverage and instrumentation readiness. Representative rendering, traversal, soak and capacity benchmarking is deferred to the integrated Phase 1 performance programme after the server/client foundations are complete.
+- Stage 1.6 closes on foundation correctness, explicit ownership, instrumentation readiness and focused owner smoke validation. New regression suites and representative rendering/traversal/soak/capacity campaigns are deferred until the server/client foundations are complete.
 
 ## 3. Existing `dev` foundation to preserve
 
@@ -565,7 +565,7 @@ Forward+ local-light, shadow and environmental-effect performance is evaluated l
 
 ## 8. Ordered implementation
 
-Execute production work in this order. Follow the GitHub workflow rule that production implementation and regression-test issues remain separate where required.
+Execute production work in this order. During Stage 1.6, production implementation is followed by static/compile validation and narrow owner smoke checks only. Record regression candidates for Stage 1.10 rather than opening regression-test issues now.
 
 ### Step 1 — Client resource audit and lifetime telemetry
 
@@ -619,39 +619,18 @@ Adopt the authoring contract first for representative test assets/fixtures rathe
 
 No third-party assets may be rewritten automatically.
 
-### Step 7 — Focused regression coverage
-
-Add separate regression-test issues only for critical Stage 1.6 contracts that are not already covered and that meet the repository test-value gate.
-
-Required contract families:
-
-- world-session cleanup is idempotent;
-- late asynchronous completion from an old world-presentation generation cannot publish into a new session;
-- project-owned Addressables ownership balances on the success/failure/eviction/cleanup paths that Stage 1.6 changed;
-- audio cache eviction releases the evicted handle;
-- camera entry/exit cannot retain duplicate instances/handles;
-- VFX completion removes active ownership and releases exactly once;
-- FCT pooled reuse fully resets state and remains bounded;
-- floating-origin shift preserves absolute actor position;
-- newly loaded scene projection uses the current origin;
-- repeated scene callbacks do not duplicate tracked scenes.
-
-Nameplate pool reset coverage is required only if nameplate pooling actually exists.
-
-Tests prove correctness contracts, not GPU/client capacity.
-
-### Step 8 — Stage close-out
+### Step 7 — Stage close-out
 
 Stage 1.6 closes when:
 
 1. production lifetime fixes are accepted;
 2. streaming-readiness/origin instrumentation is accepted;
 3. LOD/culling authoring validation is accepted;
-4. focused regression coverage for the changed critical contracts is accepted;
-5. client profiling/reporting is sufficiently smoke-tested to support later integrated performance work;
-6. no known unbounded project-owned resource lifetime remains in the Stage 1.6 client scope.
+4. client profiling/reporting is sufficiently smoke-tested to support later integrated verification;
+5. no known unbounded project-owned resource lifetime remains in the Stage 1.6 client scope;
+6. the critical changed contracts that need later automated regression coverage are documented as a Stage 1.10 hand-off.
 
-Representative Forward+, rapid-traversal, repeated-lifetime, soak and capacity campaigns are **not Stage 1.6 gates**. They are deferred until the server/client foundations are complete and are executed through Stages 1.10–1.11.
+Do **not** create Stage 1.6 regression-test issues, representative Forward+ campaigns, rapid-traversal campaigns, repeated-lifetime/soak campaigns, renderer-tuning campaigns or threshold-setting work. Systematic regression coverage begins in Stage 1.10; integrated representative stress/performance verification belongs to Stage 1.11.
 
 ## 9. Deferred performance-verification hand-off
 
@@ -724,13 +703,12 @@ Recommended Stage 1.6 sequence:
 6. bounded FCT pooling;
 7. streaming-readiness/instrumentation cleanup;
 8. native LOD/culling authoring validator, with player-adjustable graphics controls using `ClientSettingsManager` only when a concrete runtime setting is introduced;
-9. client profiling/reporting plumbing needed by later integrated performance work;
-10. focused regression coverage for the critical changed contracts;
-11. Stage 1.6 close-out.
+9. client profiling/reporting plumbing needed by later integrated verification;
+10. Stage 1.6 close-out and Stage 1.10 regression-candidate hand-off.
 
-Do **not** create Stage 1.6 issues for representative Forward+ benchmarking, rapid-traversal performance campaigns, repeated-lifetime soak campaigns, threshold derivation, renderer tuning or capacity qualification. Those belong to Stages 1.10–1.11 after the client/server foundations are complete.
+Do **not** create Stage 1.6 issues for regression-test suites, representative Forward+ benchmarking, rapid-traversal performance campaigns, repeated-lifetime soak campaigns, threshold derivation, renderer tuning or capacity qualification.
 
-Regression-test issues remain separate from production issues according to the repository workflow.
+Regression-test candidates identified by Stage 1.6 are recorded for Stage 1.10 rather than implemented now.
 
 Do not combine all Stage 1.6 production work into one large implementation issue.
 
@@ -739,13 +717,15 @@ Do not combine all Stage 1.6 production work into one large implementation issue
 Validate Stage 1.6 foundation work in this order:
 
 1. static ownership/lifecycle correctness;
-2. Addressables acquire/release and asynchronous failure paths;
-3. world entry/disconnect/re-entry cleanup correctness;
-4. pooled-object reset and hard bounds;
-5. floating-origin/scene-transition correctness;
+2. Addressables acquire/release and asynchronous failure-path smoke validation;
+3. world entry/disconnect/re-entry cleanup smoke validation;
+4. pooled-object reset and hard-bound smoke validation;
+5. floating-origin/scene-transition correctness smoke validation;
 6. LOD/culling asset validation;
 7. client profiling/report smoke validation;
-8. focused regression coverage.
+8. close-out audit and Stage 1.10 regression-candidate hand-off.
+
+Do not add a new regression suite to prove these contracts during Stage 1.6. Preserve existing tests where they already exist, but systematic automated regression expansion is deferred to Stage 1.10.
 
 Runtime smoke checks must prove that the feature works and instrumentation is connected. They must not be expanded into representative density, traversal, soak, threshold-setting or capacity campaigns during Stage 1.6.
 
@@ -757,6 +737,7 @@ After Stage 1.6, later work may assume:
 - streamed world content can be profiled without conflating scene lifetime with actor authority;
 - future art has a defined LOD/culling acceptance contract;
 - high-churn UI presentation has a bounded pooling pattern;
+- Stage 1.10 has a documented list of critical client contracts that need automated regression coverage;
 - later renderer/performance work has stable telemetry and an asset-authoring contract to measure rather than redesigning client ownership first;
 - Stage 1.9 can build Addressables release/version compatibility on top of a balanced runtime handle-lifetime foundation.
 
