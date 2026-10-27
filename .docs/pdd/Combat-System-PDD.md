@@ -1439,6 +1439,25 @@ These tolerances must reduce false rejection without allowing obviously impossib
 
 No core combat mechanic should require consistently sub-frame network reaction from the player.
 
+### 41.2 Combat presentation and cosmetic networking
+
+Combat VFX and SFX should normally be derived locally from gameplay state or events that the client already receives.
+
+For example, when a replicated spell-cast, aura, hit or other authoritative combat event contains enough information to determine its authored presentation, the client should trigger the corresponding animation, VFX and SFX locally from the relevant definition rather than requiring a second dedicated network message for the same presentation.
+
+Dedicated server-to-client cosmetic events remain valid for presentation that cannot be reconstructed from an existing replicated gameplay event. Examples include:
+
+- a server-generated world-position effect;
+- a server-selected transient effect or variant;
+- a cosmetic event that exists independently of an ordinary spell/aura/combat-state message;
+- another presentation event whose authoritative trigger or placement exists only on the server.
+
+These dedicated cosmetic messages are presentation only. Receipt of a VFX/SFX message must never determine damage, healing, hit resolution, projectile collision, aura state, target state, actor position or another gameplay-authoritative outcome.
+
+The existing dedicated networked VFX/SFX publication surfaces are therefore retained as reusable infrastructure. Ordinary spell VFX/SFX should migrate toward local derivation from replicated combat events when the production combat presentation path is implemented.
+
+That migration is intentionally deferred from the current networking-foundation work and belongs to the later phase that builds out production combat presentation and spell execution.
+
 ---
 
 ## 42. Persistence
@@ -1747,6 +1766,16 @@ Line-of-sight requirements need an explicit ability/targeting contract and serve
 The current projectile implementation primarily delays a resolved hit to match projectile travel time.
 
 The engine must distinguish that presentation model from genuinely physical/projectile-collision gameplay where an ability requests it.
+
+### 47.14 Spell VFX/SFX network duplication
+
+Current spell/effect paths may publish dedicated network VFX/SFX messages even when the same presentation can be derived from an authoritative combat event already delivered to the client.
+
+Do not remove the dedicated network cosmetic APIs: they remain required for genuinely server-originated transient presentation such as server-generated world-position effects and other cosmetic events that cannot be reconstructed locally.
+
+When production combat presentation is implemented, audit spell-driven VFX/SFX call sites and move deterministic spell presentation to local client reactions to the existing replicated spell/combat event wherever possible. This avoids duplicate network traffic without weakening server combat authority.
+
+This migration is deferred to the later combat implementation phase and is not part of the current Stage 1.5 networking-foundation work.
 
 ---
 
