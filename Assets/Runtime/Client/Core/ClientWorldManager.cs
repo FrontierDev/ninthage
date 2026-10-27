@@ -43,6 +43,12 @@ namespace Game.Client
         /// </summary>
         public static bool Initialized => _initialized;
 
+        private bool _isWorldReady;
+        /// <summary>
+        /// Gets whether the streamed client world has crossed the entered-world boundary.
+        /// </summary>
+        public bool IsWorldReady => _isWorldReady;
+
         private List<Scene> _loadedScenes = new();
         private long _globalWorldLoadTimestamp;
         private FrameTiming[] _frameTimings;
@@ -68,6 +74,7 @@ namespace Game.Client
         {
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnteringWorldRequested;
             PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
+            _isWorldReady = false;
 
             if (NetworkManager.main != null)
             {
@@ -181,6 +188,7 @@ namespace Game.Client
 
         private void OnEnteringWorldRequested(Game.Shared.Persistence.CharacterData characterData, string sceneName)
         {
+            _isWorldReady = false;
             StartCoroutine(OnEnteringWorld(sceneName));
         }
 
@@ -257,6 +265,7 @@ namespace Game.Client
 
             yield return new WaitUntil(() => _loadedScenes.Count >= 9);
 
+            _isWorldReady = true;
             Game.Shared.Networking.AccountEndpoint.onEnteredWorld?.Invoke();
             LoadingScreenController.Instance.Finish();
         }

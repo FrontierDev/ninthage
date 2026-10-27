@@ -4,6 +4,7 @@ using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Runtime;
 using Game.Shared.Runtime.Actors;
+using PurrNet;
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -117,6 +118,8 @@ namespace Game.Client
             _interfaceMap.Disable();
 
             // Start in disabled mode until the player enters the world.
+            AccountEndpoint.onEnteringWorld += OnEnteringWorld;
+            AccountEndpoint.onEnteredWorld += OnEnteredWorld;
             ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssignedForGameplay;
             ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssignedForUI;
         }
@@ -125,6 +128,8 @@ namespace Game.Client
         {
             ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssignedForGameplay;
             ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssignedForUI;
+            AccountEndpoint.onEnteringWorld -= OnEnteringWorld;
+            AccountEndpoint.onEnteredWorld -= OnEnteredWorld;
 
             _gameplayMap?.Disable();
             _uiNavMap?.Disable();
@@ -132,6 +137,32 @@ namespace Game.Client
 
         private void OnPlayerActorAssignedForGameplay(Actor playerActor)
         {
+            TryEnableGameplayInput();
+        }
+
+        private void OnEnteringWorld(Game.Shared.Persistence.CharacterData characterData, string sceneName)
+        {
+            SetInputMode(InputMode.Disabled);
+        }
+
+        private void OnEnteredWorld()
+        {
+            TryEnableGameplayInput();
+        }
+
+        private void TryEnableGameplayInput()
+        {
+            var playerActor = ClientAccountManager.PlayerActor;
+            if (playerActor == null
+                || NetworkManager.main == null
+                || !playerActor.Owner.HasValue
+                || playerActor.Owner.Value != NetworkManager.main.localPlayer
+                || !ClientWorldManager.Initialized
+                || !ClientWorldManager.Instance.IsWorldReady)
+            {
+                return;
+            }
+
             SetInputMode(InputMode.GameplayMovement);
         }
 

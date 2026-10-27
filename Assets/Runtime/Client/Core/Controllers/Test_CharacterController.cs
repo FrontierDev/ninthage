@@ -53,6 +53,8 @@ namespace Game.Client
             enabled = false;
             ActorEndpoint.onActorOwnershipTaken += OnActorOwnershipTaken;
             ActorEndpoint.onActorOwnerChanged += OnActorOwnerChanged;
+            AccountEndpoint.onEnteringWorld += OnEnteringWorld;
+            AccountEndpoint.onEnteredWorld += OnEnteredWorld;
 
             if (ClientInputController.Instance != null)
             {
@@ -64,14 +66,32 @@ namespace Game.Client
             ActorEndpoint.onClientInstanceValidationToggleResult += OnInstanceValidationToggleResult;
         }
 
-        // Movement and proposal sequencing begin only after this object is the local actor owner.
+        // Movement and proposal sequencing begin only after this object is the local actor owner
+        // and the streamed client world is ready.
         private void OnActorOwnershipTaken(Game.Shared.Runtime.Actors.Actor actor)
+        {
+            TryAcquireLocalControl(actor);
+        }
+
+        private void OnEnteringWorld(Game.Shared.Persistence.CharacterData characterData, string sceneName)
+        {
+            RevokeLocalControl();
+        }
+
+        private void OnEnteredWorld()
+        {
+            TryAcquireLocalControl(GetComponent<Actor>());
+        }
+
+        private void TryAcquireLocalControl(Actor actor)
         {
             if (actor == null
                 || actor.gameObject != gameObject
                 || NetworkManager.main == null
                 || !actor.Owner.HasValue
-                || actor.Owner.Value != NetworkManager.main.localPlayer)
+                || actor.Owner.Value != NetworkManager.main.localPlayer
+                || !ClientWorldManager.Initialized
+                || !ClientWorldManager.Instance.IsWorldReady)
             {
                 return;
             }
@@ -143,6 +163,8 @@ namespace Game.Client
         {
             ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
             ActorEndpoint.onActorOwnerChanged -= OnActorOwnerChanged;
+            AccountEndpoint.onEnteringWorld -= OnEnteringWorld;
+            AccountEndpoint.onEnteredWorld -= OnEnteredWorld;
             RevokeLocalControl();
             ActorEndpoint.onClientInstanceValidationToggleResult -= OnInstanceValidationToggleResult;
 
