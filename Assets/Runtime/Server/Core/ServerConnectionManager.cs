@@ -6,6 +6,7 @@ using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using PurrNet;
 using PurrNet.Transports;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -125,11 +126,23 @@ namespace Game.Server.Core
                 return;
 
             double intervalSeconds = _networkTelemetryElapsedSeconds;
+            if (double.IsNaN(intervalSeconds)
+                || double.IsInfinity(intervalSeconds)
+                || intervalSeconds <= 0d)
+            {
+                throw new InvalidOperationException(
+                    "The network telemetry interval must be finite and greater than zero.");
+            }
+
+            long aggregatePayloadBytes = 0L;
+            long aggregateMessageCount = 0L;
             if (_transport != null && _transport.connections.Count > 0)
             {
                 foreach (Connection connection in _transport.connections)
                 {
                     _outboundTelemetryWindows.TryGetValue(connection, out ConnectionTelemetryWindow window);
+                    aggregatePayloadBytes = checked(aggregatePayloadBytes + window.PayloadBytes);
+                    aggregateMessageCount = checked(aggregateMessageCount + window.MessageCount);
                     PerformanceTelemetry.TryRecord(
                         NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_SENT,
                         window.PayloadBytes,
@@ -137,6 +150,14 @@ namespace Game.Server.Core
                     PerformanceTelemetry.TryRecord(
                         NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT,
                         window.MessageCount,
+                        intervalSeconds: intervalSeconds);
+                    PerformanceTelemetry.TryRecord(
+                        NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_PER_SECOND,
+                        window.PayloadBytes / intervalSeconds,
+                        intervalSeconds: intervalSeconds);
+                    PerformanceTelemetry.TryRecord(
+                        NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTION_MESSAGES_PER_SECOND,
+                        window.MessageCount / intervalSeconds,
                         intervalSeconds: intervalSeconds);
 
                     if (_transport.measuresRoundTripTime)
@@ -152,6 +173,27 @@ namespace Game.Server.Core
                     }
                 }
             }
+
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_TRANSPORT_AGGREGATE_PAYLOAD_BYTES_PER_SECOND,
+                aggregatePayloadBytes / intervalSeconds,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_TRANSPORT_AGGREGATE_MESSAGES_PER_SECOND,
+                aggregateMessageCount / intervalSeconds,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_LIVE_CONNECTION_COUNT,
+                _transport?.connections.Count ?? 0,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_AUTHENTICATED_CLIENT_COUNT,
+                _connectedPlayers.Count,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_IN_WORLD_CLIENT_COUNT,
+                _sessionData.Count,
+                intervalSeconds: intervalSeconds);
 
             RecordUdpStatisticsInterval(intervalSeconds);
 
@@ -240,6 +282,18 @@ namespace Game.Server.Core
                 NetworkingPerformanceMetrics.SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT,
                 packetLoss - _udpPacketLossBaseline,
                 intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_TRANSPORT_UDP_NATIVE_BYTES_PER_SECOND,
+                (nativeBytesSent - _udpNativeBytesSentBaseline) / intervalSeconds,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_TRANSPORT_UDP_NATIVE_PACKETS_PER_SECOND,
+                (nativePacketsSent - _udpNativePacketsSentBaseline) / intervalSeconds,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_TRANSPORT_UDP_PACKET_LOSS_EVENTS_PER_SECOND,
+                (packetLoss - _udpPacketLossBaseline) / intervalSeconds,
+                intervalSeconds: intervalSeconds);
 
             CaptureUdpStatisticsBaseline(udpTransport);
         }
@@ -268,7 +322,6 @@ namespace Game.Server.Core
 
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTED_COUNT, 1);
-            RecordLiveConnectionCount();
         }
 
         private void OnTransportDisconnected(Connection connection, DisconnectReason reason, bool asServer)
@@ -278,7 +331,6 @@ namespace Game.Server.Core
                 _outboundTelemetryWindows.Remove(connection);
                 if (PerformanceTelemetry.IsEnabled)
                     PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_DISCONNECTED_COUNT, 1);
-                RecordLiveConnectionCount();
             }
         }
 
@@ -301,22 +353,11 @@ namespace Game.Server.Core
             _outboundTelemetryWindows[connection] = window;
         }
 
-        private void RecordLiveConnectionCount()
-        {
-            if (!PerformanceTelemetry.IsEnabled || _transport == null)
-                return;
-
-            PerformanceTelemetry.TryRecord(
-                NetworkingPerformanceMetrics.SERVER_LIVE_CONNECTION_COUNT,
-                _transport.connections.Count);
-        }
-
         private void OnPlayerJoined(PlayerID playerID, bool isReconnect, bool asServer)
         {
             if (!asServer)
                 return;
 
-            RecordLiveConnectionCount();
             var username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
 
             if (Game.Server.Persistence.PlayerDatabase.TryGetPlayerAccount(username, out var accountData))
@@ -334,12 +375,6 @@ namespace Game.Server.Core
             }
 
             _connectedPlayers[playerID] = accountData;
-            if (PerformanceTelemetry.IsEnabled)
-            {
-                PerformanceTelemetry.TryRecord(
-                    NetworkingPerformanceMetrics.SERVER_AUTHENTICATED_CLIENT_COUNT,
-                    _connectedPlayers.Count);
-            }
             Debug.Log($"Player joined: {playerID} ({username})");
         }
 
@@ -376,16 +411,6 @@ namespace Game.Server.Core
 
             _connectedPlayers.Remove(playerID);
             _sessionData.Remove(playerID);
-            if (PerformanceTelemetry.IsEnabled)
-            {
-                PerformanceTelemetry.TryRecord(
-                    NetworkingPerformanceMetrics.SERVER_AUTHENTICATED_CLIENT_COUNT,
-                    _connectedPlayers.Count);
-                PerformanceTelemetry.TryRecord(
-                    NetworkingPerformanceMetrics.SERVER_IN_WORLD_CLIENT_COUNT,
-                    _sessionData.Count);
-            }
-            RecordLiveConnectionCount();
         }
 
         /// <summary>Stores session data for a connected player.</summary>
@@ -394,10 +419,6 @@ namespace Game.Server.Core
         public void SetSessionData(PlayerID playerID, PlayerSessionData data)
         {
             _sessionData[playerID] = data;
-            if (PerformanceTelemetry.IsEnabled)
-                PerformanceTelemetry.TryRecord(
-                    NetworkingPerformanceMetrics.SERVER_IN_WORLD_CLIENT_COUNT,
-                    _sessionData.Count);
             Debug.Log($"Set session data for player {playerID}: Character GUID {data.CharacterID}");
         }
 

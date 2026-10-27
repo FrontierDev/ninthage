@@ -336,9 +336,19 @@ namespace Game.Shared.Tests.Server
             PerformanceTelemetry.StartLiveSession(
                 new PerformanceSessionContext(
                     "server-simulation-clock-regression",
+                    "server-simulation-clock-test",
                     _telemetryDirectory,
                     "server-simulation-clock-regression.json",
-                    "edit-mode-clock-test"));
+                    "edit-mode-clock-test",
+                    "test-build-guid",
+                    "test-operating-system",
+                    "test-processor",
+                    1,
+                    1,
+                    "test-transport",
+                    60,
+                    _configuration.ServerSimulationTickDuration,
+                    _configuration.ServerSimulationMaxCatchUpTicks));
             ServerInitialization.RegisterPerformanceMetrics();
 
             Time.timeScale = 0f;

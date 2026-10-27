@@ -20,21 +20,25 @@ namespace Game.Server.Core
     {
         private const string WORLD_ARGUMENT = "--world";
         private const string PROFILING_ARGUMENT = "--profiling";
+        private const string PROFILE_ID_ARGUMENT = "--profile-id";
         private const string CONTROL_PORT_ARGUMENT = "--control-port";
+        private const string DEFAULT_PROFILE_ID = "live-server";
         private const int DEFAULT_CONTROL_PORT = 8890;
         private const int SERVER_PLAYER_LOOP_TARGET_FRAME_RATE = 60;
 
         private readonly struct ServerLaunchOptions
         {
-            public ServerLaunchOptions(string worldName, bool profilingEnabled, int controlPort)
+            public ServerLaunchOptions(string worldName, bool profilingEnabled, string profileId, int controlPort)
             {
                 WorldName = worldName;
                 ProfilingEnabled = profilingEnabled;
+                ProfileId = profileId;
                 ControlPort = controlPort;
             }
 
             public string WorldName { get; }
             public bool ProfilingEnabled { get; }
+            public string ProfileId { get; }
             public int ControlPort { get; }
         }
 
@@ -53,6 +57,7 @@ namespace Game.Server.Core
         private static ServerTimeAuthority _timeAuthority;
 
         internal static bool IsFatalShutdownRequested => _fatalShutdownRequested;
+        internal static int DedicatedServerPlayerLoopTargetFrameRate => SERVER_PLAYER_LOOP_TARGET_FRAME_RATE;
 
         /// <summary>Gets the current server-lifetime UTC authority, or <c>null</c> when the server is stopped.</summary>
         public static ServerTimeAuthority TimeAuthority => _timeAuthority;
@@ -97,7 +102,12 @@ namespace Game.Server.Core
             ValidateHost(host);
             ConfigureDedicatedServerPlayerLoop();
             ServerLaunchOptions launchOptions = ResolveLaunchOptions();
-            BeginInternal(host, launchOptions.WorldName, launchOptions.ProfilingEnabled, launchOptions.ControlPort);
+            BeginInternal(
+                host,
+                launchOptions.WorldName,
+                launchOptions.ProfilingEnabled,
+                launchOptions.ProfileId,
+                launchOptions.ControlPort);
         }
 
         /// <summary>Begins the Editor/test server initialization with an explicitly supplied world name.</summary>
@@ -105,13 +115,14 @@ namespace Game.Server.Core
         /// <param name="worldName">The explicit world identity supplied by the test bootstrap.</param>
         public static void Begin(MonoBehaviour host, string worldName)
         {
-            BeginInternal(host, ValidateExplicitWorldName(worldName), false, null);
+            BeginInternal(host, ValidateExplicitWorldName(worldName), false, null, null);
         }
 
         private static void BeginInternal(
             MonoBehaviour host,
             string launchWorldName,
             bool profilingEnabled,
+            string profilingProfileId,
             int? controlPort)
         {
             ValidateHost(host);
@@ -136,7 +147,7 @@ namespace Game.Server.Core
                     ServerControlEndpoint.Attach(_host, controlPort.Value);
                 InitializeWorldRuntimeContext(launchWorldName);
                 runtimeContextInitialized = true;
-                _initializationCoroutine = _host.StartCoroutine(InitializationProcess());
+                _initializationCoroutine = _host.StartCoroutine(InitializationProcess(profilingProfileId));
             }
             catch
             {
@@ -188,6 +199,8 @@ namespace Game.Server.Core
         {
             string launchWorldName = null;
             bool profilingEnabled = false;
+            string profileId = DEFAULT_PROFILE_ID;
+            bool profileIdSpecified = false;
             int controlPort = DEFAULT_CONTROL_PORT;
             bool controlPortSpecified = false;
             string[] commandLineArguments = Environment.GetCommandLineArgs();
@@ -203,6 +216,33 @@ namespace Game.Server.Core
                     }
 
                     profilingEnabled = true;
+                    continue;
+                }
+
+                if (string.Equals(argument, PROFILE_ID_ARGUMENT, StringComparison.Ordinal))
+                {
+                    if (profileIdSpecified)
+                    {
+                        throw new InvalidOperationException(
+                            $"Server launch argument '{PROFILE_ID_ARGUMENT}' was supplied more than once.");
+                    }
+
+                    if (i + 1 >= commandLineArguments.Length
+                        || string.IsNullOrWhiteSpace(commandLineArguments[i + 1])
+                        || commandLineArguments[i + 1].StartsWith("--", StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Server launch argument '{PROFILE_ID_ARGUMENT}' requires a nonempty profile ID.");
+                    }
+
+                    profileId = commandLineArguments[++i];
+                    if (!IsValidProfileId(profileId))
+                    {
+                        throw new InvalidOperationException(
+                            $"Server launch argument '{PROFILE_ID_ARGUMENT}' must contain at most 128 ASCII letters, digits, periods, underscores, or hyphens.");
+                    }
+
+                    profileIdSpecified = true;
                     continue;
                 }
 
@@ -265,13 +305,37 @@ namespace Game.Server.Core
                     $"Server startup requires an explicit '{WORLD_ARGUMENT} <world-name>' launch argument.");
             }
 
+            if (profileIdSpecified && !profilingEnabled)
+            {
+                throw new InvalidOperationException(
+                    $"Server launch argument '{PROFILE_ID_ARGUMENT}' requires '{PROFILING_ARGUMENT}'.");
+            }
+
             return new ServerLaunchOptions(
                 ValidateExplicitWorldName(launchWorldName),
                 profilingEnabled,
+                profileId,
                 controlPort);
         }
 
-        private static IEnumerator InitializationProcess()
+        private static bool IsValidProfileId(string profileId)
+        {
+            if (string.IsNullOrWhiteSpace(profileId) || profileId.Length > 128)
+                return false;
+
+            foreach (char character in profileId)
+            {
+                bool isAsciiLetter = character >= 'A' && character <= 'Z'
+                    || character >= 'a' && character <= 'z';
+                bool isAsciiDigit = character >= '0' && character <= '9';
+                if (!isAsciiLetter && !isAsciiDigit && character != '.' && character != '_' && character != '-')
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static IEnumerator InitializationProcess(string profilingProfileId)
         {
             try
             {
@@ -289,7 +353,7 @@ namespace Game.Server.Core
 
                 // Step 3A: Start live profiling after the real transport exists and before ECS initialization.
                 if (_profilingRequested)
-                    ServerPerformanceProfiler.Start(_launchWorldName);
+                    ServerPerformanceProfiler.Start(_launchWorldName, profilingProfileId);
 
                 // Step 4: ECS Worlds after network initialized.
                 yield return ServerInitializeECSWorlds();

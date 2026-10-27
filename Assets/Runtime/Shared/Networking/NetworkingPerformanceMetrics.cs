@@ -43,13 +43,13 @@ namespace Game.Shared.Networking
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "connection",
-            "server_process");
+            "network_interval");
         public static readonly PerformanceMetricDefinition SERVER_IN_WORLD_CLIENT_COUNT = Metric(
             PerformanceMetricIds.SERVER_IN_WORLD_CLIENT_COUNT,
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "connection",
-            "server_process");
+            "network_interval");
         public static readonly PerformanceMetricDefinition SERVER_DISCONNECTED_COUNT = Metric(
             PerformanceMetricIds.SERVER_DISCONNECTED_COUNT,
             PerformanceMetricUnit.Count,
@@ -61,7 +61,7 @@ namespace Game.Shared.Networking
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "connection",
-            "server_process");
+            "network_interval");
         public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_PAYLOAD_BYTES_SENT = Metric(
             PerformanceMetricIds.SERVER_TRANSPORT_PAYLOAD_BYTES_SENT,
             PerformanceMetricUnit.Bytes,
@@ -86,6 +86,30 @@ namespace Game.Shared.Networking
             PerformanceMetricSide.Server,
             "purrnet_payload",
             "connection_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_PER_SECOND = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_PER_SECOND,
+            PerformanceMetricUnit.BytesPerSecond,
+            PerformanceMetricSide.Server,
+            "purrnet_payload",
+            "connection_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_CONNECTION_MESSAGES_PER_SECOND = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_CONNECTION_MESSAGES_PER_SECOND,
+            PerformanceMetricUnit.EventsPerSecond,
+            PerformanceMetricSide.Server,
+            "purrnet_payload",
+            "connection_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_AGGREGATE_PAYLOAD_BYTES_PER_SECOND = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_AGGREGATE_PAYLOAD_BYTES_PER_SECOND,
+            PerformanceMetricUnit.BytesPerSecond,
+            PerformanceMetricSide.Server,
+            "purrnet_payload",
+            "network_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_AGGREGATE_MESSAGES_PER_SECOND = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_AGGREGATE_MESSAGES_PER_SECOND,
+            PerformanceMetricUnit.EventsPerSecond,
+            PerformanceMetricSide.Server,
+            "purrnet_payload",
+            "network_interval");
         public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME = Metric(
             PerformanceMetricIds.SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME,
             PerformanceMetricUnit.Milliseconds,
@@ -107,6 +131,24 @@ namespace Game.Shared.Networking
         public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT = Metric(
             PerformanceMetricIds.SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT,
             PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "purrnet_udp_transport",
+            "network_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_UDP_NATIVE_BYTES_PER_SECOND = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_UDP_NATIVE_BYTES_PER_SECOND,
+            PerformanceMetricUnit.BytesPerSecond,
+            PerformanceMetricSide.Server,
+            "purrnet_udp_transport",
+            "network_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_UDP_NATIVE_PACKETS_PER_SECOND = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_UDP_NATIVE_PACKETS_PER_SECOND,
+            PerformanceMetricUnit.PacketsPerSecond,
+            PerformanceMetricSide.Server,
+            "purrnet_udp_transport",
+            "network_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_UDP_PACKET_LOSS_EVENTS_PER_SECOND = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_UDP_PACKET_LOSS_EVENTS_PER_SECOND,
+            PerformanceMetricUnit.EventsPerSecond,
             PerformanceMetricSide.Server,
             "purrnet_udp_transport",
             "network_interval");
@@ -398,6 +440,10 @@ namespace Game.Shared.Networking
             RegisterMeasured(SERVER_TRANSPORT_PAYLOAD_BYTES_RECEIVED);
             RegisterMeasured(SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_SENT);
             RegisterMeasured(SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT);
+            RegisterMeasured(SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_PER_SECOND);
+            RegisterMeasured(SERVER_TRANSPORT_CONNECTION_MESSAGES_PER_SECOND);
+            RegisterMeasured(SERVER_TRANSPORT_AGGREGATE_PAYLOAD_BYTES_PER_SECOND);
+            RegisterMeasured(SERVER_TRANSPORT_AGGREGATE_MESSAGES_PER_SECOND);
             if (measuresRoundTripTime)
                 RegisterMeasured(SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME);
             else
@@ -409,6 +455,9 @@ namespace Game.Shared.Networking
                 RegisterMeasured(SERVER_TRANSPORT_UDP_NATIVE_BYTES_SENT);
                 RegisterMeasured(SERVER_TRANSPORT_UDP_NATIVE_PACKETS_SENT);
                 RegisterMeasured(SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT);
+                RegisterMeasured(SERVER_TRANSPORT_UDP_NATIVE_BYTES_PER_SECOND);
+                RegisterMeasured(SERVER_TRANSPORT_UDP_NATIVE_PACKETS_PER_SECOND);
+                RegisterMeasured(SERVER_TRANSPORT_UDP_PACKET_LOSS_EVENTS_PER_SECOND);
             }
             else
             {
@@ -420,6 +469,15 @@ namespace Game.Shared.Networking
                     TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON);
                 RegisterUnavailable(
                     SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT,
+                    TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON);
+                RegisterUnavailable(
+                    SERVER_TRANSPORT_UDP_NATIVE_BYTES_PER_SECOND,
+                    TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON);
+                RegisterUnavailable(
+                    SERVER_TRANSPORT_UDP_NATIVE_PACKETS_PER_SECOND,
+                    TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON);
+                RegisterUnavailable(
+                    SERVER_TRANSPORT_UDP_PACKET_LOSS_EVENTS_PER_SECOND,
                     TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON);
             }
             RegisterMeasured(SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT);

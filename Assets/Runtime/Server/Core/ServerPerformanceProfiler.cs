@@ -1,5 +1,8 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Shared;
 using Game.Shared.Performance;
+using PurrNet;
+using PurrNet.Transports;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -17,14 +20,16 @@ namespace Game.Server.Core
 
         internal static bool IsActive => _started && !_finalized;
 
-        internal static void Start(string worldName)
+        internal static void Start(string worldName, string profileId)
         {
             if (_started)
                 throw new InvalidOperationException("Live server profiling has already been started.");
             if (string.IsNullOrWhiteSpace(worldName))
                 throw new ArgumentException("A profiling world name is required.", nameof(worldName));
+            if (string.IsNullOrWhiteSpace(profileId))
+                throw new ArgumentException("A profiling profile ID is required.", nameof(profileId));
 
-            PerformanceSessionContext context = CreateSessionContext(worldName);
+            PerformanceSessionContext context = CreateSessionContext(worldName, profileId);
             _started = true;
             _finalized = false;
             _reportPath = context.ReportPath;
@@ -75,8 +80,27 @@ namespace Game.Server.Core
                 "The application quit before the normal server shutdown path finalised profiling.");
         }
 
-        private static PerformanceSessionContext CreateSessionContext(string worldName)
+        private static PerformanceSessionContext CreateSessionContext(string worldName, string profileId)
         {
+            if (!GameConfigurationManager.IsInitialized)
+                throw new InvalidOperationException("Live profiling requires initialized game configuration.");
+
+            GameConfiguration configuration = GameConfigurationManager.Config;
+            if (configuration == null)
+                throw new InvalidOperationException("Live profiling requires available game configuration.");
+
+            NetworkManager networkManager = NetworkManager.main;
+            if (networkManager == null)
+                throw new InvalidOperationException("Live profiling requires an active NetworkManager.");
+
+            ITransport rawTransport = networkManager.rawTransport;
+            if (rawTransport == null)
+                throw new InvalidOperationException("Live profiling requires an active NetworkManager raw transport.");
+
+            string transportType = rawTransport.GetType().FullName;
+            if (string.IsNullOrWhiteSpace(transportType))
+                throw new InvalidOperationException("Live profiling requires a named raw transport type.");
+
             string reportDirectory = ResolveReportDirectory();
             int processID = Process.GetCurrentProcess().Id;
             DateTime timestamp = DateTime.UtcNow;
@@ -91,7 +115,21 @@ namespace Game.Server.Core
             }
             while (File.Exists(Path.Combine(reportDirectory, reportFileName)));
 
-            return new PerformanceSessionContext(runID, reportDirectory, reportFileName, worldName);
+            return new PerformanceSessionContext(
+                runID,
+                profileId,
+                reportDirectory,
+                reportFileName,
+                worldName,
+                Application.buildGUID,
+                SystemInfo.operatingSystem,
+                SystemInfo.processorType,
+                SystemInfo.processorCount,
+                SystemInfo.systemMemorySize,
+                transportType,
+                ServerInitialization.DedicatedServerPlayerLoopTargetFrameRate,
+                configuration.ServerSimulationTickDuration,
+                configuration.ServerSimulationMaxCatchUpTicks);
         }
 
         private static string ResolveReportDirectory()

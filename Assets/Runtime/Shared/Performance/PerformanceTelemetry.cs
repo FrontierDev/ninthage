@@ -13,11 +13,22 @@ namespace Game.Shared.Performance
     {
         public PerformanceSessionContext(
             string runId,
+            string profileId,
             string resultsDirectory,
             string reportFileName,
-            string worldName)
+            string worldName,
+            string buildGuid,
+            string operatingSystem,
+            string processorType,
+            int processorCount,
+            int systemMemoryMB,
+            string transportType,
+            int serverPlayerLoopTargetFrameRate,
+            float serverSimulationTickDurationSeconds,
+            int serverSimulationMaxCatchUpTicks)
         {
             RunId = RequireBounded(runId, nameof(runId), 256);
+            ProfileId = RequireBounded(profileId, nameof(profileId), 128);
             WorldName = RequireBounded(worldName, nameof(worldName), 256);
             if (string.IsNullOrWhiteSpace(resultsDirectory) || !Path.IsPathRooted(resultsDirectory))
                 throw new ArgumentException("An absolute profiling report directory is required.", nameof(resultsDirectory));
@@ -35,9 +46,19 @@ namespace Game.Shared.Performance
             Platform = Application.platform.ToString();
             UnityVersion = Application.unityVersion;
             ApplicationVersion = Application.version;
+            BuildGuid = RequireBounded(buildGuid, nameof(buildGuid), 128);
+            OperatingSystem = RequireBounded(operatingSystem, nameof(operatingSystem), 256);
+            ProcessorType = RequireBounded(processorType, nameof(processorType), 256);
+            ProcessorCount = processorCount;
+            SystemMemoryMB = systemMemoryMB;
+            TransportType = RequireBounded(transportType, nameof(transportType), 256);
+            ServerPlayerLoopTargetFrameRate = serverPlayerLoopTargetFrameRate;
+            ServerSimulationTickDurationSeconds = serverSimulationTickDurationSeconds;
+            ServerSimulationMaxCatchUpTicks = serverSimulationMaxCatchUpTicks;
         }
 
         public string RunId { get; }
+        public string ProfileId { get; }
         public string WorldName { get; }
         public string ResultsDirectory { get; }
         public string ReportFileName { get; }
@@ -47,6 +68,15 @@ namespace Game.Shared.Performance
         public string Platform { get; }
         public string UnityVersion { get; }
         public string ApplicationVersion { get; }
+        public string BuildGuid { get; }
+        public string OperatingSystem { get; }
+        public string ProcessorType { get; }
+        public int ProcessorCount { get; }
+        public int SystemMemoryMB { get; }
+        public string TransportType { get; }
+        public int ServerPlayerLoopTargetFrameRate { get; }
+        public float ServerSimulationTickDurationSeconds { get; }
+        public int ServerSimulationMaxCatchUpTicks { get; }
 
         internal void Validate()
         {
@@ -301,13 +331,34 @@ namespace Game.Shared.Performance
             writer.WriteLine('{');
             PerformanceJson.WriteProperty(writer, "schema_version", "server-performance-report/v1", true);
             PerformanceJson.WriteProperty(writer, "run_id", Context.RunId, true);
-            PerformanceJson.WriteProperty(writer, "profile_id", Context.RunId, true);
+            PerformanceJson.WriteProperty(writer, "profile_id", Context.ProfileId, true);
             PerformanceJson.WriteProperty(writer, "world_name", Context.WorldName, true);
             PerformanceJson.WriteProperty(writer, "process_id", Context.ProcessId, true);
             PerformanceJson.WriteProperty(writer, "host_id", Context.HostId, true);
             PerformanceJson.WriteProperty(writer, "unity_platform", Context.Platform, true);
             PerformanceJson.WriteProperty(writer, "unity_version", Context.UnityVersion, true);
             PerformanceJson.WriteProperty(writer, "application_version", Context.ApplicationVersion, true);
+            PerformanceJson.WriteProperty(writer, "build_guid", Context.BuildGuid, true);
+            PerformanceJson.WriteProperty(writer, "operating_system", Context.OperatingSystem, true);
+            PerformanceJson.WriteProperty(writer, "processor_type", Context.ProcessorType, true);
+            PerformanceJson.WriteProperty(writer, "processor_count", Context.ProcessorCount, true);
+            PerformanceJson.WriteProperty(writer, "system_memory_mb", Context.SystemMemoryMB, true);
+            PerformanceJson.WriteProperty(writer, "transport_type", Context.TransportType, true);
+            PerformanceJson.WriteProperty(
+                writer,
+                "server_player_loop_target_frame_rate",
+                Context.ServerPlayerLoopTargetFrameRate,
+                true);
+            PerformanceJson.WriteProperty(
+                writer,
+                "server_simulation_tick_duration_seconds",
+                Context.ServerSimulationTickDurationSeconds,
+                true);
+            PerformanceJson.WriteProperty(
+                writer,
+                "server_simulation_max_catch_up_ticks",
+                Context.ServerSimulationMaxCatchUpTicks,
+                true);
             PerformanceJson.WriteProperty(writer, "started_utc", StartedUtc.ToString("o"), true);
             PerformanceJson.WriteProperty(writer, "finished_utc", finishedUtc.ToString("o"), true);
             PerformanceJson.WriteProperty(writer, "elapsed_seconds", elapsedSeconds, true);

@@ -51,6 +51,8 @@ namespace Game.Shared.Performance
         Count,
         Ticks,
         EventsPerSecond,
+        BytesPerSecond,
+        PacketsPerSecond,
         Ratio,
         Metres
     }
@@ -175,6 +177,10 @@ namespace Game.Shared.Performance
             "server.transport.connection.payload_bytes_sent";
         public const string SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT =
             "server.transport.connection.message_count_sent";
+        public const string SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_PER_SECOND =
+            "server.transport.connection.payload_bytes_per_second";
+        public const string SERVER_TRANSPORT_CONNECTION_MESSAGES_PER_SECOND =
+            "server.transport.connection.messages_per_second";
         public const string SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME =
             "server.transport.connection.round_trip_time";
         public const string SERVER_TRANSPORT_UDP_NATIVE_BYTES_SENT =
@@ -183,6 +189,16 @@ namespace Game.Shared.Performance
             "server.transport.udp.native_packets_sent";
         public const string SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT =
             "server.transport.udp.packet_loss_count";
+        public const string SERVER_TRANSPORT_UDP_NATIVE_BYTES_PER_SECOND =
+            "server.transport.udp.native_bytes_per_second";
+        public const string SERVER_TRANSPORT_UDP_NATIVE_PACKETS_PER_SECOND =
+            "server.transport.udp.native_packets_per_second";
+        public const string SERVER_TRANSPORT_UDP_PACKET_LOSS_EVENTS_PER_SECOND =
+            "server.transport.udp.packet_loss_events_per_second";
+        public const string SERVER_TRANSPORT_AGGREGATE_PAYLOAD_BYTES_PER_SECOND =
+            "server.transport.aggregate.payload_bytes_per_second";
+        public const string SERVER_TRANSPORT_AGGREGATE_MESSAGES_PER_SECOND =
+            "server.transport.aggregate.messages_per_second";
         public const string SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT =
             "server.replication.combat_critical.publication_count";
         public const string SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT =
@@ -307,7 +323,11 @@ namespace Game.Shared.Performance
                 case PerformanceMetricUnit.Ticks:
                     return "ticks";
                 case PerformanceMetricUnit.EventsPerSecond:
-                    return "events/s";
+                    return "events_per_second";
+                case PerformanceMetricUnit.BytesPerSecond:
+                    return "bytes_per_second";
+                case PerformanceMetricUnit.PacketsPerSecond:
+                    return "packets_per_second";
                 case PerformanceMetricUnit.Ratio:
                     return "ratio";
                 case PerformanceMetricUnit.Metres:
