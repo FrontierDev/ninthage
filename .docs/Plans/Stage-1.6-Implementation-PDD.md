@@ -42,7 +42,7 @@ At Stage 1.6 completion:
 
 - every project-owned Addressables acquisition used by the client has exactly one documented owner and a verifiable release path;
 - PurrNet-owned streamed-scene handles remain PurrNet-owned and are never released through a duplicate project handle path;
-- disconnect, failed world entry, later world/map transfer and client shutdown have an explicit presentation teardown boundary rather than relying on scene destruction or process exit;
+- disconnect, failed world entry, later world/map transfer and client shutdown have an explicit presentation cleanup boundary rather than relying on scene destruction or process exit;
 - repeated world entry/exit and repeated tile traversal do not cause monotonically growing retained world scenes, project-owned Addressables handles, pooled objects or presentation objects;
 - normal 256 m world-tile/origin boundary crossings remain visually seamless and do not alter authoritative actor position;
 - streamed detailed world content and distant terrain representation remain separate lifetime/LOD concerns, even though both use the shared 256 m world grid;
@@ -106,8 +106,8 @@ The reviewed baseline contains concrete Stage 1.6 work:
 
 | Current owner/path | Existing behaviour | Stage 1.6 requirement |
 | --- | --- | --- |
-| `ClientWorldManager` | Tracks delivered scenes; no complete disconnect/world-exit cleanup path. | Add one explicit client world-presentation teardown boundary and prove scene tracking returns to baseline. |
-| `ClientConnectionManager` | On disconnect destroys account state and logs that scene unloading is not implemented. | Invoke the world-presentation teardown boundary after connection loss without inventing session authority owned by Stage 1.8. |
+| `ClientWorldManager` | Tracks delivered scenes; no complete disconnect/world-exit cleanup path. | Add one explicit client world-presentation cleanup boundary and prove scene tracking returns to baseline. |
+| `ClientConnectionManager` | On disconnect destroys account state and logs that scene unloading is not implemented. | Invoke the world-presentation cleanup boundary after connection loss without inventing session authority owned by Stage 1.8. |
 | `ClientVFXManager` | Loads Addressable prefabs and directly instantiates them; successful load handles are not released/tracked through effect lifetime. | Give every loaded prefab/instance a balanced lifetime; add active/release telemetry; pool only reset-safe measured classes. |
 | `ClientAudioManager` | Bounds cache entry count but stores only `AudioClip` after successful loads; successful cache handles are not retained for later release. | Cache the asset and its owning handle together; release on eviction/shutdown; preserve bounded LRU behaviour. |
 | `CameraManager` | Loads the PlayerCamera Addressable collection and instantiates the first prefab without a retained/released operation lifetime. | Give camera asset/instance an explicit world-session lifetime and release path. |
@@ -142,10 +142,10 @@ Every client presentation resource belongs to one of these lifetime classes.
 | Process/bootstrap | Addressables initialization, persistent client-manager GameObjects | existing client bootstrap | client shutdown/manager destruction |
 | Connection | connection-owned UI/account presentation | existing connection/account managers | disconnect/reconnect boundary |
 | World presentation session | `global_world`, camera instance, world-scene tracking and world-bound presentation state | `ClientWorldManager` plus the direct subsystem owner | failed entry, disconnect, later transfer/leave-world, shutdown |
-| PurrNet streamed scene | delivered `World_*` environment scenes | PurrNet scene module; `ClientWorldManager` tracks presentation state only | PurrNet-supported unload/teardown lifecycle |
+| PurrNet streamed scene | delivered `World_*` environment scenes | PurrNet scene module; `ClientWorldManager` tracks presentation state only | PurrNet-supported unload/cleanup lifecycle |
 | Cached asset | audio clips or later measured reusable prefab assets | initiating client manager | eviction, cache clear or owner destruction |
-| Active transient | VFX, projectile, floating text | subsystem that spawned it | completion/cancellation/world teardown |
-| Pooled presentation object | FCT/nameplate and later opt-in reset-safe objects | owning presentation manager | returned to bounded pool; pool destroyed on owner/world teardown as specified |
+| Active transient | VFX, projectile, floating text | subsystem that spawned it | completion/cancellation/world cleanup |
+| Pooled presentation object | FCT/nameplate and later opt-in reset-safe objects | owning presentation manager | returned to bounded pool; pool destroyed on owner/world cleanup as specified |
 | Network actor representation | PurrNet actor GameObject/NetworkIdentity | networking/actor lifecycle | existing PurrNet despawn lifecycle |
 
 A resource may not be simultaneously treated as both PurrNet-owned and project-owned.
@@ -172,9 +172,9 @@ Required semantics:
 
 - only one active world-presentation session exists at a time;
 - each entry receives an internal monotonically changing generation/token so an asynchronous completion from an abandoned entry cannot publish resources into a later session;
-- world-ready is false during entry and teardown;
-- teardown is idempotent;
-- new world-bound VFX/camera/presentation acquisition is rejected or ignored once teardown begins;
+- world-ready is false during entry and cleanup;
+- cleanup is idempotent;
+- new world-bound VFX/camera/presentation acquisition is rejected or ignored once cleanup begins;
 - project-owned world resources are released exactly once;
 - PurrNet scene ownership is respected throughout;
 - callback subscriptions are established once and are not multiplied by repeated entries;
@@ -182,7 +182,7 @@ Required semantics:
 
 `ClientConnectionManager` does not become a resource manager. On disconnect it requests the existing world owner to end the presentation session before returning to the menu. Authentication/session authority remains outside Stage 1.6.
 
-### 4.3 Scene ownership and teardown
+### 4.3 Scene ownership and cleanup
 
 Normal connected traversal:
 
@@ -193,11 +193,11 @@ Normal connected traversal:
 
 Project-owned scenes such as `global_world` retain a project-owned load/unload operation and must be explicitly unloaded when the world presentation session ends.
 
-Disconnect/aborted-entry cleanup must use supported PurrNet/Unity scene teardown boundaries without reaching into vendor internals. The implementation issue must verify the exact supported PurrNet client scene cleanup API at the installed package version before selecting that call. If the supported package API owns cleanup, use it. Do not bypass it by releasing an unknown PurrNet Addressables handle.
+Disconnect/aborted-entry cleanup must use supported PurrNet/Unity scene cleanup boundaries without reaching into vendor internals. The implementation issue must verify the exact supported PurrNet client scene cleanup API at the installed package version before selecting that call. If the supported package API owns cleanup, use it. Do not bypass it by releasing an unknown PurrNet Addressables handle.
 
 The tracked scene collection must be keyed/cleaned by actual scene lifecycle and must not use a growing historical list.
 
-### 4.3.1 Verified PurrNet client scene teardown contract
+### 4.3.1 Verified PurrNet client scene cleanup contract
 
 This contract is based on the installed source at `Assets/ThirdParty/PurrNet`, not on
 upstream documentation. `Assets/ThirdParty/PurrNet/package.json` identifies the package as
@@ -278,7 +278,7 @@ client by PurrNet, its client lifetime follows the same PurrNet ownership rule; 
 
 #### Verified ownership table
 
-| Scene/resource | Loader | Handle/lifetime owner | Required Stage 1.6 teardown action |
+| Scene/resource | Loader | Handle/lifetime owner | Required Stage 1.6 cleanup action |
 |---|---|---|---|
 | `global_world` | Unity `SceneManager.LoadSceneAsync` in `ClientWorldManager` | Ninth Age client | Explicitly unload through the Unity scene API. |
 | PurrNet-delivered `World_*` | PurrNet scene module | PurrNet | Let the installed disconnect cleanup path unload it; observe ordinary connected unloads through PurrNet callbacks. |
@@ -315,7 +315,7 @@ For every project-owned `LoadAssetAsync` or `LoadAssetsAsync` operation:
 1. the initiating manager records the handle ownership immediately;
 2. failed/cancelled loads reach a terminal cleanup path;
 3. successful loads retain the handle for at least as long as any live object still depends on the loaded asset and its dependencies;
-4. eviction/teardown destroys/releases dependent instances first, then releases the owning handle exactly once;
+4. eviction/cleanup destroys/releases dependent instances first, then releases the owning handle exactly once;
 5. late async completion checks the current owner/session generation before publishing an instance;
 6. telemetry increments/decrements live/pending ownership counts from the same state transition that changes the real lifetime;
 7. no manager stores only `handle.Result` while discarding the handle required for release.
@@ -425,8 +425,8 @@ The existing metrics remain the base. Stage 1.6 adds only the missing measuremen
 - current/pending project-owned Addressables handle counts by owning subsystem;
 - active and retained pool counts by pool;
 - active VFX count and release count;
-- world-session teardown duration;
-- retained-memory samples before entry, after steady state, after traversal cycles and after teardown.
+- world-session cleanup duration;
+- retained-memory samples before entry, after steady state, after traversal cycles and after cleanup.
 
 Where Unity/PurrNet cannot expose a measurement, register/report it as unavailable and retain the available proxy separately. Do not label a callback duration as full streamed-scene load/unload latency.
 
@@ -441,7 +441,7 @@ For a repeated identical route/session fixture:
 - live scene count returns to the expected steady-state range;
 - live project-owned Addressables handle counts return to the expected steady-state range;
 - pooled retained counts remain at or below configured capacity;
-- after teardown, world-session resources return to the documented not-in-world baseline;
+- after cleanup, world-session resources return to the documented not-in-world baseline;
 - memory may fluctuate because of Unity allocator behaviour, but project-owned live-resource counts must not trend upward cycle after cycle;
 - any long-run memory slope that cannot be explained by stable project-owned counts remains a leak investigation blocker.
 
@@ -573,17 +573,17 @@ Execute production work in this order. Follow the GitHub workflow rule that prod
 
 Create the Stage 1.6 resource inventory from all project-owned client Addressables/scene/presentation acquisition sites.
 
-Extend existing telemetry with live project-owned handle counts, active VFX/release count, pool counts and world-session teardown observations. Correct stale metric availability comments where current endpoints now provide the required lifecycle.
+Extend existing telemetry with live project-owned handle counts, active VFX/release count, pool counts and world-session cleanup observations. Correct stale metric availability comments where current endpoints now provide the required lifecycle.
 
 No pooling or rendering optimisation is performed in this step.
 
-### Step 2 — World-presentation session and teardown boundary
+### Step 2 — World-presentation session and cleanup boundary
 
 Add the explicit `ClientWorldManager` world-presentation lifecycle described in §4.2.
 
 Integrate disconnect through `ClientConnectionManager`. Make entry failure and repeated entry safe. Release `global_world` and project-owned world presentation resources through the explicit boundary.
 
-Verify the supported PurrNet scene teardown path at the installed package version; retain vendor scene-handle ownership.
+Verify the supported PurrNet scene cleanup path at the installed package version; retain vendor scene-handle ownership.
 
 ### Step 3 — Fix project-owned Addressables lifetimes
 
@@ -653,7 +653,7 @@ Run the current-grid form of `P1-S0-05`:
 - isolated origin-shift work where scenes can be held steady;
 - isolated scene churn where practical;
 - combined traversal/streaming flow;
-- repeated world entry/teardown cycles.
+- repeated world entry/cleanup cycles.
 
 Measure scene counts, origin-shift cost, frame tails, Addressables ownership counts, pool counts and retained memory.
 
@@ -663,9 +663,9 @@ No numerical streaming-hitch or memory-slope limit is invented before this evide
 
 Add separate regression-test issues for the critical contracts:
 
-- world-session teardown is idempotent;
+- world-session cleanup is idempotent;
 - late async completion from an old session cannot publish into a new session;
-- project-owned Addressables handles balance on success, failure, eviction and teardown;
+- project-owned Addressables handles balance on success, failure, eviction and cleanup;
 - audio cache eviction releases the evicted handle;
 - camera entry/exit cannot retain duplicate instances/handles;
 - VFX completion removes active ownership and releases exactly once;
@@ -780,7 +780,7 @@ The implementation should be converted into narrowly scoped GitHub issues after 
 Recommended production sequence:
 
 1. resource-lifetime telemetry and inventory;
-2. client world-presentation teardown;
+2. client world-presentation cleanup;
 3. audio Addressables lifetime;
 4. camera Addressables/world lifetime;
 5. VFX Addressables/active lifetime;
@@ -802,7 +802,7 @@ Validate in this order:
 
 1. static ownership/lifecycle correctness;
 2. Addressables acquire/release and asynchronous failure paths;
-3. world entry/disconnect/re-entry teardown;
+3. world entry/disconnect/re-entry cleanup;
 4. pooled-object reset and bounds;
 5. floating-origin/scene-transition correctness;
 6. LOD/culling asset validation;
@@ -815,7 +815,7 @@ A visually correct single empty scene is not sufficient Stage 1.6 validation. Co
 
 After Stage 1.6, later work may assume:
 
-- client presentation resources have explicit owners and teardown;
+- client presentation resources have explicit owners and cleanup;
 - streamed world content can be profiled without conflating scene lifetime with actor authority;
 - future art has a defined LOD/culling acceptance contract;
 - high-churn UI presentation has a bounded pooling pattern;

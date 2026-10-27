@@ -443,7 +443,7 @@ namespace Game.Client
             {
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.TRACKED_SCENE_COUNT, 0);
                 ClientPerformanceMetrics.TryRecordDuration(
-                    ClientPerformanceMetrics.WORLD_PRESENTATION_TEARDOWN_DURATION,
+                    ClientPerformanceMetrics.WORLD_PRESENTATION_CLEANUP_DURATION,
                     startedTimestamp);
             }
         }

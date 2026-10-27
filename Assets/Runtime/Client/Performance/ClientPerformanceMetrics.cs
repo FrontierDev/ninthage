@@ -233,8 +233,8 @@ namespace Game.Client.Performance
             PerformanceMetricUnit.Count,
             "addressables",
             "client_process");
-        internal static readonly PerformanceMetricDefinition WORLD_PRESENTATION_TEARDOWN_DURATION = Metric(
-            PerformanceMetricIds.CLIENT_WORLD_PRESENTATION_TEARDOWN_DURATION,
+        internal static readonly PerformanceMetricDefinition WORLD_PRESENTATION_CLEANUP_DURATION = Metric(
+            PerformanceMetricIds.CLIENT_WORLD_PRESENTATION_CLEANUP_DURATION,
             PerformanceMetricUnit.Milliseconds,
             "scene",
             "scene_operation");
@@ -294,7 +294,7 @@ namespace Game.Client.Performance
             RegisterMeasured(AUDIO_LIVE_ADDRESSABLE_HANDLE_COUNT);
             RegisterMeasured(CAMERA_LIVE_ADDRESSABLE_HANDLE_COUNT);
             RegisterMeasured(VFX_LIVE_ADDRESSABLE_HANDLE_COUNT);
-            RegisterMeasured(WORLD_PRESENTATION_TEARDOWN_DURATION);
+            RegisterMeasured(WORLD_PRESENTATION_CLEANUP_DURATION);
             RegisterMeasured(AUDIO_CACHE_COUNT);
         }
 
