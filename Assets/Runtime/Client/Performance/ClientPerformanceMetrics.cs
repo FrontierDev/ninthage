@@ -10,8 +10,6 @@ namespace Game.Client.Performance
             "PurrNet does not expose streamed scene request timestamps; only the unload callback duration is observable.";
         private const string VISIBLE_ACTOR_UNAVAILABLE_REASON =
             "The current client actor endpoint does not expose a matching despawn lifecycle for a complete visible-actor count.";
-        private const string VFX_LIFETIME_UNAVAILABLE_REASON =
-            "The project-owned VFX path exposes spawn events but no reliable destruction callback; active and release coverage is partial.";
 
         internal static readonly PerformanceMetricDefinition RENDERED_FRAME_TIME = Metric(
             PerformanceMetricIds.CLIENT_RENDERED_FRAME_TIME,
@@ -276,9 +274,9 @@ namespace Game.Client.Performance
             RegisterMeasured(NAMEPLATE_SPAWN_COUNT);
             RegisterMeasured(NAMEPLATE_RELEASE_COUNT);
             RegisterMeasured(NAMEPLATE_UPDATE_DURATION);
-            RegisterUnavailable(VFX_ACTIVE_COUNT, VFX_LIFETIME_UNAVAILABLE_REASON);
+            RegisterMeasured(VFX_ACTIVE_COUNT);
             RegisterMeasured(VFX_SPAWN_COUNT);
-            RegisterUnavailable(VFX_RELEASE_COUNT, VFX_LIFETIME_UNAVAILABLE_REASON);
+            RegisterMeasured(VFX_RELEASE_COUNT);
             RegisterMeasured(UI_TRANSIENT_COUNT);
             RegisterMeasured(UI_TRANSIENT_SPAWN_COUNT);
             RegisterMeasured(UI_TRANSIENT_RELEASE_COUNT);

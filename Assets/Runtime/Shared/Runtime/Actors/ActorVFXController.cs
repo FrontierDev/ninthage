@@ -31,6 +31,17 @@ namespace Game.Shared.Runtime.Actors
             _activeVFX[id] = go;
         }
 
+        /// <summary>Unregisters an effect only when the identifier still points to the supplied instance.</summary>
+        public void UnregisterEffect(int id, GameObject instance)
+        {
+            if (!_activeVFX.TryGetValue(id, out var current))
+                return;
+            if (!ReferenceEquals(current, instance))
+                return;
+
+            _activeVFX.Remove(id);
+        }
+
         /// <summary>Publishes a transient effect at an authoritative world position to actor observers.</summary>
         /// <exception cref="InvalidOperationException">Thrown when called outside the server.</exception>
         public void PublishEffectAtPosition(int id, string addressablePath, WorldPosition position, float lifetime)
