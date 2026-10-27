@@ -57,7 +57,7 @@ These are **benchmark inputs, not gameplay configuration/default balance**. `idl
 | `NET-TYPICAL` | Nominal 80 ms RTT, ±20 ms jitter, 0.5% loss | Only valid with supported public transport control or external emulator and observed actual conditions. |
 | `NET-ADVERSE` | Nominal 160 ms RTT, ±40 ms jitter, 2% loss | Record timeouts/retries, never claim configured impairment was achieved without measurement. |
 
-The existing project [LatencySimulator](../../Assets/Runtime/Shared/Networking/LatencySimulator.cs) uses reflection into private PurrNet transport internals; benchmark tooling must not depend on or extend that unsupported private API. If traffic shaping is unavailable, impairment variants stay `BLOCKED-PREREQUISITE`.
+The project [LatencySimulator](../../Assets/Runtime/Shared/Networking/LatencySimulator.cs) configures PurrNet 1.25.0 through the public `UDPTransport.networkSimulation` boundary. Editor and Development-build impairment may use this supported boundary, but measured RTT/loss must still be recorded rather than inferred from configured values. External shaping remains valid where a transport or platform requires it. Production/non-development builds do not enable project-configured impairment through this component. If traffic shaping is unavailable, impairment variants stay `BLOCKED-PREREQUISITE`.
 
 ### 2.4 Provisional timing presets
 

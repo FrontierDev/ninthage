@@ -129,6 +129,8 @@ The public generic transport boundary includes:
 
 The optional Steam-specific public boundary additionally exposes `SteamTransport.GetSendStatistics(Connection, bool)` and `SteamSendStatistics.queuedReliableMessages`, `queuedReliableBytes`, `acceptedMessages`, `rejectedSendAttempts`, `droppedUnreliableMessages`, and `deferredReliableMessages` (`Addons/Steam/Runtime/SteamTransport.cs:100-105`; `SteamSendStatistics.cs:3-14`). The source explicitly limits queued bytes to the project-owned Steam reliable retry queue and excludes Steam's native send queue. This is not a generic `ITransport` backlog contract.
 
+Network impairment simulation is also a supported public boundary: PurrNet 1.25.0 exposes serializable `NetworkSimulation` (`Runtime/Transports/NetworkSimulation.cs:7-48`), and `UDPTransport.networkSimulation` provides its public get/set integration (`Runtime/Transports/UDPTransport.cs:36,62-70`). `NetworkSimulation.includeInBuild` controls whether the configured simulation applies outside the Editor. Ninth Age's `LatencySimulator` uses this boundary and no longer requires private PurrNet or LiteNetLib transport reflection.
+
 No generic public PurrNet counter was found for queue depth/backlog, congestion, packet loss, or retransmission. UDP/LiteNetLib statistics are disabled in the installed `UDPTransport` setup (`UDPTransport.cs:175-190`), and internal queues in optional transports are not a generic project integration boundary. The public RTT boundary is transport-dependent and currently uninstrumented by Ninth Age.
 
 ## Metric reconciliation and active contract
