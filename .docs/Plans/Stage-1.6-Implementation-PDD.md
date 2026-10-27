@@ -46,12 +46,12 @@ At Stage 1.6 completion:
 - repeated world entry/exit and repeated tile traversal do not cause monotonically growing retained world scenes, project-owned Addressables handles, pooled objects or presentation objects;
 - normal 256 m world-tile/origin boundary crossings remain visually seamless and do not alter authoritative actor position;
 - streamed detailed world content and distant terrain representation remain separate lifetime/LOD concerns, even though both use the shared 256 m world grid;
-- transient presentation pooling is limited to measured high-churn, reset-safe objects; network actor identity is not pooled by Stage 1.6;
+- transient presentation pooling is limited to clearly high-churn, reset-safe objects with explicit bounds; network actor identity is not pooled by Stage 1.6;
 - significant environment assets have a standard LOD/culling authoring contract, and validation can identify assets that violate it;
-- URP Forward+ rendering is benchmarked with representative forest, settlement and crowded-presentation fixtures using real rendered client frames;
-- GPU instancing, SRP Batcher compatibility and any later GPU-driven/impostor/HLOD technique are adopted only where compatible and supported by profiling evidence;
+- client rendering, streaming and resource-lifetime telemetry is present and smoke-tested so later performance work can measure the real runtime without adding another profiling framework;
+- GPU instancing, SRP Batcher tuning and any later GPU-driven/impostor/HLOD optimisation are **not** selected or globally enabled by Stage 1.6 merely to chase benchmark results;
 - day/night and future weather hooks remain compatible with the rendering contract, but complete weather/environment systems are not implemented here;
-- Stage 1.6 closes only with repeatable traversal/rendering evidence and stable retained-memory/resource counts, not with static inspection alone.
+- Stage 1.6 closes on foundation correctness, explicit ownership, focused regression coverage and instrumentation readiness. Representative rendering, traversal, soak and capacity benchmarking is deferred to the integrated Phase 1 performance programme after the server/client foundations are complete.
 
 ## 3. Existing `dev` foundation to preserve
 
@@ -514,50 +514,45 @@ None of these client-local presentation concerns belong in shared authoritative 
 
 Values that have not yet been measured remain explicitly provisional and are promoted only with Stage 1.6 evidence.
 
-## 7. URP Forward+ optimisation policy
+## 7. URP Forward+ foundation and deferred optimisation policy
 
-### 7.1 Baseline before optimisation
+### 7.1 Stage 1.6 responsibility
 
 The approved renderer remains URP Forward+.
 
-For each representative fixture, first capture an unchanged Forward+ baseline with:
+Stage 1.6 establishes the **authoring, lifetime and instrumentation foundation** needed for later rendering optimisation. It does not own a representative rendering benchmark campaign and does not set shipping frame-time, draw-call, triangle, light-count or memory budgets.
 
-- exact Git/build identity;
-- hardware and graphics device;
-- resolution/display mode;
-- URP asset/quality level;
-- fixture content hash/counts;
+Stage 1.6 must leave the client able to report, where the current Unity/runtime APIs support them:
+
+- exact Git/build and hardware/render identity;
+- resolution/display mode and quality/render-pipeline asset;
 - draw calls/batches/triangles;
-- main/render/GPU frame times;
+- main/render/GPU frame timing;
 - memory;
-- lights/shadow casters;
-- visible actors/nameplates/VFX;
-- LOD state where measurable.
+- scene/streaming and floating-origin observations;
+- project-owned Addressables/presentation ownership counts.
 
-### 7.2 Techniques to evaluate
+Short smoke runs are permitted only to prove that instrumentation is wired and produces plausible/non-empty output. They are **not** performance acceptance evidence and must not drive optimisation work in this stage.
 
-Evaluate techniques independently enough to attribute results:
+### 7.2 Optimisation hand-off
+
+The following techniques remain valid future candidates, but their comparative evaluation belongs to the integrated Phase 1 performance programme after the server/client foundations are complete:
 
 1. SRP Batcher compatibility and material structure;
 2. GPU instancing for repeated compatible meshes/materials;
 3. authored LOD/culling;
 4. vegetation impostors/cards where suitable;
-5. only then, if the remaining measured bottleneck justifies it, Unity-supported GPU-driven rendering or an HLOD layer.
+5. Unity-supported GPU-driven rendering or an HLOD layer where later evidence justifies the added complexity.
 
-Do not enable a technique globally merely because it is theoretically faster. Do not assume SRP Batcher, GPU instancing and a GPU-driven path stack beneficially for every material/renderer combination.
+Do not create Stage 1.6 implementation issues whose sole purpose is to benchmark or tune these techniques. Do not enable them globally because they are theoretically faster.
 
-A candidate optimisation is retained only when:
-
-- the fixture remains visually correct;
-- floating-origin/streaming behaviour remains correct;
-- the relevant CPU/GPU or memory metric improves or a required density becomes viable;
-- it does not create a worse tail-frame or asset-authoring burden disproportionate to the gain.
+The Stage 1.6 LOD/culling validator remains foundation work because it defines future asset-authoring correctness independent of a performance campaign.
 
 ### 7.3 Lighting, day/night and weather
 
 Stage 1.6 preserves the existing graphical requirement for day/night and future weather.
 
-The rendering contract must therefore avoid optimisations that require a permanently static lighting model or make future weather overlays impossible.
+The rendering contract must avoid foundation choices that require a permanently static lighting model or make future weather overlays impossible.
 
 Stage 1.6 does not implement:
 
@@ -566,7 +561,7 @@ Stage 1.6 does not implement:
 - final biome atmosphere;
 - final light-count/art budgets.
 
-Forward+ local lights, shadows and environmental effects remain measurable presentation costs.
+Forward+ local-light, shadow and environmental-effect performance is evaluated later with representative content.
 
 ## 8. Ordered implementation
 
@@ -602,7 +597,7 @@ Do not introduce pooling as a way to conceal a missing release path.
 
 Implement the bounded floating-combat-text pool and its reset contract.
 
-Measure spawn/release/GC behaviour. Then implement nameplate pooling only if the measured fixture shows meaningful creation/destruction churn and the reset contract can be made complete without changing gameplay/UI semantics.
+The FCT pool is justified by its intrinsically transient repeated-spawn role and must have a complete reset contract and hard bound. Do not require a benchmark campaign to finish this foundation work. Nameplate pooling is optional and should remain unimplemented unless a later integrated performance campaign demonstrates that it is worth the additional reset/lifetime complexity.
 
 ### Step 5 — Streaming readiness and traversal instrumentation
 
@@ -624,121 +619,54 @@ Adopt the authoring contract first for representative test assets/fixtures rathe
 
 No third-party assets may be rewritten automatically.
 
-### Step 7 — Representative Forward+ fixture campaign
+### Step 7 — Focused regression coverage
 
-Run the Stage 1.6 rendering campaign using the intent of `P1-S0-06`:
+Add separate regression-test issues only for critical Stage 1.6 contracts that are not already covered and that meet the repository test-value gate.
 
-- outdoor/control;
-- forest;
-- settlement;
-- crowded presentation slice.
-
-Use the documented density progression rather than treating the old lightweight fixture as a production load.
-
-Record the current existing provisional Editor guardrails as comparison references only:
-
-| Metric | Existing provisional Editor review threshold |
-| --- | ---: |
-| rendered frame p95 | ≤ 6.0 ms |
-| rendered frame p99 | ≤ 10.0 ms |
-| main-thread p99 | ≤ 5.0 ms |
-| render-thread p99 | ≤ 4.0 ms |
-| GPU p99 | ≤ 2.5 ms |
-| total allocated memory, median-run p50 | ≤ 2,000,000,000 bytes |
-
-These values are not new Stage 1.6 shipping budgets and the existing 26-draw-call / 1,930-triangle fixture signature is not a world-content limit.
-
-A >20% graphical frame/resource increase against a compatible approved baseline remains a regression-review trigger.
-
-### Step 8 — Rapid traversal and repeated-lifetime campaign
-
-Run the current-grid form of `P1-S0-05`:
-
-- a connected legal route across at least six adjacent 256 m tiles;
-- repeated positive and negative world coordinates;
-- repeated shared 256 m origin/tile boundaries;
-- isolated origin-shift work where scenes can be held steady;
-- isolated scene churn where practical;
-- combined traversal/streaming flow;
-- repeated world entry/cleanup cycles.
-
-Measure scene counts, origin-shift cost, frame tails, Addressables ownership counts, pool counts and retained memory.
-
-No numerical streaming-hitch or memory-slope limit is invented before this evidence exists. The first qualified campaign establishes candidate Stage 1.6 review thresholds, which are then recorded in the performance-budget documentation through an explicit owner-approved update.
-
-### Step 9 — Focused regression coverage
-
-Add separate regression-test issues for the critical contracts:
+Required contract families:
 
 - world-session cleanup is idempotent;
-- late async completion from an old session cannot publish into a new session;
-- project-owned Addressables handles balance on success, failure, eviction and cleanup;
+- late asynchronous completion from an old world-presentation generation cannot publish into a new session;
+- project-owned Addressables ownership balances on the success/failure/eviction/cleanup paths that Stage 1.6 changed;
 - audio cache eviction releases the evicted handle;
 - camera entry/exit cannot retain duplicate instances/handles;
 - VFX completion removes active ownership and releases exactly once;
 - FCT pooled reuse fully resets state and remains bounded;
-- nameplate reuse, if implemented, retains no previous actor state;
 - floating-origin shift preserves absolute actor position;
 - newly loaded scene projection uses the current origin;
 - repeated scene callbacks do not duplicate tracked scenes.
 
-Tests do not prove GPU performance. Render/traversal campaigns remain required.
+Nameplate pool reset coverage is required only if nameplate pooling actually exists.
 
-### Step 10 — Stage close-out
+Tests prove correctness contracts, not GPU/client capacity.
 
-Stage 1.6 closes only after:
+### Step 8 — Stage close-out
+
+Stage 1.6 closes when:
 
 1. production lifetime fixes are accepted;
-2. focused regression coverage is accepted;
-3. representative Forward+ evidence exists;
-4. rapid traversal/repeated-lifetime evidence exists;
-5. new measured thresholds or explicitly unresolved hardware-dependent limits are documented;
+2. streaming-readiness/origin instrumentation is accepted;
+3. LOD/culling authoring validation is accepted;
+4. focused regression coverage for the changed critical contracts is accepted;
+5. client profiling/reporting is sufficiently smoke-tested to support later integrated performance work;
 6. no known unbounded project-owned resource lifetime remains in the Stage 1.6 client scope.
 
-## 9. Required benchmark interpretation
+Representative Forward+, rapid-traversal, repeated-lifetime, soak and capacity campaigns are **not Stage 1.6 gates**. They are deferred until the server/client foundations are complete and are executed through Stages 1.10–1.11.
 
-### 9.1 P1-S0-05 update
+## 9. Deferred performance-verification hand-off
 
-Use the stress profile's intended traversal/churn workload but apply the current authoritative 256 m shared grid. Do not reintroduce a 100 m origin grid solely to reproduce historical text.
+The Phase 1 stress profiles remain authoritative workload definitions, but Stage 1.6 does not execute them as completion gates.
 
-Correctness failures include:
+When the integrated Phase 1 performance programme begins after the server/client foundations are complete:
 
-- visible floating-origin teleport;
-- changed authoritative absolute position;
-- missing terrain/world content on a legal route;
-- duplicate scene roots;
-- stale tracked scenes;
-- presentation objects surviving their owning world session;
-- project-owned live Addressables counts increasing on each identical cycle.
+- `P1-S0-05` rapid traversal must use the current authoritative shared **256 m** grid and must not recreate the superseded 100 m prototype origin grid;
+- `P1-S0-06` remains the representative dense forest/settlement rendering workload;
+- standalone graphical-client evidence must retain exact build/hardware/quality identity;
+- independent repeats, p50/p95/p99/raw maxima, failures and outliers must be retained;
+- unsupported Unity/PurrNet metrics remain explicitly unavailable rather than fabricated;
+- performance thresholds are promoted only through the Stage 1.10/1.11 evidence and owner-approval process.
 
-### 9.2 P1-S0-06 rendering workload
-
-The forest and settlement fixture remains the primary renderer workload.
-
-The density ladder is exploratory, not an art cap:
-
-- forest D0: 50 trees + 200 undergrowth clusters per tile;
-- settlement D0: 15 buildings + 80 props per tile;
-- D1/D2/D3: ×2/×4/×8 instance-count probes where the asset fixture supports them.
-
-Capture 1/4/16 dynamic-light variants only where the fixture genuinely implements those lights. Record shadow casters, LOD/impostor policy, terrain settings and transparency/overdraw characteristics rather than inferring them from object count.
-
-A Null graphics device cannot qualify GPU/rendering evidence.
-
-### 9.3 Evidence quality
-
-Use the existing Phase 1 benchmark identity/retention rules.
-
-For graphical comparisons:
-
-- use qualified independent repeats;
-- retain per-run p50/p95/p99 and raw maxima;
-- preserve failures and outliers rather than deleting them;
-- do not pool samples from incompatible revisions;
-- record hardware/build/quality context;
-- distinguish Editor-only evidence from standalone graphical-client evidence.
-
-Stage 1.6 should add standalone-client evidence when the harness supports it. Editor-only evidence cannot be promoted silently into a production GPU claim.
+Any Stage 1.6 profiling reports already captured are developmental instrumentation smoke evidence only. They do not establish production budgets or require follow-on benchmark issues before Stage 1.7 may proceed.
 
 ## 10. Ownership matrix
 
@@ -786,39 +714,40 @@ Stage 1.6 does not:
 
 The implementation should be converted into narrowly scoped GitHub issues after this PDD is approved.
 
-Recommended production sequence:
+Recommended Stage 1.6 sequence:
 
 1. resource-lifetime telemetry and inventory;
 2. client world-presentation cleanup;
 3. audio Addressables lifetime;
 4. camera Addressables/world lifetime;
 5. VFX Addressables/active lifetime;
-6. FCT pooling;
-7. optional measured nameplate pooling;
-8. streaming-readiness/instrumentation cleanup;
-9. native LOD/culling authoring validator, with player-adjustable graphics controls using `ClientSettingsManager` only when a concrete runtime setting is introduced;
-10. Forward+ candidate optimisation slices, each separately measurable;
-11. Stage 1.6 rendering campaign;
-12. Stage 1.6 traversal/lifetime campaign.
+6. bounded FCT pooling;
+7. streaming-readiness/instrumentation cleanup;
+8. native LOD/culling authoring validator, with player-adjustable graphics controls using `ClientSettingsManager` only when a concrete runtime setting is introduced;
+9. client profiling/reporting plumbing needed by later integrated performance work;
+10. focused regression coverage for the critical changed contracts;
+11. Stage 1.6 close-out.
 
-Regression-test issues should be separate from their production issues according to the repository workflow. Benchmark/evidence issues must preserve the exact fixture, build and hardware identity.
+Do **not** create Stage 1.6 issues for representative Forward+ benchmarking, rapid-traversal performance campaigns, repeated-lifetime soak campaigns, threshold derivation, renderer tuning or capacity qualification. Those belong to Stages 1.10–1.11 after the client/server foundations are complete.
+
+Regression-test issues remain separate from production issues according to the repository workflow.
 
 Do not combine all Stage 1.6 production work into one large implementation issue.
 
 ## 13. Validation order
 
-Validate in this order:
+Validate Stage 1.6 foundation work in this order:
 
 1. static ownership/lifecycle correctness;
 2. Addressables acquire/release and asynchronous failure paths;
-3. world entry/disconnect/re-entry cleanup;
-4. pooled-object reset and bounds;
+3. world entry/disconnect/re-entry cleanup correctness;
+4. pooled-object reset and hard bounds;
 5. floating-origin/scene-transition correctness;
 6. LOD/culling asset validation;
-7. representative Forward+ performance;
-8. repeated traversal and memory/resource stability.
+7. client profiling/report smoke validation;
+8. focused regression coverage.
 
-A visually correct single empty scene is not sufficient Stage 1.6 validation. Conversely, a faster benchmark does not pass if it leaks resources, creates visible LOD/streaming discontinuities or weakens gameplay readability.
+Runtime smoke checks must prove that the feature works and instrumentation is connected. They must not be expanded into representative density, traversal, soak, threshold-setting or capacity campaigns during Stage 1.6.
 
 ## 14. Stage 1.6 hand-off
 
@@ -828,7 +757,7 @@ After Stage 1.6, later work may assume:
 - streamed world content can be profiled without conflating scene lifetime with actor authority;
 - future art has a defined LOD/culling acceptance contract;
 - high-churn UI presentation has a bounded pooling pattern;
-- renderer optimisation decisions are evidence-based;
+- later renderer/performance work has stable telemetry and an asset-authoring contract to measure rather than redesigning client ownership first;
 - Stage 1.9 can build Addressables release/version compatibility on top of a balanced runtime handle-lifetime foundation.
 
-Stage 1.9 still owns remote catalog/version/content-delivery policy. Stage 1.6 owns the runtime lifetime and rendering behaviour of content once the client uses it.
+Stage 1.9 still owns remote catalog/version/content-delivery policy. Stage 1.6 owns the runtime lifetime and rendering behaviour of content once the client uses it. Stages 1.10–1.11 own representative performance campaigns, threshold promotion and integrated stress sign-off.
