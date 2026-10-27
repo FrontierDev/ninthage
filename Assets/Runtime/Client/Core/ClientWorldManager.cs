@@ -430,7 +430,7 @@ namespace Game.Client
 
             foreach (var requiredCoordinate in _requiredStreamedSceneCoordinates)
             {
-                bool isLoaded = false;
+                var isLoaded = false;
                 foreach (var scene in _loadedScenes.Values)
                 {
                     if (ParseChunkCoordinate(scene.name) == requiredCoordinate)
