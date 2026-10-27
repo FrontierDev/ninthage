@@ -488,26 +488,29 @@ Stage 1.6 adds project-owned editor validation that can report, by category:
 - missing required `LODGroup`;
 - invalid/non-monotonic LOD transitions;
 - missing renderer assignment in an LOD level;
-- inappropriate persistent shadow casting on distant LODs according to the configured category policy;
-- excessive material-slot count or transparency usage where a configured review threshold exists;
+- inappropriate persistent shadow casting on distant LODs according to the approved project authoring rule;
+- excessive material-slot count or transparency usage only where an explicitly approved editor review threshold exists;
 - vegetation/architecture assets that are marked as requiring distant representation but have none;
 - invalid or oversized VFX renderer bounds where detectable;
-- missing project category/policy assignment only when native Unity state cannot distinguish the intended rule.
+- missing project category assignment only when native Unity state cannot distinguish the intended rule.
+
+The validator's category rules are editor authoring policy, not runtime player configuration. It may use editor-only labels or equivalent editor metadata where a native Unity component cannot identify the intended asset category. Those labels must not introduce a runtime presentation component or a second visibility/culling system.
 
 Validation initially reports actionable warnings/errors. It must not silently rewrite authored assets.
 
-### 6.4 Central client presentation policy
+### 6.4 Graphics settings, authored state and engineering-limit ownership
 
-Operational limits and category policy must not be scattered across managers as unrelated literals.
+Stage 1.6 must keep three distinct kinds of presentation values under their existing appropriate owners rather than combining them into a new client-presentation configuration subsystem.
 
-Stage 1.6 introduces one client-owned presentation configuration source for:
+**Player-adjustable graphics preferences** belong to the existing `ClientSettingsManager` and are persisted locally through `PlayerPrefs`. When Stage 1.6 or later work introduces an actual player-adjustable rendering control, such as a quality preset, shadow quality/distance, vegetation/detail distance, VFX quality/distance or animation-quality option, that control must use the existing client-settings path. Do not create a parallel graphics-settings manager or a `ClientPresentationConfiguration` solely to hold those preferences.
 
-- pool retained capacities;
-- presentation culling/LOD category defaults where a common project value is justified;
-- shadow/animation/VFX quality-distance defaults where applicable;
-- benchmark/validation review thresholds that are actual runtime settings.
+**Authored asset presentation state** remains on the relevant Unity assets/components. Examples include `LODGroup` transition values and renderer membership, per-LOD renderer shadow state, material structure and effect/renderer bounds. Project editor tooling may validate that state against the authoring contract, but it does not move those values into `PlayerPrefs` or duplicate them in runtime configuration.
 
-This configuration is client presentation data. It must not become authoritative server gameplay configuration, and it must not duplicate `GameConfiguration.ChunkSize` or other shared world contracts.
+**Manager-specific engineering limits** remain with the runtime owner that enforces the lifetime unless measurement establishes a concrete reason to expose a different contract. Examples include retained pool capacities such as the FCT pool owned by `UI_FCTManager`. These are implementation/resource limits, not user graphics preferences, and must not be moved into `PlayerPrefs` merely because they affect presentation performance.
+
+Benchmark-only review thresholds and editor validation rules remain tooling/evidence policy unless they become a real player-adjustable runtime setting. They are not implicitly runtime configuration.
+
+None of these client-local presentation concerns belong in shared authoritative `GameConfiguration`, and they must not duplicate `GameConfiguration.ChunkSize` or other shared world contracts.
 
 Values that have not yet been measured remain explicitly provisional and are promoted only with Stage 1.6 evidence.
 
@@ -611,9 +614,13 @@ Do not move streaming-interest authority to the client.
 
 ### Step 6 — LOD/culling policy and editor validation
 
-Add the central client presentation policy and native-component authoring validation described in §6.
+Add the native-component authoring validation described in §6.3 around Unity's existing `LODGroup`, Renderer, Animator, material and bounds state.
 
-Adopt the policy first for representative test assets/fixtures rather than mass-editing unrelated production art.
+Use editor-only category assignment only where native Unity state cannot distinguish the intended asset class. Keep those authoring rules in editor tooling rather than introducing a runtime presentation-policy/configuration subsystem.
+
+If this step introduces any actual player-adjustable graphics control, route that preference through the existing `ClientSettingsManager` / `PlayerPrefs` path described in §6.4. Do not move manager-owned engineering limits such as FCT pool capacity into player preferences.
+
+Adopt the authoring contract first for representative test assets/fixtures rather than mass-editing unrelated production art.
 
 No third-party assets may be rewritten automatically.
 
@@ -748,8 +755,10 @@ Stage 1.6 should add standalone-client evidence when the harness supports it. Ed
 | FCT pool | `UI_FCTManager` |
 | nameplate pool, if justified | `UI_NameplateManager` |
 | network actor GameObject/NetworkIdentity | existing PurrNet actor lifecycle |
-| client rendering/pooling policy values | one client-owned presentation configuration |
-| LOD/culling asset compliance | native Unity authoring + project-owned editor validator |
+| player-adjustable graphics preferences | `ClientSettingsManager` + local `PlayerPrefs` persistence |
+| manager-specific presentation/resource limits | existing owning manager, e.g. FCT capacity in `UI_FCTManager` |
+| authored LOD/render/shadow/bounds state | native Unity assets/components |
+| LOD/culling asset compliance and category authoring rules | project-owned editor validator |
 | frame/render/resource telemetry | existing `PerformanceTelemetry` / `ClientPerformanceMetrics` |
 | final content/update catalog versioning | Stage 1.9; not Stage 1.6 |
 
@@ -787,7 +796,7 @@ Recommended production sequence:
 6. FCT pooling;
 7. optional measured nameplate pooling;
 8. streaming-readiness/instrumentation cleanup;
-9. client presentation configuration + LOD/culling validator;
+9. native LOD/culling authoring validator, with player-adjustable graphics controls using `ClientSettingsManager` only when a concrete runtime setting is introduced;
 10. Forward+ candidate optimisation slices, each separately measurable;
 11. Stage 1.6 rendering campaign;
 12. Stage 1.6 traversal/lifetime campaign.
