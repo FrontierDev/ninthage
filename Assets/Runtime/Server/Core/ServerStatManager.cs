@@ -26,6 +26,7 @@ namespace Game.Server.Core
 
         private readonly List<Actor> _trackedActors = new();
         private readonly Dictionary<Actor, Dictionary<string, float>> _currentEquipmentModifiers = new();
+        private readonly List<string> _changedStatIDs = new();
 
         private void Awake()
         {
@@ -47,6 +48,7 @@ namespace Game.Server.Core
             Game.Shared.Networking.CharacterEndpoint.onUpdateStatsRequest -= OnUpdateStatsRequest;
 
             _trackedActors.Clear();
+            _changedStatIDs.Clear();
             _instance = null;
             _initialized = false;
         }
@@ -366,7 +368,7 @@ namespace Game.Server.Core
             container.SetStat(statID, new StatInstance(
                 stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                 stat.EffectiveMaximum, value));
-            SendSnapshot(actor);
+            SendSnapshot(actor, new[] { statID });
         }
 
         /// <summary>Resets an actor's Resource-category stats to their authored reset baseline.</summary>
@@ -397,13 +399,13 @@ namespace Game.Server.Core
 
             for (int a = _trackedActors.Count - 1; a >= 0; a--)
             {
+                _changedStatIDs.Clear();
                 var actor = _trackedActors[a];
                 if (actor == null) { _trackedActors.RemoveAt(a); continue; }
 
                 var container = actor.GetComponent<ActorStatContainer>();
                 if (container == null) continue;
 
-                bool dirty = false;
                 for (int i = 0; i < allDefs.Count; i++)
                 {
                     var def = allDefs[i];
@@ -423,12 +425,14 @@ namespace Game.Server.Core
                         container.SetStat(def.DefinitionID, new StatInstance(
                             stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                             stat.EffectiveMaximum, newCurrent));
-                        dirty = true;
+                        _changedStatIDs.Add(def.DefinitionID);
                     }
                 }
 
-                if (dirty)
-                    SendSnapshot(actor);
+                if (_changedStatIDs.Count > 0)
+                    SendSnapshot(actor, _changedStatIDs);
+
+                _changedStatIDs.Clear();
             }
         }
 
@@ -483,6 +487,30 @@ namespace Game.Server.Core
                 var ownerSnapshot = container.BuildSnapshot(ActorStatReplicationMode.Owner);
                 if (observerSnapshot.Stats.Length > 0)
                     container.PublishOwnerSnapshot(actor.Owner.Value, observerSnapshot);
+                if (ownerSnapshot.Stats.Length > 0)
+                    container.PublishOwnerSnapshot(actor.Owner.Value, ownerSnapshot);
+            }
+        }
+
+        private void SendSnapshot(Actor actor, IReadOnlyList<string> changedStatIDs)
+        {
+            var container = actor.GetComponent<ActorStatContainer>();
+            if (container == null) return;
+
+            var observerSnapshot = container.BuildSnapshot(
+                ActorStatReplicationMode.Observers,
+                changedStatIDs);
+            if (observerSnapshot.Stats.Length > 0)
+                container.PublishObserverSnapshot(observerSnapshot);
+
+            if (actor.IsPlayer && actor.Owner.HasValue)
+            {
+                if (observerSnapshot.Stats.Length > 0)
+                    container.PublishOwnerSnapshot(actor.Owner.Value, observerSnapshot);
+
+                var ownerSnapshot = container.BuildSnapshot(
+                    ActorStatReplicationMode.Owner,
+                    changedStatIDs);
                 if (ownerSnapshot.Stats.Length > 0)
                     container.PublishOwnerSnapshot(actor.Owner.Value, ownerSnapshot);
             }

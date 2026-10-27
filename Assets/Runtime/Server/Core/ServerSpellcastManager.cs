@@ -701,10 +701,23 @@ namespace Game.Server.Core
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, newCurrent));
 
+                var changedStatIDs = new[] { cost.ResourceType.DefinitionID };
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
-                    statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                {
+                    var snapshot = statContainer.BuildSnapshot(
+                        ActorStatReplicationMode.Observers,
+                        changedStatIDs);
+                    if (snapshot.Stats.Length > 0)
+                        statContainer.PublishObserverSnapshot(snapshot);
+                }
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
-                    statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                {
+                    var snapshot = statContainer.BuildSnapshot(
+                        ActorStatReplicationMode.Owner,
+                        changedStatIDs);
+                    if (snapshot.Stats.Length > 0)
+                        statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, snapshot);
+                }
             }
 
             return true;
@@ -773,10 +786,23 @@ namespace Game.Server.Core
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, newCurrent));
 
+                var changedStatIDs = new[] { cost.ResourceType.DefinitionID };
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
-                    statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                {
+                    var snapshot = statContainer.BuildSnapshot(
+                        ActorStatReplicationMode.Observers,
+                        changedStatIDs);
+                    if (snapshot.Stats.Length > 0)
+                        statContainer.PublishObserverSnapshot(snapshot);
+                }
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
-                    statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                {
+                    var snapshot = statContainer.BuildSnapshot(
+                        ActorStatReplicationMode.Owner,
+                        changedStatIDs);
+                    if (snapshot.Stats.Length > 0)
+                        statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, snapshot);
+                }
             }
 
             if (IsCurrentCast(actorID, spellID, castID, ctx))
@@ -1007,10 +1033,23 @@ namespace Game.Server.Core
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
                     stat.EffectiveMaximum, newCurrent));
 
+                var changedStatIDs = new[] { cost.ResourceType.DefinitionID };
                 if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Observers)
-                    statContainer.PublishObserverSnapshot(statContainer.BuildSnapshot(ActorStatReplicationMode.Observers));
+                {
+                    var snapshot = statContainer.BuildSnapshot(
+                        ActorStatReplicationMode.Observers,
+                        changedStatIDs);
+                    if (snapshot.Stats.Length > 0)
+                        statContainer.PublishObserverSnapshot(snapshot);
+                }
                 else if (cost.ResourceType.ReplicationMode == ActorStatReplicationMode.Owner)
-                    statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, statContainer.BuildSnapshot(ActorStatReplicationMode.Owner));
+                {
+                    var snapshot = statContainer.BuildSnapshot(
+                        ActorStatReplicationMode.Owner,
+                        changedStatIDs);
+                    if (snapshot.Stats.Length > 0)
+                        statContainer.PublishOwnerSnapshot(ctx.Caster.Owner.Value, snapshot);
+                }
             }
 
             // If it was a weapon skill, add experience to the character's weapon skill.

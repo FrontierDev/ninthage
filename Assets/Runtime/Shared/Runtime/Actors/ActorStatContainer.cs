@@ -166,9 +166,19 @@ namespace Game.Shared.Runtime.Actors
                 SetStat(statID, new StatInstance(stat.BaseValue, stat.FlatModifier, stat.PercentModifier, stat.EffectiveMaximum, newCurrent));
                 var def = ActorStatDefinitionLibrary.Instance.GetDefinition(statID);
                 if (def.ReplicationMode == ActorStatReplicationMode.Observers)
-                    PublishObserverSnapshot(BuildSnapshot(ActorStatReplicationMode.Observers));
+                {
+                    var snapshot = BuildSnapshot(
+                        ActorStatReplicationMode.Observers,
+                        new[] { statID });
+                    if (snapshot.Stats.Length > 0)
+                        PublishObserverSnapshot(snapshot);
+                }
                 else if (def.ReplicationMode == ActorStatReplicationMode.Owner)
-                    PublishOwnerSnapshot(GetComponent<Actor>().Owner.Value, BuildSnapshot(ActorStatReplicationMode.Owner));
+                {
+                    var snapshot = BuildSnapshot(ActorStatReplicationMode.Owner, new[] { statID });
+                    if (snapshot.Stats.Length > 0)
+                        PublishOwnerSnapshot(GetComponent<Actor>().Owner.Value, snapshot);
+                }
             }
             else
             {
@@ -230,16 +240,45 @@ namespace Game.Shared.Runtime.Actors
             {
                 var def = library.GetDefinition(kvp.Key);
                 if (def == null || def.ReplicationMode != mode) continue;
-                list.Add(new StatSnapshotEntry
-                {
-                    StatID = kvp.Key,
-                    EffectiveMax = kvp.Value.EffectiveMaximum,
-                    FlatModifier = kvp.Value.FlatModifier,
-                    PercentModifier = kvp.Value.PercentModifier,
-                    Current = kvp.Value.CurrentValue
-                });
+                list.Add(CreateSnapshotEntry(kvp.Key, kvp.Value));
             }
             return new StatSnapshot { Stats = list.ToArray() };
+        }
+
+        public StatSnapshot BuildSnapshot(ActorStatReplicationMode mode, IReadOnlyList<string> statIDs)
+        {
+            if (statIDs == null)
+                throw new ArgumentNullException(nameof(statIDs));
+
+            var library = ActorStatDefinitionLibrary.Instance;
+            var list = new List<StatSnapshotEntry>(statIDs.Count);
+            HashSet<string> seenStatIDs = statIDs.Count > 1 ? new HashSet<string>() : null;
+            for (int i = 0; i < statIDs.Count; i++)
+            {
+                string statID = statIDs[i];
+                if (statID == null) continue;
+                if (seenStatIDs != null && !seenStatIDs.Add(statID))
+                    throw new ArgumentException($"Duplicate stat ID '{statID}' supplied to subset snapshot builder.", nameof(statIDs));
+                if (!_stats.TryGetValue(statID, out var stat)) continue;
+
+                var def = library.GetDefinition(statID);
+                if (def == null || def.ReplicationMode != mode) continue;
+                list.Add(CreateSnapshotEntry(statID, stat));
+            }
+
+            return new StatSnapshot { Stats = list.ToArray() };
+        }
+
+        private static StatSnapshotEntry CreateSnapshotEntry(string statID, StatInstance stat)
+        {
+            return new StatSnapshotEntry
+            {
+                StatID = statID,
+                EffectiveMax = stat.EffectiveMaximum,
+                FlatModifier = stat.FlatModifier,
+                PercentModifier = stat.PercentModifier,
+                Current = stat.CurrentValue
+            };
         }
     }
     #endregion
