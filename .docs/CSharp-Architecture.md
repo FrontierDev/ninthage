@@ -318,6 +318,12 @@ The gameplay/world manager architecture is:
 - `ServerCooldownManager`;
 - `ServerAutoAttackManager`.
 
+### 6.4 Server shutdown ownership
+
+`ServerShutdownController` is attached to the persistent `GameBootstrapper` host by `ServerInitialization`. It receives external shutdown requests, including dedicated-server console interrupts, transfers them to the Unity main thread and owns the single graceful shutdown coroutine and process-exit request. Its request surface does not expose networking or teardown primitives.
+
+`ServerInitialization` owns authoritative subsystem teardown ordering: it stops the simulation clock, drains PurrNet with a bounded wait, disposes the NetworkManager/ECS/world state and then finalises the profiler. `ServerPerformanceProfiler` owns report finalisation only. Fatal shutdown uses the same ordered cleanup boundary with a non-zero process exit; Editor forced-server mode tears down without quitting the Editor.
+
 ## 7. Shared Configuration Layer
 
 `GameConfiguration` is the master shared `ScriptableObject` for core runtime configuration. It currently contains settings for:

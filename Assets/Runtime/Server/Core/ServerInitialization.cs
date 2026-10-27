@@ -8,6 +8,7 @@ using PurrNet;
 using PurrNet.Transports;
 using System;
 using System.Collections;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -39,8 +40,13 @@ namespace Game.Server.Core
         private static Coroutine _initializationCoroutine;
         private static Coroutine _fatalShutdownCoroutine;
         private static bool _fatalShutdownRequested;
+        private static string _fatalShutdownMessage;
+        private static bool _gracefulShutdownRunning;
+        private static bool _networkShutdownTimedOut;
         private static bool _initializationSucceeded;
         private static ServerTimeAuthority _timeAuthority;
+
+        internal static bool IsFatalShutdownRequested => _fatalShutdownRequested;
 
         /// <summary>Gets the current server-lifetime UTC authority, or <c>null</c> when the server is stopped.</summary>
         public static ServerTimeAuthority TimeAuthority => _timeAuthority;
@@ -108,9 +114,13 @@ namespace Game.Server.Core
             _launchWorldName = launchWorldName;
             _profilingRequested = profilingEnabled;
             _initializationSucceeded = false;
+            _networkShutdownTimedOut = false;
+            _fatalShutdownMessage = null;
+            ShutdownExitCode = 0;
             bool runtimeContextInitialized = false;
             try
             {
+                ServerShutdownController.Attach(_host, !Application.isEditor);
                 InitializeWorldRuntimeContext(launchWorldName);
                 runtimeContextInitialized = true;
                 _initializationCoroutine = _host.StartCoroutine(InitializationProcess());
@@ -123,6 +133,7 @@ namespace Game.Server.Core
                 _launchWorldName = null;
                 _profilingRequested = false;
                 _host = null;
+                ServerShutdownController.Detach();
                 throw;
             }
         }
@@ -361,43 +372,87 @@ namespace Game.Server.Core
             Debug.Log(" ✓ Step 5: Server simulation loop started successfully.");
         }
 
-        /// <summary>Stops server initialization, the simulation clock and the owned ECS world.</summary>
+        /// <summary>Requests graceful shutdown of the running dedicated server.</summary>
         public static void Stop()
         {
-            if (_fatalShutdownRequested)
-                return;
-
-            _timeAuthority = null;
-            if (_initializationCoroutine != null && _host != null)
-                _host.StopCoroutine(_initializationCoroutine);
-
-            _initializationCoroutine = null;
-            ServerSimulationClock.Stop();
-            ServerECSManager.Shutdown();
-            ServerWorldManager.ClearRuntimeContext();
-            DestroyNetworkManager();
-            ServerPerformanceProfiler.Stop(
-                PerformanceRunStatus.CompleteMeasured,
+            ServerShutdownController.RequestShutdown(
                 "SERVER_STOPPED",
-                "The dedicated server stopped normally.");
-            _initializationSucceeded = false;
-            _launchWorldName = null;
-            _profilingRequested = false;
-            _host = null;
+                "The dedicated server was requested to stop.");
+        }
+
+        internal static int ShutdownExitCode { get; private set; }
+
+        /// <summary>Runs the ordered main-thread teardown for an operator/admin shutdown request.</summary>
+        internal static IEnumerator BeginGracefulShutdown(string reasonCode, string message)
+        {
+            if (_gracefulShutdownRunning)
+                yield break;
+            if (_fatalShutdownRequested)
+            {
+                ShutdownExitCode = 1;
+                yield break;
+            }
+
+            _gracefulShutdownRunning = true;
+            _networkShutdownTimedOut = false;
+            ShutdownExitCode = 0;
+            try
+            {
+                _timeAuthority = null;
+                StopInitializationCoroutine();
+                ServerSimulationClock.Stop();
+
+                NetworkManager networkManager = GetNetworkManager();
+                yield return StopNetworkServerAndWait(networkManager);
+
+                DestroyNetworkManager();
+                yield return null;
+
+                ServerECSManager.Shutdown();
+                ServerWorldManager.ClearRuntimeContext();
+
+                bool fatalShutdown = _fatalShutdownRequested;
+                string finalReasonCode = fatalShutdown
+                    ? "FATAL_SERVER_SHUTDOWN"
+                    : _networkShutdownTimedOut
+                        ? "NETWORK_SHUTDOWN_TIMEOUT"
+                        : reasonCode;
+                string finalMessage = fatalShutdown
+                    ? _fatalShutdownMessage
+                    : _networkShutdownTimedOut
+                        ? message + " Network shutdown exceeded the 10-second timeout."
+                        : message;
+                PerformanceRunStatus finalStatus = fatalShutdown || _networkShutdownTimedOut
+                    ? PerformanceRunStatus.FailInstrumentation
+                    : PerformanceRunStatus.CompleteMeasured;
+
+                ServerPerformanceProfiler.Stop(finalStatus, finalReasonCode, finalMessage);
+                ClearLifetimeState();
+                if (fatalShutdown)
+                {
+                    ShutdownExitCode = 1;
+                    _fatalShutdownRequested = false;
+                    _fatalShutdownMessage = null;
+                }
+            }
+            finally
+            {
+                _gracefulShutdownRunning = false;
+            }
         }
 
         /// <summary>Aborts a still-running initialization coroutine when its server host is destroyed.</summary>
         internal static void AbortInitialization()
         {
-            if (_fatalShutdownRequested)
+            if (_fatalShutdownRequested || _gracefulShutdownRunning)
                 return;
 
             _timeAuthority = null;
-            if (_initializationCoroutine != null && _host != null)
-                _host.StopCoroutine(_initializationCoroutine);
-
-            _initializationCoroutine = null;
+            StopInitializationCoroutine();
             ServerSimulationClock.Stop();
+
+            NetworkManager networkManager = GetNetworkManager();
+            TryStopNetworkServer(networkManager);
             ServerECSManager.Shutdown();
             ServerWorldManager.ClearRuntimeContext();
             DestroyNetworkManager();
@@ -405,6 +460,72 @@ namespace Game.Server.Core
                 PerformanceRunStatus.FailInstrumentation,
                 "SERVER_INITIALIZATION_ABORTED",
                 "Server initialization was aborted before the runtime became ready.");
+            _initializationSucceeded = false;
+            _launchWorldName = null;
+            _profilingRequested = false;
+            _host = null;
+            ServerShutdownController.Detach();
+        }
+
+        private static void StopInitializationCoroutine()
+        {
+            if (_initializationCoroutine != null && _host != null)
+                _host.StopCoroutine(_initializationCoroutine);
+
+            _initializationCoroutine = null;
+        }
+
+        private static NetworkManager GetNetworkManager()
+        {
+            return _networkManagerObject != null
+                ? _networkManagerObject.GetComponent<NetworkManager>()
+                : null;
+        }
+
+        private static void TryStopNetworkServer(NetworkManager networkManager)
+        {
+            if (networkManager == null || !networkManager.isServer)
+                return;
+
+            try
+            {
+                networkManager.StopServer();
+            }
+            catch (Exception exception)
+            {
+                Debug.Error("Failed to request PurrNet server shutdown during abort: " + exception.Message);
+            }
+        }
+
+        private static IEnumerator StopNetworkServerAndWait(NetworkManager networkManager)
+        {
+            if (networkManager == null || !networkManager.isServer)
+                yield break;
+
+            TryStopNetworkServer(networkManager);
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            while (networkManager != null
+                && networkManager.serverState != ConnectionState.Disconnected)
+            {
+                if (stopwatch.Elapsed.TotalSeconds >= ServerShutdownController.NETWORK_SHUTDOWN_TIMEOUT_SECONDS)
+                {
+                    _networkShutdownTimedOut = true;
+                    Debug.Warning(
+                        "PurrNet server shutdown exceeded the 10-second timeout; continuing teardown.");
+                    break;
+                }
+
+                yield return null;
+            }
+
+            if (!_networkShutdownTimedOut)
+                yield return null;
+        }
+
+        private static void ClearLifetimeState()
+        {
+            _timeAuthority = null;
+            _initializationCoroutine = null;
             _initializationSucceeded = false;
             _launchWorldName = null;
             _profilingRequested = false;
@@ -428,28 +549,34 @@ namespace Game.Server.Core
                 return;
 
             _fatalShutdownRequested = true;
+            _fatalShutdownMessage = exception.Message;
+            ServerShutdownController.ClearPendingRequest();
             Debug.Error($"Fatal authoritative server simulation failure; shutting down the server runtime.\n{exception}");
             ServerSimulationClock.Stop();
 
-            NetworkManager networkManager = _networkManagerObject != null
-                ? _networkManagerObject.GetComponent<NetworkManager>()
-                : null;
-            if (networkManager != null)
-                networkManager.StopServer();
+            if (_gracefulShutdownRunning)
+                return;
 
-            if (_initializationCoroutine != null && _host != null)
-                _host.StopCoroutine(_initializationCoroutine);
-            _initializationCoroutine = null;
+            NetworkManager networkManager = GetNetworkManager();
+            StopInitializationCoroutine();
 
             if (_host == null)
             {
                 Debug.Error(
                     "Fatal server shutdown cannot complete because the initialization host is missing. "
                     + "The ECS world remains alive to protect outstanding server callbacks.");
+                TryStopNetworkServer(networkManager);
+                DestroyNetworkManager();
+                ServerECSManager.Shutdown();
+                ServerWorldManager.ClearRuntimeContext();
                 ServerPerformanceProfiler.Stop(
                     PerformanceRunStatus.FailInstrumentation,
                     "FATAL_SERVER_SHUTDOWN",
                     exception.Message);
+                ClearLifetimeState();
+                _fatalShutdownRequested = false;
+                _fatalShutdownMessage = null;
+                ServerShutdownController.CompleteShutdown(1);
                 return;
             }
 
@@ -458,13 +585,7 @@ namespace Game.Server.Core
 
         private static IEnumerator FatalShutdownProcess(NetworkManager networkManager, string fatalMessage)
         {
-            if (networkManager != null)
-            {
-                yield return new WaitUntil(
-                    () => networkManager == null
-                        || networkManager.serverState == ConnectionState.Disconnected);
-                yield return null;
-            }
+            yield return StopNetworkServerAndWait(networkManager);
 
             DestroyNetworkManager();
             yield return null;
@@ -474,15 +595,14 @@ namespace Game.Server.Core
             ServerPerformanceProfiler.Stop(
                 PerformanceRunStatus.FailInstrumentation,
                 "FATAL_SERVER_SHUTDOWN",
-                fatalMessage);
-            _timeAuthority = null;
-            _initializationCoroutine = null;
-            _initializationSucceeded = false;
-            _launchWorldName = null;
-            _profilingRequested = false;
-            _host = null;
+                _networkShutdownTimedOut
+                    ? fatalMessage + " Network shutdown exceeded the 10-second timeout."
+                    : fatalMessage);
+            ClearLifetimeState();
             _fatalShutdownCoroutine = null;
             _fatalShutdownRequested = false;
+            _fatalShutdownMessage = null;
+            ServerShutdownController.CompleteShutdown(1);
         }
 
         private static IEnumerator ServerInitializeBindings()

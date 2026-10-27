@@ -306,7 +306,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Bound replication work to relevant audiences, not a global actors × connected players sweep. Audit `PackWorldPosition`, stat snapshots and similar serialization hotspots.
 - Validate late joins, transitions, teleport/reconnect, death/despawn, packet loss, latency and rapid appearance/disappearance; maintain server movement validation and combat authority.
 
-**Gate:** Correct in-range/instance visibility and state ordering; recorded bytes/sec, messages/sec, interest-evaluation cost and connection backlog for sparse and concentrated player profiles; no regressions under network impairment.
+**Gate:** Correct in-range/instance visibility and state ordering; recorded bytes/sec, messages/sec, interest-evaluation cost and connection backlog for sparse and concentrated player profiles; no regressions under network impairment. Complete live profiling evidence requires the ordinary dedicated server's graceful shutdown path: Ctrl+C/request, bounded PurrNet drain, subsystem teardown, and one report written before process exit.
 
 ### Stage 1.6 — Client rendering, world streaming and resource lifetime foundations
 

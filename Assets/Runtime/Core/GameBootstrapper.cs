@@ -33,11 +33,13 @@ namespace Game.Core
             if (headlessServer)
             {
                 // Server mode: no rendering, no input—pure simulation
+                // ServerInitialization attaches the server-only shutdown controller to this persistent host.
                 Game.Server.Core.ServerInitialization.Begin(this);
             }
             else if (forceServerMode)
             {
                 // Editor/test server mode supplies its world identity through the serialized test bootstrap.
+                // The same host owns graceful teardown, but the Editor process is never quit by the controller.
                 Game.Server.Core.ServerInitialization.Begin(this, editorServerWorldName);
             }
             else
