@@ -5,7 +5,7 @@
 **Engine:** Unity 6.3  
 **Rendering:** Universal Render Pipeline (URP), Forward+  
 **Scope:** World visuals, environment assets, terrain integration, architecture, foliage, actors, props, VFX, lighting, atmosphere, post-processing and UI cohesion  
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-27
 
 ---
 
@@ -119,6 +119,19 @@ The presentation layer makes the world feel richer:
 - strong foreground/midground/background separation.
 
 Quality scaling should preferentially reduce presentation cost before compromising core gameplay silhouettes or making assets structurally inconsistent.
+
+### 3.3 Presentation-setting ownership
+
+Player-adjustable graphics choices are client-local preferences. When implemented, quality presets and settings such as shadow quality/distance, vegetation/detail distance, VFX quality/distance or animation-quality options are persisted through the existing `ClientSettingsManager` / `PlayerPrefs` settings path. A second graphics/presentation settings manager or configuration asset must not be introduced merely to hold those preferences.
+
+That ownership does not turn every rendering or performance value into a player preference:
+
+- authored `LODGroup` transitions, renderer membership, renderer shadow state, material setup and effect/renderer bounds remain part of the authored Unity asset/component state;
+- project asset-authoring rules and validation thresholds belong to editor tooling unless they correspond to an actual runtime player setting;
+- manager-specific engineering limits such as retained pool capacities remain with the manager that owns and enforces that lifetime unless later measurement establishes a concrete cross-system requirement;
+- world streaming and authoritative visibility contracts remain owned by the world/network architecture and are not graphics settings.
+
+Graphics settings may choose among supported presentation behaviours, but they must not redefine gameplay visibility, actor network interest, world-streaming authority or shared world coordinates.
 
 ---
 
