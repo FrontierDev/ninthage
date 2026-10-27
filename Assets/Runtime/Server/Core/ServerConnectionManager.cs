@@ -17,11 +17,24 @@ namespace Game.Server.Core
     public class ServerConnectionManager : PurrMonoBehaviour
     {
         private const double NETWORK_TELEMETRY_INTERVAL_SECONDS = 1d;
+        private const double NETWORK_PRESSURE_PAYLOAD_BYTES_PER_SECOND = 16384d;
+        private const double NETWORK_PRESSURE_MESSAGES_PER_SECOND = 256d;
+        private const int NETWORK_PRESSURE_ENTER_INTERVALS = 3;
+        private const double NETWORK_PRESSURE_RECOVERY_PAYLOAD_BYTES_PER_SECOND = 12288d;
+        private const double NETWORK_PRESSURE_RECOVERY_MESSAGES_PER_SECOND = 192d;
+        private const int NETWORK_PRESSURE_RECOVERY_INTERVALS = 5;
 
         private struct ConnectionTelemetryWindow
         {
             public long PayloadBytes;
             public long MessageCount;
+        }
+
+        private struct ConnectionPressureTracker
+        {
+            public bool IsPressured;
+            public int ConsecutiveOverThresholdIntervals;
+            public int ConsecutiveRecoveryIntervals;
         }
 
         private static ServerConnectionManager _instance;
@@ -41,6 +54,12 @@ namespace Game.Server.Core
         /// <summary>Gets whether the connection manager is initialized.</summary>
         public static bool Initialized => _initialized;
 
+        /// <summary>Gets whether one or more live transport connections are under outbound rate pressure.</summary>
+        public bool HasPressuredConnections => PressuredConnectionCount > 0;
+
+        /// <summary>Gets the number of live transport connections currently under outbound rate pressure.</summary>
+        public int PressuredConnectionCount => _pressuredConnectionCount;
+
         private NetworkManager _networkManager;
         private ITransport _transport;
 
@@ -48,6 +67,8 @@ namespace Game.Server.Core
         private Dictionary<PlayerID, PlayerSessionData> _sessionData = new();
         // Current outbound interval only; _transport.connections remains the live connection authority.
         private Dictionary<Connection, ConnectionTelemetryWindow> _outboundTelemetryWindows = new();
+        private Dictionary<Connection, ConnectionPressureTracker> _connectionPressureTrackers = new();
+        private int _pressuredConnectionCount;
         private double _networkTelemetryElapsedSeconds;
         private bool _udpStatisticsEnabledByTelemetry;
         private bool _hasUdpStatisticsBaseline;
@@ -110,6 +131,7 @@ namespace Game.Server.Core
             PerformanceTelemetry.SessionStarted -= OnPerformanceSessionStarted;
             PerformanceTelemetry.SessionEnded -= OnPerformanceSessionEnded;
             ResetOutboundTelemetryWindow();
+            ClearConnectionPressureState();
             _networkManager = null;
             _connectedPlayers.Clear();
             _sessionData.Clear();
@@ -118,7 +140,7 @@ namespace Game.Server.Core
 
         private void Update()
         {
-            if (!PerformanceTelemetry.IsEnabled)
+            if (!_initialized)
                 return;
 
             _networkTelemetryElapsedSeconds += Time.unscaledDeltaTime;
@@ -160,6 +182,8 @@ namespace Game.Server.Core
                         window.MessageCount / intervalSeconds,
                         intervalSeconds: intervalSeconds);
 
+                    UpdateConnectionPressure(connection, window, intervalSeconds);
+
                     if (_transport.measuresRoundTripTime)
                     {
                         int roundTripTimeMilliseconds = _transport.GetRoundTripTime(connection, true);
@@ -195,7 +219,8 @@ namespace Game.Server.Core
                 _sessionData.Count,
                 intervalSeconds: intervalSeconds);
 
-            RecordUdpStatisticsInterval(intervalSeconds);
+            if (PerformanceTelemetry.IsEnabled)
+                RecordUdpStatisticsInterval(intervalSeconds);
 
             ResetOutboundTelemetryWindow();
         }
@@ -217,6 +242,66 @@ namespace Game.Server.Core
         {
             _outboundTelemetryWindows.Clear();
             _networkTelemetryElapsedSeconds = 0d;
+        }
+
+        private void UpdateConnectionPressure(
+            Connection connection,
+            ConnectionTelemetryWindow window,
+            double intervalSeconds)
+        {
+            _connectionPressureTrackers.TryGetValue(connection, out ConnectionPressureTracker tracker);
+            double payloadBytesPerSecond = window.PayloadBytes / intervalSeconds;
+            double messagesPerSecond = window.MessageCount / intervalSeconds;
+            if (!tracker.IsPressured)
+            {
+                if (payloadBytesPerSecond >= NETWORK_PRESSURE_PAYLOAD_BYTES_PER_SECOND
+                    || messagesPerSecond >= NETWORK_PRESSURE_MESSAGES_PER_SECOND)
+                {
+                    tracker.ConsecutiveOverThresholdIntervals++;
+                    if (tracker.ConsecutiveOverThresholdIntervals >= NETWORK_PRESSURE_ENTER_INTERVALS)
+                    {
+                        tracker.IsPressured = true;
+                        tracker.ConsecutiveRecoveryIntervals = 0;
+                        _pressuredConnectionCount++;
+                        Debug.Warning(
+                            $"Connection {connection} entered provisional Stage 1.5 outbound rate pressure "
+                            + $"({payloadBytesPerSecond} payload bytes/sec, {messagesPerSecond} messages/sec). "
+                            + "No authoritative traffic was dropped.");
+                    }
+                }
+                else
+                {
+                    tracker.ConsecutiveOverThresholdIntervals = 0;
+                }
+            }
+            else if (payloadBytesPerSecond < NETWORK_PRESSURE_RECOVERY_PAYLOAD_BYTES_PER_SECOND
+                && messagesPerSecond < NETWORK_PRESSURE_RECOVERY_MESSAGES_PER_SECOND)
+            {
+                tracker.ConsecutiveRecoveryIntervals++;
+                if (tracker.ConsecutiveRecoveryIntervals >= NETWORK_PRESSURE_RECOVERY_INTERVALS)
+                {
+                    tracker.IsPressured = false;
+                    tracker.ConsecutiveOverThresholdIntervals = 0;
+                    tracker.ConsecutiveRecoveryIntervals = 0;
+                    _pressuredConnectionCount--;
+                    Debug.Log(
+                        $"Connection {connection} recovered from provisional Stage 1.5 outbound rate pressure "
+                        + $"({payloadBytesPerSecond} payload bytes/sec, {messagesPerSecond} messages/sec). "
+                        + "No authoritative traffic was dropped.");
+                }
+            }
+            else
+            {
+                tracker.ConsecutiveRecoveryIntervals = 0;
+            }
+
+            _connectionPressureTrackers[connection] = tracker;
+        }
+
+        private void ClearConnectionPressureState()
+        {
+            _connectionPressureTrackers.Clear();
+            _pressuredConnectionCount = 0;
         }
 
         private void BeginUdpStatisticsTelemetry()
@@ -329,6 +414,12 @@ namespace Game.Server.Core
             if (asServer)
             {
                 _outboundTelemetryWindows.Remove(connection);
+                if (_connectionPressureTrackers.TryGetValue(connection, out ConnectionPressureTracker tracker)
+                    && tracker.IsPressured)
+                {
+                    _pressuredConnectionCount--;
+                }
+                _connectionPressureTrackers.Remove(connection);
                 if (PerformanceTelemetry.IsEnabled)
                     PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_DISCONNECTED_COUNT, 1);
             }
@@ -342,15 +433,23 @@ namespace Game.Server.Core
 
         private void OnTransportDataSent(Connection connection, ByteData data, bool asServer)
         {
-            if (!asServer || !PerformanceTelemetry.IsEnabled)
+            if (!asServer)
                 return;
 
-            PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_TRANSPORT_PAYLOAD_BYTES_SENT, data.length);
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.SERVER_TRANSPORT_PAYLOAD_BYTES_SENT, data.length);
 
             _outboundTelemetryWindows.TryGetValue(connection, out ConnectionTelemetryWindow window);
             window.PayloadBytes = checked(window.PayloadBytes + (long)data.length);
             window.MessageCount = checked(window.MessageCount + 1L);
             _outboundTelemetryWindows[connection] = window;
+        }
+
+        /// <summary>Gets whether the supplied live transport connection is currently under outbound rate pressure.</summary>
+        public bool IsConnectionPressured(Connection connection)
+        {
+            return _connectionPressureTrackers.TryGetValue(connection, out ConnectionPressureTracker tracker)
+                && tracker.IsPressured;
         }
 
         private void OnPlayerJoined(PlayerID playerID, bool isReconnect, bool asServer)
