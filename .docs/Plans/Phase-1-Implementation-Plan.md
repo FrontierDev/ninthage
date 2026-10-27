@@ -3,7 +3,7 @@
 **Phase:** 1 — Core Runtime and Production Infrastructure  
 **Branch:** `dev`  
 **Status:** In progress — Stages 1.0/1.1 complete; Stage 1.2 foundations are partially implemented and the continuous server physical-space cleanup is pending  
-**Last updated:** 2026-10-26  
+**Last updated:** 2026-10-27
 **Parent roadmap:** [Project Roadmap](Project-Roadmap.md)  
 **Implementation baseline:** Existing Phase 0 runtime; not a greenfield replacement
 
@@ -301,12 +301,21 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 
 - Audit supported PurrNet visibility, serialization, transport, delivery and update policies **before** introducing custom mechanisms; extend only the project-owned integration.
 - Define who receives which actor/state updates based on server-approved instance membership, spatial relevance and gameplay exceptions (e.g. party/group information that has different visibility semantics).
-- Define update priority/frequency classes for movement, combat-critical events, actor state, noncritical cosmetic state and distant actors. Set per-connection bandwidth/backlog monitoring and overload behaviour; authoritative actions must not be silently dropped.
+- Stage 1.5 networking-foundation implementation is complete in the project-owned integration. It provides server-approved actor observer relevance by world/map/instance/range, observer-entry current-state bootstrap for target/aura/cast/stat state, changed-entry stat replication, and accepted-position presentation capped at 0.1 s / 10 Hz while authoritative movement remains 20 Hz.
+- Keep gameplay/current-state delivery reliable and ordered where required. Dedicated transient VFX/SFX remains presentation-only and `UnreliableSequenced`; it is not automatically suppressed by pressure because some server-originated presentation cannot necessarily be reconstructed locally.
+- Record per-connection application-payload bytes/sec and messages/sec, supported per-connection RTT where the active transport advertises it, and UDP-native aggregate bytes/sec, packets/sec and loss-event counters while profiling owns the UDP statistics window.
+- Maintain project-owned per-connection outbound rate-pressure classification and the shared read-only `PlayerID` query from #309. This is observability/state, not a bandwidth cap, capacity claim or generic transport backlog measurement.
 - Use change detection/delta-like update strategies or batching **only where compatible with supported PurrNet APIs and correctness**; keep delivery ordering/reliability explicit.
 - Bound replication work to relevant audiences, not a global actors × connected players sweep. Audit `PackWorldPosition`, stat snapshots and similar serialization hotspots.
 - Validate late joins, transitions, teleport/reconnect, death/despawn, packet loss, latency and rapid appearance/disappearance; maintain server movement validation and combat authority.
 
-**Gate:** Correct in-range/instance visibility and state ordering; recorded bytes/sec, messages/sec, interest-evaluation cost and connection backlog for sparse and concentrated player profiles; no regressions under network impairment. Complete live profiling evidence requires the ordinary dedicated server's loopback control-endpoint shutdown path, bounded PurrNet drain, subsystem teardown, and one report written before process exit. `Stop-Process`/hard-kill runs are incomplete or crash evidence, not clean Stage 1.5 evidence.
+**Stage 1.5 implementation gate:** Correct in-range/instance visibility and state ordering; observer bootstraps; accepted-position cadence; explicit gameplay versus transient-presentation delivery; supported telemetry and pressure classification. PurrNet 1.25.0 exposes no generic connection backlog, retransmission, true on-wire-byte or packet-loss-ratio boundary for this integration, so those are not Stage 1.5 measurements.
+
+**Evidence boundary:** The one-client sparse report is the current sparse developmental reference. The four-client concentrated report is the current concentrated developmental reference. The concentrated run ramped through occupancy and is not a stable four-client capacity test. Neither report establishes production player capacity. Larger/longer capacity campaigns, network-impairment qualification and rigorous sustained-overload qualification are deferred to the integrated Phase 1 performance programme, principally Stages 1.10 and 1.11. Clean control-endpoint shutdown and report finalisation are required for evidence; `Stop-Process`/hard-kill runs are incomplete or crash evidence.
+
+**Stage 1.5 status:** Networking-foundation implementation complete; production/capacity/impairment qualification deferred.
+
+**Developmental references:** `Reports/performance-report-20261027T151611092Z-38116.json` records one connected client, per-connection payload p99 approximately 2.41 KB/s, messages p99 approximately 66/s, server tick p99 approximately 0.40 ms and zero simulation deadline misses. `Reports/performance-report-20261027T152830511Z-43956.json` records up to four connected/in-world clients over approximately 178.8 s, per-connection payload p99 approximately 4.90 KB/s, messages p99 approximately 81/s, aggregate payload p99 approximately 18.86 KB/s, aggregate messages p99 approximately 301/s, server tick p99 approximately 1.94 ms and zero simulation deadline misses.
 
 ### Stage 1.6 — Client rendering, world streaming and resource lifetime foundations
 
@@ -405,7 +414,7 @@ Run the Phase 1 benchmark matrix against a release-like headless server and grap
 | Login / disconnect / reconnect burst | Session exclusivity, persistence concurrency, actor restoration and network queues |
 | Extended soak and recovery | Server memory/GC, actor/index/pool lifetime, timed state, database reconnect and process restart |
 
-**Measure:** median/tail server tick cost, deadline overruns/backlog, client CPU/GPU p95/p99, peak and retained memory, GC/allocations, actor states, spatial query work, network bandwidth/backlogs, streaming stalls and persistence latency/correctness.
+**Measure:** median/tail server tick cost, deadline overruns/backlog, client CPU/GPU p95/p99, peak and retained memory, GC/allocations, actor states, spatial query work, network bandwidth, supported transport telemetry and any explicitly approved project-owned queue/backlog metrics, streaming stalls and persistence latency/correctness.
 
 **Sign-off requirements:**
 
@@ -470,11 +479,13 @@ The diagram illustrates **integration dependencies**, not a demand to leave inde
 ## 6. Hand-off contracts for later phases
 
 - **Phase 2 gameplay and combat:** use the authoritative clock, simulation scheduler, spatial queries, actor ownership and relevance-aware replication; never independently create per-frame global entity scans.
+- **Stage 1.5 hand-off:** replication architecture, observer-entry bootstrap and the project-owned per-connection pressure mechanism are established. Later work must consume the read-only state without inventing a second pressure owner or assuming production capacity.
 - **Phase 2 NPCs/AI:** implement authored decision logic above the shared activity/AI scheduling model; expensive perception must respect spatial and instance membership.
 - **Phase 3 world runtime:** expand tile authoring, world-streaming LOD, instance features and interiors through the established resource and spatial boundaries; do not conflate logical instance with scene. Operate multiple separate World Server machines registered with the Master Server (one world and all its maps/instances per machine), implement world selection, routing and authoritative state-preserving inter-world transfers; never shard one world's gameplay simulation.
 - **Phase 3 presentation:** author art according to the Phase 1 renderer/LOD/culling/streaming contracts, then tune quality and density through measured budgets.
 - **Phases 4–7 gameplay breadth:** integrate new persistent state through transactional central persistence and versioned definitions; Phase 5 cross-world social/chat routing uses the Master Server and local world-specific/spatial channels remain World Server-scoped.
 - **Phase 8 hardening:** increase validated density, soak duration, supported capacity and fault tolerance, rather than first introducing scheduling, spatial indexing, activity tiers or observability.
+- **Stages 1.10/1.11 performance qualification:** own the deferred larger/longer capacity, impairment and sustained-overload campaigns and the production-supportability decision; Stage 1.5 does not claim those results.
 
 ## 7. Issue decomposition and evidence requirements
 

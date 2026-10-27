@@ -1,9 +1,9 @@
 # Ninth Age — Performance and Simulation Architecture
 
-**Status:** Stages 1.1–1.3 implemented and owner accepted; Stage 1.4 activity-state contract approved on 25 October 2026.
+**Status:** Stages 1.1–1.3 implemented and owner accepted; Stage 1.4 activity-state contract approved; Stage 1.5 networking-foundation implementation complete with capacity qualification deferred.
 **Scope:** Historical Phase 1.0 baseline, Stage 1.1 as-built simulation/time integration, and forward-looking Phase 1 technical contracts.
 **Source baseline:** Original `f3c16ffcb99f8cdc47fbf90babca87b1fd8ec49f`; Stage 1.1 reviewed on `dev` through `4db4aed1e18c7d7fbd92421f160d4d982d22f53c` (#106 rev 1).
-**Updated:** 2026-10-26
+**Updated:** 2026-10-27
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose, authority and interpretation
@@ -38,7 +38,7 @@ Graceful shutdown is requested through the local loopback control endpoint and o
 
 ### Baseline qualification
 
-The current [C# Architecture](CSharp-Architecture.md) is a descriptive snapshot at source revision `3232b1cfc1a889d1f8be7665714bf145e8329a4b`; this document additionally reviews the later `dev` revision above. The [Phase 0.40 issue](https://github.com/FrontierDev/ninthage/issues/40) is closed, but its prescribed `.docs/Phase-0-Stable-Foundation-Baseline.md` is **not present in the reviewed `dev` tree**. That discrepancy must be reconciled before treating the Phase 0 acceptance artifact as independently verified. It does **not** justify changing Phase 0 records within Issue #41.
+The current [C# Architecture](CSharp-Architecture.md) is a descriptive snapshot at the implementation baseline recorded in that document; this document additionally retains its historical Stage 1.1 review context. The [Phase 0.40 issue](https://github.com/FrontierDev/ninthage/issues/40) is closed, but its prescribed `.docs/Phase-0-Stable-Foundation-Baseline.md` is **not present in the reviewed `dev` tree**. That discrepancy must be reconciled before treating the Phase 0 acceptance artifact as independently verified. It does **not** justify changing Phase 0 records within Issue #41.
 
 ## 2. Actual current-runtime boundaries
 
@@ -570,7 +570,15 @@ Stage 1.0 issue [#42](https://github.com/FrontierDev/ninthage/issues/42) and sub
 | Network relevance and limits | Visibility decisions by world/map/instance/range, raw and normalized bytes/messages per transport connection and in aggregate where supported, interval occupancy counts, and explicitly unavailable transport counters otherwise. |
 | Streaming/renderer stability | Client p50/p95/p99 frame time, activation/unload stalls, draw/batch/GPU samples on specified hardware, memory/GC trends. |
 
-The live network telemetry boundary now distinguishes raw payload/message samples, raw interval counters, normalized bytes/sec/messages/sec rates, interval occupancy counts for live/authenticated/in-world clients, and UDP-native bytes/sec, packets/sec and loss-events/sec. PurrNet-generic backlog, retransmission, on-wire-byte and packet-loss-ratio metrics remain explicitly unavailable rather than estimated. Step 8 rate evidence is therefore available in the report, but overload thresholds still require real multi-client measurement.
+The live network telemetry boundary now distinguishes raw payload/message samples, raw interval counters, normalized bytes/sec/messages/sec rates, interval occupancy counts for live/authenticated/in-world clients, supported per-connection RTT, and UDP-native bytes/sec, packets/sec and loss-events/sec while profiling owns the UDP statistics window. PurrNet-generic backlog, retransmission, on-wire-byte and packet-loss-ratio metrics remain explicitly unavailable rather than estimated.
+
+### Stage 1.5 pressure classification
+
+`ServerConnectionManager` owns the project-owned pressure signal over a one-second outbound application-payload/message window. A connection enters pressure at payload >= **16,384 B/s OR 256 messages/s** for **3 consecutive intervals**. It recovers only when payload < **12,288 B/s AND 192 messages/s** for **5 consecutive intervals**. These are provisional Stage 1.5 engineering triggers chosen above the accepted developmental four-client per-connection reference; they are not production bandwidth budgets, player caps or capacity limits.
+
+Current behavior is deliberately limited to: (1) classify; (2) expose read-only state, including the shared `NetworkPressureQuery.IsPlayerPressured(PlayerID)` projection; (3) log each pressure/recovery transition once; and (4) preserve all existing network delivery. There is no automatic traffic shedding, disconnect, admission throttle, movement-rate reduction or gameplay-rate change. The shared query stores no pressure cache and owns no thresholds; it delegates to the server connection manager's current PurrNet player-module `Connection` mapping. No Stage 1.5 replication-shedding consumer is selected. Future overload work may reduce work only for a specifically proven non-authoritative/redundant publication class that is separately approved.
+
+Rigorous larger/longer capacity, network-impairment and sustained-overload qualification remains deferred to the integrated performance/operations programme in Stages 1.10 and 1.11. The current sparse and concentrated reports are developmental references only: the sparse run has one connected client and per-connection p99 of approximately 2.41 KB/s and 66 messages/s with a 0.40 ms server-tick p99 and zero deadline misses; the concentrated run reaches up to four connected/in-world clients over approximately 178.8 s with per-connection p99 of approximately 4.90 KB/s and 81 messages/s, aggregate p99 of approximately 18.86 KB/s and 301 messages/s, a 1.94 ms server-tick p99 and zero deadline misses. The concentrated run ramped through occupancy and is not a stable four-client capacity test; neither report establishes production player capacity.
 
 **Measurement policy:** Every result must identify Git commit, Unity/PurrNet/package versions, build mode, graphics settings, hardware, workload definition/seed, achieved player/actor counts, sample count, test duration and whether each metric is measured, estimated, not applicable or unavailable. Instrumentation must not fabricate zeros or equate architecture-readiness with tested production capacity.
 
@@ -582,7 +590,8 @@ The following **remain open on purpose**:
 - **Stage 1.2:** The logical context, canonical absolute position, project-owned player transport, shared 256 m client-origin/environment grid, spatial index and visibility defaults are established foundations. The current fixed-grid simulation-region implementation is superseded and must be collapsed into the continuous server physical/NavMesh model in §5.3; `ServerPhysicsManager` remains the physical-query/NavMesh-binding owner without per-actor region authority. After that cleanup is owner-validated, remaining work continues with movement publication, observer visibility, spatial-consumer migration, logical-context transfer and accepted-position-driven environment interest. The old region-sizing campaign remains historical evidence rather than a capacity/design requirement.
 - **Stage 1.3 — complete:** per-actor ECS mapping, managed/ECS boundaries, deadline-authoritative timed state and the Jobs/Burst decision gate are implemented and owner accepted. The measured 100–5,000 timed-state campaign did not justify Jobs/Burst conversion for the current timed systems.
 - **Stage 1.4 — activity contract approved:** NPCs use **Full**, **Nearby** and **Dormant** simulation activity. Combat/gameplay obligations override distance. Visible NPCs are Full; out-of-combat non-visible NPCs may be Nearby or Dormant according to authoritative player relevance. Dead player actors count identically to living player actors for relevance until their actor leaves the logical context/lifetime. Leaving combat performs the normal transient combat reset first, then activity is reevaluated; combat state is not suspended for dormant catch-up. Dormant NPCs perform no ordinary patrol/perception/decision/NavMesh work. The initial implementation retains authoritative actor identity/context/position and does not require GameObject/PurrNet dematerialisation. The exact Nearby radius and reduced Nearby decision cadence are configurable engineering values to be chosen and validated by Stage 1.4 implementation/performance work.
-- **Stage 1.5–1.6:** PurrNet-supported replication features, per-connection budgets, asset LOD thresholds, streaming concurrency and pooling strategy.
+- **Stage 1.5:** Networking-foundation implementation is complete: supported PurrNet replication boundaries, observer/state semantics, telemetry and project-owned pressure classification are recorded above. Production capacity, impairment and sustained-overload qualification remain deferred to Stages 1.10–1.11; no production bandwidth budget or player-cap claim is made.
+- **Stage 1.6:** Asset LOD thresholds, streaming concurrency and pooling strategy.
 - **Stages 1.7–1.8:** Database decomposition/checkpoint cadence, session duplicate-login UX, exact cleanup sequencing and valid instance-reentry policy as assigned to the relevant PDDs.
 - **Other product decisions:** Combat tuning, instance scope, NPC respawn policy, housing/dungeon UX and invalid-location recovery must follow their owning PDDs. Technical implementation cannot silently decide them.
 

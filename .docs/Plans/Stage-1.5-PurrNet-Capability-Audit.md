@@ -1,6 +1,6 @@
 # Stage 1.5 PurrNet capability audit
 
-Status: active Step 1C dependency-audit refresh for the locally installed PurrNet package. This document is an implementation input for the remaining Stage 1.5 networking work. It records source evidence only; it does not authorize runtime, prefab, package, test, or vendor changes.
+Status: Final Stage 1.5 capability audit for the locally installed PurrNet package and current project-owned integration. It records source evidence and capability limits; it does not authorize runtime, prefab, package, test, or vendor changes.
 
 ## Scope and inspection identity
 
@@ -38,7 +38,8 @@ The current project integration was re-read against this package:
 - `Assets/Runtime/Shared/Runtime/Actors/ActorStatContainer.cs:81-126,161-240` owns observer-entry and owner stat bootstraps, snapshot publication, and the current five-field snapshot model.
 - `Assets/Runtime/Shared/Runtime/Actors/ActorVFXController.cs:33-107` and `ActorSFXController.cs:26-44` expose project-owned server publication boundaries for transient observer effects.
 - `Assets/Runtime/Shared/Networking/MovementEndpoint.cs:28-66` contains movement proposal ingress and targeted interest/correction callbacks.
-- `Assets/Runtime/Server/Core/ServerConnectionManager.cs:61-193` consumes public transport events, records payload bytes/message counts, and keeps live connection state from `ITransport.connections`.
+- `Assets/Runtime/Server/Core/ServerConnectionManager.cs:63-227,249-303,405-466` consumes public transport events, records one-second payload/message windows, classifies project-owned rate pressure, and keeps live connection state from `ITransport.connections`.
+- `Assets/Runtime/Shared/Networking/INetworkPressureProvider.cs:5-10` and `NetworkPressureQuery.cs:7-46` expose only the shared read-only `PlayerID` pressure query; they do not duplicate server pressure state or represent a PurrNet capability.
 - `Assets/Runtime/Shared/Networking/NetworkingPerformanceMetrics.cs:73-132,365-378,477-570` records project publication counts, intended recipient fan-out, handler invocations, and transport payload metrics. Handler counts remain distinct from emission and delivery.
 
 ## Visibility, reevaluation, and observer lifecycle
@@ -133,18 +134,22 @@ Network impairment simulation is also a supported public boundary: PurrNet 1.25.
 
 The selected `UDPTransport` also exposes a transport-specific public statistics boundary: `SetStatisticsEnabled(bool)`, `statisticsEnabled`, `nativeBytesSent`, `nativePacketsSent`, and cumulative `nativePacketLoss` (`Runtime/Transports/UDPTransport.cs:76-94`). Native bytes include LiteNetLib framing and ACK traffic handed to the socket but exclude UDP/IP headers; the packet counters are transport-wide, and `nativePacketLoss` is a cumulative packet-loss count. PurrNet disables these statistics by default, so Ninth Age enables them only while an active performance telemetry session owns the measurement and restores the prior state afterward. This capability is not part of generic `ITransport`.
 
-No generic public PurrNet counter was found for queue depth/backlog, congestion, packet loss, or retransmission. The UDP-specific statistics above do not change that generic contract: generic backlog, retransmission, and packet-loss ratio remain unavailable, as do true on-wire bytes including UDP/IP headers. Internal queues in optional transports are not a generic project integration boundary. The public RTT boundary is transport-dependent and is instrumented only when the active transport advertises support.
+No generic public PurrNet counter was found for queue depth/backlog, congestion, packet loss, or retransmission, and no generic PurrNet priority/bandwidth scheduler is exposed. The UDP-specific statistics above do not change that generic contract: generic backlog, retransmission, and packet-loss ratio remain unavailable, as do true on-wire bytes including UDP/IP headers. Internal queues in optional transports are not a generic project integration boundary. The public RTT boundary is transport-dependent and is recorded per connection when the active transport advertises support; #298 integrated this supported telemetry into the project.
 
 ## Metric reconciliation and active contract
 
 The installed 1.25.0 source supports the following project decisions:
 
-- project transport callbacks measure payload bytes and callback message counts per connection; `ServerConnectionManager` records them at `ServerConnectionManager.cs:176-193`;
+- project transport callbacks measure payload bytes and callback message counts per connection; `ServerConnectionManager` maintains the one-second windows and normalized rates at `ServerConnectionManager.cs:143-227,405-448`;
+- normalized per-connection bytes/sec and messages/sec and live/authenticated/in-world occupancy are implemented project metrics; these are application-payload measurements, not generic transport backlog or on-wire measurements;
+- `UDPTransport` native sent-byte, packet and loss-event statistics are integrated only while performance telemetry owns the statistics window (`ServerConnectionManager.cs:309-403`);
+- `NetworkSimulation` is the supported PurrNet impairment boundary used by Ninth Age's `LatencySimulator` (`NetworkSimulation.cs:7-48`; `UDPTransport.cs:36,62-70`); it is not a capacity result;
+- #308's rate-pressure classification is project-owned state built on the supported transport callbacks, not a PurrNet-provided budget or backlog feature. #309's `INetworkPressureProvider`/`NetworkPressureQuery` is a Ninth Age shared integration boundary, not a PurrNet capability;
 - project publication and intended-recipient metrics are now present for combat-critical, movement-presentation, owner-private, and cosmetic classes at `NetworkingPerformanceMetrics.cs:73-132,477-551`; observer recipient counts read `NetworkIdentity.observers.Count`, while targeted publication counts record one intended target;
 - RPC handler metrics remain local handler execution counts and are not wire delivery counts (`NetworkingPerformanceMetrics.cs:553-570`);
 - on-wire/framed bytes remain unavailable because `onDataSent`/`onDataReceived` expose `ByteData` payloads and no framing/header counter;
 - generic backlog, loss, and retransmission remain unavailable;
-- RTT is publicly queryable where the selected transport supports it, but Ninth Age's existing latency metric remains explicitly unavailable because no project instrumentation was added in this audit;
+- RTT is publicly queryable where the selected transport supports it and is recorded by Ninth Age per connection when advertised; unsupported transports remain unavailable rather than estimated;
 - Steam reliable retry-queue statistics are publicly queryable only through the optional Steam-specific API and are not part of the current generic project metric contract.
 
 Unavailable metrics are not represented as fabricated zeroes. No production code, tests, package metadata, Unity settings, prefab, or third-party file was changed for this refresh.
@@ -166,29 +171,33 @@ Unavailable metrics are not represented as fabricated zeroes. No production code
 | MTU and over-MTU behavior | `ITransport.cs:110-173,232-240`; `RPCBatch.cs:303-374,510-583` | Supported packet boundary; not a bandwidth budget. |
 | Custom bit serialization | `BitPacker.cs:30-58,133-180`; `Packer.cs:21-101,191-228` | Supported at the serializer boundary. |
 | Per-connection payload callbacks | `ITransport.cs:8-16,217-291` | Supported and integrated by `ServerConnectionManager`. |
-| RTT | `ITransport.cs:242-256`; concrete implementations cited above | Public transport-dependent boundary; not instrumented by Ninth Age. |
+| RTT | `ITransport.cs:242-256`; concrete implementations cited above; project integration `ServerConnectionManager.cs:187-199` | Public transport-dependent boundary; #298 records it per connection when advertised. |
+| Network impairment simulation | `NetworkSimulation.cs:7-48`; `UDPTransport.cs:36,62-70`; project `LatencySimulator` | Supported project impairment integration after #299; qualification remains a later performance exercise. |
+| Normalized rates and occupancy | Project `ServerConnectionManager.cs:143-227`; `NetworkingPerformanceMetrics.cs:89-117` | Implemented project metrics for application payload/message rates and live/authenticated/in-world occupancy. |
+| Rate-pressure classification | Project `ServerConnectionManager.cs:19-25,249-303`; shared query paths cited above | Project-owned state with explicit thresholds/hysteresis; not a PurrNet budget, backlog, congestion or loss measurement. |
 | Generic queue/backlog | `ITransport` has no generic queue-depth/backlog counter; Steam-only queue API is cited above | Generic capability unavailable; Steam statistics are transport-specific and not implemented here. |
 | Loss/retransmission counters | No public generic counter in the installed source | Unavailable; do not infer from reliable delivery or handler counts. |
 
-The remaining Stage 1.5 implementation decisions must cite this 1.25.0 evidence. The 1.19.1 audit is not an active prerequisite.
+Any later Stage 1.5-related implementation decision must cite this 1.25.0 evidence. The 1.19.1 audit is not an active prerequisite.
 
 ## Exact non-goals
 
 - No runtime C# changes, prefab changes, package installation/update, or PurrNet/vendor edits.
-- No new RPCs, queues, registries, replication manager, stat payload reduction, position-rate choice, RPC channel choice, bandwidth threshold, or transport instrumentation.
+- No new RPCs, queues, registries, replication manager, stat payload reduction, position-rate choice, RPC channel choice, or generic transport instrumentation. The project-owned pressure thresholds are documented state, not a PurrNet capability or traffic-shedding policy.
 - No regression-test changes; Unity Test Runner, Play Mode, and owner runtime validation remain manual follow-up.
 
 ## Static/documentation validation
 
-This refresh is complete when:
+This audit is complete when:
 
 1. both Stage 1.5 documents identify installed PurrNet 1.25.0 as active;
 2. both documents record the local directory hash and Unity editor version;
 3. every Step 5-8 capability claim points to current 1.25.0 source evidence;
 4. stacked identity, root resolution, sibling visibility, ownership propagation, and owner-confirmed root-order evidence are explicit;
 5. #279-#290 completed project behavior is reflected in the matrix;
-6. RTT and Steam queue boundaries are documented without fabricating generic metrics;
-7. the diff contains only these two documentation files and zero third-party changes;
-8. `git diff --check` passes.
+6. RTT, UDP-native statistics, NetworkSimulation, normalized rates/occupancy and Steam queue boundaries are documented without fabricating generic metrics;
+7. project-owned pressure classification and the shared query are not described as PurrNet capabilities;
+8. the diff contains only the permitted documentation files and zero third-party changes;
+9. `git diff --check` passes.
 
 Owner review remains required for the package identity, root-order runtime finding, completed project behavior, and the absence of any 1.19.1-only active prerequisite.

@@ -3,9 +3,9 @@
 **Status:** Current architecture reference  
 **Repository:** `FrontierDev/ninthage`  
 **Branch:** `dev`
-**Source revision:** `6f5a6175bf7fbd385acf21ea3e058bef87122b7d`
-**Snapshot date:** 2026-10-25
-**Documentation contract updated:** 2026-10-26 (future Master/World Server topology; source snapshot unchanged)
+**Source revision:** `7afed7bd70be84a170a2e6694874c793a016b3c3`
+**Snapshot date:** 2026-10-27
+**Documentation contract updated:** 2026-10-27 (Stage 1.5 networking-foundation ownership and pressure-query boundary)
 **Unity version:** 6000.3.10f1
 
 ## 1. Purpose and Scope
@@ -590,6 +590,15 @@ These services operate on shared data contracts while remaining server-owned imp
 `AccountBindings` connects `AccountEndpoint` requests to the character-creation and enter-world services. `ActorDeathBindings` connects `ActorEndpoint.onActorDeath` to server-side experience, loot and quest handling. These are explicit binding responsibilities, not generic `*Hooks` managers.
 
 These types connect shared endpoint callbacks and session state to server state.
+
+Stage 1.5 network-pressure ownership is deliberately narrow:
+
+- `ServerConnectionManager` is the sole owner of `Connection`-keyed outbound rate windows, pressure trackers, thresholds and hysteresis. Its one-second window remains active during ordinary server operation; profiling additionally owns report samples and the UDP-native statistics window.
+- `INetworkPressureProvider` is a Shared read-only interface only. `NetworkPressureQuery` stores only the active provider reference and delegates `PlayerID` queries; it is not a generic service locator and owns no cache, thresholds or duplicate pressure dictionary.
+- `ServerConnectionManager.IsPlayerPressured(PlayerID)` resolves the current PurrNet `playerModule` `Connection` mapping and delegates to the existing Connection pressure state. Shared code does not import `Game.Server`.
+- The provider is registered after the server connection manager has its active network fields and unregistered at the existing server unsubscribe boundary. The query currently has no Stage 1.5 replication-shedding consumer.
+
+The pressure classifier is observability/state, not a bandwidth cap, capacity claim, generic PurrNet backlog measurement or traffic-shedding policy. No authoritative, control or current-state network delivery is silently dropped by this boundary.
 
 ### 11.4 Server invariant and lifecycle contracts
 
