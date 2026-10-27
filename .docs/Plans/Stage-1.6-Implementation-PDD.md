@@ -111,7 +111,7 @@ The reviewed baseline contains concrete Stage 1.6 work:
 | `ClientVFXManager` | Loads Addressable prefabs and directly instantiates them; successful load handles are not released/tracked through effect lifetime. | Give every loaded prefab/instance a balanced lifetime; add active/release telemetry; pool only reset-safe measured classes. |
 | `ClientAudioManager` | Bounds cache entry count but stores only `AudioClip` after successful loads; successful cache handles are not retained for later release. | Cache the asset and its owning handle together; release on eviction/shutdown; preserve bounded LRU behaviour. |
 | `CameraManager` | Loads the PlayerCamera Addressable collection and instantiates the first prefab without a retained/released operation lifetime. | Give camera asset/instance an explicit world-session lifetime and release path. |
-| `UI_NameplateManager` | Instantiates/destroys one nameplate per actor visibility lifetime. | Use a bounded reusable pool if measurement confirms churn benefit; reset all actor-bound state on return. |
+| `UI_NameplateManager` | Instantiates/destroys one nameplate per actor visibility lifetime. | Keep the direct lifetime in Stage 1.6; a bounded reusable pool may be introduced later only if the integrated Phase 1 performance programme justifies the extra reset/lifetime complexity. |
 | `UI_FCTManager` / `UI_FloatingCombatText` | Instantiates/destroys every floating-combat-text object. | Treat as the initial low-risk UI pooling candidate; reset content, timers, colour, scale and callbacks. |
 | streamed PurrNet world scenes | PurrNet owns Addressable scene loading and scene identity. | Keep PurrNet ownership; project code tracks logical/client presentation lifetime and must not duplicate-release vendor handles. |
 
@@ -143,7 +143,7 @@ Every client presentation resource belongs to one of these lifetime classes.
 | Connection | connection-owned UI/account presentation | existing connection/account managers | disconnect/reconnect boundary |
 | World presentation session | `global_world`, camera instance, world-scene tracking and world-bound presentation state | `ClientWorldManager` plus the direct subsystem owner | failed entry, disconnect, later transfer/leave-world, shutdown |
 | PurrNet streamed scene | delivered `World_*` environment scenes | PurrNet scene module; `ClientWorldManager` tracks presentation state only | PurrNet-supported unload/cleanup lifecycle |
-| Cached asset | audio clips or later measured reusable prefab assets | initiating client manager | eviction, cache clear or owner destruction |
+| Cached asset | audio clips or later explicitly justified reusable prefab assets | initiating client manager | eviction, cache clear or owner destruction |
 | Active transient | VFX, projectile, floating text | subsystem that spawned it | completion/cancellation/world cleanup |
 | Pooled presentation object | FCT/nameplate and later opt-in reset-safe objects | owning presentation manager | returned to bounded pool; pool destroyed on owner/world cleanup as specified |
 | Network actor representation | PurrNet actor GameObject/NetworkIdentity | networking/actor lifecycle | existing PurrNet despawn lifecycle |
@@ -366,7 +366,7 @@ Initial pooling policy:
 - projectile pooling is deferred until target/reference, elapsed-time, impact/audio and child-effect reset are proven safe;
 - one-shot or self-destroying third-party VFX without a project-owned reset contract remain destroy/release lifetimes.
 
-A later VFX pooling issue may add an opt-in project-owned pool policy using measured high-churn effect classes. It must not depend on modifying third-party components.
+VFX pooling is not required by Stage 1.6. A later integrated performance issue may add an opt-in project-owned pool policy for demonstrated high-churn effect classes. It must not depend on modifying third-party components.
 
 ### 4.8 UI pooling
 
@@ -402,7 +402,7 @@ The 256 m shared grid means one movement boundary can cause both:
 
 These remain independent operations. Stage 1.6 must not merge them into one state owner.
 
-The implementation should stagger/defer presentation work where supported if simultaneous work produces a measured spike, but must not defer authoritative movement or make world content visibly absent.
+Stage 1.6 should preserve ownership boundaries that allow later presentation staggering where supported, but does not run a spike-tuning campaign. Authoritative movement must never be deferred and world content must not be made visibly absent.
 
 ### 5.2 Initial nearby scene set
 
@@ -512,7 +512,7 @@ Benchmark-only review thresholds and editor validation rules remain tooling/evid
 
 None of these client-local presentation concerns belong in shared authoritative `GameConfiguration`, and they must not duplicate `GameConfiguration.ChunkSize` or other shared world contracts.
 
-Values that have not yet been measured remain explicitly provisional and are promoted only with Stage 1.6 evidence.
+Values that have not yet been measured remain explicitly provisional. Performance/tuning values are promoted only through the Stage 1.10–1.11 evidence programme; Stage 1.6 may lock only correctness/resource-safety values intrinsic to the implementation.
 
 ## 7. URP Forward+ foundation and deferred optimisation policy
 
