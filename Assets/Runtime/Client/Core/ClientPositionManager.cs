@@ -14,7 +14,7 @@ using UnityEngine.SceneManagement;
 namespace Game.Client
 {
     /// <summary>
-    /// Manages the client's floating origin. When the player's chunk interest
+    /// Manages the client's floating origin. When the player's origin cell
     /// changes, all loaded scene roots are shifted so the current chunk origin
     /// sits at (0, 0, 0) in Unity space, keeping floats precise.
     /// </summary>
@@ -89,12 +89,8 @@ namespace Game.Client
         /// </summary>
         public void ApplyOriginToScene(Scene scene)
         {
-            using var markerScope = ORIGIN_SHIFT_MARKER.Begin();
             var originOffset = new Vector3(OriginChunk.x * _chunkSize, 0f, OriginChunk.y * _chunkSize);
-            int rootCount = ShiftAllSceneRoots(scene, originOffset);
-
-            if (PerformanceTelemetry.IsEnabled)
-                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ORIGIN_SHIFT_ROOT_COUNT, rootCount);
+            ShiftAllSceneRoots(scene, originOffset);
         }
 
         /// <summary>

@@ -21,6 +21,9 @@ namespace Game.Client
         private static readonly PerformanceMarker SCENE_ACTIVATION_MARKER = new(
             ClientPerformanceMetrics.SCENE_ACTIVATION_DURATION,
             "Client.WorldManager.SceneActivation");
+        private static readonly PerformanceMarker STREAMED_SCENE_DELIVERY_CALLBACK_MARKER = new(
+            ClientPerformanceMetrics.STREAMED_SCENE_DELIVERY_CALLBACK_DURATION,
+            "Client.WorldManager.StreamedSceneDeliveryCallback");
         private static readonly PerformanceMarker SCENE_UNLOAD_MARKER = new(
             ClientPerformanceMetrics.SCENE_UNLOAD_CALLBACK_DURATION,
             "Client.WorldManager.SceneUnload");
@@ -271,15 +274,16 @@ namespace Game.Client
             if (_loadedScenes.ContainsKey(sceneID))
                 return;
 
+            using var markerScope = STREAMED_SCENE_DELIVERY_CALLBACK_MARKER.Begin();
             _loadedScenes.Add(sceneID, state.scene);
             if (PerformanceTelemetry.IsEnabled)
             {
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.SCENE_LOAD_COUNT, 1);
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.STREAMED_SCENE_LOAD_COUNT, 1);
+                PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.TRACKED_SCENE_COUNT, _loadedScenes.Count);
             }
 
             // Offset the new scene to match the current floating origin.
-            using var markerScope = SCENE_ACTIVATION_MARKER.Begin();
             ClientPositionManager.Instance.ApplyOriginToScene(state.scene);
             RecordPendingSceneOperations();
         }

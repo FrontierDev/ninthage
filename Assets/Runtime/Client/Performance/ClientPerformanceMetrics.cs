@@ -46,6 +46,11 @@ namespace Game.Client.Performance
             PerformanceMetricUnit.Milliseconds,
             "scene",
             "scene_operation");
+        internal static readonly PerformanceMetricDefinition STREAMED_SCENE_DELIVERY_CALLBACK_DURATION = Metric(
+            PerformanceMetricIds.CLIENT_STREAMED_SCENE_DELIVERY_CALLBACK_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            "scene",
+            "scene_callback");
         // PurrNet does not expose streamed scene request timestamps; this remains unavailable for streamed unloads.
         internal static readonly PerformanceMetricDefinition SCENE_UNLOAD_DURATION = Metric(
             PerformanceMetricIds.CLIENT_SCENE_UNLOAD_DURATION,
@@ -274,6 +279,7 @@ namespace Game.Client.Performance
 
             RegisterMeasured(SCENE_LOAD_DURATION);
             RegisterMeasured(SCENE_ACTIVATION_DURATION);
+            RegisterMeasured(STREAMED_SCENE_DELIVERY_CALLBACK_DURATION);
             RegisterUnavailable(SCENE_UNLOAD_DURATION, STREAMED_SCENE_UNLOAD_UNAVAILABLE_REASON);
             RegisterMeasured(SCENE_UNLOAD_CALLBACK_DURATION);
             RegisterMeasured(SCENE_LOAD_COUNT);

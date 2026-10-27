@@ -270,6 +270,8 @@ namespace Game.Shared.Performance
         public const string CLIENT_GPU_FRAME_TIME = "client.gpu.frame_time";
         public const string CLIENT_SCENE_LOAD_DURATION = "client.scene.load_duration";
         public const string CLIENT_SCENE_ACTIVATION_DURATION = "client.scene.activation_duration";
+        public const string CLIENT_STREAMED_SCENE_DELIVERY_CALLBACK_DURATION =
+            "client.scene.streamed_delivery_callback_duration";
         public const string CLIENT_SCENE_UNLOAD_DURATION = "client.scene.unload_duration";
         public const string CLIENT_SCENE_UNLOAD_CALLBACK_DURATION = "client.scene.unload_callback_duration";
         public const string CLIENT_SCENE_LOAD_COUNT = "client.scene.load_count";
