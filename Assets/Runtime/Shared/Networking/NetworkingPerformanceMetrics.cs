@@ -21,6 +21,8 @@ namespace Game.Shared.Networking
             "PurrNet's public ITransport API does not expose send backlog counters; use the transport's supported profiler or external capture.";
         public const string TRANSPORT_CONNECTION_ROUND_TRIP_TIME_UNAVAILABLE_REASON =
             "The selected PurrNet transport reports measuresRoundTripTime == false; no per-connection RTT sample is available.";
+        public const string TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON =
+            "The selected transport is not PurrNet UDPTransport; UDP-native statistics are unavailable.";
         public const string TRANSPORT_LATENCY_UNAVAILABLE_REASON =
             "PurrNet exposes transport-dependent RTT samples through ITransport.GetRoundTripTime; this generic metric remains unavailable because server per-connection RTT is recorded separately.";
 
@@ -90,6 +92,24 @@ namespace Game.Shared.Networking
             PerformanceMetricSide.Server,
             "purrnet_transport",
             "connection_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_UDP_NATIVE_BYTES_SENT = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_UDP_NATIVE_BYTES_SENT,
+            PerformanceMetricUnit.Bytes,
+            PerformanceMetricSide.Server,
+            "purrnet_udp_transport",
+            "network_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_UDP_NATIVE_PACKETS_SENT = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_UDP_NATIVE_PACKETS_SENT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "purrnet_udp_transport",
+            "network_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "purrnet_udp_transport",
+            "network_interval");
         public static readonly PerformanceMetricDefinition SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT = Metric(
             PerformanceMetricIds.SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT,
             PerformanceMetricUnit.Count,
@@ -360,7 +380,8 @@ namespace Game.Shared.Networking
         /// The benchmark runner calls this after starting its telemetry session.
         /// </summary>
         /// <param name="measuresRoundTripTime">Whether the active transport supports per-connection RTT samples.</param>
-        public static void RegisterServerMetrics(bool measuresRoundTripTime)
+        /// <param name="supportsUdpNativeStatistics">Whether the active transport is PurrNet UDPTransport.</param>
+        public static void RegisterServerMetrics(bool measuresRoundTripTime, bool supportsUdpNativeStatistics)
         {
             RegisterUnavailable(
                 SERVER_CONNECTION_ATTEMPT_COUNT,
@@ -383,6 +404,24 @@ namespace Game.Shared.Networking
                 RegisterUnavailable(
                     SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME,
                     TRANSPORT_CONNECTION_ROUND_TRIP_TIME_UNAVAILABLE_REASON);
+            if (supportsUdpNativeStatistics)
+            {
+                RegisterMeasured(SERVER_TRANSPORT_UDP_NATIVE_BYTES_SENT);
+                RegisterMeasured(SERVER_TRANSPORT_UDP_NATIVE_PACKETS_SENT);
+                RegisterMeasured(SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT);
+            }
+            else
+            {
+                RegisterUnavailable(
+                    SERVER_TRANSPORT_UDP_NATIVE_BYTES_SENT,
+                    TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON);
+                RegisterUnavailable(
+                    SERVER_TRANSPORT_UDP_NATIVE_PACKETS_SENT,
+                    TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON);
+                RegisterUnavailable(
+                    SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT,
+                    TRANSPORT_UDP_NATIVE_STATISTICS_UNAVAILABLE_REASON);
+            }
             RegisterMeasured(SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT);
             RegisterMeasured(SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT);
             RegisterMeasured(SERVER_REPLICATION_MOVEMENT_PRESENTATION_PUBLICATION_COUNT);

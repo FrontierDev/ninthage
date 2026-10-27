@@ -48,6 +48,11 @@ namespace Game.Server.Core
         // Current outbound interval only; _transport.connections remains the live connection authority.
         private Dictionary<Connection, ConnectionTelemetryWindow> _outboundTelemetryWindows = new();
         private double _networkTelemetryElapsedSeconds;
+        private bool _udpStatisticsEnabledByTelemetry;
+        private bool _hasUdpStatisticsBaseline;
+        private long _udpNativeBytesSentBaseline;
+        private long _udpNativePacketsSentBaseline;
+        private long _udpPacketLossBaseline;
 
         #region Lifecycle
         private void Awake()
@@ -77,7 +82,10 @@ namespace Game.Server.Core
             PerformanceTelemetry.SessionStarted += OnPerformanceSessionStarted;
             PerformanceTelemetry.SessionEnded += OnPerformanceSessionEnded;
             if (PerformanceTelemetry.IsEnabled)
+            {
                 ResetOutboundTelemetryWindow();
+                BeginUdpStatisticsTelemetry();
+            }
             _initialized = true;
         }
 
@@ -87,6 +95,7 @@ namespace Game.Server.Core
             if (!asServer)
                 return;
 
+            EndUdpStatisticsTelemetry();
             if (_transport != null)
             {
                 _transport.onConnected -= OnTransportConnected;
@@ -144,6 +153,8 @@ namespace Game.Server.Core
                 }
             }
 
+            RecordUdpStatisticsInterval(intervalSeconds);
+
             ResetOutboundTelemetryWindow();
         }
         #endregion
@@ -151,10 +162,12 @@ namespace Game.Server.Core
         private void OnPerformanceSessionStarted()
         {
             ResetOutboundTelemetryWindow();
+            BeginUdpStatisticsTelemetry();
         }
 
         private void OnPerformanceSessionEnded()
         {
+            EndUdpStatisticsTelemetry();
             ResetOutboundTelemetryWindow();
         }
 
@@ -162,6 +175,90 @@ namespace Game.Server.Core
         {
             _outboundTelemetryWindows.Clear();
             _networkTelemetryElapsedSeconds = 0d;
+        }
+
+        private void BeginUdpStatisticsTelemetry()
+        {
+            if (_transport is not UDPTransport udpTransport)
+            {
+                ClearUdpStatisticsState();
+                return;
+            }
+
+            if (!udpTransport.statisticsEnabled)
+            {
+                udpTransport.SetStatisticsEnabled(true);
+                _udpStatisticsEnabledByTelemetry = true;
+            }
+            else if (!_hasUdpStatisticsBaseline)
+            {
+                _udpStatisticsEnabledByTelemetry = false;
+            }
+
+            CaptureUdpStatisticsBaseline(udpTransport);
+        }
+
+        private void EndUdpStatisticsTelemetry()
+        {
+            if (_transport is UDPTransport udpTransport && _udpStatisticsEnabledByTelemetry)
+                udpTransport.SetStatisticsEnabled(false);
+
+            ClearUdpStatisticsState();
+        }
+
+        private void RecordUdpStatisticsInterval(double intervalSeconds)
+        {
+            if (_transport is not UDPTransport udpTransport)
+                return;
+
+            if (!_hasUdpStatisticsBaseline)
+            {
+                CaptureUdpStatisticsBaseline(udpTransport);
+                return;
+            }
+
+            long nativeBytesSent = udpTransport.nativeBytesSent;
+            long nativePacketsSent = udpTransport.nativePacketsSent;
+            long packetLoss = udpTransport.nativePacketLoss;
+            if (nativeBytesSent < _udpNativeBytesSentBaseline
+                || nativePacketsSent < _udpNativePacketsSentBaseline
+                || packetLoss < _udpPacketLossBaseline)
+            {
+                CaptureUdpStatisticsBaseline(udpTransport);
+                return;
+            }
+
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_TRANSPORT_UDP_NATIVE_BYTES_SENT,
+                nativeBytesSent - _udpNativeBytesSentBaseline,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_TRANSPORT_UDP_NATIVE_PACKETS_SENT,
+                nativePacketsSent - _udpNativePacketsSentBaseline,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT,
+                packetLoss - _udpPacketLossBaseline,
+                intervalSeconds: intervalSeconds);
+
+            CaptureUdpStatisticsBaseline(udpTransport);
+        }
+
+        private void CaptureUdpStatisticsBaseline(UDPTransport udpTransport)
+        {
+            _udpNativeBytesSentBaseline = udpTransport.nativeBytesSent;
+            _udpNativePacketsSentBaseline = udpTransport.nativePacketsSent;
+            _udpPacketLossBaseline = udpTransport.nativePacketLoss;
+            _hasUdpStatisticsBaseline = true;
+        }
+
+        private void ClearUdpStatisticsState()
+        {
+            _udpStatisticsEnabledByTelemetry = false;
+            _hasUdpStatisticsBaseline = false;
+            _udpNativeBytesSentBaseline = 0L;
+            _udpNativePacketsSentBaseline = 0L;
+            _udpPacketLossBaseline = 0L;
         }
 
         private void OnTransportConnected(Connection connection, bool asServer)

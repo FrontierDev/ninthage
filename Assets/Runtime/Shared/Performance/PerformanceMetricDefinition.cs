@@ -188,6 +188,12 @@ namespace Game.Shared.Performance
             "server.transport.connection.message_count_sent";
         public const string SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME =
             "server.transport.connection.round_trip_time";
+        public const string SERVER_TRANSPORT_UDP_NATIVE_BYTES_SENT =
+            "server.transport.udp.native_bytes_sent";
+        public const string SERVER_TRANSPORT_UDP_NATIVE_PACKETS_SENT =
+            "server.transport.udp.native_packets_sent";
+        public const string SERVER_TRANSPORT_UDP_PACKET_LOSS_COUNT =
+            "server.transport.udp.packet_loss_count";
         public const string SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT =
             "server.replication.combat_critical.publication_count";
         public const string SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT =

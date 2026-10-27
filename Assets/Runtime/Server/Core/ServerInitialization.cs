@@ -46,7 +46,9 @@ namespace Game.Server.Core
             if (rawTransport == null)
                 throw new InvalidOperationException("Cannot register server metrics without an active NetworkManager raw transport.");
 
-            NetworkingPerformanceMetrics.RegisterServerMetrics(rawTransport.measuresRoundTripTime);
+            NetworkingPerformanceMetrics.RegisterServerMetrics(
+                rawTransport.measuresRoundTripTime,
+                rawTransport is UDPTransport);
             ServerECSManager.RegisterPerformanceMetrics();
             WorldSpawnSystem.RegisterPerformanceMetrics();
             ActorUpdateSystem.RegisterPerformanceMetrics();
