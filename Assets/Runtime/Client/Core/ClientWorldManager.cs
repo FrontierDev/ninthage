@@ -30,7 +30,7 @@ namespace Game.Client
             Idle,
             Entering,
             Ready,
-            TearingDown
+            CleaningUp
         }
 
         private static ClientWorldManager _instance;
@@ -59,7 +59,7 @@ namespace Game.Client
         private int _worldPresentationGeneration;
         private AsyncOperation _globalWorldLoadOperation;
         private AsyncOperation _globalWorldUnloadOperation;
-        private Coroutine _worldPresentationTeardownCoroutine;
+        private Coroutine _worldPresentationCleanupCoroutine;
         private readonly Dictionary<SceneID, Scene> _loadedScenes = new();
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace Game.Client
         public int WorldPresentationGeneration => _worldPresentationGeneration;
 
         /// <summary>
-        /// Occurs after the current world-presentation generation has been invalidated and before teardown begins.
+        /// Occurs after the current world-presentation generation has been invalidated and before cleanup begins.
         /// </summary>
         public event Action onWorldPresentationEnding;
 
@@ -367,15 +367,15 @@ namespace Game.Client
         }
 
         /// <summary>
-        /// Ends the current client world-presentation session and begins owned scene teardown.
+        /// Ends the current client world-presentation session and begins owned scene cleanup.
         /// </summary>
         public void EndWorldPresentation()
         {
             if (_worldPresentationState == WorldPresentationState.Idle
-                || _worldPresentationState == WorldPresentationState.TearingDown)
+                || _worldPresentationState == WorldPresentationState.CleaningUp)
                 return;
 
-            _worldPresentationState = WorldPresentationState.TearingDown;
+            _worldPresentationState = WorldPresentationState.CleaningUp;
             _isWorldReady = false;
             int generation = ++_worldPresentationGeneration;
             onWorldPresentationEnding?.Invoke();
@@ -383,11 +383,11 @@ namespace Game.Client
             long startedTimestamp = PerformanceTelemetry.IsEnabled
                 ? System.Diagnostics.Stopwatch.GetTimestamp()
                 : 0;
-            _worldPresentationTeardownCoroutine = StartCoroutine(
-                CompleteWorldPresentationTeardown(generation, startedTimestamp));
+            _worldPresentationCleanupCoroutine = StartCoroutine(
+                CompleteWorldPresentationCleanup(generation, startedTimestamp));
         }
 
-        private IEnumerator CompleteWorldPresentationTeardown(int generation, long startedTimestamp)
+        private IEnumerator CompleteWorldPresentationCleanup(int generation, long startedTimestamp)
         {
             if (_globalWorldLoadOperation != null)
             {
@@ -433,11 +433,11 @@ namespace Game.Client
                 yield return null;
 
             if (generation != _worldPresentationGeneration
-                || _worldPresentationState != WorldPresentationState.TearingDown)
+                || _worldPresentationState != WorldPresentationState.CleaningUp)
                 yield break;
 
             _loadedScenes.Clear();
-            _worldPresentationTeardownCoroutine = null;
+            _worldPresentationCleanupCoroutine = null;
             _worldPresentationState = WorldPresentationState.Idle;
             if (PerformanceTelemetry.IsEnabled)
             {
