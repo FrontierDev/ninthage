@@ -15,9 +15,11 @@ Establish the **performance, simulation, networking, world-runtime, client-resou
 
 Ninth Age is an MMO built with Unity 6.3, URP Forward+, a headless authoritative server, PurrNet, a hybrid GameObject/Unity Entities runtime, and a very large streamed world. Phase 1 must prepare that existing architecture for **foreseeable high-stress workloads before content and gameplay complexity multiply**.
 
-**Governing principle:** Anticipate the highest-stress plausible scenarios and implement their reusable architectural prerequisites now. Do not defer an identifiable foundational dependency until it becomes a production bottleneck. Equally, do not adopt speculative frameworks or rewrite functional systems without measured or demonstrable architectural justification.
+**Governing principle:** Anticipate the highest-stress plausible scenarios and implement their reusable architectural prerequisites now. Do not defer an identifiable foundational dependency until it becomes a production bottleneck. Equally, do not adopt speculative frameworks or rewrite functional systems without demonstrable architectural justification.
 
-A scalable architectural design, a tested workload, and a guaranteed production capacity are **three different claims**. No numerical server or player capacity is implied by completion of this plan.
+**Foundation-first performance sequencing:** Stages **1.1–1.9** build the server/client foundations and the instrumentation needed to observe them. During those stages, use only focused correctness tests and short instrumentation smoke runs needed to prove that an implementation works and that telemetry is connected. Do **not** create representative benchmark campaigns, density/capacity sweeps, soak campaigns, comparative optimisation studies or new numerical performance thresholds as stage gates. Lightweight repeatable performance regression gates begin only in **Stage 1.10**, after the functional foundations are assembled; the full representative benchmark/stress matrix is executed in **Stage 1.11**.
+
+A scalable architectural design, an instrumented runtime, a tested workload, and a guaranteed production capacity are **different claims**. No numerical server or player capacity is implied by completion of a foundation stage.
 
 ## 2. Authority, constraints and scope
 
@@ -46,18 +48,18 @@ Preserve these established decisions:
 8. **One world / one process / one physical machine.** Every map, public area, private instance and simulated actor of a persistent world remains inside its one World Server process. Distinct worlds have distinct World Server machines; no cross-machine world sharding or separate instance-hosting processes.
 9. **A separate Master Server owns the global control plane**: durable world registry, authentication, account/character persistence service authority, one-account/one-session exclusivity, world admission/transfer coordination and later cross-world social routing. It does not run Unity world simulation. The Stage 1.2 launch-generated `WorldID` remains an intentionally temporary test identifier until the durable registry is integrated.
 
-Phase 1 establishes common mechanisms and verifies them under synthetic stress. Full zone production, sophisticated AI content, private-dungeon gameplay, **concurrent multi-world hosting and cross-world transfers (Phase 3)**, final art-density tuning, final capacity promises and deployment at commercial scale remain later work. Splitting a single world across machines is prohibited by the approved topology, not deferred future work.
+Phase 1 first establishes the common mechanisms and instrumentation, then verifies the assembled runtime under synthetic stress in Stages 1.10–1.11. Foundation stages must not repeatedly stop to run broad performance campaigns before the dependent server/client architecture exists. Full zone production, sophisticated AI content, private-dungeon gameplay, **concurrent multi-world hosting and cross-world transfers (Phase 3)**, final art-density tuning, final capacity promises and deployment at commercial scale remain later work. Splitting a single world across machines is prohibited by the approved topology, not deferred future work.
 
 ## 3. Execution rules
 
 1. Execute stages in the order below **unless a stage explicitly identifies independent parallel work**. Each stage ends with concrete artifacts and a validation gate; failing a gate blocks dependent stages.
-2. Begin with baseline instrumentation so every architecture change has a before/after comparison. Preserve representative Phase 0 behaviours and regression coverage.
+2. Begin with baseline instrumentation so later integrated performance work can attribute cost. Preserve representative Phase 0 behaviours and regression coverage. During Stages 1.1–1.9, instrumentation smoke runs verify telemetry/correctness only; they are not before/after benchmark campaigns or capacity gates.
 3. Make timing, relevance, actor lifetime and data-ownership contracts explicit before other features adopt them.
 4. Refactor real hot paths at the appropriate stage; do not merely add abstract interfaces while leaving the original per-frame scans and allocations active.
-5. Prefer direct, understandable, testable implementations. Add pooling, Jobs, Burst, custom buffers or caches only where appropriate to ownership and workload characteristics, and measure their effects.
+5. Prefer direct, understandable, testable implementations. Add pooling, Jobs, Burst, custom buffers or caches only where their ownership/workload characteristics justify them structurally. Comparative performance evaluation of those choices belongs to Stages 1.10–1.11 unless a focused smoke measurement is required to prove the mechanism itself functions.
 6. Each implementation issue must identify affected project-owned files and methods, dependencies, non-goals, automated/static validation and manual Unity/multiplayer validation. Follow the repository workflow's separation of implementation and regression-test issues.
 7. Preserve Unity client, standalone headless server, editor and multiplayer operation. Record any validation that cannot run in automation; never represent static tests as proof of performance.
-8. Configure operational limits and budgets centrally, not as scattered literals. A threshold should be justified by a test profile, hardware specification and expected gameplay behaviour.
+8. Configure operational limits and budgets centrally, not as scattered literals. New numerical performance thresholds are promoted only from the Stage 1.10–1.11 evidence programme with workload/hardware context and owner approval; foundation stages may use correctness/resource-safety bounds that are intrinsic to the implementation.
 
 ### Suggested existing integration points (not an exhaustive change list)
 
@@ -246,12 +248,12 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
     - Remove scene, subscription, physical-binding and telemetry state exactly once on unload/failure/teardown.
     - Do not duplicate scene lifetime/reference counts inside `ServerPhysicsManager`; physical references and scene-streaming ownership remain distinct.
 
-17. **Stage 1.2 final correctness and performance gate.**
+17. **Stage 1.2 final correctness and observability gate.**
     - Validate positive/negative coordinates, repeated shared 256 m origin/environment boundary crossings (including correctly staggered rebase/streaming work) and 64 m spatial-index-cell crossings.
     - Validate continuous NPC navigation across several streamed tiles in both positive and negative directions with no region lookup, Warp/rebind, target clearing or tile-boundary route reconstruction.
     - Validate two simultaneous logical contexts at identical absolute coordinates and the same authored environment tile with no visibility, targeting, aggro or combat leakage; any physical isolation required by concurrently active runtime instances must follow context ownership rather than fixed tile-derived region slots.
     - Validate player correction/reconnect/ownership changes and observer updates during origin rebases.
-    - Benchmark dense local populations and distant concurrent populations; candidate/query/update costs must correlate with relevant local actors rather than total world population.
+    - Confirm the spatial/query/update telemetry needed to demonstrate locality is present and smoke-test that it reports the intended work. Dense-population scaling/capacity benchmarking is deferred to Stages 1.10–1.11.
     - Confirm `ServerWorldManager`, `ServerPositionManager`, `ServerPhysicsManager` and `ServerActorManager` each retain only their documented responsibilities.
     - Confirm no active code or documentation still depends on the superseded per-tile packed-slot, fixed-grid simulation-region, gateway or calculated seam/Warp model.
 
@@ -267,11 +269,11 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Establish a per-field **single source of authority** for position, motion, actor state, casts, auras, cooldowns, threat and visibility. Document precisely when ECS, server domain logic, NavMeshAgent, PurrNet NetworkBehaviour or client presentation is authoritative.
 - Review `ServerActorManager` full-entity iterations and the per-actor `GetComponent`/Transform/EntityManager synchronisation boundary. Replace unnecessary scans and lookups with tracked/dirty/eligible sets or batched data transfer where beneficial.
 - Separate data-only simulation from operations requiring UnityEngine objects, Physics, NavMesh, network identity or main-thread presentation. Make a coherent main-thread command/event boundary for work produced by jobs.
-- Convert suitable numeric, homogeneous, measured hot paths to Unity Jobs/Burst, while retaining managed paths when domain callbacks or PurrNet APIs require them. Confirm safety, scheduling, job completion and disposal.
+- Convert suitable numeric, homogeneous, structurally appropriate hot paths to Unity Jobs/Burst where the ownership/data boundary is already clear, while retaining managed paths when domain callbacks or PurrNet APIs require them. Confirm safety, scheduling, job completion and disposal.
 - Keep actor spawn/despawn and structural ECS changes explicit, testable and safe relative to running jobs and queued events.
 - Establish allocation standards for high-frequency code, reuse temporary buffers where justified, and ensure cache/pool cleanup. No blanket ban on managed code or indiscriminate rewrite of all gameplay into Entities.
 
-**Gate:** Actor and timed-state regression tests, stable actor/entity ownership across lifecycle transitions, zero unexpected job-safety failures, and before/after benchmark results for changed hot paths.
+**Gate:** Actor and timed-state regression tests, stable actor/entity ownership across lifecycle transitions, zero unexpected job-safety failures, and telemetry sufficient for the later integrated performance programme. Before/after hot-path benchmarking is deferred to Stages 1.10–1.11.
 
 ### Stage 1.4 — Actor lifecycle, simulation LOD and high-population AI
 
@@ -290,7 +292,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Define when an actor needs a live GameObject, NavMeshAgent or PurrNet identity, and when cheaper authoritative data can suffice. Introduce lightweight representation only where compatible with required game/network semantics.
 - Test mass awakening and density transitions to avoid spikes merely moved from steady-state updates into reactivation.
 
-**Gate:** Dormant populations incur demonstrably lower steady-state CPU costs; waking restores correct game state; nearby combat remains responsive; stress tests capture activation spikes and no cross-instance leakage.
+**Gate:** Full/Nearby/Dormant transitions, wake triggers, retained authoritative state, nearby combat behaviour and cross-instance isolation are correct; telemetry exposes activity counts and wake/perception/navigation work for later stress verification. High-population CPU and mass-wake benchmarking is deferred to Stages 1.10–1.11.
 
 ### Stage 1.5 — PurrNet replication and bandwidth scalability
 
@@ -319,20 +321,22 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 
 ### Stage 1.6 — Client rendering, world streaming and resource lifetime foundations
 
+**Detailed implementation plan:** [Stage 1.6 Implementation PDD](Stage-1.6-Implementation-PDD.md).
+
 **Prerequisite:** 1.0, 1.2–1.3 where shared actor/world contracts are required.  
 **May proceed in parallel with:** 1.4–1.5 after contracts are stable.
 
 **Implement:**
 
-- Define client-side lifetime ownership and budgets for streamed world tiles, additive object scenes, terrain LOD representations, instantiated actors, effects, UI/nameplates, pooled assets and remote Addressables handles.
-- Instrument and bound scene loading/activation/unloading work and main-thread spikes while moving rapidly across tile boundaries. Enforce balanced asset acquisition/release and teardown across logout, world transfer and reconnection.
-- Establish practical pooling policies for repeat-spawn transient VFX/UI/actors when beneficial, with hard cleanup and reset-state requirements; do not pool everything.
+- Define client-side lifetime ownership and hard bounds for streamed world tiles, additive object scenes, terrain LOD representations, instantiated actors, effects, UI/nameplates, pooled assets and project-owned Addressables handles.
+- Instrument scene loading/activation/unloading work, floating-origin rebases, frame timing and retained-resource counts while preserving PurrNet scene ownership. Enforce balanced project-owned asset acquisition/release and teardown across logout, failed entry, world transfer and reconnection boundaries.
+- Establish practical pooling/reset contracts for clearly high-churn transient presentation objects where the lifetime case is structurally clear; do not pool network actors or introduce speculative generic pools.
 - Standardise distance/visibility LOD and culling integration for terrain, meshes, vegetation, animation, shadows and VFX. Define required asset-authoring metadata and validation so future art is economical by construction.
-- Benchmark **URP Forward+** with representative forest, settlement and crowded-character fixtures. Evaluate GPU instancing, SRP Batcher, GPU-driven options and impostors/HLOD by compatibility and profiling evidence; do not assume every technique stacks or should be turned on globally.
+- Preserve **URP Forward+** and make the graphical client profile/report path reliable enough for later integrated performance work. Do not run representative forest/settlement/crowded-client benchmark campaigns or select renderer optimisations as a Stage 1.6 gate.
 - Preserve day/night and future weather/lighting hooks without building complete environmental systems in this phase.
-- Test seamless additive scene transitions, floating-origin shifts, distant terrain continuity and stable memory over repeated load/unload cycles.
+- Add focused regression coverage for the changed resource ownership, world-presentation, floating-origin and authoring contracts.
 
-**Gate:** No unbounded Addressables/scene/pooled-object retention; representative density and high-speed traversal metrics documented; predictable culling/LOD contracts for future content; no visible world/actor discontinuity from optimisations.
+**Gate:** Project-owned client resource lifetimes are explicit/bounded; world entry/cleanup and floating-origin/streamed-scene ownership are correct; LOD/culling authoring validation exists; client telemetry/reporting is smoke-tested; critical changed contracts have focused regression coverage. Representative rendering, rapid-traversal, repeated-lifetime and capacity benchmarking is deferred to Stages 1.10–1.11.
 
 ### Stage 1.7 — Relational persistence, transactional state and timed-state continuity
 
@@ -351,7 +355,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Implement explicit JSON prototype-data import/migration with idempotency, diagnostics and rollback/backup rehearsal. Validate concurrent transactions, interrupted saves, restart and round-trip consistency.
 - Provide soft delete/restore identity and name-reservation foundations where required by the PDD.
 
-**Gate:** All existing meaningful character state persists through relog/restart via the central Master Server-owned persistence boundary; competing or interrupted economic/progression operations cannot duplicate ownership; failed database dependencies fail explicitly without corrupting authoritative state; load bursts have measured tick impact. The durable account/character/world schema does not rely on process-local identity or the Stage 1.2 transient WorldID.
+**Gate:** All existing meaningful character state persists through relog/restart via the central Master Server-owned persistence boundary; competing or interrupted economic/progression operations cannot duplicate ownership; failed database dependencies fail explicitly without corrupting authoritative state; persistence latency/backlog/tick-impact instrumentation is present for later integrated stress verification. The durable account/character/world schema does not rely on process-local identity or the Stage 1.2 transient WorldID.
 
 ### Stage 1.8 — Sessions, authentication and reconnect authority
 
@@ -365,7 +369,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Establish the initial one-world World Server registration/availability/heartbeat and authenticated admission boundary with the Master Server; full concurrent multi-world discovery, selection and state-preserving transfers are Phase 3 work. Account for simultaneous login attempts, transient connection loss, server restart, invalid location recovery and authentication-rate safeguards appropriate to the baseline.
 - Test multi-client connection races and mass reconnects under load.
 
-**Gate:** No duplicate authoritative sessions/actors or lost/duplicated items; the Master Server is the sole account/session admission authority even with multiple connection attempts; the initial World Server can register and authenticate admission against it; reconnect and restart preserve relevant state; burst traffic has bounded, measured server and persistence effects.
+**Gate:** No duplicate authoritative sessions/actors or lost/duplicated items; the Master Server is the sole account/session admission authority even with multiple connection attempts; the initial World Server can register and authenticate admission against it; reconnect and restart preserve relevant state; admission/reconnect telemetry is present for later burst/stress verification.
 
 ### Stage 1.9 — Release identity, compatibility and Addressables content delivery
 
@@ -380,12 +384,14 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Preserve each release's `addressables_content_state.bin` and immutable artifacts; verify patch download size, cache invalidation, content hash/revision and rollback compatibility.
 - Enforce reliable asset/definition references across client/server revisions and prevent accidental cross-release mixing.
 
-**Gate:** Controlled compatible hotfix works without rebuilding the client; incompatible builds/content cannot enter; catalog/bundle updates are reproducible and measured; asset dependency/release artifacts are auditable.
+**Gate:** Controlled compatible hotfix works without rebuilding the client; incompatible builds/content cannot enter; catalog/bundle updates are reproducible and auditable; asset dependency/release artifacts and update telemetry are sufficient for later integrated performance qualification.
 
 ### Stage 1.10 — Runtime operations, failure handling and CI performance gates
 
 **Prerequisite:** 1.0–1.9 interfaces and metrics are established.  
 **Some logging/config/CI scaffolding may begin in parallel after 1.0.**
+
+This is the **first Phase 1 stage that may promote repeatable performance comparisons into actual regression gates**. Earlier foundation-stage smoke reports remain developmental evidence only.
 
 **Implement:**
 
@@ -401,6 +407,8 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 ### Stage 1.11 — Integrated stress verification and Phase 1 sign-off
 
 **Prerequisite:** All prior stage gates passed.
+
+This stage owns the representative benchmark campaigns intentionally deferred from Stages 1.1–1.9, including dense rendering, rapid traversal/repeated lifetime, population scaling, network-load, reconnect-burst and soak workloads.
 
 Run the Phase 1 benchmark matrix against a release-like headless server and graphical client, exercising **combined** workloads rather than isolated microbenchmarks:
 
