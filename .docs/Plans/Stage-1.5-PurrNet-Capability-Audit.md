@@ -20,7 +20,7 @@ The active package identity is:
 
 `8d3afad9a51ff6f298f0caf6aa69acda7b72e2608e665ed3a88ab988582a8fa7`
 
-The directory hash uses the established project convention in `Assets/Tests/Performance/Harness/Editor/Test_PerformanceEvidence.cs:111-131`: sort all files by full path using ordinal comparison; emit each project-relative path with forward slashes, a colon, the lowercase per-file SHA-256, and a newline; SHA-256 the UTF-8 concatenation. This local directory hash is the authoritative audit identity.
+The directory hash uses the established project convention from the archived evidence process: sort all files by full path using ordinal comparison; emit each project-relative path with forward slashes, a colon, the lowercase per-file SHA-256, and a newline; SHA-256 the UTF-8 concatenation. This local directory hash is the authoritative audit identity.
 
 The package metadata and changelog identify the 1.25.0 release line and link upstream tags/commit hashes, including the stacked-identity fix at changelog line 31. They do not prove that this checkout is an exact upstream tag or commit: there is no nested Git metadata or independently verified ref. No upstream tag/commit is therefore trusted as the audit identity.
 

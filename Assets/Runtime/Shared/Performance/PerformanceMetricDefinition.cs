@@ -43,7 +43,7 @@ namespace Game.Shared.Performance
         public string Scope { get; }
     }
 
-    /// <summary>Canonical units used by the benchmark evidence contract.</summary>
+    /// <summary>Canonical units used by live performance reports.</summary>
     public enum PerformanceMetricUnit
     {
         Milliseconds,
@@ -71,16 +71,6 @@ namespace Game.Shared.Performance
         Unsupported,
         Unavailable,
         NotApplicable
-    }
-
-    /// <summary>Identifies the lifecycle phase associated with a telemetry sample.</summary>
-    public enum PerformanceMeasurementPhase
-    {
-        Preflight,
-        Ramp,
-        Warmup,
-        Measurement,
-        Recovery
     }
 
     /// <summary>Stable IDs for metrics that later instrumentation may produce.</summary>
@@ -362,23 +352,5 @@ namespace Game.Shared.Performance
             }
         }
 
-        public static string ToText(PerformanceMeasurementPhase phase)
-        {
-            switch (phase)
-            {
-                case PerformanceMeasurementPhase.Preflight:
-                    return "preflight";
-                case PerformanceMeasurementPhase.Ramp:
-                    return "ramp";
-                case PerformanceMeasurementPhase.Warmup:
-                    return "warmup";
-                case PerformanceMeasurementPhase.Measurement:
-                    return "measurement";
-                case PerformanceMeasurementPhase.Recovery:
-                    return "recovery";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(phase), phase, "Unknown measurement phase.");
-            }
-        }
     }
 }

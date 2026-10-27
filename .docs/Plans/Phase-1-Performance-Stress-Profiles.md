@@ -1,15 +1,17 @@
 # Ninth Age — Phase 1.0 Performance Stress Profiles
 
-**Status:** Proposed engineering workload specification; requires manual acceptance of [Issue #42](https://github.com/FrontierDev/ninthage/issues/42).
+**Status:** Historical engineering workload specification; the Editor/test harness that executed these profiles is retired.
 **Specification revision:** `P1-STRESS-1.0.0`
 **Source reviewed:** `dev` at `3e5465d372fa843e83d13cb1e00da0c95836221d`, 13 October 2026.
 **Scope:** Scenario definitions, reproduction inputs and provisional engineering probes **only**; no gameplay implementation, live population cap, measured result or performance budget.
+
+> These profiles are historical planning inputs, not an executable harness or an accepted evidence source. Current Stage 1.5+ evidence must come from an ordinary live dedicated server launched with `--profiling`, real connected clients and real runtime population/gameplay. Historical Editor measurements remain historical only.
 
 ## 1. Authority and what this document does not prove
 
 This catalogue implements the profile definition requirements of [Phase 1 Implementation Plan](Phase-1-Implementation-Plan.md), subordinate to [Performance and Simulation Architecture](../Performance-and-Simulation-Architecture.md) and [Project Roadmap](Project-Roadmap.md). Design authority remains with the [World Runtime and Instancing PDD](../pdd/World-Runtime-and-Instancing-PDD.md), [AI and Encounter Behaviour PDD](../pdd/AI-and-Encounter-Behaviour-PDD.md), [Graphical Approach PDD](../pdd/Graphical-Approach-PDD.md), [Movement and Traversal PDD](../pdd/Movement-and-Traversal-PDD.md), [Combat System PDD](../pdd/Combat-System-PDD.md), and [Account, Character and Persistence PDD](../pdd/Account-Character-and-Persistence-PDD.md). Follow [GitHub Issue and Workflow Guide](../GitHub-Issue-and-Workflow-Guide.md).
 
-Each of the eight profile IDs below is an **independent executable-scenario contract**: the eventual harness must be able to select, provision and run it from a clean state with no previous profile. The contract is **not the executable harness**. All profiles are **DEFINED / NOT EXECUTED** as of this review. A benchmark result requires actual matching source/build, assets, clients, telemetry, hardware and raw results.
+Each of the eight profile IDs below is an **independent historical scenario contract**. The retired harness is not required or permitted as a current evidence mechanism. All profiles are **DEFINED / NOT EXECUTED** as of this review. A current result requires an actual matching server build, real clients, telemetry, hardware and the live aggregate report.
 
 Explicitly distinguish:
 - **Source capability:** a prototype manager/ECS/PurrNet path exists; this does not imply it can run the target workload.

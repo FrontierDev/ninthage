@@ -561,7 +561,7 @@ Relevant design/test references:
 - `.docs/pdd/Movement-and-Traversal-PDD.md` — §20.3.1–20.3.2
 - `.docs/pdd/World-Runtime-and-Instancing-PDD.md`
 - `.docs/pdd/AI-and-Encounter-Behaviour-PDD.md`
-- `Assets/Tests/Performance/Harness/Editor/Test_SimulationRegionSizingProbe.cs`
+- `.docs/Performance-and-Simulation-Architecture.md` - current live profiling ownership; retired harness artifacts are not validation evidence
 
 ---
 

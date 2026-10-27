@@ -17,9 +17,25 @@ namespace Game.Server.Core
     public static class ServerInitialization
     {
         private const string WORLD_ARGUMENT = "--world";
+        private const string PROFILING_ARGUMENT = "--profiling";
+
+        private readonly struct ServerLaunchOptions
+        {
+            public ServerLaunchOptions(string worldName, bool profilingEnabled)
+            {
+                WorldName = worldName;
+                ProfilingEnabled = profilingEnabled;
+            }
+
+            public string WorldName { get; }
+            public bool ProfilingEnabled { get; }
+        }
+
         private static MonoBehaviour _host;
         private static GameObject _networkManagerObject;
         private static bool _forceCleanServer;
+        private static string _launchWorldName;
+        private static bool _profilingRequested;
         private static Coroutine _initializationCoroutine;
         private static Coroutine _fatalShutdownCoroutine;
         private static bool _fatalShutdownRequested;
@@ -31,7 +47,7 @@ namespace Game.Server.Core
 
         /// <summary>
         /// Registers project-owned server metrics for an already active telemetry session.
-        /// The benchmark runner owns session startup and invokes this entrypoint afterwards.
+        /// Live server profiling owns session startup and invokes this entrypoint after networking.
         /// </summary>
         public static void RegisterPerformanceMetrics()
         {
@@ -67,7 +83,8 @@ namespace Game.Server.Core
         public static void Begin(MonoBehaviour host)
         {
             ValidateHost(host);
-            BeginInternal(host, ResolveLaunchWorldName());
+            ServerLaunchOptions launchOptions = ResolveLaunchOptions();
+            BeginInternal(host, launchOptions.WorldName, launchOptions.ProfilingEnabled);
         }
 
         /// <summary>Begins the Editor/test server initialization with an explicitly supplied world name.</summary>
@@ -75,10 +92,10 @@ namespace Game.Server.Core
         /// <param name="worldName">The explicit world identity supplied by the test bootstrap.</param>
         public static void Begin(MonoBehaviour host, string worldName)
         {
-            BeginInternal(host, ValidateExplicitWorldName(worldName));
+            BeginInternal(host, ValidateExplicitWorldName(worldName), false);
         }
 
-        private static void BeginInternal(MonoBehaviour host, string launchWorldName)
+        private static void BeginInternal(MonoBehaviour host, string launchWorldName, bool profilingEnabled)
         {
             ValidateHost(host);
             if (_fatalShutdownRequested)
@@ -88,6 +105,8 @@ namespace Game.Server.Core
 
             _timeAuthority = new ServerTimeAuthority();
             _host = host;
+            _launchWorldName = launchWorldName;
+            _profilingRequested = profilingEnabled;
             _initializationSucceeded = false;
             bool runtimeContextInitialized = false;
             try
@@ -101,6 +120,8 @@ namespace Game.Server.Core
                 if (runtimeContextInitialized)
                     ServerWorldManager.ClearRuntimeContext();
                 _timeAuthority = null;
+                _launchWorldName = null;
+                _profilingRequested = false;
                 _host = null;
                 throw;
             }
@@ -131,13 +152,27 @@ namespace Game.Server.Core
             return worldName;
         }
 
-        private static string ResolveLaunchWorldName()
+        private static ServerLaunchOptions ResolveLaunchOptions()
         {
             string launchWorldName = null;
+            bool profilingEnabled = false;
             string[] commandLineArguments = Environment.GetCommandLineArgs();
             for (int i = 0; i < commandLineArguments.Length; i++)
             {
-                if (!string.Equals(commandLineArguments[i], WORLD_ARGUMENT, StringComparison.Ordinal))
+                string argument = commandLineArguments[i];
+                if (string.Equals(argument, PROFILING_ARGUMENT, StringComparison.Ordinal))
+                {
+                    if (profilingEnabled)
+                    {
+                        throw new InvalidOperationException(
+                            $"Server launch argument '{PROFILING_ARGUMENT}' was supplied more than once.");
+                    }
+
+                    profilingEnabled = true;
+                    continue;
+                }
+
+                if (!string.Equals(argument, WORLD_ARGUMENT, StringComparison.Ordinal))
                     continue;
 
                 if (launchWorldName != null)
@@ -163,7 +198,7 @@ namespace Game.Server.Core
                     $"Server startup requires an explicit '{WORLD_ARGUMENT} <world-name>' launch argument.");
             }
 
-            return ValidateExplicitWorldName(launchWorldName);
+            return new ServerLaunchOptions(ValidateExplicitWorldName(launchWorldName), profilingEnabled);
         }
 
         private static IEnumerator InitializationProcess()
@@ -181,6 +216,10 @@ namespace Game.Server.Core
 
                 // Step 3: Initialize networking.
                 yield return ServerInitializeNetworking();
+
+                // Step 3A: Start live profiling after the real transport exists and before ECS initialization.
+                if (_profilingRequested)
+                    ServerPerformanceProfiler.Start(_launchWorldName);
 
                 // Step 4: ECS Worlds after network initialized.
                 yield return ServerInitializeECSWorlds();
@@ -203,7 +242,7 @@ namespace Game.Server.Core
             {
                 _initializationCoroutine = null;
                 if (!_initializationSucceeded && !_fatalShutdownRequested)
-                    Stop();
+                    AbortInitialization();
             }
         }
 
@@ -337,7 +376,13 @@ namespace Game.Server.Core
             ServerECSManager.Shutdown();
             ServerWorldManager.ClearRuntimeContext();
             DestroyNetworkManager();
+            ServerPerformanceProfiler.Stop(
+                PerformanceRunStatus.CompleteMeasured,
+                "SERVER_STOPPED",
+                "The dedicated server stopped normally.");
             _initializationSucceeded = false;
+            _launchWorldName = null;
+            _profilingRequested = false;
             _host = null;
         }
 
@@ -356,7 +401,13 @@ namespace Game.Server.Core
             ServerECSManager.Shutdown();
             ServerWorldManager.ClearRuntimeContext();
             DestroyNetworkManager();
+            ServerPerformanceProfiler.Stop(
+                PerformanceRunStatus.FailInstrumentation,
+                "SERVER_INITIALIZATION_ABORTED",
+                "Server initialization was aborted before the runtime became ready.");
             _initializationSucceeded = false;
+            _launchWorldName = null;
+            _profilingRequested = false;
             _host = null;
         }
 
@@ -395,13 +446,17 @@ namespace Game.Server.Core
                 Debug.Error(
                     "Fatal server shutdown cannot complete because the initialization host is missing. "
                     + "The ECS world remains alive to protect outstanding server callbacks.");
+                ServerPerformanceProfiler.Stop(
+                    PerformanceRunStatus.FailInstrumentation,
+                    "FATAL_SERVER_SHUTDOWN",
+                    exception.Message);
                 return;
             }
 
-            _fatalShutdownCoroutine = _host.StartCoroutine(FatalShutdownProcess(networkManager));
+            _fatalShutdownCoroutine = _host.StartCoroutine(FatalShutdownProcess(networkManager, exception.Message));
         }
 
-        private static IEnumerator FatalShutdownProcess(NetworkManager networkManager)
+        private static IEnumerator FatalShutdownProcess(NetworkManager networkManager, string fatalMessage)
         {
             if (networkManager != null)
             {
@@ -416,9 +471,15 @@ namespace Game.Server.Core
 
             ServerECSManager.Shutdown();
             ServerWorldManager.ClearRuntimeContext();
+            ServerPerformanceProfiler.Stop(
+                PerformanceRunStatus.FailInstrumentation,
+                "FATAL_SERVER_SHUTDOWN",
+                fatalMessage);
             _timeAuthority = null;
             _initializationCoroutine = null;
             _initializationSucceeded = false;
+            _launchWorldName = null;
+            _profilingRequested = false;
             _host = null;
             _fatalShutdownCoroutine = null;
             _fatalShutdownRequested = false;

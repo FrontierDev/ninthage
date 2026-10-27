@@ -8,6 +8,8 @@
 **Related:** [#55](https://github.com/FrontierDev/ninthage/issues/55), [#56](https://github.com/FrontierDev/ninthage/issues/56), [#63](https://github.com/FrontierDev/ninthage/issues/63), [performance budgets](Phase-1-Performance-Budgets.md), [evidence catalogue](Phase-1-Performance-Evidence-Catalogue.md)  
 **Updated:** 2026-10-15
 
+> This is historical Editor/test-harness evidence only. The harness has been retired; these measurements must not be presented as current live-server evidence or as a substitute for ordinary server runs using `--profiling` and real runtime population/concurrency.
+
 > This document **supersedes** the earlier `campaign-20261015T095750417Z-878db4d7` campaign as the reference for these five Editor fixtures. The earlier campaign may be removed by the owner; its findings are not mixed into the new five-run cohorts. The budgets remain *provisional Editor-only review thresholds*, not evidence of a production MMORPG's playable capacity.
 
 ## 1. Executive outcome

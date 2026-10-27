@@ -1,13 +1,15 @@
 # Ninth Age — Phase 1.0 Benchmark Specification
 
-**Status:** Proposed data/evidence contract; requires user validation of [Issue #43](https://github.com/FrontierDev/ninthage/issues/43).
-**Contract revision:** `benchmark-fixture/v1`, `benchmark-run/v1`, `benchmark-summary/v1`, `benchmark-sample/v1`, `benchmark-comparison/v1`.
+**Status:** Historical Editor/test-harness contract; the harness is retired and is not an accepted evidence source.
+**Contract revision:** Historical `benchmark-fixture/v1`, `benchmark-run/v1`, `benchmark-summary/v1`, `benchmark-sample/v1`, `benchmark-comparison/v1`.
 **Reviewed source:** `dev` at `54505978d613833e0a0083fc68f60c138dcf786d` (13 October 2026).
-**Change scope:** Documentation only; zero benchmark implementations or benchmark result claims.
+**Change scope:** Retained historical goals and schema context only; live evidence is produced by the ordinary dedicated server with `--profiling`.
+
+> The former Editor/test performance harness and its fixture/runner infrastructure have been retired. Historical measurements and manifests described by this document remain historical only and must not be presented as current live-server evidence. Current Phase 1.5+ evidence comes from an ordinary dedicated server launched with `--world <world>` and `--profiling`, real connected clients and ordinary runtime population/gameplay, producing `performance-report-*.json` beside Unity's active server log.
 
 ## 1. Authority and purpose
 
-This is the canonical machine-readable contract **for future Phase 1.0 benchmark tooling**, not an implemented parser, generator, profiler, transport integration, test suite or capacity claim. The scenario workloads and engineering-only tiers come from [Phase 1 Performance Stress Profiles](Phase-1-Performance-Stress-Profiles.md); subsystem ownership and semantics from [Performance and Simulation Architecture](../Performance-and-Simulation-Architecture.md). Execution order is defined in the [Phase 1 Implementation Plan](Phase-1-Implementation-Plan.md) and [Project Roadmap](Project-Roadmap.md). Follow [MMORPG Master PDD](../MMORPG-Master-PDD.md), [C# Architecture](../CSharp-Architecture.md), [C# Style Conventions](../CSharp-Style-Conventions.md), [GitHub Issue and Workflow Guide](../GitHub-Issue-and-Workflow-Guide.md) and repository `AGENTS.md`. Third-party source/assets and metadata remain read-only.
+This is the retained machine-readable contract **for historical Phase 1.0 benchmark tooling**, not a current execution path or production capacity claim. The current live-server profiling contract is owned by `ServerPerformanceProfiler`, `PerformanceTelemetry` and the ordinary server initialization path. The scenario workloads and engineering-only tiers remain useful goals, but synthetic fixture population counts are not substitutes for live server population or concurrency measurements. Follow [Performance and Simulation Architecture](../Performance-and-Simulation-Architecture.md), [C# Architecture](../CSharp-Architecture.md), [C# Style Conventions](../CSharp-Style-Conventions.md), [GitHub Issue and Workflow Guide](../GitHub-Issue-and-Workflow-Guide.md) and repository `AGENTS.md`. Third-party source/assets and metadata remain read-only.
 
 [#44](https://github.com/FrontierDev/ninthage/issues/44) builds tracked world fixtures, [#45](https://github.com/FrontierDev/ninthage/issues/45) seeded actors/actions, [#46](https://github.com/FrontierDev/ninthage/issues/46) build/startup, [#47–#50](https://github.com/FrontierDev/ninthage/issues/47) telemetry, [#51](https://github.com/FrontierDev/ninthage/issues/51) load runner, [#52](https://github.com/FrontierDev/ninthage/issues/52) graphical harness and [#55](https://github.com/FrontierDev/ninthage/issues/55) measured baselines/budgets.
 

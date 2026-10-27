@@ -62,7 +62,7 @@ namespace Game.Shared.Tests.Server
 
                 if (PerformanceTelemetry.IsEnabled)
                 {
-                    PerformanceTelemetry.StopSession(
+                    PerformanceTelemetry.StopLiveSession(
                         PerformanceRunStatus.FailCorrectness,
                         "TEST_CLEANUP",
                         "The clock regression test did not finish its telemetry session.");
@@ -326,22 +326,20 @@ namespace Game.Shared.Tests.Server
         }
 
         [Test]
-        public void TickTelemetryAttributesSamplesToTickIdAndFixedDeltaAndExecutesEachSystemOncePerTick()
+        public void TickTelemetryProducesACompleteLiveServerReport()
         {
             _telemetryDirectory = Path.Combine(
                 Path.GetTempPath(),
                 "NinthAge-ServerSimulationClock-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_telemetryDirectory);
 
-            PerformanceTelemetry.StartSession(
-                new PerformanceSessionContext("server-simulation-clock-regression", _telemetryDirectory)
-                {
-                    HostId = "edit-mode-clock-test",
-                    ProcessId = "edit-mode-clock-test-process",
-                });
+            PerformanceTelemetry.StartLiveSession(
+                new PerformanceSessionContext(
+                    "server-simulation-clock-regression",
+                    _telemetryDirectory,
+                    "server-simulation-clock-regression.json",
+                    "edit-mode-clock-test"));
             ServerInitialization.RegisterPerformanceMetrics();
-            PerformanceTelemetry.MarkWorkloadApplied();
-            Assert.That(PerformanceTelemetry.BeginPhase(PerformanceMeasurementPhase.Measurement), Is.True);
 
             Time.timeScale = 0f;
             Application.targetFrameRate = 1;
@@ -350,23 +348,18 @@ namespace Game.Shared.Tests.Server
 
             StopRuntime();
             Assert.That(
-                PerformanceTelemetry.StopSession(
+                PerformanceTelemetry.StopLiveSession(
                     PerformanceRunStatus.CompleteMeasured,
                     "TEST_COMPLETE",
                     "Authoritative tick attribution was captured."),
                 Is.True);
 
-            string samplesPath = Path.Combine(_telemetryDirectory, "samples.ndjson");
-            Assert.That(File.Exists(samplesPath), Is.True);
-            var tickSamples = File.ReadAllLines(samplesPath)
-                .Select(JsonUtility.FromJson<TelemetrySample>)
-                .Where(sample => sample.metric_id == PerformanceMetricIds.SERVER_SIMULATION_TICK_DURATION)
-                .ToList();
-
-            Assert.That(tickSamples, Has.Count.EqualTo(3));
-            CollectionAssert.AreEquivalent(new long[] { 1, 2, 3 }, tickSamples.Select(sample => sample.frame_or_tick));
-            Assert.That(tickSamples.Select(sample => sample.interval_seconds), Is.All.EqualTo(0.1d).Within(0.000001d));
-            Assert.That(tickSamples.Select(sample => sample.scope), Is.All.EqualTo("fixed_tick"));
+            string reportPath = Path.Combine(_telemetryDirectory, "server-simulation-clock-regression.json");
+            Assert.That(File.Exists(reportPath), Is.True);
+            string report = File.ReadAllText(reportPath);
+            Assert.That(report, Does.Contain("server-performance-report/v1"));
+            Assert.That(report, Does.Contain(PerformanceMetricIds.SERVER_SIMULATION_TICK_DURATION));
+            Assert.That(report, Does.Not.Contain("samples.ndjson"));
 
             var systemMetricIDs = new[]
             {
@@ -380,13 +373,7 @@ namespace Game.Shared.Tests.Server
 
             foreach (string systemMetricID in systemMetricIDs)
             {
-                Assert.That(
-                    File.ReadAllLines(samplesPath)
-                        .Select(JsonUtility.FromJson<TelemetrySample>)
-                        .Count(sample => sample.metric_id == systemMetricID),
-                    Is.EqualTo(3),
-                    "Expected one duration sample for {0} on each authoritative tick.",
-                    systemMetricID);
+                Assert.That(report, Does.Contain(systemMetricID));
             }
         }
 
@@ -496,13 +483,6 @@ namespace Game.Shared.Tests.Server
         }
 
         [Serializable]
-        private sealed class TelemetrySample
-        {
-            public string metric_id;
-            public long frame_or_tick;
-            public double interval_seconds;
-            public string scope;
-        }
 
         private sealed class ClockTestHost : MonoBehaviour
         {

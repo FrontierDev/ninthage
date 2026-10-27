@@ -6,6 +6,20 @@ The active capability contract is [Stage-1.5-PurrNet-Capability-Audit.md](Stage-
 
 **Single invariant:** every later Stage 1.5 decision about delivery, visibility, ownership, serialization, cadence, transport semantics, or overload policy must cite the active 1.25.0 audit evidence below and preserve the listed project authority and recipient rule unless that later issue explicitly changes the contract.
 
+## Live profiling evidence path
+
+Stage 1.5 and later performance evidence is collected from the ordinary dedicated server, not the retired Editor/test harness:
+
+```text
+ordinary live dedicated server
+    + --profiling
+    + real connected clients
+    + real runtime population/gameplay
+    -> performance-report-*.json beside Unity's active server log
+```
+
+Historical Editor harness measurements remain historical only. Synthetic fixture population counts are not substitutes for live server population or concurrency measurements.
+
 ## Authoritative recipient classes
 
 ### Embodied observer state
@@ -143,7 +157,7 @@ These completed changes do not change recipient classes or authoritative owners.
 ## Exact non-goals
 
 - No unrelated production C# changes, regression-test changes, performance-harness changes, asset/package changes, prefab changes, or third-party changes.
-- No new RPCs, callbacks, queues, registries, caches, observer manager, stat delta implementation, position-rate choice, reliability choice, bandwidth threshold, or transport instrumentation.
+- No new RPCs, callbacks, queues, registries, caches, observer manager, stat delta implementation, position-rate choice, reliability choice, bandwidth threshold, or generic transport instrumentation beyond the explicitly supported UDP-native boundary.
 - No change to recipient classes, authoritative owners, 64 m cells, 80/96 m range, or Full/Nearby/Dormant activity.
 
 ## Static/documentation validation
@@ -153,6 +167,6 @@ These completed changes do not change recipient classes or authoritative owners.
 3. The stacked-identity/root-order behavior and owner-confirmed runtime result are explicit.
 4. #279-#290 completed behavior is represented accurately, including target/aura/cast/stat bootstraps and publication metrics.
 5. Unsupported generic on-wire, backlog, loss, and retransmission counters are not fabricated; RTT and Steam-specific queue boundaries are qualified accurately.
-6. The working-tree diff contains only these two documentation files and zero `Assets/ThirdParty/PurrNet` changes.
+6. The working-tree diff contains no `Assets/ThirdParty/PurrNet` changes.
 7. `git diff --check` passes.
-8. Unity compilation and Unity Test Runner are not required for this documentation-only change; owner runtime review remains manual.
+8. Unity compilation, generated assembly compilation and owner runtime review cover live profiling separately; server shutdown/report validation remains manual.

@@ -26,6 +26,12 @@ Authority follows [MMORPG Master PDD](MMORPG-Master-PDD.md): the Master PDD defi
 
 **Terminology:** **Current** means verified in project-owned source at the reviewed revision, not confirmed by a running Unity build. **Required contract** means the technical invariant later stages must meet. **Deferred** means the named Stage 1 issue owns implementation. **Open** means the relevant PDD or implementation decision does not yet fix a value or method; a benchmark or engineering issue must not silently invent player-facing behaviour.
 
+### Live server profiling ownership
+
+The retired Editor/test performance harness is not an evidence source for current or future Stage 1.5 measurements. Current performance evidence comes from an ordinary dedicated server launched with `--profiling`, real connected clients and ordinary runtime gameplay, and is written as one `performance-report-*.json` beside Unity's active server log.
+
+Ownership is deliberately split: production systems own metric definitions and `TryRecord` producers; `PerformanceTelemetry` owns fixed-capacity bounded aggregation; `ServerPerformanceProfiler` owns the opt-in server session lifecycle and report output; actual gameplay owns the workload. Client profiling, synthetic actors, fixture populations and workload orchestration remain outside this server contract.
+
 ### Baseline qualification
 
 The current [C# Architecture](CSharp-Architecture.md) is a descriptive snapshot at source revision `3232b1cfc1a889d1f8be7665714bf145e8329a4b`; this document additionally reviews the later `dev` revision above. The [Phase 0.40 issue](https://github.com/FrontierDev/ninthage/issues/40) is closed, but its prescribed `.docs/Phase-0-Stable-Foundation-Baseline.md` is **not present in the reviewed `dev` tree**. That discrepancy must be reconciled before treating the Phase 0 acceptance artifact as independently verified. It does **not** justify changing Phase 0 records within Issue #41.
