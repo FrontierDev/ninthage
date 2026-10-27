@@ -3,6 +3,7 @@ using Game.Client.Performance;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
@@ -35,10 +36,11 @@ namespace Game.Client
         [FormerlySerializedAs("sfxSource")]
         [SerializeField] private AudioSource _sfxSource;
 
-        private readonly Dictionary<string, AudioClip> _cache = new();
+        private readonly Dictionary<string, (AudioClip Clip, AsyncOperationHandle<AudioClip> Handle)> _cache = new();
         private readonly Dictionary<string, AsyncOperationHandle<AudioClip>> _pendingLoads = new();
         private Dictionary<string, long> _pendingLoadTimestamps;
         private readonly List<string> _cacheAccessOrder = new(); // Track LRU for eviction
+        private bool _isDestroying;
 
         private void Awake()
         {
@@ -70,26 +72,40 @@ namespace Game.Client
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_instance, this))
+                return;
+
+            _isDestroying = true;
+
             // Unsubscribe from events
             ActorEndpoint.onClientPlaySFX -= PlaySFX;
             ActorEndpoint.onClientPlaySFXOnAudioSource -= PlaySFXOnAudioSource;
             PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
 
-            // Release pending async operations
-            foreach (var handle in _pendingLoads.Values)
+            // Release cached async operations. Pending operations remain owned by their completion callbacks.
+            var cachedKeys = new List<string>(_cache.Keys);
+            foreach (string key in cachedKeys)
             {
-                if (handle.IsValid())
+                var cached = _cache[key];
+                if (cached.Handle.IsValid())
                 {
-                    Addressables.Release(handle);
+                    Addressables.Release(cached.Handle);
                     if (PerformanceTelemetry.IsEnabled)
                         PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
                 }
+
+                _cache.Remove(key);
+                _cacheAccessOrder.Remove(key);
+                RecordAddressableOwnershipCounts();
             }
-            _pendingLoads.Clear();
+            _cache.Clear();
+            _cacheAccessOrder.Clear();
+            RecordCacheCount();
+            RecordAddressableOwnershipCounts();
             _pendingLoadTimestamps?.Clear();
 
             // Clear instance
-            if (_instance == this)
+            if (ReferenceEquals(_instance, this))
             {
                 _instance = null;
                 _initialized = false;
@@ -100,14 +116,25 @@ namespace Game.Client
         {
             if (_cache.Count >= MAX_CACHE_SIZE)
             {
-                // Remove least recently used entry
-                if (_cacheAccessOrder.Count > 0)
+                if (_cacheAccessOrder.Count == 0)
+                    throw new InvalidOperationException("Audio cache and LRU state are inconsistent.");
+
+                string lruKey = _cacheAccessOrder[0];
+                if (!_cache.TryGetValue(lruKey, out var cached))
+                    throw new InvalidOperationException(
+                        $"Audio cache and LRU state are inconsistent for key '{lruKey}'.");
+
+                _cache.Remove(lruKey);
+                _cacheAccessOrder.RemoveAt(0);
+                if (cached.Handle.IsValid())
                 {
-                    string lruKey = _cacheAccessOrder[0];
-                    _cache.Remove(lruKey);
-                    _cacheAccessOrder.RemoveAt(0);
-                    RecordCacheCount();
+                    Addressables.Release(cached.Handle);
+                    if (PerformanceTelemetry.IsEnabled)
+                        PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
                 }
+
+                RecordCacheCount();
+                RecordAddressableOwnershipCounts();
             }
         }
 
@@ -124,10 +151,10 @@ namespace Game.Client
         public void PlaySFX(string addressablePath)
         {
             // Check cache first
-            if (_cache.TryGetValue(addressablePath, out AudioClip clip))
+            if (_cache.TryGetValue(addressablePath, out var cached))
             {
                 UpdateCacheAccessOrder(addressablePath);
-                _sfxSource.PlayOneShot(clip);
+                _sfxSource.PlayOneShot(cached.Clip);
                 return;
             }
 
@@ -141,19 +168,47 @@ namespace Game.Client
 
             handle.Completed += loadHandle =>
             {
+                if (!_pendingLoads.TryGetValue(addressablePath, out var ownedHandle)
+                    || !ownedHandle.Equals(loadHandle))
+                {
+                    Debug.Error(
+                        $"[ClientAudioManager] Addressable ownership mismatch for audio clip: {addressablePath}");
+                    return;
+                }
+
                 _pendingLoads.Remove(addressablePath);
                 TrackAddressableLoadCompleted(addressablePath);
 
                 if (loadHandle.Status != AsyncOperationStatus.Succeeded)
                 {
                     Debug.Error($"Failed to load audio clip: {addressablePath}");
+                    if (loadHandle.IsValid())
+                    {
+                        Addressables.Release(loadHandle);
+                        if (PerformanceTelemetry.IsEnabled)
+                            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
+                    }
+                    RecordAddressableOwnershipCounts();
+                    return;
+                }
+
+                if (_isDestroying)
+                {
+                    if (loadHandle.IsValid())
+                    {
+                        Addressables.Release(loadHandle);
+                        if (PerformanceTelemetry.IsEnabled)
+                            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
+                    }
+                    RecordAddressableOwnershipCounts();
                     return;
                 }
 
                 EvictCacheIfNeeded();
-                _cache[addressablePath] = loadHandle.Result;
+                _cache[addressablePath] = (loadHandle.Result, loadHandle);
                 UpdateCacheAccessOrder(addressablePath);
                 RecordCacheCount();
+                RecordAddressableOwnershipCounts();
                 _sfxSource.PlayOneShot(loadHandle.Result);
             };
         }
@@ -173,19 +228,47 @@ namespace Game.Client
 
             handle.Completed += loadHandle =>
             {
+                if (!_pendingLoads.TryGetValue(addressablePath, out var ownedHandle)
+                    || !ownedHandle.Equals(loadHandle))
+                {
+                    Debug.Error(
+                        $"[ClientAudioManager] Addressable ownership mismatch for audio clip: {addressablePath}");
+                    return;
+                }
+
                 _pendingLoads.Remove(addressablePath);
                 TrackAddressableLoadCompleted(addressablePath);
 
                 if (loadHandle.Status != AsyncOperationStatus.Succeeded)
                 {
                     Debug.Error($"Failed to preload audio clip: {addressablePath}");
+                    if (loadHandle.IsValid())
+                    {
+                        Addressables.Release(loadHandle);
+                        if (PerformanceTelemetry.IsEnabled)
+                            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
+                    }
+                    RecordAddressableOwnershipCounts();
+                    return;
+                }
+
+                if (_isDestroying)
+                {
+                    if (loadHandle.IsValid())
+                    {
+                        Addressables.Release(loadHandle);
+                        if (PerformanceTelemetry.IsEnabled)
+                            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
+                    }
+                    RecordAddressableOwnershipCounts();
                     return;
                 }
 
                 EvictCacheIfNeeded();
-                _cache[addressablePath] = loadHandle.Result;
+                _cache[addressablePath] = (loadHandle.Result, loadHandle);
                 UpdateCacheAccessOrder(addressablePath);
                 RecordCacheCount();
+                RecordAddressableOwnershipCounts();
             };
         }
 
@@ -194,10 +277,10 @@ namespace Game.Client
         /// </summary>
         public AudioClip GetCachedClip(string addressablePath)
         {
-            if (_cache.TryGetValue(addressablePath, out AudioClip clip))
+            if (_cache.TryGetValue(addressablePath, out var cached))
             {
                 UpdateCacheAccessOrder(addressablePath);
-                return clip;
+                return cached.Clip;
             }
             return null;
         }
@@ -233,12 +316,39 @@ namespace Game.Client
 
             handle.Completed += loadHandle =>
             {
+                if (!_pendingLoads.TryGetValue(addressablePath, out var ownedHandle)
+                    || !ownedHandle.Equals(loadHandle))
+                {
+                    Debug.Error(
+                        $"[ClientAudioManager] Addressable ownership mismatch for audio clip: {addressablePath}");
+                    return;
+                }
+
                 _pendingLoads.Remove(addressablePath);
                 TrackAddressableLoadCompleted(addressablePath);
 
                 if (loadHandle.Status != AsyncOperationStatus.Succeeded)
                 {
                     Debug.Error($"Failed to load audio clip: {addressablePath}");
+                    if (loadHandle.IsValid())
+                    {
+                        Addressables.Release(loadHandle);
+                        if (PerformanceTelemetry.IsEnabled)
+                            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
+                    }
+                    RecordAddressableOwnershipCounts();
+                    return;
+                }
+
+                if (_isDestroying)
+                {
+                    if (loadHandle.IsValid())
+                    {
+                        Addressables.Release(loadHandle);
+                        if (PerformanceTelemetry.IsEnabled)
+                            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
+                    }
+                    RecordAddressableOwnershipCounts();
                     return;
                 }
 
@@ -246,16 +356,21 @@ namespace Game.Client
                 if (audioSource == null)
                 {
                     Debug.Warning($"AudioSource was destroyed before clip loaded: {addressablePath}");
-                    Addressables.Release(loadHandle);
-                    if (PerformanceTelemetry.IsEnabled)
-                        PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
+                    if (loadHandle.IsValid())
+                    {
+                        Addressables.Release(loadHandle);
+                        if (PerformanceTelemetry.IsEnabled)
+                            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_RELEASE_COUNT, 1);
+                    }
+                    RecordAddressableOwnershipCounts();
                     return;
                 }
 
                 EvictCacheIfNeeded();
-                _cache[addressablePath] = loadHandle.Result;
+                _cache[addressablePath] = (loadHandle.Result, loadHandle);
                 UpdateCacheAccessOrder(addressablePath);
                 RecordCacheCount();
+                RecordAddressableOwnershipCounts();
                 audioSource.PlayOneShot(loadHandle.Result);
             };
         }
@@ -268,24 +383,19 @@ namespace Game.Client
             _pendingLoadTimestamps ??= new Dictionary<string, long>();
             if (_pendingLoadTimestamps.Count < MAX_TRACKED_ADDRESSABLE_OPERATIONS)
                 _pendingLoadTimestamps[addressablePath] = Stopwatch.GetTimestamp();
-            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_PENDING_COUNT, _pendingLoads.Count);
+            RecordAddressableOwnershipCounts();
         }
 
         private void TrackAddressableLoadCompleted(string addressablePath)
         {
-            bool trackedForTelemetry = false;
             if (_pendingLoadTimestamps != null
                 && _pendingLoadTimestamps.TryGetValue(addressablePath, out long startedTimestamp))
             {
-                trackedForTelemetry = true;
                 _pendingLoadTimestamps.Remove(addressablePath);
                 ClientPerformanceMetrics.TryRecordDuration(ClientPerformanceMetrics.ADDRESSABLE_LOAD_DURATION, startedTimestamp);
             }
 
-            if (trackedForTelemetry && PerformanceTelemetry.IsEnabled)
-                PerformanceTelemetry.TryRecord(
-                    ClientPerformanceMetrics.ADDRESSABLE_PENDING_COUNT,
-                    _pendingLoads.Count);
+            RecordAddressableOwnershipCounts();
         }
 
         private void OnTelemetrySessionEnded()
@@ -297,6 +407,17 @@ namespace Game.Client
         {
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.AUDIO_CACHE_COUNT, _cache.Count);
+        }
+
+        private void RecordAddressableOwnershipCounts()
+        {
+            if (!PerformanceTelemetry.IsEnabled)
+                return;
+
+            PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.ADDRESSABLE_PENDING_COUNT, _pendingLoads.Count);
+            PerformanceTelemetry.TryRecord(
+                ClientPerformanceMetrics.AUDIO_LIVE_ADDRESSABLE_HANDLE_COUNT,
+                _pendingLoads.Count + _cache.Count);
         }
     }
 }
