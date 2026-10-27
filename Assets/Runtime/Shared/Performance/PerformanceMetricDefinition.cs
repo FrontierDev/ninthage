@@ -186,6 +186,8 @@ namespace Game.Shared.Performance
             "server.transport.connection.payload_bytes_sent";
         public const string SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT =
             "server.transport.connection.message_count_sent";
+        public const string SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME =
+            "server.transport.connection.round_trip_time";
         public const string SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT =
             "server.replication.combat_critical.publication_count";
         public const string SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT =

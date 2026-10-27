@@ -129,6 +129,18 @@ namespace Game.Server.Core
                         NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT,
                         window.MessageCount,
                         intervalSeconds: intervalSeconds);
+
+                    if (_transport.measuresRoundTripTime)
+                    {
+                        int roundTripTimeMilliseconds = _transport.GetRoundTripTime(connection, true);
+                        if (roundTripTimeMilliseconds >= 0)
+                        {
+                            PerformanceTelemetry.TryRecord(
+                                NetworkingPerformanceMetrics.SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME,
+                                roundTripTimeMilliseconds,
+                                intervalSeconds: intervalSeconds);
+                        }
+                    }
                 }
             }
 

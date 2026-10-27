@@ -38,7 +38,15 @@ namespace Game.Server.Core
             if (!PerformanceTelemetry.IsEnabled)
                 throw new InvalidOperationException("Start a performance telemetry session before registering server metrics.");
 
-            NetworkingPerformanceMetrics.RegisterServerMetrics();
+            NetworkManager networkManager = NetworkManager.main;
+            if (networkManager == null)
+                throw new InvalidOperationException("Cannot register server metrics without an active NetworkManager.");
+
+            ITransport rawTransport = networkManager.rawTransport;
+            if (rawTransport == null)
+                throw new InvalidOperationException("Cannot register server metrics without an active NetworkManager raw transport.");
+
+            NetworkingPerformanceMetrics.RegisterServerMetrics(rawTransport.measuresRoundTripTime);
             ServerECSManager.RegisterPerformanceMetrics();
             WorldSpawnSystem.RegisterPerformanceMetrics();
             ActorUpdateSystem.RegisterPerformanceMetrics();

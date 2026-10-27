@@ -19,8 +19,10 @@ namespace Game.Shared.Networking
             "PurrNet's public ITransport API does not expose packet-loss counters; use the transport's supported profiler or external capture.";
         public const string TRANSPORT_BACKLOG_UNAVAILABLE_REASON =
             "PurrNet's public ITransport API does not expose send backlog counters; use the transport's supported profiler or external capture.";
+        public const string TRANSPORT_CONNECTION_ROUND_TRIP_TIME_UNAVAILABLE_REASON =
+            "The selected PurrNet transport reports measuresRoundTripTime == false; no per-connection RTT sample is available.";
         public const string TRANSPORT_LATENCY_UNAVAILABLE_REASON =
-            "PurrNet's public ITransport API does not expose latency samples; use the transport's supported profiler or external capture.";
+            "PurrNet exposes transport-dependent RTT samples through ITransport.GetRoundTripTime; this generic metric remains unavailable because server per-connection RTT is recorded separately.";
 
         public static readonly PerformanceMetricDefinition SERVER_CONNECTION_ATTEMPT_COUNT = Metric(
             PerformanceMetricIds.SERVER_CONNECTION_ATTEMPT_COUNT,
@@ -81,6 +83,12 @@ namespace Game.Shared.Networking
             PerformanceMetricUnit.Count,
             PerformanceMetricSide.Server,
             "purrnet_payload",
+            "connection_interval");
+        public static readonly PerformanceMetricDefinition SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME = Metric(
+            PerformanceMetricIds.SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME,
+            PerformanceMetricUnit.Milliseconds,
+            PerformanceMetricSide.Server,
+            "purrnet_transport",
             "connection_interval");
         public static readonly PerformanceMetricDefinition SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT = Metric(
             PerformanceMetricIds.SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT,
@@ -344,14 +352,15 @@ namespace Game.Shared.Networking
         public static readonly PerformanceMetricDefinition TRANSPORT_PACKET_LOSS_RATIO = Unsupported(PerformanceMetricIds.NETWORK_TRANSPORT_PACKET_LOSS_RATIO, PerformanceMetricUnit.Ratio);
         /// <summary>Unsupported without public backlog counters; use <see cref="TRANSPORT_BACKLOG_UNAVAILABLE_REASON"/>.</summary>
         public static readonly PerformanceMetricDefinition TRANSPORT_BACKLOG_COUNT = Unsupported(PerformanceMetricIds.NETWORK_TRANSPORT_BACKLOG_COUNT, PerformanceMetricUnit.Count);
-        /// <summary>Unsupported without public latency samples; use <see cref="TRANSPORT_LATENCY_UNAVAILABLE_REASON"/>.</summary>
+        /// <summary>Generic latency metric remains unavailable; use <see cref="TRANSPORT_LATENCY_UNAVAILABLE_REASON"/>.</summary>
         public static readonly PerformanceMetricDefinition TRANSPORT_LATENCY = Unsupported(PerformanceMetricIds.NETWORK_TRANSPORT_LATENCY, PerformanceMetricUnit.Milliseconds);
 
         /// <summary>
         /// Registers the networking metrics that can be observed on the server.
         /// The benchmark runner calls this after starting its telemetry session.
         /// </summary>
-        public static void RegisterServerMetrics()
+        /// <param name="measuresRoundTripTime">Whether the active transport supports per-connection RTT samples.</param>
+        public static void RegisterServerMetrics(bool measuresRoundTripTime)
         {
             RegisterUnavailable(
                 SERVER_CONNECTION_ATTEMPT_COUNT,
@@ -368,6 +377,12 @@ namespace Game.Shared.Networking
             RegisterMeasured(SERVER_TRANSPORT_PAYLOAD_BYTES_RECEIVED);
             RegisterMeasured(SERVER_TRANSPORT_CONNECTION_PAYLOAD_BYTES_SENT);
             RegisterMeasured(SERVER_TRANSPORT_CONNECTION_MESSAGE_COUNT_SENT);
+            if (measuresRoundTripTime)
+                RegisterMeasured(SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME);
+            else
+                RegisterUnavailable(
+                    SERVER_TRANSPORT_CONNECTION_ROUND_TRIP_TIME,
+                    TRANSPORT_CONNECTION_ROUND_TRIP_TIME_UNAVAILABLE_REASON);
             RegisterMeasured(SERVER_REPLICATION_COMBAT_CRITICAL_PUBLICATION_COUNT);
             RegisterMeasured(SERVER_REPLICATION_COMBAT_CRITICAL_RECIPIENT_COUNT);
             RegisterMeasured(SERVER_REPLICATION_MOVEMENT_PRESENTATION_PUBLICATION_COUNT);
