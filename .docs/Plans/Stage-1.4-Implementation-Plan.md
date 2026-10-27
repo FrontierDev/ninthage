@@ -265,9 +265,11 @@ Add telemetry for:
 
 Remove Dormant NPCs from project-owned per-frame navigation work, stop/reset their active path once on dormancy, and restore navigation eligibility on wake without recreating the actor. Add immediate damage-driven promotion to Full through the existing `ActorEndpoint` boundary. Ordinary aggro acquisition in Step 6 promotes the acquiring NPC to Full before target/combat commitment where it is not already Full; player movement/spawn/transfer activity promotion is owned by Step 5.
 
-### Step 8 — Focused regression tests
+### Step 8 — Stage 1.4 close-out and verification hand-off
 
-Add only critical integration coverage for:
+Stage 1.4 closes on actor-lifecycle/simulation-activity correctness, ownership, telemetry readiness and focused owner smoke validation.
+
+Do **not** create the Stage 1.4 regression suite during this foundation stage. Record the following critical regression candidates for Stage 1.10:
 
 - exact Full/Nearby/Dormant distance+hysteresis transitions;
 - dead players retaining relevance;
@@ -279,11 +281,11 @@ Add only critical integration coverage for:
 - dead players retaining activity relevance while remaining invalid ordinary aggro targets;
 - dormant NPCs performing no ordinary navigation work and waking correctly.
 
-No production changes in the test issue.
+No production or test issue is created solely to implement those regression candidates before Stage 1.10.
 
 ### Step 9 — Stage 1.4 close-out and performance hand-off
 
-Stage 1.4 closes on actor-lifecycle/simulation-activity correctness, ownership and focused regression coverage.
+Stage 1.4 closes on actor-lifecycle/simulation-activity correctness, ownership, telemetry readiness and focused owner smoke validation.
 
 Do **not** run a dedicated Stage 1.4 population/perception performance campaign as a completion gate. Preserve the telemetry added by this stage so the later integrated Phase 1 performance programme can evaluate:
 
@@ -329,6 +331,4 @@ Stage 1.4 does not implement:
 
 Each production step requires owner validation before its dependent step proceeds.
 
-Production-code issues and regression-test issues remain separate.
-
-After the production sequence and focused regression coverage are accepted, Stage 1.4 hands its instrumentation to Stages 1.10–1.11. No Stage 1.4 performance campaign is required before dependent foundation work proceeds.
+After the production sequence and owner smoke validation are accepted, Stage 1.4 hands its regression candidates and instrumentation to Stages 1.10–1.11. No Stage 1.4 regression or performance campaign is required before dependent foundation work proceeds.
