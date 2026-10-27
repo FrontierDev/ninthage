@@ -197,6 +197,117 @@ Disconnect/aborted-entry cleanup must use supported PurrNet/Unity scene teardown
 
 The tracked scene collection must be keyed/cleaned by actual scene lifecycle and must not use a growing historical list.
 
+### 4.3.1 Verified PurrNet client scene teardown contract
+
+This contract is based on the installed source at `Assets/ThirdParty/PurrNet`, not on
+upstream documentation. `Assets/ThirdParty/PurrNet/package.json` identifies the package as
+`dev.purrnet.purrnet` version `1.25.0`. The package is vendored under `Assets/ThirdParty`
+and is not resolved by `Packages/manifest.json` or `Packages/packages-lock.json`. No Git
+revision or commit identifier is exposed by the installed package metadata, so the source
+location, package version and concrete type names are the strongest available identity.
+
+The vendor property `NetworkManager.sceneModule` is declared in
+`Assets/ThirdParty/PurrNet/Runtime/Managers/NetworkManager.cs` and returns the
+`PurrNet.ScenesModule` instance (`_serverSceneModule ?? _clientSceneModule`). The inspected
+client scene implementation is
+`Assets/ThirdParty/PurrNet/Runtime/CoreModules/Scenes/ScenesModule.cs`, with Addressables
+ownership implemented in its sibling `ScenesModule.Addressables.cs`.
+
+#### Normal client disconnect and stop path
+
+For an explicit client stop, vendor `RawNetManager.StopClient()` calls the transport's
+`StopClient(...)`; transport loss and remote disconnects converge on the same
+`NetworkManager.OnConnectionState(...)` path. For a normal client disconnect, the installed
+call chain is:
+
+1. The transport reaches `NetworkManager.OnConnectionState(Disconnected, false)`.
+2. `NetworkManager` first calls `_clientModules.OnConnectionState(...)`, then invokes the
+   public `onClientConnectionState` event synchronously. `ClientConnectionManager` receives
+   this event in `OnClientConnectionStateChanged(...)`. Only after those subscribers return
+   does `NetworkManager` set `_isCleaningClient`.
+3. On the next `NetworkManager.OnTick`, `_clientModules.Cleanup()` drives the client module
+   cleanup. `ScenesModule.Cleanup()` waits for pending scene operations, applies
+   `NetworkRules.ShouldCleanupScenesOnDisconnect()` and
+   `NetworkRules.SceneCleanupModeOnDisconnect()`, and then unloads the tracked PurrNet
+   scenes through its cleanup state machine.
+4. `ScenesModule.UnloadAllScenesCleanup(...)` uses
+   `TryUnloadAddressableSceneOnCleanup(...)` for an Addressables-backed scene. That method
+   calls `Addressables.UnloadSceneAsync(handle, ..., true)` using the handle already owned by
+   PurrNet. Non-Addressables scenes are unloaded through the same vendor cleanup path with
+   `SceneManager.UnloadSceneAsync(...)`. Pending Addressables operations are discarded by
+   `ScenesModule.Disable(...)`; PurrNet releases or unloads their handles according to their
+   completion state.
+5. The cleanup state machine completes before the client modules are unregistered. This is
+   the terminal physical cleanup path for PurrNet-owned client scenes when the installed
+   network rules enable scene cleanup. If the rules are set to `SceneCleanupMode.Off`, the
+   installed `ScenesModule.Cleanup()` intentionally returns without unloading those scenes;
+   Stage 1.6 must not silently compensate by taking ownership of them. The `NetworkManager`
+   prefab uses the installed `ServerOwner` `NetworkRules` asset, so any change to that
+   cleanup-mode configuration is a separate, explicit configuration decision. The concrete
+   reference is `Assets/Resources/NetworkManager.prefab` to
+   `Assets/ThirdParty/PurrNet/Defaults/NetworkRules/ServerOwner.asset`.
+
+`ScenesModule.onSceneUnloaded` is not a disconnect-completion callback. During ordinary
+scene actions, `RemoveScene(...)` queues `PlayUnloadEventsForScene(...)`, which invokes
+`onPreSceneUnloaded`, `onSceneUnloaded` and `onPostSceneUnloaded` in that order. During
+disconnect cleanup, `UnloadAllScenesCleanup(...)` unloads the scenes and clears the
+module registry directly; it does not call `RemoveScene(...)` or
+`PlayUnloadEventsForScene(...)`. Therefore `onSceneUnloaded(SceneID, bool)` is not
+guaranteed during disconnect cleanup. The project-observable disconnect boundary is the
+synchronous `ConnectionState.Disconnected` delivery to `ClientConnectionManager`, which
+occurs before PurrNet starts `_clientModules.Cleanup()`; it is not a guarantee that the
+physical unload has completed by the time that callback returns.
+
+#### Abandoned or failed world entry
+
+If the connection terminates after PurrNet has delivered one or more scenes but before the
+`ClientWorldManager` entry coroutine finishes, the same `NetworkManager` disconnect path
+owns the delivered scenes. Completed scenes are in `ScenesModule`'s registry and follow
+`ScenesModule.Cleanup()`. Addressables loads still in flight are handled by
+`ScenesModule.Disable(...)` and its pending-operation cleanup; the client must not take over
+their handles. On the project's `Disconnected` callback, `ClientWorldManager` must invalidate
+the active entry generation, stop publishing the abandoned coroutine's result, and clear its
+logical tracking of PurrNet-delivered scenes while PurrNet finishes physical cleanup. It must
+not wait for `onSceneUnloaded` as a disconnect completion signal, and it must not issue a
+second unload request.
+
+The server-side `ServerWorldManager.LoadGlobalActorsScene()` call confirms that
+`global_actors` is loaded through the server `sceneModule`. When that scene is delivered to a
+client by PurrNet, its client lifetime follows the same PurrNet ownership rule; the
+`global_actors` name does not make it equivalent to the client-loaded `global_world` scene.
+
+#### Verified ownership table
+
+| Scene/resource | Loader | Handle/lifetime owner | Required Stage 1.6 teardown action |
+|---|---|---|---|
+| `global_world` | Unity `SceneManager.LoadSceneAsync` in `ClientWorldManager` | Ninth Age client | Explicitly unload through the Unity scene API. |
+| PurrNet-delivered `World_*` | PurrNet scene module | PurrNet | Let the installed disconnect cleanup path unload it; observe ordinary connected unloads through PurrNet callbacks. |
+| `global_actors` on the client, when delivered by PurrNet | PurrNet scene module | PurrNet | Let the installed disconnect cleanup path unload it; do not treat it as the project-owned `global_world`. |
+
+#### Final prescription — Contract A: disconnect path owns cleanup
+
+The installed PurrNet implementation proves Contract A. The exact owner path is
+`NetworkManager.OnConnectionState(Disconnected, false)` setting the client cleanup state,
+followed on the next tick by `NetworkManager.OnTick` calling
+`_clientModules.Cleanup()` and `ScenesModule.Cleanup()`. Ninth Age observes the disconnect
+through `NetworkManager.onClientConnectionState` / `ClientConnectionManager.OnClientConnectionStateChanged`;
+that callback is the point at which #314 must end the project-owned world session and clear
+logical PurrNet-scene tracking. PurrNet's own cleanup state machine remains responsible for
+the physical unload and any Addressables handle release, subject to the configured scene
+cleanup mode. #314 must not manually unload or release any PurrNet-owned scene handle, and
+must not select or invoke another PurrNet scene-cleanup API.
+
+Ninth Age client code must therefore never:
+
+- call `Addressables.Release` on a PurrNet-owned scene handle;
+- manufacture a second Addressables handle solely to unload a PurrNet scene;
+- call `SceneManager.UnloadSceneAsync` directly on a PurrNet-owned scene unless a future
+  installed PurrNet contract explicitly delegates that ownership;
+- patch PurrNet internals;
+- infer ownership from the `World_*` name alone; or
+- conflate project-owned `global_world` with PurrNet-owned `global_actors` or environment
+  scenes.
+
 ### 4.4 Addressables asset rule
 
 For every project-owned `LoadAssetAsync` or `LoadAssetsAsync` operation:
