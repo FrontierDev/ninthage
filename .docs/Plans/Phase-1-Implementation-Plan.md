@@ -110,7 +110,7 @@ Names above identify the **current baseline**, not a requirement to preserve eve
 - Route existing movement/validation, spawn activity, regeneration, cast completion, cooldowns, auras and generic tickers through coherent scheduling boundaries. Preserve each subsystem's gameplay semantics and test equivalence.
 - Provide repeatable scheduling for high-frequency simulation, lower-frequency decisions and event/deadline-driven work. Ensure later AI and game systems register against this common scheduler instead of inventing independent arbitrary-frequency `Update` loops.
 - Specify deterministic **within-server ordering** of authoritative operations and safe event delivery, without claiming bitwise cross-platform determinism.
-- Define bounded catch-up, overload telemetry and overload policy. Do not silently discard authoritative combat/timer events to preserve frame rate; surface and test sustained overload.
+- Define bounded catch-up, overload telemetry and overload policy. Do not silently discard authoritative combat/timer events to preserve frame rate. Smoke-validate the overload path; sustained-overload regression/stress verification is deferred to Stages 1.10–1.11.
 - Distinguish simulation time from durable UTC/wall-clock timestamps needed for logout, offline timers, restarts, cooldowns and auras. Record how time passes while an entity is inactive and during reconnect.
 - Apply scheduling to the existing ECS system group and domain callbacks without allowing callbacks to mutate collections that are being iterated unsafely.
 
@@ -290,7 +290,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Support event-driven activation from threat, combat, damage, scripted encounters, movement into relevance and instance transitions.
 - Preserve authoritative timers, cooldowns, auras, death, respawn, aggression, threat and persistence invariants when sleeping and waking. Require explicit catch-up/fast-forward semantics; never grant exploits by deactivation or disconnect.
 - Define when an actor needs a live GameObject, NavMeshAgent or PurrNet identity, and when cheaper authoritative data can suffice. Introduce lightweight representation only where compatible with required game/network semantics.
-- Test mass awakening and density transitions to avoid spikes merely moved from steady-state updates into reactivation.
+- Make mass-awakening and density-transition work observable and preserve correct wake semantics. Dedicated mass-awakening/density regression and stress verification is deferred to Stages 1.10–1.11.
 
 **Gate:** Full/Nearby/Dormant transitions, wake triggers, retained authoritative state, nearby combat behaviour and cross-instance isolation are correct; telemetry exposes activity counts and wake/perception/navigation work for later stress verification. High-population CPU and mass-wake benchmarking is deferred to Stages 1.10–1.11.
 
@@ -367,7 +367,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Implement Master Server-controlled authentication, ownership/character-selection validation and world-admission authorisation, with World Server-controlled gameplay actor/session attachment, login/logout eligibility and disconnect-grace semantics consistent with the persistence PDD.
 - Reclaim the correct actor and world/map/instance context on reconnect where permitted; do not respawn a clean character or reset combat-relevant state.
 - Establish the initial one-world World Server registration/availability/heartbeat and authenticated admission boundary with the Master Server; full concurrent multi-world discovery, selection and state-preserving transfers are Phase 3 work. Account for simultaneous login attempts, transient connection loss, server restart, invalid location recovery and authentication-rate safeguards appropriate to the baseline.
-- Test multi-client connection races and mass reconnects under load.
+- Make simultaneous-login/reconnect conflict handling explicit and smoke-validate the normal/duplicate-session paths. Multi-client race regression coverage and mass-reconnect load testing are deferred to Stages 1.10–1.11.
 
 **Gate:** No duplicate authoritative sessions/actors or lost/duplicated items; the Master Server is the sole account/session admission authority even with multiple connection attempts; the initial World Server can register and authenticate admission against it; reconnect and restart preserve relevant state; admission/reconnect telemetry is present for later burst/stress verification.
 
