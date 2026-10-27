@@ -9,6 +9,7 @@ using PurrNet.Transports;
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -19,17 +20,21 @@ namespace Game.Server.Core
     {
         private const string WORLD_ARGUMENT = "--world";
         private const string PROFILING_ARGUMENT = "--profiling";
+        private const string CONTROL_PORT_ARGUMENT = "--control-port";
+        private const int DEFAULT_CONTROL_PORT = 8890;
 
         private readonly struct ServerLaunchOptions
         {
-            public ServerLaunchOptions(string worldName, bool profilingEnabled)
+            public ServerLaunchOptions(string worldName, bool profilingEnabled, int controlPort)
             {
                 WorldName = worldName;
                 ProfilingEnabled = profilingEnabled;
+                ControlPort = controlPort;
             }
 
             public string WorldName { get; }
             public bool ProfilingEnabled { get; }
+            public int ControlPort { get; }
         }
 
         private static MonoBehaviour _host;
@@ -90,7 +95,7 @@ namespace Game.Server.Core
         {
             ValidateHost(host);
             ServerLaunchOptions launchOptions = ResolveLaunchOptions();
-            BeginInternal(host, launchOptions.WorldName, launchOptions.ProfilingEnabled);
+            BeginInternal(host, launchOptions.WorldName, launchOptions.ProfilingEnabled, launchOptions.ControlPort);
         }
 
         /// <summary>Begins the Editor/test server initialization with an explicitly supplied world name.</summary>
@@ -98,10 +103,14 @@ namespace Game.Server.Core
         /// <param name="worldName">The explicit world identity supplied by the test bootstrap.</param>
         public static void Begin(MonoBehaviour host, string worldName)
         {
-            BeginInternal(host, ValidateExplicitWorldName(worldName), false);
+            BeginInternal(host, ValidateExplicitWorldName(worldName), false, null);
         }
 
-        private static void BeginInternal(MonoBehaviour host, string launchWorldName, bool profilingEnabled)
+        private static void BeginInternal(
+            MonoBehaviour host,
+            string launchWorldName,
+            bool profilingEnabled,
+            int? controlPort)
         {
             ValidateHost(host);
             if (_fatalShutdownRequested)
@@ -120,7 +129,9 @@ namespace Game.Server.Core
             bool runtimeContextInitialized = false;
             try
             {
-                ServerShutdownController.Attach(_host, !Application.isEditor);
+                ServerShutdownController.Attach(_host);
+                if (controlPort.HasValue)
+                    ServerControlEndpoint.Attach(_host, controlPort.Value);
                 InitializeWorldRuntimeContext(launchWorldName);
                 runtimeContextInitialized = true;
                 _initializationCoroutine = _host.StartCoroutine(InitializationProcess());
@@ -133,6 +144,7 @@ namespace Game.Server.Core
                 _launchWorldName = null;
                 _profilingRequested = false;
                 _host = null;
+                ServerControlEndpoint.Detach();
                 ServerShutdownController.Detach();
                 throw;
             }
@@ -167,6 +179,8 @@ namespace Game.Server.Core
         {
             string launchWorldName = null;
             bool profilingEnabled = false;
+            int controlPort = DEFAULT_CONTROL_PORT;
+            bool controlPortSpecified = false;
             string[] commandLineArguments = Environment.GetCommandLineArgs();
             for (int i = 0; i < commandLineArguments.Length; i++)
             {
@@ -180,6 +194,39 @@ namespace Game.Server.Core
                     }
 
                     profilingEnabled = true;
+                    continue;
+                }
+
+                if (string.Equals(argument, CONTROL_PORT_ARGUMENT, StringComparison.Ordinal))
+                {
+                    if (controlPortSpecified)
+                    {
+                        throw new InvalidOperationException(
+                            $"Server launch argument '{CONTROL_PORT_ARGUMENT}' was supplied more than once.");
+                    }
+
+                    if (i + 1 >= commandLineArguments.Length
+                        || string.IsNullOrWhiteSpace(commandLineArguments[i + 1])
+                        || commandLineArguments[i + 1].StartsWith("-", StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Server launch argument '{CONTROL_PORT_ARGUMENT}' requires an integer port in the range 1..65535.");
+                    }
+
+                    string controlPortValue = commandLineArguments[++i];
+                    if (!int.TryParse(
+                            controlPortValue,
+                            NumberStyles.Integer,
+                            CultureInfo.InvariantCulture,
+                            out controlPort)
+                        || controlPort < 1
+                        || controlPort > 65535)
+                    {
+                        throw new InvalidOperationException(
+                            $"Server launch argument '{CONTROL_PORT_ARGUMENT}' must be an integer in the range 1..65535.");
+                    }
+
+                    controlPortSpecified = true;
                     continue;
                 }
 
@@ -209,7 +256,10 @@ namespace Game.Server.Core
                     $"Server startup requires an explicit '{WORLD_ARGUMENT} <world-name>' launch argument.");
             }
 
-            return new ServerLaunchOptions(ValidateExplicitWorldName(launchWorldName), profilingEnabled);
+            return new ServerLaunchOptions(
+                ValidateExplicitWorldName(launchWorldName),
+                profilingEnabled,
+                controlPort);
         }
 
         private static IEnumerator InitializationProcess()
@@ -398,6 +448,7 @@ namespace Game.Server.Core
             ShutdownExitCode = 0;
             try
             {
+                ServerControlEndpoint.Detach();
                 _timeAuthority = null;
                 StopInitializationCoroutine();
                 ServerSimulationClock.Stop();
@@ -447,6 +498,7 @@ namespace Game.Server.Core
             if (_fatalShutdownRequested || _gracefulShutdownRunning)
                 return;
 
+            ServerControlEndpoint.Detach();
             _timeAuthority = null;
             StopInitializationCoroutine();
             ServerSimulationClock.Stop();
@@ -551,6 +603,7 @@ namespace Game.Server.Core
             _fatalShutdownRequested = true;
             _fatalShutdownMessage = exception.Message;
             ServerShutdownController.ClearPendingRequest();
+            ServerControlEndpoint.Detach();
             Debug.Error($"Fatal authoritative server simulation failure; shutting down the server runtime.\n{exception}");
             ServerSimulationClock.Stop();
 

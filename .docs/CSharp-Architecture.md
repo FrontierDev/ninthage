@@ -320,9 +320,11 @@ The gameplay/world manager architecture is:
 
 ### 6.4 Server shutdown ownership
 
-`ServerShutdownController` is attached to the persistent `GameBootstrapper` host by `ServerInitialization`. It receives external shutdown requests, including dedicated-server console interrupts, transfers them to the Unity main thread and owns the single graceful shutdown coroutine and process-exit request. Its request surface does not expose networking or teardown primitives.
+`ServerControlEndpoint` is attached only for the ordinary dedicated-server path and is the local operational request boundary: it binds the loopback control port, parses the bounded shutdown request and hands it to `ServerShutdownController`. It does not own teardown or process state.
 
-`ServerInitialization` owns authoritative subsystem teardown ordering: it stops the simulation clock, drains PurrNet with a bounded wait, disposes the NetworkManager/ECS/world state and then finalises the profiler. `ServerPerformanceProfiler` owns report finalisation only. Fatal shutdown uses the same ordered cleanup boundary with a non-zero process exit; Editor forced-server mode tears down without quitting the Editor.
+`ServerShutdownController` is attached to the persistent `GameBootstrapper` host by `ServerInitialization`. It owns thread-safe request arbitration and the Unity main-thread handoff to one graceful shutdown coroutine. `ServerInitialization` owns authoritative subsystem teardown ordering: it stops the simulation clock, drains PurrNet with a bounded wait, disposes the NetworkManager/ECS/world state and then finalises the profiler. `ServerPerformanceProfiler` owns final report finalisation only. Fatal shutdown uses the same ordered cleanup boundary with a non-zero process exit; Editor forced-server mode tears down without quitting the Editor.
+
+The stable local World Server control contract for the future `ninthage-master` caller is `POST http://127.0.0.1:<control-port>/control/shutdown`, returning `202 Accepted` with `{"status":"shutdown_requested"}`. The Master should launch each managed World Server with an explicit unique control port, retain that port with the child process, use this endpoint for the Worlds dashboard Stop action, wait a bounded time for natural exit, and use `Process.Kill(entireProcessTree: true)` only as the timeout/error fallback. No alternate World Server shutdown protocol should be introduced.
 
 ## 7. Shared Configuration Layer
 

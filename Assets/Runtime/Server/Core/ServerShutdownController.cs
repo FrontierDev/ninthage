@@ -17,7 +17,6 @@ namespace Game.Server.Core
         private static string _pendingReasonCode;
         private static string _pendingMessage;
 
-        private bool _consoleInterruptSubscribed;
         private bool _shutdownCoroutineStarted;
         private bool _exitRequested;
 
@@ -30,7 +29,7 @@ namespace Game.Server.Core
             }
         }
 
-        internal static void Attach(MonoBehaviour host, bool listenForConsoleInterrupt)
+        internal static void Attach(MonoBehaviour host)
         {
             if (host == null)
                 throw new ArgumentNullException(nameof(host));
@@ -39,12 +38,6 @@ namespace Game.Server.Core
             if (controller == null)
                 controller = host.gameObject.AddComponent<ServerShutdownController>();
 
-            ServerShutdownController previousController;
-            lock (REQUEST_LOCK)
-                previousController = _active;
-
-            previousController?.UnsubscribeConsoleInterrupt();
-            controller.UnsubscribeConsoleInterrupt();
             lock (REQUEST_LOCK)
             {
                 _active = controller;
@@ -56,24 +49,18 @@ namespace Game.Server.Core
 
             controller._shutdownCoroutineStarted = false;
             controller._exitRequested = false;
-            if (listenForConsoleInterrupt)
-                controller.SubscribeConsoleInterrupt();
         }
 
         internal static void Detach()
         {
-            ServerShutdownController controller;
             lock (REQUEST_LOCK)
             {
-                controller = _active;
                 _active = null;
                 _requestPending = false;
                 _shutdownRequested = false;
                 _pendingReasonCode = null;
                 _pendingMessage = null;
             }
-
-            controller?.UnsubscribeConsoleInterrupt();
         }
 
         internal static void RequestShutdown(string reasonCode, string message)
@@ -134,10 +121,12 @@ namespace Game.Server.Core
                 _pendingMessage = null;
             }
 
-            controller.UnsubscribeConsoleInterrupt();
             Debug.Log($"Server shutdown teardown completed. Exit code: {exitCode}.");
             if (!Application.isEditor)
+            {
+                Debug.Log($"Server is closing now. Exit code: {exitCode}.");
                 Application.Quit(exitCode);
+            }
         }
 
         private void Update()
@@ -177,32 +166,6 @@ namespace Game.Server.Core
                 _pendingMessage = null;
                 return true;
             }
-        }
-
-        private void SubscribeConsoleInterrupt()
-        {
-            if (_consoleInterruptSubscribed)
-                return;
-
-            Console.CancelKeyPress += OnConsoleCancelKeyPress;
-            _consoleInterruptSubscribed = true;
-        }
-
-        private void UnsubscribeConsoleInterrupt()
-        {
-            if (!_consoleInterruptSubscribed)
-                return;
-
-            Console.CancelKeyPress -= OnConsoleCancelKeyPress;
-            _consoleInterruptSubscribed = false;
-        }
-
-        private void OnConsoleCancelKeyPress(object sender, ConsoleCancelEventArgs eventArgs)
-        {
-            eventArgs.Cancel = true;
-            RequestShutdown(
-                "CONSOLE_INTERRUPT",
-                "Shutdown requested by console interrupt.");
         }
 
         private void OnDestroy()

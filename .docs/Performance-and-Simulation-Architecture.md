@@ -32,7 +32,7 @@ The retired Editor/test performance harness is not an evidence source for curren
 
 Ownership is deliberately split: production systems own metric definitions and `TryRecord` producers; `PerformanceTelemetry` owns fixed-capacity bounded aggregation; `ServerPerformanceProfiler` owns the opt-in server session lifecycle and report output; actual gameplay owns the workload. Client profiling, synthetic actors, fixture populations and workload orchestration remain outside this server contract.
 
-Graceful shutdown is owned by `ServerShutdownController` and `ServerInitialization`: the simulation clock stops before the PurrNet network drain, the disconnect wait is bounded, ECS/world teardown completes, and profiling finalises before process exit. `Application.quitting` remains fallback protection only; it is not the primary controlled-shutdown boundary.
+Graceful shutdown is requested through the local loopback control endpoint and owned by `ServerShutdownController` and `ServerInitialization`: the endpoint hands off the request, the simulation clock stops before the PurrNet network drain, the disconnect wait is bounded, ECS/world teardown completes, and profiling finalises before process exit. Hard OS termination, including `Stop-Process`, can interrupt this ordering and cannot be treated as a complete profiling run. `Application.quitting` remains fallback protection only; it is not the primary controlled-shutdown boundary.
 
 ### Baseline qualification
 
