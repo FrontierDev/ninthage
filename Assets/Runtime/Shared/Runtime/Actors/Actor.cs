@@ -34,8 +34,11 @@ namespace Game.Shared.Runtime.Actors
         /// <summary>Gets or sets the current streamed world chunk.</summary>
         public string CurrentChunk { get; set; }
 
+        private const float ACCEPTED_POSITION_REPLICATION_INTERVAL_SECONDS = 0.1f;
+
         [SerializeField]
-        private readonly SyncVar<ActorPositionSnapshot> _acceptedPositionSnapshot = new();
+        private readonly SyncVar<ActorPositionSnapshot> _acceptedPositionSnapshot =
+            new(sendIntervalInSeconds: ACCEPTED_POSITION_REPLICATION_INTERVAL_SECONDS);
         private long _lastClientAcceptedPositionTick = long.MinValue;
         private bool _serverDespawnPublished;
 
