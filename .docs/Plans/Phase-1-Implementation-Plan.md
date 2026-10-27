@@ -17,7 +17,7 @@ Ninth Age is an MMO built with Unity 6.3, URP Forward+, a headless authoritative
 
 **Governing principle:** Anticipate the highest-stress plausible scenarios and implement their reusable architectural prerequisites now. Do not defer an identifiable foundational dependency until it becomes a production bottleneck. Equally, do not adopt speculative frameworks or rewrite functional systems without demonstrable architectural justification.
 
-**Foundation-first performance sequencing:** Stages **1.1–1.9** build the server/client foundations and the instrumentation needed to observe them. During those stages, use only focused correctness tests and short instrumentation smoke runs needed to prove that an implementation works and that telemetry is connected. Do **not** create representative benchmark campaigns, density/capacity sweeps, soak campaigns, comparative optimisation studies or new numerical performance thresholds as stage gates. Lightweight repeatable performance regression gates begin only in **Stage 1.10**, after the functional foundations are assembled; the full representative benchmark/stress matrix is executed in **Stage 1.11**.
+**Foundation-first verification sequencing:** Stages **1.1–1.9** build the server/client foundations and the instrumentation needed to observe them. During those stages, use compilation/static validation and narrow owner-operated smoke checks needed to prove that an implementation works and that telemetry is connected. Do **not** create new regression-test suites/issues, representative benchmark campaigns, density/capacity sweeps, soak campaigns, comparative optimisation studies or new numerical performance thresholds as stage gates. Systematic regression coverage and repeatable performance regression gates begin in **Stage 1.10**, after the functional foundations are assembled; the full representative benchmark/stress matrix is executed in **Stage 1.11**.
 
 A scalable architectural design, an instrumented runtime, a tested workload, and a guaranteed production capacity are **different claims**. No numerical server or player capacity is implied by completion of a foundation stage.
 
@@ -53,11 +53,11 @@ Phase 1 first establishes the common mechanisms and instrumentation, then verifi
 ## 3. Execution rules
 
 1. Execute stages in the order below **unless a stage explicitly identifies independent parallel work**. Each stage ends with concrete artifacts and a validation gate; failing a gate blocks dependent stages.
-2. Begin with baseline instrumentation so later integrated performance work can attribute cost. Preserve representative Phase 0 behaviours and regression coverage. During Stages 1.1–1.9, instrumentation smoke runs verify telemetry/correctness only; they are not before/after benchmark campaigns or capacity gates.
+2. Begin with baseline instrumentation so later integrated verification can attribute failures and cost. Preserve regression coverage that already exists, but do not add new regression-test suites/issues during Stages 1.1–1.9 unless the owner explicitly makes an exception for a blocking defect. Foundation-stage validation is compilation/static checking plus narrow manual smoke validation; systematic automated regression expansion belongs to Stage 1.10.
 3. Make timing, relevance, actor lifetime and data-ownership contracts explicit before other features adopt them.
 4. Refactor real hot paths at the appropriate stage; do not merely add abstract interfaces while leaving the original per-frame scans and allocations active.
 5. Prefer direct, understandable, testable implementations. Add pooling, Jobs, Burst, custom buffers or caches only where their ownership/workload characteristics justify them structurally. Comparative performance evaluation of those choices belongs to Stages 1.10–1.11 unless a focused smoke measurement is required to prove the mechanism itself functions.
-6. Each implementation issue must identify affected project-owned files and methods, dependencies, non-goals, automated/static validation and manual Unity/multiplayer validation. Follow the repository workflow's separation of implementation and regression-test issues.
+6. Each implementation issue must identify affected project-owned files and methods, dependencies, non-goals, automated/static validation and manual Unity/multiplayer smoke validation. During Stages 1.1–1.9, do not create a follow-on regression-test issue merely because production code changed; record candidate regression coverage for Stage 1.10 instead.
 7. Preserve Unity client, standalone headless server, editor and multiplayer operation. Record any validation that cannot run in automation; never represent static tests as proof of performance.
 8. Configure operational limits and budgets centrally, not as scattered literals. New numerical performance thresholds are promoted only from the Stage 1.10–1.11 evidence programme with workload/hardware context and owner approval; foundation stages may use correctness/resource-safety bounds that are intrinsic to the implementation.
 
@@ -273,7 +273,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Keep actor spawn/despawn and structural ECS changes explicit, testable and safe relative to running jobs and queued events.
 - Establish allocation standards for high-frequency code, reuse temporary buffers where justified, and ensure cache/pool cleanup. No blanket ban on managed code or indiscriminate rewrite of all gameplay into Entities.
 
-**Gate:** Actor and timed-state regression tests, stable actor/entity ownership across lifecycle transitions, zero unexpected job-safety failures, and telemetry sufficient for the later integrated performance programme. Before/after hot-path benchmarking is deferred to Stages 1.10–1.11.
+**Gate:** Stable actor/entity ownership across lifecycle transitions, zero unexpected job-safety failures, successful focused smoke validation, and telemetry sufficient for later integrated verification. New regression-suite expansion and before/after hot-path benchmarking are deferred to Stages 1.10–1.11.
 
 ### Stage 1.4 — Actor lifecycle, simulation LOD and high-population AI
 
@@ -334,9 +334,9 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 - Standardise distance/visibility LOD and culling integration for terrain, meshes, vegetation, animation, shadows and VFX. Define required asset-authoring metadata and validation so future art is economical by construction.
 - Preserve **URP Forward+** and make the graphical client profile/report path reliable enough for later integrated performance work. Do not run representative forest/settlement/crowded-client benchmark campaigns or select renderer optimisations as a Stage 1.6 gate.
 - Preserve day/night and future weather/lighting hooks without building complete environmental systems in this phase.
-- Add focused regression coverage for the changed resource ownership, world-presentation, floating-origin and authoring contracts.
+- Record the changed resource ownership, world-presentation, floating-origin and authoring contracts that require later regression coverage. Do not create the regression suite during Stage 1.6.
 
-**Gate:** Project-owned client resource lifetimes are explicit/bounded; world entry/cleanup and floating-origin/streamed-scene ownership are correct; LOD/culling authoring validation exists; client telemetry/reporting is smoke-tested; critical changed contracts have focused regression coverage. Representative rendering, rapid-traversal, repeated-lifetime and capacity benchmarking is deferred to Stages 1.10–1.11.
+**Gate:** Project-owned client resource lifetimes are explicit/bounded; world entry/cleanup and floating-origin/streamed-scene ownership are correct under focused smoke validation; LOD/culling authoring validation exists; client telemetry/reporting is smoke-tested; later regression candidates are documented for Stage 1.10. Representative rendering, rapid-traversal, repeated-lifetime and capacity benchmarking is deferred to Stage 1.11.
 
 ### Stage 1.7 — Relational persistence, transactional state and timed-state continuity
 
@@ -391,7 +391,7 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 **Prerequisite:** 1.0–1.9 interfaces and metrics are established.  
 **Some logging/config/CI scaffolding may begin in parallel after 1.0.**
 
-This is the **first Phase 1 stage that may promote repeatable performance comparisons into actual regression gates**. Earlier foundation-stage smoke reports remain developmental evidence only.
+This is the **first Phase 1 stage that owns systematic regression-test expansion and may promote repeatable performance comparisons into actual regression gates**. Earlier foundation-stage smoke checks/reports remain developmental validation only.
 
 **Implement:**
 
@@ -399,7 +399,8 @@ This is the **first Phase 1 stage that may promote repeatable performance compar
 - Separate development/test/production configuration and sensitive credentials; validate required settings and database/content/schema compatibility at startup.
 - Provide operational metrics for tick overload, network pressure, persistence backlogs, active/dormant population, stream churn and memory trends.
 - Implement persistent-data backup/restore, migration rehearsal, clean shutdown and failure recovery. Ensure unsupported failures are explicit rather than masked by silent fallbacks.
-- Run lightweight deterministic perf/behaviour smoke tests in CI and heavier multiplayer, rendering and soak suites on suitable dedicated runners. Preserve hardware/build metadata; avoid brittle universal thresholds across dissimilar machines.
+- Build the deferred automated regression suite for critical contracts changed during Stages 1.1–1.9, prioritising authority, lifecycle, persistence, compatibility, cleanup and deterministic simulation invariants.
+- Run lightweight deterministic behaviour/performance regression tests in CI and heavier multiplayer, rendering and soak suites on suitable dedicated runners. Preserve hardware/build metadata; avoid brittle universal thresholds across dissimilar machines.
 - Track failures to owner, regression range and source commit. Tie performance gating to repeatable baseline comparisons and accepted thresholds.
 
 **Gate:** Operational failure and overload are observable; backup/restore and migration rehearsal are demonstrated; representative CI/workflow runs produce comparable, inspectable artifacts.
