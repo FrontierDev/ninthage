@@ -60,6 +60,8 @@ MonoBehaviour:
   _visibilityRules: {fileID: 11400000, guid: 8f014a5bd8dc68646a2a3c0b18c5bbd8, type: 2}
   _authenticator: {fileID: 7690650266136835834}
   _tickRate: 30
+  _maxTicksPerFrame: 5
+  _mtuExceededBehaviour: 2
   _patchLingeringProcessBug: 0
 --- !u!114 &3273079624052242280
 MonoBehaviour:
@@ -79,7 +81,14 @@ MonoBehaviour:
   _maxConnections: 100
   _address: 127.0.0.1
   _timeoutInSeconds: 10
-  _pollEventsInUpdate: 0
+  _useNativeSockets: 1
+  _networkSimulation:
+    includeInBuild: 0
+    simulateLatency: 0
+    minLatency: 30
+    maxLatency: 100
+    simulatePacketLoss: 0
+    packetLossChance: 10
 --- !u!114 &7690650266136835834
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -105,8 +114,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: feae5f9755a406e438aeefe8018bc578, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Game.Shared::Game.Shared.Networking.LatencySimulator
-  simulateLatency: 1
-  minLatencyMs: 30
-  maxLatencyMs: 80
-  simulatePacketLoss: 1
-  packetLossChance: 2
+  _simulateLatency: 0
+  _minLatencyMS: 30
+  _maxLatencyMS: 80
+  _simulatePacketLoss: 0
+  _packetLossChance: 2
