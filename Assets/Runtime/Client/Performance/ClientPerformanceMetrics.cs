@@ -220,6 +220,26 @@ namespace Game.Client.Performance
             PerformanceMetricUnit.Count,
             "addressables",
             "client_frame");
+        internal static readonly PerformanceMetricDefinition AUDIO_LIVE_ADDRESSABLE_HANDLE_COUNT = Metric(
+            PerformanceMetricIds.CLIENT_AUDIO_LIVE_ADDRESSABLE_HANDLE_COUNT,
+            PerformanceMetricUnit.Count,
+            "addressables",
+            "client_process");
+        internal static readonly PerformanceMetricDefinition CAMERA_LIVE_ADDRESSABLE_HANDLE_COUNT = Metric(
+            PerformanceMetricIds.CLIENT_CAMERA_LIVE_ADDRESSABLE_HANDLE_COUNT,
+            PerformanceMetricUnit.Count,
+            "addressables",
+            "client_process");
+        internal static readonly PerformanceMetricDefinition VFX_LIVE_ADDRESSABLE_HANDLE_COUNT = Metric(
+            PerformanceMetricIds.CLIENT_VFX_LIVE_ADDRESSABLE_HANDLE_COUNT,
+            PerformanceMetricUnit.Count,
+            "addressables",
+            "client_process");
+        internal static readonly PerformanceMetricDefinition WORLD_PRESENTATION_TEARDOWN_DURATION = Metric(
+            PerformanceMetricIds.CLIENT_WORLD_PRESENTATION_TEARDOWN_DURATION,
+            PerformanceMetricUnit.Milliseconds,
+            "scene",
+            "scene_operation");
         internal static readonly PerformanceMetricDefinition AUDIO_CACHE_COUNT = Metric(
             PerformanceMetricIds.CLIENT_AUDIO_CACHE_COUNT,
             PerformanceMetricUnit.Count,
@@ -273,6 +293,10 @@ namespace Game.Client.Performance
             RegisterMeasured(ADDRESSABLE_LOAD_DURATION);
             RegisterMeasured(ADDRESSABLE_RELEASE_COUNT);
             RegisterMeasured(ADDRESSABLE_PENDING_COUNT);
+            RegisterMeasured(AUDIO_LIVE_ADDRESSABLE_HANDLE_COUNT);
+            RegisterMeasured(CAMERA_LIVE_ADDRESSABLE_HANDLE_COUNT);
+            RegisterMeasured(VFX_LIVE_ADDRESSABLE_HANDLE_COUNT);
+            RegisterMeasured(WORLD_PRESENTATION_TEARDOWN_DURATION);
             RegisterMeasured(AUDIO_CACHE_COUNT);
         }
 

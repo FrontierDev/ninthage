@@ -304,6 +304,10 @@ namespace Game.Shared.Performance
         public const string CLIENT_ADDRESSABLE_LOAD_DURATION = "client.addressables.load_duration";
         public const string CLIENT_ADDRESSABLE_RELEASE_COUNT = "client.addressables.release_count";
         public const string CLIENT_ADDRESSABLE_PENDING_COUNT = "client.addressables.pending_count";
+        public const string CLIENT_AUDIO_LIVE_ADDRESSABLE_HANDLE_COUNT = "client.audio.live_addressable_handle_count";
+        public const string CLIENT_CAMERA_LIVE_ADDRESSABLE_HANDLE_COUNT = "client.camera.live_addressable_handle_count";
+        public const string CLIENT_VFX_LIVE_ADDRESSABLE_HANDLE_COUNT = "client.vfx.live_addressable_handle_count";
+        public const string CLIENT_WORLD_PRESENTATION_TEARDOWN_DURATION = "client.world.presentation_teardown_duration";
         public const string CLIENT_AUDIO_CACHE_COUNT = "client.audio.cache_count";
         public const string SHARED_SCENE_OPERATION_DURATION = "shared.scene.operation_duration";
     }
