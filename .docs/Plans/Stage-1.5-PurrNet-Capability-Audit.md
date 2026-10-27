@@ -1,142 +1,190 @@
 # Stage 1.5 PurrNet capability audit
 
-Status: complete source audit for the locally installed PurrNet package. This document is an implementation input for the Stage 1.5 networking work; it does not change runtime code, tests, package metadata, or vendor files.
+Status: active Step 1C dependency-audit refresh for the locally installed PurrNet package. This document is an implementation input for the remaining Stage 1.5 networking work. It records source evidence only; it does not authorize runtime, prefab, package, test, or vendor changes.
 
 ## Scope and inspection identity
 
-The audit covers the installed PurrNet APIs needed for visibility, observer lifecycle, state/RPC delivery, serialization, transport observability, and update/bandwidth policy. The inspected vendor root is:
+The inspected vendor root is:
 
 `C:\Users\recip\Unity\NinthAge\Assets\ThirdParty\PurrNet`
 
-The local package metadata is `Assets/ThirdParty/PurrNet/package.json`:
+The active package identity is:
 
-- package name: `dev.purrnet.purrnet`
-- package version: `1.19.1`
-- changelog top release: `1.19.1`, dated 2026-02-25 in `Assets/ThirdParty/PurrNet/CHANGELOG.md`
-- package files included in the audit: 1,196, including Unity metadata files
+- package name: `dev.purrnet.purrnet`;
+- installed package version: `1.25.0` from `Assets/ThirdParty/PurrNet/package.json`;
+- changelog identity: `1.25.0`, dated 2026-10-26, at `Assets/ThirdParty/PurrNet/CHANGELOG.md:1`;
+- package files included in the directory hash: 1,488, including Unity metadata files;
+- Unity editor: `6000.3.10f1` from `ProjectSettings/ProjectVersion.txt`;
+- nested Git repository: none;
+- reproducible local directory SHA-256:
 
-The package has no nested Git repository. The package metadata identifies the local release as `1.19.1`, but it does not verify an upstream commit or tag identity; no trustworthy upstream revision has been verified for this checkout. The reproducible directory SHA-256 below is therefore authoritative for this audit. It was calculated with the project-owned algorithm in `Assets/Tests/Performance/Harness/Editor/Test_PerformanceEvidence.cs:101-131`: SHA-256 of sorted project-relative file paths and per-file SHA-256 hashes, with forward-slash paths and lowercase hexadecimal output.
+`8d3afad9a51ff6f298f0caf6aa69acda7b72e2608e665ed3a88ab988582a8fa7`
 
-Installed PurrNet directory hash:
+The directory hash uses the established project convention in `Assets/Tests/Performance/Harness/Editor/Test_PerformanceEvidence.cs:111-131`: sort all files by full path using ordinal comparison; emit each project-relative path with forward slashes, a colon, the lowercase per-file SHA-256, and a newline; SHA-256 the UTF-8 concatenation. This local directory hash is the authoritative audit identity.
 
-`e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941`
+The package metadata and changelog identify the 1.25.0 release line and link upstream tags/commit hashes, including the stacked-identity fix at changelog line 31. They do not prove that this checkout is an exact upstream tag or commit: there is no nested Git metadata or independently verified ref. No upstream tag/commit is therefore trusted as the audit identity.
 
-The project is using Unity `6000.3.10f1`, recorded in `ProjectSettings/ProjectVersion.txt`. `Packages/manifest.json` and `Packages/packages-lock.json` do not identify PurrNet as a Unity Package Manager dependency; `Assets/ThirdParty/PurrNet` is a locally installed directory and is ignored by the repository’s `.gitignore`, not a tracked source directory. `ProjectSettings/PurrNetSettings.asset` has code stripping disabled (`stripServerCode: false`).
+The previous 1.19.1 audit remains historical context only: package version `1.19.1`, 1,196 files, directory hash `e232f713a923f9b079a1f2de34d7730c926af37cc001467fb2fa2a4b4d574941`. It is superseded by this 1.25.0 audit and must not be used as the active Stage 1.5 capability contract. #275 and #276 are historical baselines for the refresh.
 
-All vendor paths below are relative to the installed vendor root unless the path begins with `Assets/Runtime` or `Assets/Tests`. Line ranges identify the inspected type/member and are evidence pointers, not generated API documentation.
+All vendor paths below are relative to the installed PurrNet root unless a path begins with `Assets/Runtime` or `Assets/Tests`. Line ranges are source-evidence pointers.
 
-## Project-owned integration already present
+## Project-owned integration rechecked
 
-The project already has integration points for the capabilities that are supported by composition:
+The current project integration was re-read against this package:
 
-- `Assets/Runtime/Shared/Networking/ChunkVisibilityRule.cs:7-63` defines `ChunkVisibilityRule : NetworkVisibilityRule`, sets `complexity` to 50, and implements `CanSee(PlayerID, NetworkIdentity)` using actor/chunk context, accepted position snapshots, `NetworkIdentity.IsObserver`, and entry/exit radii. This is the project-owned context/range policy.
-- `Assets/Runtime/Shared/Runtime/Actors/Actor.cs:18,38,150-199` uses a PurrNet `SyncVar<ActorPositionSnapshot>` for the server-maintained accepted position. The server setter updates the SyncVar value immediately after validation; the read path exposes the current accepted snapshot to visibility evaluation.
-- `Assets/Runtime/Shared/Runtime/Actors/Actor.cs:368-387,453-466` contains representative `ServerRpc`, `ObserversRpc`, and `TargetRpc` call sites.
-- `Assets/Runtime/Shared/Runtime/Actors/ActorStatContainer.cs:73-97,172-214` uses the server-side observer-entry callback to construct a `StatSnapshot` and sends it to the entering player with a `TargetRpc`; the same type also has an observer broadcast path.
-- `Assets/Runtime/Server/Core/ServerConnectionManager.cs:47-89,112-122` subscribes to the public raw transport events and records `ByteData.length` per received or sent transport payload.
-- `Assets/Runtime/Shared/Networking/NetworkingPerformanceMetrics.cs:13-22,60-71,278-287,378-382` explicitly distinguishes payload bytes from unavailable on-wire framing, retransmission, loss, backlog, and latency counters. The existing constants match the installed public API evidence below; no production metric changes are part of this audit.
-- `Assets/Runtime/Shared/Networking/PackStatSnapshot.cs:25-104` is a project-owned custom packer. It length-prefixes the snapshot array and writes the project-selected fields (`StatID`, `EffectiveMax`, and `Current`) for each entry. It is not evidence that all `StatSnapshotEntry` fields are currently replicated.
+- `Assets/Runtime/Shared/Networking/ChunkVisibilityRule.cs:10-68` owns context, chunk, accepted-position, and 80/96 m range policy through `NetworkVisibilityRule.CanSee` and `NetworkIdentity.IsObserver`.
+- `Assets/Runtime/Server/Core/ServerInterestManager.cs:151-408,997-1037` derives candidate visibility work from accepted movement and handles teardown/transfer reevaluation; it does not maintain a second PurrNet observer registry.
+- `Assets/Runtime/Shared/Runtime/Actors/Actor.cs:38,318-429,502-641` owns the accepted-position SyncVar, target bootstrap, target/combat/aura RPCs, and project publication metrics.
+- `Assets/Runtime/Shared/Runtime/Actors/ActorStatContainer.cs:81-126,161-240` owns observer-entry and owner stat bootstraps, snapshot publication, and the current five-field snapshot model.
+- `Assets/Runtime/Shared/Runtime/Actors/ActorVFXController.cs:33-107` and `ActorSFXController.cs:26-44` expose project-owned server publication boundaries for transient observer effects.
+- `Assets/Runtime/Shared/Networking/MovementEndpoint.cs:28-66` contains movement proposal ingress and targeted interest/correction callbacks.
+- `Assets/Runtime/Server/Core/ServerConnectionManager.cs:61-193` consumes public transport events, records payload bytes/message counts, and keeps live connection state from `ITransport.connections`.
+- `Assets/Runtime/Shared/Networking/NetworkingPerformanceMetrics.cs:73-132,365-378,477-570` records project publication counts, intended recipient fan-out, handler invocations, and transport payload metrics. Handler counts remain distinct from emission and delivery.
 
-## Visibility and observer lifecycle
+## Visibility, reevaluation, and observer lifecycle
 
 ### Rule composition and reevaluation
 
-`PurrNet/Runtime/Components/NetworkVisibility/NetworkVisibilityRule.cs:8-20` and `PurrNet/Runtime/Components/NetworkVisibility/INetworkVisibilityRule.cs:5-17` define the public rule contract: a `complexity` value and `CanSee(PlayerID, NetworkIdentity)`. `NetworkVisibilityRuleSet.Setup` in `PurrNet/Runtime/Components/NetworkVisibility/NetworkVisibilityRuleSet.cs:20-35` sorts rules by ascending complexity. Its `CanSee` method at `PurrNet/Runtime/Components/NetworkVisibility/NetworkVisibilityRuleSet.cs:58-70` returns on the first rule that allows visibility and otherwise denies visibility.
+`NetworkVisibilityRule` and `INetworkVisibilityRule` define `complexity` and `CanSee(PlayerID, NetworkIdentity)` at `Runtime/Components/NetworkVisibility/NetworkVisibilityRule.cs:5-20` and `INetworkVisibilityRule.cs:5-17`. `NetworkVisibilityRuleSet.Setup` sorts rules by ascending complexity and `CanSee` returns on the first rule that allows visibility at `NetworkVisibilityRuleSet.cs:20-72`.
 
-`PurrNet/Runtime/CoreModules/HierarchyV2/VisilityV2.cs:23-44` exposes `RefreshVisibilityForGameObject` overloads. `EvaluateAll` at `PurrNet/Runtime/CoreModules/HierarchyV2/VisilityV2.cs:144-167` refreshes roots for every supplied player, and `Evaluate` at `PurrNet/Runtime/CoreModules/HierarchyV2/VisilityV2.cs:172-244` applies parent visibility, whitelist/blacklist state, override/default rules, owner visibility, and the rule-set result. A rule returning false removes the observer; a rule returning true adds it. The source does not expose a project-facing generic “actor moved” callback that automatically reevaluates an arbitrary actor. Reevaluation cadence and the choice of roots therefore remain project-owned integration decisions.
+The installed visibility engine is `Runtime/CoreModules/HierarchyV2/VisilityV2.cs`. `RefreshVisibilityForGameObject` traverses a root hierarchy at `:43-90`; `EvaluateAll` gathers root identities and refreshes each root for each supplied player at `:265-296`; `Evaluate` at `:298-407` applies parent visibility, whitelist/blacklist, overrides/default rules, owner visibility, and the rule result. A false result removes an observer; a true result adds one. PurrNet does not provide a generic actor-moved callback, so the project still owns candidate selection and reevaluation cadence.
 
-`NetworkIdentity.Rules` at `PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Rules.cs:31-118` marks visibility dirty when whitelist, blacklist, or rule settings change. The project’s spatial/chunk policy remains the source of position/range context; PurrNet supplies the rule evaluation and observer mutation mechanism.
+`NetworkIdentity.EvaluateVisibility()` and `EvaluateVisibility(PlayerID)` are server-side entry points at `Runtime/Components/NetworkIdentity/NetworkIdentity.cs:1104-1131`. The project calls those through `ServerInterestManager` after accepted-position and spatial/chunk updates. Visibility remains separate from Full/Nearby/Dormant simulation activity.
 
-### Observer registry and lifecycle
+### Stacked identities, root resolution, and ownership
 
-`PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.cs:32-34,355-359` exposes public observer-added/removed events, a public `IReadOnlyList<PlayerID> observers`, and `IsObserver(PlayerID)`. The list’s `Count` is the observer count; there is no separate public count API. The underlying list is maintained by the identity, not by a parallel project registry.
+PurrNet 1.25.0 makes `NetworkTransform` a `NetworkIdentity`: `Runtime/Components/NetworkBehaviour/NetworkTransform.cs:16-19` declares `NetworkTransform : NetworkIdentity`.
 
-Server-only lifecycle hooks are `OnPreObserverAdded`, `OnObserverAdded`, and `OnObserverRemoved` at `:716-761`. The corresponding trigger methods at `:1426-1553` invoke the protected callbacks and public events. `ActorStatContainer.OnObserverAdded` is a concrete project use of this integration.
+On one GameObject, `NetworkIdentity.siblingIdentities` is an internal cached array populated by `GetComponents<NetworkIdentity>()` in component order at `Runtime/Components/NetworkIdentity/NetworkIdentity.cs:39-63`. `GetRootIdentity()` starts with `gameObject.GetComponent<NetworkIdentity>()`, then follows nearest network parents at `:485-499`; other root/evaluation paths also call `GetComponent<NetworkIdentity>()` (`HierarchyV2.cs:2298-2307`). The first `NetworkIdentity` component on the GameObject is therefore the root identity used by these paths. `HierarchyV2.GetComponentsInChildren` collects all identities on that first identity's hierarchy, including siblings, at `Runtime/CoreModules/HierarchyV2/HierarchyV2.cs:3254-3279`.
 
-The normal observer-add path is staged. `PurrNet/Runtime/CoreModules/HierarchyV2/HierarchyV2.cs:1660-1689` sends a catch-up spawn packet, adds the observer, invokes the pre-add hook, queues the late observer event, and then triggers the spawn event. `SendDelayedObserverEvents` at `:1626-1638` invokes `NetworkIdentity.TriggerOnObserverAdded` during the later network-message phase. Manual additions and removals are exposed at `:1892-1923`.
+`VisilityV2.EvaluateNode` evaluates all sibling identities together and uses the first sibling's direct-child tree at `:104-124`. `Evaluate` computes `isAnyVisible` across siblings. When one sibling gains or loses an observer while another sibling keeps the GameObject visible, it uses `SetMutedObserver` and raises `observerChanged` rather than treating the whole GameObject as fully hidden at `:374-406`. `HierarchyV2.OnObserverChanged` invokes the per-identity pre-add/late-add or removal lifecycle at `:2757-2770`; a full root visibility loss removes muted observers and sends one hierarchy despawn at `:2784-2805`. This is the 1.25.0 stacked/sibling behavior; it is not the old duplicate-spawn failure model.
 
-There is a meaningful bootstrap ordering caveat. `PurrNet/Runtime/CoreModules/RPCs/RPCModule.cs:86-98,116-123,490-526` replays buffered RPCs from the `onSentSpawnPacket` event, before the later observer callback phase. `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:129-135,248-265` separately sends latest state through a `TargetRpc`. The server-side scheduling order is evidenced, but the source does not establish a single cross-channel, end-to-end arrival order for a spawn packet, replayed RPC, SyncVar state, and a later observer RPC. Any gameplay dependency on that order must use an explicit project-owned bootstrap protocol or remain a validation item.
+The normal visibility-add path sends the spawn packet, calls pre-observer callbacks, and queues late observer callbacks in `HierarchyV2.OnVisibilityChanged:2712-2743`. `SendDelayedObserverEvents` invokes `TriggerOnObserversAdded`/`TriggerOnObserverAdded` after the spawn phase at `:3727-3781`. Manual targeted add/remove paths are public at `:4499-4588`. `NetworkIdentity` exposes `observers`, `IsObserver`, observer events, and protected observer hooks at `NetworkIdentity.cs:65-67,436-452,884-929,1721-1840`.
 
-For a single entering observer, the installed public API is sufficient for a project-owned bootstrap: `NetworkBehaviour.OnObserverAdded(PlayerID, bool)` plus a `TargetRpc` targeted to that player. `NetworkIdentity.Broadcasting.GetObservers` and `SendRPCNormal` at `PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Broadcasting.cs:231-261,349-380` show observer selection and observer RPC batching; `TargetRpcAttribute` is defined at `PurrNet/Runtime/CoreModules/RPCs/TargetRpcAttribute.cs:7-20`. The project’s `ActorStatContainer` uses this shape. Reliable delivery still depends on the connection remaining alive, as with any network transport.
+Ownership is per identity. `NetworkIdentity.owner` resolves the closest network parent owner at `NetworkIdentity.cs:394-400`. `GiveOwnership`/`RemoveOwnership` accept an explicit `propagateToChildren` option at `:1133-1144,1248-1285`; `GlobalOwnershipModule.GetAllChildrenOrSelf` expands the selected identity to all identities in its hierarchy, including same-GameObject siblings, only when propagation is enabled and authorized at `Runtime/CoreModules/Ownership/GlobalOwnershipModule.cs:538-664,771-835,1055-1079`. Ownership callbacks are triggered for each affected identity. Sibling visibility does not itself grant or remove ownership.
 
-## SyncVar semantics and update cadence
+### Owner-confirmed Ninth Age runtime evidence
 
-`PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:13-32` defines `SyncVar<T>` and its public `sendIntervalInSeconds`. The `value` setter at `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:45-72` compares with `PurrEquality<T>`, immediately updates the local `_value`, and marks the variable dirty when the value changes. This means an interval delays wire publication, not the server’s current value.
+The project owner validated the following prefab ordering result after the 1.25.0 upgrade:
 
-The dirty/send state machine at `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:176-235` coalesces repeated assignments into the current value, sends an unreliable update when the interval permits, and sends a reliable follow-up when the dirty period ends. The default constructor value at `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:241-246` is an interval of zero seconds. The cadence is tick-driven; the project’s `Actor.SetAcceptedPositionSnapshotFromServer` writes the current accepted value immediately at `Assets/Runtime/Shared/Runtime/Actors/Actor.cs:150-176`, while `ChunkVisibilityRule` reads the current value at `Assets/Runtime/Shared/Networking/ChunkVisibilityRule.cs:46-49`.
+```text
+PlayerPrefab:
+NetworkTransform before dedicated NetworkIdentity
+    -> remote player remained instantiated/frozen outside relevance
 
-Observer entry state is handled at `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:129-135,248-265`: a new observer receives the current value via a targeted reliable RPC, subject to the owner-authentication exception for the spawning owner. Owner-authenticated variables send owner changes to the server and distribute them to other observers using the owner-excluding methods at `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:267-313`; server-authenticated variables use the all-observer methods. “Owner included” is therefore a property of the selected SyncVar ownership path, not a single global SyncVar flag.
+dedicated NetworkIdentity before NetworkTransform
+    -> player visibility/despawn behaved correctly
+```
 
-`PurrNet/Runtime/Components/NetworkBehaviour/NetworkRules.cs:141-145,341-344` exposes `syncedTickUpdateInterval`, and `PurrNet/Runtime/CoreModules/Ticks/TickManager.cs:120-137` uses it for client tick synchronization. This is global tick synchronization, not a per-variable or per-connection replication budget.
+This is project evidence of the first-identity/root-order dependency described above. It does not authorize or require any vendor modification.
 
-## RPC delivery, ordering, and bootstrap behavior
+## Observer bootstrap and current-state semantics
 
-The public RPC attributes define these defaults:
+`NetworkIdentity` exposes `OnObserverAdded(PlayerID, bool isSpawner)` and `OnObserverRemoved(PlayerID)` at `NetworkIdentity.cs:903-929`; `TriggerOnObserverAdded` invokes both overloads for a late observer at `:1775-1840`. PurrNet therefore supports a project-owned targeted bootstrap on observer entry. It does not make an ordinary non-buffered observer RPC a current-state channel.
 
-- `ServerRpcAttribute` at `PurrNet/Runtime/CoreModules/RPCs/ServerRpcAttribute.cs:15-27` defaults to `Channel.ReliableOrdered` and requires ownership.
-- `ObserversRpcAttribute` at `PurrNet/Runtime/CoreModules/RPCs/ObserversRpcAttribute.cs:7-20` defaults to `ReliableOrdered` and exposes `excludeOwner`, `excludeSender`, `bufferLast`, and `deltaPacked`.
-- `TargetRpcAttribute` at `PurrNet/Runtime/CoreModules/RPCs/TargetRpcAttribute.cs:7-20` defaults to `ReliableOrdered` and exposes `bufferLast` and `deltaPacked`.
+The current project has completed targeted bootstrap for the affected Stage 1.5 surfaces:
 
-`PurrNet/Runtime/Transports/Interface/ITransport.cs:110-131` defines channel semantics: `ReliableOrdered` is delivered in order, `ReliableUnordered` is reliable without order, `UnreliableSequenced` is ordered but may be dropped, and `Unreliable` has no receipt or order guarantee. `PurrNet/Runtime/Transports/UDPTransport.cs:360-368` maps the public channels to LiteNetLib channels. The source proves ordering within a selected channel; it does not prove a total ordering between different channels.
+- `Actor.OnObserverAdded` sends `Client_BootstrapTarget` to the entering observer (`Actor.cs:318-329,421-429`).
+- `ServerAuraManager.OnActorObserverAdded` derives active aura state from authoritative ECS/manager state and calls `Actor.PublishAuraBootstrapToObserver` (`ServerAuraManager.cs:140-177`; `Actor.cs:546-573`).
+- `ServerSpellcastManager.OnActorObserverAdded` derives the active cast and remaining time and calls `ActorSpellcaster.PublishActiveCastBootstrap` (`ServerSpellcastManager.cs:171-201`; `ActorSpellcaster.cs:389-427`).
+- `ActorStatContainer.OnObserverAdded` sends observer-mode state and, for the owner, owner-mode state through targeted RPCs (`ActorStatContainer.cs:81-126`).
 
-`PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Broadcasting.cs:231-261,263-347,349-430` shows recipient selection: observer RPCs target the current observer list with owner/sender exclusions, target RPCs use the signature’s target player list, and both are queued with the signature channel. `PurrNet/Runtime/CoreModules/RPCs/RPCSignature.cs:25-57` records the target and channel choices. A targeted owner or new observer can therefore use the reliable ordered `TargetRpc` path, while cosmetic traffic can explicitly choose an unreliable channel.
+These bootstraps target the entering `PlayerID`; they do not force a referenced actor or target identity visible. Ordinary aura/cast/target event RPCs remain event traffic, while the bootstrap is the current-state path.
 
-`PurrNet/Runtime/CoreModules/RPCs/RPCModule.cs:616-647` implements `bufferLast` as one retained latest packet per RPC ID; `PurrNet/Runtime/CoreModules/RPCs/RPCModule.cs:490-526` replays matching buffered observer/target RPCs to a newly observing player using reliable ordered delivery. This is retained replay, not a generic bounded outgoing queue. Ordinary non-buffered RPCs are not replayed for late observers.
+## SyncVar semantics and cadence
 
-RPCs are batched per player and channel. `PurrNet/Runtime/CoreModules/RPCs/RPCBatch.cs:134-150,180-225,227-266` caches the player/channel MTU, splits a batch when the next content would cross the cached MTU, and queues the content for later send. `ITransport.GetMTU` at `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-173` is the public size boundary; the default is 1,024 bytes for unreliable/unreliable-sequenced/reliable-unordered channels and 8,192 bytes for reliable-ordered. This establishes packet batching/splitting, not a public application payload quota or queue-depth API.
+`SyncVar<T>` is defined at `Runtime/Components/NetworkModule/SyncVar.cs:13-44`. Its setter compares the new value, updates the local `_value` immediately, triggers local change events, and marks the variable dirty at `:50-85`. `sendIntervalInSeconds` delays wire publication, not the controlling server's current value (`:27-37,218-225,253-313`). The serialized default interval is zero unless the project sets another value.
 
-## Serialization and payload accounting
+The current tick state machine sends a reliable value on the first dirty send, sends subsequent dirty values unreliably when the interval permits, and sends a reliable follow-up when the dirty period ends (`:276-313`). A newly added observer receives the current value through `OnObserverAdded` and `SendLatestState` at `:178-184`. Owner-authenticated variables use a separate owner path, including owner-change/reconnect behavior at `:102-129`; owner inclusion is not a global SyncVar guarantee.
 
-The installed public serializer is bit-oriented. `PurrNet/Runtime/BitPacker/BitPacker.cs:16-45,48-103,121-196` exposes `positionInBits`, `positionInBytes`, `length`, memory/span access, `BitData` conversion, and position control. `:452-520` provides byte read/write operations. These members are sufficient for project-owned encoded-size measurements at the serializer boundary.
+`NetworkRules.syncedTickUpdateInterval` remains global tick synchronization, not a per-variable or per-connection replication budget (`Runtime/Components/NetworkBehaviour/NetworkRules.cs:141-145,341-344`).
 
-Custom packers can be registered through `PurrNet/Runtime/BitPacker/Packer.cs:13-19,21-101`, including typed writers/readers and `Packer.Transform`. `PurrNet/Runtime/BitPacker/DeltaPacker.cs:8-122` and `PurrNet/Runtime/BitPacker/DeltaPacker_T.cs:10-142` provide changed-bit/full-value fallback delta packing and registered delta packers. `PurrNet/Runtime/BitPacker/RegisterNetworkTypeAttribute.cs:7-19` exposes registration controls including `DontPack` and `DontDeltaCompress`. `PurrNet/Runtime/BitPacker/Packers/PackCollections.cs:10-43` registers list, array, and hash-set packers; the collection comparators compare null/length/count and elements (`PurrNet/Runtime/BitPacker/Packers/ArrayComparator.cs:5-28` and `PurrNet/Runtime/BitPacker/Packers/ListComparator.cs:5-29`).
+## RPC delivery, retention, MTU, and compression
 
-`PurrNet/Runtime/BitPacker/BitPacker.cs:57-87` exposes LZ4-backed `Pickle`/`Unpickle` operations. RPC attributes additionally expose `CompressionLevel` and `deltaPacked`; these are RPC/code-generation options, not a generic replication-priority system. The project’s `PackStatSnapshot` is the authoritative current `StatSnapshot` wire shape, and its field selection should be preserved unless a separate feature explicitly changes that contract.
+The installed defaults are:
 
-For payload accounting, `ITransport` exposes `onDataReceived`, `onDataSent`, `connections`, `SendToClient`, and `SendToServer` at `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-200`. `RawNetManager.rawTransport` is public at `PurrNet/Runtime/Managers/RawNetManager.cs:68`, and `NetworkManager.rawTransport` is public at `PurrNet/Runtime/Managers/NetworkManager.cs:191`. The concrete transport raises data events around transport payloads: `PurrNet/Runtime/Transports/PurrTransport.cs:633-705` and `PurrNet/Runtime/Transports/UDPTransport.cs:159-180,360-392`. The project’s `ServerConnectionManager` correctly measures `ByteData.length` at the event boundary.
+- `ServerRpcAttribute`: `Channel.ReliableOrdered`, `requireOwnership = true`, `deltaPacked = false`, `mtuExceeded = NetworkManager`, `immediate = false` (`Runtime/CoreModules/RPCs/ServerRpcAttribute.cs:16-30`);
+- `ObserversRpcAttribute`: `ReliableOrdered`, `bufferLast = false`, `excludeOwner = false`, `excludeSender = false`, `deltaPacked = false`, `mtuExceeded = NetworkManager`, `immediate = false` (`ObserversRpcAttribute.cs:8-23`);
+- `TargetRpcAttribute`: `ReliableOrdered`, `bufferLast = false`, `deltaPacked = false`, `mtuExceeded = NetworkManager`, `immediate = false` (`TargetRpcAttribute.cs:8-22`).
 
-That boundary is payload, not on-wire bytes. `PurrNet/Runtime/Transports/PurrTransport.cs:656-683` wraps client data with its transport/relay framing but raises `onDataSent` with the original payload data; the public `ITransport` interface exposes no framing/header byte count. The existing `TRANSPORT_ON_WIRE_BYTES_UNAVAILABLE_REASON` is therefore reconciled with the installed source and remains unchanged.
+`ITransport.Channel` semantics are explicit at `Runtime/Transports/Interface/ITransport.cs:176-197`: reliable ordered is delivered in order; reliable unordered is reliable without ordering; unreliable sequenced is ordered but may drop; unreliable has neither guarantee. The source proves ordering within a chosen channel, not a total order between channels.
 
-## Transport observability and policy gaps
+`bufferLast` retains the latest packet per RPC identity/target and replaces the prior retained payload at `RPCModule.cs:738-875`. A new observer receives matching retained observer/target RPCs through `SendAnyInstanceRPCs`/`SendAnyChildRPCs` at `:601-677`, using reliable ordered delivery. Non-buffered ordinary event RPCs are not replayed by this mechanism.
 
-The public transport contract supplies per-connection payload events and a live read-only connection list, so message counts can be derived by counting event invocations and payload bytes can be derived from `ByteData.length`. It does not expose a public queue depth, send backlog, congestion state, retransmission count, packet-loss statistic, RTT/latency measurement, or generic per-connection send quota. A transport implementation may have internal state, but internal or third-party implementation details are not a project-owned public integration contract.
+`deltaPacked` is an RPC code-generation/signature option. The installed delta facilities provide changed-bit/full-value fallback and registered delta writers/readers at `Runtime/BitPacker/DeltaPacker.cs:35-131` and `DeltaPacker_T.cs:10-144`. The 1.25.0 changelog records baseline-resync and missing-baseline hardening; this does not create a generic priority or queue policy.
 
-Likewise, the audit found no generic public replication priority, network LOD, per-connection bandwidth budget, or bounded outgoing-state queue. `NetworkBones._sendRatePerSecond` at `PurrNet/Runtime/Components/NetworkBones/NetworkBones.cs:11-18` is component-specific and cannot be treated as a generic actor replication scheduler. `SyncVar.sendIntervalInSeconds` is a real per-variable cadence control, and `bufferLast` is real latest-retained RPC behavior, but neither supplies a global priority/budget/backpressure system.
+Compression maps `CompressionLevel.Fast`, `Balanced`, and `Best` to LZ4 levels in `RPCModule.PreProcessRpc` at `RPCModule.cs:1169-1198`. `BitPacker.Pickle`/`Unpickle`, bit/byte positions, spans, and logical length are public at `Runtime/BitPacker/BitPacker.cs:30-101,133-180`.
 
-## Metric reconciliation
+Per-RPC `MTUBehaviour` is public at `ITransport.cs:110-173`: follow the manager, upgrade unreliable to reliable, drop, or fragment. `RPCBatch` caches `ITransport.GetMTU` per player/channel, splits batches, and applies the selected over-MTU behavior at `Runtime/CoreModules/RPCs/RPCBatch.cs:303-374,383-416,510-583`. The default `ITransport.GetMTU` is 1,024 bytes for unreliable, unreliable-sequenced, and reliable-unordered channels, and 8,192 bytes for reliable-ordered at `ITransport.cs:232-240`; concrete transports may return different values. MTU is a packet-size boundary, not a bandwidth budget.
 
-The installed API confirms the project’s current metric boundary:
+## Serialization and transport observability
 
-- `SERVER_TRANSPORT_PAYLOAD_BYTES_SENT` and `SERVER_TRANSPORT_PAYLOAD_BYTES_RECEIVED` are implementable from `ITransport.onDataSent`/`onDataReceived` and `ByteData.length`; the project already does this.
-- `TRANSPORT_ON_WIRE_BYTES` cannot be populated from the public API because framing is not included in the event payload and no public framing counter exists.
-- Retransmission count, packet-loss ratio, send backlog, and latency are not public PurrNet `ITransport` counters or measurements. They must remain explicitly unavailable unless an approved external instrumentation boundary is added in project-owned code.
-- No unavailable metric is represented as a fabricated zero in the existing definitions.
+Project-owned custom packers can register through `Packer<T>`/`Packer` and use `Packer.Transform` (`Runtime/BitPacker/Packer.cs:21-101,191-228`). The project uses `PackActorPositionSnapshot`, `PackWorldPosition`, `PackCombatLogEntry`, and `PackStatSnapshot`; `PackStatSnapshot` now serializes `StatID`, `EffectiveMax`, `FlatModifier`, `PercentModifier`, and `Current` (`Assets/Runtime/Shared/Networking/PackStatSnapshot.cs:10-107`). Serializer-boundary byte counts are not on-wire framing counts.
 
-No production code, tests, package metadata, Unity settings, or third-party files were changed for this audit.
+The public generic transport boundary includes:
 
-## Normalized capability table
+- `onConnected`, `onDisconnected`, `onDataReceived`, `onDataSent`, `connections`, `GetMTU`, `SendToClient`, and `SendToServer` at `Runtime/Transports/Interface/ITransport.cs:8-16,217-291`;
+- `ByteData.length`, offset, and payload span at `ITransport.cs:27-58`;
+- optional RTT support: `GetRoundTripTime(Connection, bool)` and `measuresRoundTripTime`, with a default `-1`/`false`, at `ITransport.cs:242-256`. `UDPTransport`, `PurrTransport`, `CompositeTransport`, and the Steam add-on implement this boundary (`UDPTransport.cs:142-155`; `PurrTransport.cs:345-356`; `CompositeTransport.cs:290-305`; `Addons/Steam/Runtime/SteamTransport.cs:91-105`).
 
-| Stage 1.5 requirement | Installed PurrNet API | Exact vendor source evidence | Scope | Semantics | Status | Later Ninth Age integration point |
-|---|---|---|---|---|---|---|
-| Context/range visibility integration | `NetworkVisibilityRule`, `INetworkVisibilityRule`, `NetworkVisibilityRuleSet`, `VisilityV2` | `PurrNet/Runtime/Components/NetworkVisibility/NetworkVisibilityRule.cs:8-20`; `PurrNet/Runtime/Components/NetworkVisibility/INetworkVisibilityRule.cs:5-17`; `PurrNet/Runtime/Components/NetworkVisibility/NetworkVisibilityRuleSet.cs:20-35,58-70`; `PurrNet/Runtime/CoreModules/HierarchyV2/VisilityV2.cs:23-44,144-244` | Server-side visibility evaluation and observer mutation | Rules are ordered by ascending `complexity`; first allowing rule wins; visibility evaluation can add/remove observers. PurrNet does not supply a generic actor-moved reevaluation callback. | Supported with project-owned integration | `Assets/Runtime/Shared/Networking/ChunkVisibilityRule.cs:7-63`; project owns chunk/context lookup, accepted-position inputs, and reevaluation cadence. |
-| Observer enumeration/count | `NetworkIdentity.observers`, `NetworkIdentity.IsObserver(PlayerID)` | `PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.cs:355-359` | Current identity observer set | Public `IReadOnlyList<PlayerID>`; count is `observers.Count`; no separate count method is exposed. | Supported directly | Use the identity observer list from server-owned actor/interest-management code; do not add a parallel registry. |
-| Observer-entry callback | `NetworkBehaviour.OnObserverAdded`, `NetworkIdentity.TriggerOnObserverAdded` | `PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.cs:716-761,1426-1507`; `PurrNet/Runtime/CoreModules/HierarchyV2/HierarchyV2.cs:1626-1689` | Server-side observer-entry lifecycle | Hook is invoked after observer addition is staged; lifecycle is server-side. | Supported with project-owned integration | `Assets/Runtime/Shared/Runtime/Actors/ActorStatContainer.cs:73-97`; use the callback for per-observer bootstrap preparation. |
-| Targeted new-observer bootstrap | `TargetRpcAttribute`, `RPCSignature`, target RPC batching | `PurrNet/Runtime/CoreModules/RPCs/TargetRpcAttribute.cs:7-20`; `PurrNet/Runtime/CoreModules/RPCs/RPCSignature.cs:25-57`; `PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Broadcasting.cs:309-343` | One newly added observer | A target player can be selected explicitly and queued on the selected channel. Reliable ordered is the default, but cross-channel end-to-end arrival ordering is not established. | Supported with project-owned integration | `Assets/Runtime/Shared/Runtime/Actors/ActorStatContainer.cs:73-97,172-184`; use `TargetRpc` for the entering player and define any required bootstrap ordering explicitly. |
-| Retained late-observer state | `SyncVar<T>.OnObserverAdded`, RPC `bufferLast` | `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:129-135,248-265`; `PurrNet/Runtime/CoreModules/RPCs/RPCModule.cs:490-526,616-647` | State/RPC replay for a late observer | SyncVars send current state on observer entry; `bufferLast` retains one latest RPC per RPC ID and replays it. Ordinary RPCs are not replayed. | Supported directly | Use SyncVars for current state and opt into `bufferLast` only for explicitly replayable RPCs; project stat bootstrap is `Assets/Runtime/Shared/Runtime/Actors/ActorStatContainer.cs:73-97`. |
-| SyncVar cadence control without stale server value | `SyncVar<T>.sendIntervalInSeconds`, `SyncVar<T>.value`, dirty/send state | `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:24-32,45-72,176-235,241-246` | Per-variable state publication cadence | Repeated changes are coalesced; interval delays wire publication while the local/server `_value` updates immediately. | Supported directly | `Assets/Runtime/Shared/Runtime/Actors/Actor.cs:150-176,184-199`; visibility reads the current accepted snapshot via `Assets/Runtime/Shared/Networking/ChunkVisibilityRule.cs:46-49`. |
-| Observer RPC reliability/ordering | `ObserversRpcAttribute`, `Channel`, observer RPC batching | `PurrNet/Runtime/CoreModules/RPCs/ObserversRpcAttribute.cs:7-20`; `PurrNet/Runtime/Transports/Interface/ITransport.cs:110-131`; `PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Broadcasting.cs:282-307,368-400` | Broadcast RPCs to the current observer set | Default channel is reliable ordered; ordering is proven only within the selected channel. Owner/sender exclusion is configurable. | Supported directly | `Assets/Runtime/Shared/Runtime/Actors/Actor.cs:385-387,453-459`; choose the channel and exclusions per gameplay contract. |
-| Owner-targeted RPC reliability/ordering | `TargetRpcAttribute`, `RPCSignature.GetTargets` | `PurrNet/Runtime/CoreModules/RPCs/TargetRpcAttribute.cs:7-20`; `PurrNet/Runtime/CoreModules/RPCs/RPCSignature.cs:25-57`; `PurrNet/Runtime/Components/NetworkIdentity/NetworkIdentity.Broadcasting.cs:309-343` | Owner or other single-player targeted messages | Default channel is reliable ordered; target selection is explicit in the RPC signature. | Supported directly | `Assets/Runtime/Shared/Runtime/Actors/Actor.cs:461-466`; use target RPCs for owner/private results and define channel semantics at the call site. |
-| Optional cosmetic/best-effort delivery | `Channel.Unreliable`, `Channel.UnreliableSequenced` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:110-131`; `PurrNet/Runtime/Transports/UDPTransport.cs:360-368` | Droppable or sequenced cosmetic traffic | Unreliable traffic has no receipt/order guarantee; unreliable-sequenced traffic may drop older packets. | Supported directly | `Assets/Runtime/Shared/Runtime/Actors/Actor.cs:368-387`; future cosmetic RPC call sites must opt into the channel explicitly. |
-| Serializer delta/change support | `Packer<T>`, `DeltaPacker<T>`, `deltaPacked`, collection packers | `PurrNet/Runtime/BitPacker/Packer.cs:13-19,21-101`; `PurrNet/Runtime/BitPacker/DeltaPacker.cs:8-122`; `PurrNet/Runtime/BitPacker/DeltaPacker_T.cs:10-142`; `PurrNet/Runtime/BitPacker/Packers/PackCollections.cs:10-43` | Encoded state and RPC payloads | Changed-bit/full-value fallback and registered packers are public; project-owned packers define the actual wire field contract. | Supported with project-owned integration | `Assets/Runtime/Shared/Networking/PackStatSnapshot.cs:25-104`; preserve its current selected fields unless a separate contract change is approved. |
-| Per-connection payload byte measurement | `ITransport.onDataSent`, `ITransport.onDataReceived`, `ByteData.length`, `ITransport.connections` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-200`; `PurrNet/Runtime/Transports/PurrTransport.cs:633-705`; `PurrNet/Runtime/Transports/UDPTransport.cs:159-180` | Payload bytes grouped by connection and direction | Public events carry a `Connection` and `ByteData`; `length` measures the transport payload at the event boundary. | Supported with project-owned integration | `Assets/Runtime/Server/Core/ServerConnectionManager.cs:47-89,112-122`; existing metrics record sent/received payload lengths. |
-| Connection-specific send/receive callbacks | `ITransport.onDataSent`, `ITransport.onDataReceived` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-165`; `PurrNet/Runtime/Transports/PurrTransport.cs:633-641`; `PurrNet/Runtime/Transports/UDPTransport.cs:159-180` | Per-connection transport event hooks | Send and receive callbacks include the connection, payload, and direction/context needed for project-owned accounting. | Supported directly | `Assets/Runtime/Server/Core/ServerConnectionManager.cs:47-89`; retain the direct event subscription for connection-scoped instrumentation. |
-| Per-connection message count | `ITransport.onDataSent`, `ITransport.onDataReceived` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-165` | Counts of transport payload events by connection and direction | Count event invocations; no native cumulative message counter is exposed. | Supported with project-owned integration | `Assets/Runtime/Server/Core/ServerConnectionManager.cs:112-122`; add counters alongside existing byte metrics if required. |
-| Disconnect reason/state | `ITransport.onDisconnected`, `ITransport.onConnectionState`, `DisconnectReason` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-165,203-209` | Connection lifecycle and termination diagnostics | Public callbacks expose connection lifecycle; disconnect reason is constrained to the installed enum (`Timeout`, `ClientRequest`, `ServerRequest`). | Supported directly | `Assets/Runtime/Server/Core/ServerConnectionManager.cs:47-89`; consume the existing disconnect callback and add reason/state recording if Stage 1.5 metrics require it. |
-| Per-connection on-wire/framed byte measurement | `ITransport.onDataSent/onDataReceived` payload events | `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-200`; `PurrNet/Runtime/Transports/PurrTransport.cs:656-683` | Framing/header-inclusive transport accounting | Public events expose payload bytes; PurrTransport adds framing/relay data, but a public framing-byte counter is not exposed. | Unsupported by installed public API | Keep `TRANSPORT_ON_WIRE_BYTES` unavailable in `Assets/Runtime/Shared/Networking/NetworkingPerformanceMetrics.cs:278-287,378-382`; use an approved external/project-owned instrumentation boundary if needed. |
-| Transport backlog | No public backlog/queue-depth member on `ITransport` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-200`; `PurrNet/Runtime/CoreModules/RPCs/RPCBatch.cs:180-266` | Per-connection queued-send depth and pressure | MTU batching/splitting is visible, but queue depth, congestion, and backpressure state are not exposed by the public API. | Unsupported by installed public API | Keep backlog unavailable in `Assets/Runtime/Shared/Networking/NetworkingPerformanceMetrics.cs:278-287,378-382`; do not infer it from payload events. |
-| Latency | No public RTT/latency API on `ITransport` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-200` | Per-connection round-trip measurement | No public timestamp/RTT measurement or latency statistic is exposed. | Unsupported by installed public API | Keep latency unavailable in `Assets/Runtime/Shared/Networking/NetworkingPerformanceMetrics.cs:278-287,378-382`; external probes require a separate design. |
-| Loss | No public packet-loss statistic on `ITransport` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:110-131,151-200` | Delivery-loss measurement | Channel guarantees describe behavior but do not expose a loss counter; loss measurement is not exposed and cannot be derived from payload events alone. | Unsupported by installed public API | Keep packet-loss ratio unavailable in `Assets/Runtime/Shared/Networking/NetworkingPerformanceMetrics.cs:278-287,378-382`; sequence instrumentation would be a new project-owned feature. |
-| Retransmission | No public retransmission counter on `ITransport` | `PurrNet/Runtime/Transports/Interface/ITransport.cs:110-131,151-200` | Reliable-channel retry accounting | Reliable channel selection is public, but retry counts are not exposed by the public contract. | Unsupported by installed public API | Keep retransmission metrics unavailable in `Assets/Runtime/Shared/Networking/NetworkingPerformanceMetrics.cs:278-287,378-382`. |
-| Replication priority | No generic replication-priority API; `complexity` is rule ordering only | `PurrNet/Runtime/Components/NetworkVisibility/NetworkVisibilityRule.cs:14-20`; `PurrNet/Runtime/Components/NetworkBones/NetworkBones.cs:11-18` | Cross-actor update prioritization/network LOD | Visibility-rule complexity does not prioritize replication; NetworkBones send rate is component-specific. | Unsupported by installed public API | Define any priority policy in a future project-owned scheduler; do not repurpose `complexity`. |
-| Bandwidth/send budget | `ITransport.GetMTU` and RPC batching, but no quota API | `PurrNet/Runtime/Transports/Interface/ITransport.cs:151-173`; `PurrNet/Runtime/CoreModules/RPCs/RPCBatch.cs:134-150,180-266` | Per-connection byte/message budget | MTU limits packet composition only; no public per-connection quota, budget, or congestion-control hook exists. | Unsupported by installed public API | Do not add budget assumptions to current metrics; a future project-owned scheduler must sit above PurrNet. |
-| Bounded/latest-state coalescing | RPC `bufferLast`; no bounded outgoing queue/state coalescer | `PurrNet/Runtime/CoreModules/RPCs/RPCModule.cs:616-647`; `PurrNet/Runtime/Components/NetworkModule/SyncVar.cs:176-235` | Retained replay versus live outgoing pressure | `bufferLast` retains one latest RPC per RPC ID; SyncVar coalesces a variable’s dirty value, but no generic bounded outgoing queue is exposed. | Unsupported by installed public API | Use SyncVar cadence for individual state and `bufferLast` only for explicit replay; any global coalescer/backpressure layer is a later project-owned design. |
+The optional Steam-specific public boundary additionally exposes `SteamTransport.GetSendStatistics(Connection, bool)` and `SteamSendStatistics.queuedReliableMessages`, `queuedReliableBytes`, `acceptedMessages`, `rejectedSendAttempts`, `droppedUnreliableMessages`, and `deferredReliableMessages` (`Addons/Steam/Runtime/SteamTransport.cs:100-105`; `SteamSendStatistics.cs:3-14`). The source explicitly limits queued bytes to the project-owned Steam reliable retry queue and excludes Steam's native send queue. This is not a generic `ITransport` backlog contract.
+
+No generic public PurrNet counter was found for queue depth/backlog, congestion, packet loss, or retransmission. UDP/LiteNetLib statistics are disabled in the installed `UDPTransport` setup (`UDPTransport.cs:175-190`), and internal queues in optional transports are not a generic project integration boundary. The public RTT boundary is transport-dependent and currently uninstrumented by Ninth Age.
+
+## Metric reconciliation and active contract
+
+The installed 1.25.0 source supports the following project decisions:
+
+- project transport callbacks measure payload bytes and callback message counts per connection; `ServerConnectionManager` records them at `ServerConnectionManager.cs:176-193`;
+- project publication and intended-recipient metrics are now present for combat-critical, movement-presentation, owner-private, and cosmetic classes at `NetworkingPerformanceMetrics.cs:73-132,477-551`; observer recipient counts read `NetworkIdentity.observers.Count`, while targeted publication counts record one intended target;
+- RPC handler metrics remain local handler execution counts and are not wire delivery counts (`NetworkingPerformanceMetrics.cs:553-570`);
+- on-wire/framed bytes remain unavailable because `onDataSent`/`onDataReceived` expose `ByteData` payloads and no framing/header counter;
+- generic backlog, loss, and retransmission remain unavailable;
+- RTT is publicly queryable where the selected transport supports it, but Ninth Age's existing latency metric remains explicitly unavailable because no project instrumentation was added in this audit;
+- Steam reliable retry-queue statistics are publicly queryable only through the optional Steam-specific API and are not part of the current generic project metric contract.
+
+Unavailable metrics are not represented as fabricated zeroes. No production code, tests, package metadata, Unity settings, prefab, or third-party file was changed for this refresh.
+
+### Normalized capability table
+
+| Stage 1.5 capability | Installed 1.25.0 source evidence | Result for later steps |
+|---|---|---|
+| Visibility rule composition | `NetworkVisibilityRule.cs:5-20`; `NetworkVisibilityRuleSet.cs:20-72` | Supported with project-owned rule ordering and reevaluation integration. |
+| Visibility reevaluation and observer mutation | `VisilityV2.cs:43-90,265-407`; `NetworkIdentity.cs:1104-1131` | Supported; cadence/candidate selection remains project-owned. |
+| Stacked/sibling identity visibility | `NetworkIdentity.cs:39-63,180-190,485-499`; `VisilityV2.cs:104-136,374-407`; `HierarchyV2.cs:2712-2805` | Supported with sibling-aware partial visibility; root order is material. |
+| Observer registry and lifecycle | `NetworkIdentity.cs:65-67,436-452,884-929,1721-1840`; `HierarchyV2.cs:3727-3781` | Supported directly; do not add a parallel registry. |
+| Targeted observer bootstrap | `NetworkIdentity` observer hooks plus project `ActorStatContainer`, `Actor`, `ServerAuraManager`, and `ServerSpellcastManager` paths above | Supported with explicit project-owned TargetRpc bootstraps. |
+| SyncVar current value, observer entry, cadence | `SyncVar.cs:27-37,50-85,178-184,218-313` | Supported; interval affects publication, not server-local current state. |
+| RPC default/explicit channels | RPC attributes above; `ITransport.cs:176-197` | Supported; channel ordering is per channel only. |
+| Retained RPC state | `RPCModule.cs:601-677,738-875` | `bufferLast` supported as one latest retained packet per RPC/target; ordinary events are not replayed. |
+| Delta packing | `DeltaPacker.cs:35-131`; `DeltaPacker_T.cs:10-144` | Supported for explicit delta-packed contracts; baseline behavior must be validated per use. |
+| Compression | `RPCModule.cs:1169-1219`; `BitPacker.cs:68-101` | Supported through explicit RPC compression levels/LZ4. |
+| MTU and over-MTU behavior | `ITransport.cs:110-173,232-240`; `RPCBatch.cs:303-374,510-583` | Supported packet boundary; not a bandwidth budget. |
+| Custom bit serialization | `BitPacker.cs:30-58,133-180`; `Packer.cs:21-101,191-228` | Supported at the serializer boundary. |
+| Per-connection payload callbacks | `ITransport.cs:8-16,217-291` | Supported and integrated by `ServerConnectionManager`. |
+| RTT | `ITransport.cs:242-256`; concrete implementations cited above | Public transport-dependent boundary; not instrumented by Ninth Age. |
+| Generic queue/backlog | `ITransport` has no generic queue-depth/backlog counter; Steam-only queue API is cited above | Generic capability unavailable; Steam statistics are transport-specific and not implemented here. |
+| Loss/retransmission counters | No public generic counter in the installed source | Unavailable; do not infer from reliable delivery or handler counts. |
+
+The remaining Stage 1.5 implementation decisions must cite this 1.25.0 evidence. The 1.19.1 audit is not an active prerequisite.
+
+## Exact non-goals
+
+- No runtime C# changes, prefab changes, package installation/update, or PurrNet/vendor edits.
+- No new RPCs, queues, registries, replication manager, stat payload reduction, position-rate choice, RPC channel choice, bandwidth threshold, or transport instrumentation.
+- No regression-test changes; Unity Test Runner, Play Mode, and owner runtime validation remain manual follow-up.
+
+## Static/documentation validation
+
+This refresh is complete when:
+
+1. both Stage 1.5 documents identify installed PurrNet 1.25.0 as active;
+2. both documents record the local directory hash and Unity editor version;
+3. every Step 5-8 capability claim points to current 1.25.0 source evidence;
+4. stacked identity, root resolution, sibling visibility, ownership propagation, and owner-confirmed root-order evidence are explicit;
+5. #279-#290 completed project behavior is reflected in the matrix;
+6. RTT and Steam queue boundaries are documented without fabricating generic metrics;
+7. the diff contains only these two documentation files and zero third-party changes;
+8. `git diff --check` passes.
+
+Owner review remains required for the package identity, root-order runtime finding, completed project behavior, and the absence of any 1.19.1-only active prerequisite.
