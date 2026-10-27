@@ -14,7 +14,7 @@ using UnityEngine;
 namespace Game.Server.Core
 {
     /// <summary>Maintains authoritative connection, account, and session state.</summary>
-    public class ServerConnectionManager : PurrMonoBehaviour
+    public class ServerConnectionManager : PurrMonoBehaviour, INetworkPressureProvider
     {
         private const double NETWORK_TELEMETRY_INTERVAL_SECONDS = 1d;
         private const double NETWORK_PRESSURE_PAYLOAD_BYTES_PER_SECOND = 16384d;
@@ -92,6 +92,7 @@ namespace Game.Server.Core
 
             _networkManager = manager;
             _transport = manager.rawTransport;
+            NetworkPressureQuery.Register(this);
             if (_transport != null)
             {
                 _transport.onConnected += OnTransportConnected;
@@ -117,6 +118,7 @@ namespace Game.Server.Core
             if (!asServer)
                 return;
 
+            NetworkPressureQuery.Unregister(this);
             EndUdpStatisticsTelemetry();
             if (_transport != null)
             {
@@ -450,6 +452,19 @@ namespace Game.Server.Core
         {
             return _connectionPressureTrackers.TryGetValue(connection, out ConnectionPressureTracker tracker)
                 && tracker.IsPressured;
+        }
+
+        /// <summary>Gets whether the supplied player currently maps to a pressured transport connection.</summary>
+        public bool IsPlayerPressured(PlayerID playerID)
+        {
+            if (_networkManager == null)
+                return false;
+
+            var playerModule = _networkManager.playerModule;
+            if (playerModule == null || !playerModule.TryGetConnection(playerID, out Connection connection))
+                return false;
+
+            return IsConnectionPressured(connection);
         }
 
         private void OnPlayerJoined(PlayerID playerID, bool isReconnect, bool asServer)
