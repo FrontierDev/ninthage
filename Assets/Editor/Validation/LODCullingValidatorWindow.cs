@@ -14,6 +14,9 @@ namespace Game.Editor.Validation
         private const string LODGroupRequirementLabel = "NinthAge.Presentation.Requirement.LODGroup";
         private const string DistantRepresentationRequirementLabel =
             "NinthAge.Presentation.Requirement.DistantRepresentation";
+        private const string DistantModeLabelPrefix = "NinthAge.Presentation.Distant.";
+        private const string FinalLODLabel = "NinthAge.Presentation.Distant.FinalLOD";
+        private const string ExternalLabel = "NinthAge.Presentation.Distant.External";
 
         private enum AssetCategory
         {
@@ -31,6 +34,12 @@ namespace Game.Editor.Validation
             Info,
             Warning,
             Error
+        }
+
+        private enum DistantMode
+        {
+            FinalLOD,
+            External
         }
 
         private sealed class Finding
@@ -60,6 +69,7 @@ namespace Game.Editor.Validation
         private AssetCategory _selectedCategory;
         private bool _requiresLODGroup;
         private bool _requiresDistantRepresentation;
+        private DistantMode _selectedDistantMode;
         private Vector2 _resultScrollPosition;
         private int _prefabsScanned;
         private int _errorCount;
@@ -85,12 +95,8 @@ namespace Game.Editor.Validation
                 "Requires Distant Representation",
                 _requiresDistantRepresentation);
 
-            if (_requiresDistantRepresentation && !_requiresLODGroup)
-            {
-                EditorGUILayout.HelpBox(
-                    "Distant Representation also assigns the LODGroup requirement.",
-                    MessageType.Info);
-            }
+            if (_requiresDistantRepresentation)
+                _selectedDistantMode = (DistantMode)EditorGUILayout.EnumPopup("Distant Mode", _selectedDistantMode);
 
             EditorGUILayout.Space();
             if (GUILayout.Button("Assign Authoring Metadata To Selected Prefabs"))
@@ -155,11 +161,14 @@ namespace Game.Editor.Validation
                     RemoveManagedLabels(labels);
                     labels.Add(GetCategoryLabel(_selectedCategory));
 
-                    if (_requiresLODGroup || _requiresDistantRepresentation)
+                    if (_requiresLODGroup)
                         labels.Add(LODGroupRequirementLabel);
 
                     if (_requiresDistantRepresentation)
+                    {
                         labels.Add(DistantRepresentationRequirementLabel);
+                        labels.Add(GetDistantModeLabel(_selectedDistantMode));
+                    }
 
                     AssetDatabase.SetLabels(prefabAsset, labels.ToArray());
                     _passedPrefabCount++;
@@ -361,15 +370,66 @@ namespace Game.Editor.Validation
 
             var hasLODGroupRequirement = ContainsLabel(labels, LODGroupRequirementLabel);
             var hasDistantRepresentationRequirement = ContainsLabel(labels, DistantRepresentationRequirementLabel);
-            if (hasDistantRepresentationRequirement && !hasLODGroupRequirement)
+            var distantModeLabels = new List<DistantMode>();
+            var distantModeLabelCount = 0;
+            var hasUnknownDistantModeLabel = false;
+            foreach (var label in labels)
+            {
+                if (!label.StartsWith(DistantModeLabelPrefix, StringComparison.Ordinal))
+                    continue;
+
+                distantModeLabelCount++;
+                var modeName = label.Substring(DistantModeLabelPrefix.Length);
+                if (!Enum.TryParse(modeName, false, out DistantMode mode) ||
+                    !string.Equals(mode.ToString(), modeName, StringComparison.Ordinal))
+                {
+                    hasUnknownDistantModeLabel = true;
+                    AddFinding(
+                        ValidationSeverity.Error,
+                        prefabPath,
+                        categoryDisplayName,
+                        string.Empty,
+                        $"Unknown distant representation mode label '{label}'.");
+                    continue;
+                }
+
+                distantModeLabels.Add(mode);
+            }
+
+            if (hasDistantRepresentationRequirement)
+            {
+                if (distantModeLabelCount == 0)
+                {
+                    AddFinding(
+                        ValidationSeverity.Error,
+                        prefabPath,
+                        categoryDisplayName,
+                        string.Empty,
+                        "Distant representation mode is missing.");
+                }
+                else if (distantModeLabelCount > 1)
+                {
+                    AddFinding(
+                        ValidationSeverity.Error,
+                        prefabPath,
+                        categoryDisplayName,
+                        string.Empty,
+                        "Ambiguous distant representation mode; exactly one mode is required.");
+                }
+            }
+            else if (distantModeLabelCount > 0)
             {
                 AddFinding(
                     ValidationSeverity.Error,
                     prefabPath,
                     categoryDisplayName,
                     string.Empty,
-                    "Invalid requirement metadata: DistantRepresentation requires LODGroup.");
+                    "Distant representation mode is declared without a distant-representation requirement.");
             }
+
+            var hasResolvedDistantMode = distantModeLabelCount == 1 &&
+                distantModeLabels.Count == 1 &&
+                !hasUnknownDistantModeLabel;
 
             GameObject prefabContents = null;
             try
@@ -391,7 +451,9 @@ namespace Game.Editor.Validation
                     ValidateLODGroup(prefabPath, categoryDisplayName, prefabContents.transform, lodGroup);
 
                 var terrainOwnsRequirements = hasResolvedCategory && resolvedCategory == AssetCategory.Terrain &&
-                    (hasLODGroupRequirement || hasDistantRepresentationRequirement);
+                    (hasLODGroupRequirement ||
+                        (hasDistantRepresentationRequirement && hasResolvedDistantMode &&
+                            distantModeLabels[0] == DistantMode.FinalLOD));
                 if (terrainOwnsRequirements)
                 {
                     AddFinding(
@@ -413,14 +475,20 @@ namespace Game.Editor.Validation
                             "LODGroup is explicitly required but no LODGroup exists.");
                     }
 
-                    if (hasDistantRepresentationRequirement && !ContainsDistantLODRepresentation(lodGroups))
+                    if (hasDistantRepresentationRequirement && hasResolvedDistantMode &&
+                        distantModeLabels[0] == DistantMode.FinalLOD)
+                    {
+                        ValidateFinalLOD(prefabPath, categoryDisplayName, lodGroups);
+                    }
+                    else if (hasDistantRepresentationRequirement && hasResolvedDistantMode &&
+                        distantModeLabels[0] == DistantMode.External)
                     {
                         AddFinding(
-                            ValidationSeverity.Error,
+                            ValidationSeverity.Info,
                             prefabPath,
                             categoryDisplayName,
                             string.Empty,
-                            "Distant Representation requires an LODGroup with at least two LOD levels.");
+                            "External distant representation requires integration/manual validation by its owning pipeline; it is not validated from this prefab.");
                     }
                 }
 
@@ -543,6 +611,75 @@ namespace Game.Editor.Validation
             }
         }
 
+        private void ValidateFinalLOD(string prefabPath, string category, LODGroup[] lodGroups)
+        {
+            if (lodGroups.Length == 0)
+            {
+                AddFinding(
+                    ValidationSeverity.Error,
+                    prefabPath,
+                    category,
+                    string.Empty,
+                    "FinalLOD distant representation requires at least one LODGroup.");
+                return;
+            }
+
+            var hasTwoLevelGroup = false;
+            var hasFinalRendererSet = false;
+            foreach (var lodGroup in lodGroups)
+            {
+                LOD[] levels;
+                try
+                {
+                    levels = lodGroup.GetLODs();
+                }
+                catch (Exception)
+                {
+                    // ValidateLODGroup already records the read failure for this component.
+                    continue;
+                }
+
+                if (levels == null || levels.Length < 2)
+                    continue;
+
+                hasTwoLevelGroup = true;
+                var finalLevel = levels[levels.Length - 1];
+                if (finalLevel.renderers == null)
+                    continue;
+
+                foreach (var renderer in finalLevel.renderers)
+                {
+                    if (renderer != null)
+                    {
+                        hasFinalRendererSet = true;
+                        break;
+                    }
+                }
+
+                if (hasFinalRendererSet)
+                    break;
+            }
+
+            if (!hasTwoLevelGroup)
+            {
+                AddFinding(
+                    ValidationSeverity.Error,
+                    prefabPath,
+                    category,
+                    string.Empty,
+                    "FinalLOD distant representation requires an LODGroup with at least two LOD levels.");
+            }
+            else if (!hasFinalRendererSet)
+            {
+                AddFinding(
+                    ValidationSeverity.Error,
+                    prefabPath,
+                    category,
+                    string.Empty,
+                    "FinalLOD distant representation requires the final LOD of a qualifying group to contain at least one non-null renderer.");
+            }
+        }
+
         private void ValidateCategorySpecificRules(
             string prefabPath,
             string category,
@@ -587,25 +724,6 @@ namespace Game.Editor.Validation
             }
         }
 
-        private static bool ContainsDistantLODRepresentation(LODGroup[] lodGroups)
-        {
-            foreach (var lodGroup in lodGroups)
-            {
-                try
-                {
-                    var levels = lodGroup.GetLODs();
-                    if (levels != null && levels.Length >= 2)
-                        return true;
-                }
-                catch (Exception)
-                {
-                    // ValidateLODGroup already records the read failure for this component.
-                }
-            }
-
-            return false;
-        }
-
         private static bool ContainsLabel(IEnumerable<string> labels, string expectedLabel)
         {
             foreach (var label in labels)
@@ -622,6 +740,11 @@ namespace Game.Editor.Validation
             return CategoryLabelPrefix + category;
         }
 
+        private static string GetDistantModeLabel(DistantMode mode)
+        {
+            return mode == DistantMode.FinalLOD ? FinalLODLabel : ExternalLabel;
+        }
+
         private static void RemoveManagedLabels(List<string> labels)
         {
             for (var index = labels.Count - 1; index >= 0; index--)
@@ -629,7 +752,8 @@ namespace Game.Editor.Validation
                 var label = labels[index];
                 if (label.StartsWith(CategoryLabelPrefix, StringComparison.Ordinal) ||
                     string.Equals(label, LODGroupRequirementLabel, StringComparison.Ordinal) ||
-                    string.Equals(label, DistantRepresentationRequirementLabel, StringComparison.Ordinal))
+                    string.Equals(label, DistantRepresentationRequirementLabel, StringComparison.Ordinal) ||
+                    label.StartsWith(DistantModeLabelPrefix, StringComparison.Ordinal))
                 {
                     labels.RemoveAt(index);
                 }
