@@ -15,7 +15,7 @@ ordinary live dedicated server
     + --profiling
     + real connected clients
     + real runtime population/gameplay
-    -> performance-report-*.json beside Unity's active server log
+    -> Reports/performance-report-*.json beside Unity's active server log
 ```
 
 Historical Editor harness measurements remain historical only. Synthetic fixture population counts are not substitutes for live server population or concurrency measurements.

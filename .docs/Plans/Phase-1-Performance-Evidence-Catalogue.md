@@ -7,7 +7,7 @@
 **Updated:** 2026-10-15  
 **Documentation:** [baseline](Phase-1-Performance-Baseline.md), [budgets](Phase-1-Performance-Budgets.md)
 
-> This catalogue describes historical Editor/test-harness evidence only. The harness is retired and is not an accepted evidence source going forward. Current Stage 1.5+ evidence is collected from an ordinary dedicated server launched with `--profiling`, real connected clients and ordinary runtime population/gameplay, producing `performance-report-*.json` beside the active Unity server log. Synthetic fixture counts and archived `samples.ndjson` files do not substitute for live-server measurements.
+> This catalogue describes historical Editor/test-harness evidence only. The harness is retired and is not an accepted evidence source going forward. Current Stage 1.5+ evidence is collected from an ordinary dedicated server launched with `--profiling`, real connected clients and ordinary runtime population/gameplay, producing `Reports/performance-report-*.json` beside the active Unity server log. Synthetic fixture counts and archived `samples.ndjson` files do not substitute for live-server measurements.
 
 > The earlier `campaign-20261015T095750417Z-878db4d7` campaign is **superseded**, not merged. The owner plans to delete that obsolete campaign after the updated harness/evidence is accepted. This catalogue refers to the newer 20:51–21:04 UTC campaign only.
 

@@ -5,7 +5,7 @@
 **Reviewed source:** `dev` at `54505978d613833e0a0083fc68f60c138dcf786d` (13 October 2026).
 **Change scope:** Retained historical goals and schema context only; live evidence is produced by the ordinary dedicated server with `--profiling`.
 
-> The former Editor/test performance harness and its fixture/runner infrastructure have been retired. Historical measurements and manifests described by this document remain historical only and must not be presented as current live-server evidence. Current Phase 1.5+ evidence comes from an ordinary dedicated server launched with `--world <world>` and `--profiling`, real connected clients and ordinary runtime population/gameplay, producing `performance-report-*.json` beside Unity's active server log.
+> The former Editor/test performance harness and its fixture/runner infrastructure have been retired. Historical measurements and manifests described by this document remain historical only and must not be presented as current live-server evidence. Current Phase 1.5+ evidence comes from an ordinary dedicated server launched with `--world <world>` and `--profiling`, real connected clients and ordinary runtime population/gameplay, producing `Reports/performance-report-*.json` beside Unity's active server log.
 
 ## 1. Authority and purpose
 

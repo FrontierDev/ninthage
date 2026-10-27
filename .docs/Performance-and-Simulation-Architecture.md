@@ -28,7 +28,7 @@ Authority follows [MMORPG Master PDD](MMORPG-Master-PDD.md): the Master PDD defi
 
 ### Live server profiling ownership
 
-The retired Editor/test performance harness is not an evidence source for current or future Stage 1.5 measurements. Current performance evidence comes from an ordinary dedicated server launched with `--profiling`, real connected clients and ordinary runtime gameplay, and is written as one `performance-report-*.json` beside Unity's active server log.
+The retired Editor/test performance harness is not an evidence source for current or future Stage 1.5 measurements. Current performance evidence comes from an ordinary dedicated server launched with `--profiling`, real connected clients and ordinary runtime gameplay, and is written as one `Reports/performance-report-*.json` beside Unity's active server log.
 
 Ownership is deliberately split: production systems own metric definitions and `TryRecord` producers; `PerformanceTelemetry` owns fixed-capacity bounded aggregation; `ServerPerformanceProfiler` owns the opt-in server session lifecycle and report output; actual gameplay owns the workload. Client profiling, synthetic actors, fixture populations and workload orchestration remain outside this server contract.
 

@@ -251,7 +251,7 @@ namespace Game.Server.Core
                 headerStart = lineEnd + 2;
             }
 
-            return headerStart == headerEnd;
+            return headerStart == headerEnd + 2;
         }
 
         private static void WriteResponse(NetworkStream stream, int statusCode, string reasonPhrase, string body)

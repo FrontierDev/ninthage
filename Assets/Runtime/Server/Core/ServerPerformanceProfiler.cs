@@ -110,9 +110,11 @@ namespace Game.Server.Core
                 throw new InvalidOperationException("Application.consoleLogPath could not be normalized.", exception);
             }
 
-            string reportDirectory = Path.GetDirectoryName(fullLogPath);
-            if (string.IsNullOrWhiteSpace(reportDirectory))
+            string logDirectory = Path.GetDirectoryName(fullLogPath);
+            if (string.IsNullOrWhiteSpace(logDirectory))
                 throw new InvalidOperationException("Application.consoleLogPath has no usable parent directory.");
+
+            string reportDirectory = Path.Combine(logDirectory, "Reports");
 
             try
             {
@@ -121,7 +123,7 @@ namespace Game.Server.Core
             catch (Exception exception)
             {
                 throw new InvalidOperationException(
-                    "The directory beside Application.consoleLogPath could not be created: " + reportDirectory,
+                    "The Reports directory beside Application.consoleLogPath could not be created: " + reportDirectory,
                     exception);
             }
 
