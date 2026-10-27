@@ -231,6 +231,12 @@ namespace Game.Server.Core
             }
 
             _actorInterest[actor] = new PlayerInterestState(actorContext, centerChunk, newSet);
+            if (actor.Owner.HasValue)
+            {
+                var snapshot = new Vector2Int[newCoords.Count];
+                newCoords.CopyTo(snapshot);
+                MovementEndpoint.Client_UpdateInterest(actor.Owner.Value, snapshot);
+            }
 
             // Subscribe/unsubscribe chunk scenes for terrain loading.
             ProcessInterestChange(

@@ -61,6 +61,8 @@ namespace Game.Client
         private AsyncOperation _globalWorldUnloadOperation;
         private Coroutine _worldPresentationCleanupCoroutine;
         private readonly Dictionary<SceneID, Scene> _loadedScenes = new();
+        private readonly HashSet<Vector2Int> _requiredStreamedSceneCoordinates = new();
+        private bool _hasRequiredStreamedSceneSet;
 
         /// <summary>
         /// Gets whether the streamed client world has crossed the entered-world boundary.
@@ -107,6 +109,7 @@ namespace Game.Client
             _instance = this;
 
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorldRequested;
+            Game.Shared.Networking.MovementEndpoint.onInterestUpdated += OnInterestUpdated;
             PerformanceTelemetry.SessionEnded += OnTelemetrySessionEnded;
             NetworkManager.main.sceneModule.onSceneLoaded += OnSceneLoaded;
             NetworkManager.main.sceneModule.onSceneUnloaded += OnSceneUnloaded;
@@ -119,6 +122,7 @@ namespace Game.Client
                 return;
 
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnteringWorldRequested;
+            Game.Shared.Networking.MovementEndpoint.onInterestUpdated -= OnInterestUpdated;
             PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
             _isWorldReady = false;
 
@@ -298,6 +302,19 @@ namespace Game.Client
             }
         }
 
+        private void OnInterestUpdated(Vector2Int[] coordinates)
+        {
+            if (coordinates == null)
+                throw new ArgumentNullException(nameof(coordinates));
+            if (_worldPresentationState == WorldPresentationState.CleaningUp)
+                return;
+
+            _requiredStreamedSceneCoordinates.Clear();
+            foreach (var coordinate in coordinates)
+                _requiredStreamedSceneCoordinates.Add(coordinate);
+            _hasRequiredStreamedSceneSet = true;
+        }
+
         private IEnumerator EnterWorldPresentation(Vector2Int spawnChunk, int generation)
         {
             LoadingScreenController.Instance.Show(2);
@@ -357,7 +374,7 @@ namespace Game.Client
             _globalWorldLoadOperation = null;
             RecordPendingSceneOperations();
 
-            while (_loadedScenes.Count < 9)
+            while (!AreRequiredStreamedScenesLoaded())
             {
                 if (generation != _worldPresentationGeneration
                     || _worldPresentationState != WorldPresentationState.Entering)
@@ -388,6 +405,8 @@ namespace Game.Client
             _worldPresentationState = WorldPresentationState.CleaningUp;
             _isWorldReady = false;
             int generation = ++_worldPresentationGeneration;
+            _requiredStreamedSceneCoordinates.Clear();
+            _hasRequiredStreamedSceneSet = false;
             onWorldPresentationEnding?.Invoke();
             _loadedScenes.Clear();
             if (PerformanceTelemetry.IsEnabled)
@@ -398,6 +417,30 @@ namespace Game.Client
                 : 0;
             _worldPresentationCleanupCoroutine = StartCoroutine(
                 CompleteWorldPresentationCleanup(generation, startedTimestamp));
+        }
+
+        private bool AreRequiredStreamedScenesLoaded()
+        {
+            if (!_hasRequiredStreamedSceneSet || _requiredStreamedSceneCoordinates.Count == 0)
+                return false;
+
+            foreach (var requiredCoordinate in _requiredStreamedSceneCoordinates)
+            {
+                bool isLoaded = false;
+                foreach (var scene in _loadedScenes.Values)
+                {
+                    if (ParseChunkCoordinate(scene.name) == requiredCoordinate)
+                    {
+                        isLoaded = true;
+                        break;
+                    }
+                }
+
+                if (!isLoaded)
+                    return false;
+            }
+
+            return true;
         }
 
         private IEnumerator CompleteWorldPresentationCleanup(int generation, long startedTimestamp)
