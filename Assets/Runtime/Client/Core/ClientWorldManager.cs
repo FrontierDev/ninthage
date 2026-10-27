@@ -66,6 +66,7 @@ namespace Game.Client
         private readonly Dictionary<SceneID, Scene> _loadedScenes = new();
         private readonly HashSet<Vector2Int> _requiredStreamedSceneCoordinates = new();
         private bool _hasRequiredStreamedSceneSet;
+        private ScenesModule _sceneModule;
 
         /// <summary>
         /// Gets whether the streamed client world has crossed the entered-world boundary.
@@ -114,8 +115,7 @@ namespace Game.Client
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorldRequested;
             Game.Shared.Networking.MovementEndpoint.onInterestUpdated += OnInterestUpdated;
             PerformanceTelemetry.SessionEnded += OnTelemetrySessionEnded;
-            NetworkManager.main.sceneModule.onSceneLoaded += OnSceneLoaded;
-            NetworkManager.main.sceneModule.onSceneUnloaded += OnSceneUnloaded;
+            EnsureSceneModuleSubscription();
             _initialized = true;
         }
 
@@ -127,13 +127,8 @@ namespace Game.Client
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnteringWorldRequested;
             Game.Shared.Networking.MovementEndpoint.onInterestUpdated -= OnInterestUpdated;
             PerformanceTelemetry.SessionEnded -= OnTelemetrySessionEnded;
+            UnsubscribeFromSceneModule();
             _isWorldReady = false;
-
-            if (NetworkManager.main != null && NetworkManager.main.sceneModule != null)
-            {
-                NetworkManager.main.sceneModule.onSceneLoaded -= OnSceneLoaded;
-                NetworkManager.main.sceneModule.onSceneUnloaded -= OnSceneUnloaded;
-            }
 
             StopProfilers();
 
@@ -143,6 +138,8 @@ namespace Game.Client
 
         private void Update()
         {
+            EnsureSceneModuleSubscription();
+
             if (!PerformanceTelemetry.IsEnabled)
             {
                 StopProfilers();
@@ -219,6 +216,32 @@ namespace Game.Client
             StopProfilers();
         }
 
+        private void EnsureSceneModuleSubscription()
+        {
+            NetworkManager networkManager = NetworkManager.main;
+            ScenesModule currentSceneModule = networkManager != null ? networkManager.sceneModule : null;
+            if (ReferenceEquals(_sceneModule, currentSceneModule))
+                return;
+
+            UnsubscribeFromSceneModule();
+            if (currentSceneModule == null)
+                return;
+
+            _sceneModule = currentSceneModule;
+            _sceneModule.onSceneLoaded += OnSceneLoaded;
+            _sceneModule.onSceneUnloaded += OnSceneUnloaded;
+        }
+
+        private void UnsubscribeFromSceneModule()
+        {
+            if (_sceneModule == null)
+                return;
+
+            _sceneModule.onSceneLoaded -= OnSceneLoaded;
+            _sceneModule.onSceneUnloaded -= OnSceneUnloaded;
+            _sceneModule = null;
+        }
+
         private void StopProfilers()
         {
             if (_drawCallsRecorder.Valid)
@@ -241,6 +264,8 @@ namespace Game.Client
 
         private void OnEnteringWorldRequested(Game.Shared.Persistence.CharacterData characterData, string sceneName)
         {
+            EnsureSceneModuleSubscription();
+
             if (_worldPresentationState != WorldPresentationState.Idle)
             {
                 Debug.LogError(
@@ -267,7 +292,7 @@ namespace Game.Client
                 && _worldPresentationState != WorldPresentationState.Ready)
                 return;
 
-            if (!NetworkManager.main.sceneModule.TryGetSceneState(sceneID, out var state)) return;
+            if (_sceneModule == null || !_sceneModule.TryGetSceneState(sceneID, out var state)) return;
             if (!state.scene.name.StartsWith("World"))
                 return;
 
@@ -490,7 +515,7 @@ namespace Game.Client
             }
 
             bool blockedCleanupReported = false;
-            while (NetworkManager.main.TryGetModule<ScenesModule>(false, out _))
+            while (NetworkManager.main != null && NetworkManager.main.TryGetModule<ScenesModule>(false, out _))
             {
                 if (!blockedCleanupReported
                     && ClientConnectionManager.CurrentConnectionState != ConnectionState.Disconnected)

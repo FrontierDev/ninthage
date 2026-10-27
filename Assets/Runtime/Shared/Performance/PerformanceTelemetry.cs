@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Game.Shared.Performance
 {
@@ -96,6 +97,280 @@ namespace Game.Shared.Performance
         }
     }
 
+    /// <summary>Identity and captured client environment for one live profiling session.</summary>
+    public sealed class ClientPerformanceSessionContext
+    {
+        /// <summary>Creates a client profiling context from authored run identity and the current process environment.</summary>
+        public ClientPerformanceSessionContext(
+            string runGroupID,
+            string runID,
+            string profileID,
+            string profileVariant,
+            string sourceCommit,
+            string phase,
+            double phaseDurationSeconds,
+            string resultsDirectory,
+            string reportFileName)
+        {
+            RunGroupID = RequireBounded(runGroupID, nameof(runGroupID), 256);
+            RunID = RequireBounded(runID, nameof(runID), 256);
+            ProfileID = RequireBounded(profileID, nameof(profileID), 128);
+            ProfileVariant = RequireBounded(profileVariant, nameof(profileVariant), 128);
+            SourceCommit = RequireGitSHA(sourceCommit, nameof(sourceCommit));
+            Phase = RequireBounded(phase, nameof(phase), 128);
+            PhaseDurationSeconds = RequirePositiveFinite(phaseDurationSeconds, nameof(phaseDurationSeconds));
+            ResultsDirectory = RequireAbsolutePath(resultsDirectory, nameof(resultsDirectory));
+            ReportFileName = RequireReportFileName(reportFileName, nameof(reportFileName));
+
+            HostID = RequireRuntimeValue(Environment.MachineName, nameof(HostID));
+            ProcessID = Process.GetCurrentProcess().Id.ToString(CultureInfo.InvariantCulture);
+            Platform = RequireRuntimeValue(Application.platform.ToString(), nameof(Platform));
+            UnityVersion = RequireRuntimeValue(Application.unityVersion, nameof(UnityVersion));
+            ApplicationVersion = RequireRuntimeValue(Application.version, nameof(ApplicationVersion));
+            BuildGUID = Application.buildGUID;
+            OperatingSystem = RequireRuntimeValue(SystemInfo.operatingSystem, nameof(OperatingSystem));
+            ProcessorType = RequireRuntimeValue(SystemInfo.processorType, nameof(ProcessorType));
+            ProcessorCount = SystemInfo.processorCount;
+            SystemMemoryMB = SystemInfo.systemMemorySize;
+
+            GraphicsDeviceType = SystemInfo.graphicsDeviceType;
+            if (GraphicsDeviceType == GraphicsDeviceType.Null)
+                throw new InvalidOperationException("A client profiling session requires a graphics device.");
+
+            GraphicsDeviceName = RequireRuntimeValue(SystemInfo.graphicsDeviceName, nameof(GraphicsDeviceName));
+            GraphicsDeviceVendor = RequireRuntimeValue(SystemInfo.graphicsDeviceVendor, nameof(GraphicsDeviceVendor));
+            GraphicsDeviceVersion = RequireRuntimeValue(SystemInfo.graphicsDeviceVersion, nameof(GraphicsDeviceVersion));
+            GraphicsMemoryMB = SystemInfo.graphicsMemorySize;
+
+            ScreenWidth = Screen.width;
+            ScreenHeight = Screen.height;
+            if (ScreenWidth <= 0 || ScreenHeight <= 0)
+                throw new InvalidOperationException("A client profiling session requires a positive screen size.");
+
+            QualityLevel = QualitySettings.GetQualityLevel();
+            string[] qualityNames = QualitySettings.names;
+            if (qualityNames == null
+                || QualityLevel < 0
+                || QualityLevel >= qualityNames.Length
+                || string.IsNullOrWhiteSpace(qualityNames[QualityLevel]))
+            {
+                throw new InvalidOperationException("The active Unity quality level could not be resolved.");
+            }
+
+            QualityName = qualityNames[QualityLevel];
+            RenderPipelineAsset renderPipeline = GraphicsSettings.currentRenderPipeline;
+            if (renderPipeline == null || string.IsNullOrWhiteSpace(renderPipeline.name))
+                throw new InvalidOperationException("A client profiling session requires a named render pipeline asset.");
+
+            FullScreenMode = Screen.fullScreenMode;
+            RenderPipelineAssetName = renderPipeline.name;
+            VSyncCount = QualitySettings.vSyncCount;
+            TargetFrameRate = Application.targetFrameRate;
+            ExecutionMode = Application.isEditor ? "editor" : "standalone";
+        }
+
+        /// <summary>Gets the authored run group identifier.</summary>
+        public string RunGroupID { get; }
+
+        /// <summary>Gets the authored run identifier.</summary>
+        public string RunID { get; }
+
+        /// <summary>Gets the authored profile identifier.</summary>
+        public string ProfileID { get; }
+
+        /// <summary>Gets the authored profile variant.</summary>
+        public string ProfileVariant { get; }
+
+        /// <summary>Gets the full 40-character source Git SHA.</summary>
+        public string SourceCommit { get; }
+
+        /// <summary>Gets the authored phase identifier.</summary>
+        public string Phase { get; }
+
+        /// <summary>Gets the authored phase duration in seconds.</summary>
+        public double PhaseDurationSeconds { get; }
+
+        /// <summary>Gets the absolute profiling results directory.</summary>
+        public string ResultsDirectory { get; }
+
+        /// <summary>Gets the profiling report file name.</summary>
+        public string ReportFileName { get; }
+
+        /// <summary>Gets the complete profiling report path.</summary>
+        public string ReportPath => Path.Combine(ResultsDirectory, ReportFileName);
+
+        /// <summary>Gets the host identifier captured from the current process.</summary>
+        public string HostID { get; }
+
+        /// <summary>Gets the current process identifier.</summary>
+        public string ProcessID { get; }
+
+        /// <summary>Gets the Unity platform captured from the current process.</summary>
+        public string Platform { get; }
+
+        /// <summary>Gets the Unity Editor/runtime version.</summary>
+        public string UnityVersion { get; }
+
+        /// <summary>Gets the application version.</summary>
+        public string ApplicationVersion { get; }
+
+        /// <summary>Gets the Unity build GUID.</summary>
+        public string BuildGUID { get; }
+
+        /// <summary>Gets the operating system description.</summary>
+        public string OperatingSystem { get; }
+
+        /// <summary>Gets the processor type description.</summary>
+        public string ProcessorType { get; }
+
+        /// <summary>Gets the processor count.</summary>
+        public int ProcessorCount { get; }
+
+        /// <summary>Gets the system memory size in megabytes.</summary>
+        public int SystemMemoryMB { get; }
+
+        /// <summary>Gets the graphics device name.</summary>
+        public string GraphicsDeviceName { get; }
+
+        /// <summary>Gets the graphics device type.</summary>
+        public GraphicsDeviceType GraphicsDeviceType { get; }
+
+        /// <summary>Gets the graphics device vendor.</summary>
+        public string GraphicsDeviceVendor { get; }
+
+        /// <summary>Gets the graphics device driver/API version.</summary>
+        public string GraphicsDeviceVersion { get; }
+
+        /// <summary>Gets the graphics memory size in megabytes.</summary>
+        public int GraphicsMemoryMB { get; }
+
+        /// <summary>Gets the current screen width in pixels.</summary>
+        public int ScreenWidth { get; }
+
+        /// <summary>Gets the current screen height in pixels.</summary>
+        public int ScreenHeight { get; }
+
+        /// <summary>Gets the current fullscreen mode.</summary>
+        public FullScreenMode FullScreenMode { get; }
+
+        /// <summary>Gets the active Unity quality level index.</summary>
+        public int QualityLevel { get; }
+
+        /// <summary>Gets the active Unity quality level name.</summary>
+        public string QualityName { get; }
+
+        /// <summary>Gets the active render-pipeline asset name.</summary>
+        public string RenderPipelineAssetName { get; }
+
+        /// <summary>Gets the active vertical-sync count.</summary>
+        public int VSyncCount { get; }
+
+        /// <summary>Gets the configured application target frame rate.</summary>
+        public int TargetFrameRate { get; }
+
+        /// <summary>Gets the execution mode, either editor or standalone.</summary>
+        public string ExecutionMode { get; }
+
+        internal void Validate()
+        {
+            if (GraphicsDeviceType == GraphicsDeviceType.Null)
+                throw new InvalidOperationException("A client profiling session requires a graphics device.");
+            if (ScreenWidth <= 0 || ScreenHeight <= 0)
+                throw new InvalidOperationException("A client profiling session requires a positive screen size.");
+            if (string.IsNullOrWhiteSpace(QualityName))
+                throw new InvalidOperationException("The active Unity quality level is unavailable.");
+            if (string.IsNullOrWhiteSpace(RenderPipelineAssetName))
+                throw new InvalidOperationException("The active render pipeline asset is unavailable.");
+        }
+
+        private static string RequireBounded(string value, string parameterName, int maximumLength)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("A value is required.", parameterName);
+            if (value.Length > maximumLength)
+                throw new ArgumentException(parameterName + " exceeds its bounded length.", parameterName);
+            return value;
+        }
+
+        private static string RequireGitSHA(string value, string parameterName)
+        {
+            if (value == null || value.Length != 40)
+                throw new ArgumentException("sourceCommit must be a full 40-character hexadecimal Git SHA.", parameterName);
+
+            for (int index = 0; index < value.Length; index++)
+            {
+                char character = value[index];
+                bool isHex = character >= '0' && character <= '9'
+                    || character >= 'a' && character <= 'f'
+                    || character >= 'A' && character <= 'F';
+                if (!isHex)
+                    throw new ArgumentException("sourceCommit must be a full 40-character hexadecimal Git SHA.", parameterName);
+            }
+
+            return value;
+        }
+
+        private static double RequirePositiveFinite(double value, string parameterName)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0d)
+                throw new ArgumentException(parameterName + " must be finite and greater than zero.", parameterName);
+            return value;
+        }
+
+        private static string RequireAbsolutePath(string value, string parameterName)
+        {
+            if (string.IsNullOrWhiteSpace(value) || !Path.IsPathRooted(value))
+                throw new ArgumentException("An absolute profiling report directory is required.", parameterName);
+
+            try
+            {
+                return Path.GetFullPath(value);
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException
+                || exception is NotSupportedException
+                || exception is PathTooLongException)
+            {
+                throw new ArgumentException("The profiling report directory must be an absolute normalizable path.", parameterName, exception);
+            }
+        }
+
+        private static string RequireReportFileName(string value, string parameterName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(value)
+                    || !string.Equals(Path.GetFileName(value), value, StringComparison.Ordinal)
+                    || !string.Equals(Path.GetExtension(value), ".json", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ArgumentException(
+                        "The profiling report file name must be a simple file name ending in .json.",
+                        parameterName);
+                }
+            }
+            catch (ArgumentException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (exception is NotSupportedException || exception is PathTooLongException)
+            {
+                throw new ArgumentException(
+                    "The profiling report file name must be a simple file name ending in .json.",
+                    parameterName,
+                    exception);
+            }
+
+            return value;
+        }
+
+        private static string RequireRuntimeValue(string value, string valueName)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new InvalidOperationException(valueName + " is unavailable in the current process.");
+            return value;
+        }
+    }
+
     /// <summary>Canonical terminal states for a live server profiling report.</summary>
     public enum PerformanceRunStatus
     {
@@ -127,6 +402,20 @@ namespace Game.Shared.Performance
 
         /// <summary>Starts a live session immediately; no lifecycle phases or workload setup are required.</summary>
         public static void StartLiveSession(PerformanceSessionContext context)
+        {
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+            if (_session != null)
+                throw new InvalidOperationException("A performance telemetry session is already active.");
+
+            context.Validate();
+            _session = new PerformanceSession(context);
+            Application.quitting += HandleApplicationQuitting;
+            SessionStarted?.Invoke();
+        }
+
+        /// <summary>Starts a live client profiling session with captured client environment identity.</summary>
+        public static void StartLiveSession(ClientPerformanceSessionContext context)
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
@@ -197,7 +486,7 @@ namespace Game.Shared.Performance
                 StopLiveSession(
                     PerformanceRunStatus.FailInstrumentation,
                     "PROCESS_QUIT",
-                    "Process quit before the server shutdown path finalised profiling.");
+                    "Process quit before the profiling shutdown path finalised the active session.");
             }
             catch (Exception exception)
             {
@@ -233,6 +522,7 @@ namespace Game.Shared.Performance
         private readonly Dictionary<string, PerformanceMetricRegistration> _registrations =
             new Dictionary<string, PerformanceMetricRegistration>(StringComparer.Ordinal);
         private readonly long _startTimestamp;
+        private readonly ClientPerformanceSessionContext _clientContext;
 
         public PerformanceSession(PerformanceSessionContext context)
         {
@@ -241,7 +531,15 @@ namespace Game.Shared.Performance
             _startTimestamp = Stopwatch.GetTimestamp();
         }
 
+        public PerformanceSession(ClientPerformanceSessionContext context)
+        {
+            _clientContext = context;
+            StartedUtc = DateTime.UtcNow;
+            _startTimestamp = Stopwatch.GetTimestamp();
+        }
+
         public PerformanceSessionContext Context { get; }
+        public ClientPerformanceSessionContext ClientContext => _clientContext;
         public DateTime StartedUtc { get; }
         public long StartTimestamp => _startTimestamp;
 
@@ -319,8 +617,14 @@ namespace Game.Shared.Performance
                     1d - PerformanceTelemetry.MAX_MEASUREMENT_DROP_RATIO);
             }
 
-            Directory.CreateDirectory(Context.ResultsDirectory);
-            WriteAtomically(Context.ReportPath, writer => WriteReport(writer, status, reasonCode, message));
+            string reportDirectory = _clientContext != null
+                ? _clientContext.ResultsDirectory
+                : Context.ResultsDirectory;
+            string reportPath = _clientContext != null
+                ? _clientContext.ReportPath
+                : Context.ReportPath;
+            Directory.CreateDirectory(reportDirectory);
+            WriteAtomically(reportPath, writer => WriteReport(writer, status, reasonCode, message));
             return true;
         }
 
@@ -329,6 +633,24 @@ namespace Game.Shared.Performance
             DateTime finishedUtc = DateTime.UtcNow;
             double elapsedSeconds = (Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency;
             writer.WriteLine('{');
+            if (_clientContext != null)
+                WriteClientIdentity(writer);
+            else
+                WriteServerIdentity(writer);
+
+            PerformanceJson.WriteProperty(writer, "started_utc", StartedUtc.ToString("o"), true);
+            PerformanceJson.WriteProperty(writer, "finished_utc", finishedUtc.ToString("o"), true);
+            PerformanceJson.WriteProperty(writer, "elapsed_seconds", elapsedSeconds, true);
+            PerformanceJson.WriteProperty(writer, "status", PerformanceRunText.ToText(status), true);
+            PerformanceJson.WriteRawProperty(writer, "shutdown", BuildShutdownJson(status, reasonCode, message), true);
+            PerformanceJson.WriteRawProperty(writer, "metrics", BuildMetricsJson(), true);
+            PerformanceJson.WriteRawProperty(writer, "warnings", BuildWarningsJson(), false);
+            writer.WriteLine();
+            writer.Write('}');
+        }
+
+        private void WriteServerIdentity(StreamWriter writer)
+        {
             PerformanceJson.WriteProperty(writer, "schema_version", "server-performance-report/v1", true);
             PerformanceJson.WriteProperty(writer, "run_id", Context.RunId, true);
             PerformanceJson.WriteProperty(writer, "profile_id", Context.ProfileId, true);
@@ -359,15 +681,42 @@ namespace Game.Shared.Performance
                 "server_simulation_max_catch_up_ticks",
                 Context.ServerSimulationMaxCatchUpTicks,
                 true);
-            PerformanceJson.WriteProperty(writer, "started_utc", StartedUtc.ToString("o"), true);
-            PerformanceJson.WriteProperty(writer, "finished_utc", finishedUtc.ToString("o"), true);
-            PerformanceJson.WriteProperty(writer, "elapsed_seconds", elapsedSeconds, true);
-            PerformanceJson.WriteProperty(writer, "status", PerformanceRunText.ToText(status), true);
-            PerformanceJson.WriteRawProperty(writer, "shutdown", BuildShutdownJson(status, reasonCode, message), true);
-            PerformanceJson.WriteRawProperty(writer, "metrics", BuildMetricsJson(), true);
-            PerformanceJson.WriteRawProperty(writer, "warnings", BuildWarningsJson(), false);
-            writer.WriteLine();
-            writer.Write('}');
+        }
+
+        private void WriteClientIdentity(StreamWriter writer)
+        {
+            PerformanceJson.WriteProperty(writer, "schema_version", "client-performance-report/v1", true);
+            PerformanceJson.WriteProperty(writer, "run_group_id", _clientContext.RunGroupID, true);
+            PerformanceJson.WriteProperty(writer, "run_id", _clientContext.RunID, true);
+            PerformanceJson.WriteProperty(writer, "profile_id", _clientContext.ProfileID, true);
+            PerformanceJson.WriteProperty(writer, "profile_variant", _clientContext.ProfileVariant, true);
+            PerformanceJson.WriteProperty(writer, "source_commit", _clientContext.SourceCommit, true);
+            PerformanceJson.WriteProperty(writer, "phase", _clientContext.Phase, true);
+            PerformanceJson.WriteProperty(writer, "phase_duration_seconds", _clientContext.PhaseDurationSeconds, true);
+            PerformanceJson.WriteProperty(writer, "process_id", _clientContext.ProcessID, true);
+            PerformanceJson.WriteProperty(writer, "host_id", _clientContext.HostID, true);
+            PerformanceJson.WriteProperty(writer, "execution_mode", _clientContext.ExecutionMode, true);
+            PerformanceJson.WriteProperty(writer, "unity_platform", _clientContext.Platform, true);
+            PerformanceJson.WriteProperty(writer, "unity_version", _clientContext.UnityVersion, true);
+            PerformanceJson.WriteProperty(writer, "application_version", _clientContext.ApplicationVersion, true);
+            PerformanceJson.WriteProperty(writer, "build_guid", _clientContext.BuildGUID, true);
+            PerformanceJson.WriteProperty(writer, "operating_system", _clientContext.OperatingSystem, true);
+            PerformanceJson.WriteProperty(writer, "processor_type", _clientContext.ProcessorType, true);
+            PerformanceJson.WriteProperty(writer, "processor_count", _clientContext.ProcessorCount, true);
+            PerformanceJson.WriteProperty(writer, "system_memory_mb", _clientContext.SystemMemoryMB, true);
+            PerformanceJson.WriteProperty(writer, "graphics_device_name", _clientContext.GraphicsDeviceName, true);
+            PerformanceJson.WriteProperty(writer, "graphics_device_type", _clientContext.GraphicsDeviceType.ToString(), true);
+            PerformanceJson.WriteProperty(writer, "graphics_device_vendor", _clientContext.GraphicsDeviceVendor, true);
+            PerformanceJson.WriteProperty(writer, "graphics_device_version", _clientContext.GraphicsDeviceVersion, true);
+            PerformanceJson.WriteProperty(writer, "graphics_memory_mb", _clientContext.GraphicsMemoryMB, true);
+            PerformanceJson.WriteProperty(writer, "screen_width", _clientContext.ScreenWidth, true);
+            PerformanceJson.WriteProperty(writer, "screen_height", _clientContext.ScreenHeight, true);
+            PerformanceJson.WriteProperty(writer, "full_screen_mode", _clientContext.FullScreenMode.ToString(), true);
+            PerformanceJson.WriteProperty(writer, "quality_level", _clientContext.QualityLevel, true);
+            PerformanceJson.WriteProperty(writer, "quality_name", _clientContext.QualityName, true);
+            PerformanceJson.WriteProperty(writer, "render_pipeline_asset", _clientContext.RenderPipelineAssetName, true);
+            PerformanceJson.WriteProperty(writer, "v_sync_count", _clientContext.VSyncCount, true);
+            PerformanceJson.WriteProperty(writer, "target_frame_rate", _clientContext.TargetFrameRate, true);
         }
 
         private string BuildShutdownJson(PerformanceRunStatus status, string reasonCode, string message)

@@ -21,9 +21,25 @@ namespace Game.Client
     /// </summary>
     public static class ClientInitialization
     {
+        private const string PROFILING_ARGUMENT = "--profiling";
+        private const string PROFILE_ID_ARGUMENT = "--profile-id";
+        private const string DEFAULT_PROFILE_ID = "live-client";
+
+        private readonly struct ClientLaunchOptions
+        {
+            public ClientLaunchOptions(bool profilingEnabled, string profileID)
+            {
+                ProfilingEnabled = profilingEnabled;
+                ProfileID = profileID;
+            }
+
+            public bool ProfilingEnabled { get; }
+            public string ProfileID { get; }
+        }
+
         /// <summary>
         /// Registers project-owned client metrics for an already active telemetry session.
-        /// The benchmark runner owns session startup and invokes this entrypoint afterwards.
+        /// ClientPerformanceProfiler owns session startup and invokes this entrypoint afterwards.
         /// </summary>
         public static void RegisterPerformanceMetrics()
         {
@@ -39,37 +55,135 @@ namespace Game.Client
         /// </summary>
         public static void Begin(MonoBehaviour host)
         {
-            host.StartCoroutine(InitializationProcess());
+            if (host == null)
+                throw new ArgumentNullException(nameof(host));
+
+            ClientLaunchOptions launchOptions = ResolveLaunchOptions();
+            host.StartCoroutine(InitializationProcess(launchOptions));
         }
 
-        private static IEnumerator InitializationProcess()
+        private static IEnumerator InitializationProcess(ClientLaunchOptions launchOptions)
         {
-            Debug.Log("Client Initialization started.");
+            bool profilingStarted = false;
+            bool initializationCompleted = false;
+            try
+            {
+                Debug.Log("Client Initialization started.");
 
-            yield return new WaitUntil(() => LoadingScreen.Instance != null);
-            LoadingScreen.Instance.Show(5);
+                yield return new WaitUntil(() => LoadingScreen.Instance != null);
+                LoadingScreen.Instance.Show(5);
 
-            // Step 1: Initialize addressables.
-            yield return InitializeAddressables();
-            LoadingScreen.Instance.Tick();
+                // Step 1: Initialize addressables.
+                yield return InitializeAddressables();
+                LoadingScreen.Instance.Tick();
 
-            // Step 2: Load game configuration.
-            yield return LoadGameConfiguration();
-            LoadingScreen.Instance.Tick();
+                // Step 2: Load game configuration.
+                yield return LoadGameConfiguration();
+                LoadingScreen.Instance.Tick();
 
-            // Step 3: Initialize networking as CLIENT.
-            yield return ClientInitializeNetworking();
-            LoadingScreen.Instance.Tick();
+                // Step 3: Initialize networking as CLIENT.
+                yield return ClientInitializeNetworking();
+                LoadingScreen.Instance.Tick();
 
-            // Step 4: ECS Worlds after network initialized.
-            yield return ClientInitializeECSWorlds();
-            LoadingScreen.Instance.Tick();
+                if (launchOptions.ProfilingEnabled)
+                {
+                    ClientPerformanceProfiler.Start(launchOptions.ProfileID);
+                    profilingStarted = true;
+                }
 
-            yield return ClientInitializeWorldManager();
-            LoadingScreen.Instance.Tick();
+                // Step 4: ECS Worlds after network initialized.
+                yield return ClientInitializeECSWorlds();
+                LoadingScreen.Instance.Tick();
 
-            // Step 5: Unload the initialisation scene.
-            yield return UnloadInitializationScene();
+                yield return ClientInitializeWorldManager();
+                LoadingScreen.Instance.Tick();
+
+                // Step 5: Unload the initialisation scene.
+                yield return UnloadInitializationScene();
+                initializationCompleted = true;
+            }
+            finally
+            {
+                if (profilingStarted && !initializationCompleted)
+                    ClientPerformanceProfiler.Stop(
+                        PerformanceRunStatus.FailInstrumentation,
+                        "CLIENT_INITIALIZATION_ABORTED",
+                        "Client initialization aborted after profiling started.");
+            }
+        }
+
+        private static ClientLaunchOptions ResolveLaunchOptions()
+        {
+            bool profilingEnabled = false;
+            string profileID = DEFAULT_PROFILE_ID;
+            bool profileIDSpecified = false;
+            string[] commandLineArguments = Environment.GetCommandLineArgs();
+            for (int i = 0; i < commandLineArguments.Length; i++)
+            {
+                string argument = commandLineArguments[i];
+                if (string.Equals(argument, PROFILING_ARGUMENT, StringComparison.Ordinal))
+                {
+                    if (profilingEnabled)
+                    {
+                        throw new InvalidOperationException(
+                            $"Client launch argument '{PROFILING_ARGUMENT}' was supplied more than once.");
+                    }
+
+                    profilingEnabled = true;
+                    continue;
+                }
+
+                if (!string.Equals(argument, PROFILE_ID_ARGUMENT, StringComparison.Ordinal))
+                    continue;
+
+                if (profileIDSpecified)
+                {
+                    throw new InvalidOperationException(
+                        $"Client launch argument '{PROFILE_ID_ARGUMENT}' was supplied more than once.");
+                }
+
+                if (i + 1 >= commandLineArguments.Length
+                    || string.IsNullOrWhiteSpace(commandLineArguments[i + 1])
+                    || commandLineArguments[i + 1].StartsWith("--", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        $"Client launch argument '{PROFILE_ID_ARGUMENT}' requires a nonempty profile ID.");
+                }
+
+                profileID = commandLineArguments[++i];
+                if (!IsValidProfileID(profileID))
+                {
+                    throw new InvalidOperationException(
+                        $"Client launch argument '{PROFILE_ID_ARGUMENT}' must contain at most 128 ASCII letters, digits, periods, underscores, or hyphens.");
+                }
+
+                profileIDSpecified = true;
+            }
+
+            if (profileIDSpecified && !profilingEnabled)
+            {
+                throw new InvalidOperationException(
+                    $"Client launch argument '{PROFILE_ID_ARGUMENT}' requires '{PROFILING_ARGUMENT}'.");
+            }
+
+            return new ClientLaunchOptions(profilingEnabled, profileID);
+        }
+
+        private static bool IsValidProfileID(string profileID)
+        {
+            if (string.IsNullOrWhiteSpace(profileID) || profileID.Length > 128)
+                return false;
+
+            foreach (char character in profileID)
+            {
+                bool isAsciiLetter = character >= 'A' && character <= 'Z'
+                    || character >= 'a' && character <= 'z';
+                bool isAsciiDigit = character >= '0' && character <= '9';
+                if (!isAsciiLetter && !isAsciiDigit && character != '.' && character != '_' && character != '-')
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
