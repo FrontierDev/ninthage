@@ -213,7 +213,7 @@ The Account, Character and Persistence PDD defines an account-owned **HomeWorldI
 
 Every World Server connects to a separate **Master Server** service. The Master Server owns the global world directory, persistent world identities, account authentication, character persistence/session authority and coordination of world selection, transfers and cross-world social communication. It does **not** run world ticks, ECS simulation, actor movement, combat, AI or instance simulation. The World Server remains authoritative for live gameplay within its one world. A client's admission to a World Server must be authorised through the Master Server; the exact transport and deployment configuration belong to the later implementation contracts.
 
-World identities must remain stable across restarts once the production Master Server/world registry is introduced. The temporary Stage 1.2 launch-generated `WorldID` in §18.3 is explicitly a prototype exception, not the multi-world implementation.
+World identities must remain stable across restarts. Stage 1.7 introduces the Master-issued durable `WorldID` and removes the temporary Stage 1.2 launch-generated identity at the explicit registration cut-over described in §18.3.
 
 ---
 
