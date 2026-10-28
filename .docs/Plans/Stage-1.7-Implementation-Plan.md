@@ -202,6 +202,52 @@ Contract changes are made Master-contract first, then the paired Unity client is
 The Unity client uses Newtonsoft.Json already available in the project; ASP.NET Core may continue using System.Text.Json. The wire contract therefore uses ordinary JSON primitives/arrays/objects and explicit property names rather than serializer-specific polymorphism.
 
 
+### 5.4 Version-1 endpoint families and result semantics
+
+The authenticated production-facing route family is:
+
+```text
+POST /world/v1/register
+POST /world/v1/heartbeat
+POST /world/v1/unregister
+
+POST /world/v1/accounts/resolve
+POST /world/v1/accounts/create
+POST /world/v1/characters/roster
+POST /world/v1/characters/create
+POST /world/v1/characters/delete
+POST /world/v1/characters/restore
+POST /world/v1/characters/acquire
+POST /world/v1/characters/release
+POST /world/v1/characters/checkpoints
+```
+
+Current-domain high-value mutations use explicit domain routes beneath `/world/v1/characters/*` rather than a generic arbitrary character-patch endpoint. Item ownership routes distinguish grant/remove/move/equip/unequip operations; progression routes are introduced only for currently implemented progression mutations that require immediate durable commit.
+
+Every persistence response carries a deterministic result code. The common result vocabulary is:
+
+- `Accepted`;
+- `InvalidRequest`;
+- `Unauthorized`;
+- `WorldNotFound`;
+- `WorldNotActive`;
+- `StaleWorldServerRun`;
+- `AccountNotFound`;
+- `AccountAlreadyExists`;
+- `CharacterNotFound`;
+- `CharacterNotOwned`;
+- `CharacterDeleted`;
+- `CharacterLimitReached`;
+- `NameConflict`;
+- `LeaseConflict`;
+- `StaleLease`;
+- `RevisionConflict`;
+- `PersistenceUnavailable`.
+
+HTTP status communicates transport/category semantics (2xx accepted, 400 invalid request, 401 unauthorized, 404 absent durable identity, 409 ownership/name/revision conflict, 503 unavailable). Gameplay/service code branches on the explicit result code, not on exception text.
+
+`OperationID` retries that already committed return `Accepted` with the originally recorded result rather than a special second-success semantic.
+
 ## 6. Durable WorldID cut-over
 
 Stage 1.7 begins by completing the Unity World Server registration/heartbeat integration already planned as Master F1.3b.
@@ -351,6 +397,31 @@ Do not create empty/speculative tables merely because future PDDs mention them. 
 
 Those systems add explicit migrations when their approved implementation requires them.
 
+### 9.3 Initial key/constraint contract
+
+The Stage 1.7 issue set may choose EF class/file names, but it must preserve these relational keys/constraints:
+
+- `Worlds`: PK `WorldID`; unique `WorldName`.
+- `Accounts`: PK `AccountID`; unique temporary `LegacyUsername`; FK `HomeWorldID -> Worlds`; `Revision >= 1`.
+- `Characters`: PK `CharacterID`; FK `AccountID -> Accounts`; partial unique normalized FirstName+LastName while `PurgedAtUtc IS NULL`; `DeletedAtUtc` for soft deletion; `PurgedAtUtc` for permanent cleanup/tombstone; `Revision >= 1`.
+- active-slot counting excludes rows with `DeletedAtUtc != null` or `PurgedAtUtc != null`.
+- permanent deletion keeps the Character row/tombstone so CharacterID is never reused, removes/de-identifies gameplay child state according to the cleanup operation and releases the name through the partial unique index by setting `PurgedAtUtc`.
+- `CharacterWorldStates`: one row per CharacterID.
+- `CharacterResources`: PK/unique `CharacterID + ResourceDefinitionID`.
+- `CharacterCooldowns`: unique `CharacterID + CooldownDefinitionID + ChargeIndex`.
+- `CharacterPersistentAuras`: PK `PersistentAuraID`, FK CharacterID.
+- `CharacterAbilities`: PK/unique `CharacterID + AbilityDefinitionID`.
+- `CharacterTalents`: PK/unique `CharacterID + TalentDefinitionID`.
+- `CharacterWeaponSkills`: PK/unique `CharacterID + WeaponType`.
+- `CharacterReputations`: PK/unique `CharacterID + FactionDefinitionID`.
+- `CharacterQuests`: PK/unique `CharacterID + QuestDefinitionID`.
+- `ItemInstances`: PK immutable `ItemInstanceID`; authored `ItemDefinitionID`; mutable stack/durability/modification state.
+- `CharacterItemLocations`: PK/FK `ItemInstanceID`; FK CharacterID; `LocationKind` initially only `Inventory` or `Equipment`; unique `CharacterID + LocationKind + SlotIndex`.
+- `PersistenceOperationReceipts`: PK `OperationID`; operation kind/result and optional result JSON sufficient to return the same committed result after a retry.
+- `LegacyImportRecords`: unique imported source-account identity/fingerprint mapping to the generated AccountID.
+
+Operation receipts are retained for **30 days** by the Stage 1.7 cleanup policy. They are idempotency records, not the future permanent economy/admin audit log.
+
 ### 9.3 JSONB
 
 JSONB is allowed for naturally variable, non-ownership payloads such as appearance option data or narrowly scoped extensible state.
@@ -365,7 +436,7 @@ Stage 1.7 introduces a **character persistence lease** so a stale World Server c
 
 This is not yet the final Stage 1.8 account gameplay-session system.
 
-A lease is bound to:
+A lease is **Master process runtime state**, not a PostgreSQL table/row. It is bound to:
 
 - `CharacterPersistenceLeaseID`;
 - `AccountID`;
@@ -375,6 +446,8 @@ A lease is bound to:
 - the current registered World Server;
 - the character revision returned at acquisition.
 
+The Master indexes leases by CharacterID and WorldServerRunID. World lease expiry/unregister invalidates every character persistence lease owned by that run.
+
 Rules:
 
 1. one `CharacterID` has at most one active persistence lease;
@@ -382,7 +455,9 @@ Rules:
 3. every character mutation/checkpoint carries the lease ID and current expected revision;
 4. stale lease/run/revision requests fail explicitly;
 5. releasing/invalidating the lease prevents further writes from that old owner;
-6. future Stage 1.8 gameplay sessions bind/extend this mechanism at account level rather than creating a competing ownership system.
+6. a Master Server restart invalidates all character persistence leases; World Servers must re-register/reacquire before further durable writes;
+7. ordinary live simulation may continue during short lease re-establishment, but high-value persistence mutations remain unavailable until a valid lease exists;
+8. future Stage 1.8 gameplay sessions bind/extend this mechanism at account level rather than creating a competing ownership system.
 
 Future cross-world transfer may allow direct World A → World B transfer snapshots for efficiency, but Stage 1.7 does not implement that optimisation. The safe baseline is commit to durable state, change ownership through the Master, then load on the destination.
 
@@ -479,6 +554,14 @@ Responsibilities:
 ### 13.1 Bounded work
 
 Checkpoint work is bounded naturally to at most one dirty/pending checkpoint per online CharacterID.
+
+Routine periodic checkpoints are sent in batches with:
+
+```text
+MaxCheckpointBatchSize = 128
+```
+
+A batch contains independently revisioned character checkpoint entries. One stale/invalid character entry does not roll back otherwise valid entries in the same batch; the response contains one result per character. A database/service-wide failure rejects the whole request so the newest dirty checkpoint remains available for later retry.
 
 Transactional requests use a bounded server-wide queue with initial configuration:
 
