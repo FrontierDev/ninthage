@@ -1645,11 +1645,11 @@ Accounts own:
 
 Characters own ordinary progression and gameplay state.
 
-Characters have globally unique two-part names, immutable IDs and 12 account-wide slots. One account may operate only one gameplay session at a time. Disconnect keeps the authoritative actor active for at least 30 seconds and longer when combat remains unresolved.
+Characters have globally unique normalized two-part names, immutable IDs and 12 **active** account-wide slots; soft-deleted characters sit outside that active count and require a free slot to restore. One account may operate only one gameplay session at a time. Disconnect keeps the authoritative actor active for at least 30 seconds and longer when combat remains unresolved.
 
 Health, resources, cooldowns, auras, death and timed restrictions are handled according to their actual gameplay semantics rather than blindly reset at login.
 
-Production persistence moves from the current monolithic JSON prototype to a **Master Server-owned central** relational SQL-backed architecture, using the EF Core/PostgreSQL structure in `FrontierDev/webrpgapp` as the implementation reference: explicit entities, relationships, constraints, transactions, migrations and selective JSONB only where appropriate. World Servers retain live gameplay authority while accessing the central persistence boundary asynchronously.
+Production persistence moves from the current monolithic JSON prototype to a **Master Server-owned central** PostgreSQL 18 architecture using EF Core 10/Npgsql in `ninthage-master`: explicit entities, relationships, constraints, transactions, migrations and selective JSONB only where appropriate. World Servers retain live gameplay authority, hold the online character working copy and access the central persistence boundary asynchronously for checkpoints and explicit transactions.
 
 The resulting persistence boundary should be mechanically boring to the player:
 
