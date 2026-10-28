@@ -154,30 +154,53 @@ Stage 1.7 uses the existing ASP.NET Core service direction:
 - shared DTOs in `NinthAge.Contracts`;
 - no gRPC/message bus introduced for Stage 1.7.
 
-The local development workflow continues to use localhost by default. Production configuration must use HTTPS.
+The local development workflow uses `http://127.0.0.1:5080` by default. The World Server reads the endpoint from `NINTHAGE_MASTER_URL`; Development may fall back to that localhost URL, while non-Development startup requires an explicit HTTPS URL.
+
+The Unity World Server uses one long-lived `System.Net.Http.HttpClient` owned by the Master/persistence client service. It must not create an HttpClient per persistence operation.
 
 ### 5.2 World Server authentication
 
 Persistence endpoints never trust network reachability alone.
 
-Each World Server deployment has one configured opaque credential. Requests use:
+Each World Server deployment/world has one configured opaque **256-bit random secret**. Requests use:
 
 ```text
 Authorization: Bearer <world-server-secret>
 ```
 
+The World Server reads its secret from `NINTHAGE_WORLD_SERVER_SECRET`. The secret is never accepted as a command-line argument.
+
+The Master owns a configuration mapping from the canonical WorldName to the expected secret. Production values come from normal ASP.NET Core secret/environment configuration rather than source-controlled files. The Development world store may persist a generated local-development secret in its existing per-user application-data state and the Development process launcher injects that secret into the child World Server environment.
+
 Rules:
 
-1. the credential is supplied through trusted server configuration/environment, never command-line arguments and never client-visible data;
-2. the Master validates authentication before disclosing world/account/character existence;
-3. a credential is bound to the World Server deployment/world it is allowed to operate;
-4. secrets are not stored in source control or logs;
-5. comparison/validation uses the Master service boundary rather than endpoint-local ad-hoc checks;
-6. credential rotation/hardened secret-management infrastructure may be extended later, but Stage 1.7 must not use loopback reachability as the persistence trust model.
+1. the Master authenticates the credential before disclosing whether the requested world/account/character exists;
+2. authentication establishes the one WorldName the credential may operate;
+3. registration must resolve that authenticated WorldName to the same durable WorldID returned to the server;
+4. later heartbeat/persistence requests must use that WorldID and current WorldServerRunID;
+5. secret comparison is constant-time and secrets are never logged;
+6. credential rotation/hardened secret-management infrastructure may be extended later, but Stage 1.7 does not store World Server secrets in gameplay/client data or PostgreSQL.
 
-The existing Development-only loopback registration endpoints may remain for local bootstrap compatibility while the authenticated boundary is introduced, but Stage 1.7 persistence endpoints require the configured credential.
+The existing Development-only loopback endpoints may remain temporarily for local bootstrap compatibility while the authenticated `/world/v1/*` boundary is introduced. Stage 1.7 persistence operations use the authenticated boundary.
 
 ---
+
+### 5.3 Cross-repository contract ownership
+
+The two repositories remain independently buildable. Stage 1.7 does **not** add a git submodule, copied DLL, NuGet/UPM dependency or generated shared package between them.
+
+`ninthage-master/src/NinthAge.Contracts` is the canonical wire-protocol definition. The HTTP API is versioned under:
+
+```text
+/world/v1/...
+```
+
+The Unity repository defines the minimal matching transport DTOs it consumes under the server-side Master integration namespace, with explicit JSON field names matching the canonical contract. These Unity DTOs are transport models only and must not become a second source of product/business rules.
+
+Contract changes are made Master-contract first, then the paired Unity client issue updates the mirrored transport shape before either side is considered integrated.
+
+The Unity client uses Newtonsoft.Json already available in the project; ASP.NET Core may continue using System.Text.Json. The wire contract therefore uses ordinary JSON primitives/arrays/objects and explicit property names rather than serializer-specific polymorphism.
+
 
 ## 6. Durable WorldID cut-over
 
@@ -296,7 +319,6 @@ Stage 1.7 creates schema only for durable state that is currently implemented or
 The initial relational model contains equivalents of:
 
 - `Worlds`;
-- `WorldServerCredentials` or equivalent credential records/configuration boundary;
 - `Accounts`;
 - `Characters`;
 - `CharacterWorldStates`;
@@ -624,12 +646,13 @@ Stage 1.7 therefore keeps the existing Unity credential check as a temporary com
 
 The transition is:
 
-1. current `PlayerAuthService` validates the current username/password through the temporary local credential store;
-2. after successful local authentication, the World Server resolves that username to the Master-owned `AccountID`;
-3. if this is the first Stage 1.7 account import/creation, the Master creates the durable Account row idempotently;
-4. the Master supplies the durable roster/character state;
-5. `player_data.json` no longer owns the roster or character state;
-6. local credential data is explicitly temporary and is removed/replaced by Stage 1.8 authentication.
+1. current `PlayerAuthService` validates the current username/password through a temporary local credential store;
+2. Stage 1.7 separates that credential-only role from `PlayerDatabase`: the compatibility store contains only username/password hash/salt and no character roster/state;
+3. after successful local authentication, the World Server resolves that username to the Master-owned `AccountID`;
+4. if this is a newly created temporary-auth account, the Master creates the Account row idempotently with `HomeWorldID` equal to the current registered WorldID;
+5. the Master supplies the durable roster/character state;
+6. `player_data.json` no longer owns or receives roster/character saves after cut-over;
+7. the local credential store is explicitly temporary and is removed/replaced by Stage 1.8 authentication.
 
 Password hashes/salts are not returned by the general persistence API and are not copied into character persistence DTOs.
 
@@ -802,8 +825,10 @@ Do not add deferred future-domain tables.
 
 Repositories: both.
 
-- add shared HTTP/JSON DTOs for account resolution, roster/load, lease acquire/release, checkpoint and explicit mutations;
-- implement Master World Server credential authentication;
+- define canonical `/world/v1/*` HTTP/JSON DTOs in `NinthAge.Contracts`;
+- add the minimal mirrored Unity transport DTOs with explicit JSON names rather than a cross-repository binary/package dependency;
+- implement Master World Server credential authentication using the configured per-world 256-bit bearer secret;
+- use `NINTHAGE_MASTER_URL` and `NINTHAGE_WORLD_SERVER_SECRET` on the Unity World Server;
 - validate authentication before entity existence/state checks;
 - use deterministic result codes rather than transport exceptions as gameplay semantics.
 
@@ -835,8 +860,9 @@ Repository: `ninthage`.
 
 Repositories: both.
 
-- keep the temporary Stage 1.7 credential check;
-- resolve durable AccountID from the Master;
+- split the current local authentication compatibility path away from `PlayerDatabase` so it stores credentials only;
+- resolve durable AccountID from the Master after local credential validation;
+- create new temporary-auth accounts idempotently with the current durable WorldID as HomeWorldID;
 - load roster/character state from Master;
 - persist character creation transactionally;
 - stop `PlayerDatabase` from owning durable roster/character state.
