@@ -196,7 +196,7 @@ This provides space for the current class roster plus alternative characters wit
 
 The implementation must enforce the limit server-side.
 
-Whether soft-deleted characters consume an active slot during their recovery window remains a small UX/policy decision; restoration must never allow more than the authoritative slot limit of active characters.
+Soft-deleted characters do **not** consume an active slot during their recovery window. Restoration requires a free active slot and must never produce more than 12 active characters.
 
 ---
 
@@ -590,14 +590,16 @@ For each resource, the persistence system must know enough to restore or advance
 
 ## 27. Offline Resource Resolution
 
-A resource may require:
+Stage 1.7 persists each applicable resource's exact current value and last authoritative update timestamp.
 
-- exact current value;
-- last authoritative update timestamp;
-- normal regeneration rule;
-- normal decay rule;
-- reset rule, where that reset would also occur without logout;
-- other resource-specific persistent metadata.
+Each resource definition explicitly selects one offline behaviour:
+
+- **Unchanged** — default when no other behaviour has been deliberately authored;
+- **Regenerate** — apply the approved normal regeneration over elapsed offline time;
+- **Decay** — apply the approved normal decay over elapsed offline time;
+- **Reset** — only when the resource's normal gameplay rules would reset independently of logout.
+
+The persistence layer does not infer offline behaviour from the resource name or class.
 
 Conceptually:
 
@@ -672,9 +674,14 @@ Where required, persistent aura state may include:
 - tick state/timestamp;
 - other explicit runtime data required to reproduce the aura correctly.
 
-Only auras that need to survive the persistence boundary should be serialized.
+Aura persistence is explicit authored policy rather than inferred from duration.
 
-Ordinary runtime combat aura state should not be stored redundantly once it can no longer affect the character.
+The initial policies are:
+
+- `RuntimeOnly`;
+- `PersistAcrossActorLifetime`.
+
+Only auras marked `PersistAcrossActorLifetime` are serialized. Ordinary runtime combat aura state should not be stored redundantly once it can no longer affect the character.
 
 ---
 
