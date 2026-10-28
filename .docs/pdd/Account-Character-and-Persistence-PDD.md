@@ -78,7 +78,7 @@ Each **World Server** owns its world's live authoritative actors and the selecte
 
 The World Server loads durable character state at admission, maintains the live working copy, checkpoints lower-risk mutable state periodically and at important boundaries, and commits high-value ownership/progression changes through explicit Master-owned transactions. PostgreSQL stores the latest committed durable recovery/ownership state; it is not the live simulation store.
 
-A Master-issued character persistence lease binds the current registered `WorldID + WorldServerRunID` to the CharacterID allowed to write durable state. A stale World Server, released lease or stale character revision must not overwrite newer durable state. Stage 1.8 later binds this persistence ownership mechanism into the complete account gameplay-session/admission model rather than creating a competing authority.
+A Master-issued character persistence lease binds the current registered `WorldID + WorldServerRunID` to the CharacterID allowed to write durable state. The lease is Master runtime ownership state rather than durable character data: World Server unregister/lease expiry or Master restart invalidates it, and the World Server must reacquire before further durable writes. A stale World Server, released lease or stale character revision must not overwrite newer durable state. Stage 1.8 later binds this persistence ownership mechanism into the complete account gameplay-session/admission model rather than creating a competing authority.
 
 A world-local JSON file or process-local account/session dictionary cannot become the production global durable authority.
 
