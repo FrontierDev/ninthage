@@ -1,4 +1,5 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking.Master;
 using Game.Server.Persistence;
 using Game.Server.Services;
 using Game.Server.Systems;
@@ -10,6 +11,8 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -25,6 +28,8 @@ namespace Game.Server.Core
         private const string DEFAULT_PROFILE_ID = "live-server";
         private const int DEFAULT_CONTROL_PORT = 8890;
         private const int SERVER_PLAYER_LOOP_TARGET_FRAME_RATE = 60;
+
+        private static readonly Guid WORLD_SERVER_RUN_ID = CreateWorldServerRunID();
 
         private readonly struct ServerLaunchOptions
         {
@@ -55,6 +60,10 @@ namespace Game.Server.Core
         private static bool _networkShutdownTimedOut;
         private static bool _initializationSucceeded;
         private static ServerTimeAuthority _timeAuthority;
+        private static MasterWorldClient _masterWorldClient;
+        private static CancellationTokenSource _masterHeartbeatCancellation;
+        private static Task _masterHeartbeatTask;
+        private static Coroutine _masterHeartbeatMonitorCoroutine;
 
         internal static bool IsFatalShutdownRequested => _fatalShutdownRequested;
         internal static int DedicatedServerPlayerLoopTargetFrameRate => SERVER_PLAYER_LOOP_TARGET_FRAME_RATE;
@@ -139,20 +148,16 @@ namespace Game.Server.Core
             _networkShutdownTimedOut = false;
             _fatalShutdownMessage = null;
             ShutdownExitCode = 0;
-            bool runtimeContextInitialized = false;
             try
             {
                 ServerShutdownController.Attach(_host);
                 if (controlPort.HasValue)
                     ServerControlEndpoint.Attach(_host, controlPort.Value);
-                InitializeWorldRuntimeContext(launchWorldName);
-                runtimeContextInitialized = true;
                 _initializationCoroutine = _host.StartCoroutine(InitializationProcess(profilingProfileId));
             }
             catch
             {
-                if (runtimeContextInitialized)
-                    ServerWorldManager.ClearRuntimeContext();
+                CancelAndDisposeMasterStateSynchronously();
                 _timeAuthority = null;
                 _launchWorldName = null;
                 _profilingRequested = false;
@@ -176,11 +181,27 @@ namespace Game.Server.Core
             Debug.Log($"Dedicated server player loop target: {SERVER_PLAYER_LOOP_TARGET_FRAME_RATE} Hz.");
         }
 
-        private static void InitializeWorldRuntimeContext(string launchWorldName)
+        private static Guid CreateWorldServerRunID()
         {
-            Guid worldID = Guid.NewGuid();
-            ServerWorldManager.InitializeRuntimeContext(worldID);
-            Debug.Log($"Server world '{launchWorldName}' initialized with world ID '{worldID}'.");
+            Guid worldServerRunID;
+            do
+            {
+                worldServerRunID = Guid.NewGuid();
+            }
+            while (worldServerRunID == Guid.Empty);
+
+            return worldServerRunID;
+        }
+
+        private static string ResolveBuildIdentity()
+        {
+            if (!string.IsNullOrWhiteSpace(Application.buildGUID))
+                return Application.buildGUID;
+
+            if (!string.IsNullOrWhiteSpace(Application.version))
+                return Application.version;
+
+            throw new InvalidOperationException("The server requires a nonblank build identity.");
         }
 
         private static string ValidateExplicitWorldName(string worldName)
@@ -340,6 +361,7 @@ namespace Game.Server.Core
             try
             {
                 Debug.Log("Server Initialization started.");
+                yield return ServerRegisterWithMaster();
                 yield return null;
 
                 // Step 1: Initialize addressables.
@@ -378,6 +400,222 @@ namespace Game.Server.Core
                 if (!_initializationSucceeded && !_fatalShutdownRequested)
                     AbortInitialization();
             }
+        }
+
+        private static IEnumerator ServerRegisterWithMaster()
+        {
+            Debug.Log(" - Step 0: Registering with the Master World Server...");
+            if (_masterWorldClient != null)
+                throw new InvalidOperationException("The Master World Server client is already initialized.");
+
+            _masterWorldClient = new MasterWorldClient(
+                _launchWorldName,
+                WORLD_SERVER_RUN_ID,
+                ResolveBuildIdentity());
+
+            Task<MasterWorldProtocol.RegistrationResponse> registrationTask =
+                _masterWorldClient.RegisterAsync(CancellationToken.None);
+            while (!registrationTask.IsCompleted)
+                yield return null;
+
+            MasterWorldProtocol.RegistrationResponse registrationResponse =
+                registrationTask.GetAwaiter().GetResult();
+            if (registrationResponse.Result != MasterWorldProtocol.RegistrationResult.Accepted)
+            {
+                throw new InvalidOperationException(
+                    $"Master registration for world '{_launchWorldName}' was rejected with result {registrationResponse.Result}.");
+            }
+
+            ServerWorldManager.InitializeRuntimeContext(registrationResponse.WorldID.Value);
+            Debug.Log(
+                $"Server world '{_launchWorldName}' registered with durable world ID '{registrationResponse.WorldID.Value}'.");
+
+            Task<MasterWorldProtocol.LeaseResponse> initialHeartbeatTask =
+                _masterWorldClient.HeartbeatAsync(registrationResponse.WorldID.Value, CancellationToken.None);
+            while (!initialHeartbeatTask.IsCompleted)
+                yield return null;
+
+            MasterWorldProtocol.LeaseResponse initialHeartbeatResponse =
+                initialHeartbeatTask.GetAwaiter().GetResult();
+            if (initialHeartbeatResponse.Result != MasterWorldProtocol.LeaseResult.Accepted)
+            {
+                throw new InvalidOperationException(
+                    $"Master heartbeat for world '{_launchWorldName}' was rejected with result {initialHeartbeatResponse.Result}.");
+            }
+
+            _masterHeartbeatCancellation = new CancellationTokenSource();
+            _masterHeartbeatTask = _masterWorldClient.RunHeartbeatLoopAsync(
+                registrationResponse.WorldID.Value,
+                registrationResponse.HeartbeatIntervalSeconds.Value,
+                _masterHeartbeatCancellation.Token);
+            _masterHeartbeatMonitorCoroutine = _host.StartCoroutine(MonitorMasterHeartbeat());
+        }
+
+        private static IEnumerator MonitorMasterHeartbeat()
+        {
+            Task heartbeatTask = _masterHeartbeatTask;
+            while (heartbeatTask != null && !heartbeatTask.IsCompleted)
+                yield return null;
+
+            _masterHeartbeatMonitorCoroutine = null;
+            if (heartbeatTask == null)
+                yield break;
+
+            bool cancellationRequested = IsMasterHeartbeatCancellationRequested();
+            try
+            {
+                heartbeatTask.GetAwaiter().GetResult();
+                if (!cancellationRequested)
+                {
+                    BeginFatalShutdown(
+                        new InvalidOperationException("The Master heartbeat loop completed unexpectedly."));
+                }
+            }
+            catch (OperationCanceledException) when (cancellationRequested)
+            {
+            }
+            catch (Exception exception)
+            {
+                if (!cancellationRequested)
+                    BeginFatalShutdown(exception);
+            }
+        }
+
+        private static bool IsMasterHeartbeatCancellationRequested()
+        {
+            return _masterHeartbeatCancellation != null
+                && _masterHeartbeatCancellation.IsCancellationRequested;
+        }
+
+        private static void RequestMasterHeartbeatCancellation()
+        {
+            if (_masterHeartbeatCancellation == null
+                || _masterHeartbeatCancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _masterHeartbeatCancellation.Cancel();
+        }
+
+        private static void StopMasterHeartbeatMonitor()
+        {
+            if (_masterHeartbeatMonitorCoroutine != null && _host != null)
+                _host.StopCoroutine(_masterHeartbeatMonitorCoroutine);
+
+            _masterHeartbeatMonitorCoroutine = null;
+        }
+
+        private static IEnumerator StopAndSettleMasterHeartbeat()
+        {
+            RequestMasterHeartbeatCancellation();
+            StopMasterHeartbeatMonitor();
+
+            while (_masterHeartbeatTask != null && !_masterHeartbeatTask.IsCompleted)
+                yield return null;
+
+            ObserveMasterHeartbeatTask();
+            _masterHeartbeatTask = null;
+            DisposeMasterHeartbeatCancellation();
+        }
+
+        private static IEnumerator UnregisterMasterWorld()
+        {
+            if (_masterWorldClient == null)
+                yield break;
+
+            ServerWorldManager worldManager = ServerWorldManager.Instance;
+            if (worldManager == null || !worldManager.CurrentRuntimeContext.IsValid)
+            {
+                DisposeMasterWorldClient();
+                yield break;
+            }
+
+            Guid worldID = worldManager.CurrentRuntimeContext.WorldID;
+            Task<MasterWorldProtocol.LeaseResponse> unregisterTask = null;
+            try
+            {
+                unregisterTask = _masterWorldClient.UnregisterAsync(worldID, CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                LogMasterUnregisterFailure(exception);
+            }
+
+            if (unregisterTask != null)
+            {
+                while (!unregisterTask.IsCompleted)
+                    yield return null;
+
+                try
+                {
+                    MasterWorldProtocol.LeaseResponse response = unregisterTask.GetAwaiter().GetResult();
+                    if (response.Result != MasterWorldProtocol.LeaseResult.Accepted)
+                    {
+                        Debug.Warning(
+                            $"Master unregister was rejected with result {response.Result}.");
+                    }
+                }
+                catch (Exception exception)
+                {
+                    LogMasterUnregisterFailure(exception);
+                }
+            }
+
+            DisposeMasterWorldClient();
+        }
+
+        private static void LogMasterUnregisterFailure(Exception exception)
+        {
+            Debug.Warning(
+                "Master unregister failed: "
+                + exception.GetType().Name
+                + ": "
+                + exception.Message);
+        }
+
+        private static void CancelAndDisposeMasterStateSynchronously()
+        {
+            RequestMasterHeartbeatCancellation();
+            StopMasterHeartbeatMonitor();
+            ObserveMasterHeartbeatTask();
+            _masterHeartbeatTask = null;
+            DisposeMasterHeartbeatCancellation();
+            DisposeMasterWorldClient();
+        }
+
+        private static void ObserveMasterHeartbeatTask()
+        {
+            if (_masterHeartbeatTask == null)
+                return;
+
+            try
+            {
+                _masterHeartbeatTask.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (IsMasterHeartbeatCancellationRequested())
+            {
+            }
+            catch (Exception exception)
+            {
+                Debug.Warning(
+                    "Master heartbeat task ended during teardown: "
+                    + exception.GetType().Name
+                    + ": "
+                    + exception.Message);
+            }
+        }
+
+        private static void DisposeMasterHeartbeatCancellation()
+        {
+            _masterHeartbeatCancellation?.Dispose();
+            _masterHeartbeatCancellation = null;
+        }
+
+        private static void DisposeMasterWorldClient()
+        {
+            _masterWorldClient?.Dispose();
+            _masterWorldClient = null;
         }
 
         /// <summary>
@@ -529,6 +767,12 @@ namespace Game.Server.Core
                 NetworkManager networkManager = GetNetworkManager();
                 yield return StopNetworkServerAndWait(networkManager);
 
+                yield return StopAndSettleMasterHeartbeat();
+                if (_fatalShutdownRequested)
+                    DisposeMasterWorldClient();
+                else
+                    yield return UnregisterMasterWorld();
+
                 DestroyNetworkManager();
                 yield return null;
 
@@ -578,6 +822,7 @@ namespace Game.Server.Core
 
             NetworkManager networkManager = GetNetworkManager();
             TryStopNetworkServer(networkManager);
+            CancelAndDisposeMasterStateSynchronously();
             ServerECSManager.Shutdown();
             ServerWorldManager.ClearRuntimeContext();
             DestroyNetworkManager();
@@ -649,6 +894,10 @@ namespace Game.Server.Core
 
         private static void ClearLifetimeState()
         {
+            StopMasterHeartbeatMonitor();
+            _masterHeartbeatTask = null;
+            DisposeMasterHeartbeatCancellation();
+            DisposeMasterWorldClient();
             _timeAuthority = null;
             _initializationCoroutine = null;
             _initializationSucceeded = false;
@@ -692,6 +941,7 @@ namespace Game.Server.Core
                     "Fatal server shutdown cannot complete because the initialization host is missing. "
                     + "The ECS world remains alive to protect outstanding server callbacks.");
                 TryStopNetworkServer(networkManager);
+                CancelAndDisposeMasterStateSynchronously();
                 DestroyNetworkManager();
                 ServerECSManager.Shutdown();
                 ServerWorldManager.ClearRuntimeContext();
@@ -712,6 +962,9 @@ namespace Game.Server.Core
         private static IEnumerator FatalShutdownProcess(NetworkManager networkManager, string fatalMessage)
         {
             yield return StopNetworkServerAndWait(networkManager);
+
+            yield return StopAndSettleMasterHeartbeat();
+            DisposeMasterWorldClient();
 
             DestroyNetworkManager();
             yield return null;
