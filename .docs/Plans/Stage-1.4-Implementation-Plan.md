@@ -265,9 +265,11 @@ Add telemetry for:
 
 Remove Dormant NPCs from project-owned per-frame navigation work, stop/reset their active path once on dormancy, and restore navigation eligibility on wake without recreating the actor. Add immediate damage-driven promotion to Full through the existing `ActorEndpoint` boundary. Ordinary aggro acquisition in Step 6 promotes the acquiring NPC to Full before target/combat commitment where it is not already Full; player movement/spawn/transfer activity promotion is owned by Step 5.
 
-### Step 8 — Focused regression tests
+### Step 8 — Stage 1.4 close-out and verification hand-off
 
-Add only critical integration coverage for:
+Stage 1.4 closes on actor-lifecycle/simulation-activity correctness, ownership, telemetry readiness and focused owner smoke validation.
+
+Do **not** create the Stage 1.4 regression suite during this foundation stage. Record the following critical regression candidates for Stage 1.10:
 
 - exact Full/Nearby/Dormant distance+hysteresis transitions;
 - dead players retaining relevance;
@@ -279,13 +281,13 @@ Add only critical integration coverage for:
 - dead players retaining activity relevance while remaining invalid ordinary aggro targets;
 - dormant NPCs performing no ordinary navigation work and waking correctly.
 
-No production changes in the test issue.
+No production or test issue is created solely to implement those regression candidates before Stage 1.10.
 
-### Step 9 — Stage 1.4 performance campaign and close-out
+### Step 9 — Stage 1.4 close-out and performance hand-off
 
-Extend the existing performance harness for a full server-NPC activity workload using the existing real authenticated player requirement; do not synthesize network clients.
+Stage 1.4 closes on actor-lifecycle/simulation-activity correctness, ownership, telemetry readiness and focused owner smoke validation.
 
-Measure:
+Do **not** run a dedicated Stage 1.4 population/perception performance campaign as a completion gate. Preserve the telemetry added by this stage so the later integrated Phase 1 performance programme can evaluate:
 
 - Full/Nearby/Dormant counts;
 - player perception centres;
@@ -295,19 +297,19 @@ Measure:
 - local player↔NPC candidate pairs examined;
 - NPC acquisition decisions executed;
 - actor-manager/aggro/navigation cost;
-- whole simulation tick p50/p95/p99;
+- whole simulation tick timing;
 - allocation/GC;
 - mass wake transition cost.
 
-Required comparisons:
+The intended later comparisons remain:
 
 1. same large NPC population forced Full;
 2. same population distributed mostly Dormant;
 3. mass transition Dormant → Nearby/Full;
-4. dense-player clustering (including ~100 players in one local area) to verify cell traversal and NPC decision work do not multiply linearly with overlapping player envelopes;
+4. dense-player clustering to verify overlapping player envelopes do not multiply work incorrectly;
 5. density/context transition with zero cross-instance wake.
 
-The Stage 1.4 gate passes only when Dormant steady-state CPU is demonstrably lower, wake spikes remain bounded, nearby combat remains responsive, and no cross-instance leakage occurs.
+Those comparisons are executed in Stages 1.10–1.11 after the server/client foundations are assembled. Stage 1.4 smoke validation may confirm that counters/timers change on representative transitions, but it must not expand into a density/capacity/soak benchmark campaign.
 
 ## 5. Non-goals
 
@@ -329,6 +331,4 @@ Stage 1.4 does not implement:
 
 Each production step requires owner validation before its dependent step proceeds.
 
-Production-code issues and regression-test issues remain separate.
-
-The final performance campaign is run only after the production sequence and focused regression coverage are accepted.
+After the production sequence and owner smoke validation are accepted, Stage 1.4 hands its regression candidates and instrumentation to Stages 1.10–1.11. No Stage 1.4 regression or performance campaign is required before dependent foundation work proceeds.
