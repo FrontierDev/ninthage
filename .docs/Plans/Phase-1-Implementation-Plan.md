@@ -340,22 +340,37 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 
 ### Stage 1.7 — Relational persistence, transactional state and timed-state continuity
 
-**Prerequisite:** 1.0; final timed-state integration depends on 1.1 and lifecycle contracts in 1.4.  
-**May proceed in parallel with:** 1.2–1.6 for schema design and independent storage work.
+**Detailed implementation plan:** [Stage 1.7 Implementation Plan](Stage-1.7-Implementation-Plan.md).
 
-**Architecture prerequisite:** Before persistence implementation, document the Master Server/World Server ownership and service boundaries, including how durable WorldIDs will be allocated. This must not change the temporary Stage 1.2 test-server ID contract retroactively.
+**Prerequisite:** 1.0; final timed-state integration depends on 1.1 and lifecycle contracts in 1.4. Stage 1.7 begins by completing the Unity Master registration/heartbeat client so the World Server uses the Master-issued durable WorldID before persistent world-keyed state is introduced.  
+**May proceed in parallel with:** remaining 1.6 close-out documentation where contracts are already stable.
+
+**Locked architecture:**
+
+- the World Server owns the **live online character working state** and remains the gameplay simulation authority;
+- the Master Server owns durable world/account/character identity, the persistence service boundary and which registered World Server may write a character;
+- PostgreSQL is the durable recovery/ownership ledger, not the live simulation state store;
+- ordinary gameplay does not round-trip through the Master/database on every movement/combat/resource/timer change;
+- lower-risk mutable state checkpoints every 30 seconds by default and at important lifecycle boundaries;
+- high-value ownership/progression changes use explicit idempotent transactions at the operation boundary;
+- a Master-issued character persistence lease bound to WorldID + WorldServerRunID prevents stale World Servers from writing durable character state;
+- final player authentication and one-account-one-gameplay-session admission remain Stage 1.8.
 
 **Implement:**
 
-- Follow the Account, Character and Persistence PDD: immutable `AccountID`/`CharacterID`, account-owned home world, durable roster, relational ownership/state entities, database constraints, schema migrations and auditable high-value transactions.
-- Replace whole-file `player_data.json` authority with **Master Server-owned central SQL persistence services** shared by all future World Servers. Use the PDD's PostgreSQL / EF Core + Npgsql reference direction, subject to explicit Unity/headless runtime compatibility validation; do not quietly substitute a different provider. No World Server-local account/character database is the production authority.
-- Keep gameplay and ECS systems independent of database APIs. Define the authorised World Server-to-Master Server persistence boundary with async work, concurrency, ordering and bounded queues so database operations cannot block or unpredictably stall the authoritative simulation tick; do not require a speculative multi-world message bus in Stage 1.7.
-- Implement creation/selection, inventory/equipment, progression, world/map/instance location and relevant timed state; establish stable persistent WorldID/world-record schema as the eventual Master Server authority while preserving the test-server exception until integration. Add quest, reputation and profession schema foundations consistent with currently available gameplay state, without implementing Phase 4–5 gameplay systems prematurely.
-- Preserve Health/resources, cooldowns, persistent auras, death state, offline progression rules and anti-relog-exploit invariants. Reconstruct derived statistics rather than persisting duplicated computed output.
-- Implement explicit JSON prototype-data import/migration with idempotency, diagnostics and rollback/backup rehearsal. Validate concurrent transactions, interrupted saves, restart and round-trip consistency.
-- Provide soft delete/restore identity and name-reservation foundations where required by the PDD.
+- Complete the Unity World Server's Master registration/heartbeat/unregister client and replace the Stage 1.2 launch-generated WorldID at that single integration boundary.
+- Add Master-owned PostgreSQL 18 persistence through `NinthAge.Persistence`, using .NET 10, EF Core 10.0.13 and Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3. Migrations are explicit deployment/operator actions; production startup must not silently migrate the schema.
+- Add relational world/account/character/current-gameplay-state entities, database constraints, explicit migrations, durable UUID identities, soft deletion, deterministic Unicode character-name normalization, revisions and idempotent operation receipts. Do not create speculative tables for unimplemented future gameplay systems.
+- Use authenticated HTTP(S)/JSON World Server→Master persistence contracts in `NinthAge.Contracts`. Unity never references EF Core/Npgsql or connects directly to PostgreSQL.
+- Introduce a World Server persistence coordinator/client that serializes mutations per CharacterID, coalesces low-risk checkpoints, uses bounded retry-safe work and never blocks the authoritative simulation tick.
+- Load durable character state when a character is admitted, then keep ordinary live gameplay local to the World Server. Persist exact Health/current resources/location, approved cooldown/aura state and existing progression/item ownership without turning the database into the runtime actor model.
+- Route current high-value item/ownership/progression mutations through explicit Master transactions using immutable OperationIDs and expected character revisions so ambiguous retries cannot duplicate value.
+- Keep the existing username/password path only as a temporary Stage 1.7 authentication bridge: after local credential validation the World Server resolves the Master-owned AccountID and roster. `player_data.json` stops owning durable roster/character state; final authentication moves to Stage 1.8.
+- Provide an explicit, idempotent one-time `player_data.json` importer that preserves valid existing CharacterIDs/item identities, requires a target HomeWorldID, refuses ambiguous single-name conversion without an explicit mapping, and records import identity so reruns cannot duplicate state.
 
-**Gate:** All existing meaningful character state persists through relog/restart via the central Master Server-owned persistence boundary; competing or interrupted economic/progression operations cannot duplicate ownership; failed database dependencies fail explicitly without corrupting authoritative state; persistence latency/backlog/tick-impact instrumentation is present for later integrated stress verification. The durable account/character/world schema does not rely on process-local identity or the Stage 1.2 transient WorldID.
+**Gate:** Master-issued durable WorldID is in use; PostgreSQL is the durable account/character/world authority; one current World Server persistence lease is the only accepted writer for a character; roster/create/load/checkpoint and current-domain transactional mutations use the Master boundary; ordinary gameplay remains World Server-local; Health/resources/location and required timed state survive restart/re-entry without reset exploits; legacy JSON can be imported idempotently and is no longer production character authority after cut-over.
+
+**Verification rule:** Stage 1.7 uses compile/static validation, explicit migration rehearsal on disposable PostgreSQL data and narrow owner-operated functional smoke checks only. New regression-test suites and performance benchmarking remain deferred to Stages 1.10–1.11.
 
 ### Stage 1.8 — Sessions, authentication and reconnect authority
 
