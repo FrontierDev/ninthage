@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Account ownership, character records, character-slot limits, home-world ownership, naming identity, sessions, login/logout, disconnect recovery, world transfer, persisted gameplay state, transactional persistence, deletion/recovery, persistence-neutral gameplay boundaries, relational database direction and migration from the current JSON persistence prototype  
-**Last updated:** 2026-10-26
+**Last updated:** 2026-10-28
 
 ---
 
@@ -72,9 +72,15 @@ This principle governs Health, resources, cooldowns, auras, death state, invento
 
 **One persistent world is simulated by one World Server process on one physical machine, including every map and instance in that world.** World Servers connect to a separate Master Server; they never distribute their world simulation to other machines.
 
-The **Master Server** is the global authority for account and character identities, durable roster/home-world data, authentication, one-account/one-session ownership, persistent world registration and inter-world transfer coordination. Its server-owned persistence boundary governs access to the central relational database. It is not authoritative for live movement, combat, NPC/AI execution or any world simulation tick.
+The **Master Server** is the global authority for account and character identities, durable roster/home-world data, persistent world registration, durable persistence coordination, one-account/one-session ownership and inter-world transfer coordination. Its server-owned persistence boundary governs access to the central relational database. It is not authoritative for live movement, combat, NPC/AI execution or any world simulation tick.
 
-Each **World Server** owns its world's live authoritative actors and gameplay state. It loads and commits durable character changes through the approved central persistence boundary without allowing direct gameplay/ECS code to depend on SQL or block the simulation tick. The exact inter-server protocol, transport and operational placement of database services remain implementation details, but a world-local JSON file or process-local account/session dictionary cannot become the production global authority.
+Each **World Server** owns its world's live authoritative actors and the selected character's live working gameplay state while that character is admitted there. Normal movement, combat, Health/resource changes, runtime cooldown/aura progression and other simulation work remain local to the World Server and do not round-trip through the Master Server or database on every change.
+
+The World Server loads durable character state at admission, maintains the live working copy, checkpoints lower-risk mutable state periodically and at important boundaries, and commits high-value ownership/progression changes through explicit Master-owned transactions. PostgreSQL stores the latest committed durable recovery/ownership state; it is not the live simulation store.
+
+A Master-issued character persistence lease binds the current registered `WorldID + WorldServerRunID` to the CharacterID allowed to write durable state. A stale World Server, released lease or stale character revision must not overwrite newer durable state. Stage 1.8 later binds this persistence ownership mechanism into the complete account gameplay-session/admission model rather than creating a competing authority.
+
+A world-local JSON file or process-local account/session dictionary cannot become the production global durable authority.
 
 ---
 
@@ -842,7 +848,7 @@ Lower-risk continuous state may be checkpointed appropriately, such as:
 - action-bar/UI-owned persistent configuration;
 - other high-frequency state.
 
-Checkpoint frequency is an implementation/operations decision, but must be sufficient to make crash rollback acceptable and must not replace transactions for high-value ownership changes.
+The Stage 1.7 baseline checkpoint interval is **30 seconds**, plus the important save boundaries below. This is a crash-recovery policy rather than a performance target and may later become centrally configurable. Checkpointing must not replace transactions for high-value ownership changes.
 
 ---
 
@@ -955,7 +961,7 @@ which uses:
 
 Ninth Age should follow this architectural separation and relational approach.
 
-Exact package/runtime versions must remain compatible with the chosen Unity/headless-server environment.
+The Stage 1.7 implementation baseline is PostgreSQL 18, Entity Framework Core 10.0.13 and Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 in the separate .NET 10 Master Server repository. Unity does not reference EF Core/Npgsql; it talks to the Master through the approved server-to-server contract.
 
 ---
 
@@ -975,9 +981,21 @@ ORM / SQL access layer
 Central Relational SQL Database
 ```
 
-World Server processes must not each create their own independent account/character store. Central durable ownership, transactional concurrency and one-account/one-session enforcement apply across all worlds.
+World Server processes must not each create their own independent account/character store. Central durable ownership and transactional concurrency apply across all worlds. The World Server may hold the live in-memory working copy for an admitted character, but that working copy does not become an independent durable database.
 
-Gameplay components should not scatter direct database queries throughout:
+The Stage 1.7 service path is:
+
+```text
+World Server live character
+        ↓ HTTP(S)/JSON
+Master persistence application service
+        ↓
+NinthAge.Persistence / EF Core / Npgsql
+        ↓
+PostgreSQL durable state
+```
+
+The Master service validates the registered World Server and active character persistence lease before accepting a mutation. Gameplay components should not scatter direct database or HTTP queries throughout:
 
 - PlayerActor;
 - inventory;
@@ -1125,20 +1143,24 @@ Content/definition migration and client/server compatibility remain shared conce
 
 The current `player_data.json` data must not simply be discarded when the SQL persistence implementation replaces it.
 
-An implementation migration plan must:
+Stage 1.7 uses an **explicit one-time importer**, never an implicit startup conversion. The importer requires an explicit source file and target durable HomeWorldID.
+
+It must:
 
 1. read the existing PlayerAccountData / CharacterData JSON format;
 2. validate source records;
-3. generate/retain stable account and character identities;
-4. split account/character collections into relational entities;
-5. preserve inventory/item identities where valid;
-6. preserve progression state;
-7. preserve current persisted resources;
-8. report invalid/unmigratable records explicitly;
-9. verify the resulting SQL state;
-10. avoid re-importing the same source data multiple times.
+3. generate one stable AccountID for a legacy account on first import and record that mapping;
+4. retain every valid, nonempty, unique legacy character GUID as CharacterID;
+5. reject an invalid/colliding character GUID unless an explicit migration mapping resolves it;
+6. convert an existing single Name to FirstName/LastName only when it can be parsed unambiguously into two valid fields; otherwise require an explicit name mapping rather than inventing a surname;
+7. split account/character collections into relational entities;
+8. preserve inventory/item identities where valid;
+9. preserve progression and saved resource state;
+10. compute/record import source identity so re-import cannot duplicate an account, character or item;
+11. import transactionally per account;
+12. report invalid/unmigratable records explicitly.
 
-The exact one-time migration tooling belongs to implementation planning.
+Password/authentication data remains part of the temporary Stage 1.7 authentication bridge and is replaced by Stage 1.8; the general persistence API never exposes credential hashes/salts.
 
 ---
 
@@ -1378,6 +1400,12 @@ Correctness must not depend on:
 
 Use database transactions, constraints and appropriate concurrency controls.
 
+Stage 1.7 uses an application-visible signed 64-bit `Revision` on mutable account/character aggregates. Character load/lease acquisition returns the current revision; successful durable mutation increments it; stale expected revisions fail explicitly. PostgreSQL `xmin` is not exposed as the public concurrency contract.
+
+Retryable high-value mutations also carry an immutable `OperationID`. The Master records the completed operation result so an ambiguous/retried request cannot apply the same ownership/progression transaction twice.
+
+A character persistence lease is additionally bound to AccountID, CharacterID, WorldID and WorldServerRunID. Only the currently registered World Server run holding the active lease may write that character.
+
 ---
 
 ## 60. Failure Behaviour
@@ -1421,7 +1449,7 @@ The following are locked:
 1. Accounts have immutable AccountIDs.
 2. Characters have immutable globally unique CharacterIDs.
 3. CharacterIDs are never reused.
-4. Accounts have 12 character slots.
+4. Accounts have 12 active character slots; soft-deleted characters do not consume an active slot, and restoration requires a free active slot.
 5. HomeWorldID is account-owned.
 6. Characters inherit the account home world.
 7. Character names consist of First Name + Last Name.
@@ -1452,7 +1480,7 @@ The following are locked:
 32. Persistent gameplay state is server-authoritative.
 33. Production persistence moves away from whole-file JSON.
 34. Production persistence uses a relational SQL-backed architecture.
-35. PostgreSQL + EF-Core-style relational persistence from `FrontierDev/webrpgapp` is the implementation reference direction.
+35. Production persistence uses PostgreSQL 18 with EF Core 10 / Npgsql in the separate Master Server; Unity does not reference the ORM/database provider.
 36. Persistent schema evolution uses explicit migrations.
 37. Stable authored definition IDs, not Unity object references, form the durable content contract.
 38. Missing critical definitions fail safe rather than silently substituting content.
@@ -1462,14 +1490,22 @@ The following are locked:
 42. A separate Master Server centrally owns account/character identity, durable persistence authority and one-account/one-session coordination across World Servers.
 43. World Server gameplay simulation remains local; the Master Server does not simulate maps, instances, actors, AI or combat.
 44. World admission and cross-world transfer require Master Server authorisation and preserve character identity/state without concurrent authoritative actors.
+45. While online, the admitted World Server owns the live character working state; the Master/database are not on the per-tick gameplay hot path.
+46. PostgreSQL stores committed durable recovery/ownership state rather than the live simulation state.
+47. Stage 1.7 World Server persistence uses HTTP(S)/JSON contracts and authenticated Master endpoints.
+48. One active character persistence lease binds CharacterID writes to the current registered WorldID + WorldServerRunID.
+49. Lower-risk character state checkpoints every 30 seconds by default and at important save boundaries; high-value ownership/progression changes commit transactionally at the operation boundary.
+50. Retryable high-value persistence mutations use immutable OperationIDs and idempotent Master-side receipts.
+51. Mutable durable account/character aggregates use explicit signed 64-bit revisions rather than exposing PostgreSQL-internal concurrency tokens.
+52. Character names use application-owned Unicode NFKC/FormKC normalization plus invariant uppercase comparison values for the global first+last uniqueness constraint.
+53. Legacy JSON import is explicit, idempotent and transactional per account; invalid identity/name records are not silently repaired.
+54. The Stage 1.7 local credential path is temporary authentication compatibility only; durable AccountID/roster/character authority is Master/PostgreSQL-owned and final authentication moves to Stage 1.8.
 
 ---
 
 ## 63. Open / Deferred Details
 
-The architecture is ready for implementation planning.
-
-The remaining details are not blockers to this PDD.
+The Stage 1.7 persistence architecture is ready for implementation planning. The remaining product/operations details below do not change the approved Stage 1.7 durable-state boundary.
 
 ### 63.1 Ordinary logout delay
 
@@ -1481,34 +1517,15 @@ Exact recent-hostile-damage duration used for logout/transfer blocking.
 
 ### 63.3 Duplicate-login UX
 
-Whether a fresh second login:
+Whether a fresh second login rejects or explicitly replaces the old session remains a Stage 1.8 decision. It must never allow both simultaneously.
 
-- rejects; or
-- explicitly replaces the old session.
+### 63.4 Individual resource offline formulas
 
-It must never allow both simultaneously.
+The persistence system supports explicit `Unchanged`, `Regenerate`, `Decay` and `Reset` policies. Which policy/rates individual class resources use remains owned by their gameplay definitions.
 
-### 63.4 Soft-deleted slot accounting
+### 63.5 Database hosting/topology
 
-Whether a soft-deleted character continues consuming a visible slot, or restoration requires a free active slot.
-
-The 12-active-character maximum remains authoritative.
-
-### 63.5 Individual resource offline formulas
-
-Defined by resource/class design.
-
-### 63.6 Checkpoint cadence
-
-Exact persistence interval / crash recovery objective.
-
-### 63.7 Exact SQL schema decomposition
-
-The entity domains are defined, but table boundaries/names may change during architecture work.
-
-### 63.8 Database hosting/topology
-
-Single-node versus replicated/managed PostgreSQL and operational backup strategy belong to infrastructure design.
+Single-node versus replicated/managed PostgreSQL, backups, disaster recovery and production secret rotation remain later infrastructure/operations decisions. They must not change the logical durable-state and transaction contracts defined here.
 
 ---
 
