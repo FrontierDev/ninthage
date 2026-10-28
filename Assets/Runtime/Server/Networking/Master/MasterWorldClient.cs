@@ -334,12 +334,15 @@ namespace Game.Server.Networking.Master
 
             bool isHttp = string.Equals(masterBaseAddress.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase);
             bool isHttps = string.Equals(masterBaseAddress.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
-            if ((!development && !isHttps) || (development && !isHttp && !isHttps))
+            if (!isHttp && !isHttps)
+            {
+                throw new InvalidOperationException("NINTHAGE_MASTER_URL must use http or https.");
+            }
+
+            if (isHttp && !masterBaseAddress.IsLoopback)
             {
                 throw new InvalidOperationException(
-                    development
-                        ? "NINTHAGE_MASTER_URL must use http or https in Development."
-                        : "NINTHAGE_MASTER_URL must use https outside Development.");
+                    "NINTHAGE_MASTER_URL must use https unless it targets a loopback address.");
             }
 
             if (!masterBaseAddress.AbsolutePath.EndsWith("/", StringComparison.Ordinal))
