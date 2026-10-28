@@ -732,24 +732,19 @@ represent the same name for uniqueness purposes.
 
 ## 43. Allowed Name Characters
 
-Names should support the setting's orthography rather than impose English-only ASCII assumptions.
+Names support the setting's orthography rather than imposing English-only ASCII assumptions.
 
-At minimum the system should be able to support:
+The Stage 1.7 server-side name contract is:
 
-- letters;
-- appropriate apostrophes;
-- appropriate hyphens;
-- valid setting/language characters required by authored cultures.
+- FirstName and LastName are each measured as **2–12 Unicode text elements**, not UTF-16 code units;
+- Unicode letters and the combining marks required by those letters are allowed;
+- the approved punctuation forms are apostrophe (`'` / `’`) and hyphen (`-`);
+- digits, control characters, whitespace inside either field, leading/trailing punctuation and repeated punctuation are rejected;
+- valid display capitalisation is preserved separately;
+- uniqueness comparison uses application-owned Unicode **NFKC / FormKC** normalization followed by invariant uppercase;
+- the normalized FirstName + LastName pair is stored and constrained uniquely by the persistence layer.
 
-Reject:
-
-- digits;
-- control characters;
-- leading/trailing punctuation;
-- repeated/abusive punctuation patterns;
-- excessive/embedded whitespace where not explicitly supported.
-
-The final Unicode/normalization implementation belongs to technical validation.
+Database collation alone is not the character-name game rule.
 
 ---
 
@@ -962,11 +957,11 @@ The Account/Persistence PDD defines the 30-day soft-deletion window.
 
 ## 57. Restoration Slot Rule
 
-Restoration must not produce more than 12 active characters.
+Soft-deleted characters do **not** consume one of the 12 active character slots.
 
-If no active slot is available, the restoration UI must explain why restoration cannot currently complete.
+Restoration must not produce more than 12 active characters. If no active slot is available, the restoration UI must explain why restoration cannot currently complete.
 
-The underlying restored character retains its original CharacterID.
+The underlying restored character retains its original CharacterID and its reserved full name throughout the 30-day recovery window.
 
 ---
 
@@ -1309,11 +1304,13 @@ The following are locked:
 33. Race change is not an ordinary supported service.
 34. Class change is not an ordinary supported service.
 35. Rename is supported while preserving CharacterID.
-36. Character selection supports all 12 account slots.
-37. Soft-deleted characters use a separate restoration view.
-38. Character appearance persists through logout/transfer/restart/deletion restoration.
-39. Race and class are persistent server-owned identity definition IDs.
-40. Creation is server-authoritative and atomic.
+36. Character selection supports all 12 active account slots.
+37. Soft-deleted characters use a separate restoration view and do not consume an active slot.
+38. Restoration requires a free active slot and preserves CharacterID/name reservation.
+39. Character appearance persists through logout/transfer/restart/deletion restoration.
+40. Race and class are persistent server-owned identity definition IDs.
+41. Creation is server-authoritative and atomic.
+42. Character-name uniqueness uses the Stage 1.7 application normalization contract rather than database collation alone.
 
 ---
 
