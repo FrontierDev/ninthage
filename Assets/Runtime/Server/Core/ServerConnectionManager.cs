@@ -781,15 +781,22 @@ namespace Game.Server.Core
                 if (IsDisconnectReleaseStopping())
                     yield break;
 
+                coordinator = null;
+                bool coordinatorAcquired = false;
                 try
                 {
                     coordinator = ServerInitialization.PersistenceCoordinator;
+                    coordinatorAcquired = true;
                 }
                 catch (Exception exception)
                 {
                     Debug.Warning(
                         $"Final checkpoint release for character {characterID} is waiting for persistence: "
                         + exception.Message);
+                }
+
+                if (!coordinatorAcquired)
+                {
                     yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
                     continue;
                 }
@@ -803,15 +810,22 @@ namespace Game.Server.Core
                 }
 
                 Task flushTask;
+                bool flushStarted = false;
                 try
                 {
                     flushTask = coordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
+                    flushStarted = true;
                 }
                 catch (Exception exception)
                 {
                     Debug.Warning(
                         $"Final checkpoint flush for character {characterID} could not start: "
                         + exception.Message);
+                    flushTask = null;
+                }
+
+                if (!flushStarted)
+                {
                     yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
                     continue;
                 }
@@ -819,15 +833,21 @@ namespace Game.Server.Core
                 while (!flushTask.IsCompleted)
                     yield return null;
 
+                bool flushSucceeded = false;
                 try
                 {
                     flushTask.GetAwaiter().GetResult();
+                    flushSucceeded = true;
                 }
                 catch (Exception exception)
                 {
                     Debug.Warning(
                         $"Final checkpoint flush for character {characterID} failed: "
                         + exception.Message);
+                }
+
+                if (!flushSucceeded)
+                {
                     yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
                     continue;
                 }

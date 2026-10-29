@@ -415,127 +415,156 @@ namespace Game.Server.Services
         {
             bool succeeded = false;
             string failureReason = null;
+            Task flushTask = null;
             try
             {
-                if (!ServerConnectionManager.Instance.TryGetAccountContext(
-                    playerID,
-                    out ConnectedAccountContext accountContext))
+                bool preparationSucceeded = false;
+                ConnectedAccountContext accountContext = null;
+                long expectedRevision = 0;
+                do
                 {
-                    failureReason = "the authenticated account context is unavailable";
-                    yield break;
-                }
+                    try
+                    {
+                        if (!ServerConnectionManager.Instance.TryGetAccountContext(
+                            playerID,
+                            out accountContext))
+                        {
+                            failureReason = "the authenticated account context is unavailable";
+                            break;
+                        }
 
-                if (!IsAdmissionStillValid(
-                    playerID,
-                    characterID,
-                    accountContext,
-                    coordinator,
-                    worldManager,
-                    expectedPublicContext,
-                    out failureReason))
-                {
-                    yield break;
-                }
+                        if (!IsAdmissionStillValid(
+                            playerID,
+                            characterID,
+                            accountContext,
+                            coordinator,
+                            worldManager,
+                            expectedPublicContext,
+                            out failureReason))
+                        {
+                            break;
+                        }
 
-                if (!coordinator.TryGetCharacterCheckpointSettlement(
-                    characterID,
-                    out Guid leasedAccountID,
-                    out long expectedRevision,
-                    out bool hasPendingCheckpoint,
-                    out MasterPersistenceProtocol.PersistenceResult? blockingResult))
-                {
-                    failureReason = "the acquired character lease state is unavailable";
-                    yield break;
-                }
-                if (leasedAccountID != accountID)
-                {
-                    failureReason = "the acquired character lease account does not match admission";
-                    yield break;
-                }
-                if (hasPendingCheckpoint || blockingResult.HasValue)
-                {
-                    failureReason = "the acquired character lease is not clean for relocation";
-                    yield break;
-                }
-                if (expectedRevision == long.MaxValue)
-                {
-                    failureReason = "the acquired character revision cannot advance";
-                    yield break;
-                }
+                        if (!coordinator.TryGetCharacterCheckpointSettlement(
+                            characterID,
+                            out Guid leasedAccountID,
+                            out expectedRevision,
+                            out bool hasPendingCheckpoint,
+                            out MasterPersistenceProtocol.PersistenceResult? blockingResult))
+                        {
+                            failureReason = "the acquired character lease state is unavailable";
+                            break;
+                        }
+                        if (leasedAccountID != accountID)
+                        {
+                            failureReason = "the acquired character lease account does not match admission";
+                            break;
+                        }
+                        if (hasPendingCheckpoint || blockingResult.HasValue)
+                        {
+                            failureReason = "the acquired character lease is not clean for relocation";
+                            break;
+                        }
+                        if (expectedRevision == long.MaxValue)
+                        {
+                            failureReason = "the acquired character revision cannot advance";
+                            break;
+                        }
 
-                ServerTimeAuthority timeAuthority = ServerInitialization.TimeAuthority;
-                if (timeAuthority == null)
-                {
-                    failureReason = "the server time authority is unavailable";
-                    yield break;
-                }
+                        ServerTimeAuthority timeAuthority = ServerInitialization.TimeAuthority;
+                        if (timeAuthority == null)
+                        {
+                            failureReason = "the server time authority is unavailable";
+                            break;
+                        }
 
-                ServerUtcObservation observation = timeAuthority.ReadObservation();
-                WorldPersistenceCheckpoint.WorldStateSnapshot worldState =
-                    new(
-                        candidate.EntryLocation.Context.MapID,
-                        null,
-                        candidate.EntryLocation.Position.x,
-                        candidate.EntryLocation.Position.y,
-                        candidate.EntryLocation.Position.z,
-                        candidate.EntryLocation.Facing.x,
-                        candidate.EntryLocation.Facing.y,
-                        candidate.EntryLocation.Facing.z,
-                        candidate.EntryLocation.Facing.w,
-                        safeReturnLocationID,
-                        observation.UtcInstant);
-                WorldPersistenceCheckpoint checkpoint = new(
-                    worldState,
-                    Array.Empty<WorldPersistenceCheckpoint.Resource>(),
-                    null);
-                MasterPersistenceProtocol.PersistenceResult queueResult =
-                    coordinator.QueueCharacterCheckpoint(characterID, checkpoint);
-                if (queueResult != MasterPersistenceProtocol.PersistenceResult.Accepted)
-                {
-                    failureReason = $"checkpoint queue returned {queueResult}";
-                    yield break;
-                }
+                        ServerUtcObservation observation = timeAuthority.ReadObservation();
+                        WorldPersistenceCheckpoint.WorldStateSnapshot worldState =
+                            new(
+                                candidate.EntryLocation.Context.MapID,
+                                null,
+                                candidate.EntryLocation.Position.x,
+                                candidate.EntryLocation.Position.y,
+                                candidate.EntryLocation.Position.z,
+                                candidate.EntryLocation.Facing.x,
+                                candidate.EntryLocation.Facing.y,
+                                candidate.EntryLocation.Facing.z,
+                                candidate.EntryLocation.Facing.w,
+                                safeReturnLocationID,
+                                observation.UtcInstant);
+                        WorldPersistenceCheckpoint checkpoint = new(
+                            worldState,
+                            Array.Empty<WorldPersistenceCheckpoint.Resource>(),
+                            null);
+                        MasterPersistenceProtocol.PersistenceResult queueResult =
+                            coordinator.QueueCharacterCheckpoint(characterID, checkpoint);
+                        if (queueResult != MasterPersistenceProtocol.PersistenceResult.Accepted)
+                        {
+                            failureReason = $"checkpoint queue returned {queueResult}";
+                            break;
+                        }
 
-                Task flushTask = coordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
+                        flushTask = coordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
+                        preparationSucceeded = true;
+                    }
+                    catch (Exception exception)
+                    {
+                        failureReason = exception.Message;
+                    }
+                }
+                while (false);
+
+                if (!preparationSucceeded)
+                    yield break;
+
                 while (!flushTask.IsCompleted)
                     yield return null;
-                flushTask.GetAwaiter().GetResult();
 
-                if (!IsAdmissionStillValid(
-                    playerID,
-                    characterID,
-                    accountContext,
-                    coordinator,
-                    worldManager,
-                    expectedPublicContext,
-                    out failureReason))
+                bool settlementSucceeded = false;
+                try
                 {
-                    yield break;
+                    flushTask.GetAwaiter().GetResult();
+
+                    if (!IsAdmissionStillValid(
+                        playerID,
+                        characterID,
+                        accountContext,
+                        coordinator,
+                        worldManager,
+                        expectedPublicContext,
+                        out failureReason))
+                    {
+                        settlementSucceeded = false;
+                    }
+                    else if (!coordinator.TryGetCharacterCheckpointSettlement(
+                        characterID,
+                        out Guid settledAccountID,
+                        out long settledRevision,
+                        out bool hasPendingAfterFlush,
+                        out MasterPersistenceProtocol.PersistenceResult? blockingAfterFlush))
+                    {
+                        failureReason = "checkpoint settlement state is unavailable";
+                    }
+                    else if (settledAccountID != accountID
+                        || settledRevision != expectedRevision + 1
+                        || hasPendingAfterFlush
+                        || blockingAfterFlush.HasValue)
+                    {
+                        failureReason = "checkpoint settlement was not an accepted single revision advance";
+                    }
+                    else
+                    {
+                        succeeded = true;
+                        settlementSucceeded = true;
+                    }
                 }
-                if (!coordinator.TryGetCharacterCheckpointSettlement(
-                    characterID,
-                    out Guid settledAccountID,
-                    out long settledRevision,
-                    out bool hasPendingAfterFlush,
-                    out MasterPersistenceProtocol.PersistenceResult? blockingAfterFlush))
+                catch (Exception exception)
                 {
-                    failureReason = "checkpoint settlement state is unavailable";
-                    yield break;
-                }
-                if (settledAccountID != accountID
-                    || settledRevision != expectedRevision + 1
-                    || hasPendingAfterFlush
-                    || blockingAfterFlush.HasValue)
-                {
-                    failureReason = "checkpoint settlement was not an accepted single revision advance";
-                    yield break;
+                    failureReason = exception.Message;
                 }
 
-                succeeded = true;
-            }
-            catch (Exception exception)
-            {
-                failureReason = exception.Message;
+                if (!settlementSucceeded)
+                    yield break;
             }
             finally
             {

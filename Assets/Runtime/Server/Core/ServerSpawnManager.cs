@@ -11,6 +11,7 @@ using PurrNet.Modules;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Entities.UniversalDelegates;

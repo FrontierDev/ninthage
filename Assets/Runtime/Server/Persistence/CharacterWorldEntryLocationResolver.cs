@@ -1,3 +1,4 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Core;
 using Game.Server.Networking.Master;
 using Game.Shared.Data;
