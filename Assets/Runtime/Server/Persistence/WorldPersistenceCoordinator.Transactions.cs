@@ -11,35 +11,6 @@ namespace Game.Server.Persistence
 
         private int _pendingPersistenceTransactionCount;
 
-        /// <summary>Creates a temporary account identity with one retry-safe operation ID.</summary>
-        internal Task<MasterPersistenceProtocol.AccountIdentityResponse> CreateAccountAsync(
-            string legacyUsername,
-            CancellationToken cancellationToken)
-        {
-            if (string.IsNullOrEmpty(legacyUsername))
-                throw new ArgumentException("A nonempty legacy username is required.", nameof(legacyUsername));
-            if (!TryAdmitTransaction())
-                return Task.FromResult(CreateUnavailableAccountResponse());
-
-            try
-            {
-                Guid operationID = GenerateOperationID();
-                MasterPersistenceProtocol.AccountCreateRequest request = new()
-                {
-                    WorldID = WorldID,
-                    WorldServerRunID = WorldServerRunID,
-                    OperationID = operationID,
-                    LegacyUsername = legacyUsername
-                };
-                return CreateAccountCoreAsync(request, cancellationToken);
-            }
-            catch
-            {
-                CompleteTransaction();
-                throw;
-            }
-        }
-
         /// <summary>Creates a durable character with one retry-safe operation ID.</summary>
         internal Task<MasterPersistenceProtocol.CharacterMutationResponse> CreateCharacterAsync(
             CharacterCreationPersistenceCommand command,
@@ -141,24 +112,6 @@ namespace Game.Server.Persistence
             {
                 CompleteTransaction();
                 throw;
-            }
-        }
-
-        private async Task<MasterPersistenceProtocol.AccountIdentityResponse> CreateAccountCoreAsync(
-            MasterPersistenceProtocol.AccountCreateRequest request,
-            CancellationToken cancellationToken)
-        {
-            try
-            {
-                return await ExecuteWithRetryAsync(
-                    token => _client.CreateAccountAsync(request, token),
-                    response => response.Result,
-                    CreateUnavailableAccountResponse,
-                    cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                CompleteTransaction();
             }
         }
 

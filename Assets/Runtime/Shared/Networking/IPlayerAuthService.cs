@@ -1,3 +1,6 @@
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace Game.Shared.Networking
 {
     /// <summary>
@@ -8,11 +11,9 @@ namespace Game.Shared.Networking
     public interface IPlayerAuthService
     {
         /// <summary>
-        /// Validates the supplied credentials against the player database.
-        /// Creates a new account if the username does not yet exist.
-        /// Enqueues the username and isNewPlayer flag for retrieval by the server after onPlayerJoined fires.
+        /// Validates the supplied credentials against the authoritative account service.
         /// </summary>
-        bool ValidateCredentials(string username, string password, out bool isNewPlayer);
+        Task<bool> ValidateCredentialsAsync(string username, string password, CancellationToken cancellationToken);
 
         /// <summary>Records a validated connection's username for unauthentication lookup.</summary>
         void TrackPendingConnection(object connection, string username);
@@ -23,10 +24,5 @@ namespace Game.Shared.Networking
         /// <summary>Dequeues the next validated username. Returns "Unknown" if the queue is empty.</summary>
         string GetNextValidatedUsername();
 
-        /// <summary>Dequeues whether the next player is new. Returns false if the queue is empty.</summary>
-        bool GetNextPlayerIsNew();
-
-        /// <summary>Enqueues the isNewPlayer flag after a successful validation, paired with TrackPendingConnection.</summary>
-        void EnqueueNewPlayerFlag(bool isNewPlayer);
     }
 }

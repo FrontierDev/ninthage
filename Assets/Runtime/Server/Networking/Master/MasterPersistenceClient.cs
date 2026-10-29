@@ -136,6 +136,7 @@ namespace Game.Server.Networking.Master
                 MasterPersistenceProtocol.PersistenceResult.Accepted => HttpStatusCode.OK,
                 MasterPersistenceProtocol.PersistenceResult.InvalidRequest => HttpStatusCode.BadRequest,
                 MasterPersistenceProtocol.PersistenceResult.Unauthorized => HttpStatusCode.Unauthorized,
+                MasterPersistenceProtocol.PersistenceResult.InvalidCredentials => HttpStatusCode.Forbidden,
                 MasterPersistenceProtocol.PersistenceResult.WorldNotFound => HttpStatusCode.NotFound,
                 MasterPersistenceProtocol.PersistenceResult.AccountNotFound => HttpStatusCode.NotFound,
                 MasterPersistenceProtocol.PersistenceResult.CharacterNotFound => HttpStatusCode.NotFound,

@@ -49,7 +49,6 @@ namespace Game.Server.Core
 
         private static MonoBehaviour _host;
         private static GameObject _networkManagerObject;
-        private static bool _forceCleanServer;
         private static string _launchWorldName;
         private static bool _profilingRequested;
         private static Coroutine _initializationCoroutine;
@@ -693,6 +692,8 @@ namespace Game.Server.Core
 
         private static void CancelAndDisposePersistenceStateSynchronously()
         {
+            Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+
             if (_worldPersistenceCoordinator != null)
                 _worldPersistenceCoordinator.StopAcceptingWork();
 
@@ -833,13 +834,6 @@ namespace Game.Server.Core
             Game.Shared.GameConfigurationManager.Config.ValidateSpatialConfiguration();
 
             yield return null;
-
-            // Check whether the server should clear temporary authentication credentials on start.
-            _forceCleanServer = Game.Shared.GameConfigurationManager.Config.ClearPlayerDataOnStart;
-
-            if (_forceCleanServer)
-                Debug.Warning(
-                    " - Server is configured to clear temporary authentication credentials on start; legacy player data will be preserved.");
 
             Debug.Log(" ✓ Step 2: Game configuration loaded successfully.");
         }
@@ -1181,22 +1175,14 @@ namespace Game.Server.Core
 
         private static IEnumerator ServerInitializeAuthentication()
         {
-            Debug.Log(" - Step 7: Initializing temporary authentication...");
+            Debug.Log(" - Step 7: Initializing Master authentication...");
 
-            TemporaryCredentialStore.Initialize();
-
-            if (_forceCleanServer)
-            {
-                TemporaryCredentialStore.Clear();
-                Debug.Warning(
-                    " - Temporary authentication credentials were cleared; legacy player data was not modified.");
-            }
-
-            var authService = new PlayerAuthService();
+            WorldPersistenceCoordinator coordinator = PersistenceCoordinator;
+            var authService = new PlayerAuthService(coordinator);
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(authService);
 
             yield return null;
-            Debug.Log(" ✓ Step 7: Temporary authentication initialized successfully.");
+            Debug.Log(" ✓ Step 7: Master authentication initialized successfully.");
         }
 
         private static IEnumerator ServerLoadWorldScene()

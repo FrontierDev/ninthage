@@ -18,8 +18,8 @@ namespace Game.Server.Networking.Master
             public string LegacyUsername { get; set; }
         }
 
-        /// <summary>Requests idempotent creation of a temporary legacy account identity.</summary>
-        internal sealed class AccountCreateRequest
+        /// <summary>Requests authentication of an existing Master account.</summary>
+        internal sealed class AccountAuthenticateRequest
         {
             [JsonProperty("worldID")]
             public Guid WorldID { get; set; }
@@ -27,11 +27,18 @@ namespace Game.Server.Networking.Master
             [JsonProperty("worldServerRunID")]
             public Guid WorldServerRunID { get; set; }
 
-            [JsonProperty("operationID")]
-            public Guid OperationID { get; set; }
-
             [JsonProperty("legacyUsername")]
             public string LegacyUsername { get; set; }
+
+            [JsonProperty("password")]
+            public string Password { get; set; }
+        }
+
+        /// <summary>Wire response returned by Master account authentication.</summary>
+        internal sealed class AccountAuthenticateResponse
+        {
+            [JsonProperty("result")]
+            public PersistenceResult Result { get; set; }
         }
 
         /// <summary>Wire response containing the Master-owned account identity.</summary>

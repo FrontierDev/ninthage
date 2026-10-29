@@ -23,19 +23,19 @@ namespace Game.Server.Networking.Master
                 cancellationToken);
         }
 
-        /// <summary>Creates a temporary account identity through the Master Server.</summary>
-        internal Task<MasterPersistenceProtocol.AccountIdentityResponse> CreateAccountAsync(
-            MasterPersistenceProtocol.AccountCreateRequest request,
+        /// <summary>Authenticates an existing account through the Master Server.</summary>
+        internal Task<MasterPersistenceProtocol.AccountAuthenticateResponse> AuthenticateAccountAsync(
+            MasterPersistenceProtocol.AccountAuthenticateRequest request,
             CancellationToken cancellationToken)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
 
-            return PostAsync<MasterPersistenceProtocol.AccountIdentityResponse>(
-                MasterPersistenceProtocol.ACCOUNT_CREATE_PATH,
+            return PostAsync<MasterPersistenceProtocol.AccountAuthenticateResponse>(
+                MasterPersistenceProtocol.ACCOUNT_AUTHENTICATE_PATH,
                 request,
                 response => response.Result,
-                response => ValidateCreatedAccountResponse(response, request.WorldID),
+                ValidateAccountAuthenticationResponse,
                 cancellationToken);
         }
 
@@ -81,16 +81,13 @@ namespace Game.Server.Networking.Master
             }
         }
 
-        private static void ValidateCreatedAccountResponse(
-            MasterPersistenceProtocol.AccountIdentityResponse response,
-            Guid requestedWorldID)
+        private static void ValidateAccountAuthenticationResponse(
+            MasterPersistenceProtocol.AccountAuthenticateResponse response)
         {
-            ValidateAccountIdentityResponse(response);
-            if (response.Result == MasterPersistenceProtocol.PersistenceResult.Accepted
-                && response.HomeWorldID.Value != requestedWorldID)
-            {
-                throw new InvalidOperationException("The created Master account response had a different home world.");
-            }
+            if (response == null)
+                throw new InvalidOperationException("The Master account authentication response was null.");
+            if (!Enum.IsDefined(typeof(MasterPersistenceProtocol.PersistenceResult), response.Result))
+                throw new InvalidOperationException("The Master account authentication response has an unknown result.");
         }
 
         private static void ValidateCharacterRosterResponse(

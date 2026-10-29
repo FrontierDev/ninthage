@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using PurrNet.Authentication;
 using PurrNet.Transports;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Game.Shared.Networking
@@ -37,7 +38,7 @@ namespace Game.Shared.Networking
         #region Public API - Service Registration
         /// <summary>
         /// Registers the server-side auth service implementation.
-        /// Called by ServerInitialization (Step 7) after the player database is loaded.
+        /// Called by ServerInitialization (Step 7) after Master persistence is available.
         /// </summary>
         public static void SetAuthService(IPlayerAuthService authService) { _authService = authService; }
         #endregion
@@ -45,8 +46,6 @@ namespace Game.Shared.Networking
         #region Public API - Server Session (delegated to IPlayerAuthService)
         /// <summary>Gets the next username validated by the authentication service.</summary>
         public static string GetNextValidatedUsername() => _authService?.GetNextValidatedUsername() ?? "Unknown";
-        /// <summary>Gets whether the next validated player is new.</summary>
-        public static bool GetNextPlayerIsNew() => _authService?.GetNextPlayerIsNew() ?? false;
         #endregion
 
         #region Protected Overrides
@@ -66,30 +65,37 @@ namespace Game.Shared.Networking
         }
 
         /// <summary>
-        /// Server: Validate the client's credentials.
-        /// Delegates to the registered IPlayerAuthService; creates new accounts on first login.
+        /// Server: Validate the client's credentials through Master account authentication.
         /// </summary>
-        protected override Task<AuthenticationResponse> ValidateClientPayload(Connection connection, AuthenticationPayload payload)
+        protected override async Task<AuthenticationResponse> ValidateClientPayload(
+            Connection connection,
+            AuthenticationPayload payload)
         {
-            if (_authService == null)
+            IPlayerAuthService authService = _authService;
+            if (authService == null || !connection.isValid)
             {
-                Debug.Error("No IPlayerAuthService registered. Cannot validate credentials.");
-                return Task.FromResult(new AuthenticationResponse { success = false });
+                Debug.Error("No valid authentication service or connection is available. Cannot validate credentials.");
+                return new AuthenticationResponse { success = false };
             }
 
-            bool isValid = _authService.ValidateCredentials(payload.Username, payload.Password, out bool isNewPlayer);
+            bool isValid = await authService.ValidateCredentialsAsync(
+                payload.Username,
+                payload.Password,
+                CancellationToken.None);
 
-            if (isValid)
+            if (!isValid)
             {
-                _authService.TrackPendingConnection(connection, payload.Username);
-                _authService.EnqueueNewPlayerFlag(isNewPlayer);
+                Debug.Warning("Authentication failed for the supplied credentials.");
+                return new AuthenticationResponse { success = false };
             }
-            else
+            if (!ReferenceEquals(authService, _authService) || !connection.isValid)
             {
-                Debug.Warning($"✗ Authentication failed for: {payload.Username}");
+                Debug.Warning("Authentication completed after service teardown or connection loss.");
+                return new AuthenticationResponse { success = false };
             }
 
-            return Task.FromResult(new AuthenticationResponse { success = isValid });
+            authService.TrackPendingConnection(connection, payload.Username);
+            return new AuthenticationResponse { success = true };
         }
 
         /// <summary>

@@ -1,62 +1,72 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking.Master;
 using Game.Server.Persistence;
 using Game.Shared.Networking;
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Game.Server.Services
 {
     /// <summary>
     /// Server-side implementation of IPlayerAuthService.
-    /// Validates credentials against the temporary credential store.
-    /// Owns all server-side session state: pending connections and validated queues.
+    /// Validates credentials through Master and owns server-side pending authentication state.
     /// Registered with LoginAuthenticator during server initialization (Step 7).
     /// </summary>
     public class PlayerAuthService : IPlayerAuthService
     {
-        private readonly Queue<string> _validatedUsernamesQueue = new();
-        private readonly Queue<bool> _newPlayerQueue = new();
+        private readonly WorldPersistenceCoordinator _persistenceCoordinator;
+        private readonly Queue<PendingConnection> _validatedConnectionsQueue = new();
         private readonly Dictionary<object, string> _pendingConnections = new();
 
+        internal PlayerAuthService(WorldPersistenceCoordinator persistenceCoordinator)
+        {
+            _persistenceCoordinator = persistenceCoordinator
+                ?? throw new ArgumentNullException(nameof(persistenceCoordinator));
+        }
+
         /// <summary>
-        /// Validates the supplied credentials against the temporary store using PBKDF2-SHA256.
+        /// Validates the supplied credentials through the authoritative Master account service.
         /// </summary>
-        public bool ValidateCredentials(string username, string password, out bool isNewPlayer)
+        public async Task<bool> ValidateCredentialsAsync(
+            string username,
+            string password,
+            CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-            {
-                isNewPlayer = false;
                 return false;
-            }
 
-            if (TemporaryCredentialStore.TryGetCredential(
-                username,
-                out string passwordHash,
-                out string passwordSalt,
-                out _))
+            try
             {
-                isNewPlayer = false;
-                bool passwordMatch = VerifyPassword(password, passwordHash, passwordSalt);
-                if (!passwordMatch)
-                    Debug.Warning($"Password mismatch for existing player: {username}");
-                return passwordMatch;
-            }
-            else
-            {
-                isNewPlayer = true;
+                MasterPersistenceProtocol.AccountAuthenticateResponse response =
+                    await _persistenceCoordinator.AuthenticateAccountAsync(
+                        username,
+                        password,
+                        cancellationToken);
 
-                string salt = GenerateSalt();
-                string hash = HashPassword(password, salt);
+                if (response.Result == MasterPersistenceProtocol.PersistenceResult.Accepted)
+                    return true;
 
-                if (!TemporaryCredentialStore.TryCreateCredential(username, hash, salt))
+                if (response.Result == MasterPersistenceProtocol.PersistenceResult.InvalidCredentials)
                 {
-                    isNewPlayer = false;
+                    Debug.Warning($"Master rejected credentials for username '{username}'.");
                     return false;
                 }
 
-                Debug.Warning($"New temporary authentication credential created for: {username}.");
-                return true;
+                Debug.Error(
+                    $"Master account authentication for username '{username}' returned {response.Result}; authentication failed closed.");
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"Master account authentication was unavailable for username '{username}': {exception.Message}");
+                return false;
             }
         }
 
@@ -66,7 +76,7 @@ namespace Game.Server.Services
         public void TrackPendingConnection(object connection, string username)
         {
             _pendingConnections[connection] = username;
-            _validatedUsernamesQueue.Enqueue(username);
+            _validatedConnectionsQueue.Enqueue(new PendingConnection(connection, username));
         }
 
         /// <summary>Removes and returns the username associated with a pending connection.</summary>
@@ -87,48 +97,29 @@ namespace Game.Server.Services
         /// <returns>The next validated username, or <c>Unknown</c> when the queue is empty.</returns>
         public string GetNextValidatedUsername()
         {
-            return _validatedUsernamesQueue.Count > 0 ? _validatedUsernamesQueue.Dequeue() : "Unknown";
+            while (_validatedConnectionsQueue.Count > 0)
+            {
+                PendingConnection pendingConnection = _validatedConnectionsQueue.Dequeue();
+                if (_pendingConnections.TryGetValue(pendingConnection.Connection, out string username)
+                    && username == pendingConnection.Username)
+                {
+                    return username;
+                }
+            }
+
+            return "Unknown";
         }
 
-        /// <summary>Dequeues the new-player flag associated with the next validated login.</summary>
-        /// <returns>The queued flag, or <see langword="false"/> when the queue is empty.</returns>
-        public bool GetNextPlayerIsNew()
+        private readonly struct PendingConnection
         {
-            return _newPlayerQueue.Count > 0 && _newPlayerQueue.Dequeue();
-        }
+            public PendingConnection(object connection, string username)
+            {
+                Connection = connection;
+                Username = username;
+            }
 
-        /// <summary>Queues whether the next validated login belongs to a new player.</summary>
-        /// <param name="isNewPlayer">Whether the authenticated player is new.</param>
-        public void EnqueueNewPlayerFlag(bool isNewPlayer)
-        {
-            _newPlayerQueue.Enqueue(isNewPlayer);
-        }
-
-        private const int SALT_SIZE = 16;
-        private const int HASH_SIZE = 32;
-        private const int ITERATIONS = 100000;
-
-        private static string GenerateSalt()
-        {
-            var salt = new byte[SALT_SIZE];
-            using (var rng = RandomNumberGenerator.Create())
-                rng.GetBytes(salt);
-            return Convert.ToBase64String(salt);
-        }
-
-        private static string HashPassword(string password, string salt)
-        {
-            var saltBytes = Convert.FromBase64String(salt);
-            using (var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, ITERATIONS, HashAlgorithmName.SHA256))
-                return Convert.ToBase64String(pbkdf2.GetBytes(HASH_SIZE));
-        }
-
-        private static bool VerifyPassword(string password, string storedHash, string storedSalt)
-        {
-            var computedHash = HashPassword(password, storedSalt);
-            return CryptographicOperations.FixedTimeEquals(
-                Convert.FromBase64String(computedHash),
-                Convert.FromBase64String(storedHash));
+            public object Connection { get; }
+            public string Username { get; }
         }
     }
 }

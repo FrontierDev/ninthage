@@ -475,8 +475,7 @@ namespace Game.Server.Core
                 return;
 
             string username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
-            bool isNewPlayer = Game.Shared.Networking.LoginAuthenticator.GetNextPlayerIsNew();
-            StartCoroutine(InitializeAuthenticatedPlayer(playerID, username, isNewPlayer, isReconnect));
+            StartCoroutine(InitializeAuthenticatedPlayer(playerID, username, isReconnect));
         }
         private void OnPlayerLeft(PlayerID playerID, bool asServer)
         {
@@ -512,31 +511,11 @@ namespace Game.Server.Core
         private IEnumerator InitializeAuthenticatedPlayer(
             PlayerID playerID,
             string username,
-            bool isNewPlayer,
             bool isReconnect)
         {
             if (string.IsNullOrWhiteSpace(username) || username == "Unknown")
             {
                 Debug.Error($"Player {playerID} joined without a validated username; authentication failed closed.");
-                yield break;
-            }
-
-            bool masterProvisioningPending;
-            try
-            {
-                if (!TemporaryCredentialStore.TryGetCredential(
-                    username,
-                    out _,
-                    out _,
-                    out masterProvisioningPending))
-                {
-                    Debug.Error($"No temporary credential exists for authenticated username '{username}'. Authentication failed closed.");
-                    yield break;
-                }
-            }
-            catch (Exception exception)
-            {
-                Debug.Error($"Could not inspect temporary credential for '{username}': {exception.Message}");
                 yield break;
             }
 
@@ -588,93 +567,7 @@ namespace Game.Server.Core
                 yield break;
             }
 
-            if (accountResponse.Result == MasterPersistenceProtocol.PersistenceResult.AccountNotFound
-                && masterProvisioningPending)
-            {
-                Task<MasterPersistenceProtocol.AccountIdentityResponse> createTask;
-                try
-                {
-                    createTask = coordinator.CreateAccountAsync(username, CancellationToken.None);
-                }
-                catch (Exception exception)
-                {
-                    Debug.Error($"Could not create Master account for '{username}': {exception.Message}");
-                    yield break;
-                }
-
-                while (!createTask.IsCompleted)
-                    yield return null;
-
-                try
-                {
-                    accountResponse = createTask.GetAwaiter().GetResult();
-                }
-                catch (Exception exception)
-                {
-                    Debug.Error($"Master account creation failed for '{username}': {exception.Message}");
-                    yield break;
-                }
-
-                if (accountResponse == null
-                    || accountResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
-                {
-                    Debug.Error(
-                        $"Master account creation for '{username}' returned {accountResponse?.Result}. Authentication failed closed.");
-                    yield break;
-                }
-
-                try
-                {
-                    if (!TemporaryCredentialStore.MarkMasterProvisioned(username))
-                    {
-                        Debug.Error($"Temporary credential '{username}' disappeared while provisioning its Master account.");
-                        yield break;
-                    }
-                }
-                catch (Exception exception)
-                {
-                    Debug.Error($"Could not mark temporary credential '{username}' as provisioned: {exception.Message}");
-                    yield break;
-                }
-            }
-            else if (accountResponse.Result == MasterPersistenceProtocol.PersistenceResult.Accepted)
-            {
-                if (isNewPlayer)
-                {
-                    try
-                    {
-                        if (!TemporaryCredentialStore.RemoveCredential(username))
-                        {
-                            Debug.Error($"Temporary credential '{username}' disappeared after a durable account collision.");
-                            yield break;
-                        }
-                        Debug.Warning($"New-player credential '{username}' collided with an existing Master account; authentication failed closed.");
-                        yield break;
-                    }
-                    catch (Exception exception)
-                    {
-                        Debug.Error($"Could not remove colliding temporary credential '{username}': {exception.Message}");
-                        yield break;
-                    }
-                }
-                else if (masterProvisioningPending)
-                {
-                    try
-                    {
-                        if (!TemporaryCredentialStore.MarkMasterProvisioned(username))
-                        {
-                            Debug.Error($"Temporary credential '{username}' disappeared while finalizing Master provisioning.");
-                            yield break;
-                        }
-                    }
-                    catch (Exception exception)
-                    {
-                        Debug.Error($"Could not mark temporary credential '{username}' as provisioned: {exception.Message}");
-                        yield break;
-                    }
-                }
-            }
-            else
+            if (accountResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
             {
                 Debug.Error(
                     $"Master account resolution for '{username}' returned {accountResponse.Result}. Authentication failed closed.");

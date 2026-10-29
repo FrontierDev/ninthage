@@ -86,6 +86,29 @@ namespace Game.Server.Persistence
             return ResolveAccountCoreAsync(request, cancellationToken);
         }
 
+        /// <summary>Authenticates an existing account with the coordinator-owned world context.</summary>
+        internal Task<MasterPersistenceProtocol.AccountAuthenticateResponse> AuthenticateAccountAsync(
+            string legacyUsername,
+            string password,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(legacyUsername))
+                throw new ArgumentException("A nonempty legacy username is required.", nameof(legacyUsername));
+            if (string.IsNullOrEmpty(password))
+                throw new ArgumentException("A nonempty password is required.", nameof(password));
+            if (!TryStartOperation())
+                return Task.FromResult(CreateUnavailableAuthenticationResponse());
+
+            MasterPersistenceProtocol.AccountAuthenticateRequest request = new()
+            {
+                WorldID = WorldID,
+                WorldServerRunID = WorldServerRunID,
+                LegacyUsername = legacyUsername,
+                Password = password
+            };
+            return AuthenticateAccountCoreAsync(request, cancellationToken);
+        }
+
         /// <summary>Loads an account's character roster with the coordinator-owned world context.</summary>
         internal Task<MasterPersistenceProtocol.CharacterRosterResponse> GetCharacterRosterAsync(
             Guid accountID,
@@ -115,6 +138,24 @@ namespace Game.Server.Persistence
                     token => _client.ResolveAccountAsync(request, token),
                     response => response.Result,
                     CreateUnavailableAccountResponse,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CompleteOperation();
+            }
+        }
+
+        private async Task<MasterPersistenceProtocol.AccountAuthenticateResponse> AuthenticateAccountCoreAsync(
+            MasterPersistenceProtocol.AccountAuthenticateRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await ExecuteWithRetryAsync(
+                    token => _client.AuthenticateAccountAsync(request, token),
+                    response => response.Result,
+                    CreateUnavailableAuthenticationResponse,
                     cancellationToken).ConfigureAwait(false);
             }
             finally
@@ -218,6 +259,14 @@ namespace Game.Server.Persistence
         private static MasterPersistenceProtocol.AccountIdentityResponse CreateUnavailableAccountResponse()
         {
             return new MasterPersistenceProtocol.AccountIdentityResponse
+            {
+                Result = MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable
+            };
+        }
+
+        private static MasterPersistenceProtocol.AccountAuthenticateResponse CreateUnavailableAuthenticationResponse()
+        {
+            return new MasterPersistenceProtocol.AccountAuthenticateResponse
             {
                 Result = MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable
             };

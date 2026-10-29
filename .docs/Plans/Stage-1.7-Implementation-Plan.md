@@ -721,25 +721,26 @@ World Server load reconstructs a valid runtime aura; it does not restore obsolet
 
 ---
 
-## 18. Temporary Stage 1.7 authentication bridge
+## 18. Stage 1.7 Master account authentication boundary
 
-Final player authentication and one-account/one-gameplay-session authority remain Stage 1.8.
+Final player session coordination and one-account/one-gameplay-session authority remain Stage 1.8.
 
-Stage 1.7 therefore keeps the existing Unity credential check as a temporary compatibility path, but removes its authority over durable character state.
+Stage 1.7 authenticates against the Master-owned account service. The World Server does not create, import or locally provision credentials or account rows during login.
 
 The transition is:
 
-1. current `PlayerAuthService` validates the current username/password through a temporary local credential store;
-2. Stage 1.7 separates that credential-only role from `PlayerDatabase`: the compatibility store contains only username/password hash/salt and no character roster/state;
-3. after successful local authentication, the World Server resolves that username to the Master-owned `AccountID`;
-4. if this is a newly created temporary-auth account, the Master creates the Account row idempotently with `HomeWorldID` equal to the current registered WorldID;
-5. the Master supplies the durable roster/character state;
-6. `player_data.json` no longer owns or receives roster/character saves after cut-over;
-7. the local credential store is explicitly temporary and is removed/replaced by Stage 1.8 authentication.
+1. the World Server forwards the supplied username/password to the Master account-authentication route using the registered WorldID and WorldServerRunID;
+2. only an accepted Master authentication result admits the connection; invalid, unknown, disabled, unavailable or contradictory results fail closed;
+3. accounts are provisioned through the Master web administration flow before login, rather than by first login on the World Server;
+4. after authentication, the World Server resolves the username to the Master-owned `AccountID` and loads the Master-owned roster/character state;
+5. `player_data.json` and the historical temporary credential material are not runtime authentication or roster authority;
+6. final session ownership and cross-world/account coordination remain Stage 1.8 work.
 
-Password hashes/salts are not returned by the general persistence API and are not copied into character persistence DTOs.
+Password hashes/salts are never returned by the World persistence API or copied into character persistence DTOs.
 
-This bridge must not create a second durable AccountID authority. Username is only the temporary lookup key used to reach the Master-owned account row.
+The World Server has one durable AccountID authority: the Master. Username is only the credential lookup key used to reach that Master-owned account row.
+
+**PDD conflict requiring owner approval:** PDD §53 currently states that password/authentication data remains part of the temporary Stage 1.7 authentication bridge, and PDD invariant 54 states that the Stage 1.7 local credential path remains until Stage 1.8. This plan records the owner-directed Master #52 authentication cut-over; the PDD remains unchanged pending approval.
 
 ---
 
@@ -943,9 +944,9 @@ Repository: `ninthage`.
 
 Repositories: both.
 
-- split the current local authentication compatibility path away from `PlayerDatabase` so it stores credentials only;
-- resolve durable AccountID from the Master after local credential validation;
-- create new temporary-auth accounts idempotently with the current durable WorldID as HomeWorldID;
+- replace the local authentication compatibility path with request-scoped Master account authentication;
+- provision accounts through Master web administration; the World Server must not create accounts during login;
+- resolve durable AccountID from the Master after accepted Master credential validation;
 - load roster/character state from Master;
 - persist character creation transactionally;
 - stop `PlayerDatabase` from owning durable roster/character state.
@@ -1062,5 +1063,5 @@ Stage 1.7 is complete when:
 8. high-value current-domain ownership changes use idempotent atomic transactions;
 9. Health/resources/location and required persistent timed state restore without logout reset exploits;
 10. legacy JSON can be imported explicitly/idempotently and is no longer production character authority after cut-over;
-11. current authentication is clearly marked as the temporary Stage 1.7 bridge pending Stage 1.8;
+11. account provisioning and credential authority are Master-owned; the World Server only authenticates/resolves accounts, while final sessions remain Stage 1.8;
 12. no Stage 1.7 implementation requires regression benchmarking/testing work to proceed to Stage 1.8.
