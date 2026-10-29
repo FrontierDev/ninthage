@@ -42,6 +42,11 @@ namespace Game.Shared.Data
         public FactionDefinition DefaultPVPFaction => _defaultPVPFaction;
 
         [SerializeField]
+        private string _startingLocationID;
+        /// <summary>Gets the stable authored starting location ID.</summary>
+        public string StartingLocationID => _startingLocationID;
+
+        [SerializeField]
         [FormerlySerializedAs("startingReputations")]
         private List<PlayerStartingReputation> _startingReputations = new();
         /// <summary>Gets the starting reputation entries.</summary>
@@ -67,6 +72,20 @@ namespace Game.Shared.Data
         /// Indicates if this race is playable by the player.
         /// </summary>
         public bool IsPlayable => _isPlayable;
+
+        /// <inheritdoc />
+        public override bool IsValid()
+        {
+            if (!base.IsValid())
+                return false;
+            if (_isPlayable && string.IsNullOrWhiteSpace(_startingLocationID))
+            {
+                Debug.LogError($"[{GetType().Name}] Playable race '{DefinitionID}' has no StartingLocationID");
+                return false;
+            }
+
+            return true;
+        }
 
         protected override string AssetPrefix => "Race";
     }

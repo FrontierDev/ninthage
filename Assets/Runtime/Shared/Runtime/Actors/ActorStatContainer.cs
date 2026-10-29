@@ -77,6 +77,7 @@ namespace Game.Shared.Runtime.Actors
     {
         private Dictionary<string, StatInstance> _stats = new();
         private List<StatModifier> _modifiers = new();
+        private bool _initialStatRestoreActive;
 
         protected override void OnObserverAdded(PlayerID player)
         {
@@ -126,6 +127,30 @@ namespace Game.Shared.Runtime.Actors
         }
 
         #region Stat Management
+        /// <summary>Begins the server-only initial stat restore window.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside the server or more than once.</exception>
+        public void BeginInitialStatRestore()
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Initial stat restoration may only run on the server.");
+            if (_initialStatRestoreActive)
+                throw new InvalidOperationException("Initial stat restoration is already active.");
+
+            _initialStatRestoreActive = true;
+        }
+
+        /// <summary>Ends the server-only initial stat restore window.</summary>
+        /// <exception cref="InvalidOperationException">Thrown when called outside a matching restore window.</exception>
+        public void EndInitialStatRestore()
+        {
+            if (!NetworkManager.isServerStatic)
+                throw new InvalidOperationException("Initial stat restoration may only run on the server.");
+            if (!_initialStatRestoreActive)
+                throw new InvalidOperationException("Initial stat restoration is not active.");
+
+            _initialStatRestoreActive = false;
+        }
+
         public StatInstance GetStat(string statID)
         {
             if (_stats.TryGetValue(statID, out var stat))
@@ -145,7 +170,7 @@ namespace Game.Shared.Runtime.Actors
         {
             _stats[statID] = instance;
 
-            if (statID == "health" && instance.CurrentValue <= 0)
+            if (!_initialStatRestoreActive && statID == "health" && instance.CurrentValue <= 0)
             {
                 Actor actor = GetComponent<Actor>();
                 if (!actor.isDead)

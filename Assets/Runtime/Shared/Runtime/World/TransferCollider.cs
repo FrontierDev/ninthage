@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Game.Shared.Data;
 using UnityEngine;
 
 namespace Game.Shared.Runtime.World
@@ -12,6 +13,7 @@ namespace Game.Shared.Runtime.World
         private const float DEGENERATE_TRIANGLE_SQUARED = 1e-12f;
 
         [SerializeField] private List<string> _instanceSceneAddresses = new();
+        [SerializeField] private string _safeReturnLocationID;
 
         private MeshFilter _meshFilter;
         private Mesh _cachedMesh;
@@ -23,6 +25,9 @@ namespace Game.Shared.Runtime.World
 
         /// <summary>Gets the Addressable scenes to load for a private transfer instance.</summary>
         public IReadOnlyList<string> InstanceSceneAddresses => _instanceSceneAddresses;
+
+        /// <summary>Gets the authored public location used as this instance's safe return.</summary>
+        public string SafeReturnLocationID => _safeReturnLocationID;
 
         /// <summary>Identifies the direction in which an accepted movement segment crossed this plane.</summary>
         public enum CrossingDirection
@@ -44,6 +49,28 @@ namespace Game.Shared.Runtime.World
 
             if (_instanceSceneAddresses == null || _instanceSceneAddresses.Count == 0)
                 throw new InvalidOperationException("A TransferCollider requires at least one instance scene address.");
+
+            if (string.IsNullOrWhiteSpace(_safeReturnLocationID))
+                throw new InvalidOperationException("A TransferCollider requires a SafeReturnLocationID.");
+
+            WorldLocationDefinitionLibrary locationLibrary = WorldLocationDefinitionLibrary.Instance;
+            if (locationLibrary == null || !locationLibrary.ValidateLibrary())
+            {
+                throw new InvalidOperationException(
+                    "A TransferCollider requires a valid WorldLocationDefinitionLibrary.");
+            }
+
+            WorldLocationDefinition location = locationLibrary.GetDefinition(_safeReturnLocationID);
+            if (location == null)
+            {
+                throw new InvalidOperationException(
+                    $"TransferCollider SafeReturnLocationID '{_safeReturnLocationID}' was not found.");
+            }
+            if ((location.Purposes & WorldLocationPurpose.SafeReturn) == 0)
+            {
+                throw new InvalidOperationException(
+                    $"TransferCollider SafeReturnLocationID '{_safeReturnLocationID}' is not a SafeReturn location.");
+            }
 
             var uniqueAddresses = new HashSet<string>(StringComparer.Ordinal);
             foreach (string address in _instanceSceneAddresses)

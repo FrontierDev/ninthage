@@ -48,6 +48,18 @@ namespace Game.Server.Persistence
                 throw new ArgumentNullException(nameof(state));
             ValidateIdentity(state.CharacterID, state.FirstName, state.LastName, state.RaceDefinitionID,
                 state.ClassDefinitionID, state.FactionDefinitionID);
+            if (state.Experience < 0)
+                throw new InvalidOperationException("Character persistence state contains negative experience.");
+
+            HashSet<string> abilityIDs = new(StringComparer.Ordinal);
+            HashSet<Guid> itemInstanceIDs = new();
+            HashSet<int> inventorySlots = new();
+            HashSet<int> equipmentSlots = new();
+            HashSet<string> talentIDs = new(StringComparer.Ordinal);
+            HashSet<string> reputationIDs = new(StringComparer.Ordinal);
+            HashSet<string> questIDs = new(StringComparer.Ordinal);
+            HashSet<string> resourceIDs = new(StringComparer.Ordinal);
+            HashSet<int> weaponTypes = new();
 
             CharacterData characterData = new(
                 state.CharacterID.ToString("D"),
@@ -63,7 +75,9 @@ namespace Game.Server.Persistence
                 throw new InvalidOperationException("Character persistence state has no abilities array.");
             foreach (MasterPersistenceProtocol.CharacterAbilityState ability in state.Abilities)
             {
-                if (ability == null || string.IsNullOrWhiteSpace(ability.AbilityDefinitionID))
+                if (ability == null
+                    || string.IsNullOrWhiteSpace(ability.AbilityDefinitionID)
+                    || !abilityIDs.Add(ability.AbilityDefinitionID))
                     throw new InvalidOperationException("Character persistence state contains an invalid ability.");
                 characterData.KnownSpellIDs.Add(ability.AbilityDefinitionID);
             }
@@ -72,7 +86,12 @@ namespace Game.Server.Persistence
                 throw new InvalidOperationException("Character persistence state has no items array.");
             foreach (MasterPersistenceProtocol.CharacterItemState item in state.Items)
             {
-                if (item == null || item.ItemInstanceID == Guid.Empty || string.IsNullOrWhiteSpace(item.ItemDefinitionID))
+                if (item == null
+                    || item.ItemInstanceID == Guid.Empty
+                    || !itemInstanceIDs.Add(item.ItemInstanceID)
+                    || string.IsNullOrWhiteSpace(item.ItemDefinitionID)
+                    || item.SlotIndex < 0
+                    || item.StackSize <= 0)
                     throw new InvalidOperationException("Character persistence state contains an invalid item.");
                 if (item.ModificationIDs == null)
                     throw new InvalidOperationException("Character persistence state contains an item without modifications.");
@@ -88,6 +107,8 @@ namespace Game.Server.Persistence
                 switch (item.LocationKind)
                 {
                     case MasterPersistenceProtocol.CharacterItemLocationKind.Inventory:
+                        if (!inventorySlots.Add(item.SlotIndex))
+                            throw new InvalidOperationException("Character persistence state contains duplicate inventory slots.");
                         characterData.SavedInventory.Add(new SavedInventoryEntry
                         {
                             SlotIndex = item.SlotIndex,
@@ -100,6 +121,8 @@ namespace Game.Server.Persistence
                         break;
 
                     case MasterPersistenceProtocol.CharacterItemLocationKind.Equipment:
+                        if (!equipmentSlots.Add(item.SlotIndex))
+                            throw new InvalidOperationException("Character persistence state contains duplicate equipment slots.");
                         characterData.SavedEquipment.Add(new SavedEquipmentEntry
                         {
                             SlotIndex = item.SlotIndex,
@@ -123,6 +146,11 @@ namespace Game.Server.Persistence
             {
                 if (weaponSkill == null)
                     throw new InvalidOperationException("Character persistence state contains a null weapon skill.");
+                if (!weaponTypes.Add(weaponSkill.WeaponType))
+                {
+                    throw new InvalidOperationException(
+                        $"Character persistence state contains duplicate weapon type {weaponSkill.WeaponType}.");
+                }
                 characterData.SavedWeaponSkills.Add(new SavedWeaponSkill
                 {
                     WeaponType = weaponSkill.WeaponType,
@@ -135,7 +163,10 @@ namespace Game.Server.Persistence
                 throw new InvalidOperationException("Character persistence state has no talents array.");
             foreach (MasterPersistenceProtocol.CharacterTalentState talent in state.Talents)
             {
-                if (talent == null || string.IsNullOrWhiteSpace(talent.TalentDefinitionID))
+                if (talent == null
+                    || string.IsNullOrWhiteSpace(talent.TalentDefinitionID)
+                    || !talentIDs.Add(talent.TalentDefinitionID)
+                    || talent.Rank <= 0)
                     throw new InvalidOperationException("Character persistence state contains an invalid talent.");
                 characterData.SavedTalents.Add(new SavedTalentEntry
                 {
@@ -148,7 +179,9 @@ namespace Game.Server.Persistence
                 throw new InvalidOperationException("Character persistence state has no reputations array.");
             foreach (MasterPersistenceProtocol.CharacterReputationState reputation in state.Reputations)
             {
-                if (reputation == null || string.IsNullOrWhiteSpace(reputation.FactionDefinitionID))
+                if (reputation == null
+                    || string.IsNullOrWhiteSpace(reputation.FactionDefinitionID)
+                    || !reputationIDs.Add(reputation.FactionDefinitionID))
                     throw new InvalidOperationException("Character persistence state contains an invalid reputation.");
                 characterData.SavedReputations.Add(new SavedReputationEntry
                 {
@@ -161,8 +194,16 @@ namespace Game.Server.Persistence
                 throw new InvalidOperationException("Character persistence state has no quests array.");
             foreach (MasterPersistenceProtocol.CharacterQuestState quest in state.Quests)
             {
-                if (quest == null || string.IsNullOrWhiteSpace(quest.QuestDefinitionID) || quest.Progress == null)
+                if (quest == null
+                    || string.IsNullOrWhiteSpace(quest.QuestDefinitionID)
+                    || !questIDs.Add(quest.QuestDefinitionID)
+                    || quest.Progress == null)
                     throw new InvalidOperationException("Character persistence state contains an invalid quest.");
+                foreach (int progress in quest.Progress)
+                {
+                    if (progress < 0)
+                        throw new InvalidOperationException("Character persistence state contains negative quest progress.");
+                }
                 characterData.SavedQuests.Add(new SavedQuestEntry
                 {
                     QuestID = quest.QuestDefinitionID,
@@ -175,7 +216,9 @@ namespace Game.Server.Persistence
                 throw new InvalidOperationException("Character persistence state has no resources array.");
             foreach (MasterPersistenceProtocol.CharacterResourceState resource in state.Resources)
             {
-                if (resource == null || string.IsNullOrWhiteSpace(resource.ResourceDefinitionID))
+                if (resource == null
+                    || string.IsNullOrWhiteSpace(resource.ResourceDefinitionID)
+                    || !resourceIDs.Add(resource.ResourceDefinitionID))
                     throw new InvalidOperationException("Character persistence state contains an invalid resource.");
                 characterData.SavedResources.Add(new SavedResourceEntry
                 {

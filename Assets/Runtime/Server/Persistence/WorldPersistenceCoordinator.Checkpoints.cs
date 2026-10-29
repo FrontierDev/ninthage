@@ -10,7 +10,6 @@ namespace Game.Server.Persistence
 {
     internal sealed partial class WorldPersistenceCoordinator
     {
-        private const int CHECKPOINT_INTERVAL_SECONDS = 30;
         private const int MAX_CHECKPOINT_BATCH_SIZE = 128;
 
         /// <summary>Queues or replaces the newest dirty checkpoint for a locally leased character.</summary>
@@ -51,6 +50,126 @@ namespace Game.Server.Persistence
             return FlushPendingCheckpointsCoreAsync(cancellationToken, true);
         }
 
+        /// <summary>Gets the pending and blocking state for an owned character checkpoint lane.</summary>
+        internal bool TryGetPendingCheckpointState(
+            Guid characterID,
+            out bool hasPendingCheckpoint,
+            out MasterPersistenceProtocol.PersistenceResult? blockingResult)
+        {
+            hasPendingCheckpoint = false;
+            blockingResult = null;
+            if (characterID == Guid.Empty)
+                return false;
+
+            lock (_stateLock)
+            {
+                if (!_characterLanes.TryGetValue(characterID, out CharacterOperationLane lane)
+                    || !lane.HasOwnedLease)
+                {
+                    return false;
+                }
+
+                hasPendingCheckpoint = lane.HasPendingCheckpoint;
+                blockingResult = lane.BlockingResult;
+                return true;
+            }
+        }
+
+        /// <summary>Gets the owned lease revision and checkpoint settlement state for one character.</summary>
+        internal bool TryGetCharacterCheckpointSettlement(
+            Guid characterID,
+            out Guid accountID,
+            out long revision,
+            out bool hasPendingCheckpoint,
+            out MasterPersistenceProtocol.PersistenceResult? blockingResult)
+        {
+            accountID = Guid.Empty;
+            revision = 0;
+            hasPendingCheckpoint = false;
+            blockingResult = null;
+            if (characterID == Guid.Empty)
+                return false;
+
+            lock (_stateLock)
+            {
+                if (!_characterLanes.TryGetValue(characterID, out CharacterOperationLane lane)
+                    || !lane.HasOwnedLease
+                    || !lane.AccountID.HasValue
+                    || !lane.Revision.HasValue)
+                {
+                    return false;
+                }
+
+                accountID = lane.AccountID.Value;
+                revision = lane.Revision.Value;
+                hasPendingCheckpoint = lane.HasPendingCheckpoint;
+                blockingResult = lane.BlockingResult;
+                return true;
+            }
+        }
+
+        /// <summary>Gets whether any owned character lane has an unsettled checkpoint or blocking result.</summary>
+        internal bool HasUnsettledCheckpoints()
+        {
+            lock (_stateLock)
+            {
+                foreach (CharacterOperationLane lane in _characterLanes.Values)
+                {
+                    if (lane.HasOwnedLease
+                        && (lane.HasPendingCheckpoint || lane.BlockingResult.HasValue))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>Gets owned character IDs whose checkpoint state remains unsettled.</summary>
+        internal List<Guid> GetUnsettledCheckpointCharacterIDs()
+        {
+            lock (_stateLock)
+            {
+                List<Guid> characterIDs = new();
+                foreach (KeyValuePair<Guid, CharacterOperationLane> pair in _characterLanes)
+                {
+                    if (pair.Value.HasOwnedLease
+                        && (pair.Value.HasPendingCheckpoint || pair.Value.BlockingResult.HasValue))
+                    {
+                        characterIDs.Add(pair.Key);
+                    }
+                }
+
+                characterIDs.Sort();
+                return characterIDs;
+            }
+        }
+
+        /// <summary>Blocks an owned character lane after a final checkpoint could not be captured or queued.</summary>
+        internal bool MarkCheckpointFailure(
+            Guid characterID,
+            MasterPersistenceProtocol.PersistenceResult result)
+        {
+            if (characterID == Guid.Empty
+                || result == MasterPersistenceProtocol.PersistenceResult.Accepted)
+            {
+                return false;
+            }
+
+            lock (_stateLock)
+            {
+                if (!_characterLanes.TryGetValue(characterID, out CharacterOperationLane lane)
+                    || !lane.HasOwnedLease)
+                {
+                    return false;
+                }
+
+                lane.BlockingResult = result;
+                return true;
+            }
+        }
+
         private async Task FlushPendingCheckpointsCoreAsync(
             CancellationToken cancellationToken,
             bool logCleanupFailures)
@@ -78,18 +197,6 @@ namespace Game.Server.Persistence
             finally
             {
                 CompleteOperation();
-            }
-        }
-
-        /// <summary>Runs periodic checkpoint cycles until caller cancellation.</summary>
-        internal async Task RunCheckpointLoopAsync(CancellationToken cancellationToken)
-        {
-            while (true)
-            {
-                await Task.Delay(
-                    TimeSpan.FromSeconds(CHECKPOINT_INTERVAL_SECONDS),
-                    cancellationToken).ConfigureAwait(false);
-                await FlushPendingCheckpointsAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 

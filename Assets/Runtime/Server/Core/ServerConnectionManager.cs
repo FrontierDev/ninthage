@@ -26,6 +26,7 @@ namespace Game.Server.Core
         private const double NETWORK_PRESSURE_RECOVERY_PAYLOAD_BYTES_PER_SECOND = 12288d;
         private const double NETWORK_PRESSURE_RECOVERY_MESSAGES_PER_SECOND = 192d;
         private const int NETWORK_PRESSURE_RECOVERY_INTERVALS = 5;
+        private const float CHECKPOINT_INTERVAL_SECONDS = 30f;
 
         private struct ConnectionTelemetryWindow
         {
@@ -65,6 +66,7 @@ namespace Game.Server.Core
 
         private NetworkManager _networkManager;
         private ITransport _transport;
+        private Coroutine _periodicCheckpointCoroutine;
 
         private Dictionary<PlayerID, ConnectedAccountContext> _connectedAccounts = new();
         private Dictionary<PlayerID, PlayerSessionData> _sessionData = new();
@@ -113,6 +115,7 @@ namespace Game.Server.Core
                 BeginUdpStatisticsTelemetry();
             }
             _initialized = true;
+            _periodicCheckpointCoroutine = StartCoroutine(RunPeriodicCharacterCheckpoints());
         }
 
         /// <summary>Unsubscribes the manager from NetworkManager events.</summary>
@@ -121,6 +124,7 @@ namespace Game.Server.Core
             if (!asServer)
                 return;
 
+            StopPeriodicCharacterCheckpoints();
             NetworkPressureQuery.Unregister(this);
             EndUdpStatisticsTelemetry();
             if (_transport != null)
@@ -485,12 +489,25 @@ namespace Game.Server.Core
             Debug.Log($"Player left: {playerID}");
 
             Guid characterID = Guid.Empty;
+            bool requiresFinalCheckpoint = false;
+            bool finalCheckpointQueuedSuccessfully = true;
             if (_sessionData.TryGetValue(playerID, out PlayerSessionData session))
             {
                 characterID = session.CharacterID;
                 Actor playerActor = session.PlayerActor;
                 if (playerActor != null)
                 {
+                    requiresFinalCheckpoint = true;
+                    finalCheckpointQueuedSuccessfully = TryCaptureAndQueueFinalCheckpoint(
+                        session,
+                        out string finalCheckpointFailureReason);
+                    if (!finalCheckpointQueuedSuccessfully)
+                    {
+                        Debug.Error(
+                            $"Final checkpoint for character {characterID} could not be captured or queued: "
+                            + finalCheckpointFailureReason);
+                    }
+
                     if (ServerStatManager.IsInitialized)
                         ServerStatManager.Instance.UnregisterActor(playerActor);
 
@@ -505,7 +522,20 @@ namespace Game.Server.Core
             _connectedAccounts.Remove(playerID);
             ClearSessionData(playerID);
             if (characterID != Guid.Empty)
-                StartCoroutine(ReleaseCharacterAfterDisconnect(characterID));
+            {
+                if (requiresFinalCheckpoint && !finalCheckpointQueuedSuccessfully)
+                {
+                    Debug.Error(
+                        $"Character lease {characterID} will not be released because its final checkpoint "
+                        + "was not acknowledged for queueing.");
+                }
+                else
+                {
+                    StartCoroutine(ReleaseCharacterAfterDisconnect(
+                        characterID,
+                        requiresFinalCheckpoint));
+                }
+            }
         }
 
         private IEnumerator InitializeAuthenticatedPlayer(
@@ -648,9 +678,191 @@ namespace Game.Server.Core
             Debug.Log($"Player authenticated: {username} (AccountID: {accountResponse.AccountID.Value}, Reconnect: {isReconnect})");
         }
 
-        private IEnumerator ReleaseCharacterAfterDisconnect(Guid characterID)
+        private bool TryCaptureAndQueueFinalCheckpoint(
+            PlayerSessionData session,
+            out string failureReason)
+        {
+            failureReason = null;
+
+            WorldPersistenceCoordinator coordinator;
+            try
+            {
+                coordinator = ServerInitialization.PersistenceCoordinator;
+            }
+            catch (Exception exception)
+            {
+                failureReason = $"persistence coordinator is unavailable: {exception.Message}";
+                return false;
+            }
+
+            if (coordinator == null)
+            {
+                failureReason = "persistence coordinator is unavailable.";
+                return false;
+            }
+
+            ServerTimeAuthority timeAuthority = ServerInitialization.TimeAuthority;
+            if (timeAuthority == null)
+            {
+                failureReason = "server time authority is unavailable.";
+                return false;
+            }
+
+            DateTimeOffset capturedAtUtc;
+            try
+            {
+                capturedAtUtc = timeAuthority.ReadObservation().UtcInstant;
+            }
+            catch (Exception exception)
+            {
+                failureReason = $"server UTC observation failed: {exception.Message}";
+                coordinator.MarkCheckpointFailure(
+                    session.CharacterID,
+                    MasterPersistenceProtocol.PersistenceResult.InvalidRequest);
+                return false;
+            }
+
+            WorldPersistenceCheckpoint checkpoint;
+            try
+            {
+                if (!CharacterLiveCheckpointCapture.TryCapture(
+                    session,
+                    capturedAtUtc,
+                    out checkpoint,
+                    out failureReason))
+                {
+                    coordinator.MarkCheckpointFailure(
+                        session.CharacterID,
+                        MasterPersistenceProtocol.PersistenceResult.InvalidRequest);
+                    return false;
+                }
+            }
+            catch (Exception exception)
+            {
+                failureReason = $"live checkpoint capture threw: {exception.Message}";
+                coordinator.MarkCheckpointFailure(
+                    session.CharacterID,
+                    MasterPersistenceProtocol.PersistenceResult.InvalidRequest);
+                return false;
+            }
+
+            MasterPersistenceProtocol.PersistenceResult result;
+            try
+            {
+                result = coordinator.QueueCharacterCheckpoint(session.CharacterID, checkpoint);
+            }
+            catch (Exception exception)
+            {
+                failureReason = $"checkpoint queue threw: {exception.Message}";
+                coordinator.MarkCheckpointFailure(
+                    session.CharacterID,
+                    MasterPersistenceProtocol.PersistenceResult.InvalidRequest);
+                return false;
+            }
+
+            if (result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+            {
+                failureReason = $"checkpoint queue returned {result}.";
+                coordinator.MarkCheckpointFailure(session.CharacterID, result);
+                return false;
+            }
+
+            return true;
+        }
+
+        private IEnumerator ReleaseCharacterAfterDisconnect(
+            Guid characterID,
+            bool requiresFinalCheckpoint)
         {
             WorldPersistenceCoordinator coordinator;
+            bool finalCheckpointQueuedSuccessfully = !requiresFinalCheckpoint;
+            while (requiresFinalCheckpoint && !finalCheckpointQueuedSuccessfully)
+            {
+                if (IsDisconnectReleaseStopping())
+                    yield break;
+
+                try
+                {
+                    coordinator = ServerInitialization.PersistenceCoordinator;
+                }
+                catch (Exception exception)
+                {
+                    Debug.Warning(
+                        $"Final checkpoint release for character {characterID} is waiting for persistence: "
+                        + exception.Message);
+                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
+                    continue;
+                }
+
+                if (coordinator == null)
+                {
+                    Debug.Warning(
+                        $"Final checkpoint release for character {characterID} is waiting for persistence.");
+                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
+                    continue;
+                }
+
+                Task flushTask;
+                try
+                {
+                    flushTask = coordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Warning(
+                        $"Final checkpoint flush for character {characterID} could not start: "
+                        + exception.Message);
+                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
+                    continue;
+                }
+
+                while (!flushTask.IsCompleted)
+                    yield return null;
+
+                try
+                {
+                    flushTask.GetAwaiter().GetResult();
+                }
+                catch (Exception exception)
+                {
+                    Debug.Warning(
+                        $"Final checkpoint flush for character {characterID} failed: "
+                        + exception.Message);
+                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
+                    continue;
+                }
+
+                if (!coordinator.TryGetPendingCheckpointState(
+                    characterID,
+                    out bool hasPendingCheckpoint,
+                    out MasterPersistenceProtocol.PersistenceResult? blockingResult))
+                {
+                    Debug.Error(
+                        $"Final checkpoint state for character {characterID} is unavailable; "
+                        + "the lease will not be released.");
+                    yield break;
+                }
+
+                if (blockingResult.HasValue)
+                {
+                    Debug.Error(
+                        $"Final checkpoint for character {characterID} is permanently blocked with result "
+                        + $"{blockingResult.Value}; the lease will not be released.");
+                    yield break;
+                }
+
+                if (hasPendingCheckpoint)
+                {
+                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
+                    continue;
+                }
+
+                finalCheckpointQueuedSuccessfully = true;
+            }
+
+            if (IsDisconnectReleaseStopping())
+                yield break;
+
             try
             {
                 coordinator = ServerInitialization.PersistenceCoordinator;
@@ -691,6 +903,222 @@ namespace Game.Server.Core
             {
                 Debug.Warning($"Persistence release failed for character {characterID}: {exception.Message}");
             }
+        }
+
+        private static bool IsDisconnectReleaseStopping()
+        {
+            return ServerInitialization.IsFatalShutdownRequested
+                || ServerShutdownController.IsShutdownRequested;
+        }
+
+        /// <summary>Captures and queues one synchronous checkpoint for each currently active player session.</summary>
+        internal void CaptureAndQueueOnlineCharacterCheckpoints()
+        {
+            if (!_initialized || ServerInitialization.IsFatalShutdownRequested)
+                return;
+
+            ServerTimeAuthority timeAuthority = ServerInitialization.TimeAuthority;
+            if (timeAuthority == null)
+            {
+                Debug.Warning("Periodic character checkpoint capture skipped because time authority is unavailable.");
+                return;
+            }
+
+            DateTimeOffset capturedAtUtc;
+            try
+            {
+                capturedAtUtc = timeAuthority.ReadObservation().UtcInstant;
+            }
+            catch (Exception exception)
+            {
+                Debug.Warning($"Periodic character checkpoint capture could not read server UTC: {exception.Message}");
+                return;
+            }
+
+            WorldPersistenceCoordinator coordinator;
+            try
+            {
+                coordinator = ServerInitialization.PersistenceCoordinator;
+            }
+            catch (Exception exception)
+            {
+                Debug.Warning($"Periodic character checkpoint capture could not access persistence: {exception.Message}");
+                return;
+            }
+
+            if (coordinator == null)
+            {
+                Debug.Warning("Periodic character checkpoint capture skipped because persistence is unavailable.");
+                return;
+            }
+
+            bool finalShutdownCapture = ServerShutdownController.IsShutdownRequested;
+            List<KeyValuePair<PlayerID, PlayerSessionData>> sessionSnapshot =
+                new(_sessionData);
+            sessionSnapshot.Sort(
+                (first, second) =>
+                {
+                    Guid firstCharacterID = first.Value?.CharacterID ?? Guid.Empty;
+                    Guid secondCharacterID = second.Value?.CharacterID ?? Guid.Empty;
+                    return firstCharacterID.CompareTo(secondCharacterID);
+                });
+
+            int rejectedCount = 0;
+            string firstRejection = null;
+            foreach (KeyValuePair<PlayerID, PlayerSessionData> entry in sessionSnapshot)
+            {
+                PlayerSessionData session = entry.Value;
+                if (!_initialized
+                    || ServerInitialization.IsFatalShutdownRequested
+                    || session == null
+                    || session.PlayerActor == null
+                    || session.AccountID == Guid.Empty
+                    || session.CharacterID == Guid.Empty
+                    || !_sessionData.TryGetValue(entry.Key, out PlayerSessionData liveSession)
+                    || liveSession != session
+                    || !IsPlayerConnected(entry.Key))
+                {
+                    continue;
+                }
+
+                WorldPersistenceCheckpoint checkpoint;
+                string failureReason;
+                try
+                {
+                    if (!CharacterLiveCheckpointCapture.TryCapture(
+                        session,
+                        capturedAtUtc,
+                        out checkpoint,
+                        out failureReason))
+                    {
+                        if (finalShutdownCapture)
+                        {
+                            coordinator.MarkCheckpointFailure(
+                                session.CharacterID,
+                                MasterPersistenceProtocol.PersistenceResult.InvalidRequest);
+                        }
+                        rejectedCount++;
+                        firstRejection ??= $"character {session.CharacterID}: {failureReason}";
+                        continue;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    if (finalShutdownCapture)
+                    {
+                        coordinator.MarkCheckpointFailure(
+                            session.CharacterID,
+                            MasterPersistenceProtocol.PersistenceResult.InvalidRequest);
+                    }
+                    rejectedCount++;
+                    firstRejection ??= $"character {session.CharacterID}: capture threw {exception.Message}";
+                    continue;
+                }
+
+                try
+                {
+                    MasterPersistenceProtocol.PersistenceResult result =
+                        coordinator.QueueCharacterCheckpoint(session.CharacterID, checkpoint);
+                    if (result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+                    {
+                        if (finalShutdownCapture)
+                        {
+                            coordinator.MarkCheckpointFailure(session.CharacterID, result);
+                        }
+                        rejectedCount++;
+                        firstRejection ??= $"character {session.CharacterID}: queue returned {result}";
+                    }
+                }
+                catch (Exception exception)
+                {
+                    if (finalShutdownCapture)
+                    {
+                        coordinator.MarkCheckpointFailure(
+                            session.CharacterID,
+                            MasterPersistenceProtocol.PersistenceResult.InvalidRequest);
+                    }
+                    rejectedCount++;
+                    firstRejection ??= $"character {session.CharacterID}: queue threw {exception.Message}";
+                }
+            }
+
+            if (rejectedCount > 0)
+            {
+                Debug.Warning(
+                    $"Periodic character checkpoint cycle rejected {rejectedCount} capture(s). "
+                    + firstRejection);
+            }
+        }
+
+        /// <summary>Stops the main-thread periodic checkpoint scheduler.</summary>
+        internal void StopPeriodicCharacterCheckpoints()
+        {
+            if (_periodicCheckpointCoroutine == null)
+                return;
+
+            StopCoroutine(_periodicCheckpointCoroutine);
+            _periodicCheckpointCoroutine = null;
+        }
+
+        private IEnumerator RunPeriodicCharacterCheckpoints()
+        {
+            while (_initialized && !ServerInitialization.IsFatalShutdownRequested)
+            {
+                yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
+                if (!_initialized || ServerInitialization.IsFatalShutdownRequested)
+                    break;
+
+                try
+                {
+                    CaptureAndQueueOnlineCharacterCheckpoints();
+                }
+                catch (Exception exception)
+                {
+                    Debug.Warning($"Periodic character checkpoint capture failed: {exception.Message}");
+                }
+
+                WorldPersistenceCoordinator coordinator;
+                try
+                {
+                    coordinator = ServerInitialization.PersistenceCoordinator;
+                }
+                catch (Exception exception)
+                {
+                    Debug.Warning($"Periodic character checkpoint flush skipped: {exception.Message}");
+                    continue;
+                }
+
+                if (coordinator == null)
+                {
+                    Debug.Warning("Periodic character checkpoint flush skipped because persistence is unavailable.");
+                    continue;
+                }
+
+                Task flushTask;
+                try
+                {
+                    flushTask = coordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Warning($"Periodic character checkpoint flush could not start: {exception.Message}");
+                    continue;
+                }
+
+                while (!flushTask.IsCompleted)
+                    yield return null;
+
+                try
+                {
+                    flushTask.GetAwaiter().GetResult();
+                }
+                catch (Exception exception)
+                {
+                    Debug.Warning($"Periodic character checkpoint flush failed: {exception.Message}");
+                }
+            }
+
+            _periodicCheckpointCoroutine = null;
         }
 
         /// <summary>Stores session data for a connected player.</summary>

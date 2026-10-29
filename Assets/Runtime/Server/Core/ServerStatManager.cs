@@ -6,6 +6,7 @@ using Game.Shared.Networking;
 using Game.Shared.Persistence;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,6 +23,7 @@ namespace Game.Server.Core
         public static bool IsInitialized => _initialized;
 
         private const float REGEN_TICK_INTERVAL = 1f;
+        private const string STAT_HEALTH = "health";
         private float _regenTimer;
 
         private readonly List<Actor> _trackedActors = new();
@@ -120,75 +122,86 @@ namespace Game.Server.Core
         /// <param name="actor"></param>
         public void InitializePlayerStats(Actor actor)
         {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+
             var container = actor.GetComponent<ActorStatContainer>();
-            if (container == null) return;
+            if (container == null)
+                throw new InvalidOperationException($"Actor {actor.Name} has no ActorStatContainer.");
 
             var playerActor = actor as PlayerActor;
             if (playerActor == null || playerActor.CharacterData == null)
-            {
-                Debug.Error($"PlayerActor or CharacterData is null for actor {actor.Name}.");
-                return;
-            }
+                throw new InvalidOperationException($"PlayerActor or CharacterData is null for actor {actor.Name}.");
 
             var data = playerActor.CharacterData;
             var race = RaceDefinitionLibrary.Instance.GetDefinition(data.RaceID);
             var playerClass = ClassDefinitionLibrary.Instance.GetDefinition(data.ClassID);
 
             if (race == null || playerClass == null)
-            {
-                Debug.Error($"Race or Class definition not found for player {actor.Name} (Race: {data.RaceID}, Class: {data.ClassID}).");
-                return;
-            }
+                throw new InvalidOperationException(
+                    $"Race or Class definition not found for player {actor.Name} "
+                    + $"(Race: {data.RaceID}, Class: {data.ClassID}).");
 
-            // Initialize all stats from library with their definition base values
-            var library = ActorStatDefinitionLibrary.Instance;
-            var allDefs = library.GetAllDefinitions();
-            for (int i = 0; i < allDefs.Count; i++)
+            container.BeginInitialStatRestore();
+            try
             {
-                var def = allDefs[i];
-                float baseValue = def.BaseValueMode == ActorStatBaseValueMode.Fixed ? def.BaseValue : 0f;
-                container.SetStat(def.DefinitionID,
-                    new StatInstance(baseValue, 0, 0, 0, 0));
-            }
-
-            // Apply race base stats
-            foreach (var entry in race.BaseStats)
-            {
-                if (entry?.definition == null) continue;
-                if (container.TryGetStat(entry.definition.DefinitionID, out var existing))
+                // Initialize all stats from library with their definition base values.
+                var library = ActorStatDefinitionLibrary.Instance;
+                var allDefs = library.GetAllDefinitions();
+                for (int i = 0; i < allDefs.Count; i++)
                 {
-                    container.SetStat(entry.definition.DefinitionID,
-                        new StatInstance(existing.BaseValue + entry.baseValue, 0, 0, 0, 0));
+                    var def = allDefs[i];
+                    float baseValue = def.BaseValueMode == ActorStatBaseValueMode.Fixed ? def.BaseValue : 0f;
+                    container.SetStat(def.DefinitionID,
+                        new StatInstance(baseValue, 0, 0, 0, 0));
                 }
-            }
 
-            // Apply class base stats
-            foreach (var entry in playerClass.BaseStats)
-            {
-                if (entry?.definition == null) continue;
-                if (container.TryGetStat(entry.definition.DefinitionID, out var existing))
+                if (!container.TryGetStat(STAT_HEALTH, out _))
+                    throw new InvalidOperationException($"Actor stat definition '{STAT_HEALTH}' is missing for player {actor.Name}.");
+
+                // Apply race base stats.
+                foreach (var entry in race.BaseStats)
                 {
-                    container.SetStat(entry.definition.DefinitionID,
-                        new StatInstance(existing.BaseValue + entry.baseValue, 0, 0, 0, 0));
+                    if (entry?.definition == null) continue;
+                    if (container.TryGetStat(entry.definition.DefinitionID, out var existing))
+                    {
+                        container.SetStat(entry.definition.DefinitionID,
+                            new StatInstance(existing.BaseValue + entry.baseValue, 0, 0, 0, 0));
+                    }
                 }
-            }
 
-            // Apply class growth per level
-            foreach (var growth in playerClass.StatGrowthPerLevel)
-            {
-                if (growth.stat == null) continue;
-                if (container.TryGetStat(growth.stat.DefinitionID, out var existing))
+                // Apply class base stats.
+                foreach (var entry in playerClass.BaseStats)
                 {
-                    float levelBonus = growth.flatPerLevel * data.Level;
-                    container.SetStat(growth.stat.DefinitionID,
-                        new StatInstance(existing.BaseValue, levelBonus, 0, 0, 0));
+                    if (entry?.definition == null) continue;
+                    if (container.TryGetStat(entry.definition.DefinitionID, out var existing))
+                    {
+                        container.SetStat(entry.definition.DefinitionID,
+                            new StatInstance(existing.BaseValue + entry.baseValue, 0, 0, 0, 0));
+                    }
                 }
-            }
 
-            Recalculate(container);
-            FillResourcesToMax(container);
-            FillAttributesToMax(container);
-            RestoreSavedResources(container, data);
+                // Apply class growth per level.
+                foreach (var growth in playerClass.StatGrowthPerLevel)
+                {
+                    if (growth.stat == null) continue;
+                    if (container.TryGetStat(growth.stat.DefinitionID, out var existing))
+                    {
+                        float levelBonus = growth.flatPerLevel * data.Level;
+                        container.SetStat(growth.stat.DefinitionID,
+                            new StatInstance(existing.BaseValue, levelBonus, 0, 0, 0));
+                    }
+                }
+
+                Recalculate(container);
+                FillResourcesToMax(container);
+                FillAttributesToMax(container);
+                RestoreSavedResources(container, data);
+            }
+            finally
+            {
+                container.EndInitialStatRestore();
+            }
         }
 
         #endregion
@@ -560,13 +573,36 @@ namespace Game.Server.Core
 
         private void RestoreSavedResources(ActorStatContainer container, CharacterData data)
         {
+            var library = ActorStatDefinitionLibrary.Instance;
+            HashSet<string> restoredStatIDs = new(StringComparer.Ordinal);
             for (int i = 0; i < data.SavedResources.Count; i++)
             {
                 var saved = data.SavedResources[i];
-                if (!container.TryGetStat(saved.StatID, out var stat)) continue;
+                if (string.IsNullOrWhiteSpace(saved.StatID)
+                    || !restoredStatIDs.Add(saved.StatID))
+                {
+                    throw new InvalidOperationException(
+                        $"Character data contains a duplicate or blank resource ID '{saved.StatID}'.");
+                }
+                if (float.IsNaN(saved.Current) || float.IsInfinity(saved.Current) || saved.Current < 0f)
+                {
+                    throw new InvalidOperationException(
+                        $"Character data contains invalid current value {saved.Current} for resource '{saved.StatID}'.");
+                }
+
+                var definition = library?.GetDefinition(saved.StatID);
+                if (definition == null || definition.Category != ActorStatCategory.Resource)
+                {
+                    throw new InvalidOperationException(
+                        $"Character data references unknown or non-resource definition '{saved.StatID}'.");
+                }
+                if (!container.TryGetStat(saved.StatID, out var stat))
+                    throw new InvalidOperationException($"Resource stat '{saved.StatID}' was not initialized.");
+
                 container.SetStat(saved.StatID, new StatInstance(
                     stat.BaseValue, stat.FlatModifier, stat.PercentModifier,
-                    stat.EffectiveMaximum, saved.Current));
+                    stat.EffectiveMaximum,
+                    Mathf.Clamp(saved.Current, 0f, stat.EffectiveMaximum)));
             }
         }
 

@@ -5,12 +5,15 @@ using Game.Server.Networking.Master;
 using Game.Server.Persistence;
 using Game.Shared.Data;
 using Game.Shared.Persistence;
+using Game.Shared.Runtime.Actors;
+using Game.Shared.Utility;
 using PurrNet;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace Game.Server.Services
 {
@@ -120,7 +123,30 @@ namespace Game.Server.Services
                 || !ServerWorldManager.Instance.CurrentRuntimeContext.IsValid)
             {
                 Debug.Error($"Cannot create a character for player {playerID} without a valid public world context.");
-                NotifyFailure(playerID, "world unavailable");
+                NotifyFailure(playerID, "invalid starting location configuration");
+                yield break;
+            }
+
+            ActorSpatialContext worldContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            if (accountContext.HomeWorldID != worldContext.WorldID)
+            {
+                Debug.Error(
+                    $"Cannot create a character for account {accountContext.AccountID} because its home WorldID "
+                    + $"{accountContext.HomeWorldID} does not match current WorldID {worldContext.WorldID}.");
+                NotifyFailure(playerID, "invalid starting location configuration");
+                yield break;
+            }
+
+            if (!CharacterStartingLocationResolver.TryResolve(
+                raceDefinition,
+                worldContext,
+                out WorldPosition startingPosition,
+                out Quaternion startingFacing,
+                out string startingLocationFailure))
+            {
+                Debug.Error(
+                    $"Cannot create a character for player {playerID}: {startingLocationFailure}.");
+                NotifyFailure(playerID, "invalid starting location configuration");
                 yield break;
             }
 
@@ -144,8 +170,12 @@ namespace Game.Server.Services
                 }
             }
 
-            var spawnPosition = ServerSpawnManager.GetPrototypePlayerSpawnWorldPosition();
-            var worldContext = ServerWorldManager.Instance.CurrentRuntimeContext;
+            WorldLocationDefinition startingLocation =
+                WorldLocationDefinitionLibrary.Instance.GetDefinition(raceDefinition.StartingLocationID);
+            string safeReturnLocationID = startingLocation != null
+                && (startingLocation.Purposes & WorldLocationPurpose.SafeReturn) != 0
+                ? startingLocation.DefinitionID
+                : null;
             CharacterCreationPersistenceCommand command;
             try
             {
@@ -157,16 +187,16 @@ namespace Game.Server.Services
                     characterData.ClassID,
                     raceDefinition.DefaultPVPFaction.DefinitionID,
                     new CharacterCreationPersistenceCommand.InitialWorldState(
-                        worldContext.MapID,
+                        startingLocation.MapID,
                         null,
-                        spawnPosition.x,
-                        spawnPosition.y,
-                        spawnPosition.z,
-                        0f,
-                        0f,
-                        0f,
-                        1f,
-                        null),
+                        startingPosition.x,
+                        startingPosition.y,
+                        startingPosition.z,
+                        startingFacing.x,
+                        startingFacing.y,
+                        startingFacing.z,
+                        startingFacing.w,
+                        safeReturnLocationID),
                     Array.Empty<CharacterCreationPersistenceCommand.InitialResource>(),
                     abilities.ToArray(),
                     weaponSkills.ToArray(),

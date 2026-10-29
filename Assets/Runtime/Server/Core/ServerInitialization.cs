@@ -9,6 +9,7 @@ using PurrNet;
 using PurrNet.Transports;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
@@ -62,8 +63,6 @@ namespace Game.Server.Core
         private static MasterWorldClient _masterWorldClient;
         private static MasterPersistenceClient _masterPersistenceClient;
         private static WorldPersistenceCoordinator _worldPersistenceCoordinator;
-        private static CancellationTokenSource _persistenceCheckpointCancellation;
-        private static Task _persistenceCheckpointTask;
         private static CancellationTokenSource _masterHeartbeatCancellation;
         private static Task _masterHeartbeatTask;
         private static Coroutine _masterHeartbeatMonitorCoroutine;
@@ -464,9 +463,6 @@ namespace Game.Server.Core
                 _masterPersistenceClient,
                 registrationResponse.WorldID.Value,
                 WORLD_SERVER_RUN_ID);
-            _persistenceCheckpointCancellation = new CancellationTokenSource();
-            _persistenceCheckpointTask = _worldPersistenceCoordinator.RunCheckpointLoopAsync(
-                _persistenceCheckpointCancellation.Token);
 
             _masterHeartbeatCancellation = new CancellationTokenSource();
             _masterHeartbeatTask = _masterWorldClient.RunHeartbeatLoopAsync(
@@ -547,6 +543,7 @@ namespace Game.Server.Core
         private static IEnumerator StopAndSettlePersistenceGracefully()
         {
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+            ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
 
             WorldPersistenceCoordinator persistenceCoordinator = _worldPersistenceCoordinator;
             if (persistenceCoordinator == null)
@@ -558,12 +555,6 @@ namespace Game.Server.Core
             try
             {
                 persistenceCoordinator.StopAcceptingWork();
-                RequestPersistenceCheckpointCancellation();
-
-                while (_persistenceCheckpointTask != null && !_persistenceCheckpointTask.IsCompleted)
-                    yield return null;
-
-                ObservePersistenceCheckpointTask();
 
                 while (!persistenceCoordinator.IsIdle)
                     yield return null;
@@ -588,18 +579,31 @@ namespace Game.Server.Core
                 if (_fatalShutdownRequested)
                     yield break;
 
-                Task releaseCharactersTask = null;
-                try
+                if (persistenceCoordinator.HasUnsettledCheckpoints())
                 {
-                    releaseCharactersTask = persistenceCoordinator.ReleaseAllCharactersAsync(CancellationToken.None);
+                    List<Guid> unsettledCharacterIDs =
+                        persistenceCoordinator.GetUnsettledCheckpointCharacterIDs();
+                    ShutdownExitCode = 1;
+                    Debug.Error(
+                        "Graceful shutdown could not settle final character checkpoints; "
+                        + "character lease release was skipped for: "
+                        + string.Join(", ", unsettledCharacterIDs));
                 }
-                catch (Exception exception)
+                else
                 {
-                    LogPersistenceTeardownFailure("character lease release", exception);
-                }
+                    Task releaseCharactersTask = null;
+                    try
+                    {
+                        releaseCharactersTask = persistenceCoordinator.ReleaseAllCharactersAsync(CancellationToken.None);
+                    }
+                    catch (Exception exception)
+                    {
+                        LogPersistenceTeardownFailure("character lease release", exception);
+                    }
 
-                if (releaseCharactersTask != null)
-                    yield return ObservePersistenceTask(releaseCharactersTask, "character lease release");
+                    if (releaseCharactersTask != null)
+                        yield return ObservePersistenceTask(releaseCharactersTask, "character lease release");
+                }
             }
             finally
             {
@@ -695,65 +699,16 @@ namespace Game.Server.Core
         private static void CancelAndDisposePersistenceStateSynchronously()
         {
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+            ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
 
             if (_worldPersistenceCoordinator != null)
                 _worldPersistenceCoordinator.StopAcceptingWork();
 
-            RequestPersistenceCheckpointCancellation();
-            ObservePersistenceCheckpointTask();
             ClearPersistenceState();
-        }
-
-        private static void RequestPersistenceCheckpointCancellation()
-        {
-            if (_persistenceCheckpointCancellation == null
-                || _persistenceCheckpointCancellation.IsCancellationRequested)
-            {
-                return;
-            }
-
-            _persistenceCheckpointCancellation.Cancel();
-        }
-
-        private static void ObservePersistenceCheckpointTask()
-        {
-            Task persistenceTask = _persistenceCheckpointTask;
-            if (persistenceTask == null)
-                return;
-
-            if (!persistenceTask.IsCompleted)
-            {
-                persistenceTask.ContinueWith(
-                    completedTask => ObserveCompletedPersistenceTask(completedTask),
-                    CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously,
-                    TaskScheduler.Default);
-                return;
-            }
-
-            ObserveCompletedPersistenceTask(persistenceTask);
-        }
-
-        private static void ObserveCompletedPersistenceTask(Task persistenceTask)
-        {
-            try
-            {
-                persistenceTask.GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception exception)
-            {
-                LogPersistenceTeardownFailure("checkpoint loop", exception);
-            }
         }
 
         private static void ClearPersistenceState()
         {
-            _persistenceCheckpointTask = null;
-            _persistenceCheckpointCancellation?.Dispose();
-            _persistenceCheckpointCancellation = null;
             _worldPersistenceCoordinator = null;
             _masterPersistenceClient = null;
         }
@@ -938,9 +893,10 @@ namespace Game.Server.Core
             try
             {
                 ServerControlEndpoint.Detach();
-                _timeAuthority = null;
                 StopInitializationCoroutine();
+                ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
                 ServerSimulationClock.Stop();
+                ServerConnectionManager.Instance.CaptureAndQueueOnlineCharacterCheckpoints();
 
                 NetworkManager networkManager = GetNetworkManager();
                 yield return StopNetworkServerAndWait(networkManager);

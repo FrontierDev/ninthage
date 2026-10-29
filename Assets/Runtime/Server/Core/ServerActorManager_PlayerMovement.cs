@@ -1,6 +1,8 @@
 using Actor = Game.Shared.Runtime.Actors.Actor;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking;
 using Game.Shared;
+using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
@@ -492,6 +494,24 @@ namespace Game.Server.Core
             if (eligibleCrossingCount == 0)
                 return;
 
+            bool inward = selectedDirection == TransferCollider.CrossingDirection.IntoInstance;
+            PlayerSessionData transferSession = null;
+            if (inward
+                && !TryValidateInstanceEntry(
+                    actor,
+                    selectedCollider,
+                    selectedEntranceChunk,
+                    publicContext,
+                    out transferSession,
+                    out string entryFailureReason))
+            {
+                Debug.Error(
+                    $"[TransferCollider] Player {actor.ID} cannot enter instance; "
+                    + $"SafeReturnLocationID '{selectedCollider.SafeReturnLocationID ?? "<null>"}': "
+                    + entryFailureReason);
+                return;
+            }
+
             ActorSpatialContext destinationContext;
             try
             {
@@ -507,7 +527,6 @@ namespace Game.Server.Core
                 return;
             }
 
-            bool inward = selectedDirection == TransferCollider.CrossingDirection.IntoInstance;
             ActorSpatialContext sourceContext = actor.SpatialContext;
             if (inward)
                 worldManager.AddTransferRuntimeUser(destinationContext, actor.Owner.Value);
@@ -543,6 +562,40 @@ namespace Game.Server.Core
 
                     if (selectedDirection == TransferCollider.CrossingDirection.IntoInstance)
                     {
+                        if (!actor.Owner.HasValue)
+                        {
+                            Debug.Error(
+                                $"[TransferCollider] Player {actor.ID} entered an instance without an owner; "
+                                + "the live safe-return location was not updated.");
+                            return;
+                        }
+
+                        PlayerID playerID = actor.Owner.Value;
+                        PlayerSessionData liveSession = ServerConnectionManager.Instance?.GetSessionData(playerID);
+                        if (liveSession == null
+                            || !ReferenceEquals(liveSession, transferSession)
+                            || liveSession.PlayerID != playerID
+                            || liveSession.PlayerActor != actor
+                            || liveSession.CharacterID == Guid.Empty)
+                        {
+                            Debug.Error(
+                                $"[TransferCollider] Player {actor.ID} entered an instance but its session "
+                                + "could not be revalidated; the live safe-return location was not updated.");
+                            return;
+                        }
+
+                        try
+                        {
+                            liveSession.SetCurrentSafeReturnLocationID(selectedCollider.SafeReturnLocationID);
+                        }
+                        catch (Exception exception)
+                        {
+                            Debug.Error(
+                                $"[TransferCollider] Player {actor.ID} entered an instance but its safe-return "
+                                + $"location could not be updated: {exception.Message}");
+                            return;
+                        }
+
                         Debug.Log(
                             $"[TransferCollider] Player {actor.ID} entered "
                             + $"instance={destinationContext.InstanceID} "
@@ -565,6 +618,82 @@ namespace Game.Server.Core
                     $"[TransferCollider] Player {actor.ID} direction={selectedDirection} "
                     + "transfer failed: another spatial-context transfer is already pending");
             }
+        }
+
+        private static bool TryValidateInstanceEntry(
+            Actor actor,
+            TransferCollider collider,
+            WorldChunkKey entranceChunk,
+            ActorSpatialContext publicContext,
+            out PlayerSessionData session,
+            out string failureReason)
+        {
+            session = null;
+            failureReason = null;
+
+            if (actor == null || !actor.Owner.HasValue)
+                return FailEntryValidation("the actor has no owning player", out failureReason);
+
+            if (!publicContext.IsValid || publicContext.InstanceID != Guid.Empty)
+            {
+                return FailEntryValidation(
+                    "the current server context is not the public context",
+                    out failureReason);
+            }
+
+            if (entranceChunk.Context != publicContext)
+            {
+                return FailEntryValidation(
+                    "the selected entrance is not in the current public context",
+                    out failureReason);
+            }
+
+            session = ServerConnectionManager.Instance?.GetSessionData(actor.Owner.Value);
+            if (session == null)
+                return FailEntryValidation("the player session was not found", out failureReason);
+            if (session.PlayerActor != actor)
+                return FailEntryValidation("the player session is not bound to this actor", out failureReason);
+            if (session.CharacterID == Guid.Empty)
+                return FailEntryValidation("the player session has no character ID", out failureReason);
+            if (collider == null || string.IsNullOrWhiteSpace(collider.SafeReturnLocationID))
+                return FailEntryValidation("the transfer collider has no safe-return location ID", out failureReason);
+
+            WorldLocationDefinitionLibrary locationLibrary = WorldLocationDefinitionLibrary.Instance;
+            if (locationLibrary == null || !locationLibrary.ValidateLibrary())
+            {
+                return FailEntryValidation(
+                    "the world location definition library is invalid",
+                    out failureReason);
+            }
+
+            WorldLocationDefinition location = locationLibrary.GetDefinition(collider.SafeReturnLocationID);
+            if (location == null)
+            {
+                return FailEntryValidation(
+                    $"safe-return location '{collider.SafeReturnLocationID}' was not found",
+                    out failureReason);
+            }
+            if ((location.Purposes & WorldLocationPurpose.SafeReturn) == 0)
+            {
+                return FailEntryValidation(
+                    $"location '{collider.SafeReturnLocationID}' is not a SafeReturn location",
+                    out failureReason);
+            }
+            if (!StringComparer.Ordinal.Equals(location.MapID, entranceChunk.Context.MapID))
+            {
+                return FailEntryValidation(
+                    $"safe-return location map '{location.MapID}' does not match entrance map "
+                    + $"'{entranceChunk.Context.MapID}'",
+                    out failureReason);
+            }
+
+            return true;
+        }
+
+        private static bool FailEntryValidation(string reason, out string failureReason)
+        {
+            failureReason = reason;
+            return false;
         }
 
         /// <summary>Sends a client correction and projects it into the continuous physical frame.</summary>

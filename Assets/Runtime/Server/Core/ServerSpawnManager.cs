@@ -1,5 +1,6 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking;
+using Game.Server.Persistence;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Performance;
@@ -10,7 +11,6 @@ using PurrNet.Modules;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Entities.UniversalDelegates;
@@ -638,14 +638,6 @@ namespace Game.Server.Core
             }
         }
 
-        /// <summary>Gets the prototype player spawn position used by world entry and character creation.</summary>
-        internal static WorldPosition GetPrototypePlayerSpawnWorldPosition()
-        {
-            return WorldPosition.FromChunkLocal(
-                Vector2Int.zero,
-                new Vector3(0f, 5f, 0f));
-        }
-
         /// <summary>Spawns the actor associated with a connected player.</summary>
         /// <param name="playerID">The player to spawn.</param>
         /// <param name="completed">Receives true only after the complete world-entry spawn succeeds.</param>
@@ -655,9 +647,20 @@ namespace Game.Server.Core
                 throw new ArgumentNullException(nameof(completed));
 
             bool succeeded = false;
+            PlayerActor spawnedPlayerActor = null;
+            bool playerStatsRegistered = false;
             try
             {
-            var spawnScene = new Vector2Int(0, 0);
+            var session = ServerConnectionManager.Instance.GetSessionData(playerID);
+            if (session == null)
+            {
+                Debug.Error($"Character session not found for player {playerID}.");
+                yield break;
+            }
+
+            CharacterWorldEntryLocation entryLocation = session.EntryLocation;
+            Vector2Int spawnScene = entryLocation.Position.Chunk;
+            ActorSpatialContext runtimeContext = entryLocation.Context;
 
             // Actively request the spawn chunk to load instead of passively waiting.
             bool chunkLoadCompleted = false;
@@ -665,7 +668,7 @@ namespace Game.Server.Core
             try
             {
                 ServerWorldManager.Instance.EnsureChunkLoaded(
-                    ServerWorldManager.Instance.CurrentRuntimeContext,
+                    runtimeContext,
                     spawnScene,
                     (succeeded, _) =>
                     {
@@ -696,9 +699,8 @@ namespace Game.Server.Core
                 yield break;
             }
 
-            var runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
             var sourceChunk = new WorldChunkKey(runtimeContext, spawnScene);
-            var spawnWorldPosition = GetPrototypePlayerSpawnWorldPosition();
+            WorldPosition spawnWorldPosition = entryLocation.Position;
             GameObject prefab = handle.Result;
 
             // Spawn the actor into the persistent global_actors scene, not the chunk scene.
@@ -711,8 +713,6 @@ namespace Game.Server.Core
                 playerID);
 
             // Wait for the actor to be spawned and linked to the session (happens on next Update tick).
-            var session = ServerConnectionManager.Instance.GetSessionData(playerID);
-            if (session == null) yield break;
             yield return new WaitUntil(() => session.PlayerActor != null);
 
             // Look up the character data from the account and assign it to the PlayerActor.
@@ -730,96 +730,7 @@ namespace Game.Server.Core
                             $"Ensure the prefab has PlayerActor (not just Actor).");
                 yield break;
             }
-
-            // Check that the player has all known spells for their class.
-            var classDef = Shared.Data.ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID);
-            if (classDef == null)
-            {
-                Debug.Error($"Class definition '{characterData.ClassID}' not found for player {playerID}.");
-                yield break;
-            }
-
-            foreach (var classSpell in classDef.ClassSpellList)
-            {
-                if (!characterData.KnownSpellIDs.Contains(classSpell.spell.DefinitionID))
-                {
-                    Debug.Log($"Adding missing spell '{classSpell.spell.DisplayName}' to player {playerID} character data.");
-                    characterData.KnownSpellIDs.Add(classSpell.spell.DefinitionID);
-                }
-            }
-
-            characterData.PVPFactionID = RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID)?.DefaultPVPFaction?.DefinitionID;
-
-            for (int i = characterData.SavedInventory.Count - 1; i >= 0; i--)
-            {
-                var entry = characterData.SavedInventory[i];
-                if (Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemID) == null)
-                {
-                    Debug.Warning($"Removing invalid inventory entry at slot {entry.SlotIndex} with unknown item '{entry.ItemID}' for player {playerID}.");
-                    characterData.SavedInventory.RemoveAt(i);
-                }
-                else if (string.IsNullOrEmpty(entry.ItemGUID))
-                {
-                    entry.ItemGUID = System.Guid.NewGuid().ToString("N");
-                    characterData.SavedInventory[i] = entry;
-                    Debug.Log($"Assigned GUID to inventory entry at slot {entry.SlotIndex} for player {playerID}.");
-                }
-            }
-
-            for (int i = characterData.SavedEquipment.Count - 1; i >= 0; i--)
-            {
-                var entry = characterData.SavedEquipment[i];
-                var def = Shared.Data.ItemDefinitionLibrary.Instance.GetDefinition(entry.ItemID);
-                if (def == null || (def.ItemType != Shared.Data.ItemType.Weapon && def.ItemType != Shared.Data.ItemType.Armor))
-                {
-                    Debug.Warning($"Removing invalid equipment entry at slot {entry.SlotIndex} with unknown item '{entry.ItemID}' for player {playerID}.");
-                    characterData.SavedEquipment.RemoveAt(i);
-                }
-                else if (string.IsNullOrEmpty(entry.ItemGUID))
-                {
-                    entry.ItemGUID = System.Guid.NewGuid().ToString("N");
-                    characterData.SavedEquipment[i] = entry;
-                    Debug.Log($"Assigned GUID to equipment entry at slot {entry.SlotIndex} for player {playerID}.");
-                }
-            }
-
-            // Ensure player has all required weapon skills for their class
-            foreach (var weaponType in classDef.WeaponTypes)
-            {
-                if (!characterData.SavedWeaponSkills.Any(ws => ws.WeaponType == (int)weaponType))
-                {
-                    characterData.SavedWeaponSkills.Add(new Shared.Persistence.SavedWeaponSkill
-                    {
-                        WeaponType = (int)weaponType,
-                        Level = 1,
-                        Experience = 0
-                    });
-                    Debug.Log($"Added weapon skill for {weaponType} to player {playerID}.");
-                }
-            }
-
-            // Remove weapon skills no longer valid for this class
-            characterData.SavedWeaponSkills.RemoveAll(ws =>
-            {
-                var weaponType = (Shared.Data.ItemWeaponType)ws.WeaponType;
-                bool isInvalid = !classDef.WeaponTypes.Contains(weaponType);
-                if (isInvalid)
-                    Debug.Warning($"Removing invalid weapon skill {weaponType} from player {playerID}.");
-                return isInvalid;
-            });
-
-            foreach (var startingRep in RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID).StartingReputations)
-            {
-                if (characterData.SavedReputations.Any(rep => rep.FactionID == startingRep.Faction.DefinitionID))
-                    continue;
-
-                characterData.SavedReputations.Add(new Shared.Persistence.SavedReputationEntry
-                {
-                    FactionID = startingRep.Faction.DefinitionID,
-                    Reputation = startingRep.Reputation
-                });
-                Debug.Log($"Set initial reputation with faction '{startingRep.Faction.DisplayName}' to {startingRep.Reputation} for player {playerID}.");
-            }
+            spawnedPlayerActor = playerActor;
 
             try
             {
@@ -828,15 +739,15 @@ namespace Game.Server.Core
             catch (Exception e)
             {
                 Debug.Error($"Error setting character data for player {playerID}: {e}");
+                yield break;
             }
 
+            playerActor.transform.rotation = entryLocation.Facing;
 
             ServerStatManager.Instance.InitializePlayerStats(playerActor);
+            playerActor.isDead = session.PersistenceState.IsDead;
             ServerStatManager.Instance.RegisterActor(playerActor);
-
-            // Stat initialization sets all stats to 0 before filling to max,
-            // which transiently triggers the death check. Reset the flag.
-            playerActor.isDead = false;
+            playerStatsRegistered = true;
 
             // Trigger initial 3x3 chunk interest around the accepted spawn position.
             ServerInterestManager.Instance.UpdatePlayerInterestFromAcceptedPosition(
@@ -893,7 +804,45 @@ namespace Game.Server.Core
             }
             finally
             {
+                if (!succeeded)
+                    CleanupFailedPlayerSpawn(spawnedPlayerActor, playerStatsRegistered);
                 completed(succeeded);
+            }
+        }
+
+        private static void CleanupFailedPlayerSpawn(PlayerActor playerActor, bool playerStatsRegistered)
+        {
+            if (playerActor == null)
+                return;
+
+            if (playerStatsRegistered)
+            {
+                try
+                {
+                    ServerStatManager.Instance.UnregisterActor(playerActor);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error($"Failed to unregister stats for rejected player spawn: {exception.Message}");
+                }
+            }
+
+            try
+            {
+                ServerActorManager.Instance.RollbackActorSpawn(playerActor);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Failed to roll back rejected player actor spawn: {exception.Message}");
+            }
+
+            try
+            {
+                PurrNet.UnityProxy.Destroy(playerActor.gameObject);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Failed to destroy rejected player spawn object: {exception.Message}");
             }
         }
 
