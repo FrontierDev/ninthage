@@ -269,7 +269,8 @@ namespace Game.Server.Persistence
                     CharacterPersistenceLeaseID = work.CharacterPersistenceLeaseID,
                     ExpectedRevision = work.Revision,
                     WorldState = MapWorldState(work.Checkpoint.WorldState),
-                    Resources = MapResources(work.Checkpoint.Resources)
+                    Resources = MapResources(work.Checkpoint.Resources),
+                    IsDead = work.Checkpoint.IsDead
                 };
             }
 
@@ -334,7 +335,9 @@ namespace Game.Server.Persistence
         private static bool IsTransportSafeCheckpoint(WorldPersistenceCheckpoint checkpoint)
         {
             WorldPersistenceCheckpoint.Resource[] resources = checkpoint.Resources;
-            if (checkpoint.WorldState == null && resources.Length == 0)
+            if (checkpoint.WorldState == null
+                && resources.Length == 0
+                && !checkpoint.IsDead.HasValue)
                 return false;
 
             if (checkpoint.WorldState != null
@@ -343,6 +346,16 @@ namespace Game.Server.Persistence
                     || !IsFinite(checkpoint.WorldState.PositionX)
                     || !IsFinite(checkpoint.WorldState.PositionY)
                     || !IsFinite(checkpoint.WorldState.PositionZ)
+                    || !IsFinite(checkpoint.WorldState.FacingX)
+                    || !IsFinite(checkpoint.WorldState.FacingY)
+                    || !IsFinite(checkpoint.WorldState.FacingZ)
+                    || !IsFinite(checkpoint.WorldState.FacingW)
+                    || Math.Abs(
+                        (double)checkpoint.WorldState.FacingX * checkpoint.WorldState.FacingX
+                        + (double)checkpoint.WorldState.FacingY * checkpoint.WorldState.FacingY
+                        + (double)checkpoint.WorldState.FacingZ * checkpoint.WorldState.FacingZ
+                        + (double)checkpoint.WorldState.FacingW * checkpoint.WorldState.FacingW
+                        - 1d) > 0.001d
                     || (checkpoint.WorldState.SafeReturnLocationID != null
                         && string.IsNullOrWhiteSpace(checkpoint.WorldState.SafeReturnLocationID))
                     || checkpoint.WorldState.SavedAtUtc.Offset != TimeSpan.Zero))
@@ -389,6 +402,10 @@ namespace Game.Server.Persistence
                 PositionX = worldState.PositionX,
                 PositionY = worldState.PositionY,
                 PositionZ = worldState.PositionZ,
+                FacingX = worldState.FacingX,
+                FacingY = worldState.FacingY,
+                FacingZ = worldState.FacingZ,
+                FacingW = worldState.FacingW,
                 SafeReturnLocationID = worldState.SafeReturnLocationID,
                 SavedAtUtc = worldState.SavedAtUtc
             };

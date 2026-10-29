@@ -242,6 +242,10 @@ namespace Game.Server.Persistence
                 PositionX = worldState.PositionX,
                 PositionY = worldState.PositionY,
                 PositionZ = worldState.PositionZ,
+                FacingX = worldState.FacingX,
+                FacingY = worldState.FacingY,
+                FacingZ = worldState.FacingZ,
+                FacingW = worldState.FacingW,
                 SafeReturnLocationID = worldState.SafeReturnLocationID
             };
         }

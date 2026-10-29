@@ -8,17 +8,19 @@ namespace Game.Server.Persistence
         private readonly Resource[] _resources;
 
         /// <summary>Creates a checkpoint snapshot without capturing runtime actor state.</summary>
-        internal WorldPersistenceCheckpoint(WorldStateSnapshot worldState, Resource[] resources)
+        internal WorldPersistenceCheckpoint(WorldStateSnapshot worldState, Resource[] resources, bool? isDead)
         {
             if (resources == null)
                 throw new ArgumentNullException(nameof(resources));
 
             WorldState = worldState;
             _resources = (Resource[])resources.Clone();
+            IsDead = isDead;
         }
 
         internal WorldStateSnapshot WorldState { get; }
         internal Resource[] Resources => (Resource[])_resources.Clone();
+        internal bool? IsDead { get; }
 
         /// <summary>Optional persisted world location for a checkpoint.</summary>
         internal sealed class WorldStateSnapshot
@@ -29,6 +31,10 @@ namespace Game.Server.Persistence
                 double positionX,
                 double positionY,
                 double positionZ,
+                float facingX,
+                float facingY,
+                float facingZ,
+                float facingW,
                 string safeReturnLocationID,
                 DateTimeOffset savedAtUtc)
             {
@@ -37,6 +43,10 @@ namespace Game.Server.Persistence
                 PositionX = positionX;
                 PositionY = positionY;
                 PositionZ = positionZ;
+                FacingX = facingX;
+                FacingY = facingY;
+                FacingZ = facingZ;
+                FacingW = facingW;
                 SafeReturnLocationID = safeReturnLocationID;
                 SavedAtUtc = savedAtUtc;
             }
@@ -46,6 +56,10 @@ namespace Game.Server.Persistence
             internal double PositionX { get; }
             internal double PositionY { get; }
             internal double PositionZ { get; }
+            internal float FacingX { get; }
+            internal float FacingY { get; }
+            internal float FacingZ { get; }
+            internal float FacingW { get; }
             internal string SafeReturnLocationID { get; }
             internal DateTimeOffset SavedAtUtc { get; }
         }

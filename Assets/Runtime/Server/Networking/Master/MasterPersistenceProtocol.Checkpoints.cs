@@ -37,6 +37,9 @@ namespace Game.Server.Networking.Master
 
                 [JsonProperty("resources")]
                 public ResourceCheckpoint[] Resources { get; set; }
+
+                [JsonProperty("isDead")]
+                public bool? IsDead { get; set; }
             }
 
             /// <summary>Field-scoped persisted world location for a checkpoint.</summary>
@@ -56,6 +59,18 @@ namespace Game.Server.Networking.Master
 
                 [JsonProperty("positionZ")]
                 public double PositionZ { get; set; }
+
+                [JsonProperty("facingX")]
+                public float FacingX { get; set; }
+
+                [JsonProperty("facingY")]
+                public float FacingY { get; set; }
+
+                [JsonProperty("facingZ")]
+                public float FacingZ { get; set; }
+
+                [JsonProperty("facingW")]
+                public float FacingW { get; set; }
 
                 [JsonProperty("safeReturnLocationID")]
                 public string SafeReturnLocationID { get; set; }

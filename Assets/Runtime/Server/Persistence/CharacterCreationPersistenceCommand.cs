@@ -62,6 +62,10 @@ namespace Game.Server.Persistence
                 double positionX,
                 double positionY,
                 double positionZ,
+                float facingX,
+                float facingY,
+                float facingZ,
+                float facingW,
                 string safeReturnLocationID)
             {
                 MapID = mapID;
@@ -69,6 +73,10 @@ namespace Game.Server.Persistence
                 PositionX = positionX;
                 PositionY = positionY;
                 PositionZ = positionZ;
+                FacingX = facingX;
+                FacingY = facingY;
+                FacingZ = facingZ;
+                FacingW = facingW;
                 SafeReturnLocationID = safeReturnLocationID;
             }
 
@@ -77,6 +85,10 @@ namespace Game.Server.Persistence
             internal double PositionX { get; }
             internal double PositionY { get; }
             internal double PositionZ { get; }
+            internal float FacingX { get; }
+            internal float FacingY { get; }
+            internal float FacingZ { get; }
+            internal float FacingW { get; }
             internal string SafeReturnLocationID { get; }
         }
 

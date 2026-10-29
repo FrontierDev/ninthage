@@ -54,6 +54,9 @@ namespace Game.Server.Networking.Master
             [JsonProperty("worldState")]
             public CharacterWorldState WorldState { get; set; }
 
+            [JsonProperty("isDead")]
+            public bool IsDead { get; set; }
+
             [JsonProperty("resources")]
             public CharacterResourceState[] Resources { get; set; }
 
@@ -102,6 +105,18 @@ namespace Game.Server.Networking.Master
 
             [JsonProperty("positionZ")]
             public double PositionZ { get; set; }
+
+            [JsonProperty("facingX")]
+            public float FacingX { get; set; }
+
+            [JsonProperty("facingY")]
+            public float FacingY { get; set; }
+
+            [JsonProperty("facingZ")]
+            public float FacingZ { get; set; }
+
+            [JsonProperty("facingW")]
+            public float FacingW { get; set; }
 
             [JsonProperty("safeReturnLocationID")]
             public string SafeReturnLocationID { get; set; }
