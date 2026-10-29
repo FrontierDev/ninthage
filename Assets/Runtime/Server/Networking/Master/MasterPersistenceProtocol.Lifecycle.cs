@@ -41,6 +41,12 @@ namespace Game.Server.Networking.Master
             [JsonProperty("resources")]
             public InitialResource[] Resources { get; set; }
 
+            [JsonProperty("abilities")]
+            public InitialAbility[] Abilities { get; set; }
+
+            [JsonProperty("weaponSkills")]
+            public InitialWeaponSkill[] WeaponSkills { get; set; }
+
             [JsonProperty("reputations")]
             public InitialReputation[] Reputations { get; set; }
 
@@ -89,6 +95,29 @@ namespace Game.Server.Networking.Master
 
                 [JsonProperty("currentValue")]
                 public float CurrentValue { get; set; }
+            }
+
+            /// <summary>Initial known ability granted to a new character.</summary>
+            internal sealed class InitialAbility
+            {
+                [JsonProperty("abilityDefinitionID")]
+                public string AbilityDefinitionID { get; set; }
+
+                [JsonProperty("rank")]
+                public int Rank { get; set; }
+            }
+
+            /// <summary>Initial weapon skill granted to a new character.</summary>
+            internal sealed class InitialWeaponSkill
+            {
+                [JsonProperty("weaponType")]
+                public int WeaponType { get; set; }
+
+                [JsonProperty("level")]
+                public int Level { get; set; }
+
+                [JsonProperty("experience")]
+                public int Experience { get; set; }
             }
 
             /// <summary>Initial reputation value for one character faction.</summary>

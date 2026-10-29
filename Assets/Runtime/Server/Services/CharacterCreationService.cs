@@ -38,6 +38,69 @@ namespace Game.Server.Services
                 NotifyFailure(playerID, "invalid class");
                 yield break;
             }
+            List<CharacterCreationPersistenceCommand.InitialAbility> abilities = new();
+            if (classDefinition.ClassSpellList == null)
+            {
+                Debug.Error($"Class '{classDefinition.DefinitionID}' has no valid class spell list.");
+                NotifyFailure(playerID, "invalid class configuration");
+                yield break;
+            }
+
+            SpellDefinitionLibrary spellLibrary = classDefinition.ClassSpellList.Count == 0
+                ? null
+                : SpellDefinitionLibrary.Instance;
+            HashSet<string> abilityDefinitionIDs = new(StringComparer.Ordinal);
+            foreach (ClassSpell classSpell in classDefinition.ClassSpellList)
+            {
+                string abilityDefinitionID = classSpell.spell == null
+                    ? null
+                    : classSpell.spell.DefinitionID;
+                if (classSpell.spell == null
+                    || string.IsNullOrWhiteSpace(abilityDefinitionID)
+                    || spellLibrary == null
+                    || spellLibrary.GetDefinition(abilityDefinitionID) == null
+                    || !abilityDefinitionIDs.Add(abilityDefinitionID))
+                {
+                    Debug.Error(
+                        $"Class '{classDefinition.DefinitionID}' has invalid initial spell '{abilityDefinitionID ?? "<null>"}'.");
+                    NotifyFailure(playerID, "invalid class configuration");
+                    yield break;
+                }
+
+                abilities.Add(new CharacterCreationPersistenceCommand.InitialAbility(abilityDefinitionID, 1));
+            }
+            abilities.Sort((left, right) =>
+                string.CompareOrdinal(left.AbilityDefinitionID, right.AbilityDefinitionID));
+
+            List<CharacterCreationPersistenceCommand.InitialWeaponSkill> weaponSkills = new();
+            if (classDefinition.WeaponTypes == null)
+            {
+                Debug.Error($"Class '{classDefinition.DefinitionID}' has no valid weapon type list.");
+                NotifyFailure(playerID, "invalid class configuration");
+                yield break;
+            }
+
+            HashSet<int> weaponTypeValues = new();
+            foreach (ItemWeaponType weaponType in classDefinition.WeaponTypes)
+            {
+                int weaponTypeValue = (int)weaponType;
+                if (!Enum.IsDefined(typeof(ItemWeaponType), weaponTypeValue)
+                    || weaponTypeValue < 0
+                    || !weaponTypeValues.Add(weaponTypeValue))
+                {
+                    Debug.Error(
+                        $"Class '{classDefinition.DefinitionID}' has invalid initial weapon type '{weaponTypeValue}'.");
+                    NotifyFailure(playerID, "invalid class configuration");
+                    yield break;
+                }
+
+                weaponSkills.Add(new CharacterCreationPersistenceCommand.InitialWeaponSkill(
+                    weaponTypeValue,
+                    1,
+                    0));
+            }
+            weaponSkills.Sort((left, right) => left.WeaponType.CompareTo(right.WeaponType));
+
             if (string.IsNullOrWhiteSpace(characterData.FirstName)
                 || string.IsNullOrWhiteSpace(characterData.LastName))
             {
@@ -105,6 +168,8 @@ namespace Game.Server.Services
                         1f,
                         null),
                     Array.Empty<CharacterCreationPersistenceCommand.InitialResource>(),
+                    abilities.ToArray(),
+                    weaponSkills.ToArray(),
                     reputations.ToArray(),
                     Array.Empty<CharacterCreationPersistenceCommand.InitialItem>());
             }

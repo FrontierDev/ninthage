@@ -39,6 +39,8 @@ namespace Game.Server.Persistence
                     FactionDefinitionID = command.FactionDefinitionID,
                     WorldState = MapWorldState(command.WorldState),
                     Resources = MapResources(command.Resources),
+                    Abilities = MapAbilities(command.Abilities),
+                    WeaponSkills = MapWeaponSkills(command.WeaponSkills),
                     Reputations = MapReputations(command.Reputations),
                     Items = MapItems(command.Items)
                 };
@@ -265,6 +267,43 @@ namespace Game.Server.Persistence
                         ResourceDefinitionID = resource.ResourceDefinitionID,
                         CurrentValue = resource.CurrentValue
                     };
+            }
+
+            return mapped;
+        }
+
+        private static MasterPersistenceProtocol.CharacterCreateRequest.InitialAbility[] MapAbilities(
+            CharacterCreationPersistenceCommand.InitialAbility[] abilities)
+        {
+            MasterPersistenceProtocol.CharacterCreateRequest.InitialAbility[] mapped =
+                new MasterPersistenceProtocol.CharacterCreateRequest.InitialAbility[abilities.Length];
+            for (int index = 0; index < abilities.Length; index++)
+            {
+                CharacterCreationPersistenceCommand.InitialAbility ability = abilities[index];
+                mapped[index] = new MasterPersistenceProtocol.CharacterCreateRequest.InitialAbility
+                {
+                    AbilityDefinitionID = ability.AbilityDefinitionID,
+                    Rank = ability.Rank
+                };
+            }
+
+            return mapped;
+        }
+
+        private static MasterPersistenceProtocol.CharacterCreateRequest.InitialWeaponSkill[] MapWeaponSkills(
+            CharacterCreationPersistenceCommand.InitialWeaponSkill[] weaponSkills)
+        {
+            MasterPersistenceProtocol.CharacterCreateRequest.InitialWeaponSkill[] mapped =
+                new MasterPersistenceProtocol.CharacterCreateRequest.InitialWeaponSkill[weaponSkills.Length];
+            for (int index = 0; index < weaponSkills.Length; index++)
+            {
+                CharacterCreationPersistenceCommand.InitialWeaponSkill weaponSkill = weaponSkills[index];
+                mapped[index] = new MasterPersistenceProtocol.CharacterCreateRequest.InitialWeaponSkill
+                {
+                    WeaponType = weaponSkill.WeaponType,
+                    Level = weaponSkill.Level,
+                    Experience = weaponSkill.Experience
+                };
             }
 
             return mapped;
