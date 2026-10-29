@@ -842,6 +842,10 @@ The authoring workflow must support:
 - return/exit anchor;
 - optional direction/orientation information.
 
+For private-instance entrances, the existing authored `TransferCollider` carries **one** required `SafeReturnLocationID` referencing a reusable public-map `WorldLocationDefinition` marked `SafeReturn`. It does not embed a map/position/rotation copy. The definition resolves at runtime to canonical public MapID, double-precision XYZ and facing in the admitted WorldID. The entrance must validate that its referenced authored return point exists on the matching public map before creating a private instance. A successful authoritative inward transfer updates the player's live return ID; cancelled/failed transfers do not. Checkpoints persist only the ID in `CharacterWorldState.SafeReturnLocationID`. Reuse `ServerWorldManager.TransferRuntime` entrance ownership; no parallel instance return registry is permitted.
+
+A destroyed/nonreconnectable instance must never cause its saved local position to be reused as public-world coordinates. World-entry recovery follows the Account, Character and Persistence PDD's ordered authored fallback chain. Future lodestones can reference the same location definitions but are not implemented by this instance contract.
+
 Designers should not need to hard-code instance transitions in gameplay scripts for each dungeon or house.
 
 ---
