@@ -160,7 +160,7 @@ namespace Game.Server.Networking.Master
             return response;
         }
 
-        private async Task<(HttpStatusCode StatusCode, string Body)> PostJsonAsync(
+        internal async Task<(HttpStatusCode StatusCode, string Body)> PostJsonAsync(
             string path,
             string requestBody,
             CancellationToken cancellationToken)

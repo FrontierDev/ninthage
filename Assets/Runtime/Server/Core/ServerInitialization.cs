@@ -61,6 +61,10 @@ namespace Game.Server.Core
         private static bool _initializationSucceeded;
         private static ServerTimeAuthority _timeAuthority;
         private static MasterWorldClient _masterWorldClient;
+        private static MasterPersistenceClient _masterPersistenceClient;
+        private static WorldPersistenceCoordinator _worldPersistenceCoordinator;
+        private static CancellationTokenSource _persistenceCheckpointCancellation;
+        private static Task _persistenceCheckpointTask;
         private static CancellationTokenSource _masterHeartbeatCancellation;
         private static Task _masterHeartbeatTask;
         private static Coroutine _masterHeartbeatMonitorCoroutine;
@@ -70,6 +74,19 @@ namespace Game.Server.Core
 
         /// <summary>Gets the current server-lifetime UTC authority, or <c>null</c> when the server is stopped.</summary>
         public static ServerTimeAuthority TimeAuthority => _timeAuthority;
+
+        /// <summary>Gets the bootstrap-owned persistence coordinator for the active World Server run.</summary>
+        internal static WorldPersistenceCoordinator PersistenceCoordinator
+        {
+            get
+            {
+                if (_worldPersistenceCoordinator == null)
+                    throw new InvalidOperationException(
+                        "World persistence has not been initialized or has already been torn down.");
+
+                return _worldPersistenceCoordinator;
+            }
+        }
 
         /// <summary>
         /// Registers project-owned server metrics for an already active telemetry session.
@@ -443,6 +460,15 @@ namespace Game.Server.Core
                     $"Master heartbeat for world '{_launchWorldName}' was rejected with result {initialHeartbeatResponse.Result}.");
             }
 
+            _masterPersistenceClient = new MasterPersistenceClient(_masterWorldClient);
+            _worldPersistenceCoordinator = new WorldPersistenceCoordinator(
+                _masterPersistenceClient,
+                registrationResponse.WorldID.Value,
+                WORLD_SERVER_RUN_ID);
+            _persistenceCheckpointCancellation = new CancellationTokenSource();
+            _persistenceCheckpointTask = _worldPersistenceCoordinator.RunCheckpointLoopAsync(
+                _persistenceCheckpointCancellation.Token);
+
             _masterHeartbeatCancellation = new CancellationTokenSource();
             _masterHeartbeatTask = _masterWorldClient.RunHeartbeatLoopAsync(
                 registrationResponse.WorldID.Value,
@@ -519,6 +545,85 @@ namespace Game.Server.Core
             DisposeMasterHeartbeatCancellation();
         }
 
+        private static IEnumerator StopAndSettlePersistenceGracefully()
+        {
+            WorldPersistenceCoordinator persistenceCoordinator = _worldPersistenceCoordinator;
+            if (persistenceCoordinator == null)
+            {
+                ClearPersistenceState();
+                yield break;
+            }
+
+            try
+            {
+                persistenceCoordinator.StopAcceptingWork();
+                RequestPersistenceCheckpointCancellation();
+
+                while (_persistenceCheckpointTask != null && !_persistenceCheckpointTask.IsCompleted)
+                    yield return null;
+
+                ObservePersistenceCheckpointTask();
+
+                while (!persistenceCoordinator.IsIdle)
+                    yield return null;
+
+                if (_fatalShutdownRequested)
+                    yield break;
+
+                Task finalCheckpointTask = null;
+                try
+                {
+                    finalCheckpointTask = persistenceCoordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    LogPersistenceTeardownFailure("final checkpoint flush", exception);
+                }
+
+                if (finalCheckpointTask != null)
+                    yield return ObservePersistenceTask(finalCheckpointTask, "final checkpoint flush");
+
+                if (_fatalShutdownRequested)
+                    yield break;
+
+                Task releaseCharactersTask = null;
+                try
+                {
+                    releaseCharactersTask = persistenceCoordinator.ReleaseAllCharactersAsync(CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    LogPersistenceTeardownFailure("character lease release", exception);
+                }
+
+                if (releaseCharactersTask != null)
+                    yield return ObservePersistenceTask(releaseCharactersTask, "character lease release");
+            }
+            finally
+            {
+                ClearPersistenceState();
+            }
+        }
+
+        private static IEnumerator ObservePersistenceTask(Task task, string operationDescription)
+        {
+            while (!task.IsCompleted)
+                yield return null;
+
+            try
+            {
+                task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException exception)
+            {
+                LogPersistenceTeardownFailure(operationDescription, exception);
+            }
+            catch (Exception exception)
+            {
+                LogPersistenceTeardownFailure(operationDescription, exception);
+            }
+        }
+
         private static IEnumerator UnregisterMasterWorld()
         {
             if (_masterWorldClient == null)
@@ -576,12 +681,88 @@ namespace Game.Server.Core
 
         private static void CancelAndDisposeMasterStateSynchronously()
         {
+            CancelAndDisposePersistenceStateSynchronously();
             RequestMasterHeartbeatCancellation();
             StopMasterHeartbeatMonitor();
             ObserveMasterHeartbeatTask();
             _masterHeartbeatTask = null;
             DisposeMasterHeartbeatCancellation();
             DisposeMasterWorldClient();
+        }
+
+        private static void CancelAndDisposePersistenceStateSynchronously()
+        {
+            if (_worldPersistenceCoordinator != null)
+                _worldPersistenceCoordinator.StopAcceptingWork();
+
+            RequestPersistenceCheckpointCancellation();
+            ObservePersistenceCheckpointTask();
+            ClearPersistenceState();
+        }
+
+        private static void RequestPersistenceCheckpointCancellation()
+        {
+            if (_persistenceCheckpointCancellation == null
+                || _persistenceCheckpointCancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _persistenceCheckpointCancellation.Cancel();
+        }
+
+        private static void ObservePersistenceCheckpointTask()
+        {
+            Task persistenceTask = _persistenceCheckpointTask;
+            if (persistenceTask == null)
+                return;
+
+            if (!persistenceTask.IsCompleted)
+            {
+                persistenceTask.ContinueWith(
+                    completedTask => ObserveCompletedPersistenceTask(completedTask),
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+                return;
+            }
+
+            ObserveCompletedPersistenceTask(persistenceTask);
+        }
+
+        private static void ObserveCompletedPersistenceTask(Task persistenceTask)
+        {
+            try
+            {
+                persistenceTask.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception exception)
+            {
+                LogPersistenceTeardownFailure("checkpoint loop", exception);
+            }
+        }
+
+        private static void ClearPersistenceState()
+        {
+            _persistenceCheckpointTask = null;
+            _persistenceCheckpointCancellation?.Dispose();
+            _persistenceCheckpointCancellation = null;
+            _worldPersistenceCoordinator = null;
+            _masterPersistenceClient = null;
+        }
+
+        private static void LogPersistenceTeardownFailure(string operationDescription, Exception exception)
+        {
+            Debug.Warning(
+                "Persistence "
+                + operationDescription
+                + " failed during server teardown: "
+                + exception.GetType().Name
+                + ": "
+                + exception.Message);
         }
 
         private static void ObserveMasterHeartbeatTask()
@@ -767,6 +948,7 @@ namespace Game.Server.Core
                 NetworkManager networkManager = GetNetworkManager();
                 yield return StopNetworkServerAndWait(networkManager);
 
+                yield return StopAndSettlePersistenceGracefully();
                 yield return StopAndSettleMasterHeartbeat();
                 if (_fatalShutdownRequested)
                     DisposeMasterWorldClient();
@@ -897,6 +1079,7 @@ namespace Game.Server.Core
             StopMasterHeartbeatMonitor();
             _masterHeartbeatTask = null;
             DisposeMasterHeartbeatCancellation();
+            ClearPersistenceState();
             DisposeMasterWorldClient();
             _timeAuthority = null;
             _initializationCoroutine = null;
@@ -963,6 +1146,7 @@ namespace Game.Server.Core
         {
             yield return StopNetworkServerAndWait(networkManager);
 
+            CancelAndDisposePersistenceStateSynchronously();
             yield return StopAndSettleMasterHeartbeat();
             DisposeMasterWorldClient();
 
