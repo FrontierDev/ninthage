@@ -546,6 +546,8 @@ namespace Game.Server.Core
 
         private static IEnumerator StopAndSettlePersistenceGracefully()
         {
+            Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+
             WorldPersistenceCoordinator persistenceCoordinator = _worldPersistenceCoordinator;
             if (persistenceCoordinator == null)
             {
