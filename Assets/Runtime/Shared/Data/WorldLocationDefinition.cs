@@ -110,9 +110,11 @@ namespace Game.Shared.Data
                 isValid = false;
             }
 
-            if ((_purposes & ~SUPPORTED_PURPOSES) != 0)
+            if (_purposes == WorldLocationPurpose.None
+                || (_purposes & ~SUPPORTED_PURPOSES) != 0)
             {
-                Debug.LogError($"[{GetType().Name}] Definition '{DefinitionID}' has unsupported purposes");
+                Debug.LogError(
+                    $"[{GetType().Name}] Definition '{DefinitionID}' must have at least one supported purpose");
                 isValid = false;
             }
 

@@ -51,6 +51,9 @@ namespace Game.Shared
         [SerializeField]
         /// <summary>Gets or sets the layer mask name used for ground detection.</summary>
         public string GroundDetectionMaskName = "Terrain"; // Default to layer 0 (can be changed in the editor)
+        [SerializeField]
+        /// <summary>Gets or sets the layer mask for solid colliders that block character arrival, separate from ground-support detection.</summary>
+        public LayerMask CharacterArrivalBlockingMask;
 
         [Header("Movement Settings")]
         /// <summary>Gets or sets the maximum fall speed.</summary>

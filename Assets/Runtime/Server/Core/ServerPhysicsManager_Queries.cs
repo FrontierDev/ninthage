@@ -12,6 +12,7 @@ namespace Game.Server.Core
         private const float PLAYER_COLLIDER_HEIGHT = 2f;
         private const float PLAYER_COLLIDER_RADIUS = 0.25f;
         private const float PLAYER_COLLIDER_CENTER_Y = 1f;
+        private const float ARRIVAL_SUPPORT_CONTACT_EPSILON = 0.001f;
 
         /// <summary>
         /// Casts a downward ground ray in the continuous server physical frame.
@@ -105,17 +106,36 @@ namespace Game.Server.Core
             }
 
             GameConfiguration configuration = Game.Shared.GameConfigurationManager.Config;
-            if (configuration == null || string.IsNullOrWhiteSpace(configuration.GroundDetectionMaskName))
+            if (configuration == null)
             {
-                return FailArrival("ground detection configuration is unavailable", out failureReason);
+                return FailArrival("arrival physics configuration is unavailable", out failureReason);
             }
 
-            int groundLayerMask = LayerMask.GetMask(configuration.GroundDetectionMaskName);
-            if (groundLayerMask == 0)
+            int blockingLayerMask = configuration.CharacterArrivalBlockingMask.value;
+            if (blockingLayerMask == 0)
             {
                 return FailArrival(
-                    $"ground detection layer '{configuration.GroundDetectionMaskName}' is unavailable",
+                    "character-arrival blocking layer mask is empty",
                     out failureReason);
+            }
+
+            int groundLayerMask = 0;
+            if (authoredGroundAnchor)
+            {
+                if (string.IsNullOrWhiteSpace(configuration.GroundDetectionMaskName))
+                {
+                    return FailArrival(
+                        "ground detection configuration is unavailable",
+                        out failureReason);
+                }
+
+                groundLayerMask = LayerMask.GetMask(configuration.GroundDetectionMaskName);
+                if (groundLayerMask == 0)
+                {
+                    return FailArrival(
+                        $"ground detection layer '{configuration.GroundDetectionMaskName}' is unavailable",
+                        out failureReason);
+                }
             }
 
             try
@@ -147,13 +167,17 @@ namespace Game.Server.Core
 
                 Vector3 capsuleOffset = Vector3.up * PLAYER_COLLIDER_CENTER_Y;
                 float halfCylinder = PLAYER_COLLIDER_HEIGHT * 0.5f - PLAYER_COLLIDER_RADIUS;
-                Vector3 capsuleStart = physicalPosition + capsuleOffset + Vector3.down * halfCylinder;
+                // Lift only the lower endpoint so intended contact with the support floor is not reported as penetration.
+                Vector3 capsuleStart = physicalPosition
+                    + capsuleOffset
+                    + Vector3.down * halfCylinder
+                    + Vector3.up * ARRIVAL_SUPPORT_CONTACT_EPSILON;
                 Vector3 capsuleEnd = physicalPosition + capsuleOffset + Vector3.up * halfCylinder;
                 Collider[] overlaps = Physics.OverlapCapsule(
                     capsuleStart,
                     capsuleEnd,
                     PLAYER_COLLIDER_RADIUS,
-                    groundLayerMask,
+                    blockingLayerMask,
                     QueryTriggerInteraction.Ignore);
                 if (overlaps.Length != 0)
                 {
