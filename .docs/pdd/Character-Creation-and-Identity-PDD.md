@@ -419,6 +419,8 @@ That location can resolve:
 - safe fallback;
 - related starting context.
 
+The shared authoring contract uses a reusable `WorldLocationDefinition` and `WorldLocationDefinitionLibrary`: stable, ordinal `DefinitionID`; canonical public `MapID`; authored double-precision XYZ; normalized facing; and explicit purposes such as Starting, SafeReturn and RegionalFallback. The same authored ID model may later be used for lodestones/fast travel without adding travel logic to character creation. `RaceDefinition.StartingLocationID` references an authored definition marked Starting, not a Unity Transform or an arbitrary numeric spawn. Actual racial locations remain world/race content-authoring decisions.
+
 This also provides the Persistence system with a final recovery location.
 
 ---
@@ -437,7 +439,7 @@ Initial world position/context
 
 HomeWorldID remains account-owned.
 
-StartingLocationID remains race/content-owned.
+StartingLocationID remains race/content-owned. Resolve it in the World Server against the active account-authorised HomeWorldID and the shared authored map, yielding exact double position and facing. Character creation writes these values into the **existing** initial `CharacterWorldState` in its one Master transaction, without storing another starting-location database reference or inventing a fallback coordinate. An unavailable/invalid race start fails creation explicitly; no hardcoded test spawn/world origin may silently replace it. An existing character's saved position is never reset simply because race content changes.
 
 ---
 
