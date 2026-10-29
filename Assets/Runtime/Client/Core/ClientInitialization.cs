@@ -231,6 +231,7 @@ namespace Game.Client
             networkManagerObj.name = "[Client] NetworkManager";
             GameObject.DontDestroyOnLoad(networkManagerObj);
             var networkManager = networkManagerObj.GetComponent<NetworkManager>();
+            networkManager.ResetOriginalScene(networkManagerObj.scene);
 
             // Add the client connection manage to the network manager object.
             networkManagerObj.AddComponent<ClientConnectionManager>();

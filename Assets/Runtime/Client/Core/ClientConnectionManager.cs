@@ -307,10 +307,18 @@ namespace Game.Client
                 LoadingScreen.Instance.Tick();
                 networkManager.StartClient();
 
-                yield return new WaitUntil(() => _connectionState != ConnectionState.Connected);
+                yield return new WaitUntil(
+                    () => _connectionState == ConnectionState.Connected
+                        || _connectionState == ConnectionState.Disconnected);
+                if (_connectionState != ConnectionState.Connected)
+                    yield break;
                 Debug.Log(" ✓ Step 3: Connection process completed. Moving to character selection or creation.");
 
-                yield return new WaitUntil(() => ClientAccountManager.HasReceivedCharacters());
+                yield return new WaitUntil(
+                    () => ClientAccountManager.HasReceivedCharacters()
+                        || _connectionState == ConnectionState.Disconnected);
+                if (_connectionState != ConnectionState.Connected)
+                    yield break;
 
                 if (ClientAccountManager.TryGetCharacterList(out var characterList) && characterList.Count > 0)
                 {
