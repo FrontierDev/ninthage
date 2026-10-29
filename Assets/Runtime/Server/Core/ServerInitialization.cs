@@ -403,8 +403,8 @@ namespace Game.Server.Core
                 // Step 6: Initialise server-side bindings for RPC handlers.
                 yield return ServerInitializeBindings();
 
-                // Step 7: Load player database.
-                yield return ServerInitializePlayerDatabase();
+                // Step 7: Initialize temporary authentication.
+                yield return ServerInitializeAuthentication();
 
                 // Step 8: Load world scene through PurrNet so that it is tracked and ready for networked spawning.
                 yield return ServerLoadWorldScene();
@@ -834,12 +834,12 @@ namespace Game.Server.Core
 
             yield return null;
 
-            // Check to see if the server should clear player data on start,
-            // which is useful for testing character creation, etc.
+            // Check whether the server should clear temporary authentication credentials on start.
             _forceCleanServer = Game.Shared.GameConfigurationManager.Config.ClearPlayerDataOnStart;
 
             if (_forceCleanServer)
-                Debug.Warning(" - Server is configured to clear player data on start. All existing player data will be deleted.");
+                Debug.Warning(
+                    " - Server is configured to clear temporary authentication credentials on start; legacy player data will be preserved.");
 
             Debug.Log(" ✓ Step 2: Game configuration loaded successfully.");
         }
@@ -1179,20 +1179,24 @@ namespace Game.Server.Core
             Debug.Log(" ✓ Step 6: Server bindings initialized successfully.");
         }
 
-        private static IEnumerator ServerInitializePlayerDatabase()
+        private static IEnumerator ServerInitializeAuthentication()
         {
-            Debug.Log(" - Step 7: Initializing player database...");
+            Debug.Log(" - Step 7: Initializing temporary authentication...");
+
+            TemporaryCredentialStore.Initialize();
 
             if (_forceCleanServer)
             {
-                PlayerDatabase.CleanDatabase();
+                TemporaryCredentialStore.Clear();
+                Debug.Warning(
+                    " - Temporary authentication credentials were cleared; legacy player data was not modified.");
             }
 
             var authService = new PlayerAuthService();
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(authService);
 
             yield return null;
-            Debug.Log(" ✓ Step 7: Player database initialized successfully.");
+            Debug.Log(" ✓ Step 7: Temporary authentication initialized successfully.");
         }
 
         private static IEnumerator ServerLoadWorldScene()

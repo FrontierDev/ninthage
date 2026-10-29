@@ -1,3 +1,4 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using UnityEngine.EventSystems;
 
 namespace Game.Client.UI
@@ -10,9 +11,14 @@ namespace Game.Client.UI
         /// <inheritdoc/>
         public override void OnClick(PointerEventData eventData)
         {
-            var characterName = UI_CC_FinalizePanel.Instance.GetCharacterName();
-
-            CharacterCreationManager.Instance.CreateCharacter(characterName);
+            if (!UI_CC_FinalizePanel.Instance.TryGetCharacterNames(out string firstName, out string lastName))
+            {
+                Debug.Warning("Character creation requires a first and last name separated by one space.");
+            }
+            else
+            {
+                CharacterCreationManager.Instance.CreateCharacter(firstName, lastName);
+            }
 
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }

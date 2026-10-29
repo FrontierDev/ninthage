@@ -1,5 +1,6 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking;
+using Game.Server.Networking.Master;
 using Game.Server.Persistence;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
@@ -9,6 +10,8 @@ using PurrNet.Transports;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Game.Server.Core
@@ -63,7 +66,7 @@ namespace Game.Server.Core
         private NetworkManager _networkManager;
         private ITransport _transport;
 
-        private Dictionary<PlayerID, PlayerAccountData> _connectedPlayers = new();
+        private Dictionary<PlayerID, ConnectedAccountContext> _connectedAccounts = new();
         private Dictionary<PlayerID, PlayerSessionData> _sessionData = new();
         // Current outbound interval only; _transport.connections remains the live connection authority.
         private Dictionary<Connection, ConnectionTelemetryWindow> _outboundTelemetryWindows = new();
@@ -135,7 +138,7 @@ namespace Game.Server.Core
             ResetOutboundTelemetryWindow();
             ClearConnectionPressureState();
             _networkManager = null;
-            _connectedPlayers.Clear();
+            _connectedAccounts.Clear();
             _sessionData.Clear();
             _initialized = false;
         }
@@ -214,7 +217,7 @@ namespace Game.Server.Core
                 intervalSeconds: intervalSeconds);
             PerformanceTelemetry.TryRecord(
                 NetworkingPerformanceMetrics.SERVER_AUTHENTICATED_CLIENT_COUNT,
-                _connectedPlayers.Count,
+                _connectedAccounts.Count,
                 intervalSeconds: intervalSeconds);
             PerformanceTelemetry.TryRecord(
                 NetworkingPerformanceMetrics.SERVER_IN_WORLD_CLIENT_COUNT,
@@ -466,32 +469,15 @@ namespace Game.Server.Core
 
             return IsConnectionPressured(connection);
         }
-
         private void OnPlayerJoined(PlayerID playerID, bool isReconnect, bool asServer)
         {
             if (!asServer)
                 return;
 
-            var username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
-
-            if (Game.Server.Persistence.PlayerDatabase.TryGetPlayerAccount(username, out var accountData))
-            {
-                Debug.Log($" ✓ Player authenticated: {username} (Reconnect: {isReconnect})");
-                Debug.Log($" - # of Characters: {accountData.Characters.Count}");
-
-                // Send character list to client
-                Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(playerID, accountData.Characters);
-            }
-            else
-            {
-                Debug.Error($"Player authenticated with username '{username}' not found in database. This should not happen.");
-                return;
-            }
-
-            _connectedPlayers[playerID] = accountData;
-            Debug.Log($"Player joined: {playerID} ({username})");
+            string username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
+            bool isNewPlayer = Game.Shared.Networking.LoginAuthenticator.GetNextPlayerIsNew();
+            StartCoroutine(InitializeAuthenticatedPlayer(playerID, username, isNewPlayer, isReconnect));
         }
-
         private void OnPlayerLeft(PlayerID playerID, bool asServer)
         {
             if (!asServer)
@@ -499,32 +485,319 @@ namespace Game.Server.Core
 
             Debug.Log($"Player left: {playerID}");
 
-            // Persist resource state (health, mana, etc.) before cleanup.
-            if (_sessionData.TryGetValue(playerID, out var session) &&
-                _connectedPlayers.TryGetValue(playerID, out var account) &&
-                session.PlayerActor != null)
+            Guid characterID = Guid.Empty;
+            if (_sessionData.TryGetValue(playerID, out PlayerSessionData session))
             {
-                var charData = account.Characters.Find(c => c.GUID == session.CharacterID);
-                if (charData != null)
-                {
-                    Persistence.PlayerDatabase.SavePlayerAccount(account);
-                }
-
+                characterID = session.CharacterID;
                 Actor playerActor = session.PlayerActor;
+                if (playerActor != null)
+                {
+                    if (ServerStatManager.IsInitialized)
+                        ServerStatManager.Instance.UnregisterActor(playerActor);
 
-                // Unregister from stat tracking before retiring and despawning the player actor.
-                if (ServerStatManager.IsInitialized)
-                    ServerStatManager.Instance.UnregisterActor(playerActor);
+                    playerActor.RetireFromServer();
 
-                playerActor.RetireFromServer();
-
-                NetworkIdentity identity = playerActor.GetComponent<NetworkIdentity>();
-                if (identity != null)
-                    identity.Despawn();
+                    NetworkIdentity identity = playerActor.GetComponent<NetworkIdentity>();
+                    if (identity != null)
+                        identity.Despawn();
+                }
             }
 
-            _connectedPlayers.Remove(playerID);
-            _sessionData.Remove(playerID);
+            _connectedAccounts.Remove(playerID);
+            ClearSessionData(playerID);
+            if (characterID != Guid.Empty)
+                StartCoroutine(ReleaseCharacterAfterDisconnect(characterID));
+        }
+
+        private IEnumerator InitializeAuthenticatedPlayer(
+            PlayerID playerID,
+            string username,
+            bool isNewPlayer,
+            bool isReconnect)
+        {
+            if (string.IsNullOrWhiteSpace(username) || username == "Unknown")
+            {
+                Debug.Error($"Player {playerID} joined without a validated username; authentication failed closed.");
+                yield break;
+            }
+
+            bool masterProvisioningPending;
+            try
+            {
+                if (!TemporaryCredentialStore.TryGetCredential(
+                    username,
+                    out _,
+                    out _,
+                    out masterProvisioningPending))
+                {
+                    Debug.Error($"No temporary credential exists for authenticated username '{username}'. Authentication failed closed.");
+                    yield break;
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Could not inspect temporary credential for '{username}': {exception.Message}");
+                yield break;
+            }
+
+            WorldPersistenceCoordinator coordinator;
+            try
+            {
+                coordinator = ServerInitialization.PersistenceCoordinator;
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Could not access the World persistence coordinator for '{username}': {exception.Message}");
+                yield break;
+            }
+
+            if (coordinator == null)
+            {
+                Debug.Error($"World persistence coordinator is unavailable for authenticated username '{username}'.");
+                yield break;
+            }
+
+            Task<MasterPersistenceProtocol.AccountIdentityResponse> resolveTask;
+            try
+            {
+                resolveTask = coordinator.ResolveAccountAsync(username, CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Could not resolve Master account for '{username}': {exception.Message}");
+                yield break;
+            }
+
+            while (!resolveTask.IsCompleted)
+                yield return null;
+
+            MasterPersistenceProtocol.AccountIdentityResponse accountResponse;
+            try
+            {
+                accountResponse = resolveTask.GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Master account resolution failed for '{username}': {exception.Message}");
+                yield break;
+            }
+
+            if (accountResponse == null)
+            {
+                Debug.Error($"Master returned no account response for '{username}'. Authentication failed closed.");
+                yield break;
+            }
+
+            if (accountResponse.Result == MasterPersistenceProtocol.PersistenceResult.AccountNotFound
+                && masterProvisioningPending)
+            {
+                Task<MasterPersistenceProtocol.AccountIdentityResponse> createTask;
+                try
+                {
+                    createTask = coordinator.CreateAccountAsync(username, CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error($"Could not create Master account for '{username}': {exception.Message}");
+                    yield break;
+                }
+
+                while (!createTask.IsCompleted)
+                    yield return null;
+
+                try
+                {
+                    accountResponse = createTask.GetAwaiter().GetResult();
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error($"Master account creation failed for '{username}': {exception.Message}");
+                    yield break;
+                }
+
+                if (accountResponse == null
+                    || accountResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+                {
+                    Debug.Error(
+                        $"Master account creation for '{username}' returned {accountResponse?.Result}. Authentication failed closed.");
+                    yield break;
+                }
+
+                try
+                {
+                    if (!TemporaryCredentialStore.MarkMasterProvisioned(username))
+                    {
+                        Debug.Error($"Temporary credential '{username}' disappeared while provisioning its Master account.");
+                        yield break;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error($"Could not mark temporary credential '{username}' as provisioned: {exception.Message}");
+                    yield break;
+                }
+            }
+            else if (accountResponse.Result == MasterPersistenceProtocol.PersistenceResult.Accepted)
+            {
+                if (isNewPlayer)
+                {
+                    try
+                    {
+                        if (!TemporaryCredentialStore.RemoveCredential(username))
+                        {
+                            Debug.Error($"Temporary credential '{username}' disappeared after a durable account collision.");
+                            yield break;
+                        }
+                        Debug.Warning($"New-player credential '{username}' collided with an existing Master account; authentication failed closed.");
+                        yield break;
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.Error($"Could not remove colliding temporary credential '{username}': {exception.Message}");
+                        yield break;
+                    }
+                }
+                else if (masterProvisioningPending)
+                {
+                    try
+                    {
+                        if (!TemporaryCredentialStore.MarkMasterProvisioned(username))
+                        {
+                            Debug.Error($"Temporary credential '{username}' disappeared while finalizing Master provisioning.");
+                            yield break;
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.Error($"Could not mark temporary credential '{username}' as provisioned: {exception.Message}");
+                        yield break;
+                    }
+                }
+            }
+            else
+            {
+                Debug.Error(
+                    $"Master account resolution for '{username}' returned {accountResponse.Result}. Authentication failed closed.");
+                yield break;
+            }
+
+            if (!accountResponse.AccountID.HasValue
+                || !accountResponse.HomeWorldID.HasValue
+                || !accountResponse.Revision.HasValue
+                || accountResponse.AccountID.Value == Guid.Empty
+                || accountResponse.HomeWorldID.Value == Guid.Empty
+                || accountResponse.Revision.Value < 1)
+            {
+                Debug.Error($"Master returned incomplete account identity for '{username}'. Authentication failed closed.");
+                yield break;
+            }
+            if (accountResponse.HomeWorldID.Value != coordinator.WorldID)
+            {
+                Debug.Error($"Account '{username}' belongs to home World {accountResponse.HomeWorldID.Value}, not this World {coordinator.WorldID}.");
+                yield break;
+            }
+
+            Task<MasterPersistenceProtocol.CharacterRosterResponse> rosterTask;
+            try
+            {
+                rosterTask = coordinator.GetCharacterRosterAsync(accountResponse.AccountID.Value, CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Could not load the Master roster for '{username}': {exception.Message}");
+                yield break;
+            }
+
+            while (!rosterTask.IsCompleted)
+                yield return null;
+
+            MasterPersistenceProtocol.CharacterRosterResponse rosterResponse;
+            try
+            {
+                rosterResponse = rosterTask.GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Master roster loading failed for '{username}': {exception.Message}");
+                yield break;
+            }
+
+            if (rosterResponse == null
+                || rosterResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+            {
+                Debug.Error($"Master roster loading for '{username}' returned {rosterResponse?.Result}. Authentication failed closed.");
+                yield break;
+            }
+
+            List<Game.Shared.Persistence.CharacterData> roster;
+            try
+            {
+                roster = CharacterPersistenceProjection.ToActiveRoster(rosterResponse);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Master roster projection failed for '{username}': {exception.Message}");
+                yield break;
+            }
+
+            if (!IsPlayerConnected(playerID))
+            {
+                Debug.Warning($"Player {playerID} disconnected before Master account publication.");
+                yield break;
+            }
+
+            _connectedAccounts[playerID] = new ConnectedAccountContext(
+                username,
+                accountResponse.AccountID.Value,
+                accountResponse.HomeWorldID.Value,
+                accountResponse.Revision.Value);
+            Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(playerID, roster);
+            Debug.Log($"Player authenticated: {username} (AccountID: {accountResponse.AccountID.Value}, Reconnect: {isReconnect})");
+        }
+
+        private IEnumerator ReleaseCharacterAfterDisconnect(Guid characterID)
+        {
+            WorldPersistenceCoordinator coordinator;
+            try
+            {
+                coordinator = ServerInitialization.PersistenceCoordinator;
+            }
+            catch (Exception exception)
+            {
+                Debug.Warning($"Could not access persistence coordinator while releasing character {characterID}: {exception.Message}");
+                yield break;
+            }
+
+            if (coordinator == null)
+            {
+                Debug.Warning($"Persistence coordinator unavailable while releasing character {characterID}; continuing disconnect cleanup.");
+                yield break;
+            }
+
+            Task<MasterPersistenceProtocol.PersistenceResponse> releaseTask;
+            try
+            {
+                releaseTask = coordinator.ReleaseCharacterAsync(characterID, CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                Debug.Warning($"Could not start persistence release for character {characterID}: {exception.Message}");
+                yield break;
+            }
+
+            while (!releaseTask.IsCompleted)
+                yield return null;
+
+            try
+            {
+                MasterPersistenceProtocol.PersistenceResponse response = releaseTask.GetAwaiter().GetResult();
+                if (response == null || response.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+                    Debug.Warning($"Persistence release for character {characterID} returned {response?.Result}; no retry will be attempted.");
+            }
+            catch (Exception exception)
+            {
+                Debug.Warning($"Persistence release failed for character {characterID}: {exception.Message}");
+            }
         }
 
         /// <summary>Stores session data for a connected player.</summary>
@@ -536,20 +809,24 @@ namespace Game.Server.Core
             Debug.Log($"Set session data for player {playerID}: Character GUID {data.CharacterID}");
         }
 
-        /// <summary>Stores account data for a connected player.</summary>
-        /// <param name="playerID">The connected player's network identifier.</param>
-        /// <param name="accountData">The account data to store.</param>
-        public void SetAccountData(PlayerID playerID, PlayerAccountData accountData)
+        /// <summary>Gets the Master-owned account context for a connected player.</summary>
+        internal bool TryGetAccountContext(PlayerID playerID, out ConnectedAccountContext accountContext)
         {
-            if (_connectedPlayers.ContainsKey(playerID))
-            {
-                _connectedPlayers[playerID] = accountData;
-            }
-            else
-            {
-                _connectedPlayers.Add(playerID, accountData);
-            }
-            Debug.Log($"Set account data for player {playerID}: {accountData.Username}");
+            return _connectedAccounts.TryGetValue(playerID, out accountContext);
+        }
+
+        /// <summary>Gets whether the transport still reports a live connection for the player.</summary>
+        internal bool IsPlayerConnected(PlayerID playerID)
+        {
+            return _networkManager != null
+                && _networkManager.playerModule != null
+                && _networkManager.playerModule.TryGetConnection(playerID, out _);
+        }
+
+        /// <summary>Clears the local world-entry session for a player.</summary>
+        internal void ClearSessionData(PlayerID playerID)
+        {
+            _sessionData.Remove(playerID);
         }
 
         /// <summary>Gets session data for a connected player.</summary>
@@ -568,20 +845,5 @@ namespace Game.Server.Core
             }
         }
 
-        /// <summary>Gets account data for a connected player.</summary>
-        /// <param name="playerID">The connected player's network identifier.</param>
-        /// <returns>The player's account data, or <see langword="null"/> when absent.</returns>
-        public PlayerAccountData GetAccountData(PlayerID playerID)
-        {
-            if (_connectedPlayers.TryGetValue(playerID, out var accountData))
-            {
-                return accountData;
-            }
-            else
-            {
-                Debug.Error($"Attempted to get account data for player {playerID}, but they are not in the connected players list.");
-                return null;
-            }
-        }
     }
 }

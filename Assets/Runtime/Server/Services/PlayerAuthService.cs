@@ -1,7 +1,6 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Persistence;
 using Game.Shared.Networking;
-using PlayerDatabase = Game.Server.Persistence.PlayerDatabase;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -10,7 +9,7 @@ namespace Game.Server.Services
 {
     /// <summary>
     /// Server-side implementation of IPlayerAuthService.
-    /// Validates credentials against the PlayerDatabase, creating new accounts as needed.
+    /// Validates credentials against the temporary credential store.
     /// Owns all server-side session state: pending connections and validated queues.
     /// Registered with LoginAuthenticator during server initialization (Step 7).
     /// </summary>
@@ -21,8 +20,7 @@ namespace Game.Server.Services
         private readonly Dictionary<object, string> _pendingConnections = new();
 
         /// <summary>
-        /// Validates the supplied credentials against the player database using PBKDF2-SHA256.
-        /// Creates a new account if the username does not yet exist - this should be replaced for production.
+        /// Validates the supplied credentials against the temporary store using PBKDF2-SHA256.
         /// </summary>
         public bool ValidateCredentials(string username, string password, out bool isNewPlayer)
         {
@@ -32,10 +30,14 @@ namespace Game.Server.Services
                 return false;
             }
 
-            if (PlayerDatabase.TryGetPlayerAccount(username, out var accountData))
+            if (TemporaryCredentialStore.TryGetCredential(
+                username,
+                out string passwordHash,
+                out string passwordSalt,
+                out _))
             {
                 isNewPlayer = false;
-                bool passwordMatch = VerifyPassword(password, accountData.PasswordHash, accountData.PasswordSalt);
+                bool passwordMatch = VerifyPassword(password, passwordHash, passwordSalt);
                 if (!passwordMatch)
                     Debug.Warning($"Password mismatch for existing player: {username}");
                 return passwordMatch;
@@ -44,17 +46,16 @@ namespace Game.Server.Services
             {
                 isNewPlayer = true;
 
-                var salt = GenerateSalt();
-                var hash = HashPassword(password, salt);
+                string salt = GenerateSalt();
+                string hash = HashPassword(password, salt);
 
-                PlayerDatabase.SavePlayerAccount(new PlayerAccountData
+                if (!TemporaryCredentialStore.TryCreateCredential(username, hash, salt))
                 {
-                    Username = username,
-                    PasswordHash = hash,
-                    PasswordSalt = salt
-                });
+                    isNewPlayer = false;
+                    return false;
+                }
 
-                Debug.Warning($"New player account created for: {username}. Player account creation should not be handled by the authentication service in a production implementation.");
+                Debug.Warning($"New temporary authentication credential created for: {username}.");
                 return true;
             }
         }

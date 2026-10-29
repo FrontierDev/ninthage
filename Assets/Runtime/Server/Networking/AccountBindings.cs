@@ -1,4 +1,5 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Core;
 using Game.Server.Services;
 using Game.Shared.Networking;
 using NewCharacterData = Game.Shared.Persistence.NewCharacterData;
@@ -22,14 +23,16 @@ namespace Game.Server.Networking
 
         private static void OnCharacterCreationRequest(PlayerID sender, NewCharacterData newCharacterData)
         {
-            Debug.Log($"Received character creation request from player {sender} for character '{newCharacterData.Name}'");
-            var characterCreationService = new CharacterCreationService(sender, newCharacterData);
+            Debug.Log($"Received character creation request from player {sender} for character '{newCharacterData.FirstName} {newCharacterData.LastName}'");
+            ServerConnectionManager.Instance.StartCoroutine(
+                new CharacterCreationService().Execute(sender, newCharacterData));
         }
 
         private static void OnEnterWorldRequest(PlayerID sender, string characterGUID)
         {
             Debug.Log($"Received enter world request from player {sender} for character ID '{characterGUID}'");
-            var enterWorldService = new EnterWorldService(sender, characterGUID);
+            ServerConnectionManager.Instance.StartCoroutine(
+                new EnterWorldService().Execute(sender, characterGUID));
         }
     }
 }

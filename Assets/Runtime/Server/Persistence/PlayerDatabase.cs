@@ -1,46 +1,13 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Persistence;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
 namespace Game.Server.Persistence
 {
-    /// <summary>Loads, migrates, and persists server player account data.</summary>
+    /// <summary>Legacy player-data serializer retained for the explicit Stage-1.7 Step-13 importer. It is not runtime character/account authority and performs no filesystem persistence.</summary>
     public static class PlayerDatabase
     {
         private const int CURRENT_DATA_VERSION = 1;
-        private static string FILE_PATH;
-        private static bool _diskLoaded;
-        private static Dictionary<string, PlayerAccountData> _playerAccounts = new();
-
-        /// <summary>Clears all accounts and writes an empty database to disk.</summary>
-        public static void CleanDatabase()
-        {
-            EnsureLoaded();
-            _playerAccounts.Clear();
-            SaveToDisk();
-            Debug.Warning("Player database has been cleared. This should only be used for testing purposes.");
-        }
-
-        /// <summary>Attempts to find an account by username.</summary>
-        /// <param name="username">The account username.</param>
-        /// <param name="accountData">Receives the account when found.</param>
-        /// <returns><see langword="true"/> when an account exists for the username.</returns>
-        public static bool TryGetPlayerAccount(string username, out PlayerAccountData accountData)
-        {
-            EnsureLoaded();
-            return _playerAccounts.TryGetValue(username, out accountData);
-        }
-
-        /// <summary>Saves an account to the player database.</summary>
-        /// <param name="accountData">The account data to save.</param>
-        public static void SavePlayerAccount(PlayerAccountData accountData)
-        {
-            EnsureLoaded();
-            _playerAccounts[accountData.Username] = accountData;
-            SaveToDisk();
-        }
 
         /// <summary>Deserializes versioned player data and applies legacy migration without filesystem access.</summary>
         /// <param name="json">The versioned player database JSON.</param>
@@ -80,54 +47,6 @@ namespace Game.Server.Persistence
             };
 
             return JsonUtility.ToJson(wrapper, true);
-        }
-
-        private static void EnsureLoaded()
-        {
-            if (_diskLoaded)
-                return;
-
-            FILE_PATH = Path.Combine(Application.persistentDataPath, Game.Shared.GameConfigurationManager.Config.PlayerDataFilePath);
-            LoadFromDisk();
-            _diskLoaded = true;
-        }
-
-        private static void LoadFromDisk()
-        {
-            if (!File.Exists(FILE_PATH))
-            {
-                Debug.Warning($" - No player data file found at {FILE_PATH}. Starting fresh.");
-                return;
-            }
-
-            var json = File.ReadAllText(FILE_PATH);
-            if (!TryDeserialize(json, out var accounts))
-            {
-                var version = JsonUtility.FromJson<PersistenceFileVersion>(json);
-                if (version == null || version.DataVersion < 0)
-                {
-                    Debug.Error($" - Player data file at {FILE_PATH} has an invalid persistence version.");
-                    return;
-                }
-
-                Debug.Error($" - Player data file at {FILE_PATH} uses unsupported version {version.DataVersion}; expected {CURRENT_DATA_VERSION}.");
-                return;
-            }
-
-            if (accounts != null)
-            {
-                _playerAccounts.Clear();
-                foreach (var account in accounts)
-                    _playerAccounts[account.Username] = account;
-            }
-
-            Debug.Log($" - Loaded {_playerAccounts.Count} player accounts from {FILE_PATH}.");
-        }
-
-        private static void SaveToDisk()
-        {
-            var json = Serialize(_playerAccounts.Values);
-            File.WriteAllText(FILE_PATH, json);
         }
 
         [System.Serializable]

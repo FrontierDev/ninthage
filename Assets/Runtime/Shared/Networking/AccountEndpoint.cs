@@ -47,7 +47,7 @@ namespace Game.Shared.Networking
         {
             NetworkingPerformanceMetrics.RecordRpcHandlerInvocation(
                 NetworkingPerformanceMetrics.RPC_ACCOUNT_SERVER_TRY_CREATE_CHARACTER_HANDLER_INVOCATION_COUNT);
-            Debug.Log($"Received request to create character '{newCharacterData.Name}' from player {rpcInfo.sender}.");
+            Debug.Log($"Received request to create character '{newCharacterData.FirstName} {newCharacterData.LastName}' from player {rpcInfo.sender}.");
             onCharacterCreationRequest?.Invoke(rpcInfo.sender, newCharacterData);
         }
 

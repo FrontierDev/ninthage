@@ -93,7 +93,7 @@ namespace Game.Client
         /// <summary>
         /// Executes the client-side <c>CreateCharacter</c> operation.
         /// </summary>
-        public void CreateCharacter(string characterName)
+        public void CreateCharacter(string firstName, string lastName)
         {
             if (string.IsNullOrEmpty(_selectedClassID) || string.IsNullOrEmpty(_selectedRaceID))
             {
@@ -103,7 +103,8 @@ namespace Game.Client
 
             Game.Shared.Networking.AccountEndpoint.Server_TryCreateCharacter(new Game.Shared.Persistence.NewCharacterData
             {
-                Name = characterName,
+                FirstName = firstName,
+                LastName = lastName,
                 ClassID = _selectedClassID,
                 RaceID = _selectedRaceID
             });

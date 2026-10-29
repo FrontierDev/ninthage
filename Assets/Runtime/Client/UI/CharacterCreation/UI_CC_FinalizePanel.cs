@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -42,12 +43,23 @@ namespace Game.Client.UI
 
         }
 
-        /// <summary>
-        /// Gets the value provided by <c>GetCharacterName</c>.
-        /// </summary>
-        public string GetCharacterName()
+        /// <summary>Splits the presentation-only name input into two nonempty ASCII-space-separated parts.</summary>
+        public bool TryGetCharacterNames(out string firstName, out string lastName)
         {
-            return _nameInput.text;
+            firstName = null;
+            lastName = null;
+
+            string[] nameParts = _nameInput.text.Split(new[] { ' ' }, StringSplitOptions.None);
+            if (nameParts.Length != 2
+                || string.IsNullOrEmpty(nameParts[0])
+                || string.IsNullOrEmpty(nameParts[1]))
+            {
+                return false;
+            }
+
+            firstName = nameParts[0];
+            lastName = nameParts[1];
+            return true;
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Game.Server.Persistence
 {
-    /// <summary>Serializable account data used by the server persistence layer.</summary>
+    /// <summary>Legacy player_data.json account DTO retained for explicit import compatibility.</summary>
     [System.Serializable]
     public class PlayerAccountData
     {

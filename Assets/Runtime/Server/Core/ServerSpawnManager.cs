@@ -638,15 +638,25 @@ namespace Game.Server.Core
             }
         }
 
-        /// <summary>Starts spawning the actor associated with a connected player.</summary>
-        /// <param name="playerID">The player to spawn.</param>
-        public void SpawnPlayer(PlayerID playerID)
+        /// <summary>Gets the prototype player spawn position used by world entry and character creation.</summary>
+        internal static WorldPosition GetPrototypePlayerSpawnWorldPosition()
         {
-            StartCoroutine(SpawnPlayerCoroutine(playerID));
+            return WorldPosition.FromChunkLocal(
+                Vector2Int.zero,
+                new Vector3(0f, 5f, 0f));
         }
 
-        private IEnumerator SpawnPlayerCoroutine(PlayerID playerID)
+        /// <summary>Spawns the actor associated with a connected player.</summary>
+        /// <param name="playerID">The player to spawn.</param>
+        /// <param name="completed">Receives true only after the complete world-entry spawn succeeds.</param>
+        internal IEnumerator SpawnPlayerCoroutine(PlayerID playerID, Action<bool> completed)
         {
+            if (completed == null)
+                throw new ArgumentNullException(nameof(completed));
+
+            bool succeeded = false;
+            try
+            {
             var spawnScene = new Vector2Int(0, 0);
 
             // Actively request the spawn chunk to load instead of passively waiting.
@@ -688,9 +698,7 @@ namespace Game.Server.Core
 
             var runtimeContext = ServerWorldManager.Instance.CurrentRuntimeContext;
             var sourceChunk = new WorldChunkKey(runtimeContext, spawnScene);
-            var spawnWorldPosition = WorldPosition.FromChunkLocal(
-                spawnScene,
-                new Vector3(0f, 5f, 0f));
+            var spawnWorldPosition = GetPrototypePlayerSpawnWorldPosition();
             GameObject prefab = handle.Result;
 
             // Spawn the actor into the persistent global_actors scene, not the chunk scene.
@@ -708,8 +716,7 @@ namespace Game.Server.Core
             yield return new WaitUntil(() => session.PlayerActor != null);
 
             // Look up the character data from the account and assign it to the PlayerActor.
-            var accountData = ServerConnectionManager.Instance.GetAccountData(playerID);
-            var characterData = accountData?.Characters.Find(c => c.GUID == session.CharacterID);
+            var characterData = session.CharacterData;
             if (characterData == null)
             {
                 Debug.Error($"Character data not found for player {playerID}, character GUID {session.CharacterID}.");
@@ -882,6 +889,12 @@ namespace Game.Server.Core
                 spawnWorldPosition,
                 playerActor.SpatialContext,
                 spawnWorldPosition);
+            succeeded = true;
+            }
+            finally
+            {
+                completed(succeeded);
+            }
         }
 
         /// <summary>Queues an actor prefab at an absolute world position in a networked scene.</summary>
