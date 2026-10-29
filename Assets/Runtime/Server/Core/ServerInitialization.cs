@@ -573,7 +573,8 @@ namespace Game.Server.Core
                 Task finalCheckpointTask = null;
                 try
                 {
-                    finalCheckpointTask = persistenceCoordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
+                    finalCheckpointTask = persistenceCoordinator.FlushPendingCheckpointsForShutdownAsync(
+                        CancellationToken.None);
                 }
                 catch (Exception exception)
                 {

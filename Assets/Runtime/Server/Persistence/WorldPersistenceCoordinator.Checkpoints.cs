@@ -1,3 +1,4 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking.Master;
 using System;
 using System.Collections.Generic;
@@ -39,7 +40,20 @@ namespace Game.Server.Persistence
         }
 
         /// <summary>Flushes the dirty checkpoint snapshot that exists when the cycle begins.</summary>
-        internal async Task FlushPendingCheckpointsAsync(CancellationToken cancellationToken)
+        internal Task FlushPendingCheckpointsAsync(CancellationToken cancellationToken)
+        {
+            return FlushPendingCheckpointsCoreAsync(cancellationToken, false);
+        }
+
+        /// <summary>Flushes dirty checkpoints during graceful shutdown and logs cleanup failures.</summary>
+        internal Task FlushPendingCheckpointsForShutdownAsync(CancellationToken cancellationToken)
+        {
+            return FlushPendingCheckpointsCoreAsync(cancellationToken, true);
+        }
+
+        private async Task FlushPendingCheckpointsCoreAsync(
+            CancellationToken cancellationToken,
+            bool logCleanupFailures)
         {
             cancellationToken.ThrowIfCancellationRequested();
             StartCleanupOperation();
@@ -55,7 +69,8 @@ namespace Game.Server.Persistence
                         characterIDs,
                         startIndex,
                         count,
-                        cancellationToken).ConfigureAwait(false);
+                        cancellationToken,
+                        logCleanupFailures).ConfigureAwait(false);
                     if (stopCycle)
                         break;
                 }
@@ -82,7 +97,8 @@ namespace Game.Server.Persistence
             List<Guid> characterIDs,
             int startIndex,
             int count,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            bool logCleanupFailures)
         {
             List<CharacterLaneHandle> laneHandles = new();
             List<CheckpointWork> workItems = new();
@@ -112,25 +128,49 @@ namespace Game.Server.Persistence
                         request,
                         cancellationToken).ConfigureAwait(false);
                 }
-                catch (HttpRequestException)
+                catch (HttpRequestException exception)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (logCleanupFailures)
+                    {
+                        Debug.Warning(
+                            $"Final checkpoint batch could not be confirmed during shutdown: {exception.Message}");
+                    }
                     return true;
                 }
-                catch (TimeoutException)
+                catch (TimeoutException exception)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (logCleanupFailures)
+                    {
+                        Debug.Warning(
+                            $"Final checkpoint batch could not be confirmed during shutdown: {exception.Message}");
+                    }
                     return true;
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException exception)
                 {
                     if (cancellationToken.IsCancellationRequested)
                         throw;
+                    if (logCleanupFailures)
+                    {
+                        Debug.Warning(
+                            $"Final checkpoint batch could not be confirmed during shutdown: {exception.Message}");
+                    }
                     return true;
                 }
 
                 if (response.Result == MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable)
+                {
+                    if (logCleanupFailures)
+                    {
+                        Debug.Warning(
+                            "Final checkpoint batch was rejected during shutdown with result "
+                            + response.Result
+                            + ".");
+                    }
                     return true;
+                }
                 if (response.Result == MasterPersistenceProtocol.PersistenceResult.InvalidRequest)
                 {
                     throw new InvalidOperationException(
@@ -138,6 +178,13 @@ namespace Game.Server.Persistence
                 }
                 if (IsWorldBlockingResult(response.Result))
                 {
+                    if (logCleanupFailures)
+                    {
+                        Debug.Warning(
+                            "Final checkpoint batch was rejected during shutdown with result "
+                            + response.Result
+                            + ".");
+                    }
                     foreach (CheckpointWork work in workItems)
                         SetBlockingResult(work.Lane, response.Result);
                     return false;
@@ -147,7 +194,7 @@ namespace Game.Server.Persistence
                     throw new InvalidOperationException("The Master checkpoint response had an unexpected result.");
                 }
 
-                SettleCheckpointBatch(workItems, response);
+                SettleCheckpointBatch(workItems, response, logCleanupFailures);
                 return false;
             }
             finally
@@ -236,7 +283,8 @@ namespace Game.Server.Persistence
 
         private void SettleCheckpointBatch(
             List<CheckpointWork> workItems,
-            MasterPersistenceProtocol.CharacterCheckpointBatchResponse response)
+            MasterPersistenceProtocol.CharacterCheckpointBatchResponse response,
+            bool logCleanupFailures)
         {
             for (int index = 0; index < workItems.Count; index++)
             {
@@ -255,9 +303,22 @@ namespace Game.Server.Persistence
                     AdvanceLeaseRevision(work.Lane, result.Revision.Value);
                     ClearPendingCheckpointIfGeneration(work.Lane, work.Generation);
                 }
-                else if (result.Result != MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable)
+                else if (result.Result == MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable)
+                {
+                    if (logCleanupFailures)
+                    {
+                        Debug.Warning(
+                            $"final checkpoint for character {work.CharacterID} was rejected with result {result.Result}.");
+                    }
+                }
+                else
                 {
                     SetBlockingResult(work.Lane, result.Result);
+                    if (logCleanupFailures)
+                    {
+                        Debug.Warning(
+                            $"final checkpoint for character {work.CharacterID} was rejected with result {result.Result}.");
+                    }
                 }
             }
         }
@@ -278,9 +339,12 @@ namespace Game.Server.Persistence
 
             if (checkpoint.WorldState != null
                 && (string.IsNullOrWhiteSpace(checkpoint.WorldState.MapID)
+                    || checkpoint.WorldState.InstanceID == Guid.Empty
                     || !IsFinite(checkpoint.WorldState.PositionX)
                     || !IsFinite(checkpoint.WorldState.PositionY)
                     || !IsFinite(checkpoint.WorldState.PositionZ)
+                    || (checkpoint.WorldState.SafeReturnLocationID != null
+                        && string.IsNullOrWhiteSpace(checkpoint.WorldState.SafeReturnLocationID))
                     || checkpoint.WorldState.SavedAtUtc.Offset != TimeSpan.Zero))
             {
                 return false;

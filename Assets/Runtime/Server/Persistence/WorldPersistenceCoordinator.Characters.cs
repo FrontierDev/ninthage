@@ -1,3 +1,4 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking.Master;
 using System;
 using System.Collections.Generic;
@@ -51,7 +52,13 @@ namespace Game.Server.Persistence
                 foreach (Guid characterID in characterIDs)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    await ReleaseCharacterCoreAsync(characterID, cancellationToken).ConfigureAwait(false);
+                    MasterPersistenceProtocol.PersistenceResponse response =
+                        await ReleaseCharacterCoreAsync(characterID, cancellationToken).ConfigureAwait(false);
+                    if (response.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+                    {
+                        Debug.Warning(
+                            $"Persistence character lease release for {characterID} was rejected with result {response.Result}.");
+                    }
                 }
             }
             finally
