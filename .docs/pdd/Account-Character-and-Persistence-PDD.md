@@ -498,6 +498,8 @@ Persistent location may require:
 - current runtime-instance relationship where reconnectable;
 - safe fallback location metadata.
 
+`CharacterWorldState.SafeReturnLocationID` is a nullable **stable `WorldLocationDefinition.DefinitionID` string only**. The World Server resolves that authored ID to public MapID, double-precision XYZ and facing; do not duplicate those fields in the safe-return database value or add separate safe-return coordinate columns. The character's ordinary persisted WorldID, MapID, InstanceID, XYZ and facing remain the actual last accepted location, independently of the authored fallback. World identity is provided by the admitted World Server, not stored as a fixed WorldID in reusable content assets.
+
 Do not rely solely on a local Unity float Transform as the durable world position.
 
 ---
@@ -518,6 +520,10 @@ Conceptual recovery order:
 5. Character starting location as final recovery
 ```
 
+Recovery tries candidates in exactly the order above. A private instance is reconnectable only if the current World Server still owns that exact instance and permits the character to enter it; an expired private instance's coordinates **must not** be reinterpreted as public-world coordinates. A saved public position is eligible only when InstanceID is null and World/map/position/facing are valid. Authored safe-return locations resolve by the single stored `SafeReturnLocationID`; a missing or deleted definition is skipped. Regional/settlement fallback uses authored `RegionalFallback` locations on a known saved public map with finite saved X/Z, within the anchor's authored radius; choose by ascending squared horizontal distance then ordinal DefinitionID, trying the next eligible anchor if an earlier one is unsafe/unstreamable. Race start from `RaceDefinition.StartingLocationID` is the final recovery tier; it should rarely be needed.
+
+The World Server must load/validate a candidate's authoritative spatial context and physical arrival safety before admitting an actor. When a fallback changes durable location, submit a field-scoped, revision/lease-guarded world checkpoint through the existing Master persistence coordinator and require **confirmed acceptance before world entry**. If all candidates or the required checkpoint fail, deny admission without a guessed location, phantom actor, or false persistence success. Recovery must not refill Health/resources or otherwise reset gameplay state.
+
 Critical recovery failures must be logged visibly.
 
 ---
@@ -534,6 +540,8 @@ If the instance has legitimately ceased to exist, return the character through a
 - entrance;
 - checkpoint;
 - appropriate world return location.
+
+Private-instance entrance authoring provides a `SafeReturnLocationID` referencing a stable public-map `WorldLocationDefinition` with the `SafeReturn` purpose. Only a **successful** server-authoritative entry into that instance updates the connected character's live safe-return ID. A failed or cancelled transfer leaves the previous ID unchanged. Periodic/final checkpoints read the **live session's current safe-return ID**, not the stale accepted Master snapshot from initial login. No additional per-instance fallback coordinate list is persisted.
 
 Instance ownership rules remain defined by the World Runtime and Group PDDs.
 

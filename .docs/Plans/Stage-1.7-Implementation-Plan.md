@@ -654,7 +654,7 @@ High-value ownership/progression transactions are committed at the operation bou
 - nullable `InstanceID` (`null` means the public map instance; runtime conversion uses `Guid.Empty` where required by existing spatial APIs);
 - double-precision `PositionX`, `PositionY`, `PositionZ`;
 - floating-point normalized facing quaternion `FacingX/Y/Z/W`;
-- optional authored `SafeReturnLocationID`;
+- optional authored `SafeReturnLocationID` containing **only** the stable `WorldLocationDefinition.DefinitionID` string, not a serialized map/position/facing list;
 - `SavedAtUtc`.
 
 On load, private-instance association is used only if the current World Server's instance owner confirms that instance is still valid. Otherwise use the PDD recovery order:
@@ -664,6 +664,10 @@ On load, private-instance association is used only if the current World Server's
 3. authored safe checkpoint/return location;
 4. regional/settlement fallback;
 5. character starting location.
+
+`WorldLocationDefinition`/`WorldLocationDefinitionLibrary` are the shared, reusable authoring authority for public MapID, double-precision XYZ and normalized facing. An authored location has stable ordinal DefinitionID and explicit Starting, SafeReturn and/or RegionalFallback purposes. WorldID is supplied by the admitted active World Server; the same definition can later support other location-based gameplay, such as lodestones, without implementing fast travel in Stage 1.7. Every playable `RaceDefinition.StartingLocationID` references a Starting definition; creation uses the resolved authored location rather than the prototype fixed chunk-0 position.
+
+A successful private-instance transfer sets the active character session's `SafeReturnLocationID` from its `TransferCollider`'s validated authored public SafeReturn location. Live checkpoints read the **updated session ID**, not the stale login snapshot. If the private instance expires, do not treat its saved private coordinates as public-world coordinates. Regional candidates are eligible only on a known saved public map with finite X/Z and within their authored radius; choose by squared distance then ordinal DefinitionID. Attempt the rare race-start fallback last. After scene/physics validation, any fallback relocation is checkpointed as **world state only** and must be confirmed Accepted by Master (current lease/revision) before the actor enters the world. Never claim success for an uncommitted relocation.
 
 No arbitrary origin fallback is permitted.
 
@@ -958,7 +962,8 @@ Repository: `ninthage` plus contracts as needed.
 - capture/restore actual authoritative current Health/resources;
 - capture location/facing;
 - stop spawn-time test resets of inventory/equipment/talents/weapon skills/reputation/quests;
-- load persisted values without silently generating replacement progression.
+- load persisted values without silently generating replacement progression;
+- resolve missing/invalid saved locations through the approved authored-location fallback sequence with safe streaming validation and durable checkpoint acceptance before entry; keep `SafeReturnLocationID` as one stable authored definition ID.
 
 ### Step 11 — Persist timed state
 
