@@ -14,7 +14,7 @@ namespace Game.Server.Persistence
             if (response == null)
                 throw new ArgumentNullException(nameof(response));
             if (response.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
-                throw new InvalidOperationException(
+                throw new ArgumentException(
                     $"Cannot project a roster with result {response.Result}.");
             if (response.ActiveCharacters == null)
                 throw new InvalidOperationException("An accepted roster must contain active characters.");
