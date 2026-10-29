@@ -38,6 +38,12 @@ namespace Game.Client.UI
                 _instance = this;
             }
         }
+
+        public override void Show()
+        {
+            _loginButton.EnableButton();
+            base.Show();
+        }
         #endregion
 
         #region Getters
