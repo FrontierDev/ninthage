@@ -481,11 +481,11 @@ Checkpoints cover lower-risk frequently changing state such as:
 - current Health;
 - current resources;
 - other approved high-frequency persistent fields;
-- the complete current inventory/equipment item-instance and location snapshot when that scope is dirty or a boundary save requires it.
+- the complete current inventory/equipment item-instance and location snapshot at the ordinary periodic and boundary checkpoints.
 
 The World Server keeps the live copy and applies gameplay changes immediately, without waiting for a Master response. A checkpoint records the latest recoverable durable copy. The item scope is **field-scoped**: `Items = null` leaves the durable item state untouched, `Items = []` removes all item instances/locations owned by the character, and a non-null array replaces the character's complete inventory **and** equipment snapshot atomically. Every supplied item has its existing stable `ItemInstanceID`, authored definition ID, stack size, durability, modification IDs, location kind (`Inventory` or `Equipment`) and slot index. The Master validates shape, per-character slot uniqueness, GUID uniqueness and ownership, but never applies loot, stack, item-slot or equip gameplay rules.
 
-Checkpoint writes must not overwrite unrelated transactional state with stale snapshots. An outdated/failed checkpoint leaves its **newest** dirty item scope queued for a later retry; a successful acknowledged snapshot clears only the generation it actually saved.
+Checkpoint writes must not overwrite unrelated transactional state with stale snapshots. An outdated/failed checkpoint leaves the **newest complete queued checkpoint**, including its item scope, available for later retry; a successful acknowledged checkpoint clears only the generation it actually saved.
 
 ### 11.3 Transactional commands
 
@@ -597,7 +597,7 @@ Fail closed. Do not spawn a character from guessed/default data.
 
 The already-running character may continue ordinary simulation temporarily.
 
-Checkpoint state, **including inventory and equipment**, remains dirty for later retry while the existing character continues playing. The user-approved 30-second checkpoint model permits rollback of up to the last unacknowledged item snapshot after an unexpected World Server crash; do not claim crash-proof per-item ownership for this stage.
+The newest queued checkpoint, **including inventory and equipment**, remains available for later retry while the existing character continues playing. The user-approved 30-second checkpoint model permits rollback of up to the last unacknowledged item snapshot after an unexpected World Server crash; do not claim crash-proof per-item ownership for this stage.
 
 A separately approved immediate transaction (for example, character creation) still fails closed if unavailable. A world transfer/handoff must not release the old character lease or admit the destination character until its final item checkpoint is **acknowledged** by Master. A clean logout/disconnect/server shutdown attempts the final flush and records any unsettled failure; it must never report an unacknowledged snapshot as durably saved. Do not hold shutdown indefinitely or silently fall back to file storage.
 
@@ -930,10 +930,10 @@ Repositories: both.
 
 Repositories: both.
 
-- Keep item grant/remove, stack split/merge, inventory slot move, equip/unequip and existing NPC loot award **entirely World Server-authoritative**. Apply valid gameplay changes immediately; mark the character's item scope dirty, with no per-item HTTP call and no Master gameplay command handlers.
+- Keep item grant/remove, stack split/merge, inventory slot move, equip/unequip and existing NPC loot award **entirely World Server-authoritative**. Apply valid gameplay changes immediately; include the complete item scope in the next normal or boundary checkpoint, with no per-item HTTP call and no Master gameplay command handlers.
 - Extend the existing field-scoped lease/revision-bound character checkpoint with one optional **complete** Items array for both inventory and equipment (`null` = unchanged, `[]` = clear, non-null = replace). Preserve immutable item-instance GUIDs, definition IDs, counts, durability, modifications, exact location kind/slot; Master atomically reconciles ItemInstances and CharacterItemLocations for the character inside the existing checkpoint transaction/savepoint. Validate ownership and unique slots, and preserve unrelated checkpoint scopes.
-- Capture the item snapshot on the Unity main thread from the current authoritative PlayerInventory and PlayerEquipment (including empty inventory), coalesce newest dirty generations, serialize with the existing character operation lane, and checkpoint at the normal 30-second cadence and established boundary triggers. Never take a mutable collection snapshot in a worker continuation.
-- Require acknowledged final item checkpoint before world/server handoff or lease release for transfer. On clean logout, safe disconnect and shutdown, attempt bounded final flush and report/retain failure without falsely declaring durable success. Normal play can continue temporarily during Master outage; retain dirty item state. Accept the approved **up-to-30-second unexpected-crash recovery window**.
+- Capture the complete item snapshot on the Unity main thread from current authoritative PlayerInventory and PlayerEquipment (including empty inventory) on every normal 30-second and final-boundary checkpoint. Reuse the existing checkpoint queue's newest-generation coalescing and character lane. No extra per-component item-dirty cache is required for Stage 1.7; the Master may skip unchanged row rewrites after comparing snapshots. Never take a mutable collection snapshot in a worker continuation.
+- Require acknowledged final item checkpoint before world/server handoff or lease release for transfer. On clean logout, safe disconnect and shutdown, attempt bounded final flush and report/retain failure without falsely declaring durable success. Normal play can continue temporarily during Master outage; retain the newest pending checkpoint. Accept the approved **up-to-30-second unexpected-crash recovery window**.
 - Reuse the existing Master auth, lease, Revision, response mapping and PostgreSQL ownership/slot constraints. No per-item grant/move/equip REST routes, no generic character patch, no speculative trade/escrow or other future immediate transaction systems. Keep already-authorized character lifecycle transactions intact.
 
 ### Step 13 — Remove file-backed JSON persistence entirely
