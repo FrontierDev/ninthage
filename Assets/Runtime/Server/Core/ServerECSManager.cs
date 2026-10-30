@@ -2,6 +2,7 @@ using Game.Server.Systems;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
 using System;
+using System.Threading;
 using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
@@ -57,10 +58,18 @@ namespace Game.Server.Core
         private static SimulationSystemGroup _simulationSystemGroup;
         private static readonly ServerSimulationEventBuffer SIMULATION_EVENT_BUFFER = new();
         private static bool _mutationCommitActive;
+        private static int _serverMainThreadID;
         private static long _currentSimulationTickID;
         private static ServerSimulationEvent _currentSimulationEvent;
         /// <summary>Gets whether the server ECS world has been initialized.</summary>
         public static bool Initialized => DefaultWorld != null;
+
+        /// <summary>Gets whether the current thread is the initialized server ECS main thread.</summary>
+        internal static bool IsOnServerMainThread =>
+            DefaultWorld != null
+            && DefaultWorld.IsCreated
+            && _serverMainThreadID != 0
+            && Thread.CurrentThread.ManagedThreadId == _serverMainThreadID;
 
         /// <summary>Gets the authoritative tick currently being simulated.</summary>
         internal static long CurrentSimulationTickID => _currentSimulationTickID;
@@ -92,6 +101,7 @@ namespace Game.Server.Core
             ServerSimulationClock.ValidateConfiguration(Game.Shared.GameConfigurationManager.Config);
             SIMULATION_EVENT_BUFFER.Clear();
             _mutationCommitActive = false;
+            _serverMainThreadID = 0;
             _currentSimulationTickID = 0;
             _currentSimulationEvent = default;
 
@@ -128,6 +138,7 @@ namespace Game.Server.Core
 
                 _simulationSystemGroup = systemGroup;
                 DefaultWorld = world;
+                _serverMainThreadID = Thread.CurrentThread.ManagedThreadId;
             }
             catch
             {
@@ -349,6 +360,7 @@ namespace Game.Server.Core
         {
             SIMULATION_EVENT_BUFFER.Clear();
             _mutationCommitActive = false;
+            _serverMainThreadID = 0;
             _currentSimulationTickID = 0;
             _currentSimulationEvent = default;
             World world = DefaultWorld;

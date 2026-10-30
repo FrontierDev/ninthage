@@ -9,7 +9,6 @@ using Game.Shared.Runtime.Spellcasting;
 using PurrNet;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using Unity.Entities;
 using UnityEngine;
 
@@ -257,7 +256,7 @@ namespace Game.Server.Core
             auras = null;
             failureReason = null;
 
-            if (Thread.CurrentThread.ManagedThreadId != 1)
+            if (!ServerECSManager.IsOnServerMainThread)
                 return FailPersistentAuraCapture(
                     "persistent aura capture must run on the Unity server main thread",
                     out failureReason);
@@ -558,7 +557,7 @@ namespace Game.Server.Core
                 return FailPersistentAuraRestore("the persistent aura restore target is absent", out failureReason);
             if (target.ID == Guid.Empty)
                 return FailPersistentAuraRestore("the persistent aura restore target ID is empty", out failureReason);
-            if (Thread.CurrentThread.ManagedThreadId != 1)
+            if (!ServerECSManager.IsOnServerMainThread)
             {
                 return FailPersistentAuraRestore(
                     "persistent aura restore must run on the Unity server main thread",
@@ -615,7 +614,13 @@ namespace Game.Server.Core
                     out failureReason);
             }
 
-            if (savedAuras == null || savedAuras.Count == 0)
+            if (savedAuras == null)
+            {
+                return FailPersistentAuraRestore(
+                    "accepted character persistence state has no persistent auras collection",
+                    out failureReason);
+            }
+            if (savedAuras.Count == 0)
                 return true;
 
             AuraDefinitionLibrary definitionLibrary = AuraDefinitionLibrary.Instance;
@@ -778,6 +783,9 @@ namespace Game.Server.Core
                     }
                 }
 
+                if (savedAura.ExpiresAtUtc.Value <= observedAtUtc)
+                    continue;
+
                 Actor caster;
                 Guid sourceActorID = savedAura.SourceActorID.Value;
                 if (sourceActorID == target.ID)
@@ -788,9 +796,6 @@ namespace Game.Server.Core
                         $"persistent aura '{savedAura.AuraDefinitionID}' source actor {sourceActorID} is not live",
                         out failureReason);
                 }
-
-                if (savedAura.ExpiresAtUtc.Value <= observedAtUtc)
-                    continue;
 
                 double remainingSeconds = (savedAura.ExpiresAtUtc.Value - observedAtUtc).TotalSeconds;
                 if (double.IsNaN(remainingSeconds)
@@ -842,7 +847,84 @@ namespace Game.Server.Core
                 float tickInterval = 0f;
                 if (hasNextTick)
                 {
-                    double nextTickSeconds = (savedAura.NextTickAtUtc.Value - observedAtUtc).TotalSeconds;
+                    double savedIntervalSeconds = savedAura.TickIntervalSeconds.Value;
+                    if (double.IsNaN(savedIntervalSeconds)
+                        || double.IsInfinity(savedIntervalSeconds)
+                        || savedIntervalSeconds <= 0d
+                        || savedIntervalSeconds > TimeSpan.MaxValue.TotalSeconds)
+                    {
+                        return FailPersistentAuraRestore(
+                            $"persistent aura '{savedAura.AuraDefinitionID}' has an invalid tick interval",
+                            out failureReason);
+                    }
+
+                    long savedIntervalTicks;
+                    try
+                    {
+                        savedIntervalTicks = checked(
+                            (long)Math.Ceiling(savedIntervalSeconds * TimeSpan.TicksPerSecond));
+                    }
+                    catch (OverflowException exception)
+                    {
+                        return FailPersistentAuraRestore(
+                            $"persistent aura '{savedAura.AuraDefinitionID}' has an unrepresentable tick interval: {exception.Message}",
+                            out failureReason);
+                    }
+                    if (savedIntervalTicks <= 0)
+                    {
+                        return FailPersistentAuraRestore(
+                            $"persistent aura '{savedAura.AuraDefinitionID}' has an unrepresentable tick interval",
+                            out failureReason);
+                    }
+
+                    DateTimeOffset nextTickAtUtc = savedAura.NextTickAtUtc.Value;
+                    if (nextTickAtUtc <= observedAtUtc)
+                    {
+                        long elapsedTicks;
+                        try
+                        {
+                            elapsedTicks = checked(observedAtUtc.Ticks - nextTickAtUtc.Ticks);
+                        }
+                        catch (OverflowException exception)
+                        {
+                            return FailPersistentAuraRestore(
+                                $"persistent aura '{savedAura.AuraDefinitionID}' has an overflowing elapsed tick interval: {exception.Message}",
+                                out failureReason);
+                        }
+
+                        long intervalsToAdvance;
+                        try
+                        {
+                            intervalsToAdvance = checked(elapsedTicks / savedIntervalTicks + 1L);
+                        }
+                        catch (OverflowException exception)
+                        {
+                            return FailPersistentAuraRestore(
+                                $"persistent aura '{savedAura.AuraDefinitionID}' has an overflowing tick advancement: {exception.Message}",
+                                out failureReason);
+                        }
+
+                        long advanceTicks;
+                        try
+                        {
+                            advanceTicks = checked(savedIntervalTicks * intervalsToAdvance);
+                            nextTickAtUtc = nextTickAtUtc.AddTicks(advanceTicks);
+                        }
+                        catch (OverflowException exception)
+                        {
+                            return FailPersistentAuraRestore(
+                                $"persistent aura '{savedAura.AuraDefinitionID}' has an overflowing next tick: {exception.Message}",
+                                out failureReason);
+                        }
+                        catch (ArgumentOutOfRangeException exception)
+                        {
+                            return FailPersistentAuraRestore(
+                                $"persistent aura '{savedAura.AuraDefinitionID}' has an out-of-range next tick: {exception.Message}",
+                                out failureReason);
+                        }
+                    }
+
+                    double nextTickSeconds = (nextTickAtUtc - observedAtUtc).TotalSeconds;
                     if (double.IsNaN(nextTickSeconds)
                         || double.IsInfinity(nextTickSeconds)
                         || nextTickSeconds <= 0d
@@ -869,7 +951,7 @@ namespace Game.Server.Core
                             nextTickDuration,
                             fixedTickDuration);
                         tickIntervalTicks = ServerSimulationClock.GetNonShorteningTickCount(
-                            savedAura.TickIntervalSeconds.Value,
+                            (float)savedIntervalSeconds,
                             fixedTickDuration);
                         nextTickID = checked(firstProgressTickID + nextTickTicks - 1L);
                     }
@@ -880,7 +962,7 @@ namespace Game.Server.Core
                             out failureReason);
                     }
 
-                    tickInterval = savedAura.TickIntervalSeconds.Value;
+                    tickInterval = (float)savedIntervalSeconds;
                 }
 
                 stagedAuras.Add((
@@ -1042,7 +1124,15 @@ namespace Game.Server.Core
                 if (!TryGetCurrentActor(target.ID, target, out _))
                     return false;
 
-                int refreshedInstanceID = TryFindActiveAuraInstance(target.ID, definition.DefinitionID, out int activeInstanceID)
+                bool matchCaster = definition.StackBehavior == AuraStackBehavior.RefreshDuration
+                    || definition.StackBehavior == AuraStackBehavior.StackPerCaster;
+                int refreshedInstanceID = definition.StackBehavior != AuraStackBehavior.FullyStacking
+                    && TryFindActiveAuraInstance(
+                        target.ID,
+                        definition.DefinitionID,
+                        caster.ID,
+                        matchCaster,
+                        out int activeInstanceID)
                     ? activeInstanceID
                     : NO_EXPECTED_AURA_INSTANCE_ID;
                 _pendingMutations.Enqueue(
@@ -1130,6 +1220,103 @@ namespace Game.Server.Core
 
             switch (definition.StackBehavior)
             {
+                case AuraStackBehavior.RefreshDuration:
+                case AuraStackBehavior.StackPerCaster:
+                    {
+                        for (int i = 0; i < buffer.Length; i++)
+                        {
+                            var entry = buffer[i];
+                            if (entry.AuraDefinitionID.ToString() != definition.DefinitionID)
+                                continue;
+                            if (expectedInstanceID != NO_EXPECTED_AURA_INSTANCE_ID
+                                && entry.InstanceID != expectedInstanceID)
+                            {
+                                continue;
+                            }
+                            if (!_activeAuras.TryGetValue(entry.InstanceID, out var existing)
+                                || existing.CasterID != caster.ID)
+                            {
+                                continue;
+                            }
+
+                            InitializeAuraTiming(
+                                definition,
+                                firstProgressTickID,
+                                definition.BaseDuration,
+                                out entry.ExpiryTickID,
+                                out entry.NextTickID,
+                                out entry.TickIntervalTicks);
+                            buffer[i] = entry;
+                            existing.Duration = definition.BaseDuration;
+                            existing.Stacks = Mathf.Min(
+                                definition.MaxStacks,
+                                existing.Stacks + Mathf.Max(stacksToApply, 1));
+                            instanceID = entry.InstanceID;
+                            return true;
+                        }
+
+                        if (expectedInstanceID != NO_EXPECTED_AURA_INSTANCE_ID)
+                            return false;
+
+                        instanceID = CreateAuraInstance(
+                            definition,
+                            caster,
+                            target,
+                            buffer,
+                            firstProgressTickID,
+                            Mathf.Max(stacksToApply, 1));
+                        return true;
+                    }
+
+                case AuraStackBehavior.Unique:
+                    {
+                        for (int i = 0; i < buffer.Length; i++)
+                        {
+                            var entry = buffer[i];
+                            if (entry.AuraDefinitionID.ToString() != definition.DefinitionID)
+                                continue;
+                            if (expectedInstanceID != NO_EXPECTED_AURA_INSTANCE_ID
+                                && entry.InstanceID != expectedInstanceID)
+                            {
+                                continue;
+                            }
+                            if (!_activeAuras.TryGetValue(entry.InstanceID, out var existing))
+                                continue;
+
+                            InitializeAuraTiming(
+                                definition,
+                                firstProgressTickID,
+                                definition.BaseDuration,
+                                out entry.ExpiryTickID,
+                                out entry.NextTickID,
+                                out entry.TickIntervalTicks);
+                            buffer[i] = entry;
+                            existing.Duration = definition.BaseDuration;
+                            instanceID = entry.InstanceID;
+                            return true;
+                        }
+
+                        if (expectedInstanceID != NO_EXPECTED_AURA_INSTANCE_ID)
+                            return false;
+
+                        instanceID = CreateAuraInstance(
+                            definition,
+                            caster,
+                            target,
+                            buffer,
+                            firstProgressTickID);
+                        return true;
+                    }
+
+                case AuraStackBehavior.FullyStacking:
+                    instanceID = CreateAuraInstance(
+                        definition,
+                        caster,
+                        target,
+                        buffer,
+                        firstProgressTickID);
+                    return true;
+
                 case AuraStackBehavior.Condition_Extend:
                     {
                         // Single instance per aura def on the target. New applications add stacks
@@ -1241,7 +1428,8 @@ namespace Game.Server.Core
             Actor caster,
             Actor target,
             DynamicBuffer<Systems.AuraElement> buffer,
-            long firstProgressTickID)
+            long firstProgressTickID,
+            int initialStacks = 1)
         {
             int instanceID = _nextInstanceID++;
             InitializeAuraTiming(
@@ -1255,7 +1443,10 @@ namespace Game.Server.Core
             Guid persistentAuraID = definition.PersistencePolicy == AuraPersistencePolicy.PersistAcrossActorLifetime
                 ? Guid.NewGuid()
                 : Guid.Empty;
-            var ctx = new AuraContext(definition, caster, target, persistentAuraID);
+            var ctx = new AuraContext(definition, caster, target, persistentAuraID)
+            {
+                Stacks = Mathf.Max(1, Mathf.Min(initialStacks, definition.MaxStacks))
+            };
             _activeAuras[instanceID] = ctx;
 
             buffer.Add(new Systems.AuraElement
@@ -1640,14 +1831,20 @@ namespace Game.Server.Core
             return ServerSimulationClock.GetNonShorteningTickCount(seconds, fixedDeltaTime);
         }
 
-        private bool TryFindActiveAuraInstance(Guid targetID, string auraDefinitionID, out int instanceID)
+        private bool TryFindActiveAuraInstance(
+            Guid targetID,
+            string auraDefinitionID,
+            Guid casterID,
+            bool matchCaster,
+            out int instanceID)
         {
             foreach (var pair in _activeAuras)
             {
                 AuraContext context = pair.Value;
                 if (context.TargetID == targetID
                     && context.Definition != null
-                    && context.Definition.DefinitionID == auraDefinitionID)
+                    && context.Definition.DefinitionID == auraDefinitionID
+                    && (!matchCaster || context.CasterID == casterID))
                 {
                     instanceID = pair.Key;
                     return true;

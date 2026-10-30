@@ -8,7 +8,6 @@ using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using Unity.Entities;
 using UnityEngine;
 
@@ -240,7 +239,7 @@ namespace Game.Server.Persistence
             cooldowns = null;
             failureReason = null;
 
-            if (Thread.CurrentThread.ManagedThreadId != 1)
+            if (!ServerECSManager.IsOnServerMainThread)
                 return Fail("cooldown capture must run on the Unity server main thread", out failureReason);
             if (ServerECSManager.IsMutationBoundaryActive)
             {

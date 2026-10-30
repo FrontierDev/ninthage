@@ -301,7 +301,7 @@ namespace Game.Server.Core
 
         /// <summary>Restores validated persistent cooldown expiries into an actor's authoritative ECS buffer.</summary>
         /// <param name="actorID">The actor receiving the restored cooldowns.</param>
-        /// <param name="cooldowns">The persisted cooldown rows, or <see langword="null"/> when none exist.</param>
+        /// <param name="cooldowns">The non-null persisted cooldown rows, which may be empty.</param>
         /// <param name="observedAtUtc">The World Server UTC observation used to resolve offline elapsed time.</param>
         /// <exception cref="InvalidOperationException">Thrown when persisted state or server timing is invalid.</exception>
         internal void RestorePersistentCooldowns(
@@ -309,6 +309,11 @@ namespace Game.Server.Core
             MasterPersistenceProtocol.CharacterCooldownState[] cooldowns,
             DateTimeOffset observedAtUtc)
         {
+            if (cooldowns == null)
+            {
+                throw new InvalidOperationException(
+                    "Accepted character persistence state has no cooldowns array.");
+            }
             if (actorID == Guid.Empty)
                 throw new ArgumentException("A cooldown restore actor ID is required.", nameof(actorID));
             if (observedAtUtc.Offset != TimeSpan.Zero)
@@ -325,7 +330,7 @@ namespace Game.Server.Core
             }
 
             List<Systems.CooldownElement> restoredCooldowns = new();
-            if (cooldowns != null && cooldowns.Length > 0)
+            if (cooldowns.Length > 0)
             {
                 SpellDefinitionLibrary spellLibrary = SpellDefinitionLibrary.Instance;
                 if (spellLibrary == null)
