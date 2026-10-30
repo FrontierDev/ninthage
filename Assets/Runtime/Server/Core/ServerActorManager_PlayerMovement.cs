@@ -303,6 +303,40 @@ namespace Game.Server.Core
                 var component = _entityManager.GetComponentData<Systems.ActorComponent>(entity);
                 var currentAcceptedPosition = ToWorldPosition(component.WorldPositionD);
 
+                if (hasEligibleProposal)
+                {
+                    double singleProposalDeltaX = candidatePosition.x - currentAcceptedPosition.x;
+                    double singleProposalDeltaZ = candidatePosition.z - currentAcceptedPosition.z;
+                    double maximumSingleProposalDisplacement =
+                        GameConfigurationManager.Config.ChunkSize * 0.5d;
+                    double singleProposalDistanceSquared =
+                        singleProposalDeltaX * singleProposalDeltaX
+                        + singleProposalDeltaZ * singleProposalDeltaZ;
+                    double singleProposalLimitSquared =
+                        maximumSingleProposalDisplacement * maximumSingleProposalDisplacement;
+
+                    if (singleProposalDistanceSquared >= singleProposalLimitSquared)
+                    {
+                        Debug.Warning(
+                            $"[Movement/Discontinuity] Rejected player {playerID} proposal "
+                            + $"from ({currentAcceptedPosition.x:F3},{currentAcceptedPosition.z:F3}) "
+                            + $"to ({candidatePosition.x:F3},{candidatePosition.z:F3}) "
+                            + $"in ownership epoch {proposal.OwnershipEpoch} "
+                            + $"sequence {proposal.ProposalSequence}.");
+
+                        SendPlayerCorrection(playerID, actor, currentAcceptedPosition);
+                        hasEligibleProposal = false;
+                        if (!validationDue)
+                            continue;
+                    }
+                }
+                else
+                {
+                    // A missing or rejected proposal does not bypass the due check; validate the
+                    // position already admitted to the canonical ECS component.
+                    candidatePosition = currentAcceptedPosition;
+                }
+
                 if (!validationDue)
                 {
                     CommitPlayerPosition(entity, component, actor, candidatePosition);
@@ -326,13 +360,6 @@ namespace Game.Server.Core
                 if (!baselinePosition.IsFinite)
                     throw new InvalidOperationException(
                         $"Player '{playerID}' has an invalid periodic position validation baseline.");
-
-                if (!hasEligibleProposal)
-                {
-                    // A missing or rejected proposal does not bypass the due check; validate the
-                    // position already admitted to the canonical ECS component.
-                    candidatePosition = currentAcceptedPosition;
-                }
 
                 double elapsed = elapsedTickCount * (double)tick.DeltaTime;
                 if (elapsed <= 0d || double.IsNaN(elapsed) || double.IsInfinity(elapsed))

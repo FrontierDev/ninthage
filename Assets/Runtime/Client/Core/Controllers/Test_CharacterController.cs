@@ -53,6 +53,7 @@ namespace Game.Client
             enabled = false;
             ActorEndpoint.onActorOwnershipTaken += OnActorOwnershipTaken;
             ActorEndpoint.onActorOwnerChanged += OnActorOwnerChanged;
+            ActorEndpoint.onClientAcceptedPositionChanged += OnClientAcceptedPositionChanged;
             AccountEndpoint.onEnteringWorld += OnEnteringWorld;
             AccountEndpoint.onEnteredWorld += OnEnteredWorld;
 
@@ -71,6 +72,14 @@ namespace Game.Client
         private void OnActorOwnershipTaken(Game.Shared.Runtime.Actors.Actor actor)
         {
             TryAcquireLocalControl(actor);
+        }
+
+        private void OnClientAcceptedPositionChanged(
+            Actor actor,
+            ActorPositionSnapshot snapshot)
+        {
+            if (actor != null && actor.gameObject == gameObject)
+                TryAcquireLocalControl(actor);
         }
 
         private void OnEnteringWorld(Game.Shared.Persistence.CharacterData characterData, string sceneName)
@@ -112,6 +121,38 @@ namespace Game.Client
                 Debug.Error($"Cannot acquire local control for actor {actor.ID}: required movement components are missing.");
                 return;
             }
+
+            if (!ClientPositionManager.Initialized || ClientPositionManager.Instance == null)
+            {
+                enabled = false;
+                return;
+            }
+
+            if (!actor.TryGetAcceptedPositionSnapshot(out ActorPositionSnapshot snapshot))
+            {
+                enabled = false;
+                return;
+            }
+
+            Vector3 initialLocalPosition =
+                ClientPositionManager.Instance.NetworkToLocal(
+                    snapshot.Position.Chunk,
+                    snapshot.Position.LocalPosition);
+            bool characterControllerWasEnabled = _cc.enabled;
+            _cc.enabled = false;
+            try
+            {
+                transform.position = initialLocalPosition;
+            }
+            finally
+            {
+                _cc.enabled = characterControllerWasEnabled;
+            }
+
+            Physics.SyncTransforms();
+            _actorMotor.verticalVelocity = 0f;
+            _actorMotor.horizontalVelocity = Vector3.zero;
+            _actorMotor.isGrounded = false;
 
             _ownershipEpoch = checked(_ownershipEpoch + 1);
             _proposalSequence = 0;
@@ -163,6 +204,7 @@ namespace Game.Client
         {
             ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
             ActorEndpoint.onActorOwnerChanged -= OnActorOwnerChanged;
+            ActorEndpoint.onClientAcceptedPositionChanged -= OnClientAcceptedPositionChanged;
             AccountEndpoint.onEnteringWorld -= OnEnteringWorld;
             AccountEndpoint.onEnteredWorld -= OnEnteredWorld;
             RevokeLocalControl();
