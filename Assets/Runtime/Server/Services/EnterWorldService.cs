@@ -278,6 +278,7 @@ namespace Game.Server.Services
                     yield return QueueDurableRecoveryCheckpoint(
                         coordinator,
                         characterID,
+                        acquireResponse.Character,
                         accountContext.AccountID,
                         candidate,
                         selectedSafeReturnLocationID,
@@ -323,8 +324,6 @@ namespace Game.Server.Services
                     characterData,
                     acquireResponse.Character,
                     selectedCandidate.EntryLocation);
-                if (selectedCandidate.RequiresDurableRelocation)
-                    session.SetCurrentSafeReturnLocationID(selectedSafeReturnLocationID);
 
                 ServerConnectionManager.Instance.SetSessionData(
                     playerID,
@@ -405,6 +404,7 @@ namespace Game.Server.Services
         private static IEnumerator QueueDurableRecoveryCheckpoint(
             WorldPersistenceCoordinator coordinator,
             Guid characterID,
+            MasterPersistenceProtocol.CharacterPersistenceState acquiredState,
             Guid accountID,
             CharacterWorldEntryLocationResolver.RecoveryCandidate candidate,
             string safeReturnLocationID,
@@ -416,6 +416,7 @@ namespace Game.Server.Services
             bool succeeded = false;
             string failureReason = null;
             Task flushTask = null;
+            WorldPersistenceCheckpoint.WorldStateSnapshot queuedWorldState = null;
             try
             {
                 bool preparationSucceeded = false;
@@ -504,6 +505,7 @@ namespace Game.Server.Services
                             break;
                         }
 
+                        queuedWorldState = worldState;
                         flushTask = coordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
                         preparationSucceeded = true;
                     }
@@ -554,6 +556,22 @@ namespace Game.Server.Services
                     }
                     else
                     {
+                        MasterPersistenceProtocol.CharacterWorldState acceptedWorldState =
+                            acquiredState.WorldState;
+
+                        acceptedWorldState.MapID = queuedWorldState.MapID;
+                        acceptedWorldState.InstanceID = queuedWorldState.InstanceID;
+                        acceptedWorldState.PositionX = queuedWorldState.PositionX;
+                        acceptedWorldState.PositionY = queuedWorldState.PositionY;
+                        acceptedWorldState.PositionZ = queuedWorldState.PositionZ;
+                        acceptedWorldState.FacingX = queuedWorldState.FacingX;
+                        acceptedWorldState.FacingY = queuedWorldState.FacingY;
+                        acceptedWorldState.FacingZ = queuedWorldState.FacingZ;
+                        acceptedWorldState.FacingW = queuedWorldState.FacingW;
+                        acceptedWorldState.SafeReturnLocationID = queuedWorldState.SafeReturnLocationID;
+                        acceptedWorldState.SavedAtUtc = queuedWorldState.SavedAtUtc;
+
+                        acquiredState.Revision = settledRevision;
                         succeeded = true;
                         settlementSucceeded = true;
                     }

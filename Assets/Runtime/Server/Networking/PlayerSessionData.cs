@@ -25,7 +25,10 @@ namespace Game.Server.Networking
         public Guid CharacterID;
         /// <summary>Gets the compatibility projection of the accepted Master character state.</summary>
         public CharacterData CharacterData;
-        /// <summary>Gets the unmodified accepted Master character state.</summary>
+        /// <summary>
+        /// Gets the accepted Master character state, advanced to a confirmed recovered location and revision
+        /// when admission recovery commits a checkpoint.
+        /// </summary>
         internal MasterPersistenceProtocol.CharacterPersistenceState PersistenceState { get; }
         /// <summary>Gets the validated accepted world-entry location.</summary>
         internal CharacterWorldEntryLocation EntryLocation { get; }
@@ -41,7 +44,10 @@ namespace Game.Server.Networking
         /// <param name="accountID">The Master-owned account identifier.</param>
         /// <param name="characterID">The selected character identifier.</param>
         /// <param name="characterData">The compatibility projection used by the spawn path.</param>
-        /// <param name="persistenceState">The accepted Master character state.</param>
+        /// <param name="persistenceState">
+        /// The accepted Master character state, advanced to a confirmed recovered location and revision when
+        /// admission recovery commits a checkpoint.
+        /// </param>
         /// <param name="entryLocation">The validated accepted world-entry location.</param>
         internal PlayerSessionData(
             PlayerID playerID,
