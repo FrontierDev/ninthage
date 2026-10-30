@@ -33,48 +33,19 @@ namespace Game.Shared.Data.AuraEffectDefinitions
             var targetStats = target.GetComponent<ActorStatContainer>();
             if (targetStats == null) return;
 
-            // Condition auras: each stack's healing scales from its own caster's stats.
-            if (ctx.ConditionStacks != null && ctx.ConditionStacks.Count > 0)
-            {
-                ExecuteConditionHealing(ctx, target, targetStats);
-                return;
-            }
-
             var casterStats = ctx.Caster != null ? ctx.Caster.GetComponent<ActorStatContainer>() : null;
 
-            int healing = CalculateHealing(casterStats);
+            int stackCount = ctx.Definition.StackBehavior == AuraStackBehavior.IndependentDuration
+                ? ctx.Stacks
+                : 1;
+            int healing = 0;
+            for (int stackIndex = 0; stackIndex < stackCount; stackIndex++)
+                healing += CalculateHealing(casterStats);
             if (healing <= 0) return;
 
             ApplyHealing(ctx.Caster, targetStats, target, healing);
             if (ctx.Caster != null)
                 NotifyHealing(ctx.Caster, target, healing);
-        }
-
-        private void ExecuteConditionHealing(AuraContext ctx, Actor target, ActorStatContainer targetStats)
-        {
-            // Group stacks by caster to batch healing and combat log entries.
-            var casterHealing = new Dictionary<Actor, int>();
-
-            foreach (var stack in ctx.ConditionStacks)
-            {
-                if (stack.Caster == null) continue;
-                var casterStats = stack.Caster.GetComponent<ActorStatContainer>();
-                int healing = CalculateHealing(casterStats);
-                if (healing <= 0) continue;
-
-                if (casterHealing.ContainsKey(stack.Caster))
-                    casterHealing[stack.Caster] += healing;
-                else
-                    casterHealing[stack.Caster] = healing;
-            }
-
-            // Apply each caster's healing separately so threat/credit is attributed correctly.
-            foreach (var kvp in casterHealing)
-            {
-                if (kvp.Value <= 0) continue;
-                ApplyHealing(kvp.Key, targetStats, target, kvp.Value);
-                NotifyHealing(kvp.Key, target, kvp.Value);
-            }
         }
 
         private void ApplyHealing(Actor source, ActorStatContainer targetStats, Actor target, int healing)

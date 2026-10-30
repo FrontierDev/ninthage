@@ -58,16 +58,9 @@ namespace Game.Client.UI
             PopulateList(forceClear: true);
         }
 
-        private bool IsConditionAura(AuraInstance aura)
-        {
-            return aura.Definition.StackBehavior == AuraStackBehavior.Condition_Stack ||
-                   aura.Definition.StackBehavior == AuraStackBehavior.Condition_Extend;
-        }
-
         private void OnApplyAura(AuraInstance aura, Actor target, int instancedID)
         {
             if (actor == null || target != actor) return;
-            if (!IsConditionAura(aura)) return;
 
             bool isDebuff = aura.Definition.IsDebuff;
             if ((showBuffs && isDebuff) || (!showBuffs && !isDebuff)) return;
@@ -82,7 +75,6 @@ namespace Game.Client.UI
         private void OnUpdateAura(AuraInstance aura, Actor target, int instancedID)
         {
             if (actor == null || target != actor) return;
-            if (!IsConditionAura(aura)) return;
 
             PopulateList(forceClear: true);
         }
@@ -90,7 +82,6 @@ namespace Game.Client.UI
         private void OnExpireAura(AuraInstance aura, Actor target, int instancedID)
         {
             if (actor == null || target != actor) return;
-            if (!IsConditionAura(aura)) return;
 
             var entry = currentEntries.FirstOrDefault(e =>
             {
@@ -124,7 +115,6 @@ namespace Game.Client.UI
             int index = 0;
             foreach (var aura in auras)
             {
-                if (!IsConditionAura(aura)) continue;
                 if ((showBuffs && !aura.Definition.IsDebuff) || (!showBuffs && aura.Definition.IsDebuff))
                 {
                     var entryObj = Instantiate(auraEntryPrefab, container.transform);

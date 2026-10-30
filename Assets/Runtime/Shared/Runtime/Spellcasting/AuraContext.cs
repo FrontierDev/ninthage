@@ -5,29 +5,6 @@ using System.Collections.Generic;
 
 namespace Game.Shared.Runtime.Spellcasting
 {
-    /// <summary>
-    /// Tracks an individual stack within a Condition aura, including which caster applied it.
-    /// For Condition behavior, each stack has its own remaining duration.
-    /// For Condition_Extend, Duration is shared across all stacks (refreshed on new application).
-    /// </summary>
-    public sealed class ConditionStack
-    {
-        /// <summary>Gets or sets the caster that applied the stack.</summary>
-        public Actor Caster;
-        /// <summary>Gets the stable identifier of the caster that applied the stack.</summary>
-        public Guid CasterID;
-        /// <summary>Gets or sets the remaining stack duration.</summary>
-        public float Duration; // Only used by Condition (independent durations). Ignored by Condition_Extend.
-
-        /// <summary>Initializes a condition stack.</summary>
-        public ConditionStack(Actor caster, float duration)
-        {
-            Caster = caster;
-            CasterID = caster != null ? caster.ID : Guid.Empty;
-            Duration = duration;
-        }
-    }
-
     /// <summary>Contains mutable state for an aura execution.</summary>
     public sealed class AuraContext
     {
@@ -56,10 +33,11 @@ namespace Game.Shared.Runtime.Spellcasting
         public int Stacks;
 
         /// <summary>
-        /// Per-caster stack tracking for Condition and Condition_Extend behaviors.
-        /// Null for non-condition auras.
+        /// Absolute expiry ticks for independent-duration stacks. This list is null for
+        /// refresh-duration auras and is managed only by the authoritative server aura owner.
         /// </summary>
-        public List<ConditionStack> ConditionStacks;
+        [NonSerialized]
+        public List<long> StackExpiryTickIDs;
 
         /// <summary>Initializes an empty aura context.</summary>
         public AuraContext() { }

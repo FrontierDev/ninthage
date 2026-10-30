@@ -139,6 +139,8 @@ namespace Game.Shared.Networking
         public static Action<System.Guid, string, int> onServerAuraApplied;
         /// <summary>Raised when a server aura ticks.</summary>
         public static Action<System.Guid, string, int> onServerAuraTick;
+        /// <summary>Raised when intermediate stacks of a server aura expire.</summary>
+        public static Action<System.Guid, string, int> onServerAuraStackExpired;
         /// <summary>Raised when a server aura expires.</summary>
         public static Action<System.Guid, string, int> onServerAuraExpired;
         /// <summary>Raised when a server aura is dispelled.</summary>

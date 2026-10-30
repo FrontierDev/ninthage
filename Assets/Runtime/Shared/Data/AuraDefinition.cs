@@ -31,12 +31,8 @@ namespace Game.Shared.Data
     [Serializable]
     public enum AuraStackBehavior
     {
-        RefreshDuration,
-        StackPerCaster,
-        FullyStacking,
-        Unique,
-        Condition_Extend,
-        Condition_Stack
+        RefreshDuration = 0,
+        IndependentDuration = 5
     }
 
     /// <summary>Identifies whether an aura persists across the actor lifetime.</summary>

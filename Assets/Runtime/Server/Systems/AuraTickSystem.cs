@@ -62,6 +62,18 @@ namespace Game.Server.Systems
                         nextTickAdvanced = true;
                     }
 
+                    if (entry.NextStackExpiryTickID > 0
+                        && currentTickID >= entry.NextStackExpiryTickID
+                        && currentTickID < entry.ExpiryTickID)
+                    {
+                        ServerECSManager.QueueSimulationEvent(
+                            ServerSimulationEventKind.AuraStackExpired,
+                            actor.ValueRO.ActorID,
+                            entity,
+                            entry.AuraDefinitionID,
+                            entry.InstanceID);
+                    }
+
                     if (currentTickID >= entry.ExpiryTickID)
                     {
                         buffer.RemoveAt(i);

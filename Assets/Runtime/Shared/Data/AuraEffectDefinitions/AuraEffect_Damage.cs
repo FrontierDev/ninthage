@@ -34,50 +34,23 @@ namespace Game.Shared.Data.AuraEffectDefinitions
             var targetStats = target.GetComponent<ActorStatContainer>();
             if (targetStats == null) return;
 
-            // Condition auras: each stack's damage scales from its own caster's stats.
-            if (ctx.ConditionStacks != null && ctx.ConditionStacks.Count > 0)
-            {
-                ExecuteConditionDamage(ctx, target, targetStats);
-                return;
-            }
-
             var casterStats = ctx.Caster != null ? ctx.Caster.GetComponent<ActorStatContainer>() : null;
 
-            int damage = CalculateDamage(casterStats);
-            damage = Mathf.RoundToInt(damage * CalculateMitigation(targetStats));
+            int stackCount = ctx.Definition.StackBehavior == AuraStackBehavior.IndependentDuration
+                ? ctx.Stacks
+                : 1;
+            int damage = 0;
+            for (int stackIndex = 0; stackIndex < stackCount; stackIndex++)
+            {
+                int stackDamage = CalculateDamage(casterStats);
+                stackDamage = Mathf.RoundToInt(stackDamage * CalculateMitigation(targetStats));
+                damage += stackDamage;
+            }
             if (damage <= 0) return;
 
             ApplyDamage(ctx.Caster, targetStats, target, damage);
             if (ctx.Caster != null)
                 NotifyDamage(ctx.Caster, target, targetStats, damage);
-        }
-
-        private void ExecuteConditionDamage(AuraContext ctx, Actor target, ActorStatContainer targetStats)
-        {
-            // Group stacks by caster to batch damage and combat log entries.
-            var casterDamage = new Dictionary<Actor, int>();
-
-            foreach (var stack in ctx.ConditionStacks)
-            {
-                if (stack.Caster == null) continue;
-                var casterStats = stack.Caster.GetComponent<ActorStatContainer>();
-                int damage = CalculateDamage(casterStats);
-                damage = Mathf.RoundToInt(damage * CalculateMitigation(targetStats));
-                if (damage <= 0) continue;
-
-                if (casterDamage.ContainsKey(stack.Caster))
-                    casterDamage[stack.Caster] += damage;
-                else
-                    casterDamage[stack.Caster] = damage;
-            }
-
-            // Apply each caster's damage separately so threat/aggro is attributed correctly.
-            foreach (var kvp in casterDamage)
-            {
-                if (kvp.Value <= 0) continue;
-                ApplyDamage(kvp.Key, targetStats, target, kvp.Value);
-                NotifyDamage(kvp.Key, target, targetStats, kvp.Value);
-            }
         }
 
         private void ApplyDamage(Actor source, ActorStatContainer targetStats, Actor target, int damage)

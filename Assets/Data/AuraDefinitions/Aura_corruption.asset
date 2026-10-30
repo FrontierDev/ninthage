@@ -19,7 +19,7 @@ MonoBehaviour:
   isDebuff: 1
   baseDuration: 6
   baseTickInterval: 0
-  stackBehavior: 4
+  stackBehavior: 0
   maxStacks: 1
   tags: []
   components: []

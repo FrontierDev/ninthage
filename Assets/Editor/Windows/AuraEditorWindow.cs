@@ -116,8 +116,14 @@ namespace Game.Editor.Windows
             EditorGUILayout.Space();
 
             EditorGUILayout.LabelField("Stacking", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_stackBehavior"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_maxStacks"));
+            EditorGUILayout.PropertyField(
+                serializedObject.FindProperty("_stackBehavior"),
+                new GUIContent(
+                    "Stack Behavior",
+                    "Refresh Duration shares one deadline; Independent Duration tracks each stack deadline."));
+            EditorGUILayout.PropertyField(
+                serializedObject.FindProperty("_maxStacks"),
+                new GUIContent("Max Stacks", "The maximum number of accepted stacks for this aura."));
 
             EditorGUILayout.Space();
 

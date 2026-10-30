@@ -60,15 +60,12 @@ namespace Game.Client.UI
         /// </summary>
         public void UpdateDisplay(float currentDuration = -1f)
         {
-            if (_data.Definition.StackBehavior == AuraStackBehavior.Condition_Stack ||
-                _data.Definition.StackBehavior == AuraStackBehavior.Condition_Extend)
+            if (_data.Stacks > 1)
             {
-                // Show stack count for condition auras
                 _durationText.text = $"{_data.Stacks}";
             }
             else
             {
-                // Show duration for other auras
                 if (_data.Definition.BaseDuration <= 0)
                     return;
                 else if (currentDuration <= 10.0f)

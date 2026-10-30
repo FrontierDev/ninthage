@@ -285,6 +285,12 @@ namespace Game.Server.Core
                             simulationEvent.DefinitionID.ToString(),
                             simulationEvent.OperationID);
                         break;
+                    case ServerSimulationEventKind.AuraStackExpired:
+                        ActorEndpoint.onServerAuraStackExpired?.Invoke(
+                            simulationEvent.ActorID,
+                            simulationEvent.DefinitionID.ToString(),
+                            simulationEvent.OperationID);
+                        break;
                     case ServerSimulationEventKind.AuraExpired:
                         ActorEndpoint.onServerAuraExpired?.Invoke(
                             simulationEvent.ActorID,

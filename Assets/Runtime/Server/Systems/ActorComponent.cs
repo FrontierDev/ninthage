@@ -113,6 +113,8 @@ namespace Game.Server.Systems
         public FixedString64Bytes AuraDefinitionID;
         /// <summary>The authoritative tick on which the aura expires.</summary>
         public long ExpiryTickID;
+        /// <summary>The earliest intermediate independent-stack expiry tick, or zero when none exists.</summary>
+        public long NextStackExpiryTickID;
         /// <summary>The next authoritative tick on which the aura ticks.</summary>
         public long NextTickID;
         /// <summary>The fixed-tick interval between aura ticks.</summary>
