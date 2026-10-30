@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Game.Server.Services
 {
-    /// <summary>Acquires Master character persistence and enters the player into the world.</summary>
+    /// <summary>Admits a character through Master and enters the player into the world.</summary>
     public sealed class EnterWorldService
     {
         private const string STAT_HEALTH = "health";
@@ -53,56 +53,43 @@ namespace Game.Server.Services
                 yield break;
             }
 
-            Task<MasterPersistenceProtocol.CharacterAcquireResponse> acquireTask;
+            Task<MasterSessionProtocol.CharacterAdmissionResponse> admissionTask;
             try
             {
-                acquireTask = coordinator.AcquireCharacterAsync(
+                admissionTask = coordinator.AdmitCharacterAsync(
+                    accountContext.GameplaySessionID,
                     accountContext.AccountID,
                     characterID,
                     CancellationToken.None);
             }
             catch (Exception exception)
             {
-                Debug.Error($"Could not start character acquisition for player {playerID}: {exception.Message}");
+                Debug.Error($"Could not start character admission for player {playerID}: {exception.Message}");
                 yield break;
             }
 
-            while (!acquireTask.IsCompleted)
+            while (!admissionTask.IsCompleted)
                 yield return null;
 
-            MasterPersistenceProtocol.CharacterAcquireResponse acquireResponse;
+            MasterSessionProtocol.CharacterAdmissionResponse admissionResponse;
             try
             {
-                acquireResponse = acquireTask.GetAwaiter().GetResult();
+                admissionResponse = admissionTask.GetAwaiter().GetResult();
             }
             catch (Exception exception)
             {
-                Debug.Error($"Character acquisition failed for player {playerID}: {exception.Message}");
+                Debug.Error($"Character admission failed for player {playerID}: {exception.Message}");
                 yield break;
             }
 
-            if (acquireResponse == null
-                || acquireResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
-            {
-                Debug.Error($"Character acquisition for player {playerID} returned {acquireResponse?.Result}; world entry failed closed.");
-                yield break;
-            }
-
-            if (acquireResponse.Character == null)
-            {
-                Debug.Error($"Character acquisition for player {playerID} returned no character state.");
-                yield return ReleaseCharacter(coordinator, characterID);
-                yield break;
-            }
-
-            if (acquireResponse.Character.CharacterID != characterID
-                || acquireResponse.Character.AccountID != accountContext.AccountID)
+            if (admissionResponse == null
+                || admissionResponse.SessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted
+                || admissionResponse.PersistenceResult != MasterPersistenceProtocol.PersistenceResult.Accepted)
             {
                 Debug.Error(
-                    $"Character acquisition for player {playerID} returned state for character "
-                    + $"{acquireResponse.Character.CharacterID} or account {acquireResponse.Character.AccountID}; "
-                    + $"requested character {characterID} for account {accountContext.AccountID}.");
-                yield return ReleaseCharacter(coordinator, characterID);
+                    $"Character admission for player {playerID} returned session result "
+                    + $"{admissionResponse?.SessionResult} and persistence result "
+                    + $"{admissionResponse?.PersistenceResult}; world entry failed closed.");
                 yield break;
             }
 
@@ -110,11 +97,11 @@ namespace Game.Server.Services
             Exception projectionException = null;
             try
             {
-                characterData = CharacterPersistenceProjection.ToCharacterData(acquireResponse.Character);
+                characterData = CharacterPersistenceProjection.ToCharacterData(admissionResponse.Character);
                 CharacterPersistenceDefinitionValidator.ValidateForWorldEntry(
                     characterData,
-                    acquireResponse.Character);
-                ValidatePersistedResources(acquireResponse.Character);
+                    admissionResponse.Character);
+                ValidatePersistedResources(admissionResponse.Character);
             }
             catch (Exception exception)
             {
@@ -124,7 +111,10 @@ namespace Game.Server.Services
             if (projectionException != null)
             {
                 Debug.Error($"Acquired character {characterID} failed definition or state validation: {projectionException.Message}");
-                yield return ReleaseCharacter(coordinator, characterID);
+                yield return LeaveAdmittedCharacter(
+                    coordinator,
+                    accountContext.GameplaySessionID,
+                    characterID);
                 yield break;
             }
 
@@ -132,12 +122,14 @@ namespace Game.Server.Services
                 || !ServerConnectionManager.Instance.TryGetAccountContext(
                     playerID,
                     out ConnectedAccountContext currentAccountContext)
-                || currentAccountContext.AccountID != accountContext.AccountID
-                || !StringComparer.Ordinal.Equals(currentAccountContext.Username, accountContext.Username))
+                || currentAccountContext.GameplaySessionID != accountContext.GameplaySessionID)
             {
                 Debug.Warning(
-                    $"Player {playerID} disconnected or changed account while acquiring character {characterID}.");
-                yield return ReleaseCharacter(coordinator, characterID);
+                    $"Player {playerID} disconnected or changed gameplay session while admitting character {characterID}.");
+                yield return LeaveAdmittedCharacter(
+                    coordinator,
+                    accountContext.GameplaySessionID,
+                    characterID);
                 yield break;
             }
 
@@ -148,7 +140,10 @@ namespace Game.Server.Services
             if (worldManager == null)
             {
                 Debug.Error($"The server world manager is unavailable for player {playerID}.");
-                yield return ReleaseCharacter(coordinator, characterID);
+                yield return LeaveAdmittedCharacter(
+                    coordinator,
+                    accountContext.GameplaySessionID,
+                    characterID);
                 yield break;
             }
             if (currentAccountContext.HomeWorldID != currentPublicContext.WorldID)
@@ -156,17 +151,20 @@ namespace Game.Server.Services
                 Debug.Error(
                     $"Account home WorldID {currentAccountContext.HomeWorldID} does not match current WorldID "
                     + $"{currentPublicContext.WorldID} for player {playerID}.");
-                yield return ReleaseCharacter(coordinator, characterID);
+                yield return LeaveAdmittedCharacter(
+                    coordinator,
+                    accountContext.GameplaySessionID,
+                    characterID);
                 yield break;
             }
 
             IReadOnlyList<CharacterWorldEntryLocationResolver.RecoveryCandidate> candidates =
                 CharacterWorldEntryLocationResolver.BuildCandidates(
-                    acquireResponse.Character,
+                    admissionResponse.Character,
                     currentPublicContext,
                     worldManager);
             CharacterWorldEntryLocationResolver.RecoveryCandidate selectedCandidate = default;
-            string selectedSafeReturnLocationID = acquireResponse.Character.WorldState.SafeReturnLocationID;
+            string selectedSafeReturnLocationID = admissionResponse.Character.WorldState.SafeReturnLocationID;
             bool candidateSelected = false;
             for (int index = 0; index < candidates.Count; index++)
             {
@@ -183,7 +181,10 @@ namespace Game.Server.Services
                     Debug.Error(
                         $"Character admission for {characterID} became invalid before recovery tier "
                         + $"{candidate.Tier}: {admissionFailureReason}");
-                    yield return ReleaseCharacter(coordinator, characterID);
+                    yield return LeaveAdmittedCharacter(
+                        coordinator,
+                        accountContext.GameplaySessionID,
+                        characterID);
                     yield break;
                 }
 
@@ -248,7 +249,10 @@ namespace Game.Server.Services
                     Debug.Error(
                         $"Character admission for {characterID} became invalid after recovery tier "
                         + $"{candidate.Tier} streamed: {admissionFailureReason}");
-                    yield return ReleaseCharacter(coordinator, characterID);
+                    yield return LeaveAdmittedCharacter(
+                        coordinator,
+                        accountContext.GameplaySessionID,
+                        characterID);
                     yield break;
                 }
 
@@ -270,7 +274,7 @@ namespace Game.Server.Services
                 if (candidate.RequiresDurableRelocation)
                 {
                     selectedSafeReturnLocationID = ResolveRecoverySafeReturnLocationID(
-                        acquireResponse.Character,
+                        admissionResponse.Character,
                         candidate,
                         currentPublicContext);
                     bool durableRelocationSucceeded = false;
@@ -278,7 +282,7 @@ namespace Game.Server.Services
                     yield return QueueDurableRecoveryCheckpoint(
                         coordinator,
                         characterID,
-                        acquireResponse.Character,
+                        admissionResponse.Character,
                         accountContext.AccountID,
                         candidate,
                         selectedSafeReturnLocationID,
@@ -295,7 +299,10 @@ namespace Game.Server.Services
                         Debug.Warning(
                             $"Character {characterID} skipped recovery tier {candidate.Tier}: "
                             + durableRelocationFailureReason);
-                        yield return ReleaseCharacter(coordinator, characterID);
+                        yield return LeaveAdmittedCharacter(
+                            coordinator,
+                            accountContext.GameplaySessionID,
+                            characterID);
                         yield break;
                     }
                 }
@@ -309,7 +316,10 @@ namespace Game.Server.Services
             {
                 Debug.Error(
                     $"Acquired character {characterID} has no safe, streamable recovery location; entry denied.");
-                yield return ReleaseCharacter(coordinator, characterID);
+                yield return LeaveAdmittedCharacter(
+                    coordinator,
+                    accountContext.GameplaySessionID,
+                    characterID);
                 yield break;
             }
 
@@ -323,7 +333,7 @@ namespace Game.Server.Services
                     accountContext.AccountID,
                     characterID,
                     characterData,
-                    acquireResponse.Character,
+                    admissionResponse.Character,
                     selectedCandidate.EntryLocation);
 
                 ServerConnectionManager.Instance.SetSessionData(
@@ -338,11 +348,18 @@ namespace Game.Server.Services
             if (sessionException != null)
             {
                 Debug.Error($"Could not establish world-entry session for player {playerID}: {sessionException.Message}");
-                yield return ReleaseCharacter(coordinator, characterID);
+                yield return LeaveAdmittedCharacter(
+                    coordinator,
+                    accountContext.GameplaySessionID,
+                    characterID);
                 yield break;
             }
 
-            yield return SpawnAndReleaseOnFailure(coordinator, playerID, characterID);
+            yield return SpawnAndReleaseOnFailure(
+                coordinator,
+                accountContext.GameplaySessionID,
+                playerID,
+                characterID);
         }
 
         private static bool IsAdmissionStillValid(
@@ -363,12 +380,9 @@ namespace Game.Server.Services
             {
                 return FailAdmission("the account context is no longer present", out failureReason);
             }
-            if (currentAccountContext.AccountID != expectedAccountContext.AccountID
-                || !StringComparer.Ordinal.Equals(
-                    currentAccountContext.Username,
-                    expectedAccountContext.Username))
+            if (currentAccountContext.GameplaySessionID != expectedAccountContext.GameplaySessionID)
             {
-                return FailAdmission("the authenticated account changed", out failureReason);
+                return FailAdmission("the gameplay session changed", out failureReason);
             }
             if (worldManager == null
                 || worldManager.CurrentRuntimeContext != expectedPublicContext
@@ -720,6 +734,7 @@ namespace Game.Server.Services
 
         private IEnumerator SpawnAndReleaseOnFailure(
             WorldPersistenceCoordinator coordinator,
+            Guid gameplaySessionID,
             PlayerID playerID,
             Guid characterID)
         {
@@ -741,7 +756,10 @@ namespace Game.Server.Services
             {
                 Debug.Error($"Could not start player spawn for {playerID}: {spawnStartException.Message}");
                 ServerConnectionManager.Instance.ClearSessionData(playerID);
-                yield return ReleaseCharacter(coordinator, characterID);
+                yield return LeaveAdmittedCharacter(
+                    coordinator,
+                    gameplaySessionID,
+                    characterID);
                 yield break;
             }
 
@@ -771,37 +789,51 @@ namespace Game.Server.Services
                 yield break;
 
             ServerConnectionManager.Instance.ClearSessionData(playerID);
-            yield return ReleaseCharacter(coordinator, characterID);
-            Debug.Error($"Player spawn failed for {playerID}; character persistence lease {characterID} was released.");
+            yield return LeaveAdmittedCharacter(
+                coordinator,
+                gameplaySessionID,
+                characterID);
+            Debug.Error(
+                $"Player spawn failed for {playerID}; session-aware leave was attempted for character {characterID}.");
         }
 
-        private static IEnumerator ReleaseCharacter(
+        private static IEnumerator LeaveAdmittedCharacter(
             WorldPersistenceCoordinator coordinator,
+            Guid gameplaySessionID,
             Guid characterID)
         {
-            Task<MasterPersistenceProtocol.PersistenceResponse> releaseTask;
+            Task<MasterSessionProtocol.CharacterLeaveResponse> leaveTask;
             try
             {
-                releaseTask = coordinator.ReleaseCharacterAsync(characterID, CancellationToken.None);
+                leaveTask = coordinator.LeaveAdmittedCharacterAsync(
+                    gameplaySessionID,
+                    characterID,
+                    CancellationToken.None);
             }
             catch (Exception exception)
             {
-                Debug.Warning($"Could not start persistence release for character {characterID}: {exception.Message}");
+                Debug.Error($"Could not start session-aware leave for character {characterID}: {exception.Message}");
                 yield break;
             }
 
-            while (!releaseTask.IsCompleted)
+            while (!leaveTask.IsCompleted)
                 yield return null;
 
             try
             {
-                MasterPersistenceProtocol.PersistenceResponse response = releaseTask.GetAwaiter().GetResult();
-                if (response == null || response.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
-                    Debug.Error($"Persistence release for character {characterID} returned {response?.Result}.");
+                MasterSessionProtocol.CharacterLeaveResponse response = leaveTask.GetAwaiter().GetResult();
+                if (response == null
+                    || response.SessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted
+                    || response.PersistenceResult != MasterPersistenceProtocol.PersistenceResult.Accepted)
+                {
+                    Debug.Error(
+                        $"Session-aware leave for character {characterID} returned session result "
+                        + $"{response?.SessionResult} and persistence result {response?.PersistenceResult}.");
+                }
             }
             catch (Exception exception)
             {
-                Debug.Error($"Persistence release failed for character {characterID}: {exception.Message}");
+                Debug.Error($"Session-aware leave failed for character {characterID}: {exception.Message}");
             }
         }
     }

@@ -12,6 +12,8 @@ namespace Game.Server.Networking.Master
         internal const string CHARACTER_CREATE_PATH = "/world/v1/sessions/characters/create";
         internal const string CHARACTER_DELETE_PATH = "/world/v1/sessions/characters/delete";
         internal const string CHARACTER_RESTORE_PATH = "/world/v1/sessions/characters/restore";
+        internal const string CHARACTER_ADMISSION_PATH = "/world/v1/sessions/characters/admit";
+        internal const string CHARACTER_LEAVE_PATH = "/world/v1/sessions/characters/leave";
 
         /// <summary>Canonical outcomes for a gameplay-session request.</summary>
         internal enum GameplaySessionResult
@@ -35,6 +37,73 @@ namespace Game.Server.Networking.Master
         {
             Created = 0,
             Reclaimed = 1
+        }
+
+        /// <summary>Requests admission of one character for an authenticated gameplay session.</summary>
+        internal sealed class CharacterAdmissionRequest
+        {
+            [JsonProperty("worldID")]
+            public Guid WorldID { get; set; }
+
+            [JsonProperty("worldServerRunID")]
+            public Guid WorldServerRunID { get; set; }
+
+            [JsonProperty("gameplaySessionID")]
+            public Guid GameplaySessionID { get; set; }
+
+            [JsonProperty("characterID")]
+            public Guid CharacterID { get; set; }
+        }
+
+        /// <summary>Returns the session and durable character state after admission.</summary>
+        internal sealed class CharacterAdmissionResponse
+        {
+            [JsonProperty("sessionResult")]
+            public GameplaySessionResult SessionResult { get; set; }
+
+            [JsonProperty("persistenceResult")]
+            public MasterPersistenceProtocol.PersistenceResult? PersistenceResult { get; set; }
+
+            [JsonProperty("characterPersistenceLeaseID")]
+            public Guid? CharacterPersistenceLeaseID { get; set; }
+
+            [JsonProperty("revision")]
+            public long? Revision { get; set; }
+
+            [JsonProperty("character")]
+            public MasterPersistenceProtocol.CharacterPersistenceState Character { get; set; }
+        }
+
+        /// <summary>Requests leave of one admitted character for an authenticated gameplay session.</summary>
+        internal sealed class CharacterLeaveRequest
+        {
+            [JsonProperty("worldID")]
+            public Guid WorldID { get; set; }
+
+            [JsonProperty("worldServerRunID")]
+            public Guid WorldServerRunID { get; set; }
+
+            [JsonProperty("gameplaySessionID")]
+            public Guid GameplaySessionID { get; set; }
+
+            [JsonProperty("characterID")]
+            public Guid CharacterID { get; set; }
+
+            [JsonProperty("characterPersistenceLeaseID")]
+            public Guid CharacterPersistenceLeaseID { get; set; }
+
+            [JsonProperty("expectedRevision")]
+            public long ExpectedRevision { get; set; }
+        }
+
+        /// <summary>Returns the session and durable outcome after leaving an admitted character.</summary>
+        internal sealed class CharacterLeaveResponse
+        {
+            [JsonProperty("sessionResult")]
+            public GameplaySessionResult SessionResult { get; set; }
+
+            [JsonProperty("persistenceResult")]
+            public MasterPersistenceProtocol.PersistenceResult? PersistenceResult { get; set; }
         }
 
         /// <summary>Loads the character roster for an authenticated gameplay session.</summary>

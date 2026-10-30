@@ -56,6 +56,45 @@ namespace Game.Server.Networking.Master
             return response;
         }
 
+        /// <summary>Admits a character through its authenticated gameplay session.</summary>
+        internal Task<MasterSessionProtocol.CharacterAdmissionResponse> AdmitCharacterAsync(
+            MasterSessionProtocol.CharacterAdmissionRequest request,
+            Guid expectedAccountID,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+            if (expectedAccountID == Guid.Empty)
+                throw new ArgumentException("A nonempty expected Account ID is required.", nameof(expectedAccountID));
+
+            return PostSessionResultAsync<MasterSessionProtocol.CharacterAdmissionResponse>(
+                MasterSessionProtocol.CHARACTER_ADMISSION_PATH,
+                request,
+                response => response.SessionResult,
+                response => response.PersistenceResult,
+                response => ValidateCharacterAdmissionResponse(response, request, expectedAccountID),
+                "character admission",
+                cancellationToken);
+        }
+
+        /// <summary>Leaves a character through its authenticated gameplay session.</summary>
+        internal Task<MasterSessionProtocol.CharacterLeaveResponse> LeaveCharacterAsync(
+            MasterSessionProtocol.CharacterLeaveRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            return PostSessionResultAsync<MasterSessionProtocol.CharacterLeaveResponse>(
+                MasterSessionProtocol.CHARACTER_LEAVE_PATH,
+                request,
+                response => response.SessionResult,
+                response => response.PersistenceResult,
+                ValidateCharacterLeaveResponse,
+                "character leave",
+                cancellationToken);
+        }
+
         /// <summary>Loads an account's character roster through its gameplay session.</summary>
         internal Task<MasterSessionProtocol.CharacterRosterResponse> GetCharacterRosterAsync(
             MasterSessionProtocol.CharacterRosterRequest request,
@@ -261,6 +300,160 @@ namespace Game.Server.Networking.Master
 
             validateResponse(response);
             return response;
+        }
+
+        private async Task<TResponse> PostSessionResultAsync<TResponse>(
+            string path,
+            object request,
+            Func<TResponse, MasterSessionProtocol.GameplaySessionResult> sessionResultSelector,
+            Func<TResponse, MasterPersistenceProtocol.PersistenceResult?> persistenceResultSelector,
+            Action<TResponse> validateResponse,
+            string operationDescription,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("A nonblank session path is required.", nameof(path));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+            if (sessionResultSelector == null)
+                throw new ArgumentNullException(nameof(sessionResultSelector));
+            if (persistenceResultSelector == null)
+                throw new ArgumentNullException(nameof(persistenceResultSelector));
+            if (validateResponse == null)
+                throw new ArgumentNullException(nameof(validateResponse));
+
+            (HttpStatusCode statusCode, string responseBody) = await _worldClient.PostJsonAsync(
+                path,
+                JsonConvert.SerializeObject(request),
+                cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(responseBody))
+                throw new InvalidOperationException($"The Master {operationDescription} response body was empty.");
+
+            JObject responseObject;
+            try
+            {
+                responseObject = JObject.Parse(responseBody);
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidOperationException(
+                    $"The Master {operationDescription} response was malformed JSON.",
+                    exception);
+            }
+
+            if (!responseObject.TryGetValue("sessionResult", out JToken sessionResultToken)
+                || sessionResultToken.Type == JTokenType.Null)
+            {
+                throw new InvalidOperationException(
+                    $"The Master {operationDescription} response has no session result.");
+            }
+
+            TResponse response;
+            try
+            {
+                response = JsonConvert.DeserializeObject<TResponse>(responseBody);
+                if (response == null)
+                    throw new InvalidOperationException($"The Master {operationDescription} response was null.");
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (exception is JsonException || exception is ArgumentException)
+            {
+                throw new InvalidOperationException(
+                    $"The Master {operationDescription} response was malformed.",
+                    exception);
+            }
+
+            MasterSessionProtocol.GameplaySessionResult sessionResult = sessionResultSelector(response);
+            if (!Enum.IsDefined(typeof(MasterSessionProtocol.GameplaySessionResult), sessionResult))
+            {
+                throw new InvalidOperationException(
+                    $"The Master {operationDescription} response has an unknown session result.");
+            }
+
+            MasterPersistenceProtocol.PersistenceResult? persistenceResult = persistenceResultSelector(response);
+            if (sessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted)
+            {
+                if (persistenceResult.HasValue)
+                {
+                    throw new InvalidOperationException(
+                        $"The rejected Master {operationDescription} response contained a persistence result.");
+                }
+
+                ValidateStatus(statusCode, sessionResult);
+            }
+            else
+            {
+                if (!persistenceResult.HasValue
+                    || !Enum.IsDefined(typeof(MasterPersistenceProtocol.PersistenceResult), persistenceResult.Value))
+                {
+                    throw new InvalidOperationException(
+                        $"The accepted Master {operationDescription} response has no valid persistence result.");
+                }
+
+                MasterPersistenceClient.ValidatePersistenceStatus(statusCode, persistenceResult.Value);
+            }
+
+            validateResponse(response);
+            return response;
+        }
+
+        private static void ValidateCharacterAdmissionResponse(
+            MasterSessionProtocol.CharacterAdmissionResponse response,
+            MasterSessionProtocol.CharacterAdmissionRequest request,
+            Guid expectedAccountID)
+        {
+            if (response.SessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted)
+            {
+                if (response.PersistenceResult.HasValue
+                    || response.CharacterPersistenceLeaseID.HasValue
+                    || response.Revision.HasValue
+                    || response.Character != null)
+                {
+                    throw new InvalidOperationException(
+                        "The rejected Master character admission response contained success fields.");
+                }
+
+                return;
+            }
+
+            if (response.PersistenceResult.Value != MasterPersistenceProtocol.PersistenceResult.Accepted)
+            {
+                if (response.CharacterPersistenceLeaseID.HasValue
+                    || response.Revision.HasValue
+                    || response.Character != null)
+                {
+                    throw new InvalidOperationException(
+                        "The rejected Master character admission response contained success fields.");
+                }
+
+                return;
+            }
+
+            if (!response.CharacterPersistenceLeaseID.HasValue
+                || !response.Revision.HasValue
+                || response.Character == null)
+            {
+                throw new InvalidOperationException(
+                    "The accepted Master character admission response was missing success fields.");
+            }
+
+            MasterPersistenceClient.ValidateCharacterPersistenceState(
+                response.Character,
+                response.CharacterPersistenceLeaseID.Value,
+                response.Revision.Value,
+                expectedAccountID,
+                request.CharacterID);
+        }
+
+        private static void ValidateCharacterLeaveResponse(
+            MasterSessionProtocol.CharacterLeaveResponse response)
+        {
+            if (response == null)
+                throw new InvalidOperationException("The Master character leave response was null.");
         }
 
         private static void ValidateSessionPersistenceWrapper<TResponse>(

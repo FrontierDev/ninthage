@@ -12,20 +12,43 @@ namespace Game.Server.Persistence
     {
         private readonly Dictionary<Guid, CharacterOperationLane> _characterLanes = new();
 
-        /// <summary>Acquires a character persistence lease through its serialized character lane.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterAcquireResponse> AcquireCharacterAsync(
-            Guid accountID,
+        /// <summary>Admits a character through its serialized session-authorized character lane.</summary>
+        internal Task<MasterSessionProtocol.CharacterAdmissionResponse> AdmitCharacterAsync(
+            Guid gameplaySessionID,
+            Guid expectedAccountID,
             Guid characterID,
             CancellationToken cancellationToken)
         {
-            if (accountID == Guid.Empty)
-                throw new ArgumentException("A nonempty Account ID is required.", nameof(accountID));
+            if (gameplaySessionID == Guid.Empty)
+                throw new ArgumentException("A nonempty gameplay session ID is required.", nameof(gameplaySessionID));
+            if (expectedAccountID == Guid.Empty)
+                throw new ArgumentException("A nonempty expected Account ID is required.", nameof(expectedAccountID));
             if (characterID == Guid.Empty)
                 throw new ArgumentException("A nonempty Character ID is required.", nameof(characterID));
             if (!TryStartOperation())
-                return Task.FromResult(CreateUnavailableAcquireResponse());
+                return Task.FromResult(CreateUnavailableAdmissionResponse());
 
-            return AcquireCharacterCoreAsync(accountID, characterID, cancellationToken);
+            return AdmitCharacterCoreAsync(
+                gameplaySessionID,
+                expectedAccountID,
+                characterID,
+                cancellationToken);
+        }
+
+        /// <summary>Leaves a session-authorized character while preserving the local lease on uncertainty.</summary>
+        internal Task<MasterSessionProtocol.CharacterLeaveResponse> LeaveAdmittedCharacterAsync(
+            Guid gameplaySessionID,
+            Guid characterID,
+            CancellationToken cancellationToken)
+        {
+            if (gameplaySessionID == Guid.Empty)
+                throw new ArgumentException("A nonempty gameplay session ID is required.", nameof(gameplaySessionID));
+            if (characterID == Guid.Empty)
+                throw new ArgumentException("A nonempty Character ID is required.", nameof(characterID));
+            if (!TryStartOperation())
+                return Task.FromResult(CreateUnavailableLeaveResponse());
+
+            return LeaveAdmittedCharacterCoreAsync(gameplaySessionID, characterID, cancellationToken);
         }
 
         /// <summary>Releases a locally owned character persistence lease with one Master attempt.</summary>
@@ -90,8 +113,9 @@ namespace Game.Server.Persistence
             }
         }
 
-        private async Task<MasterPersistenceProtocol.CharacterAcquireResponse> AcquireCharacterCoreAsync(
-            Guid accountID,
+        private async Task<MasterSessionProtocol.CharacterAdmissionResponse> AdmitCharacterCoreAsync(
+            Guid gameplaySessionID,
+            Guid expectedAccountID,
             Guid characterID,
             CancellationToken cancellationToken)
         {
@@ -102,26 +126,71 @@ namespace Game.Server.Persistence
                     cancellationToken).ConfigureAwait(false);
 
                 if (HasOwnedLease(laneHandle.Lane))
-                    return CreateLeaseConflictResponse();
+                    return CreateLeaseConflictAdmissionResponse();
 
-                MasterPersistenceProtocol.CharacterAcquireRequest request = new()
+                MasterSessionProtocol.CharacterAdmissionRequest request = new()
                 {
                     WorldID = WorldID,
                     WorldServerRunID = WorldServerRunID,
-                    AccountID = accountID,
+                    GameplaySessionID = gameplaySessionID,
                     CharacterID = characterID
                 };
-                MasterPersistenceProtocol.CharacterAcquireResponse response = await ExecuteWithRetryAsync(
-                    token => _client.AcquireCharacterAsync(request, token),
-                    result => result.Result,
-                    CreateUnavailableAcquireResponse,
-                    cancellationToken).ConfigureAwait(false);
+                MasterSessionProtocol.CharacterAdmissionResponse response =
+                    await _sessionClient.AdmitCharacterAsync(
+                        request,
+                        expectedAccountID,
+                        cancellationToken).ConfigureAwait(false);
 
-                if (response.Result == MasterPersistenceProtocol.PersistenceResult.Accepted)
+                if (response.SessionResult == MasterSessionProtocol.GameplaySessionResult.Accepted
+                    && response.PersistenceResult == MasterPersistenceProtocol.PersistenceResult.Accepted)
                 {
-                    StoreOwnedLease(laneHandle.Lane, response);
+                    StoreOwnedLease(
+                        laneHandle.Lane,
+                        expectedAccountID,
+                        response.CharacterPersistenceLeaseID.Value,
+                        response.Revision.Value);
                 }
                 else
+                {
+                    ClearLeaseState(laneHandle.Lane);
+                }
+
+                return response;
+            }
+            finally
+            {
+                CompleteOperation();
+            }
+        }
+
+        private async Task<MasterSessionProtocol.CharacterLeaveResponse> LeaveAdmittedCharacterCoreAsync(
+            Guid gameplaySessionID,
+            Guid characterID,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                using CharacterLaneHandle laneHandle = await AcquireCharacterLaneAsync(
+                    characterID,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!HasOwnedLease(laneHandle.Lane))
+                    return CreateStaleLeaseLeaveResponse();
+
+                CharacterLeaseSnapshot lease = GetCurrentLeaseSnapshot(laneHandle.Lane);
+                MasterSessionProtocol.CharacterLeaveRequest request = new()
+                {
+                    WorldID = WorldID,
+                    WorldServerRunID = WorldServerRunID,
+                    GameplaySessionID = gameplaySessionID,
+                    CharacterID = characterID,
+                    CharacterPersistenceLeaseID = lease.CharacterPersistenceLeaseID,
+                    ExpectedRevision = lease.Revision
+                };
+                MasterSessionProtocol.CharacterLeaveResponse response =
+                    await _sessionClient.LeaveCharacterAsync(request, cancellationToken).ConfigureAwait(false);
+                if (response.SessionResult == MasterSessionProtocol.GameplaySessionResult.Accepted
+                    && response.PersistenceResult == MasterPersistenceProtocol.PersistenceResult.Accepted)
                 {
                     ClearLeaseState(laneHandle.Lane);
                 }
@@ -337,13 +406,29 @@ namespace Game.Server.Persistence
 
         private void StoreOwnedLease(
             CharacterOperationLane lane,
-            MasterPersistenceProtocol.CharacterAcquireResponse response)
+            Guid accountID,
+            Guid characterPersistenceLeaseID,
+            long revision)
         {
+            if (accountID == Guid.Empty)
+                throw new ArgumentException("A nonempty Account ID is required.", nameof(accountID));
+            if (characterPersistenceLeaseID == Guid.Empty)
+            {
+                throw new ArgumentException(
+                    "A nonempty character persistence lease ID is required.",
+                    nameof(characterPersistenceLeaseID));
+            }
+            if (revision < 1)
+                throw new ArgumentOutOfRangeException(nameof(revision), "Revision must be at least 1.");
+
             lock (_stateLock)
             {
-                lane.AccountID = response.Character.AccountID;
-                lane.CharacterPersistenceLeaseID = response.CharacterPersistenceLeaseID;
-                lane.Revision = response.Revision;
+                if (lane.HasOwnedLease)
+                    throw new InvalidOperationException("The character lane already owns a persistence lease.");
+
+                lane.AccountID = accountID;
+                lane.CharacterPersistenceLeaseID = characterPersistenceLeaseID;
+                lane.Revision = revision;
                 lane.BlockingResult = null;
             }
         }
@@ -360,19 +445,39 @@ namespace Game.Server.Persistence
                 _activeOperationCount++;
         }
 
-        private static MasterPersistenceProtocol.CharacterAcquireResponse CreateLeaseConflictResponse()
+        private static MasterSessionProtocol.CharacterAdmissionResponse CreateLeaseConflictAdmissionResponse()
         {
-            return new MasterPersistenceProtocol.CharacterAcquireResponse
+            return new MasterSessionProtocol.CharacterAdmissionResponse
             {
-                Result = MasterPersistenceProtocol.PersistenceResult.LeaseConflict
+                SessionResult = MasterSessionProtocol.GameplaySessionResult.Accepted,
+                PersistenceResult = MasterPersistenceProtocol.PersistenceResult.LeaseConflict
             };
         }
 
-        private static MasterPersistenceProtocol.CharacterAcquireResponse CreateUnavailableAcquireResponse()
+        private static MasterSessionProtocol.CharacterAdmissionResponse CreateUnavailableAdmissionResponse()
         {
-            return new MasterPersistenceProtocol.CharacterAcquireResponse
+            return new MasterSessionProtocol.CharacterAdmissionResponse
             {
-                Result = MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable
+                SessionResult = MasterSessionProtocol.GameplaySessionResult.Accepted,
+                PersistenceResult = MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable
+            };
+        }
+
+        private static MasterSessionProtocol.CharacterLeaveResponse CreateStaleLeaseLeaveResponse()
+        {
+            return new MasterSessionProtocol.CharacterLeaveResponse
+            {
+                SessionResult = MasterSessionProtocol.GameplaySessionResult.Accepted,
+                PersistenceResult = MasterPersistenceProtocol.PersistenceResult.StaleLease
+            };
+        }
+
+        private static MasterSessionProtocol.CharacterLeaveResponse CreateUnavailableLeaveResponse()
+        {
+            return new MasterSessionProtocol.CharacterLeaveResponse
+            {
+                SessionResult = MasterSessionProtocol.GameplaySessionResult.Accepted,
+                PersistenceResult = MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable
             };
         }
 

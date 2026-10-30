@@ -1,27 +1,9 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Game.Server.Networking.Master
 {
     internal sealed partial class MasterPersistenceClient
     {
-        /// <summary>Acquires a character persistence lease and loads its durable state.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterAcquireResponse> AcquireCharacterAsync(
-            MasterPersistenceProtocol.CharacterAcquireRequest request,
-            CancellationToken cancellationToken)
-        {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
-
-            return PostAsync<MasterPersistenceProtocol.CharacterAcquireResponse>(
-                MasterPersistenceProtocol.CHARACTER_ACQUIRE_PATH,
-                request,
-                response => response.Result,
-                response => ValidateCharacterAcquireResponse(response, request),
-                cancellationToken);
-        }
-
         internal static void ValidateCharacterMutationResponse(
             MasterPersistenceProtocol.CharacterMutationResponse response)
         {
@@ -54,42 +36,31 @@ namespace Game.Server.Networking.Master
             }
         }
 
-        private static void ValidateCharacterAcquireResponse(
-            MasterPersistenceProtocol.CharacterAcquireResponse response,
-            MasterPersistenceProtocol.CharacterAcquireRequest request)
+        internal static void ValidateCharacterPersistenceState(
+            MasterPersistenceProtocol.CharacterPersistenceState character,
+            Guid characterPersistenceLeaseID,
+            long revision,
+            Guid expectedAccountID,
+            Guid expectedCharacterID)
         {
-            if (response.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+            if (characterPersistenceLeaseID == Guid.Empty
+                || revision < 1
+                || character == null
+                || character.AccountID != expectedAccountID
+                || character.CharacterID != expectedCharacterID
+                || character.Revision != revision
+                || character.Resources == null
+                || character.Cooldowns == null
+                || character.PersistentAuras == null
+                || character.Abilities == null
+                || character.Talents == null
+                || character.WeaponSkills == null
+                || character.Reputations == null
+                || character.Quests == null
+                || character.Items == null
+                || !HasValidWorldState(character.WorldState))
             {
-                if (response.CharacterPersistenceLeaseID.HasValue
-                    || response.Revision.HasValue
-                    || response.Character != null)
-                {
-                    throw new InvalidOperationException("The rejected Master character acquire response contained success fields.");
-                }
-
-                return;
-            }
-
-            if (!response.CharacterPersistenceLeaseID.HasValue
-                || response.CharacterPersistenceLeaseID.Value == Guid.Empty
-                || !response.Revision.HasValue
-                || response.Revision.Value < 1
-                || response.Character == null
-                || response.Character.CharacterID != request.CharacterID
-                || response.Character.AccountID != request.AccountID
-                || response.Character.Revision != response.Revision.Value
-                || response.Character.Resources == null
-                || response.Character.Cooldowns == null
-                || response.Character.PersistentAuras == null
-                || response.Character.Abilities == null
-                || response.Character.Talents == null
-                || response.Character.WeaponSkills == null
-                || response.Character.Reputations == null
-                || response.Character.Quests == null
-                || response.Character.Items == null
-                || !HasValidWorldState(response.Character.WorldState))
-            {
-                throw new InvalidOperationException("The accepted Master character acquire response was contradictory.");
+                throw new InvalidOperationException("The accepted Master character persistence state was contradictory.");
             }
         }
 

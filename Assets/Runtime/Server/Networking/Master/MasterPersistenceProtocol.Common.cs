@@ -33,7 +33,6 @@ namespace Game.Server.Networking.Master
         internal const string CHARACTER_CREATE_PATH = "/world/v1/characters/create";
         internal const string CHARACTER_DELETE_PATH = "/world/v1/characters/delete";
         internal const string CHARACTER_RESTORE_PATH = "/world/v1/characters/restore";
-        internal const string CHARACTER_ACQUIRE_PATH = "/world/v1/characters/acquire";
         internal const string CHARACTER_RELEASE_PATH = "/world/v1/characters/release";
         internal const string CHARACTER_CHECKPOINTS_PATH = "/world/v1/characters/checkpoints";
 
