@@ -746,9 +746,26 @@ namespace Game.Server.Core
             playerActor.transform.rotation = entryLocation.Facing;
 
             ServerStatManager.Instance.InitializePlayerStats(playerActor);
+            ServerStatManager.Instance.ApplyOfflineResourcePolicies(
+                playerActor,
+                session.PersistenceState.Resources,
+                DateTimeOffset.UtcNow);
+            ServerCooldownManager.Instance.RestorePersistentCooldowns(
+                playerActor.ID,
+                session.PersistenceState.Cooldowns,
+                DateTimeOffset.UtcNow);
             playerActor.isDead = session.PersistenceState.IsDead;
             ServerStatManager.Instance.RegisterActor(playerActor);
             playerStatsRegistered = true;
+            if (!ServerAuraManager.Instance.TryRestorePersistentAuras(
+                playerActor,
+                session.PersistenceState.PersistentAuras,
+                DateTimeOffset.UtcNow,
+                out string auraRestoreFailureReason))
+            {
+                throw new InvalidOperationException(
+                    $"Persistent aura restoration failed for player {playerID}: {auraRestoreFailureReason}");
+            }
 
             // Trigger initial 3x3 chunk interest around the accepted spawn position.
             ServerInterestManager.Instance.UpdatePlayerInterestFromAcceptedPosition(
@@ -794,6 +811,8 @@ namespace Game.Server.Core
                 throw new InvalidOperationException(
                     $"Player {playerID} has not finished loading the global actors scene {globalSceneID}.");
             }
+
+            ServerCooldownManager.Instance.PublishCooldownBootstrap(playerActor);
 
             ServerInterestManager.Instance.ReevaluateActorVisibility(
                 playerActor,

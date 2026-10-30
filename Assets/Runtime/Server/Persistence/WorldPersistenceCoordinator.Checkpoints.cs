@@ -377,7 +377,9 @@ namespace Game.Server.Persistence
                     ExpectedRevision = work.Revision,
                     WorldState = MapWorldState(work.Checkpoint.WorldState),
                     Resources = MapResources(work.Checkpoint.Resources),
-                    IsDead = work.Checkpoint.IsDead
+                    IsDead = work.Checkpoint.IsDead,
+                    Cooldowns = MapCooldowns(work.Checkpoint.Cooldowns),
+                    PersistentAuras = MapPersistentAuras(work.Checkpoint.PersistentAuras)
                 };
             }
 
@@ -442,8 +444,12 @@ namespace Game.Server.Persistence
         private static bool IsTransportSafeCheckpoint(WorldPersistenceCheckpoint checkpoint)
         {
             WorldPersistenceCheckpoint.Resource[] resources = checkpoint.Resources;
+            WorldPersistenceCheckpoint.Cooldown[] cooldowns = checkpoint.Cooldowns;
+            WorldPersistenceCheckpoint.PersistentAura[] persistentAuras = checkpoint.PersistentAuras;
             if (checkpoint.WorldState == null
                 && resources.Length == 0
+                && cooldowns == null
+                && persistentAuras == null
                 && !checkpoint.IsDead.HasValue)
                 return false;
 
@@ -480,6 +486,49 @@ namespace Game.Server.Persistence
                     || !resourceIDs.Add(resource.ResourceDefinitionID))
                 {
                     return false;
+                }
+            }
+
+            if (cooldowns != null)
+            {
+                HashSet<(string CooldownDefinitionID, int ChargeIndex)> cooldownKeys = new();
+                foreach (WorldPersistenceCheckpoint.Cooldown cooldown in cooldowns)
+                {
+                    if (cooldown == null
+                        || string.IsNullOrWhiteSpace(cooldown.CooldownDefinitionID)
+                        || cooldown.ChargeIndex < 0
+                        || cooldown.ExpiresAtUtc.Offset != TimeSpan.Zero
+                        || !cooldownKeys.Add((cooldown.CooldownDefinitionID, cooldown.ChargeIndex)))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            if (persistentAuras != null)
+            {
+                HashSet<Guid> persistentAuraIDs = new();
+                foreach (WorldPersistenceCheckpoint.PersistentAura persistentAura in persistentAuras)
+                {
+                    if (persistentAura == null
+                        || persistentAura.PersistentAuraID == Guid.Empty
+                        || !persistentAuraIDs.Add(persistentAura.PersistentAuraID)
+                        || string.IsNullOrWhiteSpace(persistentAura.AuraDefinitionID)
+                        || (persistentAura.SourceActorID.HasValue
+                            && persistentAura.SourceActorID.Value == Guid.Empty)
+                        || persistentAura.Stacks <= 0
+                        || (persistentAura.ExpiresAtUtc.HasValue
+                            && persistentAura.ExpiresAtUtc.Value.Offset != TimeSpan.Zero)
+                        || (persistentAura.NextTickAtUtc.HasValue
+                            && persistentAura.NextTickAtUtc.Value.Offset != TimeSpan.Zero)
+                        || (persistentAura.TickIntervalSeconds.HasValue
+                            && (!IsFinite(persistentAura.TickIntervalSeconds.Value)
+                                || persistentAura.TickIntervalSeconds.Value <= 0f))
+                        || persistentAura.NextTickAtUtc.HasValue
+                            != persistentAura.TickIntervalSeconds.HasValue)
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -531,6 +580,54 @@ namespace Game.Server.Persistence
                     ResourceDefinitionID = resource.ResourceDefinitionID,
                     CurrentValue = resource.CurrentValue,
                     LastAuthoritativeUpdateUtc = resource.LastAuthoritativeUpdateUtc
+                };
+            }
+
+            return mapped;
+        }
+
+        private static MasterPersistenceProtocol.CharacterCheckpointBatchRequest.CooldownCheckpoint[] MapCooldowns(
+            WorldPersistenceCheckpoint.Cooldown[] cooldowns)
+        {
+            if (cooldowns == null)
+                return null;
+
+            MasterPersistenceProtocol.CharacterCheckpointBatchRequest.CooldownCheckpoint[] mapped =
+                new MasterPersistenceProtocol.CharacterCheckpointBatchRequest.CooldownCheckpoint[cooldowns.Length];
+            for (int index = 0; index < cooldowns.Length; index++)
+            {
+                WorldPersistenceCheckpoint.Cooldown cooldown = cooldowns[index];
+                mapped[index] = new MasterPersistenceProtocol.CharacterCheckpointBatchRequest.CooldownCheckpoint
+                {
+                    CooldownDefinitionID = cooldown.CooldownDefinitionID,
+                    ChargeIndex = cooldown.ChargeIndex,
+                    ExpiresAtUtc = cooldown.ExpiresAtUtc
+                };
+            }
+
+            return mapped;
+        }
+
+        private static MasterPersistenceProtocol.CharacterCheckpointBatchRequest.PersistentAuraCheckpoint[] MapPersistentAuras(
+            WorldPersistenceCheckpoint.PersistentAura[] persistentAuras)
+        {
+            if (persistentAuras == null)
+                return null;
+
+            MasterPersistenceProtocol.CharacterCheckpointBatchRequest.PersistentAuraCheckpoint[] mapped =
+                new MasterPersistenceProtocol.CharacterCheckpointBatchRequest.PersistentAuraCheckpoint[persistentAuras.Length];
+            for (int index = 0; index < persistentAuras.Length; index++)
+            {
+                WorldPersistenceCheckpoint.PersistentAura persistentAura = persistentAuras[index];
+                mapped[index] = new MasterPersistenceProtocol.CharacterCheckpointBatchRequest.PersistentAuraCheckpoint
+                {
+                    PersistentAuraID = persistentAura.PersistentAuraID,
+                    AuraDefinitionID = persistentAura.AuraDefinitionID,
+                    SourceActorID = persistentAura.SourceActorID,
+                    Stacks = persistentAura.Stacks,
+                    ExpiresAtUtc = persistentAura.ExpiresAtUtc,
+                    NextTickAtUtc = persistentAura.NextTickAtUtc,
+                    TickIntervalSeconds = persistentAura.TickIntervalSeconds
                 };
             }
 

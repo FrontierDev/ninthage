@@ -7,6 +7,14 @@ namespace Game.Shared.Data
 {
     /// <summary>Identifies whether a stat is an attribute or a resource.</summary>
     public enum ActorStatCategory { Attribute, Resource }
+    /// <summary>Identifies how a resource is resolved after elapsed offline time.</summary>
+    public enum ActorStatOfflinePolicy
+    {
+        Unchanged = 0,
+        Regenerate = 1,
+        Decay = 2,
+        Reset = 3
+    }
     /// <summary>Identifies how a stat's base value is calculated.</summary>
     public enum ActorStatBaseValueMode { Fixed, Derived, Rating }
     /// <summary>Identifies which clients receive stat updates.</summary>
@@ -70,6 +78,9 @@ namespace Game.Shared.Data
         private float _regenMultiplier = 0f;
 
         [SerializeField]
+        private ActorStatOfflinePolicy _offlinePolicy = ActorStatOfflinePolicy.Unchanged;
+
+        [SerializeField]
         [FormerlySerializedAs("replicationMode")]
         private ActorStatReplicationMode _replicationMode = ActorStatReplicationMode.Owner;
         /// <summary>Gets the stat replication mode.</summary>
@@ -129,6 +140,13 @@ namespace Game.Shared.Data
         public ActorStatDefinition RegenSourceStat => _regenSourceStat;
         /// <summary>Gets the regeneration multiplier.</summary>
         public float RegenMultiplier => _regenMultiplier;
+        /// <summary>
+        /// Gets the explicit offline policy for this stat when it is a resource.
+        /// Attributes ignore this policy.
+        /// Regenerate and Decay use the existing normal authored regeneration rate, while Reset uses the existing resource initialization rule.
+        /// The <c>health</c> resource remains explicitly Unchanged under Stage 1.7.
+        /// </summary>
+        public ActorStatOfflinePolicy OfflinePolicy => _offlinePolicy;
 
         protected override string AssetPrefix => "ActorStat";
     }

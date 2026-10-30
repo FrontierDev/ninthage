@@ -28,6 +28,13 @@ namespace Game.Shared.Data
         Melee, Ranged, Spell
     }
 
+    /// <summary>Identifies whether a spell cooldown persists across actor lifetime.</summary>
+    public enum SpellCooldownPersistencePolicy
+    {
+        RuntimeOnly = 0,
+        PersistAcrossActorLifetime = 1
+    }
+
     [System.Serializable]
     /// <summary>Defines one target/effect component of a spell.</summary>
     public sealed class SpellComponent : ISerializationCallbackReceiver
@@ -99,6 +106,7 @@ namespace Game.Shared.Data
         [SerializeField, FormerlySerializedAs("baseCooldown")] private float _baseCooldown;
         [SerializeField, FormerlySerializedAs("baseCharges")] private float _baseCharges;
         [SerializeField, FormerlySerializedAs("useCooldownCharges")] private bool _useCooldownCharges;
+        [SerializeField] private SpellCooldownPersistencePolicy _cooldownPersistencePolicy = SpellCooldownPersistencePolicy.RuntimeOnly;
         [SerializeField, FormerlySerializedAs("cooldownScalesWithHaste")] private bool _cooldownScalesWithHaste = false;
         [SerializeField, FormerlySerializedAs("triggersGCD")] private bool _triggersGCD = true;
         [SerializeField, FormerlySerializedAs("baseRange")] private float _baseRange;
@@ -130,6 +138,11 @@ namespace Game.Shared.Data
         public bool TriggersGCD => _triggersGCD;
         /// <summary>Gets whether the spell uses charges.</summary>
         public bool UseCooldownCharges => _useCooldownCharges;
+        /// <summary>
+        /// Gets whether this spell's single-expiry cooldown persists across actor lifetime.
+        /// Charged cooldowns are not eligible until their charge semantics are implemented by capture and restore.
+        /// </summary>
+        public SpellCooldownPersistencePolicy CooldownPersistencePolicy => _cooldownPersistencePolicy;
         /// <summary>Gets whether cooldown scales with haste.</summary>
         public bool CooldownScalesWithHaste => _cooldownScalesWithHaste;
         /// <summary>Gets the base charge count.</summary>

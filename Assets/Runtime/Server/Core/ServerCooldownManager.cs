@@ -1,6 +1,9 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking.Master;
 using Game.Shared;
+using Game.Shared.Data;
 using Game.Shared.Networking;
+using Game.Shared.Runtime.Actors;
 using System;
 using System.Collections.Generic;
 using Unity.Entities;
@@ -294,6 +297,263 @@ namespace Game.Server.Core
             }
 
             return ClearAllCooldownsNow(actorID);
+        }
+
+        /// <summary>Restores validated persistent cooldown expiries into an actor's authoritative ECS buffer.</summary>
+        /// <param name="actorID">The actor receiving the restored cooldowns.</param>
+        /// <param name="cooldowns">The persisted cooldown rows, or <see langword="null"/> when none exist.</param>
+        /// <param name="observedAtUtc">The World Server UTC observation used to resolve offline elapsed time.</param>
+        /// <exception cref="InvalidOperationException">Thrown when persisted state or server timing is invalid.</exception>
+        internal void RestorePersistentCooldowns(
+            Guid actorID,
+            MasterPersistenceProtocol.CharacterCooldownState[] cooldowns,
+            DateTimeOffset observedAtUtc)
+        {
+            if (actorID == Guid.Empty)
+                throw new ArgumentException("A cooldown restore actor ID is required.", nameof(actorID));
+            if (observedAtUtc.Offset != TimeSpan.Zero)
+                throw new InvalidOperationException("Persistent cooldown restore requires a UTC observation timestamp.");
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                throw new InvalidOperationException(
+                    "Persistent cooldown restore cannot run during an active ECS mutation boundary.");
+            }
+            if (!TryGetAuthoritativeActorEntity(actorID, out Entity entity))
+            {
+                throw new InvalidOperationException(
+                    $"Actor {actorID} has no authoritative ECS entity for persistent cooldown restore.");
+            }
+
+            List<Systems.CooldownElement> restoredCooldowns = new();
+            if (cooldowns != null && cooldowns.Length > 0)
+            {
+                SpellDefinitionLibrary spellLibrary = SpellDefinitionLibrary.Instance;
+                if (spellLibrary == null)
+                    throw new InvalidOperationException("The spell definition library is unavailable for cooldown restore.");
+
+                GameConfiguration configuration = GameConfigurationManager.Config;
+                if (configuration == null)
+                    throw new InvalidOperationException("The game configuration is unavailable for cooldown restore.");
+
+                float fixedTickDuration = configuration.ServerSimulationTickDuration;
+                if (float.IsNaN(fixedTickDuration)
+                    || float.IsInfinity(fixedTickDuration)
+                    || fixedTickDuration <= 0f)
+                {
+                    throw new InvalidOperationException(
+                        "The server simulation tick duration is invalid for cooldown restore.");
+                }
+
+                long firstProgressTickID = checked(ServerSimulationClock.CurrentTickID + 1L);
+                HashSet<(string DefinitionID, int ChargeIndex)> cooldownKeys = new();
+
+                for (int index = 0; index < cooldowns.Length; index++)
+                {
+                    MasterPersistenceProtocol.CharacterCooldownState persistedCooldown = cooldowns[index];
+                    if (persistedCooldown == null)
+                    {
+                        throw new InvalidOperationException(
+                            "Persisted character cooldown state contains a null row.");
+                    }
+
+                    string definitionID = persistedCooldown.CooldownDefinitionID;
+                    if (string.IsNullOrWhiteSpace(definitionID))
+                    {
+                        throw new InvalidOperationException(
+                            "Persisted character cooldown state contains a blank definition ID.");
+                    }
+                    if (persistedCooldown.ChargeIndex != 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' uses unsupported charge index "
+                            + $"{persistedCooldown.ChargeIndex}; only charge index 0 is supported.");
+                    }
+                    if (persistedCooldown.ExpiresAtUtc.Offset != TimeSpan.Zero)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' does not use a UTC expiry timestamp.");
+                    }
+                    if (!cooldownKeys.Add((definitionID, persistedCooldown.ChargeIndex)))
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted character cooldown state contains duplicate key '{definitionID}:0'.");
+                    }
+                    if (StringComparer.Ordinal.Equals(definitionID, GCD_ID))
+                        continue;
+
+                    SpellDefinition definition = spellLibrary.GetDefinition(definitionID);
+                    if (definition == null)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' does not resolve to an authored spell definition.");
+                    }
+                    if (!Enum.IsDefined(
+                            typeof(SpellCooldownPersistencePolicy),
+                            definition.CooldownPersistencePolicy)
+                        || definition.CooldownPersistencePolicy
+                            != SpellCooldownPersistencePolicy.PersistAcrossActorLifetime)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' is not enabled for actor-lifetime persistence.");
+                    }
+                    if (definition.UseCooldownCharges)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' uses unsupported cooldown charges.");
+                    }
+                    if (persistedCooldown.ExpiresAtUtc <= observedAtUtc)
+                        continue;
+
+                    double remainingSeconds = (persistedCooldown.ExpiresAtUtc - observedAtUtc).TotalSeconds;
+                    if (double.IsNaN(remainingSeconds)
+                        || double.IsInfinity(remainingSeconds)
+                        || remainingSeconds <= 0d
+                        || remainingSeconds > float.MaxValue)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' has an invalid remaining duration.");
+                    }
+
+                    float remainingSecondsFloat = (float)remainingSeconds;
+                    if (float.IsNaN(remainingSecondsFloat)
+                        || float.IsInfinity(remainingSecondsFloat)
+                        || remainingSecondsFloat <= 0f)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' cannot be represented as a valid duration.");
+                    }
+
+                    long remainingTicks;
+                    try
+                    {
+                        remainingTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                            remainingSecondsFloat,
+                            fixedTickDuration);
+                    }
+                    catch (OverflowException exception)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' has an unrepresentable duration.",
+                            exception);
+                    }
+
+                    Unity.Collections.FixedString64Bytes fixedDefinitionID;
+                    try
+                    {
+                        fixedDefinitionID = new Unity.Collections.FixedString64Bytes(definitionID);
+                    }
+                    catch (ArgumentException exception)
+                    {
+                        throw new InvalidOperationException(
+                            $"Persisted cooldown '{definitionID}' has an invalid authored ID.",
+                            exception);
+                    }
+
+                    restoredCooldowns.Add(new Systems.CooldownElement
+                    {
+                        SpellID = fixedDefinitionID,
+                        ExpiryTickID = checked(firstProgressTickID + remainingTicks - 1L)
+                    });
+                }
+            }
+
+            DynamicBuffer<Systems.CooldownElement> cooldownBuffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity);
+            cooldownBuffer.Clear();
+            for (int index = 0; index < restoredCooldowns.Count; index++)
+                cooldownBuffer.Add(restoredCooldowns[index]);
+
+            _entityManager.SetComponentEnabled<Systems.CooldownElement>(
+                entity,
+                restoredCooldowns.Count > 0);
+        }
+
+        /// <summary>Publishes active cooldown presentation state to a player's loaded owner.</summary>
+        /// <param name="playerActor">The spawned player actor whose owner receives the bootstrap.</param>
+        /// <exception cref="InvalidOperationException">Thrown when the actor or cooldown state is unavailable.</exception>
+        internal void PublishCooldownBootstrap(PlayerActor playerActor)
+        {
+            if (playerActor == null)
+                throw new ArgumentNullException(nameof(playerActor));
+            if (!playerActor.Owner.HasValue)
+                throw new InvalidOperationException(
+                    $"Player actor {playerActor.ID} has no owner for cooldown bootstrap.");
+            if (!TryGetAuthoritativeActorEntity(playerActor.ID, out Entity entity))
+            {
+                throw new InvalidOperationException(
+                    $"Player actor {playerActor.ID} has no authoritative ECS entity for cooldown bootstrap.");
+            }
+
+            ActorSpellcaster spellcaster = playerActor.GetComponent<ActorSpellcaster>();
+            if (spellcaster == null)
+                throw new InvalidOperationException(
+                    $"Player actor {playerActor.ID} has no ActorSpellcaster for cooldown bootstrap.");
+
+            GameConfiguration configuration = GameConfigurationManager.Config;
+            if (configuration == null)
+                throw new InvalidOperationException("The game configuration is unavailable for cooldown bootstrap.");
+
+            float fixedTickDuration = configuration.ServerSimulationTickDuration;
+            if (float.IsNaN(fixedTickDuration)
+                || float.IsInfinity(fixedTickDuration)
+                || fixedTickDuration <= 0f)
+            {
+                throw new InvalidOperationException(
+                    "The server simulation tick duration is invalid for cooldown bootstrap.");
+            }
+
+            long currentTickID = ServerSimulationClock.CurrentTickID;
+            DynamicBuffer<Systems.CooldownElement> cooldownBuffer = _entityManager.GetBuffer<Systems.CooldownElement>(entity, true);
+            for (int index = 0; index < cooldownBuffer.Length; index++)
+            {
+                Systems.CooldownElement cooldown = cooldownBuffer[index];
+                if (cooldown.ExpiryTickID <= currentTickID)
+                    continue;
+
+                string definitionID = cooldown.SpellID.ToString();
+                if (StringComparer.Ordinal.Equals(definitionID, GCD_ID))
+                    continue;
+                if (string.IsNullOrWhiteSpace(definitionID))
+                {
+                    throw new InvalidOperationException(
+                        $"Player actor {playerActor.ID} has an active cooldown with a blank definition ID.");
+                }
+
+                long remainingTicks;
+                try
+                {
+                    remainingTicks = checked(cooldown.ExpiryTickID - currentTickID);
+                }
+                catch (OverflowException exception)
+                {
+                    throw new InvalidOperationException(
+                        $"Player actor {playerActor.ID} has an invalid cooldown tick range.",
+                        exception);
+                }
+
+                double remainingSeconds = remainingTicks * (double)fixedTickDuration;
+                if (double.IsNaN(remainingSeconds)
+                    || double.IsInfinity(remainingSeconds)
+                    || remainingSeconds <= 0d
+                    || remainingSeconds > float.MaxValue)
+                {
+                    throw new InvalidOperationException(
+                        $"Player actor {playerActor.ID} has a cooldown with an invalid remaining duration.");
+                }
+
+                float remainingDuration = (float)remainingSeconds;
+                if (float.IsNaN(remainingDuration)
+                    || float.IsInfinity(remainingDuration)
+                    || remainingDuration <= 0f)
+                {
+                    throw new InvalidOperationException(
+                        $"Player actor {playerActor.ID} has a cooldown duration that cannot be published.");
+                }
+
+                spellcaster.Client_StartSpellCooldown(
+                    playerActor.Owner.Value,
+                    definitionID,
+                    remainingDuration);
+            }
         }
 
         private void StartCooldownNow(Guid actorID, string spellID, float duration)

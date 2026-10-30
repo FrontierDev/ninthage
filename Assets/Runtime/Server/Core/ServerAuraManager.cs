@@ -1,4 +1,6 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking.Master;
+using Game.Server.Persistence;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
@@ -7,6 +9,7 @@ using Game.Shared.Runtime.Spellcasting;
 using PurrNet;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Unity.Entities;
 using UnityEngine;
 
@@ -237,6 +240,781 @@ namespace Game.Server.Core
             {
                 _commitSnapshot.Clear();
             }
+        }
+
+        /// <summary>Captures the active persistent aura state for one actor.</summary>
+        /// <param name="actorID">The actor whose authoritative aura state is captured.</param>
+        /// <param name="capturedAtUtc">The single World Server UTC observation for the capture.</param>
+        /// <param name="auras">Receives a complete, non-null persistent aura snapshot on success.</param>
+        /// <param name="failureReason">Receives the reason the snapshot could not be captured.</param>
+        /// <returns><see langword="true"/> when a complete persistent aura snapshot was captured.</returns>
+        internal bool TryCapturePersistentAuras(
+            Guid actorID,
+            DateTimeOffset capturedAtUtc,
+            out WorldPersistenceCheckpoint.PersistentAura[] auras,
+            out string failureReason)
+        {
+            auras = null;
+            failureReason = null;
+
+            if (Thread.CurrentThread.ManagedThreadId != 1)
+                return FailPersistentAuraCapture(
+                    "persistent aura capture must run on the Unity server main thread",
+                    out failureReason);
+            if (ServerECSManager.IsMutationBoundaryActive)
+                return FailPersistentAuraCapture(
+                    "persistent aura capture cannot run during an active ECS mutation boundary",
+                    out failureReason);
+            if (actorID == Guid.Empty)
+                return FailPersistentAuraCapture(
+                    "the persistent aura capture actor ID is empty",
+                    out failureReason);
+            if (capturedAtUtc.Offset != TimeSpan.Zero)
+                return FailPersistentAuraCapture(
+                    "the persistent aura capture timestamp is not canonical UTC",
+                    out failureReason);
+
+            ServerActorManager actorManager = ServerActorManager.Instance;
+            if (actorManager == null)
+                return FailPersistentAuraCapture(
+                    "the server actor manager is unavailable for persistent aura capture",
+                    out failureReason);
+            if (!actorManager.TryGetActorEntity(actorID, out Entity actorEntity))
+                return FailPersistentAuraCapture(
+                    $"the actor {actorID} has no authoritative ECS entity for persistent aura capture",
+                    out failureReason);
+
+            if (ServerECSManager.DefaultWorld == null || !ServerECSManager.DefaultWorld.IsCreated)
+                return FailPersistentAuraCapture(
+                    "the server ECS world is unavailable for persistent aura capture",
+                    out failureReason);
+
+            EntityManager entityManager = ServerECSManager.DefaultWorld.EntityManager;
+            if (!entityManager.Exists(actorEntity))
+                return FailPersistentAuraCapture(
+                    "the actor ECS entity is no longer valid for persistent aura capture",
+                    out failureReason);
+
+            DynamicBuffer<Systems.AuraElement> auraBuffer;
+            try
+            {
+                if (!entityManager.IsComponentEnabled<Systems.AuraElement>(actorEntity))
+                {
+                    auras = Array.Empty<WorldPersistenceCheckpoint.PersistentAura>();
+                    return true;
+                }
+
+                auraBuffer = entityManager.GetBuffer<Systems.AuraElement>(actorEntity, true);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return FailPersistentAuraCapture(
+                    $"the actor aura buffer could not be read: {exception.Message}",
+                    out failureReason);
+            }
+
+            AuraDefinitionLibrary definitionLibrary = AuraDefinitionLibrary.Instance;
+            if (definitionLibrary == null)
+                return FailPersistentAuraCapture(
+                    "the aura definition library is unavailable for persistent aura capture",
+                    out failureReason);
+
+            GameConfiguration configuration = GameConfigurationManager.Config;
+            if (configuration == null)
+                return FailPersistentAuraCapture(
+                    "the game configuration is unavailable for persistent aura capture",
+                    out failureReason);
+
+            float fixedTickDuration = configuration.ServerSimulationTickDuration;
+            if (float.IsNaN(fixedTickDuration)
+                || float.IsInfinity(fixedTickDuration)
+                || fixedTickDuration <= 0f)
+            {
+                return FailPersistentAuraCapture(
+                    "the server simulation tick duration is invalid for persistent aura capture",
+                    out failureReason);
+            }
+
+            long currentTickID = ServerSimulationClock.CurrentTickID;
+            List<WorldPersistenceCheckpoint.PersistentAura> capturedAuras = new();
+            HashSet<Guid> persistentAuraIDs = new();
+
+            for (int index = 0; index < auraBuffer.Length; index++)
+            {
+                Systems.AuraElement entry = auraBuffer[index];
+                if (entry.ExpiryTickID <= currentTickID)
+                    continue;
+
+                string definitionID = entry.AuraDefinitionID.ToString();
+                if (string.IsNullOrWhiteSpace(definitionID))
+                    return FailPersistentAuraCapture(
+                        "an active aura has a blank definition ID",
+                        out failureReason);
+
+                AuraDefinition definition = definitionLibrary.GetDefinition(definitionID);
+                if (definition == null)
+                    return FailPersistentAuraCapture(
+                        $"active aura '{definitionID}' has no authored definition",
+                        out failureReason);
+                if (!Enum.IsDefined(typeof(AuraPersistencePolicy), definition.PersistencePolicy))
+                    return FailPersistentAuraCapture(
+                        $"aura '{definitionID}' has an unrecognized persistence policy",
+                        out failureReason);
+                if (definition.PersistencePolicy != AuraPersistencePolicy.PersistAcrossActorLifetime)
+                    continue;
+
+                if (!_activeAuras.TryGetValue(entry.InstanceID, out AuraContext context)
+                    || context == null
+                    || context.TargetID != actorID
+                    || context.Definition == null
+                    || !StringComparer.Ordinal.Equals(context.Definition.DefinitionID, definitionID))
+                {
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' instance {entry.InstanceID} has no matching active context",
+                        out failureReason);
+                }
+                if (context.PersistentAuraID == Guid.Empty)
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' has no stable persistence ID",
+                        out failureReason);
+                if (!persistentAuraIDs.Add(context.PersistentAuraID))
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' has a duplicate persistence ID",
+                        out failureReason);
+                if (!Enum.IsDefined(typeof(AuraStackBehavior), definition.StackBehavior)
+                    || definition.StackBehavior == AuraStackBehavior.Condition_Extend
+                    || definition.StackBehavior == AuraStackBehavior.Condition_Stack)
+                {
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' uses an unsupported stacking form",
+                        out failureReason);
+                }
+                if (definition.MaxStacks <= 0
+                    || context.Stacks < 1
+                    || context.Stacks > definition.MaxStacks
+                    || context.ConditionStacks != null)
+                {
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' has an invalid stack state",
+                        out failureReason);
+                }
+                if (context.CasterID == Guid.Empty)
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' has no usable source actor identity",
+                        out failureReason);
+                if (definition.Components == null)
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' has no valid component list",
+                        out failureReason);
+
+                foreach (AuraComponent component in definition.Components)
+                {
+                    if (component == null || component.EffectDefinition == null)
+                        return FailPersistentAuraCapture(
+                            $"persistent aura '{definitionID}' has an invalid component",
+                            out failureReason);
+                    if (component.CastPhase == AuraPhase.OnTick)
+                    {
+                        return FailPersistentAuraCapture(
+                            $"persistent aura '{definitionID}' has unsupported offline OnTick effects",
+                            out failureReason);
+                    }
+                }
+
+                long remainingTicks;
+                try
+                {
+                    remainingTicks = checked(entry.ExpiryTickID - currentTickID);
+                }
+                catch (OverflowException exception)
+                {
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' has an invalid expiry tick range: {exception.Message}",
+                        out failureReason);
+                }
+
+                double remainingSeconds = remainingTicks * (double)fixedTickDuration;
+                if (double.IsNaN(remainingSeconds) || double.IsInfinity(remainingSeconds) || remainingSeconds <= 0d)
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' has a non-finite expiry duration",
+                        out failureReason);
+
+                DateTimeOffset expiresAtUtc;
+                try
+                {
+                    expiresAtUtc = capturedAtUtc.AddSeconds(remainingSeconds);
+                }
+                catch (ArgumentOutOfRangeException exception)
+                {
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' produces an out-of-range expiry: {exception.Message}",
+                        out failureReason);
+                }
+
+                DateTimeOffset? nextTickAtUtc = null;
+                float? tickIntervalSeconds = null;
+                if (entry.TickIntervalTicks < 0)
+                    return FailPersistentAuraCapture(
+                        $"persistent aura '{definitionID}' has a negative tick interval",
+                        out failureReason);
+                if (entry.TickIntervalTicks > 0)
+                {
+                    if (entry.NextTickID <= currentTickID)
+                    {
+                        return FailPersistentAuraCapture(
+                            $"persistent aura '{definitionID}' has a next tick that is not in the future",
+                            out failureReason);
+                    }
+
+                    long nextTickRemainingTicks;
+                    try
+                    {
+                        nextTickRemainingTicks = checked(entry.NextTickID - currentTickID);
+                    }
+                    catch (OverflowException exception)
+                    {
+                        return FailPersistentAuraCapture(
+                            $"persistent aura '{definitionID}' has an invalid next tick range: {exception.Message}",
+                            out failureReason);
+                    }
+
+                    double nextTickSeconds = nextTickRemainingTicks * (double)fixedTickDuration;
+                    double intervalSeconds = entry.TickIntervalTicks * (double)fixedTickDuration;
+                    if (double.IsNaN(nextTickSeconds)
+                        || double.IsInfinity(nextTickSeconds)
+                        || nextTickSeconds <= 0d
+                        || double.IsNaN(intervalSeconds)
+                        || double.IsInfinity(intervalSeconds)
+                        || intervalSeconds <= 0d
+                        || intervalSeconds > float.MaxValue)
+                    {
+                        return FailPersistentAuraCapture(
+                            $"persistent aura '{definitionID}' has an invalid tick timing state",
+                            out failureReason);
+                    }
+
+                    try
+                    {
+                        nextTickAtUtc = capturedAtUtc.AddSeconds(nextTickSeconds);
+                    }
+                    catch (ArgumentOutOfRangeException exception)
+                    {
+                        return FailPersistentAuraCapture(
+                            $"persistent aura '{definitionID}' produces an out-of-range next tick: {exception.Message}",
+                            out failureReason);
+                    }
+
+                    float intervalSecondsFloat = (float)intervalSeconds;
+                    if (float.IsNaN(intervalSecondsFloat)
+                        || float.IsInfinity(intervalSecondsFloat)
+                        || intervalSecondsFloat <= 0f)
+                    {
+                        return FailPersistentAuraCapture(
+                            $"persistent aura '{definitionID}' has an unrepresentable tick interval",
+                            out failureReason);
+                    }
+
+                    tickIntervalSeconds = intervalSecondsFloat;
+                }
+
+                capturedAuras.Add(
+                    new WorldPersistenceCheckpoint.PersistentAura(
+                        context.PersistentAuraID,
+                        definitionID,
+                        context.CasterID,
+                        context.Stacks,
+                        expiresAtUtc,
+                        nextTickAtUtc,
+                        tickIntervalSeconds));
+            }
+
+            capturedAuras.Sort(
+                (first, second) => first.PersistentAuraID.CompareTo(second.PersistentAuraID));
+            auras = capturedAuras.ToArray();
+            return true;
+        }
+
+        private static bool FailPersistentAuraCapture(string reason, out string failureReason)
+        {
+            failureReason = reason;
+            return false;
+        }
+
+        /// <summary>Restores validated persistent auras into one live actor.</summary>
+        /// <param name="target">The registered actor receiving the restored auras.</param>
+        /// <param name="savedAuras">The persisted aura rows, or <see langword="null"/> when none exist.</param>
+        /// <param name="observedAtUtc">The single World Server UTC observation for restoration.</param>
+        /// <param name="failureReason">Receives the reason restoration was rejected.</param>
+        /// <returns><see langword="true"/> when restoration succeeds.</returns>
+        internal bool TryRestorePersistentAuras(
+            Actor target,
+            IReadOnlyList<MasterPersistenceProtocol.CharacterPersistentAuraState> savedAuras,
+            DateTimeOffset observedAtUtc,
+            out string failureReason)
+        {
+            failureReason = null;
+
+            if (target == null)
+                return FailPersistentAuraRestore("the persistent aura restore target is absent", out failureReason);
+            if (target.ID == Guid.Empty)
+                return FailPersistentAuraRestore("the persistent aura restore target ID is empty", out failureReason);
+            if (Thread.CurrentThread.ManagedThreadId != 1)
+            {
+                return FailPersistentAuraRestore(
+                    "persistent aura restore must run on the Unity server main thread",
+                    out failureReason);
+            }
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                return FailPersistentAuraRestore(
+                    "persistent aura restore cannot run during an active ECS mutation boundary",
+                    out failureReason);
+            }
+            if (observedAtUtc.Offset != TimeSpan.Zero)
+            {
+                return FailPersistentAuraRestore(
+                    "persistent aura restore requires a canonical UTC observation timestamp",
+                    out failureReason);
+            }
+
+            ServerActorManager actorManager = ServerActorManager.Instance;
+            if (actorManager == null)
+                return FailPersistentAuraRestore("the server actor manager is unavailable for persistent aura restore", out failureReason);
+            if (!actorManager.TryGetActorEntity(target.ID, out Entity targetEntity))
+            {
+                return FailPersistentAuraRestore(
+                    $"actor {target.ID} has no authoritative ECS entity for persistent aura restore",
+                    out failureReason);
+            }
+            if (ServerECSManager.DefaultWorld == null || !ServerECSManager.DefaultWorld.IsCreated)
+            {
+                return FailPersistentAuraRestore(
+                    "the server ECS world is unavailable for persistent aura restore",
+                    out failureReason);
+            }
+
+            EntityManager entityManager = ServerECSManager.DefaultWorld.EntityManager;
+            DynamicBuffer<Systems.AuraElement> auraBuffer;
+            bool auraBufferWasEnabled;
+            try
+            {
+                if (!entityManager.Exists(targetEntity))
+                {
+                    return FailPersistentAuraRestore(
+                        "the target ECS entity is no longer valid for persistent aura restore",
+                        out failureReason);
+                }
+
+                auraBuffer = entityManager.GetBuffer<Systems.AuraElement>(targetEntity);
+                auraBufferWasEnabled = entityManager.IsComponentEnabled<Systems.AuraElement>(targetEntity);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return FailPersistentAuraRestore(
+                    $"the target aura buffer could not be read: {exception.Message}",
+                    out failureReason);
+            }
+
+            if (savedAuras == null || savedAuras.Count == 0)
+                return true;
+
+            AuraDefinitionLibrary definitionLibrary = AuraDefinitionLibrary.Instance;
+            if (definitionLibrary == null)
+            {
+                return FailPersistentAuraRestore(
+                    "the aura definition library is unavailable for persistent aura restore",
+                    out failureReason);
+            }
+
+            GameConfiguration configuration = GameConfigurationManager.Config;
+            if (configuration == null)
+            {
+                return FailPersistentAuraRestore(
+                    "the game configuration is unavailable for persistent aura restore",
+                    out failureReason);
+            }
+
+            float fixedTickDuration = configuration.ServerSimulationTickDuration;
+            if (float.IsNaN(fixedTickDuration)
+                || float.IsInfinity(fixedTickDuration)
+                || fixedTickDuration <= 0f)
+            {
+                return FailPersistentAuraRestore(
+                    "the server simulation tick duration is invalid for persistent aura restore",
+                    out failureReason);
+            }
+
+            long currentTickID = ServerSimulationClock.CurrentTickID;
+            long firstProgressTickID;
+            try
+            {
+                firstProgressTickID = checked(currentTickID + 1L);
+            }
+            catch (OverflowException exception)
+            {
+                return FailPersistentAuraRestore(
+                    $"the server simulation tick cannot advance for persistent aura restore: {exception.Message}",
+                    out failureReason);
+            }
+
+            List<(
+                AuraDefinition Definition,
+                Actor Caster,
+                Guid PersistentAuraID,
+                int Stacks,
+                float Duration,
+                float TickInterval,
+                long ExpiryTickID,
+                long NextTickID,
+                long TickIntervalTicks)> stagedAuras = new();
+            HashSet<Guid> savedPersistentAuraIDs = new();
+
+            for (int index = 0; index < savedAuras.Count; index++)
+            {
+                MasterPersistenceProtocol.CharacterPersistentAuraState savedAura = savedAuras[index];
+                if (savedAura == null)
+                {
+                    return FailPersistentAuraRestore(
+                        "persisted character aura state contains a null row",
+                        out failureReason);
+                }
+                if (savedAura.PersistentAuraID == Guid.Empty
+                    || !savedPersistentAuraIDs.Add(savedAura.PersistentAuraID))
+                {
+                    return FailPersistentAuraRestore(
+                        "persisted character aura state contains an empty or duplicate persistence ID",
+                        out failureReason);
+                }
+                if (string.IsNullOrWhiteSpace(savedAura.AuraDefinitionID))
+                {
+                    return FailPersistentAuraRestore(
+                        "persisted character aura state contains a blank definition ID",
+                        out failureReason);
+                }
+                if (!savedAura.SourceActorID.HasValue || savedAura.SourceActorID.Value == Guid.Empty)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has no usable source actor ID",
+                        out failureReason);
+                }
+                if (!savedAura.ExpiresAtUtc.HasValue
+                    || savedAura.ExpiresAtUtc.Value == default
+                    || savedAura.ExpiresAtUtc.Value.Offset != TimeSpan.Zero)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has an invalid UTC expiry",
+                        out failureReason);
+                }
+
+                bool hasNextTick = savedAura.NextTickAtUtc.HasValue;
+                bool hasTickInterval = savedAura.TickIntervalSeconds.HasValue;
+                if (hasNextTick != hasTickInterval)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has an incomplete tick timing pair",
+                        out failureReason);
+                }
+                if (hasNextTick
+                    && (savedAura.NextTickAtUtc.Value == default
+                        || savedAura.NextTickAtUtc.Value.Offset != TimeSpan.Zero
+                        || float.IsNaN(savedAura.TickIntervalSeconds.Value)
+                        || float.IsInfinity(savedAura.TickIntervalSeconds.Value)
+                        || savedAura.TickIntervalSeconds.Value <= 0f))
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has invalid tick timing",
+                        out failureReason);
+                }
+
+                AuraDefinition definition = definitionLibrary.GetDefinition(savedAura.AuraDefinitionID);
+                if (definition == null)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' does not resolve to an authored definition",
+                        out failureReason);
+                }
+                if (!Enum.IsDefined(typeof(AuraPersistencePolicy), definition.PersistencePolicy)
+                    || definition.PersistencePolicy != AuraPersistencePolicy.PersistAcrossActorLifetime)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' is not enabled for actor-lifetime persistence",
+                        out failureReason);
+                }
+                if (!Enum.IsDefined(typeof(AuraStackBehavior), definition.StackBehavior)
+                    || definition.StackBehavior == AuraStackBehavior.Condition_Extend
+                    || definition.StackBehavior == AuraStackBehavior.Condition_Stack)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' uses an unsupported stacking form",
+                        out failureReason);
+                }
+                if (definition.MaxStacks <= 0
+                    || savedAura.Stacks < 1
+                    || savedAura.Stacks > definition.MaxStacks)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has an invalid stack count",
+                        out failureReason);
+                }
+                if (definition.Components == null)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has no valid component list",
+                        out failureReason);
+                }
+                foreach (AuraComponent component in definition.Components)
+                {
+                    if (component == null || component.EffectDefinition == null)
+                    {
+                        return FailPersistentAuraRestore(
+                            $"persistent aura '{savedAura.AuraDefinitionID}' has an invalid component",
+                            out failureReason);
+                    }
+                    if (component.CastPhase == AuraPhase.OnTick)
+                    {
+                        return FailPersistentAuraRestore(
+                            $"persistent aura '{savedAura.AuraDefinitionID}' has unsupported offline OnTick effects",
+                            out failureReason);
+                    }
+                }
+
+                Actor caster;
+                Guid sourceActorID = savedAura.SourceActorID.Value;
+                if (sourceActorID == target.ID)
+                    caster = target;
+                else if (!actorManager.TryGetActor(sourceActorID, out caster) || caster == null)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' source actor {sourceActorID} is not live",
+                        out failureReason);
+                }
+
+                if (savedAura.ExpiresAtUtc.Value <= observedAtUtc)
+                    continue;
+
+                double remainingSeconds = (savedAura.ExpiresAtUtc.Value - observedAtUtc).TotalSeconds;
+                if (double.IsNaN(remainingSeconds)
+                    || double.IsInfinity(remainingSeconds)
+                    || remainingSeconds <= 0d
+                    || remainingSeconds > float.MaxValue)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has an invalid remaining duration",
+                        out failureReason);
+                }
+
+                float duration = (float)remainingSeconds;
+                if (float.IsNaN(duration) || float.IsInfinity(duration) || duration <= 0f)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has an unrepresentable remaining duration",
+                        out failureReason);
+                }
+
+                long durationTicks;
+                try
+                {
+                    durationTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                        duration,
+                        fixedTickDuration);
+                }
+                catch (OverflowException exception)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has an unrepresentable duration: {exception.Message}",
+                        out failureReason);
+                }
+
+                long expiryTickID;
+                try
+                {
+                    expiryTickID = checked(firstProgressTickID + durationTicks - 1L);
+                }
+                catch (OverflowException exception)
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura '{savedAura.AuraDefinitionID}' has an overflowing expiry tick: {exception.Message}",
+                        out failureReason);
+                }
+
+                long nextTickID = 0L;
+                long tickIntervalTicks = 0L;
+                float tickInterval = 0f;
+                if (hasNextTick)
+                {
+                    double nextTickSeconds = (savedAura.NextTickAtUtc.Value - observedAtUtc).TotalSeconds;
+                    if (double.IsNaN(nextTickSeconds)
+                        || double.IsInfinity(nextTickSeconds)
+                        || nextTickSeconds <= 0d
+                        || nextTickSeconds > float.MaxValue)
+                    {
+                        return FailPersistentAuraRestore(
+                            $"persistent aura '{savedAura.AuraDefinitionID}' has an elapsed or invalid next tick",
+                            out failureReason);
+                    }
+
+                    float nextTickDuration = (float)nextTickSeconds;
+                    if (float.IsNaN(nextTickDuration)
+                        || float.IsInfinity(nextTickDuration)
+                        || nextTickDuration <= 0f)
+                    {
+                        return FailPersistentAuraRestore(
+                            $"persistent aura '{savedAura.AuraDefinitionID}' has an unrepresentable next tick",
+                            out failureReason);
+                    }
+
+                    try
+                    {
+                        long nextTickTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                            nextTickDuration,
+                            fixedTickDuration);
+                        tickIntervalTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                            savedAura.TickIntervalSeconds.Value,
+                            fixedTickDuration);
+                        nextTickID = checked(firstProgressTickID + nextTickTicks - 1L);
+                    }
+                    catch (OverflowException exception)
+                    {
+                        return FailPersistentAuraRestore(
+                            $"persistent aura '{savedAura.AuraDefinitionID}' has overflowing tick timing: {exception.Message}",
+                            out failureReason);
+                    }
+
+                    tickInterval = savedAura.TickIntervalSeconds.Value;
+                }
+
+                stagedAuras.Add((
+                    definition,
+                    caster,
+                    savedAura.PersistentAuraID,
+                    savedAura.Stacks,
+                    duration,
+                    tickInterval,
+                    expiryTickID,
+                    nextTickID,
+                    tickIntervalTicks));
+            }
+
+            foreach (AuraContext existingContext in _activeAuras.Values)
+            {
+                if (existingContext != null
+                    && existingContext.TargetID == target.ID
+                    && savedPersistentAuraIDs.Contains(existingContext.PersistentAuraID))
+                {
+                    return FailPersistentAuraRestore(
+                        $"persistent aura restore would duplicate persistence ID for actor {target.ID}",
+                        out failureReason);
+                }
+            }
+
+            if (stagedAuras.Count == 0)
+                return true;
+
+            List<int> stagedInstanceIDs = new();
+            HashSet<int> stagedInstanceIDSet = new();
+            List<(int InstanceID, AuraContext Context)> runtimeAuras = new();
+            List<(int InstanceID, AuraContext Context)> appliedBehaviours = new();
+            try
+            {
+                foreach (var stagedAura in stagedAuras)
+                {
+                    int instanceID = _nextInstanceID++;
+                    AuraContext context = new(
+                        stagedAura.Definition,
+                        stagedAura.Caster,
+                        target,
+                        stagedAura.PersistentAuraID)
+                    {
+                        Duration = stagedAura.Duration,
+                        TickInterval = stagedAura.TickInterval,
+                        Stacks = stagedAura.Stacks
+                    };
+                    Systems.AuraElement element = new()
+                    {
+                        InstanceID = instanceID,
+                        AuraDefinitionID = stagedAura.Definition.DefinitionID,
+                        ExpiryTickID = stagedAura.ExpiryTickID,
+                        NextTickID = stagedAura.NextTickID,
+                        TickIntervalTicks = stagedAura.TickIntervalTicks
+                    };
+
+                    _activeAuras.Add(instanceID, context);
+                    stagedInstanceIDs.Add(instanceID);
+                    stagedInstanceIDSet.Add(instanceID);
+                    auraBuffer.Add(element);
+                    runtimeAuras.Add((instanceID, context));
+                }
+
+                entityManager.SetComponentEnabled<Systems.AuraElement>(targetEntity, true);
+
+                foreach (var runtimeAura in runtimeAuras)
+                {
+                    AuraBehaviour behaviour = runtimeAura.Context.Definition.AuraBehaviour;
+                    if (behaviour == null)
+                        continue;
+
+                    appliedBehaviours.Add(runtimeAura);
+                    behaviour.OnApplied(runtimeAura.Context.Caster, target, runtimeAura.Context.Stacks);
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                List<Exception> rollbackFailures = new();
+                for (int index = appliedBehaviours.Count - 1; index >= 0; index--)
+                {
+                    try
+                    {
+                        var appliedAura = appliedBehaviours[index];
+                        appliedAura.Context.Definition.AuraBehaviour.OnRemoved(
+                            appliedAura.Context.Caster,
+                            target);
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                for (int index = 0; index < stagedInstanceIDs.Count; index++)
+                    _activeAuras.Remove(stagedInstanceIDs[index]);
+
+                try
+                {
+                    for (int index = auraBuffer.Length - 1; index >= 0; index--)
+                    {
+                        if (stagedInstanceIDSet.Contains(auraBuffer[index].InstanceID))
+                            auraBuffer.RemoveAt(index);
+                    }
+                }
+                catch (Exception rollbackException)
+                {
+                    rollbackFailures.Add(rollbackException);
+                }
+
+                try
+                {
+                    entityManager.SetComponentEnabled<Systems.AuraElement>(
+                        targetEntity,
+                        auraBufferWasEnabled);
+                }
+                catch (Exception rollbackException)
+                {
+                    rollbackFailures.Add(rollbackException);
+                }
+
+                failureReason = $"persistent aura restore failed: {exception.Message}";
+                if (rollbackFailures.Count > 0)
+                    failureReason += $" Rollback also failed for {rollbackFailures.Count} operation(s).";
+                return false;
+            }
+        }
+
+        private static bool FailPersistentAuraRestore(string reason, out string failureReason)
+        {
+            failureReason = reason;
+            return false;
         }
 
         private void OnApplyAuraRequest(AuraDefinition definition, Actor caster, Actor target, int stacks)
@@ -474,7 +1252,10 @@ namespace Game.Server.Core
                 out long nextTickID,
                 out long tickIntervalTicks);
 
-            var ctx = new AuraContext(definition, caster, target);
+            Guid persistentAuraID = definition.PersistencePolicy == AuraPersistencePolicy.PersistAcrossActorLifetime
+                ? Guid.NewGuid()
+                : Guid.Empty;
+            var ctx = new AuraContext(definition, caster, target, persistentAuraID);
             _activeAuras[instanceID] = ctx;
 
             buffer.Add(new Systems.AuraElement
@@ -513,7 +1294,10 @@ namespace Game.Server.Core
                 conditionStacks.Add(new ConditionStack(caster, definition.BaseDuration));
             }
 
-            var ctx = new AuraContext(definition, caster, target)
+            Guid persistentAuraID = definition.PersistencePolicy == AuraPersistencePolicy.PersistAcrossActorLifetime
+                ? Guid.NewGuid()
+                : Guid.Empty;
+            var ctx = new AuraContext(definition, caster, target, persistentAuraID)
             {
                 ConditionStacks = conditionStacks,
                 Stacks = stacksToCreate,

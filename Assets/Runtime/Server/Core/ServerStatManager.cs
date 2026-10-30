@@ -1,5 +1,6 @@
 using Actor = Game.Shared.Runtime.Actors.Actor;
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Server.Networking.Master;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
@@ -201,6 +202,167 @@ namespace Game.Server.Core
             finally
             {
                 container.EndInitialStatRestore();
+            }
+        }
+
+        /// <summary>Applies explicit offline policies to the restored resources of a player.</summary>
+        /// <param name="actor">The player actor whose initialized stats are updated.</param>
+        /// <param name="resources">The accepted Master resource state for the character.</param>
+        /// <param name="observedAtUtc">The single World Server UTC observation time for this resolution.</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the accepted resource state or authored offline policy is invalid.
+        /// </exception>
+        internal void ApplyOfflineResourcePolicies(
+            PlayerActor actor,
+            MasterPersistenceProtocol.CharacterResourceState[] resources,
+            DateTimeOffset observedAtUtc)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (resources == null)
+                throw new InvalidOperationException("Accepted character persistence state has no resources array.");
+            if (observedAtUtc.Offset != TimeSpan.Zero)
+                throw new InvalidOperationException("Offline resource resolution requires a UTC observation timestamp.");
+
+            ActorStatContainer container = actor.GetComponent<ActorStatContainer>();
+            if (container == null)
+                throw new InvalidOperationException($"Actor {actor.Name} has no ActorStatContainer.");
+
+            ActorStatDefinitionLibrary library = ActorStatDefinitionLibrary.Instance;
+            if (library == null)
+                throw new InvalidOperationException("Actor stat definition library is not available.");
+
+            ActorStatDefinition healthDefinition = library.GetDefinition(STAT_HEALTH);
+            if (healthDefinition == null)
+                throw new InvalidOperationException(
+                    $"Resource definition '{STAT_HEALTH}' is missing while resolving offline resource policies.");
+            if (!Enum.IsDefined(typeof(ActorStatOfflinePolicy), healthDefinition.OfflinePolicy))
+                throw new InvalidOperationException(
+                    $"Resource '{STAT_HEALTH}' has unrecognized offline policy value "
+                    + $"{(int)healthDefinition.OfflinePolicy}.");
+            if (healthDefinition.OfflinePolicy != ActorStatOfflinePolicy.Unchanged)
+                throw new InvalidOperationException(
+                    $"Resource '{STAT_HEALTH}' must use the Unchanged offline policy.");
+
+            HashSet<string> resourceIDs = new(StringComparer.Ordinal);
+            List<(string DefinitionID, StatInstance Stat, float CurrentValue)> pendingChanges = new(resources.Length);
+
+            for (int i = 0; i < resources.Length; i++)
+            {
+                MasterPersistenceProtocol.CharacterResourceState resource = resources[i];
+                if (resource == null
+                    || string.IsNullOrWhiteSpace(resource.ResourceDefinitionID)
+                    || !resourceIDs.Add(resource.ResourceDefinitionID))
+                {
+                    throw new InvalidOperationException(
+                        "Accepted character persistence state contains a null, blank, or duplicate resource ID.");
+                }
+                if (!IsFinite(resource.CurrentValue) || resource.CurrentValue < 0f)
+                {
+                    throw new InvalidOperationException(
+                        $"Resource '{resource.ResourceDefinitionID}' has invalid current value "
+                        + $"{resource.CurrentValue}.");
+                }
+                if (resource.LastAuthoritativeUpdateUtc.Offset != TimeSpan.Zero)
+                {
+                    throw new InvalidOperationException(
+                        $"Resource '{resource.ResourceDefinitionID}' has a non-UTC authoritative update timestamp.");
+                }
+
+                ActorStatDefinition definition = library.GetDefinition(resource.ResourceDefinitionID);
+                if (definition == null || definition.Category != ActorStatCategory.Resource)
+                {
+                    throw new InvalidOperationException(
+                        $"Resource '{resource.ResourceDefinitionID}' does not resolve to a resource definition.");
+                }
+                if (!Enum.IsDefined(typeof(ActorStatOfflinePolicy), definition.OfflinePolicy))
+                {
+                    throw new InvalidOperationException(
+                        $"Resource '{resource.ResourceDefinitionID}' has unrecognized offline policy value "
+                        + $"{(int)definition.OfflinePolicy}.");
+                }
+                if (!container.TryGetStat(resource.ResourceDefinitionID, out StatInstance stat))
+                {
+                    throw new InvalidOperationException(
+                        $"Resource stat '{resource.ResourceDefinitionID}' was not initialized.");
+                }
+                if (!IsFinite(stat.EffectiveMaximum) || stat.EffectiveMaximum < 0f)
+                {
+                    throw new InvalidOperationException(
+                        $"Resource '{resource.ResourceDefinitionID}' has invalid effective maximum "
+                        + $"{stat.EffectiveMaximum}.");
+                }
+                if (definition.DefinitionID == STAT_HEALTH
+                    && definition.OfflinePolicy != ActorStatOfflinePolicy.Unchanged)
+                {
+                    throw new InvalidOperationException(
+                        $"Resource '{STAT_HEALTH}' must use the Unchanged offline policy.");
+                }
+
+                double elapsedSeconds = resource.LastAuthoritativeUpdateUtc > observedAtUtc
+                    ? 0d
+                    : (observedAtUtc - resource.LastAuthoritativeUpdateUtc).TotalSeconds;
+                if (!IsFinite(elapsedSeconds) || elapsedSeconds < 0d)
+                {
+                    throw new InvalidOperationException(
+                        $"Resource '{resource.ResourceDefinitionID}' has invalid offline elapsed time.");
+                }
+
+                float resolvedCurrent = resource.CurrentValue;
+                switch (definition.OfflinePolicy)
+                {
+                    case ActorStatOfflinePolicy.Unchanged:
+                        continue;
+                    case ActorStatOfflinePolicy.Regenerate:
+                    case ActorStatOfflinePolicy.Decay:
+                        float rate = ResolveRegenRate(definition, container);
+                        if (!IsFinite(rate))
+                        {
+                            throw new InvalidOperationException(
+                                $"Resource '{resource.ResourceDefinitionID}' has a non-finite normal regeneration rate.");
+                        }
+                        if (definition.OfflinePolicy == ActorStatOfflinePolicy.Regenerate && rate < 0f)
+                        {
+                            throw new InvalidOperationException(
+                                $"Resource '{resource.ResourceDefinitionID}' uses Regenerate with a negative normal rate.");
+                        }
+                        if (definition.OfflinePolicy == ActorStatOfflinePolicy.Decay && rate > 0f)
+                        {
+                            throw new InvalidOperationException(
+                                $"Resource '{resource.ResourceDefinitionID}' uses Decay with a positive normal rate.");
+                        }
+
+                        double resolvedValue = resource.CurrentValue + (double)rate * elapsedSeconds;
+                        if (!IsFinite(resolvedValue))
+                        {
+                            throw new InvalidOperationException(
+                                $"Resource '{resource.ResourceDefinitionID}' produced a non-finite offline value.");
+                        }
+
+                        resolvedValue = Math.Max(0d, Math.Min(stat.EffectiveMaximum, resolvedValue));
+                        resolvedCurrent = (float)resolvedValue;
+                        break;
+                    case ActorStatOfflinePolicy.Reset:
+                        resolvedCurrent = definition.StartsAtZero ? 0f : stat.EffectiveMaximum;
+                        break;
+                    default:
+                        throw new InvalidOperationException(
+                            $"Resource '{resource.ResourceDefinitionID}' has unrecognized offline policy value "
+                            + $"{(int)definition.OfflinePolicy}.");
+                }
+
+                pendingChanges.Add((resource.ResourceDefinitionID, stat, resolvedCurrent));
+            }
+
+            for (int i = 0; i < pendingChanges.Count; i++)
+            {
+                (string definitionID, StatInstance stat, float currentValue) = pendingChanges[i];
+                container.SetStat(definitionID, new StatInstance(
+                    stat.BaseValue,
+                    stat.FlatModifier,
+                    stat.PercentModifier,
+                    stat.EffectiveMaximum,
+                    currentValue));
             }
         }
 
@@ -459,6 +621,16 @@ namespace Game.Server.Core
                 return source.EffectiveMaximum * def.RegenMultiplier;
 
             return 0f;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        private static bool IsFinite(double value)
+        {
+            return !double.IsNaN(value) && !double.IsInfinity(value);
         }
 
         #endregion

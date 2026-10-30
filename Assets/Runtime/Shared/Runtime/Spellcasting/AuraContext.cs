@@ -44,6 +44,8 @@ namespace Game.Shared.Runtime.Spellcasting
         public Actor Target;
         /// <summary>Gets the stable identifier of the actor affected by the aura.</summary>
         public Guid TargetID;
+        /// <summary>Gets the stable persistence identifier of this aura instance.</summary>
+        public Guid PersistentAuraID { get; private set; }
 
         // Mutable copies from AuraDefinition
         /// <summary>Gets or sets the current duration.</summary>
@@ -62,13 +64,18 @@ namespace Game.Shared.Runtime.Spellcasting
         /// <summary>Initializes an empty aura context.</summary>
         public AuraContext() { }
         /// <summary>Initializes an aura context from its definition and actors.</summary>
-        public AuraContext(AuraDefinition definition, Actor caster, Actor target)
+        public AuraContext(
+            AuraDefinition definition,
+            Actor caster,
+            Actor target,
+            Guid persistentAuraID = default)
         {
             Definition = definition;
             Caster = caster;
             CasterID = caster != null ? caster.ID : Guid.Empty;
             Target = target;
             TargetID = target != null ? target.ID : Guid.Empty;
+            PersistentAuraID = persistentAuraID;
             Duration = definition.BaseDuration;
             TickInterval = definition.BaseTickInterval;
             Stacks = 1;

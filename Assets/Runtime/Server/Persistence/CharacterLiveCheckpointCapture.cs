@@ -1,11 +1,15 @@
 using Game.Server.Core;
 using Game.Server.Networking;
 using Game.Server.Networking.Master;
+using Game.Server.Systems;
+using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using Unity.Entities;
 using UnityEngine;
 
 namespace Game.Server.Persistence
@@ -102,6 +106,27 @@ namespace Game.Server.Persistence
             if (!hasHealth)
                 return Fail("the player actor has no health resource", out failureReason);
 
+            if (!TryCaptureCooldowns(
+                actor.ID,
+                capturedAtUtc,
+                out WorldPersistenceCheckpoint.Cooldown[] cooldowns,
+                out failureReason))
+            {
+                return false;
+            }
+
+            ServerAuraManager auraManager = ServerAuraManager.Instance;
+            if (auraManager == null)
+                return Fail("the server aura manager is unavailable", out failureReason);
+            if (!auraManager.TryCapturePersistentAuras(
+                actor.ID,
+                capturedAtUtc,
+                out WorldPersistenceCheckpoint.PersistentAura[] persistentAuras,
+                out failureReason))
+            {
+                return false;
+            }
+
             Guid? instanceID = context.InstanceID == Guid.Empty
                 ? null
                 : context.InstanceID;
@@ -119,7 +144,12 @@ namespace Game.Server.Persistence
                     session.CurrentSafeReturnLocationID,
                     capturedAtUtc);
 
-            checkpoint = new WorldPersistenceCheckpoint(worldState, resources, actor.isDead);
+            checkpoint = new WorldPersistenceCheckpoint(
+                worldState,
+                resources,
+                actor.isDead,
+                cooldowns,
+                persistentAuras);
             return true;
         }
 
@@ -198,6 +228,178 @@ namespace Game.Server.Persistence
                     first.ResourceDefinitionID,
                     second.ResourceDefinitionID));
             resources = capturedResources.ToArray();
+            return true;
+        }
+
+        private static bool TryCaptureCooldowns(
+            Guid actorID,
+            DateTimeOffset capturedAtUtc,
+            out WorldPersistenceCheckpoint.Cooldown[] cooldowns,
+            out string failureReason)
+        {
+            cooldowns = null;
+            failureReason = null;
+
+            if (Thread.CurrentThread.ManagedThreadId != 1)
+                return Fail("cooldown capture must run on the Unity server main thread", out failureReason);
+            if (ServerECSManager.IsMutationBoundaryActive)
+            {
+                return Fail(
+                    "cooldown capture cannot run during an active ECS mutation boundary",
+                    out failureReason);
+            }
+            if (actorID == Guid.Empty)
+                return Fail("the cooldown capture actor ID is empty", out failureReason);
+            if (capturedAtUtc.Offset != TimeSpan.Zero)
+                return Fail("the cooldown capture timestamp is not canonical UTC", out failureReason);
+
+            ServerActorManager actorManager = ServerActorManager.Instance;
+            if (actorManager == null)
+                return Fail("the server actor manager is unavailable for cooldown capture", out failureReason);
+            if (!actorManager.TryGetActorEntity(actorID, out Entity actorEntity))
+            {
+                return Fail(
+                    $"the player actor {actorID} has no authoritative ECS entity for cooldown capture",
+                    out failureReason);
+            }
+
+            World world = ServerECSManager.DefaultWorld;
+            if (world == null || !world.IsCreated)
+                return Fail("the server ECS world is unavailable for cooldown capture", out failureReason);
+
+            EntityManager entityManager = world.EntityManager;
+            if (!entityManager.Exists(actorEntity))
+                return Fail("the player actor ECS entity is no longer valid for cooldown capture", out failureReason);
+            DynamicBuffer<CooldownElement> cooldownBuffer;
+            try
+            {
+                if (!entityManager.IsComponentEnabled<CooldownElement>(actorEntity))
+                {
+                    cooldowns = Array.Empty<WorldPersistenceCheckpoint.Cooldown>();
+                    return true;
+                }
+
+                cooldownBuffer = entityManager.GetBuffer<CooldownElement>(actorEntity, true);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Fail(
+                    $"the player actor cooldown buffer could not be read: {exception.Message}",
+                    out failureReason);
+            }
+
+            SpellDefinitionLibrary spellLibrary = SpellDefinitionLibrary.Instance;
+            if (spellLibrary == null)
+                return Fail("the spell definition library is unavailable for cooldown capture", out failureReason);
+
+            GameConfiguration configuration = GameConfigurationManager.Config;
+            if (configuration == null)
+                return Fail("the game configuration is unavailable for cooldown capture", out failureReason);
+
+            float fixedTickDuration = configuration.ServerSimulationTickDuration;
+            if (float.IsNaN(fixedTickDuration)
+                || float.IsInfinity(fixedTickDuration)
+                || fixedTickDuration <= 0f)
+            {
+                return Fail("the server simulation tick duration is invalid for cooldown capture", out failureReason);
+            }
+
+            long currentTickID = ServerSimulationClock.CurrentTickID;
+            List<WorldPersistenceCheckpoint.Cooldown> capturedCooldowns = new();
+            HashSet<(string DefinitionID, int ChargeIndex)> capturedCooldownKeys = new();
+
+            for (int index = 0; index < cooldownBuffer.Length; index++)
+            {
+                CooldownElement entry = cooldownBuffer[index];
+                if (entry.ExpiryTickID <= currentTickID)
+                    continue;
+
+                string definitionID = entry.SpellID.ToString();
+                if (StringComparer.Ordinal.Equals(definitionID, ServerCooldownManager.GCD_ID))
+                    continue;
+                if (string.IsNullOrWhiteSpace(definitionID))
+                {
+                    return Fail(
+                        "an active cooldown has a blank spell definition ID",
+                        out failureReason);
+                }
+
+                SpellDefinition definition = spellLibrary.GetDefinition(definitionID);
+                if (definition == null)
+                    continue;
+                if (!Enum.IsDefined(
+                        typeof(SpellCooldownPersistencePolicy),
+                        definition.CooldownPersistencePolicy))
+                {
+                    return Fail(
+                        $"spell '{definitionID}' has an unrecognized cooldown persistence policy",
+                        out failureReason);
+                }
+                if (definition.CooldownPersistencePolicy != SpellCooldownPersistencePolicy.PersistAcrossActorLifetime)
+                    continue;
+                if (definition.UseCooldownCharges)
+                {
+                    return Fail(
+                        $"spell '{definitionID}' opts into persistent cooldowns but uses unsupported cooldown charges",
+                        out failureReason);
+                }
+                if (!capturedCooldownKeys.Add((definitionID, 0)))
+                {
+                    return Fail(
+                        $"spell '{definitionID}' has duplicate active persistent cooldown entries",
+                        out failureReason);
+                }
+
+                long remainingTicks;
+                try
+                {
+                    remainingTicks = checked(entry.ExpiryTickID - currentTickID);
+                }
+                catch (OverflowException exception)
+                {
+                    return Fail(
+                        $"spell '{definitionID}' has an invalid cooldown tick range: {exception.Message}",
+                        out failureReason);
+                }
+
+                double remainingSeconds = remainingTicks * (double)fixedTickDuration;
+                if (double.IsNaN(remainingSeconds) || double.IsInfinity(remainingSeconds))
+                {
+                    return Fail(
+                        $"spell '{definitionID}' has a non-finite cooldown duration",
+                        out failureReason);
+                }
+
+                DateTimeOffset expiresAtUtc;
+                try
+                {
+                    expiresAtUtc = capturedAtUtc.AddSeconds(remainingSeconds);
+                }
+                catch (ArgumentOutOfRangeException exception)
+                {
+                    return Fail(
+                        $"spell '{definitionID}' produces an out-of-range cooldown expiry: {exception.Message}",
+                        out failureReason);
+                }
+
+                capturedCooldowns.Add(
+                    new WorldPersistenceCheckpoint.Cooldown(
+                        definitionID,
+                        0,
+                        expiresAtUtc));
+            }
+
+            capturedCooldowns.Sort(
+                (first, second) =>
+                {
+                    int definitionComparison = StringComparer.Ordinal.Compare(
+                        first.CooldownDefinitionID,
+                        second.CooldownDefinitionID);
+                    return definitionComparison != 0
+                        ? definitionComparison
+                        : first.ChargeIndex.CompareTo(second.ChargeIndex);
+                });
+            cooldowns = capturedCooldowns.ToArray();
             return true;
         }
 

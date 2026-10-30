@@ -39,6 +39,13 @@ namespace Game.Shared.Data
         Condition_Stack
     }
 
+    /// <summary>Identifies whether an aura persists across the actor lifetime.</summary>
+    public enum AuraPersistencePolicy
+    {
+        RuntimeOnly = 0,
+        PersistAcrossActorLifetime = 1
+    }
+
     /// <summary>Describes one effect and target pair in an aura.</summary>
     [System.Serializable]
     public sealed class AuraComponent : ISerializationCallbackReceiver
@@ -74,6 +81,7 @@ namespace Game.Shared.Data
         [SerializeField, FormerlySerializedAs("baseDuration")] private float _baseDuration;
         [SerializeField, FormerlySerializedAs("baseTickInterval")] private float _baseTickInterval;
         [SerializeField, FormerlySerializedAs("stackBehavior")] private AuraStackBehavior _stackBehavior = AuraStackBehavior.RefreshDuration;
+        [SerializeField] private AuraPersistencePolicy _persistencePolicy = AuraPersistencePolicy.RuntimeOnly;
         [SerializeField, FormerlySerializedAs("maxStacks")] private int _maxStacks = 1;
         [SerializeField, FormerlySerializedAs("tags")] private List<string> _tags = new();
         [SerializeField, FormerlySerializedAs("components")] private List<AuraComponent> _components = new();
@@ -94,6 +102,8 @@ namespace Game.Shared.Data
         public float BaseTickInterval => _baseTickInterval;
         /// <summary>Gets the stack behaviour.</summary>
         public AuraStackBehavior StackBehavior => _stackBehavior;
+        /// <summary>Gets whether this aura persists across the actor lifetime.</summary>
+        public AuraPersistencePolicy PersistencePolicy => _persistencePolicy;
         /// <summary>Gets the maximum number of stacks.</summary>
         public int MaxStacks => _maxStacks;
         /// <summary>Gets the aura tags.</summary>

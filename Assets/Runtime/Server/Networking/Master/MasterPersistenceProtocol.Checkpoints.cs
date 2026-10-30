@@ -40,6 +40,12 @@ namespace Game.Server.Networking.Master
 
                 [JsonProperty("isDead")]
                 public bool? IsDead { get; set; }
+
+                [JsonProperty("cooldowns")]
+                public CooldownCheckpoint[] Cooldowns { get; set; }
+
+                [JsonProperty("persistentAuras")]
+                public PersistentAuraCheckpoint[] PersistentAuras { get; set; }
             }
 
             /// <summary>Field-scoped persisted world location for a checkpoint.</summary>
@@ -90,6 +96,44 @@ namespace Game.Server.Networking.Master
 
                 [JsonProperty("lastAuthoritativeUpdateUtc")]
                 public DateTimeOffset LastAuthoritativeUpdateUtc { get; set; }
+            }
+
+            /// <summary>Field-scoped persisted cooldown state.</summary>
+            internal sealed class CooldownCheckpoint
+            {
+                [JsonProperty("cooldownDefinitionID")]
+                public string CooldownDefinitionID { get; set; }
+
+                [JsonProperty("chargeIndex")]
+                public int ChargeIndex { get; set; }
+
+                [JsonProperty("expiresAtUtc")]
+                public DateTimeOffset ExpiresAtUtc { get; set; }
+            }
+
+            /// <summary>Field-scoped persisted aura state.</summary>
+            internal sealed class PersistentAuraCheckpoint
+            {
+                [JsonProperty("persistentAuraID")]
+                public Guid PersistentAuraID { get; set; }
+
+                [JsonProperty("auraDefinitionID")]
+                public string AuraDefinitionID { get; set; }
+
+                [JsonProperty("sourceActorID")]
+                public Guid? SourceActorID { get; set; }
+
+                [JsonProperty("stacks")]
+                public int Stacks { get; set; }
+
+                [JsonProperty("expiresAtUtc")]
+                public DateTimeOffset? ExpiresAtUtc { get; set; }
+
+                [JsonProperty("nextTickAtUtc")]
+                public DateTimeOffset? NextTickAtUtc { get; set; }
+
+                [JsonProperty("tickIntervalSeconds")]
+                public float? TickIntervalSeconds { get; set; }
             }
         }
 
