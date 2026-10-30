@@ -90,68 +90,44 @@ No scattered literals are permitted.
 
 ---
 
-## 4. Master Server implementation sequence
+## 4. Implementation sequence
 
-### Step 1 — Add gameplay-session contracts
+Stage 1.8 is implemented as **four coherent blocks**, not one GitHub issue per numbered requirement.
 
-Create a dedicated contracts area under:
+The detailed requirements below are acceptance criteria inside each block. They should be split into separate issues only when one of these conditions applies:
 
-`src/NinthAge.Contracts/Sessions/`
+- a cross-repository contract must land before its consumer;
+- a real authority/dependency boundary requires independent review;
+- one changeset would otherwise become too broad to review safely;
+- implementation uncovers a genuinely separate bug or design decision.
 
-Add:
+Do **not** create a new issue merely because a requirement has its own bullet or numbered operation. The implementation model should minimise repeated repository/context reconstruction while preserving focused diffs and explicit validation.
+
+### Current progress mapping
+
+At the time this plan was compacted:
+
+- Block 1 is functionally implemented: Master gameplay-session authority, authentication, throttling, replay-safe settlement and exact World connection handoff are present.
+- Block 2 character admission is implemented; session-bound roster/create/delete/restore and the remaining leave/close/World-lifecycle work are the next Master tasks.
+- Blocks 3 and 4 remain the main World/runtime work.
+
+### Step 1 — Establish gameplay-session authentication authority end-to-end
+
+This block owns the complete login/session identity boundary across Master and World. It combines the former Master contract/registry/authentication/rate-limit work with the World connection-exact authentication handoff.
+
+#### Master contracts and registry
+
+Under `src/NinthAge.Contracts/Sessions/`, define the gameplay-session contract family, including:
 
 - `GameplaySessionResult`;
 - `GameplaySessionDisposition` with at least `Created` and `Reclaimed`;
-- `GameplaySessionAuthenticateRequest`;
-- `GameplaySessionAuthenticateResponse`;
-- `GameplaySessionDisconnectRequest`;
-- `GameplaySessionCloseRequest`;
-- `CharacterAdmissionRequest`;
-- `CharacterAdmissionResponse`;
-- `CharacterLeaveRequest`;
-- `GameplaySessionResponse` for result-only settlements where appropriate;
+- authentication/disconnect/session-settlement contracts;
+- the later character-admission/leave/close contracts as required by subsequent blocks;
 - `GameplaySessionRoutes`.
 
-The session-authentication request contains:
+The Master generates a non-empty `GameplaySessionID`; the ordinary game client never supplies or stores it as an authority token.
 
-- `WorldID`;
-- `WorldServerRunID`;
-- current login username;
-- submitted password.
-
-An accepted authentication response contains:
-
-- `GameplaySessionID`;
-- `AccountID`;
-- `HomeWorldID`;
-- account `Revision`;
-- `Disposition`;
-- nullable `SelectedCharacterID` when reclaiming a disconnected admitted session.
-
-A rejected response contains none of those success fields.
-
-The character-admission request contains:
-
-- `WorldID`;
-- `WorldServerRunID`;
-- `GameplaySessionID`;
-- `CharacterID`.
-
-The accepted admission response carries the existing acquired character persistence state, character persistence lease ID and revision rather than introducing a second character-state DTO.
-
-Character leave identifies the exact gameplay session and the existing character persistence lease/revision needed to release the admitted character safely.
-
-All public contract types and members require useful XML documentation. Use existing ID casing and existing stable result conventions.
-
-### Step 2 — Add the Master gameplay-session registry
-
-Create:
-
-`src/NinthAge.Master/Sessions/GameplaySessionRegistry.cs`
-
-This is the **single global owner** of active gameplay-session runtime state.
-
-Store one session object per AccountID and index the same object by GameplaySessionID. Each session contains only runtime control-plane identity/state:
+`GameplaySessionRegistry` is the **single global owner** of active gameplay-session runtime state. Store one session object per AccountID and index the same object by GameplaySessionID. Session runtime state contains only:
 
 - GameplaySessionID;
 - AccountID;
@@ -160,204 +136,210 @@ Store one session object per AccountID and index the same object by GameplaySess
 - nullable selected CharacterID;
 - connected/disconnected state;
 - Master-owned created/last-state-change UTC timestamps;
-- an internal generation/version used to detect replacement or mutation across asynchronous boundaries.
+- generation/version state needed to guard asynchronous mutation;
+- authentication-attempt replay metadata needed to settle uncertain transport outcomes.
 
-Do not store passwords, credential hashes, character gameplay state, PlayerID, Unity actor references, inventory state or another copy of character persistence state.
+Do not store passwords, credential hashes, Unity PlayerID/Actor references, character gameplay state, inventory or another persistence cache.
 
-Registry operations must be lock-protected, but no lock may be held across database or network awaits.
+Registry mutation is lock-protected; no registry lock spans database/network awaits. Return detached immutable snapshots rather than mutable entries.
 
-Required operations:
+Required registry capabilities include:
 
-1. create a session for an account that currently has none;
-2. inspect the existing session for an AccountID;
-3. reclaim the same session only when it is disconnected and still belongs to the exact current World runtime;
-4. mark a connected session disconnected only for its exact World/run/session identity;
-5. mark/clear its selected CharacterID around admission/leave;
-6. close the exact session;
-7. invalidate all sessions owned by an expired/unregistered/replaced WorldServerRunID.
+1. create one session when the account has none;
+2. inspect by AccountID or exact GameplaySessionID + World/run;
+3. reclaim the same session only when disconnected and still owned by the exact current World runtime;
+4. mark the exact session disconnected idempotently;
+5. set/clear selected CharacterID using the observed generation;
+6. close an exact session only when no selected character remains;
+7. invalidate every session owned by an expired/unregistered/retired WorldServerRunID.
 
-Return detached immutable snapshots/guards rather than mutable registry objects.
+#### Authentication and duplicate-login policy
 
-### Step 3 — Replace the temporary authentication bridge with session acquisition
+Reuse the existing credential verifier and account projection. Do not create another password store.
 
-Modify the existing Master authentication path rather than adding a second password store.
+Authentication executes in this order:
 
-Relevant existing owners include:
+1. validate request shape;
+2. authenticate the World bearer and current WorldID/WorldServerRunID through the existing authorizer;
+3. apply authentication throttling before repeated expensive password verification;
+4. verify credentials with the existing constant-work/dummy-hash behavior for unknown/deleted/incorrect accounts;
+5. require `HomeWorldID == request.WorldID` for the current one-world baseline;
+6. revalidate World runtime after the async credential/database boundary;
+7. atomically create or reclaim the allowed gameplay session;
+8. return the deterministic result.
 
-- `AccountAuthenticationService`;
-- `AccountCharacterRepository`;
-- the existing account authentication projection;
-- `TemporaryAccountPasswordHasher` / credential records;
-- `WorldPersistenceRequestAuthorizer`.
+Duplicate policy remains **reject-active / reclaim-disconnected**:
 
-Refactor the internal credential verification result so a successful verification supplies the existing durable:
+- connected current session + fresh valid login -> `SessionAlreadyActive`;
+- disconnected session from the same current WorldID + WorldServerRunID -> reclaim the same GameplaySessionID;
+- stale/offline/retired run -> cannot reclaim;
+- do not implement kick-and-replace.
 
+Authentication attempts must be replay-safe across uncertain World→Master transport outcomes:
+
+- one logical World authentication attempt gets one nonempty World-generated attempt ID;
+- retries of that same logical attempt reuse it and return the same accepted gameplay session without a second mutation;
+- a distinct attempt against a connected session still gets `SessionAlreadyActive`;
+- an old attempt cannot revive a session after a later state transition;
+- disconnect settlement is idempotently replayable across transient transport loss.
+
+#### Authentication-rate safeguards
+
+One Master-owned limiter under the Sessions/Auth boundary must:
+
+- key failed work by at least WorldServerRunID + submitted login identity;
+- read limits/windows from central validated configuration;
+- check before PBKDF2/database credential work;
+- treat unknown and real usernames with wrong passwords identically;
+- return a deterministic throttled result;
+- expire entries so the dictionary remains bounded;
+- never log passwords or bearer secrets.
+
+The limiter is process-local runtime state, not repository/EF state.
+
+#### World exact-connection handoff
+
+The World authentication path must bind an accepted Master authentication result to the exact PurrNet `Connection`.
+
+Replace any global validated-username queue with an immutable pending authenticated context keyed by `Connection`. The context contains the accepted Master identity:
+
+- GameplaySessionID;
 - AccountID;
 - HomeWorldID;
 - account Revision;
+- Created/Reclaimed disposition;
+- nullable SelectedCharacterID.
 
-without exposing password salt/hash outside the authentication layer.
+The flow is:
 
-Then create:
+1. send username/password through the typed Master session client/coordinator;
+2. accept PurrNet authentication only when Master accepts;
+3. store the accepted context against that exact Connection;
+4. consume it once when `OnPlayerJoined(PlayerID)` resolves PlayerID back to that live Connection;
+5. compensate Master if an accepted-but-unpublished context is abandoned;
+6. never retain the password after the Master response.
 
-`src/NinthAge.Master/Sessions/GameplaySessionService.cs`
+`ConnectedAccountContext` carries GameplaySessionID and the accepted account/session identity locally, but remains a connection-scoped binding rather than global authority.
 
-Its authenticate operation must execute in this order:
+Once cut over, remove the retired temporary `ACCOUNT_AUTHENTICATE` / `ACCOUNT_RESOLVE` production bridge. Keep the underlying account/credential persistence used by the new session service.
 
-1. validate request shape;
-2. authenticate the World Server bearer and current WorldID/WorldServerRunID through the existing World authorizer;
-3. apply authentication-attempt throttling before repeated expensive password verification;
-4. verify credentials using the existing constant-work/dummy-hash behaviour for unknown, deleted or incorrect accounts;
-5. require `HomeWorldID == request.WorldID` for the current Stage 1.8 one-world admission baseline;
-6. revalidate the World runtime after the asynchronous database/credential boundary;
-7. atomically create a new gameplay session or reclaim the one disconnected session allowed by §3.1;
-8. return the deterministic session result.
+---
 
-A connected existing session returns `SessionAlreadyActive` **after** credentials have been successfully verified. Wrong credentials continue to return the same generic invalid-credentials outcome regardless of whether an account/session exists.
+### Step 2 — Bind all account/character control-plane operations to the gameplay session
 
-Once the Unity World Server has cut over to this route, remove the player login flow's dependency on the old separate `ACCOUNT_AUTHENTICATE` + `ACCOUNT_RESOLVE` sequence. The underlying account/credential persistence stays; the temporary bridge endpoint may be removed from the World-facing endpoint catalogue when no production caller remains.
+This block makes GameplaySessionID, not a caller-supplied AccountID, the authority for player-facing roster, character lifecycle and character admission operations. It also completes Master session lifecycle integration.
 
-### Step 4 — Add authentication-rate safeguards
+#### Character admission
 
-Create one Master-owned authentication limiter under the Sessions/Auth application boundary; do not place rate state in repositories.
+Add one Master `AdmitCharacter` application operation. The request contains only:
 
-It must:
+- WorldID;
+- WorldServerRunID;
+- GameplaySessionID;
+- CharacterID.
 
-- bound repeated failed authentication work per World Server run and login identity;
-- have centrally configured limits/windows rather than method literals;
-- avoid disclosing whether a username exists;
-- return a deterministic throttled result;
-- expire limiter entries so the dictionary cannot grow without bound;
-- never log submitted passwords or bearer credentials.
+It does **not** contain AccountID.
 
-This is correctness/resource protection only. Stage 1.8 does not establish production capacity thresholds or a load-test campaign.
-
-### Step 5 — Make character admission session-authorised
-
-Add a Master session admission operation that becomes the only player world-entry path.
-
-For `AdmitCharacter`:
+Admission must:
 
 1. resolve the exact GameplaySessionID;
-2. require it is connected and owned by the requesting `WorldID + WorldServerRunID`;
-3. require its AccountID matches the durable account that owns CharacterID;
-4. require no CharacterID is already selected on the session;
-5. call the existing `CharacterLeasePersistenceService.AcquireAsync` / character persistence lease owner rather than recreating lease logic;
-6. after the database/lease await, revalidate the session generation and current World runtime;
-7. only then set the session's selected CharacterID and return the acquired lease/state;
-8. if session/world revalidation fails after the lease was acquired, release that lease before returning failure.
+2. require the session is connected and owned by the requesting current WorldID + WorldServerRunID;
+3. require no CharacterID is already selected;
+4. capture the session AccountID and generation;
+5. call the existing `CharacterLeasePersistenceService.AcquireAsync` using that resolved AccountID;
+6. after the database/lease await, revalidate the exact session, generation and current World runtime;
+7. only then bind SelectedCharacterID through `GameplaySessionRegistry.SetSelectedCharacter`;
+8. if revalidation/binding fails after lease acquisition, release that acquired lease before returning/throwing.
 
-Do not copy character eligibility or persistence projection logic into the registry.
+Do not duplicate character ownership/deletion/lease/projection logic in the session registry or admission service.
 
-The existing raw character-acquire persistence endpoint must no longer be used by ordinary player admission. If no non-session caller remains after cut-over, stop exposing it as a public World route and keep the lease service as an internal application dependency.
+An accepted admission response reuses the existing acquired character persistence state, lease ID and revision. Do not introduce another character-state DTO.
 
-### Step 6 — Make roster and character mutations session-bound
+#### Roster and character create/delete/restore
 
-The World Server must no longer be able to present an arbitrary AccountID as sufficient player authority for account-facing operations.
+The World Server must no longer be able to present an arbitrary AccountID as sufficient player authority.
 
-For player roster and existing create/delete/restore operations:
+For roster and existing create/delete/restore operations:
 
-- add GameplaySessionID to the World-facing request or wrap the existing persistence service behind a session-authorised application operation;
-- resolve AccountID from the Master session rather than trusting an AccountID supplied by the World as player identity;
-- require the session is connected and belongs to the requesting World runtime;
-- pass the resolved AccountID into the existing Stage 1.7 repository/service unchanged.
+- the World-facing request carries GameplaySessionID and World/run identity;
+- AccountID is resolved from the current connected Master session;
+- session ownership/current World runtime is validated before durable account/character work;
+- after any asynchronous durable work where session replacement/disconnect could matter, revalidate the session generation/current World runtime before treating the result as current;
+- pass the resolved AccountID into the existing Stage 1.7 roster/create/delete/restore services unchanged;
+- preserve existing OperationID/revision/idempotency rules for character mutations;
+- do not add GameplaySessionID to durable repository entities or persistence receipts.
 
-Do not add session IDs to character checkpoints. Once admitted, the existing character persistence lease remains the write authority for checkpoint persistence.
+The existing Stage 1.7 persistence services remain the owners of:
 
-### Step 7 — Add disconnect, leave and close session operations
+- account/character existence;
+- ownership;
+- character limits;
+- name uniqueness;
+- soft-delete/recovery rules;
+- durable transactions and OperationID replay.
 
-Expose authenticated World-only routes for:
+Session application code composes authority; it does not copy those rules.
+
+Once all production World callers have cut over, raw World-facing roster/create/delete/restore endpoints that trust caller-supplied AccountID must stop being public player authority. Keep the underlying services/contracts internally where still needed.
+
+#### Disconnect, leave and close
+
+Expose authenticated World-only operations with exact session identity.
 
 **DisconnectSession**
-- marks the exact connected gameplay session disconnected;
-- preserves selected CharacterID;
-- does not release its character persistence lease;
-- does not alter durable character state;
-- is idempotent for an already-disconnected matching session.
+- mark the exact connected session disconnected;
+- preserve SelectedCharacterID;
+- do not release the character persistence lease;
+- do not alter durable character state;
+- exact already-disconnected settlement is idempotent.
 
 **LeaveCharacter**
-- requires the exact session, selected CharacterID and current character persistence lease;
-- invokes the existing lease release only after the World has already confirmed its final checkpoint;
-- clears SelectedCharacterID only when lease release is accepted;
-- leaves the gameplay session connected so the player may return to character selection.
+- require exact GameplaySessionID, selected CharacterID and current lease/revision;
+- invoke existing lease release only after the World has confirmed its final checkpoint;
+- clear SelectedCharacterID only after accepted/stale-safe lease settlement according to the approved leave contract;
+- keep the gameplay session connected so the player may return to character selection.
 
 **CloseSession**
-- only closes a session with no selected character;
-- removes both AccountID and GameplaySessionID indexes atomically;
-- is used for a connected client that disconnects before entering the world and after a disconnected admitted character has been safely finalized/left.
+- close only a session with no selected character;
+- remove AccountID and GameplaySessionID indexes atomically;
+- use for a connected client leaving character-selection entirely, or for a disconnected session after its admitted character has been finalized/left;
+- never use close as a shortcut around final checkpoint + lease release.
 
-A session with a selected character cannot be closed as a shortcut around final checkpoint/lease release.
+#### World-runtime invalidation
 
-### Step 8 — Invalidate sessions with World runtime ownership
+Integrate gameplay-session invalidation with existing WorldRegistry lifecycle ownership.
 
-Integrate `GameplaySessionRegistry` with the existing `WorldRegistry` lifecycle.
-
-When a WorldServerRunID becomes stale because of:
+When an exact WorldServerRunID is retired by:
 
 - heartbeat expiry;
 - graceful unregister;
 - run replacement/retirement;
 
-invalidate every gameplay session owned by that exact run.
+invalidate all gameplay sessions owned by that exact run. A stale run cannot reclaim sessions by replaying old IDs.
 
-Do not let a stale run reclaim sessions by presenting old IDs.
+Do not add cross-world transfer or destination reservation in Stage 1.8.
 
-Do not add cross-world transfer or destination reservation here; that remains Phase 3.
+#### Persistence authority after admission
+
+Do **not** add GameplaySessionID to character checkpoints or ordinary durable writes. Once a character is admitted, the existing `CharacterPersistenceLeaseID + CharacterID + revision + World/run` remains the durable write authority.
 
 ---
 
-## 5. Unity World Server implementation sequence
+### Step 3 — Cut the World Server fully over to session-authorised account and character operations
 
-### Step 9 — Make authentication handoff connection-exact
+This block removes the remaining World-side dependence on raw AccountID-based player authority and makes local runtime session storage independent of a single network connection.
 
-The current `PlayerAuthService` queue of validated usernames is not a sufficient session identity boundary.
+#### Session-authorised roster and character mutations
 
-Modify:
+World roster/create/delete/restore calls must send the current local GameplaySessionID, never AccountID as the authority credential.
 
-- `Assets/Runtime/Shared/Networking/IPlayerAuthService.cs`;
-- `Assets/Runtime/Shared/Networking/LoginAuthenticator.cs`;
-- `Assets/Runtime/Server/Services/PlayerAuthService.cs`;
-- `Assets/Runtime/Server/Core/ServerConnectionManager.cs`;
-- Master session protocol/client/coordinator files.
+Local code may still carry AccountID as accepted identity/data, but Master resolves and authorizes the operation from GameplaySessionID.
 
-Replace:
+Preserve the existing client-facing character-selection/creation behavior and existing authored-definition validation. Only the authority transport changes.
 
-- `GetNextValidatedUsername()`;
-- the global validated-username queue;
+After successful character creation/delete/restore, roster refresh uses the same session-authorised roster operation.
 
-with an exact pending authentication result keyed by the PurrNet `Connection`.
-
-The server authentication operation must:
-
-1. send username/password to the new Master session-authentication route;
-2. receive GameplaySessionID, AccountID, HomeWorldID, Revision and disposition;
-3. store an immutable pending authenticated-connection context against that exact `Connection`;
-4. return PurrNet authentication success only for an accepted Master session result;
-5. consume that exact context when `OnPlayerJoined(PlayerID)` resolves the PlayerID back to its live connection;
-6. remove unconsumed pending context on unauthentication/disconnection.
-
-Do not retain the password after the Master response.
-
-### Step 10 — Bind local account context to GameplaySessionID
-
-Extend `ConnectedAccountContext` with:
-
-- `Guid GameplaySessionID`;
-- the session disposition/reconnect metadata needed during initial connection handling.
-
-It remains a **connection-scoped local binding**, not the global session authority.
-
-`InitializeAuthenticatedPlayer` must no longer call `ResolveAccountAsync(username)` merely to rediscover the identity already returned by Master session authentication.
-
-For a newly created gameplay session:
-- obtain the roster through the session-authorised Master route;
-- publish the local ConnectedAccountContext;
-- send the roster.
-
-For a reclaimed disconnected session:
-- route to the reconnect flow in Step 13 rather than publishing a second independent account/session object and waiting for a fresh EnterWorld request.
-
-### Step 11 — Cut world entry over to Master session admission
+#### Cut world entry over to Master admission
 
 Modify `EnterWorldService` so ordinary entry calls:
 
@@ -365,189 +347,174 @@ Modify `EnterWorldService` so ordinary entry calls:
 
 instead of raw `AcquireCharacterAsync(AccountID, CharacterID)`.
 
-Preserve the existing Stage 1.7 logic after acceptance:
+Preserve all existing Stage 1.7 post-admission behavior:
 
 - critical definition validation;
 - persisted resource validation;
-- five-tier world-entry location recovery;
-- confirmed recovery checkpoint when relocation is required;
-- CharacterPersistenceProjection;
-- PlayerSessionData construction;
-- SpawnPlayerCoroutine;
+- five-tier location recovery;
+- durable recovery checkpoint when relocation is required;
+- `CharacterPersistenceProjection`;
+- `PlayerSessionData` construction;
+- spawn;
 - failure cleanup.
 
-Remove redundant local character-ownership checks that are now guaranteed by accepted Master admission, but retain dynamic checks that can change during asynchronous work: connection still live, same local GameplaySessionID, same World runtime and same admission/lease generation.
+Remove redundant static ownership checks already guaranteed by accepted Master admission. Retain dynamic checks that can change across async/coroutine boundaries:
 
-If spawning fails after Master admission, release the character through the new session-aware leave operation, not the raw lease route.
+- connection still live where required;
+- same local GameplaySessionID;
+- same World runtime;
+- current admission/lease ownership/generation.
 
-### Step 12 — Separate gameplay session lifetime from network connection lifetime
+If spawn fails after Master admission, unwind through the session-aware leave/finalization path rather than a raw player-authority acquire/release shortcut.
 
-Refactor local session storage so a live admitted character is not keyed solely by PlayerID.
+After the cut-over proves no ordinary player caller remains, stop exposing the raw character-acquire World route. The lease service remains an internal Master dependency.
 
-`PlayerSessionData` gains:
+#### Separate gameplay-session lifetime from PlayerID/connection lifetime
 
-- `GameplaySessionID`;
+A live admitted character must not be stored solely under PlayerID.
+
+`PlayerSessionData` must include:
+
+- GameplaySessionID;
 - current attached PlayerID/connection state;
-- disconnect state and disconnect deadline;
-- the existing AccountID, CharacterID, persistence state, entry location, live safe-return state and PlayerActor.
+- disconnect state/deadline;
+- existing AccountID;
+- CharacterID;
+- persistence state;
+- entry location;
+- live safe-return state;
+- PlayerActor.
 
-Inside `ServerConnectionManager`, maintain:
+`ServerConnectionManager` maintains:
 
-- one local admitted-session mapping by GameplaySessionID;
-- one current PlayerID → GameplaySessionID attachment mapping.
+- one admitted-session mapping by GameplaySessionID;
+- one current PlayerID -> GameplaySessionID attachment mapping.
 
-Do not maintain a second AccountID authority map for uniqueness; Master owns global exclusivity.
+Do not add a second AccountID uniqueness registry; Master owns global uniqueness.
 
-Existing callers that need session data from PlayerID should resolve through the attachment mapping. Existing character-session data must remain alive after a transport disconnect.
+Existing callers that start with PlayerID resolve through the attachment mapping. Disconnecting the network connection must not by itself destroy the admitted gameplay-session/actor state.
 
-### Step 13 — Implement disconnect grace without despawning the actor
+---
 
-Replace the current `OnPlayerLeft` actor teardown for admitted characters.
+### Step 4 — Implement authoritative disconnect, reconnect, logout, finalization and shutdown
 
-On unexpected disconnect:
+This block owns the runtime lifecycle after a character is admitted. It should be implemented as one coherent lifecycle system, not as separate one-off timers/coroutines for each case.
+
+#### Disconnect grace
+
+On unexpected disconnect of an admitted character:
 
 1. remove only the live PlayerID/connection attachment;
-2. tell Master to mark the GameplaySessionID disconnected;
-3. keep `PlayerSessionData`, PlayerActor, ECS registration, spatial context, auras, cooldowns, resources, death state, target/combat state and character persistence lease alive;
+2. tell Master to mark GameplaySessionID disconnected;
+3. keep PlayerSessionData, PlayerActor, ECS/gameplay registration, spatial context, auras, cooldowns, resources, death state, combat/target state and persistence lease alive;
 4. set a server-simulation deadline at least 30 seconds in the future;
-5. **do not** call final checkpoint, `UnregisterActor`, `RetireFromServer`, `NetworkIdentity.Despawn` or character lease release at disconnect time.
+5. do **not** final-checkpoint, unregister, retire, despawn or release the character lease at disconnect time.
 
-Do not call `Actor.SetOwner(null)` merely to model a lost connection: the existing owner-change path treats an unowned actor as non-player movement state. The dead network connection itself prevents further client RPC authority. The old PlayerID is only a stale attachment value until a reconnect replaces it.
+Do not call `Actor.SetOwner(null)` merely to model connection loss if that path changes player/non-player gameplay semantics.
 
-Use the authoritative simulation clock/deadline system; do not add one coroutine or `Update` loop per disconnected player.
+Use the authoritative simulation clock/deadline owner; no per-player `Update` loop or wall-clock timer.
 
 At/after the grace deadline:
+- finalize only if authoritative logout eligibility is satisfied;
+- otherwise keep the actor authoritative and reschedule/check through the same central owner.
 
-- if authoritative logout eligibility says combat/damage state is resolved, run the finalization sequence in Step 16;
-- otherwise keep the actor authoritative and check again through the same central deadline/scheduler owner.
+#### Reconnect and actor reclaim
 
-### Step 14 — Reclaim the existing actor on reconnect
+When Master authentication returns `Reclaimed`:
 
-When Master authentication returns `Disposition = Reclaimed`:
-
-1. require the returned GameplaySessionID exists in the World Server's disconnected-session map;
-2. require AccountID and returned SelectedCharacterID exactly match that local session;
-3. require the same PlayerActor still exists and remains registered under its CharacterID/current spatial context;
+1. require the returned GameplaySessionID exists in the World disconnected-session map;
+2. require AccountID and SelectedCharacterID exactly match;
+3. require the same PlayerActor still exists and remains registered for that CharacterID/current context;
 4. cancel the disconnect-finalization deadline;
-5. transfer PurrNet ownership to the new PlayerID using the supported project-owned `NetworkIdentity.GiveOwnership` integration and call `Actor.SetOwner(newPlayerID)`;
-6. update local PlayerID → session attachment;
-7. let existing server ownership callbacks rebuild player validation/ownership indexes rather than directly mutating their internal dictionaries;
-8. republish the current authoritative owner-private state required by the reconnected client.
+5. transfer PurrNet ownership to the new PlayerID through the project-owned `NetworkIdentity.GiveOwnership` integration and call `Actor.SetOwner(newPlayerID)`;
+6. update PlayerID -> GameplaySessionID attachment;
+7. let normal ownership callbacks rebuild validation/index state;
+8. republish owner-private state required by the reconnecting client from **live runtime state**.
 
-Reconnect state publication must come from **live runtime state**, not the Stage 1.7 acquired snapshot. Do not rerun spawn initialization, offline-resource resolution, item loading, aura OnApply effects or cooldown restoration.
+Do not rerun spawn initialization, offline restoration, item loading, aura OnApply effects or cooldown restoration.
 
-Where existing PurrNet observer bootstrap already republishes a domain, reuse it. Add explicit owner bootstrap only for state not automatically re-sent on ownership change, including as applicable current stats/resources, inventory/equipment, current cooldown UI and other owner-private state.
+If Master says `Reclaimed` but the local disconnected actor/session is gone, fail closed and settle/close the stale Master session. Do not spawn a second actor under that reclaimed session.
 
-If Master says `Reclaimed` but the local disconnected actor/session no longer exists, fail closed and settle/close the stale session with Master. Do not spawn a second actor under that reclaimed session. A later fresh login may create a new session and load the last durable state only after the stale session is closed.
+#### Authoritative logout/combat eligibility
 
-### Step 15 — Add authoritative logout/combat eligibility
+Client presentation combat state is not authority.
 
-The current client `ClientCombatManager.inCombat` is presentation state and must not control logout or disconnect cleanup.
-
-Add one small server-owned eligibility state keyed by ActorID that tracks only the state required by the persistence PDD:
+Add one small server-owned eligibility state keyed by ActorID containing only:
 
 - combat-lock deadline;
 - hostile-damage-lock deadline.
 
-Update those deadlines from authoritative server combat/damage execution boundaries. At minimum cover:
+Update those deadlines from authoritative combat/damage execution boundaries, including at minimum:
 
 - auto attacks;
 - direct spell damage;
 - periodic aura damage;
-- other existing authoritative hostile-damage paths.
+- any other existing authoritative hostile-damage path.
 
-Do not infer combat from client callbacks.
+Central configuration owns:
 
-Add central configuration for:
-
-- minimum disconnect grace (validated >= 30 seconds);
+- minimum disconnect grace, validated >= 30 seconds;
 - ordinary logout countdown;
 - combat-lock duration;
 - hostile-damage-lock duration.
 
-Every hostile action/damage event that should keep the actor in combat extends the relevant deadline using the existing non-shortening simulation-time conversion. Expired deadlines are not retained as separate historical state.
+Use simulation ticks/deadlines and the existing non-shortening conversion contract. No scattered literals.
 
-Expose one server query such as:
+Expose one authoritative query such as `CanCompleteLogout(Guid actorID)` used by both normal logout and disconnected finalization.
 
-`CanCompleteLogout(Guid actorID)`
+#### Normal logout and safe locations
 
-used by both normal logout completion and disconnected-session finalization.
+Add the shared account/session request and server binding for "leave world/logout character".
 
-### Step 16 — Add explicit normal logout
+Normal logout behavior:
 
-Add a shared Session/Account endpoint request and server binding for "leave world/logout character".
+- explicit authored safe logout location + no combat/damage lock -> immediate completion;
+- otherwise use one configured server-owned countdown;
+- combat or hostile damage blocks start/completion and cancels an active countdown;
+- completion revalidates session/actor identity and eligibility;
+- disconnect during countdown becomes the disconnect-grace path.
 
-Normal logout is World Server-authoritative:
+Never trust a client-provided safe/out-of-combat flag.
 
-- if the actor is in an explicit safe logout place and no combat/damage lock applies, complete immediately;
-- otherwise start one server-owned logout deadline using the centrally configured duration;
-- combat or hostile damage blocks starting completion and cancels an active countdown;
-- completion revalidates eligibility and session/actor identity before finalizing;
-- client disconnect during a logout countdown stops being a normal logout and enters the minimum disconnect-grace path instead.
+Extend `WorldLocationDefinition` with an explicit `SafeLogout` purpose and dedicated positive safe-logout radius. The server safe-place query uses the accepted ActorSpatialContext and double-precision WorldPosition, matching authored map/public context. Do not infer safety from scene names or reuse an unrelated radius field.
 
-No client-provided "safe" or "out of combat" flag is trusted.
+After normal logout, keep the gameplay session connected and return to character selection by completing session-aware `LeaveCharacter`.
 
-After successful normal logout, keep the gameplay session connected and return it to the character-selection state by clearing the selected character through Master `LeaveCharacter`.
+#### One finalization path
 
-### Step 17 — Author safe logout locations explicitly
+Route both eligible disconnect-grace expiry and completed normal logout through one finalization owner.
 
-Safe logout must be content-authored, never inferred from scene names.
+Order:
 
-Extend the existing `WorldLocationDefinition` model with a `SafeLogout` purpose and a dedicated positive safe-logout radius when that purpose is set.
-
-The server safe-place query uses:
-
-- current accepted ActorSpatialContext;
-- current accepted double-precision WorldPosition;
-- matching authored MapID/public context;
-- horizontal distance to eligible SafeLogout location anchors.
-
-Do not reuse `RegionalFallbackRadius` for a different meaning and do not store safe-logout state on the character.
-
-This is a minimal extension of the existing authored-location system; it does not add inns/housing gameplay.
-
-### Step 18 — Finalize a disconnected or logged-out admitted character through existing persistence
-
-Create one finalization path in `ServerConnectionManager`/session lifecycle ownership and route both:
-
-- eligible disconnect-grace expiry;
-- completed normal logout;
-
-through it.
-
-The order is:
-
-1. synchronously capture the current authoritative Stage 1.7 checkpoint while the actor still exists;
+1. synchronously capture current authoritative Stage 1.7 checkpoint while the actor still exists;
 2. queue and flush it;
-3. require accepted settlement of the current/newest generation;
-4. call Master session-aware `LeaveCharacter` so the character persistence lease is released and SelectedCharacterID is cleared;
-5. unregister the actor from server stat/gameplay owners;
+3. require accepted settlement of the newest/current generation;
+4. call Master session-aware `LeaveCharacter` so the persistence lease is released and SelectedCharacterID is cleared;
+5. unregister the actor from server gameplay/stat owners;
 6. `RetireFromServer`;
 7. despawn its NetworkIdentity;
-8. clear the World Server's admitted-session character state;
-9. if the network connection no longer exists, call Master `CloseSession`; if the connection is still live after normal logout, retain the account gameplay session and refresh/publish the roster.
+8. clear admitted-session character state;
+9. if no network connection exists, call Master `CloseSession`; if the connection is still live after normal logout, retain the account gameplay session and refresh/publish the session-authorised roster.
 
-If any persistence/leave settlement required before actor destruction is unavailable or rejected, keep the actor/session in the unsettled server state and report the failure. Never report logout as durably complete while the final checkpoint/lease transition is unresolved.
+If required persistence/leave settlement fails, keep the actor/session in an explicit unsettled state. Never report logout as durably complete while final checkpoint/lease transition is unresolved.
 
-Reuse the Stage 1.7 checkpoint queue, generation and lease-revision owners. Do not add a session-specific persistence queue.
+Reuse existing Stage 1.7 checkpoint/generation/lease owners. Do not add a session-specific persistence queue.
 
-### Step 19 — Integrate gameplay sessions with World Server shutdown/restart
+#### World shutdown/restart
 
-During graceful World Server shutdown:
+During graceful shutdown:
 
-- stop accepting new player session authentication/admission before final capture;
+- stop accepting new authentication/admission first;
 - retain the existing final online-character checkpoint sequence;
-- settle admitted characters and leases;
+- settle admitted characters and leases through the same finalization rules;
 - unregister the World Server;
-- let Master invalidate any remaining runtime gameplay sessions bound to that WorldServerRunID.
+- let Master invalidate any remaining runtime gameplay sessions for that WorldServerRunID.
 
-Unexpected World Server loss is handled by Master heartbeat expiry invalidating that run's gameplay sessions. On a later World Server run, clients authenticate into new sessions and recover from the latest durable Stage 1.7 state.
+Unexpected World loss is handled by heartbeat expiry invalidating that run's gameplay sessions. A later World run authenticates into new sessions and recovers from durable Stage 1.7 state.
 
-Do not try to preserve GameplaySessionID across a World Server or Master process restart.
+Do not preserve GameplaySessionID across World or Master process restart.
 
----
-
-## 6. Telemetry additions
+## 5. Telemetry additions
 
 Add Stage 1.8 correctness telemetry without introducing performance thresholds.
 
@@ -583,7 +550,7 @@ Do not add Stage 1.8 numerical pass/fail capacity targets.
 
 ---
 
-## 7. C# hygiene and architecture requirements
+## 6. C# hygiene and architecture requirements
 
 Every Stage 1.8 implementation issue must preserve these rules:
 
@@ -605,7 +572,7 @@ Every Stage 1.8 implementation issue must preserve these rules:
 
 ---
 
-## 8. Explicit non-goals
+## 7. Explicit non-goals
 
 Stage 1.8 does **not** implement:
 
@@ -625,7 +592,7 @@ Those remain in their approved later phases/stages.
 
 ---
 
-## 9. Validation gate
+## 8. Validation gate
 
 Stage 1.8 uses compilation/static checks plus narrow owner-operated smoke validation. Stage 1.10 owns systematic race/regression coverage and Stage 1.11 owns representative load/stress execution.
 
