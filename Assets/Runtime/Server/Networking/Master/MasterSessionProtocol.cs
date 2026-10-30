@@ -32,7 +32,10 @@ namespace Game.Server.Networking.Master
             Reclaimed = 1
         }
 
-        /// <summary>Authenticates one account for a gameplay session.</summary>
+        /// <summary>
+        /// Authenticates one account for a gameplay session.
+        /// Replaying one logical operation must reuse its nonempty World-generated attempt ID.
+        /// </summary>
         internal sealed class AuthenticateRequest
         {
             [JsonProperty("worldID")]
@@ -40,6 +43,13 @@ namespace Game.Server.Networking.Master
 
             [JsonProperty("worldServerRunID")]
             public Guid WorldServerRunID { get; set; }
+
+            /// <summary>
+            /// Gets or sets the nonempty World-generated ID for this logical authentication operation.
+            /// Replays reuse this value; a new login attempt generates a new value.
+            /// </summary>
+            [JsonProperty("authenticationAttemptID")]
+            public Guid AuthenticationAttemptID { get; set; }
 
             [JsonProperty("legacyUsername")]
             public string LegacyUsername { get; set; }

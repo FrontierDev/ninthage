@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -7,6 +8,11 @@ namespace Game.Server.Networking.Master
     /// <summary>Owns the immutable World identity used by gameplay-session requests.</summary>
     internal sealed class WorldSessionCoordinator
     {
+        private const int MAX_REQUEST_ATTEMPTS = 4;
+        private const int FIRST_RETRY_DELAY_MILLISECONDS = 500;
+        private const int SECOND_RETRY_DELAY_MILLISECONDS = 1000;
+        private const int THIRD_RETRY_DELAY_MILLISECONDS = 2000;
+
         private readonly MasterSessionClient _client;
 
         /// <summary>Creates a coordinator for one registered World Server run.</summary>
@@ -31,7 +37,9 @@ namespace Game.Server.Networking.Master
         /// <summary>Gets the immutable World Server run ID stamped onto session requests.</summary>
         internal Guid WorldServerRunID { get; }
 
-        /// <summary>Authenticates one account through the Master without replaying the request.</summary>
+        /// <summary>
+        /// Authenticates one account through the Master and replays the exact request only for transient transport failures.
+        /// </summary>
         internal Task<MasterSessionProtocol.AuthenticateResponse> AuthenticateAsync(
             string legacyUsername,
             string password,
@@ -46,13 +54,16 @@ namespace Game.Server.Networking.Master
             {
                 WorldID = WorldID,
                 WorldServerRunID = WorldServerRunID,
+                AuthenticationAttemptID = Guid.NewGuid(),
                 LegacyUsername = legacyUsername,
                 Password = password
             };
-            return _client.AuthenticateAsync(request, cancellationToken);
+            return ExecuteWithTransientRetryAsync(
+                token => _client.AuthenticateAsync(request, token),
+                cancellationToken);
         }
 
-        /// <summary>Disconnects one gameplay session through the Master.</summary>
+        /// <summary>Disconnects one gameplay session through the Master, replaying only transient transport failures.</summary>
         internal Task<MasterSessionProtocol.SessionResponse> DisconnectAsync(
             Guid gameplaySessionID,
             CancellationToken cancellationToken)
@@ -66,7 +77,59 @@ namespace Game.Server.Networking.Master
                 WorldServerRunID = WorldServerRunID,
                 GameplaySessionID = gameplaySessionID
             };
-            return _client.DisconnectAsync(request, cancellationToken);
+            return ExecuteWithTransientRetryAsync(
+                token => _client.DisconnectAsync(request, token),
+                cancellationToken);
+        }
+
+        private static async Task<TResponse> ExecuteWithTransientRetryAsync<TResponse>(
+            Func<CancellationToken, Task<TResponse>> operation,
+            CancellationToken cancellationToken)
+        {
+            if (operation == null)
+                throw new ArgumentNullException(nameof(operation));
+
+            Exception finalTransientException = null;
+            for (int attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (attempt > 0)
+                {
+                    int delayMilliseconds = attempt switch
+                    {
+                        1 => FIRST_RETRY_DELAY_MILLISECONDS,
+                        2 => SECOND_RETRY_DELAY_MILLISECONDS,
+                        3 => THIRD_RETRY_DELAY_MILLISECONDS,
+                        _ => throw new InvalidOperationException("The session retry schedule is invalid.")
+                    };
+                    await Task.Delay(delayMilliseconds, cancellationToken).ConfigureAwait(false);
+                }
+
+                try
+                {
+                    return await operation(cancellationToken).ConfigureAwait(false);
+                }
+                catch (HttpRequestException exception)
+                {
+                    finalTransientException = exception;
+                }
+                catch (TimeoutException exception)
+                {
+                    finalTransientException = exception;
+                }
+                catch (OperationCanceledException exception)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                        throw;
+
+                    finalTransientException = exception;
+                }
+            }
+
+            if (finalTransientException == null)
+                throw new InvalidOperationException("The session retry loop completed without a result or transient failure.");
+
+            throw finalTransientException;
         }
     }
 }
