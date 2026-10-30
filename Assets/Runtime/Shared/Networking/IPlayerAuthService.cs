@@ -11,18 +11,28 @@ namespace Game.Shared.Networking
     public interface IPlayerAuthService
     {
         /// <summary>
-        /// Validates the supplied credentials against the authoritative account service.
+        /// Authenticates the exact connection and stores its accepted Master gameplay-session identity.
         /// </summary>
-        Task<bool> ValidateCredentialsAsync(string username, string password, CancellationToken cancellationToken);
+        Task<bool> AuthenticateConnectionAsync(
+            object connection,
+            string username,
+            string password,
+            CancellationToken cancellationToken);
 
-        /// <summary>Records a validated connection's username for unauthentication lookup.</summary>
-        void TrackPendingConnection(object connection, string username);
+        /// <summary>Takes and removes the accepted session context for the exact connection.</summary>
+        bool TryTakeAuthenticatedSession(
+            object connection,
+            out AuthenticatedSessionContext sessionContext);
 
-        /// <summary>Removes and returns the pending username for the given connection.</summary>
-        bool TryRemovePendingConnection(object connection, out string username);
+        /// <summary>Removes without publication the pending context for the exact connection.</summary>
+        bool TryRemovePendingAuthentication(
+            object connection,
+            out AuthenticatedSessionContext sessionContext);
 
-        /// <summary>Dequeues the next validated username. Returns "Unknown" if the queue is empty.</summary>
-        string GetNextValidatedUsername();
+        /// <summary>Removes pending authentication and compensates the Master session when required.</summary>
+        Task AbandonPendingAuthenticationAsync(
+            object connection,
+            CancellationToken cancellationToken);
 
     }
 }

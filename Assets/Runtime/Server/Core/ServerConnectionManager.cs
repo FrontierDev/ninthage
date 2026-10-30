@@ -479,8 +479,28 @@ namespace Game.Server.Core
             if (!asServer)
                 return;
 
-            string username = Game.Shared.Networking.LoginAuthenticator.GetNextValidatedUsername();
-            StartCoroutine(InitializeAuthenticatedPlayer(playerID, username, isReconnect));
+            if (_networkManager == null || _networkManager.playerModule == null)
+            {
+                Debug.Error($"Player {playerID} joined before the server network manager was ready; authentication failed closed.");
+                return;
+            }
+
+            if (!_networkManager.playerModule.TryGetConnection(playerID, out Connection connection))
+            {
+                Debug.Error($"Could not resolve a live connection for joined player {playerID}; authentication failed closed.");
+                return;
+            }
+
+            if (!Game.Shared.Networking.LoginAuthenticator.TryTakeAuthenticatedSession(
+                    connection,
+                    out AuthenticatedSessionContext authenticatedSession)
+                || authenticatedSession == null)
+            {
+                Debug.Error($"Player {playerID} joined without an authenticated session for its exact connection; authentication failed closed.");
+                return;
+            }
+
+            StartCoroutine(InitializeAuthenticatedPlayer(playerID, authenticatedSession, isReconnect));
         }
         private void OnPlayerLeft(PlayerID playerID, bool asServer)
         {
@@ -520,8 +540,12 @@ namespace Game.Server.Core
                 }
             }
 
+            _connectedAccounts.TryGetValue(playerID, out ConnectedAccountContext accountContext);
             _connectedAccounts.Remove(playerID);
             ClearSessionData(playerID);
+            if (accountContext != null)
+                StartCoroutine(DisconnectPublishedGameplaySession(accountContext.GameplaySessionID));
+
             if (characterID != Guid.Empty)
             {
                 if (requiresFinalCheckpoint && !finalCheckpointQueuedSuccessfully)
@@ -541,94 +565,69 @@ namespace Game.Server.Core
 
         private IEnumerator InitializeAuthenticatedPlayer(
             PlayerID playerID,
-            string username,
+            AuthenticatedSessionContext authenticatedSession,
             bool isReconnect)
         {
-            if (string.IsNullOrWhiteSpace(username) || username == "Unknown")
+            if (authenticatedSession == null)
             {
-                Debug.Error($"Player {playerID} joined without a validated username; authentication failed closed.");
+                Debug.Error($"Player {playerID} joined without an authenticated session context; authentication failed closed.");
+                yield break;
+            }
+
+            if (authenticatedSession.SelectedCharacterID.HasValue)
+            {
+                Debug.Warning(
+                    $"Player {playerID} authenticated with selected character {authenticatedSession.SelectedCharacterID.Value}; "
+                    + "selected-character reclaim requires the later reconnect flow.");
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
             }
 
             WorldPersistenceCoordinator coordinator;
+            bool persistenceCoordinatorUnavailable = false;
             try
             {
                 coordinator = ServerInitialization.PersistenceCoordinator;
             }
             catch (Exception exception)
             {
-                Debug.Error($"Could not access the World persistence coordinator for '{username}': {exception.Message}");
+                Debug.Error($"Could not access the World persistence coordinator for '{authenticatedSession.Username}': {exception.Message}");
+                coordinator = null;
+                persistenceCoordinatorUnavailable = true;
+            }
+
+            if (persistenceCoordinatorUnavailable)
+            {
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
             }
 
             if (coordinator == null)
             {
-                Debug.Error($"World persistence coordinator is unavailable for authenticated username '{username}'.");
-                yield break;
-            }
-
-            Task<MasterPersistenceProtocol.AccountIdentityResponse> resolveTask;
-            try
-            {
-                resolveTask = coordinator.ResolveAccountAsync(username, CancellationToken.None);
-            }
-            catch (Exception exception)
-            {
-                Debug.Error($"Could not resolve Master account for '{username}': {exception.Message}");
-                yield break;
-            }
-
-            while (!resolveTask.IsCompleted)
-                yield return null;
-
-            MasterPersistenceProtocol.AccountIdentityResponse accountResponse;
-            try
-            {
-                accountResponse = resolveTask.GetAwaiter().GetResult();
-            }
-            catch (Exception exception)
-            {
-                Debug.Error($"Master account resolution failed for '{username}': {exception.Message}");
-                yield break;
-            }
-
-            if (accountResponse == null)
-            {
-                Debug.Error($"Master returned no account response for '{username}'. Authentication failed closed.");
-                yield break;
-            }
-
-            if (accountResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
-            {
                 Debug.Error(
-                    $"Master account resolution for '{username}' returned {accountResponse.Result}. Authentication failed closed.");
-                yield break;
-            }
-
-            if (!accountResponse.AccountID.HasValue
-                || !accountResponse.HomeWorldID.HasValue
-                || !accountResponse.Revision.HasValue
-                || accountResponse.AccountID.Value == Guid.Empty
-                || accountResponse.HomeWorldID.Value == Guid.Empty
-                || accountResponse.Revision.Value < 1)
-            {
-                Debug.Error($"Master returned incomplete account identity for '{username}'. Authentication failed closed.");
-                yield break;
-            }
-            if (accountResponse.HomeWorldID.Value != coordinator.WorldID)
-            {
-                Debug.Error($"Account '{username}' belongs to home World {accountResponse.HomeWorldID.Value}, not this World {coordinator.WorldID}.");
+                    $"World persistence coordinator is unavailable for authenticated username '{authenticatedSession.Username}'.");
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
             }
 
             Task<MasterPersistenceProtocol.CharacterRosterResponse> rosterTask;
+            bool rosterRequestFailed = false;
             try
             {
-                rosterTask = coordinator.GetCharacterRosterAsync(accountResponse.AccountID.Value, CancellationToken.None);
+                rosterTask = coordinator.GetCharacterRosterAsync(
+                    authenticatedSession.AccountID,
+                    CancellationToken.None);
             }
             catch (Exception exception)
             {
-                Debug.Error($"Could not load the Master roster for '{username}': {exception.Message}");
+                Debug.Error($"Could not load the Master roster for '{authenticatedSession.Username}': {exception.Message}");
+                rosterTask = null;
+                rosterRequestFailed = true;
+            }
+
+            if (rosterRequestFailed || rosterTask == null)
+            {
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
             }
 
@@ -636,47 +635,153 @@ namespace Game.Server.Core
                 yield return null;
 
             MasterPersistenceProtocol.CharacterRosterResponse rosterResponse;
+            bool rosterLoadingFailed = false;
             try
             {
                 rosterResponse = rosterTask.GetAwaiter().GetResult();
             }
             catch (Exception exception)
             {
-                Debug.Error($"Master roster loading failed for '{username}': {exception.Message}");
+                Debug.Error($"Master roster loading failed for '{authenticatedSession.Username}': {exception.Message}");
+                rosterResponse = null;
+                rosterLoadingFailed = true;
+            }
+
+            if (rosterLoadingFailed)
+            {
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
             }
 
             if (rosterResponse == null
                 || rosterResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
             {
-                Debug.Error($"Master roster loading for '{username}' returned {rosterResponse?.Result}. Authentication failed closed.");
+                Debug.Error(
+                    $"Master roster loading for '{authenticatedSession.Username}' returned {rosterResponse?.Result}. "
+                    + "Authentication failed closed.");
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
             }
 
             List<Game.Shared.Persistence.CharacterData> roster;
+            bool rosterProjectionFailed = false;
             try
             {
                 roster = CharacterPersistenceProjection.ToActiveRoster(rosterResponse);
             }
             catch (Exception exception)
             {
-                Debug.Error($"Master roster projection failed for '{username}': {exception.Message}");
+                Debug.Error($"Master roster projection failed for '{authenticatedSession.Username}': {exception.Message}");
+                roster = null;
+                rosterProjectionFailed = true;
+            }
+
+            if (rosterProjectionFailed)
+            {
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
             }
 
             if (!IsPlayerConnected(playerID))
             {
                 Debug.Warning($"Player {playerID} disconnected before Master account publication.");
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
             }
 
-            _connectedAccounts[playerID] = new ConnectedAccountContext(
-                username,
-                accountResponse.AccountID.Value,
-                accountResponse.HomeWorldID.Value,
-                accountResponse.Revision.Value);
+            ConnectedAccountContext accountContext;
+            bool accountContextCreationFailed = false;
+            try
+            {
+                accountContext = new ConnectedAccountContext(
+                    authenticatedSession.Username,
+                    authenticatedSession.GameplaySessionID,
+                    authenticatedSession.AccountID,
+                    authenticatedSession.HomeWorldID,
+                    authenticatedSession.Revision,
+                    authenticatedSession.WasReclaimed,
+                    authenticatedSession.SelectedCharacterID);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"Could not publish the authenticated account context for '{authenticatedSession.Username}': {exception.Message}");
+                accountContext = null;
+                accountContextCreationFailed = true;
+            }
+
+            if (accountContextCreationFailed)
+            {
+                yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
+                yield break;
+            }
+
+            _connectedAccounts[playerID] = accountContext;
             Game.Shared.Networking.AccountEndpoint.Client_UpdateCharacterList(playerID, roster);
-            Debug.Log($"Player authenticated: {username} (AccountID: {accountResponse.AccountID.Value}, Reconnect: {isReconnect})");
+            Debug.Log(
+                $"Player authenticated: {authenticatedSession.Username} "
+                + $"(AccountID: {authenticatedSession.AccountID}, Reconnect: {isReconnect})");
+        }
+
+        private IEnumerator DisconnectUnpublishedGameplaySession(Guid gameplaySessionID)
+        {
+            yield return DisconnectGameplaySession(gameplaySessionID, "unpublished");
+        }
+
+        private IEnumerator DisconnectPublishedGameplaySession(Guid gameplaySessionID)
+        {
+            yield return DisconnectGameplaySession(gameplaySessionID, "published");
+        }
+
+        private IEnumerator DisconnectGameplaySession(Guid gameplaySessionID, string sessionStateDescription)
+        {
+            Task<MasterSessionProtocol.SessionResponse> disconnectTask;
+            try
+            {
+                disconnectTask = ServerInitialization.SessionCoordinator.DisconnectAsync(
+                    gameplaySessionID,
+                    CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"Could not disconnect {sessionStateDescription} gameplay session {gameplaySessionID}: {exception.Message}");
+                yield break;
+            }
+
+            if (disconnectTask == null)
+            {
+                Debug.Error(
+                    $"Master returned no disconnect task for {sessionStateDescription} gameplay session {gameplaySessionID}.");
+                yield break;
+            }
+
+            while (!disconnectTask.IsCompleted)
+                yield return null;
+
+            try
+            {
+                MasterSessionProtocol.SessionResponse response = disconnectTask.GetAwaiter().GetResult();
+                if (response == null)
+                {
+                    Debug.Error(
+                        $"Master returned no response while disconnecting {sessionStateDescription} gameplay session {gameplaySessionID}.");
+                    yield break;
+                }
+
+                if (response.Result != MasterSessionProtocol.GameplaySessionResult.Accepted
+                    && response.Result != MasterSessionProtocol.GameplaySessionResult.StaleSession)
+                {
+                    Debug.Error(
+                        $"Master gameplay-session disconnect for {sessionStateDescription} session {gameplaySessionID} "
+                        + $"returned {response.Result}; cleanup was not accepted.");
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"Master gameplay-session disconnect for {sessionStateDescription} session {gameplaySessionID} failed: {exception.Message}");
+            }
         }
 
         private bool TryCaptureAndQueueFinalCheckpoint(

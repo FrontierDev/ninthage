@@ -61,6 +61,8 @@ namespace Game.Server.Core
         private static bool _initializationSucceeded;
         private static ServerTimeAuthority _timeAuthority;
         private static MasterWorldClient _masterWorldClient;
+        private static MasterSessionClient _masterSessionClient;
+        private static WorldSessionCoordinator _worldSessionCoordinator;
         private static MasterPersistenceClient _masterPersistenceClient;
         private static WorldPersistenceCoordinator _worldPersistenceCoordinator;
         private static CancellationTokenSource _masterHeartbeatCancellation;
@@ -83,6 +85,19 @@ namespace Game.Server.Core
                         "World persistence has not been initialized or has already been torn down.");
 
                 return _worldPersistenceCoordinator;
+            }
+        }
+
+        /// <summary>Gets the bootstrap-owned gameplay-session coordinator for the active World Server run.</summary>
+        internal static WorldSessionCoordinator SessionCoordinator
+        {
+            get
+            {
+                if (_worldSessionCoordinator == null)
+                    throw new InvalidOperationException(
+                        "World gameplay-session coordination has not been initialized or has already been torn down.");
+
+                return _worldSessionCoordinator;
             }
         }
 
@@ -463,6 +478,11 @@ namespace Game.Server.Core
                 _masterPersistenceClient,
                 registrationResponse.WorldID.Value,
                 WORLD_SERVER_RUN_ID);
+            _masterSessionClient = new MasterSessionClient(_masterWorldClient);
+            _worldSessionCoordinator = new WorldSessionCoordinator(
+                _masterSessionClient,
+                registrationResponse.WorldID.Value,
+                WORLD_SERVER_RUN_ID);
 
             _masterHeartbeatCancellation = new CancellationTokenSource();
             _masterHeartbeatTask = _masterWorldClient.RunHeartbeatLoopAsync(
@@ -711,6 +731,8 @@ namespace Game.Server.Core
         {
             _worldPersistenceCoordinator = null;
             _masterPersistenceClient = null;
+            _worldSessionCoordinator = null;
+            _masterSessionClient = null;
         }
 
         private static void LogPersistenceTeardownFailure(string operationDescription, Exception exception)
@@ -754,6 +776,8 @@ namespace Game.Server.Core
 
         private static void DisposeMasterWorldClient()
         {
+            _worldSessionCoordinator = null;
+            _masterSessionClient = null;
             _masterWorldClient?.Dispose();
             _masterWorldClient = null;
         }
@@ -1135,7 +1159,7 @@ namespace Game.Server.Core
         {
             Debug.Log(" - Step 7: Initializing Master authentication...");
 
-            WorldPersistenceCoordinator coordinator = PersistenceCoordinator;
+            WorldSessionCoordinator coordinator = SessionCoordinator;
             var authService = new PlayerAuthService(coordinator);
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(authService);
 

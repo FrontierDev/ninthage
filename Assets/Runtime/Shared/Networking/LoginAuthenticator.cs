@@ -10,7 +10,7 @@ namespace Game.Shared.Networking
     /// <summary>
     /// Game-specific authenticator for SpaceSim.
     /// Handles client-side authentication payload generation and server-side validation.
-    /// Stores authenticated usernames for server-side retrieval.
+    /// Stores accepted gameplay-session identity for the exact server connection.
     /// </summary>
     [RegisterNetworkType(typeof(AuthenticationRequest<AuthenticationPayload>))]
     public class LoginAuthenticator : AuthenticationBehaviour<AuthenticationPayload>
@@ -38,14 +38,25 @@ namespace Game.Shared.Networking
         #region Public API - Service Registration
         /// <summary>
         /// Registers the server-side auth service implementation.
-        /// Called by ServerInitialization (Step 7) after Master persistence is available.
+        /// Called by ServerInitialization (Step 7) after Master gameplay-session coordination is available.
         /// </summary>
         public static void SetAuthService(IPlayerAuthService authService) { _authService = authService; }
         #endregion
 
         #region Public API - Server Session (delegated to IPlayerAuthService)
-        /// <summary>Gets the next username validated by the authentication service.</summary>
-        public static string GetNextValidatedUsername() => _authService?.GetNextValidatedUsername() ?? "Unknown";
+        /// <summary>Takes the accepted gameplay-session context for the exact PurrNet connection.</summary>
+        public static bool TryTakeAuthenticatedSession(
+            Connection connection,
+            out AuthenticatedSessionContext sessionContext)
+        {
+            if (_authService == null)
+            {
+                sessionContext = null;
+                return false;
+            }
+
+            return _authService.TryTakeAuthenticatedSession(connection, out sessionContext);
+        }
         #endregion
 
         #region Protected Overrides
@@ -78,12 +89,13 @@ namespace Game.Shared.Networking
                 return new AuthenticationResponse { success = false };
             }
 
-            bool isValid = await authService.ValidateCredentialsAsync(
+            bool authenticated = await authService.AuthenticateConnectionAsync(
+                connection,
                 payload.Username,
                 payload.Password,
                 CancellationToken.None);
 
-            if (!isValid)
+            if (!authenticated)
             {
                 Debug.Warning("Authentication failed for the supplied credentials.");
                 return new AuthenticationResponse { success = false };
@@ -91,10 +103,10 @@ namespace Game.Shared.Networking
             if (!ReferenceEquals(authService, _authService) || !connection.isValid)
             {
                 Debug.Warning("Authentication completed after service teardown or connection loss.");
+                await authService.AbandonPendingAuthenticationAsync(connection, CancellationToken.None);
                 return new AuthenticationResponse { success = false };
             }
 
-            authService.TrackPendingConnection(connection, payload.Username);
             return new AuthenticationResponse { success = true };
         }
 
@@ -103,7 +115,7 @@ namespace Game.Shared.Networking
         /// </summary>
         protected override void UnAuthenticateClient(Connection connection)
         {
-            if (_authService != null && _authService.TryRemovePendingConnection(connection, out var username)) { }
+            _authService?.TryRemovePendingAuthentication(connection, out _);
         }
         #endregion
     }

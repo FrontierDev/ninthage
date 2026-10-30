@@ -29,8 +29,6 @@ namespace Game.Server.Networking.Master
             InvalidCredentials = 17,
         }
 
-        internal const string ACCOUNT_RESOLVE_PATH = "/world/v1/accounts/resolve";
-        internal const string ACCOUNT_AUTHENTICATE_PATH = "/world/v1/accounts/authenticate";
         internal const string CHARACTER_ROSTER_PATH = "/world/v1/characters/roster";
         internal const string CHARACTER_CREATE_PATH = "/world/v1/characters/create";
         internal const string CHARACTER_DELETE_PATH = "/world/v1/characters/delete";
