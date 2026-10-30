@@ -1,10 +1,10 @@
 # Ninth Age — Stage 1.7 Implementation Plan
 
-**Status:** Approved architecture; implementation issues not yet written  
+**Status:** Implementation in progress; Step 11 scoped issues in preparation  
 **Project:** Ninth Age  
 **Stage:** 1.7 — Relational persistence, transactional state and timed-state continuity  
 **Repositories:** `FrontierDev/ninthage` (`dev`) and `FrontierDev/ninthage-master` (`main`)  
-**Last updated:** 2026-10-28
+**Last updated:** 2026-10-30
 
 ---
 
@@ -281,7 +281,7 @@ The initial relational world row contains:
 
 Runtime fields such as `WorldServerRunID`, heartbeat timestamps, PID, online/offline state and lease timing remain in the Master runtime registry, not in the durable world row.
 
-When PostgreSQL persistence is configured, PostgreSQL is the durable world source used to compose the runtime registry. The existing per-user development world JSON remains available only for explicitly database-free local development and is never treated as production durable authority.
+When PostgreSQL persistence is configured, PostgreSQL is the durable world source used to compose the runtime registry. File-backed development World JSON is retired during Step 13. After the cut-over, PostgreSQL is the only durable World directory in every supported environment, including Development; a database-free JSON fallback is not a supported persistence mode. Existing development-only files are not implicitly imported.
 
 ---
 
@@ -379,7 +379,6 @@ The initial relational model contains equivalents of:
 - `ItemInstances`;
 - `CharacterItemLocations`;
 - `PersistenceOperationReceipts`;
-- `LegacyImportRecords`.
 
 `CharacterItemLocations` is one authoritative item-location relation rather than allowing the same item to exist independently in inventory and equipment tables. It contains the owning `CharacterID`, location kind and slot/index data. The same `ItemInstanceID` cannot occupy two locations simultaneously.
 
@@ -418,7 +417,6 @@ The Stage 1.7 issue set may choose EF class/file names, but it must preserve the
 - `ItemInstances`: PK immutable `ItemInstanceID`; authored `ItemDefinitionID`; mutable stack/durability/modification state.
 - `CharacterItemLocations`: PK/FK `ItemInstanceID`; FK CharacterID; `LocationKind` initially only `Inventory` or `Equipment`; unique `CharacterID + LocationKind + SlotIndex`.
 - `PersistenceOperationReceipts`: PK `OperationID`; operation kind/result and optional result JSON sufficient to return the same committed result after a retry.
-- `LegacyImportRecords`: unique imported source-account identity/fingerprint mapping to the generated AccountID.
 
 Operation receipts are retained for **30 days** by the Stage 1.7 cleanup policy. They are idempotency records, not the future permanent economy/admin audit log.
 
@@ -700,7 +698,7 @@ No resource receives an offline benefit merely because the player logged out.
 
 ### 17.3 Cooldowns
 
-Only cooldowns that must survive actor lifetime are persisted.
+Only cooldowns explicitly authored to survive actor lifetime are persisted; ordinary GCD/runtime-only cooldowns remain local. The current ECS cooldown buffer represents one expiry per spell ID; multi-charge persistence applies only when runtime charge mechanics actually exist and must not be invented as part of Step 11.
 
 Persist:
 
@@ -721,7 +719,7 @@ Initial policies:
 
 Persistent aura rows store only state required to reproduce the effect, such as definition ID, source identity where meaningful, stacks, absolute UTC expiry and tick timing where required.
 
-World Server load reconstructs a valid runtime aura; it does not restore obsolete/invalid definitions silently.
+World Server load reconstructs a valid runtime aura at the owning aura manager boundary. Invalid or obsolete definitions, unsupported stack forms and missing required source identity must produce an explicit restoration failure, not silent removal or substitution. Do not invent persistent caster or per-stack identity state that cannot be faithfully recovered.
 
 ---
 
@@ -748,66 +746,20 @@ The World Server has one durable AccountID authority: the Master. Username is on
 
 ---
 
-## 19. Migration from `player_data.json`
+## 19. Retire file-backed JSON persistence (owner decision, 2026-10-30)
 
-Stage 1.7 includes an explicit one-time importer. It is not an implicit startup migration.
+**There is no legacy `player_data.json` importer in Stage 1.7.** Existing local JSON account/character data is not brought forward, and there is no automatic or manual JSON-to-PostgreSQL import path to maintain.
 
-### 19.1 Import inputs
+The Step 13 cut-over removes **all supported file-backed JSON persistence** from Ninth Age-owned gameplay and Master durable storage:
 
-The importer receives:
+- Unity `PlayerDatabase` legacy serialization/deserialization/migration code, associated account-file configuration (`GameConfiguration.PlayerDataFilePath` and `ClearPlayerDataOnStart`), and any remaining runtime file-backed account/character read/write path;
+- Master development World-file JSON store, its configuration/dependency-injection selection and database-free fallback; PostgreSQL becomes the sole World directory, including for Development;
+- the now-unused `LegacyImportRecords` EF model/configuration and relational table, through a **new forward EF migration**. Keep already-applied migration history immutable;
+- docs and operator guidance implying that legacy JSON import or development JSON persistence remains supported.
 
-- an explicit source `player_data.json` path;
-- an explicit target durable `WorldID` used as imported accounts' `HomeWorldID`;
-- an optional explicit legacy-name mapping file for records whose one-field name cannot be safely converted to First/Last name.
+This removes a persistence **storage format**, not JSON as a data interchange or typed payload format. Keep HTTP(S)/JSON World–Master contracts, Unity Newtonsoft.Json request/response handling, ASP.NET Core JSON, normal non-persistent JSON configuration files, and narrowly approved PostgreSQL JSONB columns. Do not delete runtime compatibility data models still required for character projection/spawning merely because they were historically serialized to JSON.
 
-### 19.2 Account identity
-
-Legacy accounts do not already have `AccountID`.
-
-For first import, generate a nonempty `Guid` and record the source identity in `LegacyImportRecords`. Re-importing the same source account returns/reuses the already imported AccountID rather than creating another account.
-
-### 19.3 Character identity
-
-If a legacy character GUID parses as a nonempty unique `Guid`, retain it as `CharacterID`.
-
-If it is invalid, empty or collides with another imported/existing CharacterID, the record is rejected unless an explicit migration mapping resolves it. Do not silently replace it with a new identity.
-
-### 19.4 Legacy names
-
-If the existing single `Name` can be unambiguously parsed into exactly two valid Stage 1.7 name fields, import it.
-
-Otherwise an explicit mapping must provide FirstName and LastName. Do not invent a surname automatically.
-
-### 19.5 Idempotency
-
-Compute a SHA-256 fingerprint for the source file and record import metadata. Import is transactional **per account**.
-
-A repeated import of the same source/account cannot duplicate:
-
-- account identity;
-- character identity;
-- item instances;
-- inventory/equipment ownership;
-- progression rows.
-
-Invalid/unmigratable records are reported explicitly and do not cause silent partial mutation of that account.
-
-### 19.6 Imported state
-
-Import currently meaningful state including:
-
-- account username mapping;
-- characters;
-- level/XP/title/race/class/faction;
-- known abilities;
-- inventory/equipment and valid item IDs;
-- weapon skills;
-- talents;
-- reputations;
-- quests;
-- currently saved resources.
-
-Data not present in the legacy format receives only approved creation/default semantics; it is not guessed from unrelated runtime state.
+There is **no data-preserving import requirement**. Owners provision accounts/Worlds through the Master/PostgreSQL workflow and create new characters through the approved transaction path. Do not silently create placeholder accounts/characters from local files or add alternate offline persistence. The Account/Character/Persistence and Master PDD passages still describing import/development JSON must be aligned to this explicit owner decision in the Step 13 documentation close-out.
 
 ---
 
@@ -884,7 +836,7 @@ Repository: `ninthage-master`.
 - add relational `World` entity/migration;
 - compose `WorldRegistry` from the relational durable directory when DB persistence is enabled;
 - keep runtime lease state in memory;
-- retain development JSON only as explicit database-free local mode.
+- use PostgreSQL as the only durable World directory; remove the temporary development JSON World store at Step 13, with no database-free fallback.
 
 ### Step 4 — Add account/character core schema
 
@@ -905,7 +857,7 @@ Repository: `ninthage-master`.
 - abilities/talents/weapon skills/reputation/quests;
 - item instances/location;
 - operation receipts;
-- import ledger.
+- no legacy import ledger in the target schema; retire the already-migrated ledger with a forward cleanup migration at Step 13.
 
 Do not add deferred future-domain tables.
 
@@ -969,10 +921,12 @@ Repository: `ninthage` plus contracts as needed.
 
 Repositories: both.
 
-- resource offline policy data;
-- persistent cooldown representation;
-- explicit aura persistence policy;
-- convert durable UTC expiry state to current runtime tick deadlines on load.
+- author explicit per-resource offline policies (`Unchanged`, `Regenerate`, `Decay`, `Reset`) and resolve offline elapsed UTC time only through supported resource rules; preserve existing Health semantics;
+- capture only cooldowns explicitly eligible to survive actor lifetime; persist stable authored definition IDs and the active absolute UTC expiry/recharge per supported charge slot, with no synthetic charge mechanics;
+- author aura policies (`RuntimeOnly`, `PersistAcrossActorLifetime`), persist only reproducible active auras with their source/stack/expiry/tick information, and never infer policy from duration;
+- extend the existing field-scoped, lease-bound Master checkpoint request and repository to replace complete addressed cooldown/aura snapshots atomically (`null` scope means unchanged, empty array means clear), preserving per-character savepoint/revision settlement;
+- convert Master UTC instants to current `ServerSimulationClock` integer tick deadlines on world entry using its non-shortening conversion contract; real elapsed offline time consumes timers, expired entries do not revive, and no client clock enters this calculation;
+- keep runtime tickers, spellcasts, ECS hot loops and ordinary combat locally authoritative; no direct database calls from gameplay ticks.
 
 ### Step 12 — Wire transactional gameplay mutations
 
@@ -982,19 +936,17 @@ Repositories: both.
 - live state commits only after transaction acceptance where rollback would otherwise duplicate/destroy value;
 - no speculative future gameplay systems.
 
-### Step 13 — Implement legacy JSON importer and cut-over
+### Step 13 — Remove file-backed JSON persistence entirely
 
-Repositories: primarily `ninthage-master`; read legacy DTO definitions from `ninthage`.
+Repositories: both.
 
-- explicit importer/manifest;
-- stable identity preservation;
-- name mapping;
-- target HomeWorldID;
-- per-account transactions;
-- idempotent import ledger;
-- detailed failure report.
+- delete the unused Unity `PlayerDatabase` importer/serializer and all `player_data.json` persistence configuration and references (including `GameConfiguration.PlayerDataFilePath` and `ClearPlayerDataOnStart`), retaining only active runtime compatibility models;
+- remove Master development World JSON-file storage, its feature switches/startup fallback and file I/O; require configured PostgreSQL and the existing explicit schema readiness process for every supported runtime mode;
+- remove unused `LegacyImportRecords` entity/configuration/DbContext registration, and generate one forward EF migration dropping its table without rewriting applied migrations;
+- remove legacy importer guidance and align the account/persistence and Master PDDs and implementation documentation with this approved no-import/no-JSON-storage decision;
+- use Master administration/SQL-backed creation and normal character creation for clean data rather than importing local JSON files.
 
-After successful owner-approved migration/cut-over, `player_data.json` is no longer production character/roster authority.
+Do not remove JSON from HTTP API contracts, configuration files that are not a persistence store, or PostgreSQL JSONB. Do not introduce a replacement file store or silently fall back on database unavailability.
 
 ### Step 14 — Stage close-out
 
@@ -1013,7 +965,7 @@ Confirm through narrow functional smoke validation that:
 - a high-value supported mutation is committed through the Master transaction path;
 - clean logout/shutdown checkpoints current state;
 - restart/re-entry restores the committed state;
-- legacy JSON is no longer the production character authority.
+- no file-backed JSON persistence path remains for characters, accounts or Worlds in Development or production; PostgreSQL is the sole durable store.
 
 Record deferred Stage 1.10 regression candidates; do not implement them here.
 
@@ -1029,7 +981,7 @@ Stage 1.7 issues may require:
 - migration script generation;
 - applying migrations to a disposable local PostgreSQL 18 database;
 - manual empty-database bootstrap;
-- manual legacy-import rehearsal against disposable data;
+- source/configuration audit confirming removal of file-backed JSON persistence and the unused legacy-import ledger;
 - owner-operated login/create/enter/save/restart/re-enter smoke checks.
 
 Do **not** create a new automated regression suite or performance benchmark campaign during Stage 1.7.
@@ -1067,6 +1019,6 @@ Stage 1.7 is complete when:
 7. 30-second + boundary checkpoints preserve low-risk live state;
 8. high-value current-domain ownership changes use idempotent atomic transactions;
 9. Health/resources/location and required persistent timed state restore without logout reset exploits;
-10. legacy JSON can be imported explicitly/idempotently and is no longer production character authority after cut-over;
+10. no legacy JSON importer, file-backed character/account persistence, or development World JSON fallback remains; PostgreSQL is the sole durable World/account/character store;
 11. account provisioning and credential authority are Master-owned; the World Server only authenticates/resolves accounts, while final sessions remain Stage 1.8;
 12. no Stage 1.7 implementation requires regression benchmarking/testing work to proceed to Stage 1.8.
