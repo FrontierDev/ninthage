@@ -1236,11 +1236,6 @@ namespace Game.Server.Core
             int stacks,
             int expectedInstanceID = NO_EXPECTED_AURA_INSTANCE_ID)
         {
-            if (!TryValidateAuraApplication(definition, stacks, out string failureReason))
-            {
-                Debug.Warning(failureReason);
-                return false;
-            }
             if (!TryFindActorEntity(target.ID, out Entity entity))
             {
                 Debug.Warning($"Could not find ECS entity for actor {target.Name} (ID: {target.ID})");
@@ -1267,6 +1262,17 @@ namespace Game.Server.Core
                 true);
 
             var ctx = _activeAuras[instanceID];
+            if (!TryGetAuraElement(
+                    target.ID,
+                    definition.DefinitionID,
+                    instanceID,
+                    out _,
+                    out _,
+                    out Systems.AuraElement appliedElement))
+            {
+                throw new InvalidOperationException(
+                    $"Aura instance {instanceID} was created without an ECS element.");
+            }
 
             // Execute OnApply phase components.
             ctx.Phase = AuraPhase.OnApply;
@@ -1286,7 +1292,7 @@ namespace Game.Server.Core
             target.Observers_ApplyAura(
                 definition.DefinitionID,
                 instanceID,
-                GetRemainingAuraDuration(entity, instanceID),
+                GetRemainingAuraDuration(appliedElement.ExpiryTickID),
                 ctx.Stacks);
 
             return true;
@@ -1400,6 +1406,7 @@ namespace Game.Server.Core
                             }
 
                             UpdateIndependentAuraState(existing, ref entry);
+                            buffer[i] = entry;
                             instanceID = entry.InstanceID;
                             return true;
                         }
@@ -1500,8 +1507,10 @@ namespace Game.Server.Core
             string auraDefID,
             int instanceID,
             out Entity entity,
+            out int elementIndex,
             out Systems.AuraElement element)
         {
+            elementIndex = -1;
             element = default;
             if (!TryFindActorEntity(targetActorID, out entity)
                 || !_entityManager.Exists(entity))
@@ -1517,6 +1526,7 @@ namespace Game.Server.Core
                 if (candidate.InstanceID == instanceID
                     && candidate.AuraDefinitionID.ToString() == auraDefID)
                 {
+                    elementIndex = index;
                     element = candidate;
                     return true;
                 }
@@ -1525,21 +1535,13 @@ namespace Game.Server.Core
             return false;
         }
 
-        private float GetRemainingAuraDuration(Entity entity, int instanceID)
+        private static float GetRemainingAuraDuration(long expiryTickID)
         {
-            DynamicBuffer<Systems.AuraElement> buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
-            long remainingTicks = 0L;
             long currentTickID = ServerECSManager.CurrentSimulationTickID;
-            for (int index = 0; index < buffer.Length; index++)
-            {
-                Systems.AuraElement entry = buffer[index];
-                if (entry.InstanceID == instanceID)
-                {
-                    remainingTicks = entry.ExpiryTickID - currentTickID;
-                    break;
-                }
-            }
+            if (currentTickID <= 0)
+                currentTickID = ServerSimulationClock.CurrentTickID;
 
+            long remainingTicks = expiryTickID - currentTickID;
             if (remainingTicks <= 0)
                 return 0f;
             return (float)(remainingTicks * (double)GetConfiguredSimulationTickDuration());
@@ -1565,12 +1567,18 @@ namespace Game.Server.Core
             }
 
             NetworkingPerformanceMetrics.RecordCombatCriticalObserverPublication(target.GetComponent<NetworkIdentity>());
-            if (TryGetAuraElement(targetActorID, auraDefID, instanceID, out Entity entity, out _))
+            if (TryGetAuraElement(
+                    targetActorID,
+                    auraDefID,
+                    instanceID,
+                    out _,
+                    out _,
+                    out Systems.AuraElement element))
             {
                 target.Observers_TickAura(
                     instanceID,
                     ctx.Stacks,
-                    GetRemainingAuraDuration(entity, instanceID));
+                    GetRemainingAuraDuration(element.ExpiryTickID));
             }
         }
 
@@ -1587,6 +1595,17 @@ namespace Game.Server.Core
                 return;
             }
 
+            if (!TryGetAuraElement(
+                    targetActorID,
+                    auraDefID,
+                    instanceID,
+                    out Entity entity,
+                    out int elementIndex,
+                    out Systems.AuraElement element))
+            {
+                return;
+            }
+
             long currentTickID = ServerECSManager.CurrentSimulationTickID;
             for (int index = ctx.StackExpiryTickIDs.Count - 1; index >= 0; index--)
             {
@@ -1596,20 +1615,9 @@ namespace Game.Server.Core
             if (ctx.StackExpiryTickIDs.Count == 0)
                 return;
 
-            if (!TryGetAuraElement(targetActorID, auraDefID, instanceID, out Entity entity, out _))
-                return;
-
+            UpdateIndependentAuraState(ctx, ref element);
             DynamicBuffer<Systems.AuraElement> buffer = _entityManager.GetBuffer<Systems.AuraElement>(entity);
-            for (int index = 0; index < buffer.Length; index++)
-            {
-                Systems.AuraElement entry = buffer[index];
-                if (entry.InstanceID != instanceID)
-                    continue;
-
-                UpdateIndependentAuraState(ctx, ref entry);
-                buffer[index] = entry;
-                break;
-            }
+            buffer[elementIndex] = element;
 
             if (!TryGetCurrentActor(targetActorID, null, out var target))
                 return;
@@ -1618,7 +1626,7 @@ namespace Game.Server.Core
             target.Observers_ApplyAura(
                 auraDefID,
                 instanceID,
-                GetRemainingAuraDuration(entity, instanceID),
+                GetRemainingAuraDuration(element.ExpiryTickID),
                 ctx.Stacks);
         }
 
