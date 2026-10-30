@@ -5,6 +5,7 @@ using Game.Server.Systems;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Runtime.Actors;
+using Game.Shared.Runtime.Items;
 using Game.Shared.Utility;
 using System;
 using System.Collections.Generic;
@@ -126,6 +127,14 @@ namespace Game.Server.Persistence
                 return false;
             }
 
+            if (!TryCaptureItems(
+                actor,
+                out WorldPersistenceCheckpoint.Item[] items,
+                out failureReason))
+            {
+                return false;
+            }
+
             Guid? instanceID = context.InstanceID == Guid.Empty
                 ? null
                 : context.InstanceID;
@@ -148,7 +157,187 @@ namespace Game.Server.Persistence
                 resources,
                 actor.isDead,
                 cooldowns,
-                persistentAuras);
+                persistentAuras,
+                items);
+            return true;
+        }
+
+        private static bool TryCaptureItems(
+            PlayerActor actor,
+            out WorldPersistenceCheckpoint.Item[] items,
+            out string failureReason)
+        {
+            items = null;
+            failureReason = null;
+
+            if (!ServerECSManager.IsOnServerMainThread)
+                return Fail("item capture must run on the Unity server main thread", out failureReason);
+
+            PlayerInventory inventory = actor.GetComponent<PlayerInventory>();
+            PlayerEquipment equipment = actor.GetComponent<PlayerEquipment>();
+            if (inventory == null || equipment == null)
+            {
+                return Fail(
+                    "the player actor is missing its inventory or equipment component",
+                    out failureReason);
+            }
+
+            List<WorldPersistenceCheckpoint.Item> capturedItems = new();
+            HashSet<Guid> itemInstanceIDs = new();
+            HashSet<(MasterPersistenceProtocol.CharacterItemLocationKind LocationKind, int SlotIndex)> locationKeys = new();
+
+            bool TryAddItem(
+                ItemInstance item,
+                MasterPersistenceProtocol.CharacterItemLocationKind locationKind,
+                int slotIndex,
+                string locationDescription,
+                out string itemFailureReason)
+            {
+                itemFailureReason = null;
+                if (item == null)
+                    return Fail($"the player actor has a null item in {locationDescription}", out itemFailureReason);
+                if (slotIndex < 0)
+                {
+                    return Fail(
+                        $"the player actor has an invalid {locationDescription} slot",
+                        out itemFailureReason);
+                }
+                if (!Guid.TryParse(item.GUID, out Guid itemInstanceID) || itemInstanceID == Guid.Empty)
+                {
+                    return Fail(
+                        $"the player actor item in {locationDescription} has an invalid instance ID",
+                        out itemFailureReason);
+                }
+
+                ItemDefinitionLibrary definitionLibrary = ItemDefinitionLibrary.Instance;
+                if (definitionLibrary == null)
+                {
+                    return Fail(
+                        "the item definition library is unavailable for item capture",
+                        out itemFailureReason);
+                }
+
+                ItemDefinition definition = item.BaseItem;
+                if (definition == null || string.IsNullOrWhiteSpace(definition.DefinitionID))
+                {
+                    return Fail(
+                        $"the player actor item {itemInstanceID} has no authored definition",
+                        out itemFailureReason);
+                }
+                if (item.CurrentStackSize <= 0)
+                {
+                    return Fail(
+                        $"the player actor item {itemInstanceID} has a nonpositive stack size",
+                        out itemFailureReason);
+                }
+                if (item.Durability < 0)
+                {
+                    return Fail(
+                        $"the player actor item {itemInstanceID} has negative durability",
+                        out itemFailureReason);
+                }
+                List<string> modifications = item.Modifications;
+                if (modifications == null)
+                {
+                    return Fail(
+                        $"the player actor item {itemInstanceID} has no modification list",
+                        out itemFailureReason);
+                }
+
+                string[] modificationIDs = new string[modifications.Count];
+                for (int index = 0; index < modifications.Count; index++)
+                {
+                    string modificationID = modifications[index];
+                    if (string.IsNullOrWhiteSpace(modificationID))
+                    {
+                        return Fail(
+                            $"the player actor item {itemInstanceID} has a blank modification ID",
+                            out itemFailureReason);
+                    }
+
+                    modificationIDs[index] = modificationID;
+                }
+
+                if (!itemInstanceIDs.Add(itemInstanceID))
+                {
+                    return Fail(
+                        $"the player actor contains duplicate item instance ID {itemInstanceID}",
+                        out itemFailureReason);
+                }
+                if (!locationKeys.Add((locationKind, slotIndex)))
+                {
+                    return Fail(
+                        $"the player actor contains duplicate {locationDescription} slot {slotIndex}",
+                        out itemFailureReason);
+                }
+
+                capturedItems.Add(
+                    new WorldPersistenceCheckpoint.Item(
+                        itemInstanceID,
+                        definition.DefinitionID,
+                        item.CurrentStackSize,
+                        item.Durability,
+                        modificationIDs,
+                        locationKind,
+                        slotIndex));
+                return true;
+            }
+
+            foreach (KeyValuePair<int, ItemInstance> entry in inventory.Inventory)
+            {
+                if (entry.Key >= inventory.MaxSlots)
+                {
+                    return Fail(
+                        $"the player actor has an inventory slot outside its capacity: {entry.Key}",
+                        out failureReason);
+                }
+                if (!TryAddItem(
+                    entry.Value,
+                    MasterPersistenceProtocol.CharacterItemLocationKind.Inventory,
+                    entry.Key,
+                    $"inventory slot {entry.Key}",
+                    out failureReason))
+                {
+                    return false;
+                }
+            }
+
+            foreach (KeyValuePair<ItemSlot, ItemInstance> entry in equipment.Equipment)
+            {
+                if (entry.Value == null)
+                    continue;
+                if (!Enum.IsDefined(typeof(ItemSlot), entry.Key) || entry.Key == ItemSlot.None)
+                {
+                    return Fail(
+                        $"the player actor has an invalid equipment slot {(int)entry.Key}",
+                        out failureReason);
+                }
+                if (!TryAddItem(
+                    entry.Value,
+                    MasterPersistenceProtocol.CharacterItemLocationKind.Equipment,
+                    (int)entry.Key,
+                    $"equipment slot {entry.Key}",
+                    out failureReason))
+                {
+                    return false;
+                }
+            }
+
+            capturedItems.Sort(
+                (first, second) =>
+                {
+                    int locationComparison = first.LocationKind.CompareTo(second.LocationKind);
+                    if (locationComparison != 0)
+                        return locationComparison;
+
+                    int slotComparison = first.SlotIndex.CompareTo(second.SlotIndex);
+                    return slotComparison != 0
+                        ? slotComparison
+                        : first.ItemInstanceID.CompareTo(second.ItemInstanceID);
+                });
+            items = capturedItems.Count == 0
+                ? Array.Empty<WorldPersistenceCheckpoint.Item>()
+                : capturedItems.ToArray();
             return true;
         }
 

@@ -379,7 +379,8 @@ namespace Game.Server.Persistence
                     Resources = MapResources(work.Checkpoint.Resources),
                     IsDead = work.Checkpoint.IsDead,
                     Cooldowns = MapCooldowns(work.Checkpoint.Cooldowns),
-                    PersistentAuras = MapPersistentAuras(work.Checkpoint.PersistentAuras)
+                    PersistentAuras = MapPersistentAuras(work.Checkpoint.PersistentAuras),
+                    Items = MapItems(work.Checkpoint.Items)
                 };
             }
 
@@ -446,10 +447,12 @@ namespace Game.Server.Persistence
             WorldPersistenceCheckpoint.Resource[] resources = checkpoint.Resources;
             WorldPersistenceCheckpoint.Cooldown[] cooldowns = checkpoint.Cooldowns;
             WorldPersistenceCheckpoint.PersistentAura[] persistentAuras = checkpoint.PersistentAuras;
+            WorldPersistenceCheckpoint.Item[] items = checkpoint.Items;
             if (checkpoint.WorldState == null
                 && resources.Length == 0
                 && cooldowns == null
                 && persistentAuras == null
+                && items == null
                 && !checkpoint.IsDead.HasValue)
                 return false;
 
@@ -528,6 +531,36 @@ namespace Game.Server.Persistence
                             != persistentAura.TickIntervalSeconds.HasValue)
                     {
                         return false;
+                    }
+                }
+            }
+
+            if (items != null)
+            {
+                HashSet<Guid> itemInstanceIDs = new();
+                HashSet<(MasterPersistenceProtocol.CharacterItemLocationKind LocationKind, int SlotIndex)> itemLocationKeys = new();
+                foreach (WorldPersistenceCheckpoint.Item item in items)
+                {
+                    if (item == null
+                        || item.ItemInstanceID == Guid.Empty
+                        || string.IsNullOrWhiteSpace(item.ItemDefinitionID)
+                        || item.StackSize <= 0
+                        || (item.Durability.HasValue && item.Durability.Value < 0)
+                        || !Enum.IsDefined(typeof(MasterPersistenceProtocol.CharacterItemLocationKind), item.LocationKind)
+                        || item.SlotIndex < 0
+                        || !itemInstanceIDs.Add(item.ItemInstanceID)
+                        || !itemLocationKeys.Add((item.LocationKind, item.SlotIndex)))
+                    {
+                        return false;
+                    }
+
+                    string[] modificationIDs = item.ModificationIDs;
+                    if (modificationIDs == null)
+                        return false;
+                    foreach (string modificationID in modificationIDs)
+                    {
+                        if (string.IsNullOrWhiteSpace(modificationID))
+                            return false;
                     }
                 }
             }
@@ -628,6 +661,32 @@ namespace Game.Server.Persistence
                     ExpiresAtUtc = persistentAura.ExpiresAtUtc,
                     NextTickAtUtc = persistentAura.NextTickAtUtc,
                     TickIntervalSeconds = persistentAura.TickIntervalSeconds
+                };
+            }
+
+            return mapped;
+        }
+
+        private static MasterPersistenceProtocol.CharacterCheckpointBatchRequest.ItemCheckpoint[] MapItems(
+            WorldPersistenceCheckpoint.Item[] items)
+        {
+            if (items == null)
+                return null;
+
+            MasterPersistenceProtocol.CharacterCheckpointBatchRequest.ItemCheckpoint[] mapped =
+                new MasterPersistenceProtocol.CharacterCheckpointBatchRequest.ItemCheckpoint[items.Length];
+            for (int index = 0; index < items.Length; index++)
+            {
+                WorldPersistenceCheckpoint.Item item = items[index];
+                mapped[index] = new MasterPersistenceProtocol.CharacterCheckpointBatchRequest.ItemCheckpoint
+                {
+                    ItemInstanceID = item.ItemInstanceID,
+                    ItemDefinitionID = item.ItemDefinitionID,
+                    StackSize = item.StackSize,
+                    Durability = item.Durability,
+                    ModificationIDs = item.ModificationIDs,
+                    LocationKind = item.LocationKind,
+                    SlotIndex = item.SlotIndex
                 };
             }
 

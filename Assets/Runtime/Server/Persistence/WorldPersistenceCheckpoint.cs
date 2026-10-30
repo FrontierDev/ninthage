@@ -1,4 +1,5 @@
 using System;
+using Game.Server.Networking.Master;
 
 namespace Game.Server.Persistence
 {
@@ -8,6 +9,7 @@ namespace Game.Server.Persistence
         private readonly Resource[] _resources;
         private readonly Cooldown[] _cooldowns;
         private readonly PersistentAura[] _persistentAuras;
+        private readonly Item[] _items;
 
         /// <summary>Creates a checkpoint snapshot without capturing runtime actor state.</summary>
         internal WorldPersistenceCheckpoint(
@@ -15,7 +17,8 @@ namespace Game.Server.Persistence
             Resource[] resources,
             bool? isDead,
             Cooldown[] cooldowns = null,
-            PersistentAura[] persistentAuras = null)
+            PersistentAura[] persistentAuras = null,
+            Item[] items = null)
         {
             if (resources == null)
                 throw new ArgumentNullException(nameof(resources));
@@ -24,6 +27,7 @@ namespace Game.Server.Persistence
             _resources = (Resource[])resources.Clone();
             _cooldowns = cooldowns == null ? null : (Cooldown[])cooldowns.Clone();
             _persistentAuras = persistentAuras == null ? null : (PersistentAura[])persistentAuras.Clone();
+            _items = items == null ? null : (Item[])items.Clone();
             IsDead = isDead;
         }
 
@@ -32,6 +36,7 @@ namespace Game.Server.Persistence
         internal Cooldown[] Cooldowns => _cooldowns == null ? null : (Cooldown[])_cooldowns.Clone();
         internal PersistentAura[] PersistentAuras =>
             _persistentAuras == null ? null : (PersistentAura[])_persistentAuras.Clone();
+        internal Item[] Items => _items == null ? null : (Item[])_items.Clone();
         internal bool? IsDead { get; }
 
         /// <summary>Optional persisted world location for a checkpoint.</summary>
@@ -140,6 +145,41 @@ namespace Game.Server.Persistence
             internal DateTimeOffset? ExpiresAtUtc { get; }
             internal DateTimeOffset? NextTickAtUtc { get; }
             internal float? TickIntervalSeconds { get; }
+        }
+
+        /// <summary>Persisted state for one character-owned item and its location.</summary>
+        internal sealed class Item
+        {
+            private readonly string[] _modificationIDs;
+
+            internal Item(
+                Guid itemInstanceID,
+                string itemDefinitionID,
+                int stackSize,
+                int? durability,
+                string[] modificationIDs,
+                MasterPersistenceProtocol.CharacterItemLocationKind locationKind,
+                int slotIndex)
+            {
+                ItemInstanceID = itemInstanceID;
+                ItemDefinitionID = itemDefinitionID;
+                StackSize = stackSize;
+                Durability = durability;
+                _modificationIDs = modificationIDs == null
+                    ? null
+                    : (string[])modificationIDs.Clone();
+                LocationKind = locationKind;
+                SlotIndex = slotIndex;
+            }
+
+            internal Guid ItemInstanceID { get; }
+            internal string ItemDefinitionID { get; }
+            internal int StackSize { get; }
+            internal int? Durability { get; }
+            internal string[] ModificationIDs =>
+                _modificationIDs == null ? null : (string[])_modificationIDs.Clone();
+            internal MasterPersistenceProtocol.CharacterItemLocationKind LocationKind { get; }
+            internal int SlotIndex { get; }
         }
     }
 }

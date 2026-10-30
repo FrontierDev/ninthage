@@ -46,6 +46,34 @@ namespace Game.Server.Networking.Master
 
                 [JsonProperty("persistentAuras")]
                 public PersistentAuraCheckpoint[] PersistentAuras { get; set; }
+
+                [JsonProperty("items")]
+                public ItemCheckpoint[] Items { get; set; }
+            }
+
+            /// <summary>Field-scoped persisted item instance and its character location.</summary>
+            internal sealed class ItemCheckpoint
+            {
+                [JsonProperty("itemInstanceID")]
+                public Guid ItemInstanceID { get; set; }
+
+                [JsonProperty("itemDefinitionID")]
+                public string ItemDefinitionID { get; set; }
+
+                [JsonProperty("stackSize")]
+                public int StackSize { get; set; }
+
+                [JsonProperty("durability")]
+                public int? Durability { get; set; }
+
+                [JsonProperty("modificationIDs")]
+                public string[] ModificationIDs { get; set; }
+
+                [JsonProperty("locationKind")]
+                public CharacterItemLocationKind LocationKind { get; set; }
+
+                [JsonProperty("slotIndex")]
+                public int SlotIndex { get; set; }
             }
 
             /// <summary>Field-scoped persisted world location for a checkpoint.</summary>

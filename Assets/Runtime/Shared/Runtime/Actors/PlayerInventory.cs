@@ -1,3 +1,4 @@
+using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Persistence;
 using Game.Shared.Runtime.Items;
@@ -91,15 +92,21 @@ namespace Game.Shared.Runtime.Actors
         /// </summary>
         public bool AddItem(ItemInstance item, out int remainder, int amount = 1)
         {
-            if (!Game.Shared.Runtime.Runtime.IsServer() || amount <= 0)
+            if (!Game.Shared.Runtime.Runtime.IsServer() || item == null || amount <= 0)
             {
                 remainder = amount;
                 return false;
             }
 
-            var definition = item.BaseItem;
-            bool canStack = definition != null && definition.CanStack;
-            int maxStack = definition != null ? definition.MaxStackSize : 1;
+            ItemDefinition definition = item.BaseItem;
+            if (definition == null)
+            {
+                remainder = amount;
+                return false;
+            }
+
+            bool canStack = definition.CanStack;
+            int maxStack = definition.MaxStackSize;
             int remaining = amount;
             var changes = new List<InventorySlotChange>();
 
@@ -110,7 +117,7 @@ namespace Game.Shared.Runtime.Actors
                 {
                     if (remaining <= 0) break;
                     var existing = kvp.Value;
-                    if (existing.BaseItem != definition) continue;
+                    if (!AreStackCompatible(item, existing)) continue;
 
                     int space = maxStack - existing.CurrentStackSize;
                     if (space <= 0) continue;
@@ -229,12 +236,11 @@ namespace Game.Shared.Runtime.Actors
             if (_inventory.TryGetValue(toSlot, out var toItem))
             {
                 // If same stackable item, merge into target
-                var fromDef = fromItem.BaseItem;
-                var toDef = toItem.BaseItem;
-                if (fromDef != null && fromDef == toDef && fromDef.CanStack &&
-                    toItem.CurrentStackSize < fromDef.MaxStackSize)
+                ItemDefinition fromDefinition = fromItem.BaseItem;
+                if (AreStackCompatible(fromItem, toItem)
+                    && toItem.CurrentStackSize < fromDefinition.MaxStackSize)
                 {
-                    int space = fromDef.MaxStackSize - toItem.CurrentStackSize;
+                    int space = fromDefinition.MaxStackSize - toItem.CurrentStackSize;
                     int toMove = fromItem.CurrentStackSize < space ? fromItem.CurrentStackSize : space;
                     toItem.CurrentStackSize += toMove;
                     changes.Add(new InventorySlotChange(toSlot, InventorySlotChangeType.Set, toItem));
@@ -319,9 +325,8 @@ namespace Game.Shared.Runtime.Actors
             if (!_inventory.TryGetValue(fromSlot, out var fromItem)) return false;
             if (!_inventory.TryGetValue(toSlot, out var toItem)) return false;
 
-            var definition = fromItem.BaseItem;
-            if (definition == null || !definition.CanStack) return false;
-            if (toItem.BaseItem != definition) return false;
+            ItemDefinition definition = fromItem.BaseItem;
+            if (!AreStackCompatible(fromItem, toItem)) return false;
             if (toItem.CurrentStackSize >= definition.MaxStackSize) return false;
 
             int space = definition.MaxStackSize - toItem.CurrentStackSize;
@@ -346,11 +351,87 @@ namespace Game.Shared.Runtime.Actors
             return true;
         }
 
-        private void SendDelta(List<InventorySlotChange> changes)
+        /// <summary>Replaces or removes one server inventory slot without publishing an intermediate delta.</summary>
+        internal bool TrySetItemAtSlot(
+            int slotIndex,
+            ItemInstance item,
+            bool requireOccupied,
+            out InventorySlotChange change)
+        {
+            change = default;
+            if (!Game.Shared.Runtime.Runtime.IsServer()
+                || slotIndex < 0
+                || slotIndex >= _maxSlots)
+            {
+                return false;
+            }
+
+            bool occupied = _inventory.TryGetValue(slotIndex, out ItemInstance existingItem)
+                && existingItem != null;
+            if (occupied != requireOccupied || (!requireOccupied && item == null))
+                return false;
+
+            if (item == null)
+            {
+                _inventory.Remove(slotIndex);
+                change = new InventorySlotChange(slotIndex, InventorySlotChangeType.Removed);
+            }
+            else
+            {
+                _inventory[slotIndex] = item;
+                change = new InventorySlotChange(slotIndex, InventorySlotChangeType.Set, item);
+            }
+
+            return true;
+        }
+
+        internal void SendDelta(List<InventorySlotChange> changes)
         {
             if (!owner.HasValue) return;
             NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
             Client_UpdateInventory(owner.Value, new InventoryDelta(changes));
+        }
+
+        private static bool AreStackCompatible(ItemInstance first, ItemInstance second)
+        {
+            if (first == null || second == null)
+                return false;
+
+            ItemDefinition firstDefinition = first.BaseItem;
+            ItemDefinition secondDefinition = second.BaseItem;
+            if (firstDefinition == null
+                || secondDefinition == null
+                || !firstDefinition.CanStack
+                || !secondDefinition.CanStack
+                || !string.Equals(
+                    firstDefinition.DefinitionID,
+                    secondDefinition.DefinitionID,
+                    System.StringComparison.Ordinal)
+                || first.Durability != second.Durability)
+            {
+                return false;
+            }
+
+            List<string> firstModifications = first.Modifications;
+            List<string> secondModifications = second.Modifications;
+            if (firstModifications == null || secondModifications == null
+                || firstModifications.Count != secondModifications.Count)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < firstModifications.Count; index++)
+            {
+                if (!string.Equals(
+                    firstModifications[index],
+                    secondModifications[index],
+                    System.StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         [ServerRpc]

@@ -27,6 +27,7 @@ namespace Game.Server.Core
         private const double NETWORK_PRESSURE_RECOVERY_MESSAGES_PER_SECOND = 192d;
         private const int NETWORK_PRESSURE_RECOVERY_INTERVALS = 5;
         private const float CHECKPOINT_INTERVAL_SECONDS = 30f;
+        private const int FINAL_CHECKPOINT_FLUSH_ATTEMPTS = 4;
 
         private struct ConnectionTelemetryWindow
         {
@@ -776,10 +777,13 @@ namespace Game.Server.Core
         {
             WorldPersistenceCoordinator coordinator;
             bool finalCheckpointQueuedSuccessfully = !requiresFinalCheckpoint;
+            int finalCheckpointFlushAttempts = 0;
             while (requiresFinalCheckpoint && !finalCheckpointQueuedSuccessfully)
             {
                 if (IsDisconnectReleaseStopping())
                     yield break;
+
+                finalCheckpointFlushAttempts++;
 
                 coordinator = null;
                 bool coordinatorAcquired = false;
@@ -797,6 +801,14 @@ namespace Game.Server.Core
 
                 if (!coordinatorAcquired)
                 {
+                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
+                    {
+                        Debug.Error(
+                            $"Final checkpoint for character {characterID} remains unsettled because persistence "
+                            + "is unavailable; the newest pending checkpoint is retained and the lease will not be released.");
+                        yield break;
+                    }
+
                     yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
                     continue;
                 }
@@ -805,6 +817,14 @@ namespace Game.Server.Core
                 {
                     Debug.Warning(
                         $"Final checkpoint release for character {characterID} is waiting for persistence.");
+                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
+                    {
+                        Debug.Error(
+                            $"Final checkpoint for character {characterID} remains unsettled because persistence "
+                            + "is unavailable; the newest pending checkpoint is retained and the lease will not be released.");
+                        yield break;
+                    }
+
                     yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
                     continue;
                 }
@@ -826,6 +846,14 @@ namespace Game.Server.Core
 
                 if (!flushStarted)
                 {
+                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
+                    {
+                        Debug.Error(
+                            $"Final checkpoint for character {characterID} remains unsettled because its flush could not start; "
+                            + "the newest pending checkpoint is retained and the lease will not be released.");
+                        yield break;
+                    }
+
                     yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
                     continue;
                 }
@@ -848,6 +876,15 @@ namespace Game.Server.Core
 
                 if (!flushSucceeded)
                 {
+                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
+                    {
+                        Debug.Error(
+                            $"Final checkpoint for character {characterID} remains unsettled after "
+                            + $"{finalCheckpointFlushAttempts} flush attempts; the newest pending checkpoint is retained "
+                            + "and the lease will not be released.");
+                        yield break;
+                    }
+
                     yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
                     continue;
                 }
@@ -873,6 +910,15 @@ namespace Game.Server.Core
 
                 if (hasPendingCheckpoint)
                 {
+                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
+                    {
+                        Debug.Error(
+                            $"Final checkpoint for character {characterID} remains unsettled after "
+                            + $"{finalCheckpointFlushAttempts} flush attempts; the newest pending checkpoint is retained "
+                            + "and the lease will not be released.");
+                        yield break;
+                    }
+
                     yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
                     continue;
                 }

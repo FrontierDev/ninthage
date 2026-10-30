@@ -4,6 +4,7 @@ using Game.Shared.Networking;
 using Game.Shared.Persistence;
 using Game.Shared.Runtime.Items;
 using PurrNet;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -107,39 +108,50 @@ namespace Game.Shared.Runtime.Actors
         /// <summary>Equips an item and updates the inventory.</summary>
         public void EquipItem(ItemSlot slot, ItemInstance itemInstance, int? inventorySlot = null)
         {
-            // Check if the player can equip the item (TO DO)
-
-            // Is there an item in that slot already?
-            bool hasExistingItem = _equipment[slot] != null;
-            if (hasExistingItem)
+            if (!Game.Shared.Runtime.Runtime.IsServer()
+                || _playerInventory == null
+                || !inventorySlot.HasValue
+                || !Enum.IsDefined(typeof(ItemSlot), slot)
+                || slot == ItemSlot.None
+                || !_equipment.TryGetValue(slot, out ItemInstance existingItem))
             {
-                // The player must have an inventory slot, so we can just add the 
-                // existing item back to the inventory. Remove the new item from the inventory,
-                // and update the equipment slot with the new item.
-                var existingItem = _equipment[slot];
-                _equipment[slot] = itemInstance;
-                _playerInventory.RemoveItemAtSlot(inventorySlot.Value, 1);
-                _playerInventory.AddItem(existingItem, out var remainder, 1);
-
-            }
-            else
-            {
-                // No existing item, so just equip the new item and remove it from the inventory.
-                _equipment[slot] = itemInstance;
-                _playerInventory.RemoveItemAtSlot(inventorySlot.Value, 1);
+                return;
             }
 
+            ItemInstance inventoryItem = _playerInventory.GetItemAtSlot(inventorySlot.Value);
+            ItemDefinition definition = inventoryItem?.BaseItem;
+            if (inventoryItem == null
+                || inventoryItem != itemInstance
+                || inventoryItem.CurrentStackSize != 1
+                || definition == null
+                || definition.ValidSlots == null
+                || !ContainsSlot(definition.ValidSlots, slot)
+                || (existingItem != null
+                    && string.Equals(existingItem.GUID, inventoryItem.GUID, StringComparison.Ordinal)))
+            {
+                return;
+            }
+
+            ItemInstance inventoryReplacement = existingItem;
+            if (!_playerInventory.TrySetItemAtSlot(
+                inventorySlot.Value,
+                inventoryReplacement,
+                true,
+                out InventorySlotChange inventoryChange))
+            {
+                return;
+            }
+
+            _equipment[slot] = inventoryItem;
             var delta = new EquipmentDelta(new List<EquipmentSlotChange>
             {
                 new EquipmentSlotChange(slot, EquipmentSlotChangeType.Set, itemInstance)
             });
 
-            if (Game.Shared.Runtime.Runtime.IsServer())
-            {
-                CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
-                NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
-                Client_UpdateEquipment(owner.Value, delta);
-            }
+            _playerInventory.SendDelta(new List<InventorySlotChange> { inventoryChange });
+            CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
+            NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
+            Client_UpdateEquipment(owner.Value, delta);
 
             GetComponent<ActorSpellcaster>().RecalculateOverrides();
         }
@@ -147,36 +159,49 @@ namespace Game.Shared.Runtime.Actors
         /// <summary>Unequips an item into the inventory.</summary>
         public void UnequipItem(ItemSlot slot)
         {
-            if (_equipment.ContainsKey(slot))
+            if (!Game.Shared.Runtime.Runtime.IsServer()
+                || _playerInventory == null
+                || !Enum.IsDefined(typeof(ItemSlot), slot)
+                || slot == ItemSlot.None
+                || !_equipment.TryGetValue(slot, out ItemInstance existingItem)
+                || existingItem == null)
             {
-                if (_playerInventory.GetRemainingSlots() > 0)
-                {
-                    var existingItem = _equipment[slot];
-                    _equipment[slot] = null;
-                    _playerInventory.AddItem(existingItem, out var remainder, 1);
+                return;
+            }
 
-                    var delta = new EquipmentDelta(new List<EquipmentSlotChange>
-                    {
-                        new EquipmentSlotChange(slot, EquipmentSlotChangeType.Removed)
-                    });
-
-                    if (Game.Shared.Runtime.Runtime.IsServer())
-                    {
-                        NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
-                        Client_UpdateEquipment(owner.Value, delta);
-                        GetComponent<ActorSpellcaster>().RecalculateOverrides();
-                        CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
-                    }
-                }
-                else
+            int freeInventorySlot = -1;
+            for (int slotIndex = 0; slotIndex < _playerInventory.MaxSlots; slotIndex++)
+            {
+                if (_playerInventory.GetItemAtSlot(slotIndex) == null)
                 {
-                    Debug.LogWarning("Cannot unequip item - inventory is full.");
+                    freeInventorySlot = slotIndex;
+                    break;
                 }
             }
-            else
+
+            if (freeInventorySlot < 0)
+                return;
+
+            if (!_playerInventory.TrySetItemAtSlot(
+                freeInventorySlot,
+                existingItem,
+                false,
+                out InventorySlotChange inventoryChange))
             {
-                Debug.LogWarning($"No item equipped in slot {slot} to unequip.");
+                return;
             }
+
+            _equipment[slot] = null;
+            var delta = new EquipmentDelta(new List<EquipmentSlotChange>
+            {
+                new EquipmentSlotChange(slot, EquipmentSlotChangeType.Removed)
+            });
+
+            _playerInventory.SendDelta(new List<InventorySlotChange> { inventoryChange });
+            NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
+            Client_UpdateEquipment(owner.Value, delta);
+            GetComponent<ActorSpellcaster>().RecalculateOverrides();
+            CharacterEndpoint.onUpdateStatsRequest?.Invoke(_statContainer);
         }
 
         [ServerRpc]
@@ -203,6 +228,17 @@ namespace Game.Shared.Runtime.Actors
                 return;
 
             UnequipItem(slot);
+        }
+
+        private static bool ContainsSlot(IReadOnlyList<ItemSlot> validSlots, ItemSlot slot)
+        {
+            for (int index = 0; index < validSlots.Count; index++)
+            {
+                if (validSlots[index] == slot)
+                    return true;
+            }
+
+            return false;
         }
 
         [TargetRpc]

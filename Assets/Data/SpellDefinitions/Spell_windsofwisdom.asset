@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c65b3c87d0c702438dd0f0e6a6b6d5a, type: 3}
+  m_Name: Spell_windsofwisdom
+  m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.SpellDefinition
+  _definitionID: windsofwisdom
+  _displayName: Winds of Wisdom
+  _spellName: 
+  _description: Increases Intelligence by 6.
+  _icon: {fileID: 21300000, guid: b920a3532a8996e4db6bc37860114e90, type: 3}
+  _tags: []
+  _internalTags:
+  - costs_mana
+  _baseCastTime: 0.5
+  _baseCooldown: 1
+  _baseCharges: 0
+  _useCooldownCharges: 0
+  _cooldownPersistencePolicy: 0
+  _cooldownScalesWithHaste: 0
+  _triggersGCD: 1
+  _baseRange: 30
+  _isChanneled: 0
+  _canMoveWhileCasting: 1
+  _baseTotalTicks: 0
+  _baseResourceCosts:
+  - ResourceType: {fileID: 11400000, guid: d56b3b172700e1549ba687e29d38fb8f, type: 2}
+    CastPhase: 0
+    RefundOnInterrupt: 0
+    Amount: 0
+  _baseComponents:
+  - GUID: 52eacc28-039b-44a9-93bd-6ba8d778ebaf
+    CastPhase: 0
+    EffectDefinition:
+      rid: 1855339700284293201
+    TargetDefinition:
+      rid: 1855339700284293200
+  _racialVariants: []
+  _sfxCastingLoop: 
+  _associatedClasses: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 1855339700284293200
+      type: {class: SpellTarget_Single, ns: Game.Shared.Data.SpellTargetDefinitions, asm: Game.Shared}
+      data: 
+    - rid: 1855339700284293201
+      type: {class: SpellEffect_ApplyAura, ns: Game.Shared.Data.SpellEffectDefinitions, asm: Game.Shared}
+      data:
+        Aura: {fileID: 11400000, guid: dfd9b7648cd9b7b4cb35b423f471e176, type: 2}
+        Stacks: 1
+        Duration: 12
+        _casterEvents: 
+        _targetEvents: 
