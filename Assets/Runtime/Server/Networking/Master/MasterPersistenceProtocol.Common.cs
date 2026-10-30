@@ -29,10 +29,6 @@ namespace Game.Server.Networking.Master
             InvalidCredentials = 17,
         }
 
-        internal const string CHARACTER_ROSTER_PATH = "/world/v1/characters/roster";
-        internal const string CHARACTER_CREATE_PATH = "/world/v1/characters/create";
-        internal const string CHARACTER_DELETE_PATH = "/world/v1/characters/delete";
-        internal const string CHARACTER_RESTORE_PATH = "/world/v1/characters/restore";
         internal const string CHARACTER_RELEASE_PATH = "/world/v1/characters/release";
         internal const string CHARACTER_CHECKPOINTS_PATH = "/world/v1/characters/checkpoints";
 
