@@ -833,21 +833,20 @@ Do not duplicate full authored ScriptableObject item definitions into persistent
 
 The following kinds of operations require atomic persistence semantics:
 
-- item transfer;
+- item transfer between characters/owners;
 - currency transfer;
 - direct trade;
 - market purchase/sale;
 - mail attachment transfer;
 - work-order escrow/output;
-- inventory/equipment mutation where ownership would otherwise duplicate;
 - respec fee plus talent reset;
 - trainer fee plus learned ability/rank;
 - important reward claims;
 - similar high-value state mutation.
 
-A successful transaction must commit all required ownership changes together.
+A successful **explicitly approved** transaction must commit all required cross-owner/value changes together. Failure must leave the prior valid state intact.
 
-Failure must leave the prior valid state intact.
+**Stage 1.7 policy (2026-10-30):** Ordinary World Server item grants/removals, stack splits/merges, inventory slot moves, equipment changes and direct NPC loot awards do **not** use a Master operation per action. The World Server immediately applies validated gameplay changes and checkpoints the complete inventory/equipment snapshot every 30 seconds while dirty, plus save boundaries. The Master atomically reconciles durable item-instance and character-item-location rows in the existing character checkpoint transaction, enforcing identity/ownership/slot constraints but not item gameplay rules. This accepts rollback of unacknowledged item changes after an unexpected World Server crash. Future player-to-player trade, escrow, auction, important one-time reward claims and other irreversible cross-owner transactions require a separate approved design and remain outside Stage 1.7.
 
 ---
 
@@ -861,9 +860,10 @@ Lower-risk continuous state may be checkpointed appropriately, such as:
 - facing;
 - current Health/resources;
 - action-bar/UI-owned persistent configuration;
+- the current complete inventory/equipment item-instance and location snapshot while its scope is dirty;
 - other high-frequency state.
 
-The Stage 1.7 baseline checkpoint interval is **30 seconds**, plus the important save boundaries below. This is a crash-recovery policy rather than a performance target and may later become centrally configurable. Checkpointing must not replace transactions for high-value ownership changes.
+The Stage 1.7 baseline checkpoint interval is **30 seconds**, plus the important save boundaries below. This is a crash-recovery policy rather than a performance target and may later become centrally configurable. Inventory/equipment is one optional **complete** checkpoint scope: omitted/null leaves the durable items unchanged, empty clears the scope, and nonempty replaces both inventory and equipment together in one atomic relational update. Preserve the original ItemInstanceID and all instance metadata. An unexpected World Server crash may roll back item changes since the last acknowledged checkpoint; this recovery window is expressly accepted for current gameplay. Checkpoints do not replace future separately designed irreversible multi-owner transactions.
 
 ---
 
@@ -1370,7 +1370,7 @@ Add durable world/map/position/facing/reconnect metadata.
 
 ### 57.16 Stop mutating giant account snapshots
 
-Subsystems should persist their authoritative mutations through persistence services/transactions rather than modifying a shared in-memory account blob and rewriting all accounts.
+Subsystems should persist their authoritative character state through the Master persistence service, using field-scoped checkpoints for current live state (including inventory/equipment) and explicit transactions only for approved atomic operations. Do not modify a shared in-memory account blob and rewrite all accounts.
 
 ### 57.17 Relationalize item ownership
 
@@ -1509,7 +1509,7 @@ The following are locked:
 46. PostgreSQL stores committed durable recovery/ownership state rather than the live simulation state.
 47. Stage 1.7 World Server persistence uses HTTP(S)/JSON contracts and authenticated Master endpoints.
 48. One active character persistence lease binds CharacterID writes to the current registered WorldID + WorldServerRunID.
-49. Lower-risk character state checkpoints every 30 seconds by default and at important save boundaries; high-value ownership/progression changes commit transactionally at the operation boundary.
+49. Character state checkpoints every 30 seconds by default and at important save boundaries, including an optional complete inventory/equipment snapshot. Only separately approved immediately irreversible operations require operation-boundary transactions; Stage 1.7 ordinary item/equipment mutations are World-authoritative and checkpointed. Transfer requires final item checkpoint acknowledgement before ownership changes.
 50. Retryable high-value persistence mutations use immutable OperationIDs and idempotent Master-side receipts.
 51. Mutable durable account/character aggregates use explicit signed 64-bit revisions rather than exposing PostgreSQL-internal concurrency tokens.
 52. Character names use application-owned Unicode NFKC/FormKC normalization plus invariant uppercase comparison values for the global first+last uniqueness constraint.
