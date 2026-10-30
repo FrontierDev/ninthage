@@ -1,6 +1,6 @@
 # Ninth Age — Stage 1.7 Implementation Plan
 
-**Status:** Implementation in progress; Step 11 scoped issues in preparation  
+**Status:** Implementation in progress; Step 12 inventory/equipment checkpoint policy approved  
 **Project:** Ninth Age  
 **Stage:** 1.7 — Relational persistence, transactional state and timed-state continuity  
 **Repositories:** `FrontierDev/ninthage` (`dev`) and `FrontierDev/ninthage-master` (`main`)  
@@ -222,7 +222,7 @@ POST /world/v1/characters/release
 POST /world/v1/characters/checkpoints
 ```
 
-Current-domain high-value mutations use explicit domain routes beneath `/world/v1/characters/*` rather than a generic arbitrary character-patch endpoint. Item ownership routes distinguish grant/remove/move/equip/unequip operations; progression routes are introduced only for currently implemented progression mutations that require immediate durable commit.
+The Stage 1.7 item/inventory/equipment path is the existing authenticated `/world/v1/characters/checkpoints` route, using an addressed complete item-location snapshot. Routine item grants, removals, stack changes, moves, equips and unequips are World Server gameplay operations, **not** Master item mutation endpoints. Explicit transaction routes beneath `/world/v1/characters/*` remain reserved for separately approved genuinely irreversible operations in later stages; no generic arbitrary character-patch endpoint is introduced.
 
 Every persistence response carries a deterministic result code. The common result vocabulary is:
 
@@ -480,24 +480,22 @@ Checkpoints cover lower-risk frequently changing state such as:
 - world/map/location/facing;
 - current Health;
 - current resources;
-- other approved high-frequency persistent fields.
+- other approved high-frequency persistent fields;
+- the complete current inventory/equipment item-instance and location snapshot when that scope is dirty or a boundary save requires it.
 
-The World Server keeps the live copy. A checkpoint records the latest recoverable durable copy.
+The World Server keeps the live copy and applies gameplay changes immediately, without waiting for a Master response. A checkpoint records the latest recoverable durable copy. The item scope is **field-scoped**: `Items = null` leaves the durable item state untouched, `Items = []` removes all item instances/locations owned by the character, and a non-null array replaces the character's complete inventory **and** equipment snapshot atomically. Every supplied item has its existing stable `ItemInstanceID`, authored definition ID, stack size, durability, modification IDs, location kind (`Inventory` or `Equipment`) and slot index. The Master validates shape, per-character slot uniqueness, GUID uniqueness and ownership, but never applies loot, stack, item-slot or equip gameplay rules.
 
-Checkpoint writes are partial/field-scoped and must not overwrite unrelated transactional state with stale snapshots.
+Checkpoint writes must not overwrite unrelated transactional state with stale snapshots. An outdated/failed checkpoint leaves its **newest** dirty item scope queued for a later retry; a successful acknowledged snapshot clears only the generation it actually saved.
 
 ### 11.3 Transactional commands
 
-Ownership/progression changes use explicit commands, including as they become wired during Stage 1.7:
+Explicit operations are retained where an immediately committed transaction is **separately required**, including:
 
 - character creation;
 - character soft delete/restore;
-- item grant/remove/move/equip/unequip;
-- inventory/equipment mutations;
-- learned ability/rank changes;
-- talent changes where a persistence mutation is required;
-- weapon-skill/progression updates where persistence is committed immediately;
-- significant quest/reputation progression changes where the existing runtime owns them.
+- any already-approved leased progression mutation with a specific current gameplay use case.
+
+**Not transactional in Stage 1.7:** ordinary item grant/remove, inventory stack split/merge, slot move, equipment equip/unequip, and NPC loot distribution. All of these update the World Server's live state and enter the complete addressed item checkpoint scope. New special-case irreversible exchanges (trade, escrow, auction, etc.) require their own future design and explicit transaction contract; do not invent them here. Learned ability/talent, weapon-skill, quest and reputation progression must be evaluated against currently implemented call sites rather than automatically generating speculative endpoints.
 
 Each retryable mutation carries an immutable `OperationID`.
 
@@ -569,7 +567,7 @@ MaxPendingPersistenceTransactions = 4096
 
 This is an engineering safety bound, not a performance target.
 
-If that queue is full, a new high-value mutation is rejected **before** it is committed to authoritative gameplay state. The system does not drop an already-applied ownership transaction to make room.
+If that queue is full, a new **explicit transaction** is rejected before its durable operation is committed. Ordinary World-owned inventory/equipment changes are not placed on this transaction queue: they remain live and dirty for the existing bounded checkpoint mechanism. Do not discard the newest dirty snapshot to make room.
 
 ### 13.2 Retry policy
 
@@ -599,9 +597,9 @@ Fail closed. Do not spawn a character from guessed/default data.
 
 The already-running character may continue ordinary simulation temporarily.
 
-Low-risk checkpoint state remains dirty for later retry.
+Checkpoint state, **including inventory and equipment**, remains dirty for later retry while the existing character continues playing. The user-approved 30-second checkpoint model permits rollback of up to the last unacknowledged item snapshot after an unexpected World Server crash; do not claim crash-proof per-item ownership for this stage.
 
-Operations that would create or move durable value are unavailable until their transaction can be accepted. Examples include item ownership changes and other high-value persistence mutations.
+A separately approved immediate transaction (for example, character creation) still fails closed if unavailable. A world transfer/handoff must not release the old character lease or admit the destination character until its final item checkpoint is **acknowledged** by Master. A clean logout/disconnect/server shutdown attempts the final flush and records any unsettled failure; it must never report an unacknowledged snapshot as durably saved. Do not hold shutdown indefinitely or silently fall back to file storage.
 
 ### 14.3 Ambiguous transactional response
 
@@ -638,7 +636,7 @@ Additionally checkpoint appropriate live state on:
 - major progression boundaries;
 - clean World Server shutdown.
 
-High-value ownership/progression transactions are committed at the operation boundary and do not wait for the 30-second checkpoint.
+Inventory/equipment changes are applied immediately by the World Server and checkpointed every 30 seconds while dirty, plus the relevant logout/disconnect/transfer/shutdown boundaries above. A final transfer checkpoint must settle before ownership moves; unexpected crashes may lose/roll back changes since the last accepted snapshot. Future special-case immediate durable transactions are deferred; approved unrelated lifecycle transactions still commit at their own boundaries.
 
 ---
 
@@ -928,13 +926,15 @@ Repositories: both.
 - convert Master UTC instants to current `ServerSimulationClock` integer tick deadlines on world entry using its non-shortening conversion contract; real elapsed offline time consumes timers, expired entries do not revive, and no client clock enters this calculation;
 - keep runtime tickers, spellcasts, ECS hot loops and ordinary combat locally authoritative; no direct database calls from gameplay ticks.
 
-### Step 12 — Wire transactional gameplay mutations
+### Step 12 — Checkpoint live inventory/equipment and retain narrow transaction boundaries
 
 Repositories: both.
 
-- item ownership/location changes and other current high-value mutable domains route through explicit Master transactions;
-- live state commits only after transaction acceptance where rollback would otherwise duplicate/destroy value;
-- no speculative future gameplay systems.
+- Keep item grant/remove, stack split/merge, inventory slot move, equip/unequip and existing NPC loot award **entirely World Server-authoritative**. Apply valid gameplay changes immediately; mark the character's item scope dirty, with no per-item HTTP call and no Master gameplay command handlers.
+- Extend the existing field-scoped lease/revision-bound character checkpoint with one optional **complete** Items array for both inventory and equipment (`null` = unchanged, `[]` = clear, non-null = replace). Preserve immutable item-instance GUIDs, definition IDs, counts, durability, modifications, exact location kind/slot; Master atomically reconciles ItemInstances and CharacterItemLocations for the character inside the existing checkpoint transaction/savepoint. Validate ownership and unique slots, and preserve unrelated checkpoint scopes.
+- Capture the item snapshot on the Unity main thread from the current authoritative PlayerInventory and PlayerEquipment (including empty inventory), coalesce newest dirty generations, serialize with the existing character operation lane, and checkpoint at the normal 30-second cadence and established boundary triggers. Never take a mutable collection snapshot in a worker continuation.
+- Require acknowledged final item checkpoint before world/server handoff or lease release for transfer. On clean logout, safe disconnect and shutdown, attempt bounded final flush and report/retain failure without falsely declaring durable success. Normal play can continue temporarily during Master outage; retain dirty item state. Accept the approved **up-to-30-second unexpected-crash recovery window**.
+- Reuse the existing Master auth, lease, Revision, response mapping and PostgreSQL ownership/slot constraints. No per-item grant/move/equip REST routes, no generic character patch, no speculative trade/escrow or other future immediate transaction systems. Keep already-authorized character lifecycle transactions intact.
 
 ### Step 13 — Remove file-backed JSON persistence entirely
 
@@ -961,9 +961,9 @@ Confirm through narrow functional smoke validation that:
 - character creation persists atomically;
 - entering the world reconstructs persisted state;
 - ordinary play remains World Server-local;
-- checkpoint updates durable location/Health/resources;
-- a high-value supported mutation is committed through the Master transaction path;
-- clean logout/shutdown checkpoints current state;
+- checkpoint updates durable location/Health/resources and complete addressed inventory/equipment;
+- ordinary item grant, split/merge, slot move, equip/unequip and NPC loot do not call Master per action; a timed checkpoint/reentry restores the latest acknowledged snapshot;
+- clean logout/shutdown attempts the final current-state checkpoint, while a world transfer waits for checkpoint acknowledgement before lease handoff;
 - restart/re-entry restores the committed state;
 - no file-backed JSON persistence path remains for characters, accounts or Worlds in Development or production; PostgreSQL is the sole durable store.
 
@@ -1016,8 +1016,8 @@ Stage 1.7 is complete when:
 4. AccountID/CharacterID/world/name/roster constraints are enforced centrally;
 5. one active World Server persistence lease is the only accepted writer for a character;
 6. ordinary gameplay remains local to the World Server rather than using the Master/database as a hot path;
-7. 30-second + boundary checkpoints preserve low-risk live state;
-8. high-value current-domain ownership changes use idempotent atomic transactions;
+7. 30-second + boundary checkpoints preserve World-owned live state, including complete item instances and inventory/equipment locations; an unexpected crash may roll back unacknowledged inventory/equipment changes;
+8. only separately approved immediate operations (such as character creation) use idempotent transactions; routine item/equipment gameplay is not a Master transaction;
 9. Health/resources/location and required persistent timed state restore without logout reset exploits;
 10. no legacy JSON importer, file-backed character/account persistence, or development World JSON fallback remains; PostgreSQL is the sole durable World/account/character store;
 11. account provisioning and credential authority are Master-owned; the World Server only authenticates/resolves accounts, while final sessions remain Stage 1.8;
