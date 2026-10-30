@@ -154,11 +154,13 @@ namespace Game.Server.Services
         {
             if (connection == null)
                 throw new ArgumentNullException(nameof(connection));
-            if (!TryRemovePendingAuthentication(connection, out AuthenticatedSessionContext sessionContext))
-                return;
 
+            AuthenticatedSessionContext sessionContext = null;
             try
             {
+                if (!TryRemovePendingAuthentication(connection, out sessionContext))
+                    return;
+
                 MasterSessionProtocol.SessionResponse response =
                     await _sessionCoordinator.DisconnectAsync(
                         sessionContext.GameplaySessionID,

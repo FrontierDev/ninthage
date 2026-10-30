@@ -2,6 +2,7 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using PurrNet;
 using PurrNet.Authentication;
 using PurrNet.Transports;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -115,7 +116,53 @@ namespace Game.Shared.Networking
         /// </summary>
         protected override void UnAuthenticateClient(Connection connection)
         {
-            _authService?.TryRemovePendingAuthentication(connection, out _);
+            IPlayerAuthService authService = _authService;
+            if (authService == null)
+                return;
+
+            Task cleanupTask = authService.AbandonPendingAuthenticationAsync(
+                connection,
+                CancellationToken.None);
+
+            ObservePendingAuthenticationCleanup(cleanupTask, connection);
+        }
+
+        private static void ObservePendingAuthenticationCleanup(
+            Task cleanupTask,
+            Connection connection)
+        {
+            if (cleanupTask == null)
+            {
+                Debug.Error(
+                    $"Pending authentication cleanup returned no task for connection {connection}.");
+                return;
+            }
+
+            var awaiter = cleanupTask.GetAwaiter();
+            if (awaiter.IsCompleted)
+            {
+                CompletePendingAuthenticationCleanup(cleanupTask, connection);
+                return;
+            }
+
+            awaiter.OnCompleted(
+                () => CompletePendingAuthenticationCleanup(cleanupTask, connection));
+        }
+
+        private static void CompletePendingAuthenticationCleanup(
+            Task cleanupTask,
+            Connection connection)
+        {
+            try
+            {
+                cleanupTask.GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"Pending authentication cleanup failed for connection {connection}: "
+                    + exception.Message);
+            }
         }
         #endregion
     }
