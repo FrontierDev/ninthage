@@ -318,6 +318,7 @@ namespace Game.Server.Services
             {
                 PlayerSessionData session = new(
                     playerID,
+                    accountContext.GameplaySessionID,
                     accountContext.Username,
                     accountContext.AccountID,
                     characterID,

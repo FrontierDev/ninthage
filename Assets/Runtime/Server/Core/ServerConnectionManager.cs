@@ -70,7 +70,8 @@ namespace Game.Server.Core
         private Coroutine _periodicCheckpointCoroutine;
 
         private Dictionary<PlayerID, ConnectedAccountContext> _connectedAccounts = new();
-        private Dictionary<PlayerID, PlayerSessionData> _sessionData = new();
+        private readonly Dictionary<Guid, PlayerSessionData> _admittedSessionsByGameplaySessionID = new();
+        private readonly Dictionary<PlayerID, Guid> _gameplaySessionIDsByPlayerID = new();
         // Current outbound interval only; _transport.connections remains the live connection authority.
         private Dictionary<Connection, ConnectionTelemetryWindow> _outboundTelemetryWindows = new();
         private Dictionary<Connection, ConnectionPressureTracker> _connectionPressureTrackers = new();
@@ -144,7 +145,8 @@ namespace Game.Server.Core
             ClearConnectionPressureState();
             _networkManager = null;
             _connectedAccounts.Clear();
-            _sessionData.Clear();
+            _admittedSessionsByGameplaySessionID.Clear();
+            _gameplaySessionIDsByPlayerID.Clear();
             _initialized = false;
         }
 
@@ -226,7 +228,7 @@ namespace Game.Server.Core
                 intervalSeconds: intervalSeconds);
             PerformanceTelemetry.TryRecord(
                 NetworkingPerformanceMetrics.SERVER_IN_WORLD_CLIENT_COUNT,
-                _sessionData.Count,
+                _admittedSessionsByGameplaySessionID.Count,
                 intervalSeconds: intervalSeconds);
 
             if (PerformanceTelemetry.IsEnabled)
@@ -512,7 +514,7 @@ namespace Game.Server.Core
             Guid characterID = Guid.Empty;
             bool requiresFinalCheckpoint = false;
             bool finalCheckpointQueuedSuccessfully = true;
-            if (_sessionData.TryGetValue(playerID, out PlayerSessionData session))
+            if (TryGetSessionData(playerID, out PlayerSessionData session))
             {
                 characterID = session.CharacterID;
                 Actor playerActor = session.PlayerActor;
@@ -1130,30 +1132,34 @@ namespace Game.Server.Core
             }
 
             bool finalShutdownCapture = ServerShutdownController.IsShutdownRequested;
-            List<KeyValuePair<PlayerID, PlayerSessionData>> sessionSnapshot =
-                new(_sessionData);
+            List<PlayerSessionData> sessionSnapshot =
+                new(_admittedSessionsByGameplaySessionID.Values);
             sessionSnapshot.Sort(
                 (first, second) =>
                 {
-                    Guid firstCharacterID = first.Value?.CharacterID ?? Guid.Empty;
-                    Guid secondCharacterID = second.Value?.CharacterID ?? Guid.Empty;
+                    Guid firstCharacterID = first?.CharacterID ?? Guid.Empty;
+                    Guid secondCharacterID = second?.CharacterID ?? Guid.Empty;
                     return firstCharacterID.CompareTo(secondCharacterID);
                 });
 
             int rejectedCount = 0;
             string firstRejection = null;
-            foreach (KeyValuePair<PlayerID, PlayerSessionData> entry in sessionSnapshot)
+            foreach (PlayerSessionData session in sessionSnapshot)
             {
-                PlayerSessionData session = entry.Value;
+                Guid gameplaySessionID = Guid.Empty;
+                bool hasCurrentPlayerAttachment = session != null
+                    && _gameplaySessionIDsByPlayerID.TryGetValue(
+                        session.PlayerID,
+                        out gameplaySessionID);
                 if (!_initialized
                     || ServerInitialization.IsFatalShutdownRequested
                     || session == null
                     || session.PlayerActor == null
                     || session.AccountID == Guid.Empty
                     || session.CharacterID == Guid.Empty
-                    || !_sessionData.TryGetValue(entry.Key, out PlayerSessionData liveSession)
-                    || liveSession != session
-                    || !IsPlayerConnected(entry.Key))
+                    || !hasCurrentPlayerAttachment
+                    || gameplaySessionID != session.GameplaySessionID
+                    || !IsPlayerConnected(session.PlayerID))
                 {
                     continue;
                 }
@@ -1303,8 +1309,24 @@ namespace Game.Server.Core
         /// <param name="data">The session data to store.</param>
         public void SetSessionData(PlayerID playerID, PlayerSessionData data)
         {
-            _sessionData[playerID] = data;
-            Debug.Log($"Set session data for player {playerID}: Character GUID {data.CharacterID}");
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.GameplaySessionID == Guid.Empty)
+                throw new ArgumentException("A nonempty gameplay session ID is required.", nameof(data));
+            if (data.PlayerID != playerID)
+                throw new ArgumentException("The session data player does not match the supplied Player ID.", nameof(data));
+            if (_gameplaySessionIDsByPlayerID.ContainsKey(playerID))
+                throw new InvalidOperationException("The Player ID already has an admitted gameplay session.");
+            if (_admittedSessionsByGameplaySessionID.ContainsKey(data.GameplaySessionID))
+            {
+                throw new InvalidOperationException(
+                    "The gameplay session ID already has an admitted session.");
+            }
+
+            _admittedSessionsByGameplaySessionID.Add(data.GameplaySessionID, data);
+            _gameplaySessionIDsByPlayerID.Add(playerID, data.GameplaySessionID);
+            Debug.Log(
+                $"Set session data for GameplaySessionID {data.GameplaySessionID}: Character GUID {data.CharacterID}");
         }
 
         /// <summary>Gets the Master-owned account context for a connected player.</summary>
@@ -1324,7 +1346,32 @@ namespace Game.Server.Core
         /// <summary>Clears the local world-entry session for a player.</summary>
         internal void ClearSessionData(PlayerID playerID)
         {
-            _sessionData.Remove(playerID);
+            if (!_gameplaySessionIDsByPlayerID.TryGetValue(playerID, out Guid gameplaySessionID))
+                return;
+
+            _gameplaySessionIDsByPlayerID.Remove(playerID);
+            if (!_admittedSessionsByGameplaySessionID.Remove(gameplaySessionID))
+            {
+                throw new InvalidOperationException(
+                    "The Player ID attachment had no corresponding admitted gameplay session.");
+            }
+        }
+
+        private bool TryGetSessionData(PlayerID playerID, out PlayerSessionData session)
+        {
+            if (!_gameplaySessionIDsByPlayerID.TryGetValue(playerID, out Guid gameplaySessionID))
+            {
+                session = null;
+                return false;
+            }
+
+            if (!_admittedSessionsByGameplaySessionID.TryGetValue(gameplaySessionID, out session))
+            {
+                throw new InvalidOperationException(
+                    "The Player ID attachment had no corresponding admitted gameplay session.");
+            }
+
+            return true;
         }
 
         /// <summary>Gets session data for a connected player.</summary>
@@ -1332,15 +1379,11 @@ namespace Game.Server.Core
         /// <returns>The player's session data, or <see langword="null"/> when absent.</returns>
         public PlayerSessionData GetSessionData(PlayerID playerID)
         {
-            if (_sessionData.TryGetValue(playerID, out var data))
-            {
-                return data;
-            }
-            else
-            {
-                Debug.Error($"Attempted to get session data for player {playerID}, but no session data found.");
-                return null;
-            }
+            if (TryGetSessionData(playerID, out PlayerSessionData session))
+                return session;
+
+            Debug.Error($"Attempted to get session data for player {playerID}, but no session data found.");
+            return null;
         }
 
     }

@@ -17,6 +17,8 @@ namespace Game.Server.Networking
     {
         /// <summary>Gets or sets the connected player's network identifier.</summary>
         public PlayerID PlayerID;
+        /// <summary>Gets the Master-owned gameplay-session identity for this admitted character.</summary>
+        public Guid GameplaySessionID;
         /// <summary>Gets or sets the authenticated username.</summary>
         public string Username;
         /// <summary>Gets or sets the authenticated account identifier.</summary>
@@ -40,6 +42,7 @@ namespace Game.Server.Networking
 
         /// <summary>Initializes a player session with the authenticated player and character details.</summary>
         /// <param name="playerID">The connected player's network identifier.</param>
+        /// <param name="gameplaySessionID">The Master-owned gameplay-session identity.</param>
         /// <param name="username">The authenticated username.</param>
         /// <param name="accountID">The Master-owned account identifier.</param>
         /// <param name="characterID">The selected character identifier.</param>
@@ -51,6 +54,7 @@ namespace Game.Server.Networking
         /// <param name="entryLocation">The validated accepted world-entry location.</param>
         internal PlayerSessionData(
             PlayerID playerID,
+            Guid gameplaySessionID,
             string username,
             Guid accountID,
             Guid characterID,
@@ -58,6 +62,10 @@ namespace Game.Server.Networking
             MasterPersistenceProtocol.CharacterPersistenceState persistenceState,
             CharacterWorldEntryLocation entryLocation)
         {
+            if (gameplaySessionID == Guid.Empty)
+                throw new ArgumentException(
+                    "A nonempty gameplay session ID is required.",
+                    nameof(gameplaySessionID));
             if (string.IsNullOrWhiteSpace(username))
                 throw new ArgumentException("A username is required.", nameof(username));
             if (accountID == Guid.Empty)
@@ -123,6 +131,7 @@ namespace Game.Server.Networking
             }
 
             PlayerID = playerID;
+            GameplaySessionID = gameplaySessionID;
             Username = username;
             AccountID = accountID;
             CharacterID = characterID;
