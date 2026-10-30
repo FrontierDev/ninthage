@@ -180,6 +180,7 @@ namespace Game.Server.Networking.Master
                 MasterSessionProtocol.GameplaySessionResult.InvalidRequest => HttpStatusCode.BadRequest,
                 MasterSessionProtocol.GameplaySessionResult.Unauthorized => HttpStatusCode.Unauthorized,
                 MasterSessionProtocol.GameplaySessionResult.InvalidCredentials => HttpStatusCode.Forbidden,
+                MasterSessionProtocol.GameplaySessionResult.AuthenticationThrottled => HttpStatusCode.TooManyRequests,
                 MasterSessionProtocol.GameplaySessionResult.WorldNotFound => HttpStatusCode.NotFound,
                 MasterSessionProtocol.GameplaySessionResult.WorldNotActive => HttpStatusCode.ServiceUnavailable,
                 MasterSessionProtocol.GameplaySessionResult.PersistenceUnavailable => HttpStatusCode.ServiceUnavailable,

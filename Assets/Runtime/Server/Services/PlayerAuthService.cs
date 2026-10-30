@@ -65,6 +65,13 @@ namespace Game.Server.Services
                     return false;
                 }
 
+                if (response.Result == MasterSessionProtocol.GameplaySessionResult.AuthenticationThrottled)
+                {
+                    Debug.Warning(
+                        $"Master throttled gameplay-session authentication for username '{username}'.");
+                    return false;
+                }
+
                 if (response.Result == MasterSessionProtocol.GameplaySessionResult.SessionAlreadyActive)
                 {
                     Debug.Warning($"Master rejected gameplay-session authentication for username '{username}' because the session is already active.");

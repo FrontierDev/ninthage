@@ -22,7 +22,8 @@ namespace Game.Server.Networking.Master
             HomeWorldMismatch = 7,
             SessionAlreadyActive = 8,
             StaleSession = 9,
-            PersistenceUnavailable = 10
+            PersistenceUnavailable = 10,
+            AuthenticationThrottled = 11
         }
 
         /// <summary>Describes how the Master established an accepted gameplay session.</summary>
