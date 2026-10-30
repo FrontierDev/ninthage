@@ -12,15 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bde6d8fb32d27654a8adf2e69621e8e7, type: 3}
   m_Name: Race_eldani
   m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.RaceDefinition
-  definitionId: eldani
-  displayName: Eldani
-  description: The Eldani are typically defined by their affinity for magic rather
+  _definitionID: eldani
+  _displayName: Eldani
+  _description: The Eldani are typically defined by their affinity for magic rather
     than their appearance, as many other cultures have bled into their society in
     recent centuries.
-  icon: {fileID: 21300000, guid: 4d368356153c68540b69ab6294815a53, type: 3}
-  isPlayable: 1
-  defaultPVPFaction: {fileID: 11400000, guid: 685f2c400d9dddd4dad8784eb4d17cb7, type: 2}
-  startingReputations:
+  _icon: {fileID: 21300000, guid: 4d368356153c68540b69ab6294815a53, type: 3}
+  _isPlayable: 1
+  _defaultPVPFaction: {fileID: 11400000, guid: 685f2c400d9dddd4dad8784eb4d17cb7, type: 2}
+  _startingLocationID: wloc_test
+  _startingReputations:
   - Faction: {fileID: 11400000, guid: 685f2c400d9dddd4dad8784eb4d17cb7, type: 2}
     Reputation: 100
   - Faction: {fileID: 11400000, guid: f5f3b547b27e4aa42899c03d8da44a1a, type: 2}
@@ -35,7 +36,7 @@ MonoBehaviour:
     Reputation: 0
   - Faction: {fileID: 11400000, guid: 8932a890af64f8447b4fcea1a5600a8d, type: 2}
     Reputation: 0
-  baseStats:
+  _baseStats:
   - definition: {fileID: 11400000, guid: b5b8745a1f11543488b8eaf186ecb884, type: 2}
     baseValue: 10
   - definition: {fileID: 11400000, guid: 07b784ea1318c6e43b7aa4b4e4366ffe, type: 2}

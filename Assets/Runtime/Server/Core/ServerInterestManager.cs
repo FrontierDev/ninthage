@@ -172,8 +172,21 @@ namespace Game.Server.Core
                 return;
             }
 
-            var newSet = GetSceneGrid(centerChunk);
             bool destinationIsTransferRuntime = ServerWorldManager.Instance.IsTransferRuntime(actorContext);
+            var newCoords = destinationIsTransferRuntime
+                ? new HashSet<Vector2Int>()
+                : GetGrid(centerChunk);
+            var newSet = destinationIsTransferRuntime
+                ? GetSceneGrid(centerChunk)
+                : new HashSet<string>(StringComparer.Ordinal);
+
+            if (!destinationIsTransferRuntime)
+            {
+                newCoords.RemoveWhere(coord =>
+                    !ServerWorldManager.Instance.IsChunkSceneAddressable(coord));
+                foreach (var coord in newCoords)
+                    newSet.Add($"World_{coord.x}_{coord.y}");
+            }
 
             var oldSet = hasOldState
                 ? oldState.SceneNames
@@ -183,10 +196,6 @@ namespace Game.Server.Core
             var toSubscribe = new List<Vector2Int>();
             var toUnsubscribe = new List<Vector2Int>();
 
-            // Diff using the coordinate grid for subscribe/unsubscribe operations
-            var newCoords = destinationIsTransferRuntime
-                ? new HashSet<Vector2Int>()
-                : GetGrid(centerChunk);
             var oldCoords = new HashSet<Vector2Int>();
             // Rebuild old coords from old scene names
             foreach (var sceneName in oldSet)

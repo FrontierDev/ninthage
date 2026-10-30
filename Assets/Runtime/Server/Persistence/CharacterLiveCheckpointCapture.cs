@@ -168,7 +168,7 @@ namespace Game.Server.Persistence
                 float currentValue = entry.Value.CurrentValue;
                 if (float.IsNaN(effectiveMaximum)
                     || float.IsInfinity(effectiveMaximum)
-                    || effectiveMaximum <= 0f)
+                    || effectiveMaximum < 0f)
                 {
                     return Fail(
                         $"the player actor resource '{entry.Key}' has an invalid effective maximum",

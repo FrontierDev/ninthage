@@ -23,7 +23,9 @@ MonoBehaviour:
   Gravity: -9.81
   GroundDetectionRadius: 0.05
   GroundDetectionMaskName: Terrain
-  CharacterArrivalBlockingMask: 65
+  CharacterArrivalBlockingMask:
+    serializedVersion: 2
+    m_Bits: 3649
   MaxFallSpeed: 50
   SpellCastRangeTickBuffer: 2
   SpellCastRangeEndBuffer: 5

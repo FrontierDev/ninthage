@@ -12,4 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e3b4d56789ab4c6d9d3e4f5061728394, type: 3}
   m_Name: WorldLocationDefinitionLibrary
   m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.WorldLocationDefinitionLibrary
-  definitions: []
+  _definitions:
+  - {fileID: 11400000, guid: af1a27f3b6a4f114a9fd96ed39b9c178, type: 2}
+  - {fileID: 11400000, guid: aa952c83c23076448aa19a4dc982402d, type: 2}

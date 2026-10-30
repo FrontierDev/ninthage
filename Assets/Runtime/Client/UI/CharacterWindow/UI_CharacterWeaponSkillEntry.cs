@@ -1,3 +1,4 @@
+using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Utility;
 using TMPro;
@@ -42,8 +43,17 @@ namespace Game.Client.UI
         {
             _levelText.text = $"{level}";
 
-            var progress = (float)experience / (float)ExperienceCalculator.GetExpForLevel(level);
-            _weaponSkillBar.SetProgress(progress);
+            if (level < ExperienceCalculator.MIN_LEVEL
+                || level > ExperienceCalculator.MAX_LEVEL)
+            {
+                Debug.Warning(
+                    $"Weapon skill '{_weaponType}' has invalid level {level}; displaying zero progress.");
+                _weaponSkillBar.SetProgress(0f);
+                return;
+            }
+
+            _weaponSkillBar.SetProgress(
+                ExperienceCalculator.GetLevelProgress01(level, experience));
         }
 
         /// <inheritdoc/>

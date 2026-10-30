@@ -6,7 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocations;
 using UnityEngine.ResourceManagement.ResourceProviders;
 
 namespace Game.Server.Core
@@ -83,6 +86,25 @@ namespace Game.Server.Core
             return _loadedChunks.ContainsKey(new WorldChunkKey(context, chunkCoord));
         }
 
+        internal bool IsChunkSceneAddressable(Vector2Int chunkCoord)
+        {
+            string address = $"World_{chunkCoord.x}_{chunkCoord.y}";
+            foreach (IResourceLocator locator in Addressables.ResourceLocators)
+            {
+                if (locator.Locate(
+                        address,
+                        typeof(SceneInstance),
+                        out IList<IResourceLocation> locations)
+                    && locations != null
+                    && locations.Count > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>Determines whether a context-qualified chunk scene is currently loading.</summary>
         /// <param name="context">The authoritative runtime context that owns the chunk.</param>
         /// <param name="chunkCoord">The chunk coordinate.</param>
@@ -135,6 +157,12 @@ namespace Game.Server.Core
             if (_pendingLoads.TryGetValue(chunkKey, out var callbacks))
             {
                 callbacks.Add(onCompleted);
+                return;
+            }
+
+            if (!IsChunkSceneAddressable(chunkCoord))
+            {
+                onCompleted?.Invoke(false, default);
                 return;
             }
 

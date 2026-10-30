@@ -403,7 +403,7 @@ namespace Game.Client
             _globalWorldLoadOperation = null;
             RecordPendingSceneOperations();
 
-            while (!AreRequiredStreamedScenesLoaded())
+            while (!AreRequiredStreamedScenesLoaded(spawnChunk))
             {
                 if (generation != _worldPresentationGeneration
                     || _worldPresentationState != WorldPresentationState.Entering)
@@ -448,28 +448,19 @@ namespace Game.Client
                 CompleteWorldPresentationCleanup(generation, startedTimestamp));
         }
 
-        private bool AreRequiredStreamedScenesLoaded()
+        private bool AreRequiredStreamedScenesLoaded(Vector2Int spawnChunk)
         {
-            if (!_hasRequiredStreamedSceneSet || _requiredStreamedSceneCoordinates.Count == 0)
+            if (!_hasRequiredStreamedSceneSet
+                || !_requiredStreamedSceneCoordinates.Contains(spawnChunk))
                 return false;
 
-            foreach (var requiredCoordinate in _requiredStreamedSceneCoordinates)
+            foreach (var scene in _loadedScenes.Values)
             {
-                var isLoaded = false;
-                foreach (var scene in _loadedScenes.Values)
-                {
-                    if (ParseChunkCoordinate(scene.name) == requiredCoordinate)
-                    {
-                        isLoaded = true;
-                        break;
-                    }
-                }
-
-                if (!isLoaded)
-                    return false;
+                if (ParseChunkCoordinate(scene.name) == spawnChunk)
+                    return true;
             }
 
-            return true;
+            return false;
         }
 
         private IEnumerator CompleteWorldPresentationCleanup(int generation, long startedTimestamp)

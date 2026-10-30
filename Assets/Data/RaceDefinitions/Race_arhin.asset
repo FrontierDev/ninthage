@@ -12,19 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bde6d8fb32d27654a8adf2e69621e8e7, type: 3}
   m_Name: Race_arhin
   m_EditorClassIdentifier: Game.Shared::Game.Shared.Data.RaceDefinition
-  definitionId: arhin
-  displayName: Arhin
-  description: "The name Arh\xEEn roughly translates to \u2018high child[ren]\u2019. 
+  _definitionID: arhin
+  _displayName: Arhin
+  _description: "The name Arh\xEEn roughly translates to \u2018high child[ren]\u2019. 
     They are the direct continuation of the Aur\xEBs\xE9n, who ruled over much of
     what is now En\u2019ilutar since the 2nd Age. Their civilisation underwent a
     significant, cataclysmic change during the Terhat-Ilu, with the most severe consequence
     of the war against the Merrshaulk being the loss of the Annokal (the Gift of
     Light)."
-  icon: {fileID: 21300000, guid: 68fc09eafcfbd2740b06174e0493d945, type: 3}
-  isPlayable: 1
-  defaultPVPFaction: {fileID: 11400000, guid: f5f3b547b27e4aa42899c03d8da44a1a, type: 2}
-  startingReputations: []
-  baseStats:
+  _icon: {fileID: 21300000, guid: 68fc09eafcfbd2740b06174e0493d945, type: 3}
+  _isPlayable: 1
+  _defaultPVPFaction: {fileID: 11400000, guid: f5f3b547b27e4aa42899c03d8da44a1a, type: 2}
+  _startingLocationID: wloc_test
+  _startingReputations: []
+  _baseStats:
   - definition: {fileID: 11400000, guid: b5b8745a1f11543488b8eaf186ecb884, type: 2}
     baseValue: 11
   - definition: {fileID: 11400000, guid: 45ada9de557061b4694ec0c9175c8c6b, type: 2}
