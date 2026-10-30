@@ -6,54 +6,6 @@ namespace Game.Server.Networking.Master
 {
     internal sealed partial class MasterPersistenceClient
     {
-        /// <summary>Creates a character through the Master Server.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterMutationResponse> CreateCharacterAsync(
-            MasterPersistenceProtocol.CharacterCreateRequest request,
-            CancellationToken cancellationToken)
-        {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
-
-            return PostAsync<MasterPersistenceProtocol.CharacterMutationResponse>(
-                MasterPersistenceProtocol.CHARACTER_CREATE_PATH,
-                request,
-                response => response.Result,
-                ValidateCharacterMutationResponse,
-                cancellationToken);
-        }
-
-        /// <summary>Soft-deletes a character through the Master Server.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterMutationResponse> DeleteCharacterAsync(
-            MasterPersistenceProtocol.CharacterDeleteRequest request,
-            CancellationToken cancellationToken)
-        {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
-
-            return PostAsync<MasterPersistenceProtocol.CharacterMutationResponse>(
-                MasterPersistenceProtocol.CHARACTER_DELETE_PATH,
-                request,
-                response => response.Result,
-                response => ValidateExistingCharacterMutationResponse(response, request.CharacterID),
-                cancellationToken);
-        }
-
-        /// <summary>Restores a soft-deleted character through the Master Server.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterMutationResponse> RestoreCharacterAsync(
-            MasterPersistenceProtocol.CharacterRestoreRequest request,
-            CancellationToken cancellationToken)
-        {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
-
-            return PostAsync<MasterPersistenceProtocol.CharacterMutationResponse>(
-                MasterPersistenceProtocol.CHARACTER_RESTORE_PATH,
-                request,
-                response => response.Result,
-                response => ValidateExistingCharacterMutationResponse(response, request.CharacterID),
-                cancellationToken);
-        }
-
         /// <summary>Acquires a character persistence lease and loads its durable state.</summary>
         internal Task<MasterPersistenceProtocol.CharacterAcquireResponse> AcquireCharacterAsync(
             MasterPersistenceProtocol.CharacterAcquireRequest request,
@@ -70,7 +22,7 @@ namespace Game.Server.Networking.Master
                 cancellationToken);
         }
 
-        private static void ValidateCharacterMutationResponse(
+        internal static void ValidateCharacterMutationResponse(
             MasterPersistenceProtocol.CharacterMutationResponse response)
         {
             if (response.Result == MasterPersistenceProtocol.PersistenceResult.Accepted)
@@ -90,7 +42,7 @@ namespace Game.Server.Networking.Master
                 throw new InvalidOperationException("The rejected Master character mutation response contained success fields.");
         }
 
-        private static void ValidateExistingCharacterMutationResponse(
+        internal static void ValidateExistingCharacterMutationResponse(
             MasterPersistenceProtocol.CharacterMutationResponse response,
             Guid requestedCharacterID)
         {

@@ -127,7 +127,7 @@ namespace Game.Server.Networking.Master
                 throw new InvalidOperationException("The Master persistence response has an unknown result.");
         }
 
-        private static void ValidatePersistenceStatus(
+        internal static void ValidatePersistenceStatus(
             HttpStatusCode statusCode,
             MasterPersistenceProtocol.PersistenceResult result)
         {

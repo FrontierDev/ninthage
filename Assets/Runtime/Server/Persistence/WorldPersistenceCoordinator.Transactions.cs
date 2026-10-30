@@ -12,26 +12,27 @@ namespace Game.Server.Persistence
         private int _pendingPersistenceTransactionCount;
 
         /// <summary>Creates a durable character with one retry-safe operation ID.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterMutationResponse> CreateCharacterAsync(
+        internal Task<MasterSessionProtocol.CharacterMutationResponse> CreateCharacterAsync(
+            Guid gameplaySessionID,
             CharacterCreationPersistenceCommand command,
             CancellationToken cancellationToken)
         {
+            if (gameplaySessionID == Guid.Empty)
+                throw new ArgumentException("A nonempty gameplay session ID is required.", nameof(gameplaySessionID));
             if (command == null)
                 throw new ArgumentNullException(nameof(command));
-            if (command.AccountID == Guid.Empty)
-                throw new ArgumentException("A nonempty Account ID is required.", nameof(command));
             if (!TryAdmitTransaction())
                 return Task.FromResult(CreateUnavailableMutationResponse());
 
             try
             {
                 Guid operationID = GenerateOperationID();
-                MasterPersistenceProtocol.CharacterCreateRequest request = new()
+                MasterSessionProtocol.CharacterCreateRequest request = new()
                 {
                     WorldID = WorldID,
                     WorldServerRunID = WorldServerRunID,
+                    GameplaySessionID = gameplaySessionID,
                     OperationID = operationID,
-                    AccountID = command.AccountID,
                     FirstName = command.FirstName,
                     LastName = command.LastName,
                     RaceDefinitionID = command.RaceDefinitionID,
@@ -54,25 +55,25 @@ namespace Game.Server.Persistence
         }
 
         /// <summary>Deletes a character with one retry-safe operation ID.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterMutationResponse> DeleteCharacterAsync(
-            Guid accountID,
+        internal Task<MasterSessionProtocol.CharacterMutationResponse> DeleteCharacterAsync(
+            Guid gameplaySessionID,
             Guid characterID,
             long expectedRevision,
             CancellationToken cancellationToken)
         {
-            ValidateLifecycleArguments(accountID, characterID, expectedRevision);
+            ValidateLifecycleArguments(gameplaySessionID, characterID, expectedRevision);
             if (!TryAdmitTransaction())
                 return Task.FromResult(CreateUnavailableMutationResponse());
 
             try
             {
                 Guid operationID = GenerateOperationID();
-                MasterPersistenceProtocol.CharacterDeleteRequest request = new()
+                MasterSessionProtocol.CharacterDeleteRequest request = new()
                 {
                     WorldID = WorldID,
                     WorldServerRunID = WorldServerRunID,
+                    GameplaySessionID = gameplaySessionID,
                     OperationID = operationID,
-                    AccountID = accountID,
                     CharacterID = characterID,
                     ExpectedRevision = expectedRevision
                 };
@@ -86,25 +87,25 @@ namespace Game.Server.Persistence
         }
 
         /// <summary>Restores a character with one retry-safe operation ID.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterMutationResponse> RestoreCharacterAsync(
-            Guid accountID,
+        internal Task<MasterSessionProtocol.CharacterMutationResponse> RestoreCharacterAsync(
+            Guid gameplaySessionID,
             Guid characterID,
             long expectedRevision,
             CancellationToken cancellationToken)
         {
-            ValidateLifecycleArguments(accountID, characterID, expectedRevision);
+            ValidateLifecycleArguments(gameplaySessionID, characterID, expectedRevision);
             if (!TryAdmitTransaction())
                 return Task.FromResult(CreateUnavailableMutationResponse());
 
             try
             {
                 Guid operationID = GenerateOperationID();
-                MasterPersistenceProtocol.CharacterRestoreRequest request = new()
+                MasterSessionProtocol.CharacterRestoreRequest request = new()
                 {
                     WorldID = WorldID,
                     WorldServerRunID = WorldServerRunID,
+                    GameplaySessionID = gameplaySessionID,
                     OperationID = operationID,
-                    AccountID = accountID,
                     CharacterID = characterID,
                     ExpectedRevision = expectedRevision
                 };
@@ -117,15 +118,16 @@ namespace Game.Server.Persistence
             }
         }
 
-        private async Task<MasterPersistenceProtocol.CharacterMutationResponse> CreateCharacterCoreAsync(
-            MasterPersistenceProtocol.CharacterCreateRequest request,
+        private async Task<MasterSessionProtocol.CharacterMutationResponse> CreateCharacterCoreAsync(
+            MasterSessionProtocol.CharacterCreateRequest request,
             CancellationToken cancellationToken)
         {
             try
             {
-                return await ExecuteWithRetryAsync(
-                    token => _client.CreateCharacterAsync(request, token),
-                    response => response.Result,
+                return await ExecuteSessionPersistenceWithRetryAsync(
+                    token => _sessionClient.CreateCharacterAsync(request, token),
+                    response => response.SessionResult,
+                    response => response.PersistenceResponse?.Result,
                     CreateUnavailableMutationResponse,
                     cancellationToken).ConfigureAwait(false);
             }
@@ -135,8 +137,8 @@ namespace Game.Server.Persistence
             }
         }
 
-        private async Task<MasterPersistenceProtocol.CharacterMutationResponse> DeleteCharacterCoreAsync(
-            MasterPersistenceProtocol.CharacterDeleteRequest request,
+        private async Task<MasterSessionProtocol.CharacterMutationResponse> DeleteCharacterCoreAsync(
+            MasterSessionProtocol.CharacterDeleteRequest request,
             CancellationToken cancellationToken)
         {
             try
@@ -147,9 +149,10 @@ namespace Game.Server.Persistence
                 if (HasOwnedLease(laneHandle.Lane))
                     return CreateLeaseConflictMutationResponse();
 
-                return await ExecuteWithRetryAsync(
-                    token => _client.DeleteCharacterAsync(request, token),
-                    response => response.Result,
+                return await ExecuteSessionPersistenceWithRetryAsync(
+                    token => _sessionClient.DeleteCharacterAsync(request, token),
+                    response => response.SessionResult,
+                    response => response.PersistenceResponse?.Result,
                     CreateUnavailableMutationResponse,
                     cancellationToken).ConfigureAwait(false);
             }
@@ -159,8 +162,8 @@ namespace Game.Server.Persistence
             }
         }
 
-        private async Task<MasterPersistenceProtocol.CharacterMutationResponse> RestoreCharacterCoreAsync(
-            MasterPersistenceProtocol.CharacterRestoreRequest request,
+        private async Task<MasterSessionProtocol.CharacterMutationResponse> RestoreCharacterCoreAsync(
+            MasterSessionProtocol.CharacterRestoreRequest request,
             CancellationToken cancellationToken)
         {
             try
@@ -171,9 +174,10 @@ namespace Game.Server.Persistence
                 if (HasOwnedLease(laneHandle.Lane))
                     return CreateLeaseConflictMutationResponse();
 
-                return await ExecuteWithRetryAsync(
-                    token => _client.RestoreCharacterAsync(request, token),
-                    response => response.Result,
+                return await ExecuteSessionPersistenceWithRetryAsync(
+                    token => _sessionClient.RestoreCharacterAsync(request, token),
+                    response => response.SessionResult,
+                    response => response.PersistenceResponse?.Result,
                     CreateUnavailableMutationResponse,
                     cancellationToken).ConfigureAwait(false);
             }
@@ -219,12 +223,12 @@ namespace Game.Server.Persistence
         }
 
         private static void ValidateLifecycleArguments(
-            Guid accountID,
+            Guid gameplaySessionID,
             Guid characterID,
             long expectedRevision)
         {
-            if (accountID == Guid.Empty)
-                throw new ArgumentException("A nonempty Account ID is required.", nameof(accountID));
+            if (gameplaySessionID == Guid.Empty)
+                throw new ArgumentException("A nonempty gameplay session ID is required.", nameof(gameplaySessionID));
             if (characterID == Guid.Empty)
                 throw new ArgumentException("A nonempty Character ID is required.", nameof(characterID));
             if (expectedRevision < 1)
@@ -353,19 +357,23 @@ namespace Game.Server.Persistence
             return mapped;
         }
 
-        private static MasterPersistenceProtocol.CharacterMutationResponse CreateLeaseConflictMutationResponse()
+        private static MasterSessionProtocol.CharacterMutationResponse CreateLeaseConflictMutationResponse()
         {
-            return new MasterPersistenceProtocol.CharacterMutationResponse
+            return new MasterSessionProtocol.CharacterMutationResponse
             {
-                Result = MasterPersistenceProtocol.PersistenceResult.LeaseConflict
+                SessionResult = MasterSessionProtocol.GameplaySessionResult.Accepted,
+                PersistenceResponse = new MasterPersistenceProtocol.CharacterMutationResponse
+                {
+                    Result = MasterPersistenceProtocol.PersistenceResult.LeaseConflict
+                }
             };
         }
 
-        private static MasterPersistenceProtocol.CharacterMutationResponse CreateUnavailableMutationResponse()
+        private static MasterSessionProtocol.CharacterMutationResponse CreateUnavailableMutationResponse()
         {
-            return new MasterPersistenceProtocol.CharacterMutationResponse
+            return new MasterSessionProtocol.CharacterMutationResponse
             {
-                Result = MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable
+                SessionResult = MasterSessionProtocol.GameplaySessionResult.PersistenceUnavailable
             };
         }
     }

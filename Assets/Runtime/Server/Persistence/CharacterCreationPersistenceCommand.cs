@@ -15,7 +15,6 @@ namespace Game.Server.Persistence
 
         /// <summary>Creates a character creation command from authored persistence values.</summary>
         internal CharacterCreationPersistenceCommand(
-            Guid accountID,
             string firstName,
             string lastName,
             string raceDefinitionID,
@@ -39,7 +38,6 @@ namespace Game.Server.Persistence
             if (items == null)
                 throw new ArgumentNullException(nameof(items));
 
-            AccountID = accountID;
             FirstName = firstName;
             LastName = lastName;
             RaceDefinitionID = raceDefinitionID;
@@ -69,7 +67,6 @@ namespace Game.Server.Persistence
             }
         }
 
-        internal Guid AccountID { get; }
         internal string FirstName { get; }
         internal string LastName { get; }
         internal string RaceDefinitionID { get; }

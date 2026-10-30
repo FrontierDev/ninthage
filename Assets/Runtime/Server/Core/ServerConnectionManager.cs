@@ -610,11 +610,12 @@ namespace Game.Server.Core
                 yield break;
             }
 
-            Task<MasterPersistenceProtocol.CharacterRosterResponse> rosterTask;
+            Task<MasterSessionProtocol.CharacterRosterResponse> rosterTask;
             bool rosterRequestFailed = false;
             try
             {
                 rosterTask = coordinator.GetCharacterRosterAsync(
+                    authenticatedSession.GameplaySessionID,
                     authenticatedSession.AccountID,
                     CancellationToken.None);
             }
@@ -634,16 +635,16 @@ namespace Game.Server.Core
             while (!rosterTask.IsCompleted)
                 yield return null;
 
-            MasterPersistenceProtocol.CharacterRosterResponse rosterResponse;
+            MasterSessionProtocol.CharacterRosterResponse sessionRosterResponse;
             bool rosterLoadingFailed = false;
             try
             {
-                rosterResponse = rosterTask.GetAwaiter().GetResult();
+                sessionRosterResponse = rosterTask.GetAwaiter().GetResult();
             }
             catch (Exception exception)
             {
                 Debug.Error($"Master roster loading failed for '{authenticatedSession.Username}': {exception.Message}");
-                rosterResponse = null;
+                sessionRosterResponse = null;
                 rosterLoadingFailed = true;
             }
 
@@ -653,11 +654,16 @@ namespace Game.Server.Core
                 yield break;
             }
 
-            if (rosterResponse == null
-                || rosterResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+            if (sessionRosterResponse == null
+                || sessionRosterResponse.SessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted
+                || sessionRosterResponse.PersistenceResponse == null
+                || sessionRosterResponse.PersistenceResponse.Result
+                    != MasterPersistenceProtocol.PersistenceResult.Accepted)
             {
                 Debug.Error(
-                    $"Master roster loading for '{authenticatedSession.Username}' returned {rosterResponse?.Result}. "
+                    $"Master roster loading for '{authenticatedSession.Username}' returned session result "
+                    + $"{sessionRosterResponse?.SessionResult} and persistence result "
+                    + $"{sessionRosterResponse?.PersistenceResponse?.Result}. "
                     + "Authentication failed closed.");
                 yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
                 yield break;
@@ -667,7 +673,7 @@ namespace Game.Server.Core
             bool rosterProjectionFailed = false;
             try
             {
-                roster = CharacterPersistenceProjection.ToActiveRoster(rosterResponse);
+                roster = CharacterPersistenceProjection.ToActiveRoster(sessionRosterResponse.PersistenceResponse);
             }
             catch (Exception exception)
             {

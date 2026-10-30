@@ -56,6 +56,231 @@ namespace Game.Server.Networking.Master
             return response;
         }
 
+        /// <summary>Loads an account's character roster through its gameplay session.</summary>
+        internal Task<MasterSessionProtocol.CharacterRosterResponse> GetCharacterRosterAsync(
+            MasterSessionProtocol.CharacterRosterRequest request,
+            Guid expectedAccountID,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+            if (expectedAccountID == Guid.Empty)
+                throw new ArgumentException("A nonempty expected Account ID is required.", nameof(expectedAccountID));
+
+            return PostSessionPersistenceAsync<MasterSessionProtocol.CharacterRosterResponse>(
+                MasterSessionProtocol.CHARACTER_ROSTER_PATH,
+                request,
+                response => response.SessionResult,
+                response => response.PersistenceResponse?.Result,
+                response =>
+                {
+                    ValidateSessionPersistenceWrapper(response.SessionResult, response.PersistenceResponse);
+                    if (response.SessionResult == MasterSessionProtocol.GameplaySessionResult.Accepted)
+                        MasterPersistenceClient.ValidateCharacterRosterResponse(response.PersistenceResponse, expectedAccountID);
+                },
+                cancellationToken);
+        }
+
+        /// <summary>Creates a character through its gameplay session.</summary>
+        internal Task<MasterSessionProtocol.CharacterMutationResponse> CreateCharacterAsync(
+            MasterSessionProtocol.CharacterCreateRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            return PostSessionPersistenceAsync<MasterSessionProtocol.CharacterMutationResponse>(
+                MasterSessionProtocol.CHARACTER_CREATE_PATH,
+                request,
+                response => response.SessionResult,
+                response => response.PersistenceResponse?.Result,
+                response =>
+                {
+                    ValidateSessionPersistenceWrapper(response.SessionResult, response.PersistenceResponse);
+                    if (response.SessionResult == MasterSessionProtocol.GameplaySessionResult.Accepted)
+                        MasterPersistenceClient.ValidateCharacterMutationResponse(response.PersistenceResponse);
+                },
+                cancellationToken);
+        }
+
+        /// <summary>Soft-deletes a character through its gameplay session.</summary>
+        internal Task<MasterSessionProtocol.CharacterMutationResponse> DeleteCharacterAsync(
+            MasterSessionProtocol.CharacterDeleteRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            return PostSessionPersistenceAsync<MasterSessionProtocol.CharacterMutationResponse>(
+                MasterSessionProtocol.CHARACTER_DELETE_PATH,
+                request,
+                response => response.SessionResult,
+                response => response.PersistenceResponse?.Result,
+                response =>
+                {
+                    ValidateSessionPersistenceWrapper(response.SessionResult, response.PersistenceResponse);
+                    if (response.SessionResult == MasterSessionProtocol.GameplaySessionResult.Accepted)
+                    {
+                        MasterPersistenceClient.ValidateExistingCharacterMutationResponse(
+                            response.PersistenceResponse,
+                            request.CharacterID);
+                    }
+                },
+                cancellationToken);
+        }
+
+        /// <summary>Restores a character through its gameplay session.</summary>
+        internal Task<MasterSessionProtocol.CharacterMutationResponse> RestoreCharacterAsync(
+            MasterSessionProtocol.CharacterRestoreRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            return PostSessionPersistenceAsync<MasterSessionProtocol.CharacterMutationResponse>(
+                MasterSessionProtocol.CHARACTER_RESTORE_PATH,
+                request,
+                response => response.SessionResult,
+                response => response.PersistenceResponse?.Result,
+                response =>
+                {
+                    ValidateSessionPersistenceWrapper(response.SessionResult, response.PersistenceResponse);
+                    if (response.SessionResult == MasterSessionProtocol.GameplaySessionResult.Accepted)
+                    {
+                        MasterPersistenceClient.ValidateExistingCharacterMutationResponse(
+                            response.PersistenceResponse,
+                            request.CharacterID);
+                    }
+                },
+                cancellationToken);
+        }
+
+        private async Task<TResponse> PostSessionPersistenceAsync<TResponse>(
+            string path,
+            object request,
+            Func<TResponse, MasterSessionProtocol.GameplaySessionResult> sessionResultSelector,
+            Func<TResponse, MasterPersistenceProtocol.PersistenceResult?> persistenceResultSelector,
+            Action<TResponse> validateResponse,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("A nonblank session persistence path is required.", nameof(path));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+            if (sessionResultSelector == null)
+                throw new ArgumentNullException(nameof(sessionResultSelector));
+            if (persistenceResultSelector == null)
+                throw new ArgumentNullException(nameof(persistenceResultSelector));
+            if (validateResponse == null)
+                throw new ArgumentNullException(nameof(validateResponse));
+
+            (HttpStatusCode statusCode, string responseBody) = await _worldClient.PostJsonAsync(
+                path,
+                JsonConvert.SerializeObject(request),
+                cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(responseBody))
+                throw new InvalidOperationException("The Master session persistence response body was empty.");
+
+            JObject responseObject;
+            try
+            {
+                responseObject = JObject.Parse(responseBody);
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidOperationException("The Master session persistence response was malformed JSON.", exception);
+            }
+
+            if (!responseObject.TryGetValue("sessionResult", out JToken sessionResultToken)
+                || sessionResultToken.Type == JTokenType.Null)
+            {
+                throw new InvalidOperationException("The Master session persistence response has no session result.");
+            }
+
+            TResponse response;
+            try
+            {
+                response = JsonConvert.DeserializeObject<TResponse>(responseBody);
+                if (response == null)
+                    throw new InvalidOperationException("The Master session persistence response was null.");
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (exception is JsonException || exception is ArgumentException)
+            {
+                throw new InvalidOperationException("The Master session persistence response was malformed.", exception);
+            }
+
+            MasterSessionProtocol.GameplaySessionResult sessionResult = sessionResultSelector(response);
+            if (!Enum.IsDefined(typeof(MasterSessionProtocol.GameplaySessionResult), sessionResult))
+                throw new InvalidOperationException("The Master session persistence response has an unknown session result.");
+
+            MasterPersistenceProtocol.PersistenceResult? persistenceResult = persistenceResultSelector(response);
+            if (sessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted)
+            {
+                if (persistenceResult.HasValue)
+                {
+                    throw new InvalidOperationException(
+                        "The rejected Master session persistence response contained a persistence result.");
+                }
+
+                ValidateStatus(statusCode, sessionResult);
+            }
+            else
+            {
+                if (!responseObject.TryGetValue("persistenceResponse", out JToken persistenceResponseToken)
+                    || persistenceResponseToken.Type != JTokenType.Object)
+                {
+                    throw new InvalidOperationException(
+                        "The accepted Master session persistence response has no persistence result field.");
+                }
+
+                JObject persistenceResponseObject = persistenceResponseToken as JObject;
+                if (persistenceResponseObject == null
+                    || !persistenceResponseObject.TryGetValue(
+                        "result",
+                        out JToken persistenceResultToken)
+                    || persistenceResultToken.Type == JTokenType.Null)
+                {
+                    throw new InvalidOperationException(
+                        "The accepted Master session persistence response has no persistence result field.");
+                }
+
+                if (!persistenceResult.HasValue
+                    || !Enum.IsDefined(typeof(MasterPersistenceProtocol.PersistenceResult), persistenceResult.Value))
+                {
+                    throw new InvalidOperationException(
+                        "The accepted Master session persistence response has no valid persistence result.");
+                }
+
+                MasterPersistenceClient.ValidatePersistenceStatus(statusCode, persistenceResult.Value);
+            }
+
+            validateResponse(response);
+            return response;
+        }
+
+        private static void ValidateSessionPersistenceWrapper<TResponse>(
+            MasterSessionProtocol.GameplaySessionResult sessionResult,
+            TResponse persistenceResponse)
+            where TResponse : class
+        {
+            if (sessionResult == MasterSessionProtocol.GameplaySessionResult.Accepted)
+            {
+                if (persistenceResponse == null)
+                    throw new InvalidOperationException(
+                        "The accepted Master session persistence response has no persistence response.");
+            }
+            else if (persistenceResponse != null)
+            {
+                throw new InvalidOperationException(
+                    "The rejected Master session persistence response contained a persistence response.");
+            }
+        }
+
         private static MasterSessionProtocol.AuthenticateResponse DeserializeAuthenticateResponse(string responseBody)
         {
             if (string.IsNullOrWhiteSpace(responseBody))

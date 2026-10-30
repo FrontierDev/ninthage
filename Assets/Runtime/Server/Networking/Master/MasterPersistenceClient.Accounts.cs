@@ -1,29 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Game.Server.Networking.Master
 {
     internal sealed partial class MasterPersistenceClient
     {
-        /// <summary>Loads the active and deleted character roster for an account.</summary>
-        internal Task<MasterPersistenceProtocol.CharacterRosterResponse> GetCharacterRosterAsync(
-            MasterPersistenceProtocol.CharacterRosterRequest request,
-            CancellationToken cancellationToken)
-        {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
-
-            return PostAsync<MasterPersistenceProtocol.CharacterRosterResponse>(
-                MasterPersistenceProtocol.CHARACTER_ROSTER_PATH,
-                request,
-                response => response.Result,
-                response => ValidateCharacterRosterResponse(response, request.AccountID),
-                cancellationToken);
-        }
-
-        private static void ValidateCharacterRosterResponse(
+        internal static void ValidateCharacterRosterResponse(
             MasterPersistenceProtocol.CharacterRosterResponse response,
             Guid requestedAccountID)
         {

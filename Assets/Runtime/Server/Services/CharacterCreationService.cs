@@ -180,7 +180,6 @@ namespace Game.Server.Services
             try
             {
                 command = new CharacterCreationPersistenceCommand(
-                    accountContext.AccountID,
                     characterData.FirstName,
                     characterData.LastName,
                     characterData.RaceID,
@@ -228,10 +227,13 @@ namespace Game.Server.Services
                 yield break;
             }
 
-            Task<MasterPersistenceProtocol.CharacterMutationResponse> creationTask;
+            Task<MasterSessionProtocol.CharacterMutationResponse> creationTask;
             try
             {
-                creationTask = coordinator.CreateCharacterAsync(command, CancellationToken.None);
+                creationTask = coordinator.CreateCharacterAsync(
+                    accountContext.GameplaySessionID,
+                    command,
+                    CancellationToken.None);
             }
             catch (Exception exception)
             {
@@ -243,10 +245,10 @@ namespace Game.Server.Services
             while (!creationTask.IsCompleted)
                 yield return null;
 
-            MasterPersistenceProtocol.CharacterMutationResponse response;
+            MasterSessionProtocol.CharacterMutationResponse sessionMutationResponse;
             try
             {
-                response = creationTask.GetAwaiter().GetResult();
+                sessionMutationResponse = creationTask.GetAwaiter().GetResult();
             }
             catch (Exception exception)
             {
@@ -255,13 +257,19 @@ namespace Game.Server.Services
                 yield break;
             }
 
-            if (response == null)
+            if (sessionMutationResponse == null
+                || sessionMutationResponse.SessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted
+                || sessionMutationResponse.PersistenceResponse == null)
             {
-                Debug.Error($"Character creation returned no response for player {playerID}.");
+                Debug.Error(
+                    $"Character creation for player {playerID} returned session result "
+                    + $"{sessionMutationResponse?.SessionResult} and persistence result "
+                    + $"{sessionMutationResponse?.PersistenceResponse?.Result}.");
                 NotifyFailure(playerID, "character creation temporarily unavailable");
                 yield break;
             }
 
+            MasterPersistenceProtocol.CharacterMutationResponse response = sessionMutationResponse.PersistenceResponse;
             switch (response.Result)
             {
                 case MasterPersistenceProtocol.PersistenceResult.Accepted:
@@ -293,10 +301,13 @@ namespace Game.Server.Services
                 true,
                 $"Character '{displayName}' created successfully.");
 
-            Task<MasterPersistenceProtocol.CharacterRosterResponse> rosterTask;
+            Task<MasterSessionProtocol.CharacterRosterResponse> rosterTask;
             try
             {
-                rosterTask = coordinator.GetCharacterRosterAsync(accountContext.AccountID, CancellationToken.None);
+                rosterTask = coordinator.GetCharacterRosterAsync(
+                    accountContext.GameplaySessionID,
+                    accountContext.AccountID,
+                    CancellationToken.None);
             }
             catch (Exception exception)
             {
@@ -307,10 +318,10 @@ namespace Game.Server.Services
             while (!rosterTask.IsCompleted)
                 yield return null;
 
-            MasterPersistenceProtocol.CharacterRosterResponse rosterResponse;
+            MasterSessionProtocol.CharacterRosterResponse sessionRosterResponse;
             try
             {
-                rosterResponse = rosterTask.GetAwaiter().GetResult();
+                sessionRosterResponse = rosterTask.GetAwaiter().GetResult();
             }
             catch (Exception exception)
             {
@@ -318,17 +329,23 @@ namespace Game.Server.Services
                 yield break;
             }
 
-            if (rosterResponse == null
-                || rosterResponse.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
+            if (sessionRosterResponse == null
+                || sessionRosterResponse.SessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted
+                || sessionRosterResponse.PersistenceResponse == null
+                || sessionRosterResponse.PersistenceResponse.Result
+                    != MasterPersistenceProtocol.PersistenceResult.Accepted)
             {
-                Debug.Error($"Character roster refresh for player {playerID} returned {rosterResponse?.Result}; creation remains successful.");
+                Debug.Error(
+                    $"Character roster refresh for player {playerID} returned session result "
+                    + $"{sessionRosterResponse?.SessionResult} and persistence result "
+                    + $"{sessionRosterResponse?.PersistenceResponse?.Result}; creation remains successful.");
                 yield break;
             }
 
             List<CharacterData> roster;
             try
             {
-                roster = CharacterPersistenceProjection.ToActiveRoster(rosterResponse);
+                roster = CharacterPersistenceProjection.ToActiveRoster(sessionRosterResponse.PersistenceResponse);
             }
             catch (Exception exception)
             {
@@ -336,9 +353,15 @@ namespace Game.Server.Services
                 yield break;
             }
 
-            if (!ServerConnectionManager.Instance.IsPlayerConnected(playerID))
+            if (!ServerConnectionManager.Instance.IsPlayerConnected(playerID)
+                || !ServerConnectionManager.Instance.TryGetAccountContext(
+                    playerID,
+                    out ConnectedAccountContext currentAccountContext)
+                || currentAccountContext.GameplaySessionID != accountContext.GameplaySessionID)
             {
-                Debug.Warning($"Player {playerID} disconnected before the refreshed character roster could be sent.");
+                Debug.Warning(
+                    $"Player {playerID} disconnected or changed gameplay session before the refreshed character roster "
+                    + "could be sent.");
                 yield break;
             }
 

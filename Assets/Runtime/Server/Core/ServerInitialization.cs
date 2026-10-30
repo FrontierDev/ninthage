@@ -474,11 +474,12 @@ namespace Game.Server.Core
             }
 
             _masterPersistenceClient = new MasterPersistenceClient(_masterWorldClient);
+            _masterSessionClient = new MasterSessionClient(_masterWorldClient);
             _worldPersistenceCoordinator = new WorldPersistenceCoordinator(
                 _masterPersistenceClient,
+                _masterSessionClient,
                 registrationResponse.WorldID.Value,
                 WORLD_SERVER_RUN_ID);
-            _masterSessionClient = new MasterSessionClient(_masterWorldClient);
             _worldSessionCoordinator = new WorldSessionCoordinator(
                 _masterSessionClient,
                 registrationResponse.WorldID.Value,
