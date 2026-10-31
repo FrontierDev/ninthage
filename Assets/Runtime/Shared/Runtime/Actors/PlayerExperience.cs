@@ -65,6 +65,26 @@ namespace Game.Shared.Runtime.Actors
             }
         }
 
+        /// <summary>Publishes the complete live progression state to its current owner.</summary>
+        public void PublishOwnerBootstrap(PlayerID playerID)
+        {
+            if (!owner.HasValue || owner.Value != playerID)
+                throw new System.InvalidOperationException("Experience bootstrap requires the current owner.");
+
+            List<SavedWeaponSkill> weaponSkills = new(_weaponSkills.Count);
+            foreach (PlayerWeaponSkill weaponSkill in _weaponSkills)
+            {
+                weaponSkills.Add(new SavedWeaponSkill
+                {
+                    WeaponType = (int)weaponSkill.WeaponType,
+                    Level = weaponSkill.Level,
+                    Experience = weaponSkill.Experience
+                });
+            }
+
+            Client_ReplaceExperience(playerID, _level, _experience, weaponSkills);
+        }
+
         /// <summary>Applies a player experience update.</summary>
         public void SetExperience(int level, int experience, int delta)
         {
@@ -87,6 +107,26 @@ namespace Game.Shared.Runtime.Actors
             {
                 // Add new skill
                 _weaponSkills.Add(new PlayerWeaponSkill(weaponType, level, experience));
+            }
+        }
+
+        [TargetRpc]
+        public void Client_ReplaceExperience(
+            PlayerID target,
+            int level,
+            int experience,
+            List<SavedWeaponSkill> weaponSkills,
+            RPCInfo rpcInfo = default)
+        {
+            _level = level;
+            _experience = experience;
+            _weaponSkills.Clear();
+            foreach (SavedWeaponSkill weaponSkill in weaponSkills)
+            {
+                _weaponSkills.Add(new PlayerWeaponSkill(
+                    (ItemWeaponType)weaponSkill.WeaponType,
+                    weaponSkill.Level,
+                    weaponSkill.Experience));
             }
         }
     }

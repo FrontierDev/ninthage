@@ -143,6 +143,12 @@ namespace Game.Server.Core
 
         private void OnActorObserverAdded(Actor actor, PlayerID playerID)
         {
+            PublishAuraBootstrap(actor, playerID);
+        }
+
+        /// <summary>Publishes current aura instances to a player's owner connection.</summary>
+        internal void PublishAuraBootstrap(Actor actor, PlayerID playerID)
+        {
             if (actor == null || !TryFindActorEntity(actor.ID, out Entity entity))
                 return;
 

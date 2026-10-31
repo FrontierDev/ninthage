@@ -8,6 +8,7 @@ namespace Game.Server.Networking.Master
     {
         internal const string AUTHENTICATE_PATH = "/world/v1/sessions/authenticate";
         internal const string DISCONNECT_PATH = "/world/v1/sessions/disconnect";
+        internal const string CLOSE_PATH = "/world/v1/sessions/close";
         internal const string CHARACTER_ROSTER_PATH = "/world/v1/sessions/characters/roster";
         internal const string CHARACTER_CREATE_PATH = "/world/v1/sessions/characters/create";
         internal const string CHARACTER_DELETE_PATH = "/world/v1/sessions/characters/delete";
@@ -285,6 +286,19 @@ namespace Game.Server.Networking.Master
 
         /// <summary>Disconnects one previously authenticated gameplay session.</summary>
         internal sealed class DisconnectRequest
+        {
+            [JsonProperty("worldID")]
+            public Guid WorldID { get; set; }
+
+            [JsonProperty("worldServerRunID")]
+            public Guid WorldServerRunID { get; set; }
+
+            [JsonProperty("gameplaySessionID")]
+            public Guid GameplaySessionID { get; set; }
+        }
+
+        /// <summary>Closes a disconnected gameplay session after its character has been finalized.</summary>
+        internal sealed class CloseRequest
         {
             [JsonProperty("worldID")]
             public Guid WorldID { get; set; }

@@ -31,6 +31,7 @@ namespace Game.Client.UI
 
         private void OnPlayerActorAssigned(Actor playerActor)
         {
+            StatEndpoint.onStatsUpdated -= OnStatsUpdated;
             if (playerActor != null)
             {
                 _playerStatContainer = playerActor.GetComponent<ActorStatContainer>();

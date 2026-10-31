@@ -392,6 +392,25 @@ namespace Game.Shared.Runtime.Actors
             Client_UpdateInventory(owner.Value, new InventoryDelta(changes));
         }
 
+        /// <summary>Publishes the complete live inventory to its current owner.</summary>
+        public void PublishOwnerBootstrap(PlayerID playerID)
+        {
+            if (!owner.HasValue || owner.Value != playerID)
+                throw new System.InvalidOperationException("Inventory bootstrap requires the current owner.");
+
+            List<InventorySlotChange> changes = new(_maxSlots);
+            for (int slotIndex = 0; slotIndex < _maxSlots; slotIndex++)
+            {
+                if (_inventory.TryGetValue(slotIndex, out ItemInstance item) && item != null)
+                    changes.Add(new InventorySlotChange(slotIndex, InventorySlotChangeType.Set, item));
+                else
+                    changes.Add(new InventorySlotChange(slotIndex, InventorySlotChangeType.Removed));
+            }
+
+            NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
+            Client_UpdateInventory(playerID, new InventoryDelta(changes));
+        }
+
         private static bool AreStackCompatible(ItemInstance first, ItemInstance second)
         {
             if (first == null || second == null)

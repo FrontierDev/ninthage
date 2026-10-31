@@ -4,6 +4,7 @@ using Game.Shared.Data.ClassBehaviours;
 using Game.Shared.Networking;
 using Game.Shared.Runtime.Actors;
 using System.Linq;
+using UnityEngine;
 
 namespace Game.Client.UI
 {
@@ -24,6 +25,7 @@ namespace Game.Client.UI
     public sealed class UI_SpecialResourcePanel : UI_Panel
     {
         private static UI_SpecialResourcePanel _instance;
+        private GameObject _activeResourceBar;
         /// <summary>
         /// Gets the shared client-side instance.
         /// </summary>
@@ -42,6 +44,10 @@ namespace Game.Client.UI
         {
             if (Game.Shared.Runtime.Runtime.IsServer()) return; // This UI should not be active on the server.
 
+            if (_activeResourceBar != null)
+                Destroy(_activeResourceBar);
+            _activeResourceBar = null;
+
             var classID = ClientAccountManager.ActiveCharacter.ClassID;
             var def = ClassDefinitionLibrary.Instance.GetDefinition(classID);
             var trackedStat = def.BaseStats.FirstOrDefault(x => x.definition.Tags.Any(tag => tag == "special"))?.definition;
@@ -54,9 +60,9 @@ namespace Game.Client.UI
                 canvasGroup.interactable = true;
 
                 // Instantiate the resource bar prefab as a child of this panel.
-                var resourceBarObj = Instantiate(resourcePrefab, transform);
-                resourceBarObj.transform.SetSiblingIndex(0); // Ensure it is behind the other UI
-                resourceBarObj.GetComponent<ISpecialResourceBar>()?.Initialize(playerActor);
+                _activeResourceBar = Instantiate(resourcePrefab, transform);
+                _activeResourceBar.transform.SetSiblingIndex(0); // Ensure it is behind the other UI
+                _activeResourceBar.GetComponent<ISpecialResourceBar>()?.Initialize(playerActor);
             }
             else
             {

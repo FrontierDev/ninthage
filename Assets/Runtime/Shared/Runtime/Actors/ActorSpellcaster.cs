@@ -130,6 +130,39 @@ namespace Game.Shared.Runtime.Actors
             AddModifier("CastTimeHasteScaling", new CastTimeHasteScaling());
         }
 
+        /// <summary>Publishes the live known-spell and base-modifier state to its current owner.</summary>
+        public void PublishOwnerBootstrap(PlayerID playerID)
+        {
+            if (!owner.HasValue || owner.Value != playerID)
+                throw new System.InvalidOperationException("Known-spell bootstrap requires the current owner.");
+
+            Client_ReplaceKnownSpells(playerID, new List<string>(_knownSpellIDs));
+        }
+
+        [TargetRpc]
+        public void Client_ReplaceKnownSpells(
+            PlayerID target,
+            List<string> spellIDs,
+            RPCInfo rpcInfo = default)
+        {
+            _knownSpellIDs.Clear();
+            _spells.Clear();
+            _modifiersBySource.Clear();
+            foreach (string spellID in spellIDs)
+            {
+                SpellDefinition spellDefinition = SpellDefinitionLibrary.Instance.GetDefinition(spellID);
+                if (spellDefinition == null)
+                    continue;
+
+                _knownSpellIDs.Add(spellID);
+                RegisterSpellOverride(spellID, spellDefinition);
+            }
+
+            AddModifier("WeaponSwingTimerCooldown", new WeaponSwingTimerCooldown());
+            AddModifier("CooldownHasteScaling", new CooldownHasteScaling());
+            AddModifier("CastTimeHasteScaling", new CastTimeHasteScaling());
+        }
+
         private void RegisterSpellOverride(string spellID, SpellDefinition spellDef)
         {
             // Create the initial override.

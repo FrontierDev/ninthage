@@ -185,6 +185,389 @@ namespace Game.Server.Core
                 CharacterFinalizationDisposition.ReturnToCharacterSelection);
         }
 
+        private void StartDisconnectGrace(PlayerSessionData session)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+            if (!TryGetAdmittedSession(session.GameplaySessionID, out PlayerSessionData admittedSession)
+                || !ReferenceEquals(admittedSession, session))
+            {
+                throw new InvalidOperationException("Disconnect grace requires an admitted session.");
+            }
+            if (session.HasPlayerAttachment)
+                throw new InvalidOperationException("Disconnect grace requires a detached session.");
+            if (session.PlayerActor == null)
+                throw new InvalidOperationException("Disconnect grace requires a live player actor.");
+
+            GameConfiguration configuration = GameConfigurationManager.Config;
+            if (configuration == null)
+                throw new InvalidOperationException("Game configuration is unavailable for disconnect grace.");
+
+            long graceTicks = ServerSimulationClock.GetNonShorteningTickCount(
+                configuration.DisconnectGraceSeconds,
+                configuration.ServerSimulationTickDuration);
+            long dueTickID = checked(ServerSimulationClock.CurrentTickID + graceTicks);
+            session.LifecycleState = PlayerSessionData.SessionLifecycleState.DisconnectGrace;
+            ScheduleDisconnectGraceDeadline(session, dueTickID);
+        }
+
+        private void ScheduleDisconnectGraceDeadline(
+            PlayerSessionData session,
+            long dueTickID)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+            if (!TryGetAdmittedSession(session.GameplaySessionID, out PlayerSessionData admittedSession)
+                || !ReferenceEquals(admittedSession, session))
+            {
+                throw new InvalidOperationException("Disconnect grace scheduling requires an admitted session.");
+            }
+            if (session.HasPlayerAttachment
+                || session.LifecycleState != PlayerSessionData.SessionLifecycleState.DisconnectGrace)
+            {
+                throw new InvalidOperationException(
+                    "Disconnect grace scheduling requires a detached DisconnectGrace session.");
+            }
+
+            long currentTickID = ServerSimulationClock.CurrentTickID;
+            if (dueTickID <= currentTickID)
+                throw new ArgumentOutOfRangeException(nameof(dueTickID), "The disconnect grace deadline must be in the future.");
+            if (session.DeadlineRegistration.IsValid)
+                throw new InvalidOperationException("The disconnect grace session already has a deadline registration.");
+
+            Guid gameplaySessionID = session.GameplaySessionID;
+            session.DeadlineTickID = dueTickID;
+            try
+            {
+                session.DeadlineRegistration = ServerSimulationClock.RegisterDue(
+                    dueTickID,
+                    _ => OnDisconnectGraceDeadline(gameplaySessionID, dueTickID));
+            }
+            catch
+            {
+                session.DeadlineTickID = 0;
+                session.DeadlineRegistration = default;
+                throw;
+            }
+        }
+
+        private void OnDisconnectGraceDeadline(Guid gameplaySessionID, long callbackDeadlineTickID)
+        {
+            if (!TryGetAdmittedSession(gameplaySessionID, out PlayerSessionData session)
+                || session == null
+                || session.LifecycleState != PlayerSessionData.SessionLifecycleState.DisconnectGrace
+                || session.HasPlayerAttachment
+                || session.DeadlineTickID != callbackDeadlineTickID)
+            {
+                return;
+            }
+
+            CancelSessionDeadline(session);
+            if (session.PlayerActor == null
+                || !ServerActorManager.IsInitialized
+                || !ServerActorManager.Instance.TryGetActor(session.PlayerActor.ID, out Actor registeredActor)
+                || !ReferenceEquals(registeredActor, session.PlayerActor))
+            {
+                MarkSessionUnsettled(
+                    gameplaySessionID,
+                    "the disconnected actor was no longer registered at grace expiry.");
+                return;
+            }
+
+            ServerLogoutEligibilityManager eligibilityManager = ServerLogoutEligibilityManager.Instance;
+            if (eligibilityManager == null)
+            {
+                MarkSessionUnsettled(
+                    gameplaySessionID,
+                    "the logout eligibility manager was unavailable at grace expiry.");
+                return;
+            }
+
+            if (eligibilityManager.CanCompleteLogout(session.PlayerActor.ID))
+            {
+                StartCharacterFinalization(
+                    gameplaySessionID,
+                    CharacterFinalizationDisposition.CloseGameplaySession);
+                return;
+            }
+
+            long currentTickID = ServerSimulationClock.CurrentTickID;
+            long eligibilityTickID = eligibilityManager.GetEarliestLogoutCompletionTickID(session.PlayerActor.ID);
+            long nextTickID = checked(currentTickID + 1);
+            if (eligibilityTickID > nextTickID)
+                nextTickID = eligibilityTickID;
+
+            ScheduleDisconnectGraceDeadline(session, nextTickID);
+        }
+
+        private IEnumerator InitializeReclaimedPlayer(
+            PlayerID newPlayerID,
+            AuthenticatedSessionContext authenticatedSession)
+        {
+            if (!TryValidateReclaimedActor(
+                    newPlayerID,
+                    authenticatedSession,
+                    out PlayerSessionData session,
+                    out NetworkIdentity identity,
+                    out string failureReason))
+            {
+                yield return HandleReclaimFailure(authenticatedSession, failureReason);
+                yield break;
+            }
+
+            try
+            {
+                CancelSessionDeadline(session);
+                AccountEndpoint.Client_PrepareCharacterReclaim(newPlayerID, session.CharacterData);
+
+                if (ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(
+                        session.PlayerID,
+                        out Actor oldRegisteredActor)
+                    && ReferenceEquals(oldRegisteredActor, session.PlayerActor))
+                {
+                    ChunkSubscriptions.UnregisterPlayerActor(session.PlayerID);
+                }
+
+                Actor actor = session.PlayerActor;
+                identity.GiveOwnership(newPlayerID);
+                actor.SetOwner(newPlayerID);
+                AttachPlayerToAdmittedSession(newPlayerID, session);
+
+                ConnectedAccountContext accountContext = new(
+                    authenticatedSession.Username,
+                    authenticatedSession.GameplaySessionID,
+                    authenticatedSession.AccountID,
+                    authenticatedSession.HomeWorldID,
+                    authenticatedSession.Revision,
+                    authenticatedSession.WasReclaimed,
+                    authenticatedSession.SelectedCharacterID);
+                _connectedAccounts[newPlayerID] = accountContext;
+                session.LifecycleState = PlayerSessionData.SessionLifecycleState.Connected;
+
+                try
+                {
+                    PlayerReconnectStatePublisher.Publish(session, newPlayerID);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"Reconnect bootstrap for gameplay session {authenticatedSession.GameplaySessionID} failed after ownership transfer: "
+                        + exception.Message);
+                }
+            }
+            catch (Exception exception)
+            {
+                if (session.HasPlayerAttachment)
+                    session.LifecycleState = PlayerSessionData.SessionLifecycleState.Connected;
+                Debug.Error(
+                    $"Reconnect ownership transfer for gameplay session {authenticatedSession.GameplaySessionID} failed: "
+                    + exception.Message);
+            }
+        }
+
+        private bool TryValidateReclaimedActor(
+            PlayerID newPlayerID,
+            AuthenticatedSessionContext authenticatedSession,
+            out PlayerSessionData session,
+            out NetworkIdentity identity,
+            out string failureReason)
+        {
+            session = null;
+            identity = null;
+            failureReason = null;
+            if (authenticatedSession == null)
+            {
+                failureReason = "the authenticated session context was null.";
+                return false;
+            }
+            if (!authenticatedSession.SelectedCharacterID.HasValue
+                || authenticatedSession.SelectedCharacterID.Value == Guid.Empty)
+            {
+                failureReason = "the reclaimed authentication had no selected character.";
+                return false;
+            }
+            if (!TryGetAdmittedSession(authenticatedSession.GameplaySessionID, out session)
+                || session == null)
+            {
+                failureReason = "the reclaimed gameplay session was not admitted locally.";
+                return false;
+            }
+            if (session.LifecycleState != PlayerSessionData.SessionLifecycleState.DisconnectGrace)
+            {
+                failureReason = $"the local gameplay session was in lifecycle state {session.LifecycleState}.";
+                return false;
+            }
+            if (session.HasPlayerAttachment)
+            {
+                failureReason = "the local gameplay session was already attached to a Player ID.";
+                return false;
+            }
+            if (session.AccountID != authenticatedSession.AccountID)
+            {
+                failureReason = "the reclaimed Account ID did not match the admitted session.";
+                return false;
+            }
+            if (session.CharacterID != authenticatedSession.SelectedCharacterID.Value)
+            {
+                failureReason = "the reclaimed Character ID did not match the admitted session.";
+                return false;
+            }
+            if (session.PlayerActor == null || session.PlayerActor.ID == Guid.Empty)
+            {
+                failureReason = "the admitted session did not retain a live actor.";
+                return false;
+            }
+            if (!ServerWorldManager.IsInitialized
+                || !session.PlayerActor.SpatialContext.IsCompatibleWith(
+                    ServerWorldManager.Instance.CurrentRuntimeContext))
+            {
+                failureReason = "the live actor did not belong to the current World runtime context.";
+                return false;
+            }
+            if (!ServerActorManager.IsInitialized
+                || !ServerActorManager.Instance.TryGetActor(session.PlayerActor.ID, out Actor registeredActor)
+                || !ReferenceEquals(registeredActor, session.PlayerActor))
+            {
+                failureReason = "the live actor was not registered by the authoritative actor manager.";
+                return false;
+            }
+
+            identity = session.PlayerActor.GetComponent<NetworkIdentity>();
+            if (identity == null
+                || !ServerActorManager.Instance.TryGetActorIdentity(session.PlayerActor.ID, out NetworkIdentity registeredIdentity)
+                || !ReferenceEquals(registeredIdentity, identity))
+            {
+                failureReason = "the live actor did not resolve to its authoritative NetworkIdentity.";
+                return false;
+            }
+            if (_gameplaySessionIDsByPlayerID.ContainsKey(newPlayerID))
+            {
+                failureReason = "the new Player ID already had a local admitted-session attachment.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private IEnumerator HandleReclaimFailure(
+            AuthenticatedSessionContext authenticatedSession,
+            string failureReason)
+        {
+            Debug.Error(
+                $"Reclaimed gameplay session {authenticatedSession.GameplaySessionID} failed local actor validation: "
+                + failureReason);
+
+            PlayerSessionData admittedSession = null;
+            bool hasAdmittedSession = TryGetAdmittedSession(
+                authenticatedSession.GameplaySessionID,
+                out admittedSession)
+                && admittedSession != null;
+            WorldPersistenceCoordinator coordinator = null;
+            try
+            {
+                coordinator = ServerInitialization.PersistenceCoordinator;
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Could not inspect local persistence during reclaim failure handling: {exception.Message}");
+            }
+
+            bool hasOwnedLease = coordinator != null
+                && coordinator.TryGetCharacterCheckpointSettlement(
+                    authenticatedSession.SelectedCharacterID.Value,
+                    out Guid settledAccountID,
+                    out _,
+                    out _,
+                    out _)
+                && settledAccountID == authenticatedSession.AccountID;
+            if (coordinator != null && hasOwnedLease)
+            {
+                Task<MasterSessionProtocol.CharacterLeaveResponse> leaveTask = null;
+                try
+                {
+                    leaveTask = coordinator.LeaveAdmittedCharacterAsync(
+                        authenticatedSession.GameplaySessionID,
+                        authenticatedSession.SelectedCharacterID.Value,
+                        CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error($"Reclaim failure could not start local character leave: {exception.Message}");
+                }
+
+                if (leaveTask != null)
+                {
+                    while (!leaveTask.IsCompleted)
+                        yield return null;
+
+                    bool leaveAccepted = false;
+                    try
+                    {
+                        MasterSessionProtocol.CharacterLeaveResponse leaveResponse =
+                            leaveTask.GetAwaiter().GetResult();
+                        leaveAccepted = leaveResponse != null
+                            && leaveResponse.SessionResult == MasterSessionProtocol.GameplaySessionResult.Accepted
+                            && leaveResponse.PersistenceResult == MasterPersistenceProtocol.PersistenceResult.Accepted;
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.Error($"Reclaim failure character leave failed: {exception.Message}");
+                    }
+
+                    if (leaveAccepted)
+                    {
+                        yield return CloseDisconnectedGameplaySession(authenticatedSession.GameplaySessionID);
+                        yield break;
+                    }
+                }
+            }
+
+            if (!hasAdmittedSession && !hasOwnedLease)
+            {
+                Debug.Error(
+                    $"Reclaimed gameplay session {authenticatedSession.GameplaySessionID} has neither a local admitted session "
+                    + "nor a local persistence lease; World-run invalidation remains the final cleanup owner.");
+                yield break;
+            }
+
+            yield return DisconnectPublishedGameplaySession(authenticatedSession.GameplaySessionID);
+        }
+
+        private IEnumerator CloseDisconnectedGameplaySession(Guid gameplaySessionID)
+        {
+            Task<MasterSessionProtocol.SessionResponse> closeTask;
+            try
+            {
+                closeTask = ServerInitialization.SessionCoordinator.CloseGameplaySessionAsync(
+                    gameplaySessionID,
+                    CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Could not close disconnected gameplay session {gameplaySessionID}: {exception.Message}");
+                yield break;
+            }
+
+            while (!closeTask.IsCompleted)
+                yield return null;
+
+            try
+            {
+                MasterSessionProtocol.SessionResponse response = closeTask.GetAwaiter().GetResult();
+                if (response == null
+                    || (response.Result != MasterSessionProtocol.GameplaySessionResult.Accepted
+                        && response.Result != MasterSessionProtocol.GameplaySessionResult.StaleSession))
+                {
+                    Debug.Error(
+                        $"Master gameplay-session close for {gameplaySessionID} returned {response?.Result}.");
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.Error($"Master gameplay-session close for {gameplaySessionID} failed: {exception.Message}");
+            }
+        }
+
         private enum CharacterFinalizationDisposition : byte
         {
             ReturnToCharacterSelection = 0,
@@ -370,16 +753,24 @@ namespace Game.Server.Core
 
             if (!TryGetAdmittedSession(gameplaySessionID, out session)
                 || session == null
-                || session.PlayerActor == null
-                || !TryGetSessionData(session.PlayerID, out PlayerSessionData attachedSession)
-                || attachedSession == null
-                || attachedSession.GameplaySessionID != gameplaySessionID
-                || !IsPlayerConnected(session.PlayerID))
+                || session.PlayerActor == null)
             {
                 MarkSessionUnsettled(
                     gameplaySessionID,
-                    "the live Player ID attachment changed before actor retirement.");
+                    "the live actor disappeared before actor retirement.");
                 yield break;
+            }
+
+            bool hasLiveAttachment = session.HasPlayerAttachment
+                && TryGetSessionData(session.PlayerID, out PlayerSessionData attachedSession)
+                && attachedSession != null
+                && attachedSession.GameplaySessionID == gameplaySessionID
+                && IsPlayerConnected(session.PlayerID);
+            if (!hasLiveAttachment && disposition == CharacterFinalizationDisposition.ReturnToCharacterSelection)
+            {
+                Debug.Warning(
+                    $"Character {session.CharacterID} disconnected during finalization; closing gameplay session instead of publishing a roster.");
+                disposition = CharacterFinalizationDisposition.CloseGameplaySession;
             }
 
             PlayerID playerID = session.PlayerID;
@@ -397,7 +788,12 @@ namespace Game.Server.Core
 
             RemoveAdmittedSession(gameplaySessionID);
 
-            if (disposition != CharacterFinalizationDisposition.ReturnToCharacterSelection)
+            if (disposition == CharacterFinalizationDisposition.CloseGameplaySession)
+            {
+                yield return CloseDisconnectedGameplaySession(gameplaySessionID);
+                yield break;
+            }
+            if (disposition == CharacterFinalizationDisposition.Shutdown)
                 yield break;
 
             Task<MasterSessionProtocol.CharacterRosterResponse> rosterTask;
@@ -467,7 +863,8 @@ namespace Game.Server.Core
                 || accountContext.AccountID != accountID)
             {
                 Debug.Warning(
-                    $"Character {characterID} left durably, but the live account attachment changed before roster publication.");
+                    $"Character {characterID} left durably, but the live account attachment changed before roster publication; closing gameplay session.");
+                yield return CloseDisconnectedGameplaySession(gameplaySessionID);
                 yield break;
             }
 

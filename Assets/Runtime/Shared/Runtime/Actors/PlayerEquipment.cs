@@ -241,6 +241,28 @@ namespace Game.Shared.Runtime.Actors
             return false;
         }
 
+        /// <summary>Publishes the complete live equipment state to its current owner.</summary>
+        public void PublishOwnerBootstrap(PlayerID playerID)
+        {
+            if (!owner.HasValue || owner.Value != playerID)
+                throw new InvalidOperationException("Equipment bootstrap requires the current owner.");
+
+            List<EquipmentSlotChange> changes = new();
+            foreach (ItemSlot slot in Enum.GetValues(typeof(ItemSlot)))
+            {
+                if (slot == ItemSlot.None)
+                    continue;
+
+                if (_equipment.TryGetValue(slot, out ItemInstance item) && item != null)
+                    changes.Add(new EquipmentSlotChange(slot, EquipmentSlotChangeType.Set, item));
+                else
+                    changes.Add(new EquipmentSlotChange(slot, EquipmentSlotChangeType.Removed));
+            }
+
+            NetworkingPerformanceMetrics.RecordOwnerPrivateTargetPublication();
+            Client_UpdateEquipment(playerID, new EquipmentDelta(changes));
+        }
+
         [TargetRpc]
         /// <summary>Applies an equipment update on a client.</summary>
         public void Client_UpdateEquipment(PlayerID target, EquipmentDelta delta, RPCInfo rpcInfo = default)

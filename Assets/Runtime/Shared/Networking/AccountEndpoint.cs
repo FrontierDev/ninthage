@@ -19,6 +19,8 @@ namespace Game.Shared.Networking
         public static Action<CharacterData, string> onEnteringWorld;
         /// <summary>Raised after the client has entered the world.</summary>
         public static Action onEnteredWorld;
+        /// <summary>Raised when the client is preparing to reclaim a live character actor.</summary>
+        public static Action<CharacterData> onPreparingCharacterReclaim;
 
         // Server callbacks
         /// <summary>Raised when the server receives a character creation request.</summary>
@@ -82,6 +84,16 @@ namespace Game.Shared.Networking
         public static void Server_RequestLeaveWorld(RPCInfo rpcInfo = default)
         {
             onLeaveWorldRequest?.Invoke(rpcInfo.sender);
+        }
+
+        [TargetRpc]
+        /// <summary>Prepares the client to receive ownership of a reclaimed live character.</summary>
+        public static void Client_PrepareCharacterReclaim(
+            PlayerID target,
+            CharacterData characterData,
+            RPCInfo rpcInfo = default)
+        {
+            onPreparingCharacterReclaim?.Invoke(characterData);
         }
 
         [TargetRpc]

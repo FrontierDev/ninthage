@@ -43,6 +43,7 @@ namespace Game.Client
 
         // Get the current active character.
         private static CharacterData _activeCharacter;
+        private bool _reclaimPending;
         /// <summary>
         /// Gets the <c>ActiveCharacter</c> value.
         /// </summary>
@@ -61,6 +62,7 @@ namespace Game.Client
             // Subscribe to account-related events 
             Game.Shared.Networking.AccountEndpoint.onCharacterListReceived += UpdateCharacterList;
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnterWorld;
+            Game.Shared.Networking.AccountEndpoint.onPreparingCharacterReclaim += OnPreparingCharacterReclaim;
             Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken += OnActorOwnershipTaken;
             Game.Shared.Networking.ActorEndpoint.onActorOwnerChanged += OnActorOwnerChanged;
             Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
@@ -74,6 +76,7 @@ namespace Game.Client
             // Unsubscribe from events to prevent memory leaks
             Game.Shared.Networking.AccountEndpoint.onCharacterListReceived -= UpdateCharacterList;
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnterWorld;
+            Game.Shared.Networking.AccountEndpoint.onPreparingCharacterReclaim -= OnPreparingCharacterReclaim;
             Game.Shared.Networking.ActorEndpoint.onActorOwnershipTaken -= OnActorOwnershipTaken;
             Game.Shared.Networking.ActorEndpoint.onActorOwnerChanged -= OnActorOwnerChanged;
             Game.Shared.Networking.ActorEndpoint.onPlayerActorAssigned -= OnPlayerActorAssigned;
@@ -84,7 +87,20 @@ namespace Game.Client
         private void OnEnterWorld(CharacterData characterData, string sceneName)
         {
             _activeCharacter = characterData;
+            _reclaimPending = false;
             Debug.Log($"Entering world with character '{characterData.Name}' in scene '{sceneName}'.");
+        }
+
+        private void OnPreparingCharacterReclaim(CharacterData characterData)
+        {
+            if (characterData == null)
+            {
+                Debug.Error("Received a null character during live-character reclaim preparation.");
+                return;
+            }
+
+            _activeCharacter = characterData;
+            _reclaimPending = true;
         }
 
         private void OnActorOwnershipTaken(Actor actor)
@@ -118,15 +134,20 @@ namespace Game.Client
 
         private void OnPlayerActorAssigned(Actor actor)
         {
+            bool isReclaim = _reclaimPending;
+            _reclaimPending = false;
             _playerActor = actor;
             ((PlayerActor)actor).SetCharacterData(_activeCharacter);
-            actor.GetComponent<ActorSpellcaster>().LoadKnownSpells(_activeCharacter.KnownSpellIDs);
-            actor.GetComponent<PlayerInventory>().LoadInventory(_activeCharacter);
-            actor.GetComponent<PlayerEquipment>().LoadEquipment(_activeCharacter);
-            actor.GetComponent<PlayerExperience>().LoadExperience(_activeCharacter);
-            actor.GetComponent<PlayerTalents>().LoadTalents(_activeCharacter);
-            actor.GetComponent<PlayerReputation>().LoadReputations(_activeCharacter);
-            actor.GetComponent<PlayerQuests>().LoadQuests(_activeCharacter);
+            if (!isReclaim)
+            {
+                actor.GetComponent<ActorSpellcaster>().LoadKnownSpells(_activeCharacter.KnownSpellIDs);
+                actor.GetComponent<PlayerInventory>().LoadInventory(_activeCharacter);
+                actor.GetComponent<PlayerEquipment>().LoadEquipment(_activeCharacter);
+                actor.GetComponent<PlayerExperience>().LoadExperience(_activeCharacter);
+                actor.GetComponent<PlayerTalents>().LoadTalents(_activeCharacter);
+                actor.GetComponent<PlayerReputation>().LoadReputations(_activeCharacter);
+                actor.GetComponent<PlayerQuests>().LoadQuests(_activeCharacter);
+            }
             actor.GetComponent<ActorEvents>().LoadClassEvents(_activeCharacter);
 
             // Intialize the special resource UI if applicable.

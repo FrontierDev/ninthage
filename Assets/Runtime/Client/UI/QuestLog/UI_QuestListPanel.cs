@@ -44,9 +44,12 @@ namespace Game.Client.UI
 
         private void OnPlayerActorAssigned(Actor actor)
         {
+            if (_quests != null)
+                _quests.onUpdate -= OnQuestsUpdated;
             _quests = actor.GetComponent<PlayerQuests>();
             if (_quests != null)
             {
+                _quests.onUpdate -= OnQuestsUpdated;
                 _quests.onUpdate += OnQuestsUpdated;
             }
 

@@ -55,6 +55,8 @@ namespace Game.Server.Networking
         internal long DeadlineTickID { get; set; }
         /// <summary>Gets or sets the cancellation handle for the session's simulation deadline.</summary>
         internal ServerSimulationRegistrationHandle DeadlineRegistration { get; set; }
+        /// <summary>Gets whether this admitted session currently has a live Player ID attachment.</summary>
+        internal bool HasPlayerAttachment { get; set; }
 
         /// <summary>Initializes a player session with the authenticated player and character details.</summary>
         /// <param name="playerID">The connected player's network identifier.</param>
@@ -158,6 +160,7 @@ namespace Game.Server.Networking
             LifecycleState = SessionLifecycleState.Connected;
             DeadlineTickID = 0;
             DeadlineRegistration = default;
+            HasPlayerAttachment = true;
         }
 
         /// <summary>Associates the spawned actor with this session.</summary>

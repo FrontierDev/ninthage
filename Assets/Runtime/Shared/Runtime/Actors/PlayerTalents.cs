@@ -118,6 +118,28 @@ namespace Game.Shared.Runtime.Actors
                     def.TalentBehaviour.OnDeactivate(GetComponent<PlayerActor>());
             }
         }
+
+        /// <summary>Publishes the complete live talent state to its current owner.</summary>
+        public void PublishOwnerBootstrap(PlayerID playerID)
+        {
+            if (!owner.HasValue || owner.Value != playerID)
+                throw new System.InvalidOperationException("Talent bootstrap requires the current owner.");
+
+            List<SavedTalentEntry> talents = new(_talents.Count);
+            foreach (KeyValuePair<TalentDefinition, int> talent in _talents)
+            {
+                if (talent.Key == null || string.IsNullOrWhiteSpace(talent.Key.DefinitionID))
+                    throw new System.InvalidOperationException("Live talent state contained an invalid definition.");
+
+                talents.Add(new SavedTalentEntry
+                {
+                    TalentID = talent.Key.DefinitionID,
+                    Rank = talent.Value
+                });
+            }
+
+            Client_UpdateTalents(playerID, talents);
+        }
         #endregion
 
         #region Talent RPCs

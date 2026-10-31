@@ -82,6 +82,25 @@ namespace Game.Server.Networking.Master
                 cancellationToken);
         }
 
+        /// <summary>Closes a disconnected gameplay session through the Master.</summary>
+        internal Task<MasterSessionProtocol.SessionResponse> CloseGameplaySessionAsync(
+            Guid gameplaySessionID,
+            CancellationToken cancellationToken)
+        {
+            if (gameplaySessionID == Guid.Empty)
+                throw new ArgumentException("A nonempty gameplay session ID is required.", nameof(gameplaySessionID));
+
+            MasterSessionProtocol.CloseRequest request = new()
+            {
+                WorldID = WorldID,
+                WorldServerRunID = WorldServerRunID,
+                GameplaySessionID = gameplaySessionID
+            };
+            return ExecuteWithTransientRetryAsync(
+                token => _client.CloseAsync(request, token),
+                cancellationToken);
+        }
+
         private static async Task<TResponse> ExecuteWithTransientRetryAsync<TResponse>(
             Func<CancellationToken, Task<TResponse>> operation,
             CancellationToken cancellationToken)

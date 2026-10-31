@@ -158,5 +158,57 @@ namespace Game.Shared.Runtime.Actors
 
             return questProgress.Progress;
         }
+
+        /// <summary>Publishes the complete live quest state to its current owner.</summary>
+        public void PublishOwnerBootstrap(PlayerID playerID)
+        {
+            if (!owner.HasValue || owner.Value != playerID)
+                throw new InvalidOperationException("Quest bootstrap requires the current owner.");
+
+            List<SavedQuestEntry> quests = new(_activeQuests.Count);
+            foreach (PlayerQuestProgress quest in _activeQuests)
+            {
+                if (quest == null
+                    || quest.Quest == null
+                    || string.IsNullOrWhiteSpace(quest.Quest.DefinitionID)
+                    || quest.Progress == null)
+                {
+                    throw new InvalidOperationException("Live quest state contained an invalid quest entry.");
+                }
+
+                quests.Add(new SavedQuestEntry
+                {
+                    QuestID = quest.Quest.DefinitionID,
+                    Progress = (int[])quest.Progress.Clone(),
+                    IsCompleted = quest.IsCompleted
+                });
+            }
+
+            Client_ReplaceQuests(playerID, quests);
+        }
+
+        [TargetRpc]
+        public void Client_ReplaceQuests(
+            PlayerID target,
+            List<SavedQuestEntry> quests,
+            RPCInfo rpcInfo = default)
+        {
+            _activeQuests.Clear();
+            foreach (SavedQuestEntry quest in quests)
+            {
+                QuestDefinition questDefinition = QuestDefinitionLibrary.Instance.GetDefinition(quest.QuestID);
+                if (questDefinition == null || quest.Progress == null)
+                    continue;
+
+                _activeQuests.Add(new PlayerQuestProgress
+                {
+                    Quest = questDefinition,
+                    Progress = (int[])quest.Progress.Clone(),
+                    IsCompleted = quest.IsCompleted
+                });
+            }
+
+            onUpdate?.Invoke();
+        }
     }
 }

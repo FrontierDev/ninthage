@@ -69,5 +69,49 @@ namespace Game.Shared.Runtime.Actors
         {
             return _reputations.TryGetValue(factionID, out reputation);
         }
+
+        /// <summary>Publishes the complete live reputation state to its current owner.</summary>
+        public void PublishOwnerBootstrap(PlayerID playerID)
+        {
+            if (!owner.HasValue || owner.Value != playerID)
+                throw new System.InvalidOperationException("Reputation bootstrap requires the current owner.");
+
+            List<SavedReputationEntry> reputations = new(_reputations.Count);
+            foreach (KeyValuePair<string, int> reputation in _reputations)
+            {
+                if (string.IsNullOrWhiteSpace(reputation.Key))
+                    throw new System.InvalidOperationException("Live reputation state contained a blank faction ID.");
+
+                reputations.Add(new SavedReputationEntry
+                {
+                    FactionID = reputation.Key,
+                    Reputation = reputation.Value
+                });
+            }
+
+            Client_ReplaceReputation(playerID, _pvpFaction?.DefinitionID, reputations);
+        }
+
+        [TargetRpc]
+        public void Client_ReplaceReputation(
+            PlayerID target,
+            string pvpFactionID,
+            List<SavedReputationEntry> reputations,
+            RPCInfo rpcInfo = default)
+        {
+            _reputations.Clear();
+            foreach (SavedReputationEntry reputation in reputations)
+                _reputations[reputation.FactionID] = reputation.Reputation;
+
+            _pvpFaction = string.IsNullOrWhiteSpace(pvpFactionID)
+                ? null
+                : Game.Shared.Data.FactionDefinitionLibrary.Instance.GetDefinition(pvpFactionID);
+            CharacterEndpoint.onClientReputationUpdated?.Invoke(
+                _pvpFaction?.DefinitionID,
+                _pvpFaction != null && _reputations.TryGetValue(_pvpFaction.DefinitionID, out int value)
+                    ? value
+                    : 0,
+                0);
+        }
     }
 }

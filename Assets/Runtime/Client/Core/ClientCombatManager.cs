@@ -101,6 +101,9 @@ namespace Game.Client
 
         private void OnPlayerActorAssigned(Actor playerActor)
         {
+            ClientInputController.Instance.onMovementInput -= OnPlayerMovementInput;
+            ClientInputController.Instance.onCancelInput -= OnCancelInput;
+            ClientInputController.Instance.onJumpInput -= OnJumpInput;
             ClientInputController.Instance.onMovementInput += OnPlayerMovementInput;
             ClientInputController.Instance.onCancelInput += OnCancelInput;
             ClientInputController.Instance.onJumpInput += OnJumpInput;

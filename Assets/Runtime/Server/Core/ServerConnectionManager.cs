@@ -513,58 +513,30 @@ namespace Game.Server.Core
 
             Debug.Log($"Player left: {playerID}");
 
-            Guid characterID = Guid.Empty;
-            bool requiresFinalCheckpoint = false;
-            bool finalCheckpointQueuedSuccessfully = true;
-            if (TryGetSessionData(playerID, out PlayerSessionData session))
+            if (!TryGetSessionData(playerID, out PlayerSessionData session)
+                || session == null)
             {
-                characterID = session.CharacterID;
-                Actor playerActor = session.PlayerActor;
-                if (playerActor != null)
-                {
-                    requiresFinalCheckpoint = true;
-                    finalCheckpointQueuedSuccessfully = TryCaptureAndQueueFinalCheckpoint(
-                        session,
-                        out string finalCheckpointFailureReason);
-                    if (!finalCheckpointQueuedSuccessfully)
-                    {
-                        Debug.Error(
-                            $"Final checkpoint for character {characterID} could not be captured or queued: "
-                            + finalCheckpointFailureReason);
-                    }
-
-                    if (ServerStatManager.IsInitialized)
-                        ServerStatManager.Instance.UnregisterActor(playerActor);
-
-                    playerActor.RetireFromServer();
-
-                    NetworkIdentity identity = playerActor.GetComponent<NetworkIdentity>();
-                    if (identity != null)
-                        identity.Despawn();
-                }
+                _connectedAccounts.TryGetValue(playerID, out ConnectedAccountContext accountContext);
+                _connectedAccounts.Remove(playerID);
+                if (accountContext != null)
+                    StartCoroutine(DisconnectPublishedGameplaySession(accountContext.GameplaySessionID));
+                return;
             }
 
-            _connectedAccounts.TryGetValue(playerID, out ConnectedAccountContext accountContext);
+            Guid gameplaySessionID = session.GameplaySessionID;
+            PlayerSessionData.SessionLifecycleState previousState = session.LifecycleState;
+            CancelSessionDeadline(session);
+            DetachPlayerFromAdmittedSession(playerID, session);
             _connectedAccounts.Remove(playerID);
-            ClearSessionData(playerID);
-            if (accountContext != null)
-                StartCoroutine(DisconnectPublishedGameplaySession(accountContext.GameplaySessionID));
+            StartCoroutine(DisconnectPublishedGameplaySession(gameplaySessionID));
 
-            if (characterID != Guid.Empty)
+            if (previousState == PlayerSessionData.SessionLifecycleState.Finalizing
+                || previousState == PlayerSessionData.SessionLifecycleState.Unsettled)
             {
-                if (requiresFinalCheckpoint && !finalCheckpointQueuedSuccessfully)
-                {
-                    Debug.Error(
-                        $"Character lease {characterID} will not be released because its final checkpoint "
-                        + "was not acknowledged for queueing.");
-                }
-                else
-                {
-                    StartCoroutine(ReleaseCharacterAfterDisconnect(
-                        characterID,
-                        requiresFinalCheckpoint));
-                }
+                return;
             }
+
+            StartDisconnectGrace(session);
         }
 
         private IEnumerator InitializeAuthenticatedPlayer(
@@ -578,12 +550,18 @@ namespace Game.Server.Core
                 yield break;
             }
 
-            if (authenticatedSession.SelectedCharacterID.HasValue)
+            if (!authenticatedSession.WasReclaimed && authenticatedSession.SelectedCharacterID.HasValue)
             {
                 Debug.Warning(
                     $"Player {playerID} authenticated with selected character {authenticatedSession.SelectedCharacterID.Value}; "
-                    + "selected-character reclaim requires the later reconnect flow.");
+                    + "a created gameplay session cannot carry a selected character.");
                 yield return DisconnectUnpublishedGameplaySession(authenticatedSession.GameplaySessionID);
+                yield break;
+            }
+
+            if (authenticatedSession.WasReclaimed && authenticatedSession.SelectedCharacterID.HasValue)
+            {
+                yield return InitializeReclaimedPlayer(playerID, authenticatedSession);
                 yield break;
             }
 
@@ -1148,11 +1126,6 @@ namespace Game.Server.Core
             string firstRejection = null;
             foreach (PlayerSessionData session in sessionSnapshot)
             {
-                Guid gameplaySessionID = Guid.Empty;
-                bool hasCurrentPlayerAttachment = session != null
-                    && _gameplaySessionIDsByPlayerID.TryGetValue(
-                        session.PlayerID,
-                        out gameplaySessionID);
                 if (!_initialized
                     || ServerInitialization.IsFatalShutdownRequested
                     || session == null
@@ -1160,9 +1133,9 @@ namespace Game.Server.Core
                     || session.PlayerActor == null
                     || session.AccountID == Guid.Empty
                     || session.CharacterID == Guid.Empty
-                    || !hasCurrentPlayerAttachment
-                    || gameplaySessionID != session.GameplaySessionID
-                    || !IsPlayerConnected(session.PlayerID))
+                    || !ServerActorManager.IsInitialized
+                    || !ServerActorManager.Instance.TryGetActor(session.PlayerActor.ID, out Actor registeredActor)
+                    || !ReferenceEquals(registeredActor, session.PlayerActor))
                 {
                     continue;
                 }
@@ -1373,6 +1346,74 @@ namespace Game.Server.Core
             }
 
             return _admittedSessionsByGameplaySessionID.TryGetValue(gameplaySessionID, out session);
+        }
+
+        private void DetachPlayerFromAdmittedSession(
+            PlayerID playerID,
+            PlayerSessionData session)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+            if (session.GameplaySessionID == Guid.Empty)
+                throw new InvalidOperationException("An admitted session must have a gameplay session ID.");
+            if (!session.HasPlayerAttachment)
+                throw new InvalidOperationException("The admitted session has no live Player ID attachment.");
+            if (session.PlayerID != playerID)
+                throw new InvalidOperationException("The supplied Player ID is not attached to the admitted session.");
+            if (!_gameplaySessionIDsByPlayerID.TryGetValue(playerID, out Guid gameplaySessionID)
+                || gameplaySessionID != session.GameplaySessionID)
+            {
+                throw new InvalidOperationException(
+                    "The admitted session Player ID attachment does not match the primary session identity.");
+            }
+
+            _gameplaySessionIDsByPlayerID.Remove(playerID);
+            session.HasPlayerAttachment = false;
+
+            if (session.PlayerActor != null
+                && ChunkSubscriptions.PLAYER_ACTORS.TryGetValue(playerID, out Actor registeredActor)
+                && ReferenceEquals(registeredActor, session.PlayerActor))
+            {
+                ChunkSubscriptions.UnregisterPlayerActor(playerID);
+            }
+        }
+
+        private void AttachPlayerToAdmittedSession(
+            PlayerID playerID,
+            PlayerSessionData session)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+            if (session.GameplaySessionID == Guid.Empty)
+                throw new InvalidOperationException("An admitted session must have a gameplay session ID.");
+            if (session.HasPlayerAttachment)
+                throw new InvalidOperationException("The admitted session already has a live Player ID attachment.");
+            if (_gameplaySessionIDsByPlayerID.ContainsKey(playerID))
+                throw new InvalidOperationException("The new Player ID already has an admitted gameplay session.");
+
+            foreach (Guid attachedGameplaySessionID in _gameplaySessionIDsByPlayerID.Values)
+            {
+                if (attachedGameplaySessionID == session.GameplaySessionID)
+                {
+                    throw new InvalidOperationException(
+                        "The admitted gameplay session is already attached to another Player ID.");
+                }
+            }
+
+            if (session.PlayerActor == null)
+                throw new InvalidOperationException("A live actor is required to attach an admitted session.");
+            if (!_admittedSessionsByGameplaySessionID.TryGetValue(
+                    session.GameplaySessionID,
+                    out PlayerSessionData admittedSession)
+                || !ReferenceEquals(admittedSession, session))
+            {
+                throw new InvalidOperationException("The admitted session is not present in the primary session registry.");
+            }
+
+            session.PlayerID = playerID;
+            session.HasPlayerAttachment = true;
+            _gameplaySessionIDsByPlayerID.Add(playerID, session.GameplaySessionID);
+            ChunkSubscriptions.RegisterPlayerActor(playerID, session.PlayerActor);
         }
 
         private void RemoveAdmittedSession(Guid gameplaySessionID)

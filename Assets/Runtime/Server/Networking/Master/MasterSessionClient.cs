@@ -56,6 +56,24 @@ namespace Game.Server.Networking.Master
             return response;
         }
 
+        /// <summary>Closes a finalized gameplay session through the Master.</summary>
+        internal async Task<MasterSessionProtocol.SessionResponse> CloseAsync(
+            MasterSessionProtocol.CloseRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            (HttpStatusCode statusCode, string responseBody) = await _worldClient.PostJsonAsync(
+                MasterSessionProtocol.CLOSE_PATH,
+                JsonConvert.SerializeObject(request),
+                cancellationToken).ConfigureAwait(false);
+
+            MasterSessionProtocol.SessionResponse response = DeserializeSessionResponse(responseBody);
+            ValidateStatus(statusCode, response.Result);
+            return response;
+        }
+
         /// <summary>Admits a character through its authenticated gameplay session.</summary>
         internal Task<MasterSessionProtocol.CharacterAdmissionResponse> AdmitCharacterAsync(
             MasterSessionProtocol.CharacterAdmissionRequest request,
