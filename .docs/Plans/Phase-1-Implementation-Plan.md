@@ -390,16 +390,63 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 
 **Prerequisite:** Stable persistence schema and gameplay-definition ownership; client asset lifetime baseline 1.6.
 
-**Implement:**
+**Locked Stage 1.9 decisions:**
 
-- Establish explicit client/server build, network protocol, gameplay-content, Addressables catalog and database-schema identities, plus release/build metadata and an immutable release manifest.
-- Validate compatibility before world entry; fail closed for incompatible authoritative client/content/schema state with actionable diagnostics.
-- Establish stable data-definition IDs and runtime registries for hotfixable definitions; remove `Resources.Load` / direct-reference **authority** only for data designated as remotely hotfixable, preserving local bootstrap and executable-bound content.
-- Complete the existing Addressables remote catalog, content-update, local-cache, bundle ownership/dependency and platform-specific client/server content workflows.
-- Preserve each release's `addressables_content_state.bin` and immutable artifacts; verify patch download size, cache invalidation, content hash/revision and rollback compatibility.
-- Enforce reliable asset/definition references across client/server revisions and prevent accidental cross-release mixing.
+- The Master Server owns the active Release State for its process lifetime.
+- Release Manifest schema version 1 is exactly the contract defined by the Live Content and Versioning PDD §15.
+- `ReleaseID` is a nonempty immutable GUID. Protocol Version starts at 1; Gameplay Content Revision and per-build-target Catalog Revision are positive signed 64-bit revisions.
+- The Master uses the exact required EF Core migration ID as `DatabaseSchemaVersion`.
+- Unity CCD is the initial remote content host, with Development / Staging / Production environments and matching platform buckets; the initial client target is `StandaloneWindows64`.
+- CCD `latest` is Development iteration convenience only. A formal Release Manifest pins an immutable release-specific CCD URL.
+- The active manifest is selected explicitly at Master startup in Phase 1. Changing active Release State requires controlled Master restart/deployment; no online release switcher is introduced here.
+- Promotion to another environment creates a new environment-specific immutable Release Manifest / `ReleaseID` because the CCD release URL changes.
 
-**Gate:** Controlled compatible hotfix works without rebuilding the client; incompatible builds/content cannot enter; catalog/bundle updates are reproducible and auditable; asset dependency/release artifacts and update telemetry are sufficient for later integrated performance qualification.
+**Implementation order:**
+
+1. **Release contracts and validation**
+   - Add the canonical Release Manifest / Addressables catalog contract on the Master side.
+   - Validate all required identities, hashes, build-target uniqueness, environment and immutable remote-path rules.
+   - Add no compatibility fallback or implicit `latest` lookup.
+
+2. **Master active-release authority**
+   - Load one configured immutable manifest during Master startup.
+   - Fail startup before normal World/player service if the manifest is invalid, the configured environment disagrees, or the actual persistence schema does not equal `DatabaseSchemaVersion`.
+   - Expose the loaded immutable state read-only to later World/session compatibility code; do not create a second mutable release registry.
+
+3. **World Server release pinning**
+   - Extend the existing Master world-registration contract rather than adding another registration service.
+   - World Server registration presents its server build/protocol/gameplay-content identity.
+   - Master rejects a World run that does not match the active Release State.
+   - An accepted registration snapshot is pinned to the accepted `ReleaseID` for that `WorldServerRunID`.
+
+4. **Pre-authentication client compatibility**
+   - Add one compatibility negotiation before credential authentication/world entry.
+   - Client reports build, protocol, gameplay-content and loaded catalog identity.
+   - World validates against its pinned Release State and returns an actionable compatibility result.
+   - Credential validation must not run for a client that has not satisfied compatibility.
+
+5. **Addressables release-state integration**
+   - Replace runtime authority based on a movable Development `latest` path with the pinned catalog identity/load path supplied by Release State.
+   - Complete remote catalog check/update, required dependency download, cache reuse and explicit content-verification failure UX.
+   - Preserve the local bootstrap required to show update/maintenance/content errors.
+
+6. **Hotfixable gameplay-definition registries**
+   - Keep stable `DefinitionID` values.
+   - Migrate only approved hotfixable definition domains away from `Resources.Load` / direct-reference authority to registries populated from the active Addressables content set.
+   - Preserve local/executable-bound definitions where remote hotfixing is not required.
+
+7. **Release artifacts and update workflow**
+   - Retain the exact per-build-target `addressables_content_state.bin` and record its SHA-256 in the Release Manifest.
+   - Build content updates only against the exact retained baseline.
+   - Retain manifest, catalog/hash, bundle/dependency report, content-state artifact and build/source identities for every promoted release.
+
+8. **Controlled hotfix / rollback validation**
+   - Prove a compatible content-only update can advance gameplay/catalog content without rebuilding the executable.
+   - Prove incompatible client/protocol/content/schema combinations fail closed before world entry.
+   - Prove cached unchanged bundles are reused and changed bundles alone are downloaded.
+   - Prove rollback selects a known-good immutable release and does not silently cross incompatible database/content state.
+
+**Gate:** Controlled compatible hotfix works without rebuilding the client; incompatible builds/content/schema cannot enter; Master/World/client are pinned to one explicit release; catalog/bundle updates are reproducible and auditable; release artifacts, dependency/patch-size evidence and update telemetry are sufficient for later integrated performance qualification.
 
 ### Stage 1.10 — Runtime operations, failure handling and CI performance gates
 
