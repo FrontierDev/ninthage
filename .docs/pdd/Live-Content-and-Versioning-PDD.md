@@ -3,7 +3,7 @@
 **Status:** Authoritative design reference  
 **Project:** Ninth Age  
 **Scope:** Production release identity, client/server compatibility, network protocol versioning, gameplay-content revisioning, Addressables/CDN content delivery, asset-bundle architecture, hotfixes, persistent-data migrations, live-content activation, maintenance, rollback and release validation  
-**Last updated:** 2026-10-07
+**Last updated:** 2026-10-31
 
 ---
 
@@ -298,38 +298,113 @@ The server must not operate against an incompatible database schema.
 
 # 15. Release Manifest
 
-## 15.1 Required Manifest
+## 15.1 Exact manifest contract
 
-Every promoted production Release State has an immutable release manifest.
+Every candidate or active Release State is represented by one immutable manifest with schema version **1**.
+
+The authored C# contract uses the project's normal uppercase-ID convention:
+
+```text
+ManifestVersion
+ReleaseID
+Environment
+ClientBuildVersion
+ClientBuildID
+ServerBuildID
+ProtocolVersion
+GameplayContentRevision
+GameplayContentManifestHash
+AddressablesCatalogs[]
+DatabaseSchemaVersion
+CreatedAtUTC
+```
+
+Each `AddressablesCatalogs` entry contains:
+
+```text
+BuildTarget
+CatalogRevision
+CatalogHash
+RemoteLoadPath
+ContentStateSHA256
+```
+
+The initial supported build target is `StandaloneWindows64`.
+
+Field rules are exact:
+
+- `ManifestVersion` is the integer `1`.
+- `ReleaseID` is a nonempty GUID generated once for that manifest. Its serialized string form is canonical lowercase GUID `D` format. A published `ReleaseID` is never reused.
+- `Environment` is exactly one of `Development`, `Staging` or `Production`.
+- `ClientBuildVersion` is the Unity `PlayerSettings.bundleVersion` value and must be `MAJOR.MINOR.PATCH`.
+- `ClientBuildID` and `ServerBuildID` are immutable source/build identities. Repository-produced promoted builds use the exact Git commit SHA; client and World Server remain separate fields even when they were built from the same commit.
+- `ProtocolVersion` is a positive 32-bit integer. Initial production-compatible protocol identity starts at `1`; breaking protocol changes increment it and exact equality remains the default compatibility rule.
+- `GameplayContentRevision` is a positive signed 64-bit integer. Published Production revisions increase monotonically and are never reused for different authoritative gameplay content.
+- `GameplayContentManifestHash` is the lowercase 64-character SHA-256 hex digest of the canonical authoritative gameplay-definition manifest for that revision.
+- `AddressablesCatalogs` contains exactly one entry per supported client build target and no duplicate `BuildTarget`.
+- `CatalogRevision` is a positive signed 64-bit integer, monotonically advanced for a changed published catalog of that build target and never reused for different Production catalog contents.
+- `CatalogHash` is the exact Addressables-generated catalog hash token associated with the catalog artifact; it is compared as an opaque ordinal string rather than reinterpreted as a project-defined hash algorithm.
+- `RemoteLoadPath` is the exact remote Addressables root for the immutable content release. For Unity CCD release manifests it uses the release-specific `/releases/{releaseID}/entry_by_path/content/?path=` form, not a movable `release_by_badge/latest` path.
+- `ContentStateSHA256` is the lowercase 64-character SHA-256 digest of the exact `addressables_content_state.bin` retained for that build target/release baseline.
+- `DatabaseSchemaVersion` is the exact latest required EF Core migration ID for the Master persistence schema. It is not an invented parallel integer.
+- `CreatedAtUTC` is a UTC `DateTimeOffset` identifying manifest creation time and is immutable.
+
+The manifest contains no password, bearer secret, player/account identity, mutable health state, current World Server run identity or mutable activation timestamp.
+
+## 15.2 Master-owned active Release State
+
+The immutable manifest and the **active-release pointer** are separate concepts.
+
+The Master Server owns the active Release State used for compatibility decisions. For Stage 1.9 the active manifest is selected through explicit deployment/startup configuration and loaded once when the Master starts. Changing the active release therefore requires a controlled Master restart/deployment; runtime online manifest switching is not introduced in Phase 1.
 
 Conceptually:
 
 ```text
-ReleaseId
-ClientBuildVersion
-ClientBuildId
-ServerBuildId
-ProtocolVersion
-GameplayContentRevision
-GameplayContentManifestHash
-AddressablesCatalogs
-DatabaseSchemaVersion
-ActivationMetadata
+Configured active manifest
+→ Master validates it once at startup
+→ Master owns active ReleaseID for that process lifetime
+→ World Server registration must match that active release
+→ accepted World Server run is pinned to that ReleaseID
+→ client compatibility is validated against the World Server's pinned release
 ```
 
-Addressables catalog identity may be platform-specific.
+The Master must never discover an active release by asking CCD for `latest`.
 
----
+The client and World Server must never independently choose whichever catalog/content revision is newest.
 
-## 15.2 Release Manifest Authority
+## 15.3 Environment and promotion rule
 
-The Release Manifest defines the compatible production combination.
+A Release Manifest identifies one exact environment-specific release state because the immutable CCD release URL is environment/bucket specific.
 
-Neither the client nor the server should independently choose "whatever is latest" from the CDN.
+Promotion therefore produces a new immutable manifest/ReleaseID for the target environment while preserving any unchanged executable, protocol, gameplay-content and schema identities. The target manifest records the target environment's immutable CCD release URL.
 
-A newer catalog/content revision may already be uploaded but remains inactive until a Release State explicitly references it.
+Development may use CCD's movable `latest` badge for rapid manual iteration outside the formal pinned-release path. A manifest used to validate Stage 1.9 release compatibility must use the immutable release-specific URL.
 
----
+## 15.4 Manifest validation and failure semantics
+
+A manifest is invalid and the Master must fail startup before serving normal World/player traffic when:
+
+- any required field is missing or malformed;
+- `ReleaseID` is empty;
+- the environment does not match the Master's configured hosting environment;
+- build/version identifiers are blank;
+- protocol/content/catalog revisions are nonpositive;
+- gameplay/content-state SHA-256 strings are not lowercase 64-character hexadecimal;
+- build-target entries are duplicated;
+- a required build target is absent;
+- the Addressables remote path is not an absolute URI;
+- Staging/Production remote content is not HTTPS;
+- a Unity CCD manifest uses a movable badge path instead of a release-specific path;
+- `DatabaseSchemaVersion` is blank;
+- the actual Master database schema does not equal the manifest's required schema version.
+
+No fallback manifest, previous release, `latest` lookup or inferred compatibility is permitted.
+
+## 15.5 Release Manifest Authority
+
+The Release Manifest defines the compatible executable/content/schema combination. The active-release selection defines which immutable manifest is authoritative for the running environment.
+
+A newer CCD release or manifest may already exist but remains inactive until deployment configuration selects it and the Master starts successfully against it.
 
 # 16. Compatibility Handshake
 
@@ -831,17 +906,19 @@ The active catalog must never reference bundles that have not yet reached the co
 
 # 36. CDN Provider
 
-The PDD does not lock a provider.
+The initial Stage 1.9 content host is **Unity Cloud Content Delivery (CCD)**.
 
-Valid implementations may include:
+Ninth Age uses:
 
-- Unity Cloud Content Delivery;
-- object storage + CDN;
-- equivalent HTTP content hosting.
+- separate CCD `Development`, `Staging` and `Production` environments;
+- matching platform buckets, initially `windows`;
+- `StandaloneWindows64` as the initial client build target;
+- Development uploads/releases first, with later promotion to Staging and Production;
+- Addressables remote load paths supplied by CCD.
 
-The provider must support reliable HTTPS delivery of immutable bundles and mutable release/catalog pointers.
+The architecture remains provider-portable: game/runtime code consumes an absolute remote load path from Release State rather than depending on CCD SDK types for content reads.
 
----
+CCD badges are operational pointers, not release identity. `latest` may be used for rapid Development iteration, but a pinned Release Manifest uses the immutable CCD release URL.
 
 ## 37. CDN Cache Behaviour
 
@@ -1009,25 +1086,34 @@ Presentation-only content can use less restrictive activation where safe.
 
 ## 47. Server Revision Pinning
 
-The server starts with an explicit expected:
+The Master Server is the active Release State authority.
+
+A World Server registration presents the immutable server-side compatibility identity required by the active manifest. The Master rejects registration unless the World Server matches the active:
 
 - Release ID;
+- Server Build ID;
 - Protocol Version;
 - Gameplay Content Revision;
-- Content Manifest Hash;
-- Database Schema Version.
+- Gameplay Content Manifest Hash.
 
-The server does not query the CDN and automatically adopt "latest."
+The Master separately verifies its own actual database schema against the active manifest before normal service is opened.
+
+An accepted World Server run records the accepted Release ID in its registration snapshot for that run lifetime. That World Server does not query CCD or independently adopt `latest`.
 
 ---
 
 ## 48. Client Revision Pinning
 
-The server/Release Manifest tells clients which revision is required.
+The accepted World Server run exposes the client-facing compatibility identity from its pinned Release Manifest.
 
-A client may have newer inactive content cached, but it must use the catalog/content revision selected by the active production Release State.
+Before authentication/world entry, the client must prove or update to the pinned:
 
----
+- Client Build Version / Client Build ID;
+- Protocol Version;
+- Gameplay Content Revision / manifest hash;
+- build-target-specific Addressables Catalog Revision / hash.
+
+The client may have newer inactive content cached, but it must use the catalog/content revision selected by the pinned active Release State.
 
 # 49. Production Environments
 
@@ -1376,103 +1462,104 @@ Examples of required fail-closed behaviour:
 
 The following remain implementation/operations choices:
 
-- CDN/content-hosting provider;
 - launcher/storefront;
 - exact CI/CD provider;
-- exact manifest file format;
-- exact release-ID format;
 - exact bundle-size thresholds;
 - exact Addressables group names/labels;
 - exact cache-cleanup timing;
-- exact CDN retention period;
+- exact CCD retention period;
 - exact maintenance duration;
 - exact database backup technology;
 - exact deployment orchestration;
+- exact release-manifest generation/packaging command;
+- exact administrator UX for later release activation after Phase 1;
 - whether explicitly tested mixed-build compatibility is ever introduced;
 - whether gameplay-content activation can eventually occur without server restart;
 - whether rolling/zero-downtime deployment is ever justified later.
 
 These do not change the product architecture.
 
----
-
 # 74. Locked Design Decisions
 
 1. Every production world runs one explicitly identified Release State.
-2. Client build, protocol, gameplay content, Addressables catalog and database schema versions are distinct.
+2. Client build, World Server build, protocol, gameplay content, Addressables catalog and database schema versions are distinct.
 3. Client Build Version uses a human-readable MAJOR.MINOR.PATCH form.
-4. Production builds record an immutable build/source identifier.
-5. Networking has an explicit integer Protocol Version.
+4. Repository-produced promoted client/World builds record the immutable Git commit SHA as their build identity.
+5. Networking has an explicit positive integer Protocol Version, starting at 1.
 6. Protocol versions match exactly by default.
-7. Gameplay content has a monotonically increasing revision.
-8. Published gameplay revision numbers are never reused for different content.
-9. Gameplay content also has a manifest/hash for verification.
-10. Addressables catalog identity is tracked separately from gameplay revision.
-11. Database schema version is tracked explicitly.
-12. Every promoted production state has an immutable Release Manifest.
-13. The Release Manifest pins compatible client/server/content/catalog/schema state.
-14. Servers/clients do not independently adopt "whatever is latest."
-15. Compatibility is validated before world entry.
-16. Version incompatibility is reported distinctly from credential failure.
-17. Stale authoritative gameplay content cannot enter the production world.
-18. Unity Addressables Content Update is the canonical content-hotfix system.
-19. Addressables updates operate at bundle/catalog granularity, not binary delta within bundles.
-20. Bundle layout is a product-critical patch-size concern.
-21. Local bootstrap content is deliberately small/stable.
-22. Hotfixable content is remote Addressable content where appropriate.
-23. C# executable code is not hotfixed through ordinary AssetBundles.
-24. Existing-schema ScriptableObject gameplay values are hotfixable.
-25. New runtime/SerializeReference types require an executable release.
-26. Persistent gameplay definitions use stable Definition IDs.
-27. Resources-loaded direct-reference libraries must not remain the final authority for remotely hotfixable definitions.
-28. Runtime definition registries load the active content revision.
-29. Large monolithic gameplay bundles are prohibited as the default.
-30. One-bundle-per-tiny-definition is also prohibited as the default.
-31. Gameplay definitions are grouped into coherent hotfix domains.
-32. Large presentation/media content is not forced into tiny frequently-changing gameplay bundles.
-33. World chunks remain independently patchable at useful geographic granularity.
-34. Shared dependencies receive intentional ownership to prevent duplication.
-35. Local assets must not accidentally embed remote mutable content.
-36. Frequently mutable and rarely-changing large content may use different Addressables update strategies.
-37. Catalog/bundle artifacts are build-target specific.
-38. Client/server may have different physical bundles while sharing one logical Gameplay Content Revision.
-39. Production Addressables content-state files are retained release artifacts.
-40. Content updates are built against the exact compatible production content-state baseline.
-41. Production bundles are immutable.
-42. Bundles are uploaded/verified before the new catalog/release pointer is activated.
-43. CDN/provider choice is implementation-neutral.
-44. Unchanged cached bundles are reused.
-45. Changed bundles are downloaded whole; unchanged bundles are not.
-46. Unreferenced cached bundles can be cleaned safely.
-47. The full remote catalogue does not need to be downloaded eagerly; mandatory context dependencies do.
-48. Production adds runtime catalog update/download handling beyond `Addressables.InitializeAsync()`.
-49. Content-only versus executable-release eligibility is explicit.
-50. Incompatible content changes fail classification rather than being forced through hotfixing.
-51. A server process is pinned to one Gameplay Content Revision for its lifetime by default.
-52. Gameplay balance does not silently change mid-encounter.
-53. Development, Staging and Production are distinct release environments.
-54. Staging validates the production compatibility/content-delivery model.
-55. Published persistent definition IDs are not casually renamed/reused.
-56. Persistent definition removal requires explicit migration/deprecation handling.
-57. Database changes use ordered explicit migrations.
-58. Server startup validates database schema before opening normal service.
-59. Risky production migrations require appropriate backup/snapshot.
-60. Rollback validates persistent-data/schema compatibility.
-61. Database rollback does not assume migration `Down()` is safe after newer writes.
-62. Previous known-good release artifacts are retained for rollback.
-63. Controlled maintenance is the default for incompatible releases.
-64. Players receive explicit maintenance/update/content-error states.
-65. Scheduled live content uses authoritative server/UTC time.
-66. Live content may be predeployed before activation.
-67. Production releases validate definitions, references, catalogs, bundles, protocol and migration state.
-68. Bundle dependency and update-size reports are release gates.
-69. Unexpectedly huge patches from small changes require failure/review.
-70. Required download progress/failure is visible to the player.
-71. Cached exact active content may be reused during CDN outage.
-72. Missing required content never silently falls back to an older authoritative revision.
-73. Compatibility/migration/content failures fail closed rather than guessing.
-
----
+7. Gameplay content has a positive monotonically increasing signed 64-bit revision.
+8. Published Production gameplay revision numbers are never reused for different content.
+9. Gameplay content also has a canonical SHA-256 manifest hash for verification.
+10. Addressables catalog identity is tracked separately per build target.
+11. Database schema identity is the exact required EF Core migration ID.
+12. Release Manifest schema version 1 uses the exact fields defined in §15.1.
+13. Release ID is a nonempty GUID generated once per immutable environment-specific manifest and never reused.
+14. Immutable Release Manifest data and mutable/operational activation selection are separate concepts.
+15. The Master Server owns the active Release State for its process lifetime.
+16. Phase 1 selects the active manifest explicitly at Master startup; changing it requires controlled Master restart/deployment.
+17. Master, World Server and client never infer release authority from CCD `latest`.
+18. World Server registration must match the Master's active release and accepted World runs are pinned to the accepted Release ID.
+19. Compatibility is validated before authentication/world entry.
+20. Version incompatibility is reported distinctly from credential failure.
+21. Stale authoritative gameplay content cannot enter the production world.
+22. Unity Addressables Content Update is the canonical content-hotfix system.
+23. Unity Cloud Content Delivery is the initial remote content host.
+24. Development, Staging and Production use separate CCD environments with matching platform buckets.
+25. Formal pinned Release Manifests use immutable CCD release URLs; movable badges are Development iteration conveniences only.
+26. Addressables updates operate at bundle/catalog granularity, not binary delta within bundles.
+27. Bundle layout is a product-critical patch-size concern.
+28. Local bootstrap content is deliberately small/stable.
+29. Hotfixable content is remote Addressable content where appropriate.
+30. C# executable code is not hotfixed through ordinary AssetBundles.
+31. Existing-schema ScriptableObject gameplay values are hotfixable.
+32. New runtime/SerializeReference types require an executable release.
+33. Persistent gameplay definitions use stable Definition IDs.
+34. Resources-loaded direct-reference libraries must not remain the final authority for remotely hotfixable definitions.
+35. Runtime definition registries load the active content revision.
+36. Large monolithic gameplay bundles are prohibited as the default.
+37. One-bundle-per-tiny-definition is also prohibited as the default.
+38. Gameplay definitions are grouped into coherent hotfix domains.
+39. Large presentation/media content is not forced into tiny frequently-changing gameplay bundles.
+40. World chunks remain independently patchable at useful geographic granularity.
+41. Shared dependencies receive intentional ownership to prevent duplication.
+42. Local assets must not accidentally embed remote mutable content.
+43. Frequently mutable and rarely-changing large content may use different Addressables update strategies.
+44. Catalog/bundle artifacts are build-target specific.
+45. Client/server may have different physical bundles while sharing one logical Gameplay Content Revision.
+46. Production Addressables content-state files are retained release artifacts and are SHA-256 identified in the manifest.
+47. Content updates are built against the exact compatible production content-state baseline.
+48. Production bundles are immutable.
+49. Bundles are uploaded/verified before the new catalog/release is activated.
+50. Unchanged cached bundles are reused.
+51. Changed bundles are downloaded whole; unchanged bundles are not.
+52. Unreferenced cached bundles can be cleaned safely.
+53. The full remote catalogue does not need to be downloaded eagerly; mandatory context dependencies do.
+54. Production adds runtime catalog update/download handling beyond `Addressables.InitializeAsync()`.
+55. Content-only versus executable-release eligibility is explicit.
+56. Incompatible content changes fail classification rather than being forced through hotfixing.
+57. A server process is pinned to one Gameplay Content Revision for its lifetime by default.
+58. Gameplay balance does not silently change mid-encounter.
+59. Development, Staging and Production are distinct release environments.
+60. Staging validates the production compatibility/content-delivery model.
+61. Published persistent definition IDs are not casually renamed/reused.
+62. Persistent definition removal requires explicit migration/deprecation handling.
+63. Database changes use ordered explicit migrations.
+64. Master startup validates actual database schema against the active Release Manifest before opening normal service.
+65. Risky production migrations require appropriate backup/snapshot.
+66. Rollback validates persistent-data/schema compatibility.
+67. Database rollback does not assume migration `Down()` is safe after newer writes.
+68. Previous known-good release artifacts are retained for rollback.
+69. Controlled maintenance is the default for incompatible releases.
+70. Players receive explicit maintenance/update/content-error states.
+71. Scheduled live content uses authoritative server/UTC time.
+72. Live content may be predeployed before activation.
+73. Production releases validate definitions, references, catalogs, bundles, protocol and migration state.
+74. Bundle dependency and update-size reports are release gates.
+75. Unexpectedly huge patches from small changes require failure/review.
+76. Required download progress/failure is visible to the player.
+77. Cached exact active content may be reused during CCD outage.
+78. Missing required content never silently falls back to an older authoritative revision.
+79. Compatibility/migration/content failures fail closed rather than guessing.
 
 # 75. Dependencies
 
