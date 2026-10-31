@@ -1,4 +1,5 @@
 using Actor = Game.Shared.Runtime.Actors.Actor;
+using Game.Server.Core;
 using Game.Server.Networking.Master;
 using Game.Server.Persistence;
 using Game.Shared.Persistence;
@@ -15,6 +16,15 @@ namespace Game.Server.Networking
     /// </summary>
     public class PlayerSessionData
     {
+        internal enum SessionLifecycleState : byte
+        {
+            Connected = 0,
+            LogoutCountdown = 1,
+            DisconnectGrace = 2,
+            Finalizing = 3,
+            Unsettled = 4
+        }
+
         /// <summary>Gets or sets the connected player's network identifier.</summary>
         public PlayerID PlayerID;
         /// <summary>Gets the Master-owned gameplay-session identity for this admitted character.</summary>
@@ -39,6 +49,12 @@ namespace Game.Server.Networking
         internal string CurrentSafeReturnLocationID => _currentSafeReturnLocationID;
         /// <summary>Gets or sets the actor spawned for the selected character.</summary>
         public Actor PlayerActor;
+        /// <summary>Gets or sets the authoritative lifecycle state for this admitted session.</summary>
+        internal SessionLifecycleState LifecycleState { get; set; }
+        /// <summary>Gets or sets the authoritative simulation tick deadline for this session.</summary>
+        internal long DeadlineTickID { get; set; }
+        /// <summary>Gets or sets the cancellation handle for the session's simulation deadline.</summary>
+        internal ServerSimulationRegistrationHandle DeadlineRegistration { get; set; }
 
         /// <summary>Initializes a player session with the authenticated player and character details.</summary>
         /// <param name="playerID">The connected player's network identifier.</param>
@@ -139,6 +155,9 @@ namespace Game.Server.Networking
             PersistenceState = persistenceState;
             EntryLocation = entryLocation;
             _currentSafeReturnLocationID = persistenceState.WorldState.SafeReturnLocationID;
+            LifecycleState = SessionLifecycleState.Connected;
+            DeadlineTickID = 0;
+            DeadlineRegistration = default;
         }
 
         /// <summary>Associates the spawned actor with this session.</summary>

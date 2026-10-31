@@ -20,6 +20,9 @@ namespace Game.Server.Core
         /// <summary>Gets whether the logout-eligibility manager is initialized.</summary>
         public static bool IsInitialized => _instance != null;
 
+        /// <summary>Raised when authoritative combat activity blocks logout eligibility for an actor.</summary>
+        internal event Action<Guid> LogoutEligibilityBlocked;
+
         private readonly Dictionary<Guid, LogoutEligibilityState> _states = new();
         private long _combatLockTicks;
         private long _hostileDamageLockTicks;
@@ -191,7 +194,12 @@ namespace Game.Server.Core
             LogoutEligibilityState state = GetState(actorID);
             long deadlineTickID = checked(currentTickID + _combatLockTicks);
             if (deadlineTickID > state.CombatLockDeadlineTickID)
+            {
                 state.CombatLockDeadlineTickID = deadlineTickID;
+                _states[actorID] = state;
+                LogoutEligibilityBlocked?.Invoke(actorID);
+                return;
+            }
 
             _states[actorID] = state;
         }
@@ -201,7 +209,12 @@ namespace Game.Server.Core
             LogoutEligibilityState state = GetState(actorID);
             long deadlineTickID = checked(currentTickID + _hostileDamageLockTicks);
             if (deadlineTickID > state.HostileDamageLockDeadlineTickID)
+            {
                 state.HostileDamageLockDeadlineTickID = deadlineTickID;
+                _states[actorID] = state;
+                LogoutEligibilityBlocked?.Invoke(actorID);
+                return;
+            }
 
             _states[actorID] = state;
         }

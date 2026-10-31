@@ -19,6 +19,7 @@ namespace Game.Server.Networking
         {
             AccountEndpoint.onCharacterCreationRequest += OnCharacterCreationRequest;
             AccountEndpoint.onEnterWorldRequest += OnEnterWorldRequest;
+            AccountEndpoint.onLeaveWorldRequest += OnLeaveWorldRequest;
         }
 
         private static void OnCharacterCreationRequest(PlayerID sender, NewCharacterData newCharacterData)
@@ -33,6 +34,11 @@ namespace Game.Server.Networking
             Debug.Log($"Received enter world request from player {sender} for character ID '{characterGUID}'");
             ServerConnectionManager.Instance.StartCoroutine(
                 new EnterWorldService().Execute(sender, characterGUID));
+        }
+
+        private static void OnLeaveWorldRequest(PlayerID sender)
+        {
+            ServerConnectionManager.Instance.RequestNormalLogout(sender);
         }
     }
 }

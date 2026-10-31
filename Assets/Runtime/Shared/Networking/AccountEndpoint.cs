@@ -7,11 +7,8 @@ using System.Collections.Generic;
 namespace Game.Shared.Networking
 {
     /// <summary>
-    /// Handles player account-related RPCs, such as sending character 
-    /// lists to clients upon successful authentication. 
-    /// This class is shared between server and client, 
-    /// but currently only contains server-to-client RPCs. 
-    /// Future expansions may include client-to-server RPCs for account management actions.
+    /// Handles player account-related RPCs, including character-list publication and
+    /// client requests for character account-management actions.
     /// </summary>
     public static class AccountEndpoint
     {
@@ -30,6 +27,8 @@ namespace Game.Shared.Networking
         public static Action onCharacterCreated;
         /// <summary>Raised when the server receives an enter-world request.</summary>
         public static Action<PlayerID, string> onEnterWorldRequest;
+        /// <summary>Raised when the server receives a request to leave the current character world.</summary>
+        public static Action<PlayerID> onLeaveWorldRequest;
 
         [TargetRpc]
         /// <summary>Sends the character list to a client.</summary>
@@ -76,6 +75,13 @@ namespace Game.Shared.Networking
                 NetworkingPerformanceMetrics.RPC_ACCOUNT_SERVER_REQUEST_ENTER_WORLD_HANDLER_INVOCATION_COUNT);
             Debug.Log($"Received request to enter world with character ID {characterGUID} from player {rpcInfo.sender}.");
             onEnterWorldRequest?.Invoke(rpcInfo.sender, characterGUID);
+        }
+
+        [ServerRpc]
+        /// <summary>Requests normal logout from the current admitted character.</summary>
+        public static void Server_RequestLeaveWorld(RPCInfo rpcInfo = default)
+        {
+            onLeaveWorldRequest?.Invoke(rpcInfo.sender);
         }
 
         [TargetRpc]

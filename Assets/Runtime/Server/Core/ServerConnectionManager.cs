@@ -17,7 +17,7 @@ using UnityEngine;
 namespace Game.Server.Core
 {
     /// <summary>Maintains authoritative connection, account, and session state.</summary>
-    public class ServerConnectionManager : PurrMonoBehaviour, INetworkPressureProvider
+    public partial class ServerConnectionManager : PurrMonoBehaviour, INetworkPressureProvider
     {
         private const double NETWORK_TELEMETRY_INTERVAL_SECONDS = 1d;
         private const double NETWORK_PRESSURE_PAYLOAD_BYTES_PER_SECOND = 16384d;
@@ -117,6 +117,7 @@ namespace Game.Server.Core
                 BeginUdpStatisticsTelemetry();
             }
             _initialized = true;
+            BeginLogoutEligibilitySubscription();
             _periodicCheckpointCoroutine = StartCoroutine(RunPeriodicCharacterCheckpoints());
         }
 
@@ -141,6 +142,7 @@ namespace Game.Server.Core
             manager.onPlayerLeft -= OnPlayerLeft;
             PerformanceTelemetry.SessionStarted -= OnPerformanceSessionStarted;
             PerformanceTelemetry.SessionEnded -= OnPerformanceSessionEnded;
+            UnsubscribeFromLogoutEligibility();
             ResetOutboundTelemetryWindow();
             ClearConnectionPressureState();
             _networkManager = null;
@@ -1154,6 +1156,7 @@ namespace Game.Server.Core
                 if (!_initialized
                     || ServerInitialization.IsFatalShutdownRequested
                     || session == null
+                    || session.LifecycleState == PlayerSessionData.SessionLifecycleState.Finalizing
                     || session.PlayerActor == null
                     || session.AccountID == Guid.Empty
                     || session.CharacterID == Guid.Empty
@@ -1354,6 +1357,64 @@ namespace Game.Server.Core
             {
                 throw new InvalidOperationException(
                     "The Player ID attachment had no corresponding admitted gameplay session.");
+            }
+        }
+
+        /// <summary>Gets an admitted session by its Master-owned gameplay-session identity.</summary>
+        /// <param name="gameplaySessionID">The gameplay-session identity to resolve.</param>
+        /// <param name="session">The admitted session, when present.</param>
+        /// <returns><see langword="true"/> when the gameplay session is admitted.</returns>
+        internal bool TryGetAdmittedSession(Guid gameplaySessionID, out PlayerSessionData session)
+        {
+            if (gameplaySessionID == Guid.Empty)
+            {
+                session = null;
+                return false;
+            }
+
+            return _admittedSessionsByGameplaySessionID.TryGetValue(gameplaySessionID, out session);
+        }
+
+        private void RemoveAdmittedSession(Guid gameplaySessionID)
+        {
+            if (gameplaySessionID == Guid.Empty)
+                throw new ArgumentException("A nonempty gameplay session ID is required.", nameof(gameplaySessionID));
+            if (!_admittedSessionsByGameplaySessionID.TryGetValue(
+                    gameplaySessionID,
+                    out PlayerSessionData session)
+                || session == null)
+            {
+                throw new InvalidOperationException(
+                    $"The gameplay session {gameplaySessionID} was not admitted.");
+            }
+
+            if (_gameplaySessionIDsByPlayerID.TryGetValue(
+                    session.PlayerID,
+                    out Guid attachedGameplaySessionID)
+                && attachedGameplaySessionID == gameplaySessionID)
+            {
+                _gameplaySessionIDsByPlayerID.Remove(session.PlayerID);
+            }
+
+            foreach (KeyValuePair<PlayerID, Guid> attachment in _gameplaySessionIDsByPlayerID)
+            {
+                if (attachment.Value == gameplaySessionID
+                    && attachment.Key != session.PlayerID)
+                {
+                    throw new InvalidOperationException(
+                        $"Gameplay session {gameplaySessionID} is attached to an unexpected Player ID.");
+                }
+            }
+
+            if (session.DeadlineRegistration.IsValid)
+                session.DeadlineRegistration.Cancel();
+            session.DeadlineRegistration = default;
+            session.DeadlineTickID = 0;
+
+            if (!_admittedSessionsByGameplaySessionID.Remove(gameplaySessionID))
+            {
+                throw new InvalidOperationException(
+                    $"The admitted gameplay session {gameplaySessionID} disappeared during removal.");
             }
         }
 
