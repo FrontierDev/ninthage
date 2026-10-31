@@ -5,6 +5,8 @@ using Game.Server.Networking;
 using Game.Server.Networking.Master;
 using Game.Server.Persistence;
 using Game.Shared.Data;
+using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Utility;
 using PurrNet;
@@ -86,6 +88,15 @@ namespace Game.Server.Services
             {
                 Debug.Error($"Character admission failed for player {playerID}: {exception.Message}");
                 yield break;
+            }
+
+            if (admissionResponse != null
+                && (admissionResponse.SessionResult != MasterSessionProtocol.GameplaySessionResult.Accepted
+                    || admissionResponse.PersistenceResult != MasterPersistenceProtocol.PersistenceResult.Accepted))
+            {
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_ADMISSION_REJECTION_COUNT,
+                    1);
             }
 
             if (admissionResponse == null

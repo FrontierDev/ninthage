@@ -50,6 +50,69 @@ namespace Game.Shared.Networking
             PerformanceMetricSide.Server,
             "connection",
             "network_interval");
+        /// <summary>Counts admitted actors detached during disconnect grace at each network interval.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_DISCONNECTED_GRACE_ACTOR_COUNT = Metric(
+            PerformanceMetricIds.SERVER_DISCONNECTED_GRACE_ACTOR_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "network_interval");
+        /// <summary>Counts World actor reclaim attempts.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_RECONNECT_ATTEMPT_COUNT = Metric(
+            PerformanceMetricIds.SERVER_RECONNECT_ATTEMPT_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "reconnect_event");
+        /// <summary>Counts successful World actor reclaim operations.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_RECONNECT_SUCCESS_COUNT = Metric(
+            PerformanceMetricIds.SERVER_RECONNECT_SUCCESS_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "reconnect_event");
+        /// <summary>Counts failed World actor reclaim operations.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_RECONNECT_FAILURE_COUNT = Metric(
+            PerformanceMetricIds.SERVER_RECONNECT_FAILURE_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "reconnect_event");
+        /// <summary>Counts disconnect-grace finalizations that begin after eligibility.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_DISCONNECT_FINALIZATION_AFTER_GRACE_COUNT = Metric(
+            PerformanceMetricIds.SERVER_DISCONNECT_FINALIZATION_AFTER_GRACE_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "disconnect_grace_event");
+        /// <summary>Counts typed nonaccepted Master character-admission responses.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_ADMISSION_REJECTION_COUNT = Metric(
+            PerformanceMetricIds.SERVER_ADMISSION_REJECTION_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "character_admission");
+        /// <summary>Counts normal logouts after their authoritative start boundary.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_NORMAL_LOGOUT_STARTED_COUNT = Metric(
+            PerformanceMetricIds.SERVER_NORMAL_LOGOUT_STARTED_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "normal_logout_event");
+        /// <summary>Counts started normal logouts abandoned before finalization.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_NORMAL_LOGOUT_CANCELLED_COUNT = Metric(
+            PerformanceMetricIds.SERVER_NORMAL_LOGOUT_CANCELLED_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "normal_logout_event");
+        /// <summary>Counts normal logouts after durable character leave and actor retirement.</summary>
+        public static readonly PerformanceMetricDefinition SERVER_NORMAL_LOGOUT_COMPLETED_COUNT = Metric(
+            PerformanceMetricIds.SERVER_NORMAL_LOGOUT_COMPLETED_COUNT,
+            PerformanceMetricUnit.Count,
+            PerformanceMetricSide.Server,
+            "session",
+            "normal_logout_event");
         public static readonly PerformanceMetricDefinition SERVER_DISCONNECTED_COUNT = Metric(
             PerformanceMetricIds.SERVER_DISCONNECTED_COUNT,
             PerformanceMetricUnit.Count,
@@ -434,6 +497,15 @@ namespace Game.Shared.Networking
             RegisterMeasured(SERVER_TRANSPORT_CONNECTED_COUNT);
             RegisterMeasured(SERVER_AUTHENTICATED_CLIENT_COUNT);
             RegisterMeasured(SERVER_IN_WORLD_CLIENT_COUNT);
+            RegisterMeasured(SERVER_DISCONNECTED_GRACE_ACTOR_COUNT);
+            RegisterMeasured(SERVER_RECONNECT_ATTEMPT_COUNT);
+            RegisterMeasured(SERVER_RECONNECT_SUCCESS_COUNT);
+            RegisterMeasured(SERVER_RECONNECT_FAILURE_COUNT);
+            RegisterMeasured(SERVER_DISCONNECT_FINALIZATION_AFTER_GRACE_COUNT);
+            RegisterMeasured(SERVER_ADMISSION_REJECTION_COUNT);
+            RegisterMeasured(SERVER_NORMAL_LOGOUT_STARTED_COUNT);
+            RegisterMeasured(SERVER_NORMAL_LOGOUT_CANCELLED_COUNT);
+            RegisterMeasured(SERVER_NORMAL_LOGOUT_COMPLETED_COUNT);
             RegisterMeasured(SERVER_DISCONNECTED_COUNT);
             RegisterMeasured(SERVER_LIVE_CONNECTION_COUNT);
             RegisterMeasured(SERVER_TRANSPORT_PAYLOAD_BYTES_SENT);

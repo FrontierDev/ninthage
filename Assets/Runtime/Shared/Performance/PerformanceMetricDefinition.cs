@@ -165,6 +165,33 @@ namespace Game.Shared.Performance
         public const string SERVER_TRANSPORT_CONNECTED_COUNT = "server.connection.transport_connected_count";
         public const string SERVER_AUTHENTICATED_CLIENT_COUNT = "server.connection.authenticated_client_count";
         public const string SERVER_IN_WORLD_CLIENT_COUNT = "server.connection.in_world_client_count";
+        /// <summary>Counts admitted actors currently detached within disconnect grace.</summary>
+        public const string SERVER_DISCONNECTED_GRACE_ACTOR_COUNT =
+            "server.session.disconnected_grace_actor_count";
+        /// <summary>Counts World actor reclaim attempts for reclaimed gameplay sessions.</summary>
+        public const string SERVER_RECONNECT_ATTEMPT_COUNT =
+            "server.session.reconnect_attempt_count";
+        /// <summary>Counts successful World actor reclaim operations.</summary>
+        public const string SERVER_RECONNECT_SUCCESS_COUNT =
+            "server.session.reconnect_success_count";
+        /// <summary>Counts failed World actor reclaim operations.</summary>
+        public const string SERVER_RECONNECT_FAILURE_COUNT =
+            "server.session.reconnect_failure_count";
+        /// <summary>Counts disconnect-grace finalizations that actually begin.</summary>
+        public const string SERVER_DISCONNECT_FINALIZATION_AFTER_GRACE_COUNT =
+            "server.session.disconnect_finalization_after_grace_count";
+        /// <summary>Counts typed nonaccepted Master character-admission responses.</summary>
+        public const string SERVER_ADMISSION_REJECTION_COUNT =
+            "server.session.admission_rejection_count";
+        /// <summary>Counts normal logout operations after their authoritative start boundary.</summary>
+        public const string SERVER_NORMAL_LOGOUT_STARTED_COUNT =
+            "server.session.normal_logout_started_count";
+        /// <summary>Counts started normal logouts abandoned before finalization.</summary>
+        public const string SERVER_NORMAL_LOGOUT_CANCELLED_COUNT =
+            "server.session.normal_logout_cancelled_count";
+        /// <summary>Counts normal logouts after durable character leave and actor retirement.</summary>
+        public const string SERVER_NORMAL_LOGOUT_COMPLETED_COUNT =
+            "server.session.normal_logout_completed_count";
         public const string SERVER_DISCONNECTED_COUNT = "server.connection.disconnected_count";
         public const string SERVER_LIVE_CONNECTION_COUNT = "server.connection.live_count";
         public const string CLIENT_CONNECTED_COUNT = "client.connection.connected_count";

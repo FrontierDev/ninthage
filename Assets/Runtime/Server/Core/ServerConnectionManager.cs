@@ -238,9 +238,31 @@ namespace Game.Server.Core
                 NetworkingPerformanceMetrics.SERVER_AUTHENTICATED_CLIENT_COUNT,
                 _connectedAccounts.Count,
                 intervalSeconds: intervalSeconds);
+
+            int admittedConnectedCharacterCount = 0;
+            int disconnectedGraceActorCount = 0;
+            foreach (PlayerSessionData session in _admittedSessionsByGameplaySessionID.Values)
+            {
+                if (session == null || session.PlayerActor == null)
+                    continue;
+
+                if (session.HasPlayerAttachment)
+                {
+                    admittedConnectedCharacterCount++;
+                }
+                else if (session.LifecycleState == PlayerSessionData.SessionLifecycleState.DisconnectGrace)
+                {
+                    disconnectedGraceActorCount++;
+                }
+            }
+
             PerformanceTelemetry.TryRecord(
                 NetworkingPerformanceMetrics.SERVER_IN_WORLD_CLIENT_COUNT,
-                _admittedSessionsByGameplaySessionID.Count,
+                admittedConnectedCharacterCount,
+                intervalSeconds: intervalSeconds);
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_DISCONNECTED_GRACE_ACTOR_COUNT,
+                disconnectedGraceActorCount,
                 intervalSeconds: intervalSeconds);
 
             if (PerformanceTelemetry.IsEnabled)
@@ -547,6 +569,12 @@ namespace Game.Server.Core
             }
 
             StartDisconnectGrace(session);
+            if (previousState == PlayerSessionData.SessionLifecycleState.LogoutCountdown)
+            {
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_NORMAL_LOGOUT_CANCELLED_COUNT,
+                    1);
+            }
         }
 
         private IEnumerator InitializeAuthenticatedPlayer(

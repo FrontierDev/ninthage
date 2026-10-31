@@ -4,6 +4,7 @@ using Game.Server.Networking.Master;
 using Game.Server.Persistence;
 using Game.Shared;
 using Game.Shared.Networking;
+using Game.Shared.Performance;
 using Game.Shared.Persistence;
 using Game.Shared.Runtime.Actors;
 using PurrNet;
@@ -101,6 +102,9 @@ namespace Game.Server.Core
                 StartCharacterFinalization(
                     session.GameplaySessionID,
                     CharacterFinalizationDisposition.ReturnToCharacterSelection);
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_NORMAL_LOGOUT_STARTED_COUNT,
+                    1);
                 return;
             }
 
@@ -130,6 +134,10 @@ namespace Game.Server.Core
                 session.DeadlineRegistration = default;
                 throw;
             }
+
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_NORMAL_LOGOUT_STARTED_COUNT,
+                1);
         }
 
         private void OnLogoutEligibilityBlocked(Guid actorID)
@@ -148,6 +156,9 @@ namespace Game.Server.Core
 
                 CancelSessionDeadline(session);
                 session.LifecycleState = PlayerSessionData.SessionLifecycleState.Connected;
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_NORMAL_LOGOUT_CANCELLED_COUNT,
+                    1);
                 return;
             }
         }
@@ -169,12 +180,18 @@ namespace Game.Server.Core
                 || !IsPlayerConnected(session.PlayerID))
             {
                 session.LifecycleState = PlayerSessionData.SessionLifecycleState.Connected;
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_NORMAL_LOGOUT_CANCELLED_COUNT,
+                    1);
                 return;
             }
 
             if (currentSession.PlayerActor == null)
             {
                 session.LifecycleState = PlayerSessionData.SessionLifecycleState.Connected;
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_NORMAL_LOGOUT_CANCELLED_COUNT,
+                    1);
                 return;
             }
 
@@ -183,6 +200,9 @@ namespace Game.Server.Core
             if (!eligibilityManager.CanCompleteLogout(currentSession.PlayerActor.ID))
             {
                 session.LifecycleState = PlayerSessionData.SessionLifecycleState.Connected;
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_NORMAL_LOGOUT_CANCELLED_COUNT,
+                    1);
                 return;
             }
 
@@ -435,6 +455,9 @@ namespace Game.Server.Core
                 StartCharacterFinalization(
                     gameplaySessionID,
                     CharacterFinalizationDisposition.CloseGameplaySession);
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_DISCONNECT_FINALIZATION_AFTER_GRACE_COUNT,
+                    1);
                 return;
             }
 
@@ -451,6 +474,10 @@ namespace Game.Server.Core
             PlayerID newPlayerID,
             AuthenticatedSessionContext authenticatedSession)
         {
+            PerformanceTelemetry.TryRecord(
+                NetworkingPerformanceMetrics.SERVER_RECONNECT_ATTEMPT_COUNT,
+                1);
+
             if (!TryValidateReclaimedActor(
                     newPlayerID,
                     authenticatedSession,
@@ -458,6 +485,9 @@ namespace Game.Server.Core
                     out NetworkIdentity identity,
                     out string failureReason))
             {
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_RECONNECT_FAILURE_COUNT,
+                    1);
                 yield return HandleReclaimFailure(authenticatedSession, failureReason);
                 yield break;
             }
@@ -494,9 +524,15 @@ namespace Game.Server.Core
                 try
                 {
                     PlayerReconnectStatePublisher.Publish(session, newPlayerID);
+                    PerformanceTelemetry.TryRecord(
+                        NetworkingPerformanceMetrics.SERVER_RECONNECT_SUCCESS_COUNT,
+                        1);
                 }
                 catch (Exception exception)
                 {
+                    PerformanceTelemetry.TryRecord(
+                        NetworkingPerformanceMetrics.SERVER_RECONNECT_FAILURE_COUNT,
+                        1);
                     Debug.Error(
                         $"Reconnect bootstrap for gameplay session {authenticatedSession.GameplaySessionID} failed after ownership transfer: "
                         + exception.Message);
@@ -504,6 +540,9 @@ namespace Game.Server.Core
             }
             catch (Exception exception)
             {
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_RECONNECT_FAILURE_COUNT,
+                    1);
                 if (session.HasPlayerAttachment)
                     session.LifecycleState = PlayerSessionData.SessionLifecycleState.Connected;
                 Debug.Error(
@@ -759,6 +798,9 @@ namespace Game.Server.Core
             Guid gameplaySessionID,
             CharacterFinalizationDisposition disposition)
         {
+            bool isNormalLogoutFinalization =
+                disposition == CharacterFinalizationDisposition.ReturnToCharacterSelection;
+
             if (!TryGetAdmittedSession(gameplaySessionID, out PlayerSessionData session)
                 || session == null)
             {
@@ -934,6 +976,13 @@ namespace Game.Server.Core
                 identity.Despawn();
 
             RemoveAdmittedSession(gameplaySessionID);
+
+            if (isNormalLogoutFinalization)
+            {
+                PerformanceTelemetry.TryRecord(
+                    NetworkingPerformanceMetrics.SERVER_NORMAL_LOGOUT_COMPLETED_COUNT,
+                    1);
+            }
 
             if (disposition == CharacterFinalizationDisposition.CloseGameplaySession)
             {
