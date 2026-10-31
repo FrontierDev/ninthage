@@ -1,3 +1,4 @@
+using Game.Shared.Content;
 using Game.Shared.Networking;
 using Newtonsoft.Json;
 using System;
@@ -33,13 +34,16 @@ namespace Game.Editor.Build
             if (!IsSupportedGraphicalPlayer(report))
                 return;
 
-            var identity = LoadConfiguredIdentity();
+            var manifestPath = GetConfiguredManifestPath();
+            var identity = LoadConfiguredIdentity(manifestPath);
             if (!string.Equals(identity.ClientBuildVersion, PlayerSettings.bundleVersion, StringComparison.Ordinal))
             {
                 throw new BuildFailedException(
                     $"Release Manifest clientBuildVersion '{identity.ClientBuildVersion}' does not match "
                     + $"PlayerSettings.bundleVersion '{PlayerSettings.bundleVersion}'.");
             }
+
+            LoadConfiguredReleaseLocation(manifestPath);
         }
 
         /// <summary>
@@ -48,10 +52,12 @@ namespace Game.Editor.Build
         /// <param name="report">The Unity build report.</param>
         public void OnPostprocessBuild(BuildReport report)
         {
-            if (!IsSupportedGraphicalPlayer(report) || report.summary.result != BuildResult.Succeeded)
+            if (!IsSupportedGraphicalPlayer(report))
                 return;
 
-            var identity = LoadConfiguredIdentity();
+            var manifestPath = GetConfiguredManifestPath();
+            var identity = LoadConfiguredIdentity(manifestPath);
+            var releaseLocation = LoadConfiguredReleaseLocation(manifestPath);
             var playerDataDirectory = GetPlayerDataDirectory(report.summary.outputPath);
             var streamingAssetsDirectory = Path.Combine(
                 playerDataDirectory,
@@ -59,12 +65,22 @@ namespace Game.Editor.Build
             var metadataPath = Path.Combine(
                 streamingAssetsDirectory,
                 ClientCompatibilityIdentity.METADATA_FILE_NAME);
+            var releaseLocationMetadataPath = Path.Combine(
+                streamingAssetsDirectory,
+                AddressablesReleaseLocation.METADATA_FILE_NAME);
 
             try
             {
                 Directory.CreateDirectory(streamingAssetsDirectory);
                 var metadataJson = JsonConvert.SerializeObject(identity, Formatting.Indented);
                 File.WriteAllText(metadataPath, metadataJson, Encoding.UTF8);
+                var releaseLocationMetadataJson = JsonConvert.SerializeObject(
+                    releaseLocation,
+                    Formatting.Indented);
+                File.WriteAllText(
+                    releaseLocationMetadataPath,
+                    releaseLocationMetadataJson,
+                    Encoding.UTF8);
             }
             catch (Exception exception) when (
                 exception is IOException
@@ -73,7 +89,8 @@ namespace Game.Editor.Build
                 || exception is NotSupportedException)
             {
                 throw new BuildFailedException(
-                    $"Could not write client compatibility metadata to '{metadataPath}': {exception.Message}");
+                    $"Could not write Player compatibility metadata to '{metadataPath}' or "
+                    + $"Addressables release metadata to '{releaseLocationMetadataPath}': {exception.Message}");
             }
             catch (JsonException exception)
             {
@@ -82,11 +99,8 @@ namespace Game.Editor.Build
             }
         }
 
-        private static ClientCompatibilityIdentity LoadConfiguredIdentity()
+        private static ClientCompatibilityIdentity LoadConfiguredIdentity(string manifestPath)
         {
-            var manifestPath = Environment.GetEnvironmentVariable(
-                ClientCompatibilityIdentity.RELEASE_MANIFEST_PATH_ENVIRONMENT_VARIABLE);
-
             try
             {
                 return ClientCompatibilityIdentity.LoadFromReleaseManifest(
@@ -103,6 +117,32 @@ namespace Game.Editor.Build
                 throw new BuildFailedException(
                     $"The configured Release Manifest could not be used: {exception.Message}");
             }
+        }
+
+        private static AddressablesReleaseLocation LoadConfiguredReleaseLocation(string manifestPath)
+        {
+            try
+            {
+                return AddressablesReleaseLocation.LoadFromReleaseManifest(
+                    manifestPath,
+                    "StandaloneWindows64");
+            }
+            catch (ArgumentException exception)
+            {
+                throw new BuildFailedException(
+                    $"The configured Release Manifest Addressables location is invalid: {exception.Message}");
+            }
+            catch (InvalidOperationException exception)
+            {
+                throw new BuildFailedException(
+                    $"The configured Release Manifest Addressables location could not be used: {exception.Message}");
+            }
+        }
+
+        private static string GetConfiguredManifestPath()
+        {
+            return Environment.GetEnvironmentVariable(
+                ClientCompatibilityIdentity.RELEASE_MANIFEST_PATH_ENVIRONMENT_VARIABLE);
         }
 
         private static string GetPlayerDataDirectory(string outputPath)

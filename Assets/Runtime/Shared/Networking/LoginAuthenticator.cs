@@ -14,7 +14,9 @@ namespace Game.Shared.Networking
     /// Stores accepted gameplay-session identity for the exact server connection.
     /// </summary>
     [RegisterNetworkType(typeof(AuthenticationRequest<AuthenticationPayload>))]
-    public class LoginAuthenticator : AuthenticationBehaviour<AuthenticationPayload, LoginDenialReason>
+    [RegisterNetworkType(typeof(LoginDenialReason))]
+    public class LoginAuthenticator :
+        AuthenticationBehaviour<AuthenticationPayload, LoginDenialReason>
     {
         #region Fields - Client Side
         private static AuthenticationPayload _clientPayload;
