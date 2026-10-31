@@ -24,6 +24,12 @@ namespace Game.Server.Services
         /// <summary>Executes one Master-backed world-entry request.</summary>
         internal IEnumerator Execute(PlayerID playerID, string characterIDValue)
         {
+            if (!ServerConnectionManager.Instance.IsAcceptingCharacterControlPlane)
+            {
+                Debug.Warning($"World entry for player {playerID} was rejected because the server is shutting down.");
+                yield break;
+            }
+
             if (!Guid.TryParse(characterIDValue, out Guid characterID) || characterID == Guid.Empty)
             {
                 Debug.Error($"Player {playerID} provided an invalid character GUID.");

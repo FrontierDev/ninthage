@@ -9,7 +9,6 @@ using PurrNet;
 using PurrNet.Transports;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
@@ -563,12 +562,11 @@ namespace Game.Server.Core
 
         private static IEnumerator StopAndSettlePersistenceGracefully()
         {
-            Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
-            ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
-
             WorldPersistenceCoordinator persistenceCoordinator = _worldPersistenceCoordinator;
             if (persistenceCoordinator == null)
             {
+                ShutdownExitCode = 1;
+                Debug.Error("Graceful shutdown could not quiesce persistence because the coordinator was unavailable.");
                 ClearPersistenceState();
                 yield break;
             }
@@ -580,74 +578,18 @@ namespace Game.Server.Core
                 while (!persistenceCoordinator.IsIdle)
                     yield return null;
 
-                if (_fatalShutdownRequested)
-                    yield break;
-
-                Task finalCheckpointTask = null;
-                try
+                if (persistenceCoordinator.HasOwnedCharacterLeases()
+                    || persistenceCoordinator.HasUnsettledCheckpoints())
                 {
-                    finalCheckpointTask = persistenceCoordinator.FlushPendingCheckpointsForShutdownAsync(
-                        CancellationToken.None);
-                }
-                catch (Exception exception)
-                {
-                    LogPersistenceTeardownFailure("final checkpoint flush", exception);
-                }
-
-                if (finalCheckpointTask != null)
-                    yield return ObservePersistenceTask(finalCheckpointTask, "final checkpoint flush");
-
-                if (_fatalShutdownRequested)
-                    yield break;
-
-                if (persistenceCoordinator.HasUnsettledCheckpoints())
-                {
-                    List<Guid> unsettledCharacterIDs =
-                        persistenceCoordinator.GetUnsettledCheckpointCharacterIDs();
                     ShutdownExitCode = 1;
                     Debug.Error(
-                        "Graceful shutdown could not settle final character checkpoints; "
-                        + "character lease release was skipped for: "
-                        + string.Join(", ", unsettledCharacterIDs));
-                }
-                else
-                {
-                    Task releaseCharactersTask = null;
-                    try
-                    {
-                        releaseCharactersTask = persistenceCoordinator.ReleaseAllCharactersAsync(CancellationToken.None);
-                    }
-                    catch (Exception exception)
-                    {
-                        LogPersistenceTeardownFailure("character lease release", exception);
-                    }
-
-                    if (releaseCharactersTask != null)
-                        yield return ObservePersistenceTask(releaseCharactersTask, "character lease release");
+                        "Graceful shutdown left owned character leases or unsettled checkpoint lanes after finalization; "
+                        + "World-run retirement remains responsible for their invalidation.");
                 }
             }
             finally
             {
                 ClearPersistenceState();
-            }
-        }
-
-        private static IEnumerator ObservePersistenceTask(Task task, string operationDescription)
-        {
-            while (!task.IsCompleted)
-                yield return null;
-
-            try
-            {
-                task.GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException exception)
-            {
-                LogPersistenceTeardownFailure(operationDescription, exception);
-            }
-            catch (Exception exception)
-            {
-                LogPersistenceTeardownFailure(operationDescription, exception);
             }
         }
 
@@ -734,17 +676,6 @@ namespace Game.Server.Core
             _masterPersistenceClient = null;
             _worldSessionCoordinator = null;
             _masterSessionClient = null;
-        }
-
-        private static void LogPersistenceTeardownFailure(string operationDescription, Exception exception)
-        {
-            Debug.Warning(
-                "Persistence "
-                + operationDescription
-                + " failed during server teardown: "
-                + exception.GetType().Name
-                + ": "
-                + exception.Message);
         }
 
         private static void ObserveMasterHeartbeatTask()
@@ -919,14 +850,22 @@ namespace Game.Server.Core
             {
                 ServerControlEndpoint.Detach();
                 StopInitializationCoroutine();
+                Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+                ServerConnectionManager.Instance.StopAcceptingCharacterControlPlane();
                 ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
+
+                bool allSessionsSettled = false;
+                yield return ServerConnectionManager.Instance.FinalizeAdmittedSessionsForShutdown(
+                    settled => allSessionsSettled = settled);
+                if (!allSessionsSettled)
+                    ShutdownExitCode = 1;
+
+                yield return StopAndSettlePersistenceGracefully();
                 ServerSimulationClock.Stop();
-                ServerConnectionManager.Instance.CaptureAndQueueOnlineCharacterCheckpoints();
 
                 NetworkManager networkManager = GetNetworkManager();
                 yield return StopNetworkServerAndWait(networkManager);
 
-                yield return StopAndSettlePersistenceGracefully();
                 yield return StopAndSettleMasterHeartbeat();
                 if (_fatalShutdownRequested)
                     DisposeMasterWorldClient();

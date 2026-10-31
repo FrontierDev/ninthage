@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using System;
 
 namespace Game.Server.Networking.Master
 {
@@ -29,7 +28,6 @@ namespace Game.Server.Networking.Master
             InvalidCredentials = 17,
         }
 
-        internal const string CHARACTER_RELEASE_PATH = "/world/v1/characters/release";
         internal const string CHARACTER_CHECKPOINTS_PATH = "/world/v1/characters/checkpoints";
 
         /// <summary>Wire response returned by a persistence operation without an additional payload.</summary>

@@ -75,6 +75,12 @@ namespace Game.Server.Core
         /// <param name="playerID">The connected player requesting logout.</param>
         internal void RequestNormalLogout(PlayerID playerID)
         {
+            if (!IsAcceptingCharacterControlPlane)
+            {
+                Debug.Warning($"Normal logout for player {playerID} was rejected because the server is shutting down.");
+                return;
+            }
+
             if (!TryGetSessionData(playerID, out PlayerSessionData session)
                 || session == null
                 || session.PlayerActor == null
@@ -183,6 +189,147 @@ namespace Game.Server.Core
             StartCharacterFinalization(
                 gameplaySessionID,
                 CharacterFinalizationDisposition.ReturnToCharacterSelection);
+        }
+
+        private List<Guid> SnapshotAdmittedGameplaySessionIDsForShutdown()
+        {
+            List<PlayerSessionData> sessions = new();
+            foreach (PlayerSessionData session in _admittedSessionsByGameplaySessionID.Values)
+            {
+                if (session != null)
+                    sessions.Add(session);
+            }
+
+            sessions.Sort((left, right) =>
+            {
+                int characterComparison = left.CharacterID.CompareTo(right.CharacterID);
+                return characterComparison != 0
+                    ? characterComparison
+                    : left.GameplaySessionID.CompareTo(right.GameplaySessionID);
+            });
+
+            List<Guid> gameplaySessionIDs = new(sessions.Count);
+            foreach (PlayerSessionData session in sessions)
+                gameplaySessionIDs.Add(session.GameplaySessionID);
+
+            return gameplaySessionIDs;
+        }
+
+        /// <summary>Finalizes all admitted characters sequentially for graceful shutdown.</summary>
+        /// <param name="completed">Receives whether every admitted session settled successfully.</param>
+        internal IEnumerator FinalizeAdmittedSessionsForShutdown(Action<bool> completed)
+        {
+            if (completed == null)
+                throw new ArgumentNullException(nameof(completed));
+
+            bool allSettled = true;
+            try
+            {
+                foreach (Guid gameplaySessionID in SnapshotAdmittedGameplaySessionIDsForShutdown())
+                {
+                    if (!TryGetAdmittedSession(gameplaySessionID, out PlayerSessionData session)
+                        || session == null)
+                    {
+                        continue;
+                    }
+
+                    CancelSessionDeadline(session);
+                    if (!TryGetAdmittedSession(gameplaySessionID, out PlayerSessionData currentSession)
+                        || !ReferenceEquals(currentSession, session))
+                    {
+                        continue;
+                    }
+
+                    if (session.LifecycleState == PlayerSessionData.SessionLifecycleState.Unsettled)
+                    {
+                        allSettled = false;
+                        Debug.Error(
+                            $"Shutdown finalization skipped unsettled gameplay session {gameplaySessionID} "
+                            + $"for character {session.CharacterID}.");
+                        continue;
+                    }
+
+                    if (session.LifecycleState == PlayerSessionData.SessionLifecycleState.Finalizing)
+                    {
+                        while (TryGetAdmittedSession(gameplaySessionID, out currentSession)
+                            && ReferenceEquals(currentSession, session)
+                            && currentSession.LifecycleState == PlayerSessionData.SessionLifecycleState.Finalizing)
+                        {
+                            yield return null;
+                        }
+
+                        if (TryGetAdmittedSession(gameplaySessionID, out currentSession)
+                            && ReferenceEquals(currentSession, session))
+                        {
+                            allSettled = false;
+                            Debug.Error(
+                                $"Shutdown finalization left gameplay session {gameplaySessionID} "
+                                + $"for character {session.CharacterID} in state {currentSession.LifecycleState}.");
+                        }
+
+                        continue;
+                    }
+
+                    bool finalizationStarted = true;
+                    try
+                    {
+                        StartCharacterFinalization(
+                            gameplaySessionID,
+                            CharacterFinalizationDisposition.Shutdown);
+                    }
+                    catch (Exception exception)
+                    {
+                        finalizationStarted = false;
+                        allSettled = false;
+                        Debug.Error(
+                            $"Shutdown finalization could not start for gameplay session {gameplaySessionID} "
+                            + $"and character {session.CharacterID}: {exception.Message}");
+                    }
+
+                    if (!finalizationStarted)
+                        continue;
+
+                    while (TryGetAdmittedSession(gameplaySessionID, out currentSession)
+                        && ReferenceEquals(currentSession, session)
+                        && currentSession.LifecycleState == PlayerSessionData.SessionLifecycleState.Finalizing)
+                    {
+                        yield return null;
+                    }
+
+                    if (TryGetAdmittedSession(gameplaySessionID, out currentSession)
+                        && ReferenceEquals(currentSession, session))
+                    {
+                        allSettled = false;
+                        Debug.Error(
+                            $"Shutdown finalization left gameplay session {gameplaySessionID} "
+                            + $"for character {session.CharacterID} in state {currentSession.LifecycleState}.");
+                    }
+                }
+            }
+            finally
+            {
+                if (!allSettled)
+                    LogRemainingShutdownSessions();
+                completed(allSettled);
+            }
+        }
+
+        private void LogRemainingShutdownSessions()
+        {
+            List<string> remainingSessions = new();
+            foreach (KeyValuePair<Guid, PlayerSessionData> admittedSession in _admittedSessionsByGameplaySessionID)
+            {
+                if (admittedSession.Value != null)
+                {
+                    remainingSessions.Add(
+                        $"{admittedSession.Key} (CharacterID: {admittedSession.Value.CharacterID}, "
+                        + $"State: {admittedSession.Value.LifecycleState})");
+                }
+            }
+
+            Debug.Error(
+                "Graceful shutdown left admitted gameplay sessions unsettled: "
+                + (remainingSessions.Count == 0 ? "<none>" : string.Join(", ", remainingSessions)));
         }
 
         private void StartDisconnectGrace(PlayerSessionData session)

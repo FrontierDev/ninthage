@@ -27,7 +27,6 @@ namespace Game.Server.Core
         private const double NETWORK_PRESSURE_RECOVERY_MESSAGES_PER_SECOND = 192d;
         private const int NETWORK_PRESSURE_RECOVERY_INTERVALS = 5;
         private const float CHECKPOINT_INTERVAL_SECONDS = 30f;
-        private const int FINAL_CHECKPOINT_FLUSH_ATTEMPTS = 4;
 
         private struct ConnectionTelemetryWindow
         {
@@ -56,8 +55,12 @@ namespace Game.Server.Core
             }
         }
         private static bool _initialized = false;
+        private bool _acceptingCharacterControlPlane = true;
         /// <summary>Gets whether the connection manager is initialized.</summary>
         public static bool Initialized => _initialized;
+
+        /// <summary>Gets whether ordinary character-control requests may begin.</summary>
+        internal bool IsAcceptingCharacterControlPlane => _acceptingCharacterControlPlane;
 
         /// <summary>Gets whether one or more live transport connections are under outbound rate pressure.</summary>
         public bool HasPressuredConnections => PressuredConnectionCount > 0;
@@ -97,6 +100,7 @@ namespace Game.Server.Core
             if (!asServer || _initialized)
                 return;
 
+            _acceptingCharacterControlPlane = true;
             _networkManager = manager;
             _transport = manager.rawTransport;
             NetworkPressureQuery.Register(this);
@@ -150,6 +154,12 @@ namespace Game.Server.Core
             _admittedSessionsByGameplaySessionID.Clear();
             _gameplaySessionIDsByPlayerID.Clear();
             _initialized = false;
+        }
+
+        /// <summary>Stops new ordinary character-control requests while preserving cleanup work.</summary>
+        internal void StopAcceptingCharacterControlPlane()
+        {
+            _acceptingCharacterControlPlane = false;
         }
 
         private void Update()
@@ -862,212 +872,6 @@ namespace Game.Server.Core
             }
 
             return true;
-        }
-
-        private IEnumerator ReleaseCharacterAfterDisconnect(
-            Guid characterID,
-            bool requiresFinalCheckpoint)
-        {
-            WorldPersistenceCoordinator coordinator;
-            bool finalCheckpointQueuedSuccessfully = !requiresFinalCheckpoint;
-            int finalCheckpointFlushAttempts = 0;
-            while (requiresFinalCheckpoint && !finalCheckpointQueuedSuccessfully)
-            {
-                if (IsDisconnectReleaseStopping())
-                    yield break;
-
-                finalCheckpointFlushAttempts++;
-
-                coordinator = null;
-                bool coordinatorAcquired = false;
-                try
-                {
-                    coordinator = ServerInitialization.PersistenceCoordinator;
-                    coordinatorAcquired = true;
-                }
-                catch (Exception exception)
-                {
-                    Debug.Warning(
-                        $"Final checkpoint release for character {characterID} is waiting for persistence: "
-                        + exception.Message);
-                }
-
-                if (!coordinatorAcquired)
-                {
-                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
-                    {
-                        Debug.Error(
-                            $"Final checkpoint for character {characterID} remains unsettled because persistence "
-                            + "is unavailable; the newest pending checkpoint is retained and the lease will not be released.");
-                        yield break;
-                    }
-
-                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
-                    continue;
-                }
-
-                if (coordinator == null)
-                {
-                    Debug.Warning(
-                        $"Final checkpoint release for character {characterID} is waiting for persistence.");
-                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
-                    {
-                        Debug.Error(
-                            $"Final checkpoint for character {characterID} remains unsettled because persistence "
-                            + "is unavailable; the newest pending checkpoint is retained and the lease will not be released.");
-                        yield break;
-                    }
-
-                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
-                    continue;
-                }
-
-                Task flushTask;
-                bool flushStarted = false;
-                try
-                {
-                    flushTask = coordinator.FlushPendingCheckpointsAsync(CancellationToken.None);
-                    flushStarted = true;
-                }
-                catch (Exception exception)
-                {
-                    Debug.Warning(
-                        $"Final checkpoint flush for character {characterID} could not start: "
-                        + exception.Message);
-                    flushTask = null;
-                }
-
-                if (!flushStarted)
-                {
-                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
-                    {
-                        Debug.Error(
-                            $"Final checkpoint for character {characterID} remains unsettled because its flush could not start; "
-                            + "the newest pending checkpoint is retained and the lease will not be released.");
-                        yield break;
-                    }
-
-                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
-                    continue;
-                }
-
-                while (!flushTask.IsCompleted)
-                    yield return null;
-
-                bool flushSucceeded = false;
-                try
-                {
-                    flushTask.GetAwaiter().GetResult();
-                    flushSucceeded = true;
-                }
-                catch (Exception exception)
-                {
-                    Debug.Warning(
-                        $"Final checkpoint flush for character {characterID} failed: "
-                        + exception.Message);
-                }
-
-                if (!flushSucceeded)
-                {
-                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
-                    {
-                        Debug.Error(
-                            $"Final checkpoint for character {characterID} remains unsettled after "
-                            + $"{finalCheckpointFlushAttempts} flush attempts; the newest pending checkpoint is retained "
-                            + "and the lease will not be released.");
-                        yield break;
-                    }
-
-                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
-                    continue;
-                }
-
-                if (!coordinator.TryGetPendingCheckpointState(
-                    characterID,
-                    out bool hasPendingCheckpoint,
-                    out MasterPersistenceProtocol.PersistenceResult? blockingResult))
-                {
-                    Debug.Error(
-                        $"Final checkpoint state for character {characterID} is unavailable; "
-                        + "the lease will not be released.");
-                    yield break;
-                }
-
-                if (blockingResult.HasValue)
-                {
-                    Debug.Error(
-                        $"Final checkpoint for character {characterID} is permanently blocked with result "
-                        + $"{blockingResult.Value}; the lease will not be released.");
-                    yield break;
-                }
-
-                if (hasPendingCheckpoint)
-                {
-                    if (finalCheckpointFlushAttempts >= FINAL_CHECKPOINT_FLUSH_ATTEMPTS)
-                    {
-                        Debug.Error(
-                            $"Final checkpoint for character {characterID} remains unsettled after "
-                            + $"{finalCheckpointFlushAttempts} flush attempts; the newest pending checkpoint is retained "
-                            + "and the lease will not be released.");
-                        yield break;
-                    }
-
-                    yield return new WaitForSecondsRealtime(CHECKPOINT_INTERVAL_SECONDS);
-                    continue;
-                }
-
-                finalCheckpointQueuedSuccessfully = true;
-            }
-
-            if (IsDisconnectReleaseStopping())
-                yield break;
-
-            try
-            {
-                coordinator = ServerInitialization.PersistenceCoordinator;
-            }
-            catch (Exception exception)
-            {
-                Debug.Warning($"Could not access persistence coordinator while releasing character {characterID}: {exception.Message}");
-                yield break;
-            }
-
-            if (coordinator == null)
-            {
-                Debug.Warning($"Persistence coordinator unavailable while releasing character {characterID}; continuing disconnect cleanup.");
-                yield break;
-            }
-
-            Task<MasterPersistenceProtocol.PersistenceResponse> releaseTask;
-            try
-            {
-                releaseTask = coordinator.ReleaseCharacterAsync(characterID, CancellationToken.None);
-            }
-            catch (Exception exception)
-            {
-                Debug.Warning($"Could not start persistence release for character {characterID}: {exception.Message}");
-                yield break;
-            }
-
-            while (!releaseTask.IsCompleted)
-                yield return null;
-
-            try
-            {
-                MasterPersistenceProtocol.PersistenceResponse response = releaseTask.GetAwaiter().GetResult();
-                if (response == null || response.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
-                    Debug.Warning($"Persistence release for character {characterID} returned {response?.Result}; no retry will be attempted.");
-            }
-            catch (Exception exception)
-            {
-                Debug.Warning($"Persistence release failed for character {characterID}: {exception.Message}");
-            }
-        }
-
-        private static bool IsDisconnectReleaseStopping()
-        {
-            return ServerInitialization.IsFatalShutdownRequested
-                || ServerShutdownController.IsShutdownRequested;
         }
 
         /// <summary>Captures and queues one synchronous checkpoint for each currently active player session.</summary>

@@ -1,8 +1,6 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Server.Networking.Master;
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -51,42 +49,18 @@ namespace Game.Server.Persistence
             return LeaveAdmittedCharacterCoreAsync(gameplaySessionID, characterID, cancellationToken);
         }
 
-        /// <summary>Releases a locally owned character persistence lease with one Master attempt.</summary>
-        internal Task<MasterPersistenceProtocol.PersistenceResponse> ReleaseCharacterAsync(
-            Guid characterID,
-            CancellationToken cancellationToken)
+        /// <summary>Gets whether any character lane still owns a persistence lease.</summary>
+        internal bool HasOwnedCharacterLeases()
         {
-            if (characterID == Guid.Empty)
-                throw new ArgumentException("A nonempty Character ID is required.", nameof(characterID));
-            if (!TryStartOperation())
-                return Task.FromResult(CreateUnavailablePersistenceResponse());
-
-            return ReleaseCharacterTrackedAsync(characterID, cancellationToken);
-        }
-
-        /// <summary>Releases all locally owned character leases in ascending CharacterID order.</summary>
-        internal async Task ReleaseAllCharactersAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            StartCleanupOperation();
-            try
+            lock (_stateLock)
             {
-                List<Guid> characterIDs = SnapshotOwnedCharacterIDs();
-                foreach (Guid characterID in characterIDs)
+                foreach (CharacterOperationLane lane in _characterLanes.Values)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    MasterPersistenceProtocol.PersistenceResponse response =
-                        await ReleaseCharacterCoreAsync(characterID, cancellationToken).ConfigureAwait(false);
-                    if (response.Result != MasterPersistenceProtocol.PersistenceResult.Accepted)
-                    {
-                        Debug.Warning(
-                            $"Persistence character lease release for {characterID} was rejected with result {response.Result}.");
-                    }
+                    if (lane.HasOwnedLease)
+                        return true;
                 }
-            }
-            finally
-            {
-                CompleteOperation();
+
+                return false;
             }
         }
 
@@ -203,90 +177,6 @@ namespace Game.Server.Persistence
             }
         }
 
-        private async Task<MasterPersistenceProtocol.PersistenceResponse> ReleaseCharacterTrackedAsync(
-            Guid characterID,
-            CancellationToken cancellationToken)
-        {
-            try
-            {
-                return await ReleaseCharacterCoreAsync(characterID, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                CompleteOperation();
-            }
-        }
-
-        private async Task<MasterPersistenceProtocol.PersistenceResponse> ReleaseCharacterCoreAsync(
-            Guid characterID,
-            CancellationToken cancellationToken)
-        {
-            using CharacterLaneHandle laneHandle = await AcquireCharacterLaneAsync(
-                characterID,
-                cancellationToken).ConfigureAwait(false);
-
-            if (!HasOwnedLease(laneHandle.Lane))
-                return CreateStaleLeaseResponse();
-
-            CharacterLeaseSnapshot lease = GetCurrentLeaseSnapshot(laneHandle.Lane);
-            MasterPersistenceProtocol.CharacterReleaseRequest request = new()
-            {
-                WorldID = WorldID,
-                WorldServerRunID = WorldServerRunID,
-                AccountID = lease.AccountID,
-                CharacterID = characterID,
-                CharacterPersistenceLeaseID = lease.CharacterPersistenceLeaseID,
-                ExpectedRevision = lease.Revision
-            };
-
-            MasterPersistenceProtocol.PersistenceResponse response;
-            try
-            {
-                response = await _client.ReleaseCharacterAsync(request, cancellationToken).ConfigureAwait(false);
-            }
-            catch (HttpRequestException)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return CreateUnavailablePersistenceResponse();
-            }
-            catch (TimeoutException)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return CreateUnavailablePersistenceResponse();
-            }
-            catch (OperationCanceledException)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    throw;
-                return CreateUnavailablePersistenceResponse();
-            }
-
-            switch (response.Result)
-            {
-                case MasterPersistenceProtocol.PersistenceResult.Accepted:
-                    ClearLeaseState(laneHandle.Lane);
-                    return response;
-
-                case MasterPersistenceProtocol.PersistenceResult.StaleLease:
-                case MasterPersistenceProtocol.PersistenceResult.StaleWorldServerRun:
-                case MasterPersistenceProtocol.PersistenceResult.WorldNotActive:
-                case MasterPersistenceProtocol.PersistenceResult.WorldNotFound:
-                case MasterPersistenceProtocol.PersistenceResult.Unauthorized:
-                    ClearLeaseState(laneHandle.Lane);
-                    return response;
-
-                case MasterPersistenceProtocol.PersistenceResult.RevisionConflict:
-                    SetBlockingResult(laneHandle.Lane, MasterPersistenceProtocol.PersistenceResult.RevisionConflict);
-                    return response;
-
-                case MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable:
-                    return CreateUnavailablePersistenceResponse();
-
-                default:
-                    return response;
-            }
-        }
-
         private async Task<CharacterLaneHandle> AcquireCharacterLaneAsync(
             Guid characterID,
             CancellationToken cancellationToken)
@@ -332,22 +222,6 @@ namespace Game.Server.Persistence
                 if (!_characterLanes.Remove(characterID))
                     throw new InvalidOperationException("The character lane was removed unexpectedly.");
                 lane.Dispose();
-            }
-        }
-
-        private List<Guid> SnapshotOwnedCharacterIDs()
-        {
-            lock (_stateLock)
-            {
-                List<Guid> characterIDs = new();
-                foreach (KeyValuePair<Guid, CharacterOperationLane> pair in _characterLanes)
-                {
-                    if (pair.Value.HasOwnedLease)
-                        characterIDs.Add(pair.Key);
-                }
-
-                characterIDs.Sort();
-                return characterIDs;
             }
         }
 
@@ -478,22 +352,6 @@ namespace Game.Server.Persistence
             {
                 SessionResult = MasterSessionProtocol.GameplaySessionResult.Accepted,
                 PersistenceResult = MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable
-            };
-        }
-
-        private static MasterPersistenceProtocol.PersistenceResponse CreateStaleLeaseResponse()
-        {
-            return new MasterPersistenceProtocol.PersistenceResponse
-            {
-                Result = MasterPersistenceProtocol.PersistenceResult.StaleLease
-            };
-        }
-
-        private static MasterPersistenceProtocol.PersistenceResponse CreateUnavailablePersistenceResponse()
-        {
-            return new MasterPersistenceProtocol.PersistenceResponse
-            {
-                Result = MasterPersistenceProtocol.PersistenceResult.PersistenceUnavailable
             };
         }
 

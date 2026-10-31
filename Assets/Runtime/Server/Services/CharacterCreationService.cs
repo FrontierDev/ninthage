@@ -23,6 +23,12 @@ namespace Game.Server.Services
         /// <summary>Executes one Master-backed character creation request.</summary>
         internal IEnumerator Execute(PlayerID playerID, NewCharacterData characterData)
         {
+            if (!ServerConnectionManager.Instance.IsAcceptingCharacterControlPlane)
+            {
+                NotifyFailure(playerID, "character creation temporarily unavailable");
+                yield break;
+            }
+
             if (!ServerConnectionManager.Instance.TryGetAccountContext(playerID, out ConnectedAccountContext accountContext))
             {
                 NotifyFailure(playerID, "account session unavailable");

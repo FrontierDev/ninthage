@@ -18,19 +18,6 @@ namespace Game.Server.Networking.Master
             _worldClient = worldClient ?? throw new ArgumentNullException(nameof(worldClient));
         }
 
-        /// <summary>Releases the character's persistence lease through the Master Server.</summary>
-        internal Task<MasterPersistenceProtocol.PersistenceResponse> ReleaseCharacterAsync(
-            MasterPersistenceProtocol.CharacterReleaseRequest request,
-            CancellationToken cancellationToken)
-        {
-            return PostAsync<MasterPersistenceProtocol.PersistenceResponse>(
-                MasterPersistenceProtocol.CHARACTER_RELEASE_PATH,
-                request,
-                response => response.Result,
-                ValidatePersistenceResponse,
-                cancellationToken);
-        }
-
         private async Task<TResponse> PostAsync<TResponse>(
             string path,
             object request,
