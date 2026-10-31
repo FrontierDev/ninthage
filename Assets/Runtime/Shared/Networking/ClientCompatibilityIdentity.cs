@@ -1,6 +1,7 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
-using Newtonsoft.Json;
 using UnityEngine;
 
 namespace Game.Shared.Networking
@@ -12,10 +13,46 @@ namespace Game.Shared.Networking
     public sealed class ClientCompatibilityIdentity
     {
         private const string SUPPORTED_BUILD_TARGET = "StandaloneWindows64";
+        private static readonly string[] CLIENT_METADATA_PROPERTY_NAMES =
+        {
+            "clientBuildVersion",
+            "clientBuildID",
+            "protocolVersion",
+            "gameplayContentRevision",
+            "gameplayContentManifestHash",
+            "buildTarget",
+            "catalogRevision",
+            "catalogHash"
+        };
+        private static readonly string[] RELEASE_MANIFEST_PROPERTY_NAMES =
+        {
+            "clientBuildVersion",
+            "clientBuildID",
+            "protocolVersion",
+            "gameplayContentRevision",
+            "gameplayContentManifestHash",
+            "addressablesCatalogs"
+        };
+        private static readonly string[] CATALOG_PROPERTY_NAMES =
+        {
+            "buildTarget",
+            "catalogRevision",
+            "catalogHash"
+        };
         private static readonly JsonSerializerSettings METADATA_JSON_SETTINGS =
             new JsonSerializerSettings
             {
                 MissingMemberHandling = MissingMemberHandling.Error
+            };
+        private static readonly JsonSerializerSettings RELEASE_MANIFEST_JSON_SETTINGS =
+            new JsonSerializerSettings
+            {
+                MissingMemberHandling = MissingMemberHandling.Ignore
+            };
+        private static readonly JsonLoadSettings JSON_LOAD_SETTINGS =
+            new JsonLoadSettings
+            {
+                DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error
             };
 
         /// <summary>
@@ -148,13 +185,13 @@ namespace Game.Shared.Networking
             ClientCompatibilityIdentity identity;
             if (Application.isEditor)
             {
-                string manifestPath = Environment.GetEnvironmentVariable(
+                var manifestPath = Environment.GetEnvironmentVariable(
                     RELEASE_MANIFEST_PATH_ENVIRONMENT_VARIABLE);
                 identity = LoadFromReleaseManifest(manifestPath, SUPPORTED_BUILD_TARGET);
             }
             else
             {
-                string streamingAssetsPath = Application.streamingAssetsPath;
+                var streamingAssetsPath = Application.streamingAssetsPath;
                 if (string.IsNullOrWhiteSpace(streamingAssetsPath))
                 {
                     throw new InvalidOperationException(
@@ -173,9 +210,17 @@ namespace Game.Shared.Networking
                         exception);
                 }
 
-                MetadataProjection metadata = ReadJsonFile<MetadataProjection>(
+                var metadataObject = ReadJsonObjectFile(
                     metadataPath,
+                    "client compatibility metadata");
+                RequireExactPropertySet(
+                    metadataObject,
+                    CLIENT_METADATA_PROPERTY_NAMES,
+                    "client compatibility metadata");
+                var metadata = ConvertJsonObject<MetadataProjection>(
+                    metadataObject,
                     METADATA_JSON_SETTINGS,
+                    metadataPath,
                     "client compatibility metadata");
                 identity = CreateIdentity(metadata);
             }
@@ -209,21 +254,27 @@ namespace Game.Shared.Networking
                     nameof(buildTarget));
             }
 
-            ReleaseManifestProjection manifest = ReadJsonFile<ReleaseManifestProjection>(
+            var manifestObject = ReadJsonObjectFile(
                 manifestPath,
-                new JsonSerializerSettings
-                {
-                    MissingMemberHandling = MissingMemberHandling.Ignore
-                },
+                "Release Manifest");
+            RequireCanonicalPropertyNames(
+                manifestObject,
+                RELEASE_MANIFEST_PROPERTY_NAMES,
+                "Release Manifest");
+            ValidateCatalogPropertyNames(manifestObject, manifestPath);
+            var manifest = ConvertJsonObject<ReleaseManifestProjection>(
+                manifestObject,
+                RELEASE_MANIFEST_JSON_SETTINGS,
+                manifestPath,
                 "Release Manifest");
 
-            CatalogProjection[] catalogs = manifest.AddressablesCatalogs;
+            var catalogs = manifest.AddressablesCatalogs;
             if (catalogs == null)
                 throw new InvalidOperationException("Release Manifest addressablesCatalogs is required.");
 
             CatalogProjection matchingCatalog = null;
-            int matchingCatalogCount = 0;
-            foreach (CatalogProjection catalog in catalogs)
+            var matchingCatalogCount = 0;
+            foreach (var catalog in catalogs)
             {
                 if (catalog == null || !string.Equals(catalog.BuildTarget, buildTarget, StringComparison.Ordinal))
                     continue;
@@ -263,10 +314,7 @@ namespace Game.Shared.Networking
                 metadata.CatalogHash);
         }
 
-        private static T ReadJsonFile<T>(
-            string path,
-            JsonSerializerSettings settings,
-            string description)
+        private static JObject ReadJsonObjectFile(string path, string description)
         {
             if (string.IsNullOrWhiteSpace(path))
                 throw new InvalidOperationException($"An explicit {description} path is required.");
@@ -292,7 +340,25 @@ namespace Game.Shared.Networking
 
             try
             {
-                T value = JsonConvert.DeserializeObject<T>(json, settings);
+                return JObject.Parse(json, JSON_LOAD_SETTINGS);
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidOperationException(
+                    $"The {description} file '{path}' contains invalid or incompatible JSON.",
+                    exception);
+            }
+        }
+
+        private static T ConvertJsonObject<T>(
+            JObject jsonObject,
+            JsonSerializerSettings settings,
+            string path,
+            string description)
+        {
+            try
+            {
+                var value = jsonObject.ToObject<T>(JsonSerializer.Create(settings));
                 if (value == null)
                     throw new InvalidOperationException($"The {description} file '{path}' contains null JSON.");
 
@@ -306,14 +372,110 @@ namespace Game.Shared.Networking
             }
         }
 
+        private static void RequireExactPropertySet(
+            JObject jsonObject,
+            string[] expectedPropertyNames,
+            string description)
+        {
+            var propertyCount = 0;
+            foreach (var property in jsonObject.Properties())
+            {
+                propertyCount++;
+                if (!ContainsOrdinal(expectedPropertyNames, property.Name))
+                {
+                    throw new InvalidOperationException(
+                        $"The {description} contains unexpected property '{property.Name}'.");
+                }
+            }
+
+            if (propertyCount != expectedPropertyNames.Length)
+            {
+                throw new InvalidOperationException(
+                    $"The {description} must contain exactly {expectedPropertyNames.Length} properties.");
+            }
+
+            RequireCanonicalPropertyNames(jsonObject, expectedPropertyNames, description);
+        }
+
+        private static void RequireCanonicalPropertyNames(
+            JObject jsonObject,
+            string[] requiredPropertyNames,
+            string description)
+        {
+            foreach (var requiredPropertyName in requiredPropertyNames)
+            {
+                var hasCanonicalProperty = false;
+                foreach (var property in jsonObject.Properties())
+                {
+                    if (string.Equals(property.Name, requiredPropertyName, StringComparison.Ordinal))
+                    {
+                        hasCanonicalProperty = true;
+                        continue;
+                    }
+
+                    if (string.Equals(property.Name, requiredPropertyName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException(
+                            $"The {description} property '{property.Name}' must be named '{requiredPropertyName}'.");
+                    }
+                }
+
+                if (!hasCanonicalProperty)
+                {
+                    throw new InvalidOperationException(
+                        $"The {description} requires property '{requiredPropertyName}'.");
+                }
+            }
+        }
+
+        private static void ValidateCatalogPropertyNames(JObject manifestObject, string manifestPath)
+        {
+            var catalogsProperty = GetProperty(manifestObject, "addressablesCatalogs");
+            if (!(catalogsProperty.Value is JArray catalogs))
+                return;
+
+            foreach (var catalogToken in catalogs)
+            {
+                if (!(catalogToken is JObject catalogObject))
+                    continue;
+
+                RequireCanonicalPropertyNames(
+                    catalogObject,
+                    CATALOG_PROPERTY_NAMES,
+                    $"Release Manifest file '{manifestPath}' catalog entry");
+            }
+        }
+
+        private static JProperty GetProperty(JObject jsonObject, string propertyName)
+        {
+            foreach (var property in jsonObject.Properties())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.Ordinal))
+                    return property;
+            }
+
+            throw new InvalidOperationException($"Required JSON property '{propertyName}' was not found.");
+        }
+
+        private static bool ContainsOrdinal(string[] propertyNames, string propertyName)
+        {
+            foreach (var candidate in propertyNames)
+            {
+                if (string.Equals(candidate, propertyName, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
         private static bool IsClientBuildVersion(string value)
         {
             if (string.IsNullOrEmpty(value))
                 return false;
 
-            int separatorCount = 0;
-            int componentLength = 0;
-            foreach (char character in value)
+            var separatorCount = 0;
+            var componentLength = 0;
+            foreach (var character in value)
             {
                 if (character == '.')
                 {
@@ -339,10 +501,10 @@ namespace Game.Shared.Networking
             if (value == null || value.Length != expectedLength)
                 return false;
 
-            foreach (char character in value)
+            foreach (var character in value)
             {
-                bool isDigit = character >= '0' && character <= '9';
-                bool isLowercaseHexLetter = character >= 'a' && character <= 'f';
+                var isDigit = character >= '0' && character <= '9';
+                var isLowercaseHexLetter = character >= 'a' && character <= 'f';
                 if (!isDigit && !isLowercaseHexLetter)
                     return false;
             }

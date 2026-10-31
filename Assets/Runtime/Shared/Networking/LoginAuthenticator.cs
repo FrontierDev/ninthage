@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Game.Shared.Networking
 {
     /// <summary>
-    /// Game-specific authenticator for SpaceSim.
+    /// Ninth Age authenticator for client credentials and gameplay-session admission.
     /// Handles client-side authentication payload generation and server-side validation.
     /// Stores accepted gameplay-session identity for the exact server connection.
     /// </summary>
@@ -17,7 +17,7 @@ namespace Game.Shared.Networking
     public class LoginAuthenticator : AuthenticationBehaviour<AuthenticationPayload, LoginDenialReason>
     {
         #region Fields - Client Side
-        private static AuthenticationPayload clientPayload;
+        private static AuthenticationPayload _clientPayload;
         #endregion
 
         #region Fields - Server Side
@@ -32,8 +32,8 @@ namespace Game.Shared.Networking
         /// </summary>
         public static void SetCredentials(string username, string password)
         {
-            ClientCompatibilityIdentity compatibilityIdentity = ClientCompatibilityIdentity.LoadCurrent();
-            clientPayload = new AuthenticationPayload(username, password, compatibilityIdentity);
+            var compatibilityIdentity = ClientCompatibilityIdentity.LoadCurrent();
+            _clientPayload = new AuthenticationPayload(username, password, compatibilityIdentity);
             Debug.Log($"Credentials set for: {username}");
         }
         #endregion
@@ -75,14 +75,14 @@ namespace Game.Shared.Networking
         /// </summary>
         protected override Task<AuthenticationRequest<AuthenticationPayload>> GetClientPayload()
         {
-            if (clientPayload == null)
+            if (_clientPayload == null)
             {
                 throw new InvalidOperationException(
                     "Client authentication payload was not prepared before authentication started.");
             }
 
-            Debug.Log($"Sending authentication payload for: {clientPayload.Username}");
-            return Task.FromResult(new AuthenticationRequest<AuthenticationPayload>(clientPayload));
+            Debug.Log($"Sending authentication payload for: {_clientPayload.Username}");
+            return Task.FromResult(new AuthenticationRequest<AuthenticationPayload>(_clientPayload));
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace Game.Shared.Networking
             Connection connection,
             AuthenticationPayload payload)
         {
-            ClientCompatibilityIdentity expectedCompatibility = _clientCompatibilityRequirements;
+            var expectedCompatibility = _clientCompatibilityRequirements;
             if (expectedCompatibility == null || !connection.isValid)
             {
                 Debug.Error(
@@ -102,7 +102,7 @@ namespace Game.Shared.Networking
                     LoginDenialReason.AuthenticationRejected);
             }
 
-            LoginDenialReason? compatibilityDenial = GetCompatibilityDenial(
+            var compatibilityDenial = GetCompatibilityDenial(
                 payload,
                 expectedCompatibility);
             if (compatibilityDenial.HasValue)
@@ -111,7 +111,7 @@ namespace Game.Shared.Networking
                 return AuthenticationResponse<LoginDenialReason>.Deny(compatibilityDenial.Value);
             }
 
-            IPlayerAuthService authService = _authService;
+            var authService = _authService;
             if (authService == null || !connection.isValid)
             {
                 Debug.Error("No valid authentication service or connection is available. Cannot validate credentials.");
@@ -119,7 +119,7 @@ namespace Game.Shared.Networking
                     LoginDenialReason.AuthenticationRejected);
             }
 
-            bool authenticated = await authService.AuthenticateConnectionAsync(
+            var authenticated = await authService.AuthenticateConnectionAsync(
                 connection,
                 payload.Username,
                 payload.Password,
@@ -163,11 +163,11 @@ namespace Game.Shared.Networking
         /// </summary>
         protected override void UnAuthenticateClient(Connection connection)
         {
-            IPlayerAuthService authService = _authService;
+            var authService = _authService;
             if (authService == null)
                 return;
 
-            Task cleanupTask = authService.AbandonPendingAuthenticationAsync(
+            var cleanupTask = authService.AbandonPendingAuthenticationAsync(
                 connection,
                 CancellationToken.None);
 

@@ -1,8 +1,8 @@
+using Game.Shared.Networking;
+using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Text;
-using Game.Shared.Networking;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -33,7 +33,7 @@ namespace Game.Editor.Build
             if (!IsSupportedGraphicalPlayer(report))
                 return;
 
-            ClientCompatibilityIdentity identity = LoadConfiguredIdentity();
+            var identity = LoadConfiguredIdentity();
             if (!string.Equals(identity.ClientBuildVersion, PlayerSettings.bundleVersion, StringComparison.Ordinal))
             {
                 throw new BuildFailedException(
@@ -51,19 +51,19 @@ namespace Game.Editor.Build
             if (!IsSupportedGraphicalPlayer(report) || report.summary.result != BuildResult.Succeeded)
                 return;
 
-            ClientCompatibilityIdentity identity = LoadConfiguredIdentity();
-            string playerDataDirectory = GetPlayerDataDirectory(report.summary.outputPath);
-            string streamingAssetsDirectory = Path.Combine(
+            var identity = LoadConfiguredIdentity();
+            var playerDataDirectory = GetPlayerDataDirectory(report.summary.outputPath);
+            var streamingAssetsDirectory = Path.Combine(
                 playerDataDirectory,
                 STREAMING_ASSETS_DIRECTORY_NAME);
-            string metadataPath = Path.Combine(
+            var metadataPath = Path.Combine(
                 streamingAssetsDirectory,
                 ClientCompatibilityIdentity.METADATA_FILE_NAME);
 
             try
             {
                 Directory.CreateDirectory(streamingAssetsDirectory);
-                string metadataJson = JsonConvert.SerializeObject(identity, Formatting.Indented);
+                var metadataJson = JsonConvert.SerializeObject(identity, Formatting.Indented);
                 File.WriteAllText(metadataPath, metadataJson, Encoding.UTF8);
             }
             catch (Exception exception) when (
@@ -84,7 +84,7 @@ namespace Game.Editor.Build
 
         private static ClientCompatibilityIdentity LoadConfiguredIdentity()
         {
-            string manifestPath = Environment.GetEnvironmentVariable(
+            var manifestPath = Environment.GetEnvironmentVariable(
                 ClientCompatibilityIdentity.RELEASE_MANIFEST_PATH_ENVIRONMENT_VARIABLE);
 
             try
@@ -127,8 +127,8 @@ namespace Game.Editor.Build
                     $"The Windows Player output path '{outputPath}' is invalid: {exception.Message}");
             }
 
-            string outputDirectory = Path.GetDirectoryName(fullOutputPath);
-            string outputName = Path.GetFileNameWithoutExtension(fullOutputPath);
+            var outputDirectory = Path.GetDirectoryName(fullOutputPath);
+            var outputName = Path.GetFileNameWithoutExtension(fullOutputPath);
             if (string.IsNullOrWhiteSpace(outputDirectory) || string.IsNullOrWhiteSpace(outputName))
             {
                 throw new BuildFailedException(
