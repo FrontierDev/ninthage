@@ -12,11 +12,20 @@ namespace Game.Server.Networking.Master
             Accepted = 0,
             InvalidWorldServerRunID = 1,
             InvalidWorldName = 2,
-            InvalidBuildIdentity = 3,
+            InvalidServerBuildID = 3,
             Unauthorized = 4,
             WorldNotFound = 5,
             WorldAlreadyActive = 6,
             StaleWorldServerRun = 7,
+            InvalidReleaseID = 8,
+            InvalidProtocolVersion = 9,
+            InvalidGameplayContentRevision = 10,
+            InvalidGameplayContentManifestHash = 11,
+            ReleaseIDMismatch = 12,
+            ServerBuildIDMismatch = 13,
+            ProtocolVersionMismatch = 14,
+            GameplayContentRevisionMismatch = 15,
+            GameplayContentManifestHashMismatch = 16,
         }
 
         /// <summary>Canonical outcomes for a World Server lease request.</summary>
@@ -39,8 +48,20 @@ namespace Game.Server.Networking.Master
             [JsonProperty("worldName")]
             public string WorldName { get; set; }
 
-            [JsonProperty("buildIdentity")]
-            public string BuildIdentity { get; set; }
+            [JsonProperty("releaseID")]
+            public Guid ReleaseID { get; set; }
+
+            [JsonProperty("serverBuildID")]
+            public string ServerBuildID { get; set; }
+
+            [JsonProperty("protocolVersion")]
+            public int ProtocolVersion { get; set; }
+
+            [JsonProperty("gameplayContentRevision")]
+            public long GameplayContentRevision { get; set; }
+
+            [JsonProperty("gameplayContentManifestHash")]
+            public string GameplayContentManifestHash { get; set; }
         }
 
         /// <summary>Wire response returned by a World Server registration request.</summary>

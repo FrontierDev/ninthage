@@ -222,17 +222,6 @@ namespace Game.Server.Core
             return worldServerRunID;
         }
 
-        private static string ResolveBuildIdentity()
-        {
-            if (!string.IsNullOrWhiteSpace(Application.buildGUID))
-                return Application.buildGUID;
-
-            if (!string.IsNullOrWhiteSpace(Application.version))
-                return Application.version;
-
-            throw new InvalidOperationException("The server requires a nonblank build identity.");
-        }
-
         private static string ValidateExplicitWorldName(string worldName)
         {
             if (string.IsNullOrWhiteSpace(worldName))
@@ -437,10 +426,12 @@ namespace Game.Server.Core
             if (_masterWorldClient != null)
                 throw new InvalidOperationException("The Master World Server client is already initialized.");
 
+            WorldServerReleaseIdentity releaseIdentity =
+                WorldServerReleaseIdentity.LoadFromEnvironment();
             _masterWorldClient = new MasterWorldClient(
                 _launchWorldName,
                 WORLD_SERVER_RUN_ID,
-                ResolveBuildIdentity());
+                releaseIdentity);
 
             Task<MasterWorldProtocol.RegistrationResponse> registrationTask =
                 _masterWorldClient.RegisterAsync(CancellationToken.None);

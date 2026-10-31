@@ -25,14 +25,17 @@ namespace Game.Server.Networking.Master
         private readonly HttpClient _httpClient;
 
         /// <summary>Creates an authenticated Master transport for one immutable World Server run identity.</summary>
-        internal MasterWorldClient(string worldName, Guid worldServerRunID, string buildIdentity)
+        internal MasterWorldClient(
+            string worldName,
+            Guid worldServerRunID,
+            WorldServerReleaseIdentity releaseIdentity)
         {
             if (string.IsNullOrWhiteSpace(worldName))
                 throw new ArgumentException("A nonblank world name is required.", nameof(worldName));
             if (worldServerRunID == Guid.Empty)
                 throw new ArgumentException("A nonempty World Server run ID is required.", nameof(worldServerRunID));
-            if (string.IsNullOrWhiteSpace(buildIdentity))
-                throw new ArgumentException("A nonblank build identity is required.", nameof(buildIdentity));
+            if (releaseIdentity == null)
+                throw new ArgumentNullException(nameof(releaseIdentity));
 
             bool development = Application.isEditor || UnityEngine.Debug.isDebugBuild;
             string masterURL = Environment.GetEnvironmentVariable(MASTER_URL_ENVIRONMENT_VARIABLE)?.Trim();
@@ -57,7 +60,7 @@ namespace Game.Server.Networking.Master
 
             WorldName = worldName;
             WorldServerRunID = worldServerRunID;
-            BuildIdentity = buildIdentity;
+            ReleaseIdentity = releaseIdentity;
             _httpClient = httpClient;
         }
 
@@ -67,8 +70,8 @@ namespace Game.Server.Networking.Master
         /// <summary>Gets the immutable run ID sent in every request.</summary>
         internal Guid WorldServerRunID { get; }
 
-        /// <summary>Gets the immutable build identity sent in registration.</summary>
-        internal string BuildIdentity { get; }
+        /// <summary>Gets the immutable release identity sent in registration.</summary>
+        internal WorldServerReleaseIdentity ReleaseIdentity { get; }
 
         /// <summary>Registers this World Server and returns the validated Master response.</summary>
         internal async Task<MasterWorldProtocol.RegistrationResponse> RegisterAsync(
@@ -78,7 +81,11 @@ namespace Game.Server.Networking.Master
             {
                 WorldServerRunID = WorldServerRunID,
                 WorldName = WorldName,
-                BuildIdentity = BuildIdentity
+                ReleaseID = ReleaseIdentity.ReleaseID,
+                ServerBuildID = ReleaseIdentity.ServerBuildID,
+                ProtocolVersion = ReleaseIdentity.ProtocolVersion,
+                GameplayContentRevision = ReleaseIdentity.GameplayContentRevision,
+                GameplayContentManifestHash = ReleaseIdentity.GameplayContentManifestHash
             };
             (HttpStatusCode statusCode, string responseBody) = await PostJsonAsync(
                 REGISTER_PATH,
@@ -286,7 +293,16 @@ namespace Game.Server.Networking.Master
                 MasterWorldProtocol.RegistrationResult.StaleWorldServerRun => HttpStatusCode.Conflict,
                 MasterWorldProtocol.RegistrationResult.InvalidWorldServerRunID => HttpStatusCode.BadRequest,
                 MasterWorldProtocol.RegistrationResult.InvalidWorldName => HttpStatusCode.BadRequest,
-                MasterWorldProtocol.RegistrationResult.InvalidBuildIdentity => HttpStatusCode.BadRequest,
+                MasterWorldProtocol.RegistrationResult.InvalidServerBuildID => HttpStatusCode.BadRequest,
+                MasterWorldProtocol.RegistrationResult.InvalidReleaseID => HttpStatusCode.BadRequest,
+                MasterWorldProtocol.RegistrationResult.InvalidProtocolVersion => HttpStatusCode.BadRequest,
+                MasterWorldProtocol.RegistrationResult.InvalidGameplayContentRevision => HttpStatusCode.BadRequest,
+                MasterWorldProtocol.RegistrationResult.InvalidGameplayContentManifestHash => HttpStatusCode.BadRequest,
+                MasterWorldProtocol.RegistrationResult.ReleaseIDMismatch => HttpStatusCode.Conflict,
+                MasterWorldProtocol.RegistrationResult.ServerBuildIDMismatch => HttpStatusCode.Conflict,
+                MasterWorldProtocol.RegistrationResult.ProtocolVersionMismatch => HttpStatusCode.Conflict,
+                MasterWorldProtocol.RegistrationResult.GameplayContentRevisionMismatch => HttpStatusCode.Conflict,
+                MasterWorldProtocol.RegistrationResult.GameplayContentManifestHashMismatch => HttpStatusCode.Conflict,
                 _ => throw new InvalidOperationException("The Master registration response has an unknown result.")
             };
 
