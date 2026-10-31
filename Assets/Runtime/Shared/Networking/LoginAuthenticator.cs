@@ -14,7 +14,7 @@ namespace Game.Shared.Networking
     /// Stores accepted gameplay-session identity for the exact server connection.
     /// </summary>
     [RegisterNetworkType(typeof(AuthenticationRequest<AuthenticationPayload>))]
-    public class LoginAuthenticator : AuthenticationBehaviour<AuthenticationPayload>
+    public class LoginAuthenticator : AuthenticationBehaviour<AuthenticationPayload, LoginDenialReason>
     {
         #region Fields - Client Side
         private static AuthenticationPayload clientPayload;
@@ -22,6 +22,7 @@ namespace Game.Shared.Networking
 
         #region Fields - Server Side
         private static IPlayerAuthService _authService;
+        private static ClientCompatibilityIdentity _clientCompatibilityRequirements;
         #endregion
 
         #region Public API - Client Setup
@@ -31,7 +32,8 @@ namespace Game.Shared.Networking
         /// </summary>
         public static void SetCredentials(string username, string password)
         {
-            clientPayload = new AuthenticationPayload(username, password);
+            ClientCompatibilityIdentity compatibilityIdentity = ClientCompatibilityIdentity.LoadCurrent();
+            clientPayload = new AuthenticationPayload(username, password, compatibilityIdentity);
             Debug.Log($"Credentials set for: {username}");
         }
         #endregion
@@ -42,6 +44,13 @@ namespace Game.Shared.Networking
         /// Called by ServerInitialization (Step 7) after Master gameplay-session coordination is available.
         /// </summary>
         public static void SetAuthService(IPlayerAuthService authService) { _authService = authService; }
+
+        /// <summary>Registers or clears the World-pinned client compatibility requirements.</summary>
+        public static void SetClientCompatibilityRequirements(
+            ClientCompatibilityIdentity compatibilityRequirements)
+        {
+            _clientCompatibilityRequirements = compatibilityRequirements;
+        }
         #endregion
 
         #region Public API - Server Session (delegated to IPlayerAuthService)
@@ -68,8 +77,8 @@ namespace Game.Shared.Networking
         {
             if (clientPayload == null)
             {
-                Debug.Warning("Client payload not set! Using empty credentials.");
-                clientPayload = new AuthenticationPayload("", "");
+                throw new InvalidOperationException(
+                    "Client authentication payload was not prepared before authentication started.");
             }
 
             Debug.Log($"Sending authentication payload for: {clientPayload.Username}");
@@ -79,15 +88,35 @@ namespace Game.Shared.Networking
         /// <summary>
         /// Server: Validate the client's credentials through Master account authentication.
         /// </summary>
-        protected override async Task<AuthenticationResponse> ValidateClientPayload(
+        protected override async Task<AuthenticationResponse<LoginDenialReason>> ValidateClientPayload(
             Connection connection,
             AuthenticationPayload payload)
         {
+            ClientCompatibilityIdentity expectedCompatibility = _clientCompatibilityRequirements;
+            if (expectedCompatibility == null || !connection.isValid)
+            {
+                Debug.Error(
+                    "Client compatibility requirements or the client connection is unavailable. "
+                    + "Cannot authenticate the client.");
+                return AuthenticationResponse<LoginDenialReason>.Deny(
+                    LoginDenialReason.AuthenticationRejected);
+            }
+
+            LoginDenialReason? compatibilityDenial = GetCompatibilityDenial(
+                payload,
+                expectedCompatibility);
+            if (compatibilityDenial.HasValue)
+            {
+                Debug.Warning($"Client compatibility was rejected: {compatibilityDenial.Value}.");
+                return AuthenticationResponse<LoginDenialReason>.Deny(compatibilityDenial.Value);
+            }
+
             IPlayerAuthService authService = _authService;
             if (authService == null || !connection.isValid)
             {
                 Debug.Error("No valid authentication service or connection is available. Cannot validate credentials.");
-                return new AuthenticationResponse { success = false };
+                return AuthenticationResponse<LoginDenialReason>.Deny(
+                    LoginDenialReason.AuthenticationRejected);
             }
 
             bool authenticated = await authService.AuthenticateConnectionAsync(
@@ -99,16 +128,34 @@ namespace Game.Shared.Networking
             if (!authenticated)
             {
                 Debug.Warning("Authentication failed for the supplied credentials.");
-                return new AuthenticationResponse { success = false };
+                return AuthenticationResponse<LoginDenialReason>.Deny(
+                    LoginDenialReason.AuthenticationRejected);
             }
-            if (!ReferenceEquals(authService, _authService) || !connection.isValid)
+            if (!ReferenceEquals(authService, _authService)
+                || !ReferenceEquals(expectedCompatibility, _clientCompatibilityRequirements)
+                || !connection.isValid)
             {
                 Debug.Warning("Authentication completed after service teardown or connection loss.");
                 await authService.AbandonPendingAuthenticationAsync(connection, CancellationToken.None);
-                return new AuthenticationResponse { success = false };
+                return AuthenticationResponse<LoginDenialReason>.Deny(
+                    LoginDenialReason.AuthenticationRejected);
             }
 
-            return new AuthenticationResponse { success = true };
+            return AuthenticationResponse<LoginDenialReason>.Accept();
+        }
+
+        /// <summary>Reports the typed denial reason received from the World Server.</summary>
+        protected override void OnDeniedByServer(
+            DenialKind kind,
+            LoginDenialReason? reason)
+        {
+            if (kind == DenialKind.AuthenticatorRejected && reason.HasValue)
+            {
+                Debug.Error($"Authentication denied: {reason.Value}.");
+                return;
+            }
+
+            Debug.Error($"Authentication denied by PurrNet: {kind}.");
         }
 
         /// <summary>
@@ -163,6 +210,59 @@ namespace Game.Shared.Networking
                     $"Pending authentication cleanup failed for connection {connection}: "
                     + exception.Message);
             }
+        }
+
+        private static LoginDenialReason? GetCompatibilityDenial(
+            AuthenticationPayload payload,
+            ClientCompatibilityIdentity expectedCompatibility)
+        {
+            if (payload == null
+                || !string.Equals(
+                    payload.ClientBuildVersion,
+                    expectedCompatibility.ClientBuildVersion,
+                    StringComparison.Ordinal)
+                || !string.Equals(
+                    payload.ClientBuildID,
+                    expectedCompatibility.ClientBuildID,
+                    StringComparison.Ordinal))
+            {
+                return LoginDenialReason.ClientUpdateRequired;
+            }
+
+            if (payload.ProtocolVersion != expectedCompatibility.ProtocolVersion)
+                return LoginDenialReason.ProtocolMismatch;
+
+            if (payload.GameplayContentRevision != expectedCompatibility.GameplayContentRevision)
+                return LoginDenialReason.GameplayContentUpdateRequired;
+
+            if (!string.Equals(
+                    payload.GameplayContentManifestHash,
+                    expectedCompatibility.GameplayContentManifestHash,
+                    StringComparison.Ordinal))
+            {
+                return LoginDenialReason.GameplayContentVerificationFailed;
+            }
+
+            if (!string.Equals(
+                    payload.BuildTarget,
+                    expectedCompatibility.BuildTarget,
+                    StringComparison.Ordinal))
+            {
+                return LoginDenialReason.UnsupportedBuildTarget;
+            }
+
+            if (payload.CatalogRevision != expectedCompatibility.CatalogRevision)
+                return LoginDenialReason.AddressablesCatalogUpdateRequired;
+
+            if (!string.Equals(
+                    payload.CatalogHash,
+                    expectedCompatibility.CatalogHash,
+                    StringComparison.Ordinal))
+            {
+                return LoginDenialReason.AddressablesCatalogVerificationFailed;
+            }
+
+            return null;
         }
         #endregion
     }

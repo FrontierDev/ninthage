@@ -296,7 +296,19 @@ namespace Game.Client
             if (networkManager.clientState == PurrNet.Transports.ConnectionState.Disconnected)
             {
                 // Set the credentials of the login authentication payload.
-                Authentication.SetCredentials(username, password);
+                try
+                {
+                    Authentication.SetCredentials(username, password);
+                }
+                catch (Exception exception)
+                {
+                    Debug.Error(
+                        $"Client authentication preparation failed: {exception.GetType().Name}: {exception.Message}");
+                    _connectionState = ConnectionState.Disconnected;
+                    LoadingScreen.Instance.Finish();
+                    MainMenu.Instance.Show();
+                    yield break;
+                }
 
                 // Set the address and server port of the transport.
                 transport.address = GameConfigurationManager.Config.ServerAddress;

@@ -264,7 +264,8 @@ namespace Game.Server.Networking.Master
                     || !response.HeartbeatIntervalSeconds.HasValue
                     || response.HeartbeatIntervalSeconds.Value <= 0
                     || !response.LeaseTimeoutSeconds.HasValue
-                    || response.LeaseTimeoutSeconds.Value <= response.HeartbeatIntervalSeconds.Value)
+                    || response.LeaseTimeoutSeconds.Value <= response.HeartbeatIntervalSeconds.Value
+                    || response.ClientCompatibility == null)
                 {
                     throw new InvalidOperationException("The accepted Master registration response was contradictory.");
                 }
@@ -274,7 +275,8 @@ namespace Game.Server.Networking.Master
 
             if (response.WorldID.HasValue
                 || response.HeartbeatIntervalSeconds.HasValue
-                || response.LeaseTimeoutSeconds.HasValue)
+                || response.LeaseTimeoutSeconds.HasValue
+                || response.ClientCompatibility != null)
             {
                 throw new InvalidOperationException("The rejected Master registration response contained success fields.");
             }

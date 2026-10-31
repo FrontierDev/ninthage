@@ -60,6 +60,7 @@ namespace Game.Server.Core
         private static bool _initializationSucceeded;
         private static ServerTimeAuthority _timeAuthority;
         private static MasterWorldClient _masterWorldClient;
+        private static ClientCompatibilityIdentity _clientCompatibilityRequirements;
         private static MasterSessionClient _masterSessionClient;
         private static WorldSessionCoordinator _worldSessionCoordinator;
         private static MasterPersistenceClient _masterPersistenceClient;
@@ -446,6 +447,16 @@ namespace Game.Server.Core
                     $"Master registration for world '{_launchWorldName}' was rejected with result {registrationResponse.Result}.");
             }
 
+            _clientCompatibilityRequirements = new ClientCompatibilityIdentity(
+                registrationResponse.ClientCompatibility.ClientBuildVersion,
+                registrationResponse.ClientCompatibility.ClientBuildID,
+                registrationResponse.ClientCompatibility.ProtocolVersion,
+                registrationResponse.ClientCompatibility.GameplayContentRevision,
+                registrationResponse.ClientCompatibility.GameplayContentManifestHash,
+                registrationResponse.ClientCompatibility.BuildTarget,
+                registrationResponse.ClientCompatibility.CatalogRevision,
+                registrationResponse.ClientCompatibility.CatalogHash);
+
             ServerWorldManager.InitializeRuntimeContext(registrationResponse.WorldID.Value);
             Debug.Log(
                 $"Server world '{_launchWorldName}' registered with durable world ID '{registrationResponse.WorldID.Value}'.");
@@ -653,6 +664,7 @@ namespace Game.Server.Core
         private static void CancelAndDisposePersistenceStateSynchronously()
         {
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+            Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(null);
             ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
 
             if (_worldPersistenceCoordinator != null)
@@ -703,6 +715,7 @@ namespace Game.Server.Core
             _masterSessionClient = null;
             _masterWorldClient?.Dispose();
             _masterWorldClient = null;
+            _clientCompatibilityRequirements = null;
         }
 
         /// <summary>
@@ -842,6 +855,7 @@ namespace Game.Server.Core
                 ServerControlEndpoint.Detach();
                 StopInitializationCoroutine();
                 Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+                Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(null);
                 ServerConnectionManager.Instance.StopAcceptingCharacterControlPlane();
                 ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
 
@@ -1090,6 +1104,14 @@ namespace Game.Server.Core
         {
             Debug.Log(" - Step 7: Initializing Master authentication...");
 
+            if (_clientCompatibilityRequirements == null)
+            {
+                throw new InvalidOperationException(
+                    "Client compatibility requirements were not established during Master registration.");
+            }
+
+            Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(
+                _clientCompatibilityRequirements);
             WorldSessionCoordinator coordinator = SessionCoordinator;
             var authService = new PlayerAuthService(coordinator);
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(authService);
