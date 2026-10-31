@@ -12,7 +12,8 @@ namespace Game.Shared.Data
         private const WorldLocationPurpose SUPPORTED_PURPOSES =
             WorldLocationPurpose.Starting
             | WorldLocationPurpose.SafeReturn
-            | WorldLocationPurpose.RegionalFallback;
+            | WorldLocationPurpose.RegionalFallback
+            | WorldLocationPurpose.SafeLogout;
 
         [SerializeField]
         private string _mapID;
@@ -44,6 +45,9 @@ namespace Game.Shared.Data
         [SerializeField]
         private double _regionalFallbackRadius;
 
+        [SerializeField]
+        private double _safeLogoutRadius;
+
         /// <summary>Gets the canonical logical map ID.</summary>
         public string MapID => _mapID;
 
@@ -73,6 +77,9 @@ namespace Game.Shared.Data
 
         /// <summary>Gets the regional fallback coverage radius.</summary>
         public double RegionalFallbackRadius => _regionalFallbackRadius;
+
+        /// <summary>Gets the safe-logout coverage radius.</summary>
+        public double SafeLogoutRadius => _safeLogoutRadius;
 
         protected override string AssetPrefix => "WorldLocation";
 
@@ -131,6 +138,22 @@ namespace Game.Shared.Data
             {
                 Debug.LogError(
                     $"[{GetType().Name}] Definition '{DefinitionID}' has a regional fallback radius without that purpose");
+                isValid = false;
+            }
+
+            if ((_purposes & WorldLocationPurpose.SafeLogout) != 0)
+            {
+                if (!IsFinite(_safeLogoutRadius) || _safeLogoutRadius <= 0d)
+                {
+                    Debug.LogError(
+                        $"[{GetType().Name}] Definition '{DefinitionID}' has an invalid safe-logout radius");
+                    isValid = false;
+                }
+            }
+            else if (_safeLogoutRadius != 0d)
+            {
+                Debug.LogError(
+                    $"[{GetType().Name}] Definition '{DefinitionID}' has a safe-logout radius without that purpose");
                 isValid = false;
             }
 

@@ -48,6 +48,7 @@ namespace Game.Shared
 
             _config.ValidateWorldGridConfiguration();
             _config.ValidateSpatialConfiguration();
+            _config.ValidateSessionLifecycleConfiguration();
 
             // Marked as initialized.
             _initialized = true;

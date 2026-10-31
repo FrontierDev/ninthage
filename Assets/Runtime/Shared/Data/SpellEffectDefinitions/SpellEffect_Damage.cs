@@ -159,6 +159,7 @@ namespace Game.Shared.Data.SpellEffectDefinitions
 
         private void ApplyDamage(SpellContext ctx, ActorStatContainer casterStats, Actor target, int damage)
         {
+            ActorEndpoint.onServerHostileCombatActivity?.Invoke(ctx.Caster, target);
             var targetStats = target.GetComponent<ActorStatContainer>();
             int casterLevel = casterStats.GetComponent<Actor>().GetLevel();
             int targetLevel = target.GetLevel();
@@ -207,10 +208,15 @@ namespace Game.Shared.Data.SpellEffectDefinitions
             if (!targetStats.TryGetStat(StatHealth, out var health))
                 return;
 
-            float newCurrent = Mathf.Max(0f, health.CurrentValue - damage);
+            float previousCurrent = health.CurrentValue;
+            float newCurrent = Mathf.Max(0f, previousCurrent - damage);
             targetStats.SetStat(StatHealth, new StatInstance(
                 health.BaseValue, health.FlatModifier, health.PercentModifier,
                 health.EffectiveMaximum, newCurrent));
+
+            float committedDamage = previousCurrent - targetStats.GetStat(StatHealth).CurrentValue;
+            if (committedDamage > 0f)
+                ActorEndpoint.onServerHostileDamageCommitted?.Invoke(ctx.Caster, target);
 
             if (target.TryGetComponent<NPCBehavior>(out var npcBehavior))
                 npcBehavior.onDamaged?.Invoke(ctx.Caster, damage);

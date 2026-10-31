@@ -9,6 +9,7 @@ namespace Game.Shared.Data
         None = 0,
         Starting = 1,
         SafeReturn = 2,
-        RegionalFallback = 4
+        RegionalFallback = 4,
+        SafeLogout = 8
     }
 }

@@ -58,10 +58,18 @@ namespace Game.Shared.Data.AuraEffectDefinitions
             if (!targetStats.TryGetStat(STAT_HEALTH, out var health))
                 return;
 
-            float newCurrent = Mathf.Max(0f, health.CurrentValue - damage);
+            if (source != null)
+                ActorEndpoint.onServerHostileCombatActivity?.Invoke(source, target);
+
+            float previousCurrent = health.CurrentValue;
+            float newCurrent = Mathf.Max(0f, previousCurrent - damage);
             targetStats.SetStat(STAT_HEALTH, new StatInstance(
                 health.BaseValue, health.FlatModifier, health.PercentModifier,
                 health.EffectiveMaximum, newCurrent));
+
+            float committedDamage = previousCurrent - targetStats.GetStat(STAT_HEALTH).CurrentValue;
+            if (source != null && committedDamage > 0f)
+                ActorEndpoint.onServerHostileDamageCommitted?.Invoke(source, target);
 
             if (target.TryGetComponent<NPCBehavior>(out var npcBehavior))
                 npcBehavior.OnDamaged(source, damage);

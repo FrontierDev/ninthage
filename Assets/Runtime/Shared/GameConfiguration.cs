@@ -105,6 +105,20 @@ namespace Game.Shared
         /// <summary>Gets or sets the lower-rate NPC proximity and aggro decision interval in seconds.</summary>
         public float NPCAggroDecisionIntervalSeconds = 0.2f;
 
+        [Header("Session Lifecycle Settings")]
+        [SerializeField]
+        /// <summary>Gets or sets the minimum disconnect grace duration in seconds.</summary>
+        public float DisconnectGraceSeconds = 30f;
+        [SerializeField]
+        /// <summary>Gets or sets the ordinary non-safe logout countdown in seconds.</summary>
+        public float LogoutCountdownSeconds = 20f;
+        [SerializeField]
+        /// <summary>Gets or sets the authoritative combat-lock duration in seconds.</summary>
+        public float CombatLockSeconds = 5f;
+        [SerializeField]
+        /// <summary>Gets or sets the authoritative hostile-damage lock duration in seconds.</summary>
+        public float HostileDamageLockSeconds = 5f;
+
         [Header("Item Quality Colors")]
         /// <summary>Gets or sets the poor item color.</summary>
         public Color PoorColor = new(0.62f, 0.62f, 0.62f, 1f);
@@ -172,6 +186,24 @@ namespace Game.Shared
             {
                 throw new InvalidOperationException(
                     $"{nameof(NPCFullExitRadius)} must be less than or equal to {nameof(ActorVisibilityEntryRadius)}.");
+            }
+        }
+
+        /// <summary>Validates the session lifecycle durations used by authoritative logout policy.</summary>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when a duration is non-finite or below its required minimum.
+        /// </exception>
+        public void ValidateSessionLifecycleConfiguration()
+        {
+            ValidatePositiveFinite(DisconnectGraceSeconds, nameof(DisconnectGraceSeconds));
+            ValidatePositiveFinite(LogoutCountdownSeconds, nameof(LogoutCountdownSeconds));
+            ValidatePositiveFinite(CombatLockSeconds, nameof(CombatLockSeconds));
+            ValidatePositiveFinite(HostileDamageLockSeconds, nameof(HostileDamageLockSeconds));
+
+            if (DisconnectGraceSeconds < 30f)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(DisconnectGraceSeconds)} must be greater than or equal to 30 seconds.");
             }
         }
 

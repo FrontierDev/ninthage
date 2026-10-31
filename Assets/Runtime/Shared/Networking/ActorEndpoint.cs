@@ -102,6 +102,10 @@ namespace Game.Shared.Networking
         public static Action<Actor, SceneID> onServerActorInterestChanged;
         /// <summary>Raised after positive damage has been committed to a surviving server NPC.</summary>
         public static Action<Actor> onServerNPCDamaged;
+        /// <summary>Raised when authoritative hostile combat activity is attempted between two live actors.</summary>
+        public static Action<Actor, Actor> onServerHostileCombatActivity;
+        /// <summary>Raised after positive hostile damage has been committed to a live target.</summary>
+        public static Action<Actor, Actor> onServerHostileDamageCommitted;
         /// <summary>Raised when a client requests an instance validation toggle.</summary>
         public static Action<PlayerID> onServerInstanceValidationToggleRequested;
         /// <summary>

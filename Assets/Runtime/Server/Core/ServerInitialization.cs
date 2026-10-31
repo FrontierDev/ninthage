@@ -1201,6 +1201,10 @@ namespace Game.Server.Core
             yield return new WaitUntil(() => ServerActorManager.IsInitialized == true);
             Debug.Log(" - Step 8: Server actor manager initialized.");
 
+            NetworkManager.main.gameObject.AddComponent<ServerLogoutEligibilityManager>();
+            yield return new WaitUntil(() => ServerLogoutEligibilityManager.IsInitialized == true);
+            Debug.Log(" - Step 8: Server logout eligibility manager initialized.");
+
             NetworkManager.main.gameObject.AddComponent<ServerStatManager>();
             yield return new WaitUntil(() => ServerStatManager.IsInitialized == true);
             Debug.Log(" - Step 8: Server stat manager initialized.");

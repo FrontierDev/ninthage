@@ -184,15 +184,21 @@ namespace Game.Shared.Data.ClassBehaviours
         /// <param name="target"></param>
         private static void ApplyRiftPulseDamage(Actor source, Actor target)
         {
+            ActorEndpoint.onServerHostileCombatActivity?.Invoke(source, target);
             var targetStats = target.GetComponent<ActorStatContainer>();
             if (targetStats == null) return;
             if (!targetStats.TryGetStat("health", out var health)) return;
 
             const float damage = 10f;
-            float newCurrent = Mathf.Max(0f, health.CurrentValue - damage);
+            float previousCurrent = health.CurrentValue;
+            float newCurrent = Mathf.Max(0f, previousCurrent - damage);
             targetStats.SetStat("health", new StatInstance(
                 health.BaseValue, health.FlatModifier, health.PercentModifier,
                 health.EffectiveMaximum, newCurrent));
+
+            float committedDamage = previousCurrent - targetStats.GetStat("health").CurrentValue;
+            if (committedDamage > 0f)
+                ActorEndpoint.onServerHostileDamageCommitted?.Invoke(source, target);
 
             if (target is NPCActor && !target.isDead)
                 ActorEndpoint.onServerNPCDamaged?.Invoke(target);
