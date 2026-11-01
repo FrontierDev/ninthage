@@ -18,6 +18,10 @@ namespace Game.Editor.Build
     {
         private const string PLAYER_DATA_DIRECTORY_SUFFIX = "_Data";
         private const string STREAMING_ASSETS_DIRECTORY_NAME = "StreamingAssets";
+        private const string ADDRESSABLES_DIRECTORY_NAME = "aa";
+        private const string CATALOG_HASH_FILE_NAME = "catalog.hash";
+        private const string CATALOG_BINARY_FILE_NAME = "catalog.bin";
+        private const string RUNTIME_SETTINGS_FILE_NAME = "settings.json";
 
         /// <summary>
         /// Gets the order in which this build callback runs.
@@ -64,6 +68,7 @@ namespace Game.Editor.Build
 
             try
             {
+                ValidatePackagedLocalCatalog(streamingAssetsDirectory, identity);
                 // Existing Player installations are never mutated; rebuilding is required to remove obsolete metadata.
                 Directory.CreateDirectory(streamingAssetsDirectory);
                 var metadataJson = JsonConvert.SerializeObject(identity, Formatting.Indented);
@@ -83,6 +88,92 @@ namespace Game.Editor.Build
                 throw new BuildFailedException(
                     $"Could not serialize client compatibility metadata: {exception.Message}");
             }
+        }
+
+        private static void ValidatePackagedLocalCatalog(
+            string streamingAssetsDirectory,
+            ClientCompatibilityIdentity identity)
+        {
+            var addressablesDirectory = Path.Combine(streamingAssetsDirectory, ADDRESSABLES_DIRECTORY_NAME);
+            if (!Directory.Exists(addressablesDirectory))
+            {
+                throw new BuildFailedException(
+                    $"The graphical Player does not contain the local Addressables directory '{addressablesDirectory}'.");
+            }
+
+            var catalogHashPaths = Directory.GetFiles(
+                addressablesDirectory,
+                CATALOG_HASH_FILE_NAME,
+                SearchOption.AllDirectories);
+            if (catalogHashPaths.Length != 1)
+            {
+                throw new BuildFailedException(
+                    $"The graphical Player must contain exactly one packaged '{CATALOG_HASH_FILE_NAME}' file; "
+                    + $"found {catalogHashPaths.Length}.");
+            }
+
+            var catalogHashPath = catalogHashPaths[0];
+            var catalogDirectory = Path.GetDirectoryName(catalogHashPath);
+            var catalogPath = Path.Combine(catalogDirectory, CATALOG_BINARY_FILE_NAME);
+            var runtimeSettingsPath = Path.Combine(catalogDirectory, RUNTIME_SETTINGS_FILE_NAME);
+            if (!File.Exists(catalogPath) || !File.Exists(runtimeSettingsPath))
+            {
+                throw new BuildFailedException(
+                    $"The packaged local Addressables catalog beside '{catalogHashPath}' is incomplete.");
+            }
+
+            string packagedCatalogHash;
+            try
+            {
+                packagedCatalogHash = File.ReadAllText(catalogHashPath).Trim();
+            }
+            catch (Exception exception) when (
+                exception is IOException
+                || exception is UnauthorizedAccessException
+                || exception is ArgumentException)
+            {
+                throw new BuildFailedException(
+                    $"Could not read the packaged local Addressables catalog hash '{catalogHashPath}': {exception.Message}");
+            }
+
+            if (!string.Equals(packagedCatalogHash, identity.CatalogHash, StringComparison.Ordinal))
+            {
+                throw new BuildFailedException(
+                    $"Packaged local Addressables catalog hash '{packagedCatalogHash}' does not match "
+                    + $"the prepared Release Manifest hash '{identity.CatalogHash}'. Re-run Development Release preparation.");
+            }
+
+            try
+            {
+                var catalogText = Encoding.UTF8.GetString(File.ReadAllBytes(catalogPath))
+                    + Environment.NewLine
+                    + File.ReadAllText(runtimeSettingsPath);
+                if (ContainsRemoteLocation(catalogText))
+                {
+                    throw new BuildFailedException(
+                        "The graphical Player's packaged Addressables catalog contains a remote or CCD bundle path.");
+                }
+            }
+            catch (BuildFailedException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (
+                exception is IOException
+                || exception is UnauthorizedAccessException
+                || exception is ArgumentException)
+            {
+                throw new BuildFailedException(
+                    $"Could not inspect the packaged local Addressables catalog: {exception.Message}");
+            }
+        }
+
+        private static bool ContainsRemoteLocation(string value)
+        {
+            return value.IndexOf("http://", StringComparison.OrdinalIgnoreCase) >= 0
+                || value.IndexOf("https://", StringComparison.OrdinalIgnoreCase) >= 0
+                || value.IndexOf("unity3dusercontent.com", StringComparison.OrdinalIgnoreCase) >= 0
+                || value.IndexOf("release_by_badge", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static ClientCompatibilityIdentity LoadConfiguredIdentity(string manifestPath)
