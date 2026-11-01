@@ -15,6 +15,10 @@ namespace Game.Editor.Inspectors
         private SerializedProperty _configurationProperty;
         private SerializedProperty _textBindingsProperty;
         private SerializedProperty _rectTransformBindingsProperty;
+        private SerializedProperty _graphicColorBindingsProperty;
+        private SerializedProperty _linearLayoutBindingsProperty;
+        private SerializedProperty _gridLayoutBindingsProperty;
+        private SerializedProperty _layoutElementBindingsProperty;
         private string _errorMessage;
 
         private void OnEnable()
@@ -22,6 +26,10 @@ namespace Game.Editor.Inspectors
             _configurationProperty = FindRequiredProperty("_configuration");
             _textBindingsProperty = FindRequiredProperty("_textBindings");
             _rectTransformBindingsProperty = FindRequiredProperty("_rectTransformBindings");
+            _graphicColorBindingsProperty = FindRequiredProperty("_graphicColorBindings");
+            _linearLayoutBindingsProperty = FindRequiredProperty("_linearLayoutBindings");
+            _gridLayoutBindingsProperty = FindRequiredProperty("_gridLayoutBindings");
+            _layoutElementBindingsProperty = FindRequiredProperty("_layoutElementBindings");
         }
 
         /// <inheritdoc/>
@@ -40,6 +48,22 @@ namespace Game.Editor.Inspectors
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Rect Transform Bindings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_rectTransformBindingsProperty, true);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Graphic Color Bindings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_graphicColorBindingsProperty, true);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Linear Layout Bindings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_linearLayoutBindingsProperty, true);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Grid Layout Bindings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_gridLayoutBindingsProperty, true);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Layout Element Bindings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_layoutElementBindingsProperty, true);
 
             if (EditorGUI.EndChangeCheck())
             {

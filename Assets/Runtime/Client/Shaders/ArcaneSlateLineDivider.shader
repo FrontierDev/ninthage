@@ -1,7 +1,7 @@
 Shader "NinthAge/UI/ArcaneSlate/LineDivider" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _LineColor ("Line Color", Color) = (0.22745098,0.2745098,0.3372549,1)
+        _LineColor ("Line Color", Color) = (0.29411765,0.33333334,0.4,1)
         _LineWidth ("Line Width (px)", Range(0,16)) = 1.0
         _EdgeFadeStart ("Edge Fade Start", Range(0,0.5)) = 0.1
         _EdgeFadeEnd ("Edge Fade End", Range(0,0.5)) = 0.05

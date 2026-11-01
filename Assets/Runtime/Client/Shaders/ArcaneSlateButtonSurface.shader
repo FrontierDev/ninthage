@@ -1,9 +1,9 @@
 Shader "NinthAge/UI/ArcaneSlate/ButtonSurface" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _FillTop ("Fill Top", Color) = (0.1254902,0.1568627,0.2,1)
-        _FillBottom ("Fill Bottom", Color) = (0.0901961,0.1176471,0.1529412,1)
-        _BorderColor ("Border Color", Color) = (0.22745098,0.2745098,0.3372549,1)
+        _FillTop ("Fill Top", Color) = (0.16470588,0.1882353,0.22745098,1)
+        _FillBottom ("Fill Bottom", Color) = (0.1372549,0.16470588,0.2,1)
+        _BorderColor ("Border Color", Color) = (0.29411765,0.33333334,0.4,1)
         _BorderWidth ("Border Width (px)", Range(0,32)) = 2.0
         _CornerRadius ("Corner Radius (px)", Range(0,128)) = 4.0
         _TopHighlightColor ("Top Highlight Color", Color) = (1,1,1,1)
@@ -13,8 +13,8 @@ Shader "NinthAge/UI/ArcaneSlate/ButtonSurface" {
         _InnerShadowStrength ("Inner Shadow Width (normalized)", Range(0,0.3)) = 0.06
         _InnerDarkenStrength ("Inner Darken Strength", Range(0,1)) = 0.8
         _InnerBorderColor ("Inner Border Color", Color) = (0,0,0,1)
-        _InnerBorderWidth ("Inner Border Width (px)", Range(0,32)) = 2.0
-        _AccentColor ("Accent Color", Color) = (0.43137255,0.48235294,0.8509804,1)
+        _InnerBorderWidth ("Inner Border Width (px)", Range(0,32)) = 1.0
+        _AccentColor ("Accent Color", Color) = (0.8784314,0.7490196,0.44705883,1)
         _AccentAmount ("Accent Amount", Range(0,1)) = 0.0
         _VignetteStrength ("Vignette Strength", Range(0,1)) = 0.06
         _Opacity ("Opacity", Range(0,1)) = 1.0
@@ -27,7 +27,7 @@ Shader "NinthAge/UI/ArcaneSlate/ButtonSurface" {
         
         _HoverBrightness ("Hover Brightness Boost", Range(0,0.3)) = 0.08
         _PressedDarkness ("Pressed Darkness", Range(0,0.3)) = 0.15
-        _FocusedGlowColor ("Focused Glow Color", Color) = (0.43137255,0.48235294,0.8509804,1)
+        _FocusedGlowColor ("Focused Glow Color", Color) = (0.8784314,0.7490196,0.44705883,1)
         _FocusedGlowStrength ("Focused Glow Strength", Range(0,1)) = 0.3
     }
 

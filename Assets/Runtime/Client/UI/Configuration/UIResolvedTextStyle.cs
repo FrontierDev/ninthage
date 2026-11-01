@@ -13,11 +13,13 @@ namespace Game.Client.UI.Configuration
         /// <param name="font">The resolved TextMeshPro font asset.</param>
         /// <param name="fontSize">The resolved font size.</param>
         /// <param name="fontStyle">The resolved TextMeshPro font style.</param>
-        public UIResolvedTextStyle(TMP_FontAsset font, float fontSize, FontStyles fontStyle)
+        /// <param name="fontWeight">The resolved TextMeshPro font weight.</param>
+        public UIResolvedTextStyle(TMP_FontAsset font, float fontSize, FontStyles fontStyle, FontWeight fontWeight)
         {
             Font = font;
             FontSize = fontSize;
             FontStyle = fontStyle;
+            FontWeight = fontWeight;
         }
 
         /// <summary>
@@ -34,5 +36,10 @@ namespace Game.Client.UI.Configuration
         /// Gets the resolved TextMeshPro font style.
         /// </summary>
         public FontStyles FontStyle { get; }
+
+        /// <summary>
+        /// Gets the resolved TextMeshPro font weight.
+        /// </summary>
+        public FontWeight FontWeight { get; }
     }
 }

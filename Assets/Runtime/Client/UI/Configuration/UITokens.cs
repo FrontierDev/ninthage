@@ -74,7 +74,27 @@ namespace Game.Client.UI.Configuration
             /// <summary>
             /// Identifies the aura timer text style.
             /// </summary>
-            AuraTimer
+            AuraTimer,
+            /// <summary>
+            /// Identifies a major screen heading text style.
+            /// </summary>
+            MajorScreenHeading,
+            /// <summary>
+            /// Identifies an important numeric value text style.
+            /// </summary>
+            ImportantValue,
+            /// <summary>
+            /// Identifies a small numeric text style.
+            /// </summary>
+            SmallNumeric,
+            /// <summary>
+            /// Identifies normal floating combat text.
+            /// </summary>
+            FloatingCombatText,
+            /// <summary>
+            /// Identifies critical floating combat text.
+            /// </summary>
+            FloatingCombatCritical
         }
 
         /// <summary>
@@ -119,7 +139,53 @@ namespace Game.Client.UI.Configuration
             /// <summary>Identifies the border width metric.</summary>
             BorderWidth,
             /// <summary>Identifies the corner radius metric.</summary>
-            CornerRadius
+            CornerRadius,
+            /// <summary>Identifies the experience-bar height metric.</summary>
+            ExperienceBarHeight,
+            /// <summary>Identifies the extra-large spacing metric.</summary>
+            SpacingExtraLarge,
+            /// <summary>Identifies the 20-pixel spacing metric.</summary>
+            Spacing20,
+            /// <summary>Identifies the 24-pixel spacing metric.</summary>
+            Spacing24,
+            /// <summary>Identifies the 32-pixel spacing metric.</summary>
+            Spacing32,
+            /// <summary>Identifies the compact panel padding metric.</summary>
+            CompactPanelPadding,
+            /// <summary>Identifies the compact button height metric.</summary>
+            CompactButtonHeight,
+            /// <summary>Identifies the standard button height metric.</summary>
+            StandardButtonHeight,
+            /// <summary>Identifies the large button height metric.</summary>
+            LargeButtonHeight,
+            /// <summary>Identifies the compact row height metric.</summary>
+            CompactRowHeight,
+            /// <summary>Identifies the large row height metric.</summary>
+            LargeRowHeight,
+            /// <summary>Identifies the input-field height metric.</summary>
+            InputFieldHeight,
+            /// <summary>Identifies the toggle target size metric.</summary>
+            ToggleTargetSize,
+            /// <summary>Identifies the small auxiliary icon size metric.</summary>
+            SmallAuxiliaryIconSize,
+            /// <summary>Identifies the small gameplay icon size metric.</summary>
+            SmallGameplayIconSize,
+            /// <summary>Identifies the important aura icon size metric.</summary>
+            ImportantAuraIconSize,
+            /// <summary>Identifies the equipment icon size metric.</summary>
+            EquipmentIconSize,
+            /// <summary>Identifies the nameplate width metric.</summary>
+            NameplateWidth,
+            /// <summary>Identifies the nameplate health-bar height metric.</summary>
+            NameplateHealthBarHeight,
+            /// <summary>Identifies the nameplate cast-bar height metric.</summary>
+            NameplateCastBarHeight,
+            /// <summary>Identifies the nameplate level-icon size metric.</summary>
+            NameplateLevelIconSize,
+            /// <summary>Identifies the inner-border width metric.</summary>
+            InnerBorderWidth,
+            /// <summary>Identifies the divider width metric.</summary>
+            DividerWidth
         }
 
         /// <summary>

@@ -1,9 +1,9 @@
 Shader "NinthAge/UI/ArcaneSlate/TargetPanel" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _FillTop ("Fill Top", Color) = (0.1254902,0.1568627,0.2,1)
-        _FillBottom ("Fill Bottom", Color) = (0.0901961,0.1176471,0.1529412,1)
-        _BorderColor ("Border Color", Color) = (0.22745098,0.2745098,0.3372549,1)
+        _FillTop ("Fill Top", Color) = (0.16470588,0.1882353,0.22745098,1)
+        _FillBottom ("Fill Bottom", Color) = (0.1372549,0.16470588,0.2,1)
+        _BorderColor ("Border Color", Color) = (0.29411765,0.33333334,0.4,1)
         _BorderWidth ("Border Width (px)", Range(0,32)) = 2.0
         _CornerInset ("Corner Inset (px)", Range(0,128)) = 6.0
         _VerticalBorderColor ("Vertical Border Color", Color) = (0.878,0.749,0.447,1)

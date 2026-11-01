@@ -5,7 +5,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarResource" {
         _MainColor ("Main Color", Color) = (0.58,0.42,0.08,1)
         _FlashColor ("Flash Color", Color) = (1,0.95,0.7,1)
         _FlashWidth ("Flash Width (px)", Range(0,32)) = 4.0
-        _BorderColor ("Border Color", Color) = (0.55,0.42,0.12,1)
+        _BorderColor ("Border Color", Color) = (0.29411765,0.33333334,0.4,1)
         _BorderWidth ("Border Width (px)", Range(0,16)) = 1.5
         _CornerRadius ("Corner Radius (px)", Range(0,64)) = 4.0
         _FillAmount ("Fill Amount", Range(0,1)) = 0.5
@@ -14,7 +14,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarResource" {
         _InnerBorderColor ("Inner Border Color", Color) = (1,1,1,1)
         _InnerBorderWidth ("Inner Border Width (px)", Range(0,8)) = 1.0
         _InnerBorderStrength ("Inner Border Strength", Range(0,1)) = 0.25
-        _SelectedColor ("Selected Color", Color) = (1,1,0,1)
+        _SelectedColor ("Selected Color", Color) = (0.8784314,0.7490196,0.44705883,1)
         _SelectedAmount ("Selected Amount", Range(0,1)) = 0.0
         _Opacity ("Opacity", Range(0,1)) = 1.0
         _RectSize ("Rect Size (px)", Vector) = (0,0,0,0)

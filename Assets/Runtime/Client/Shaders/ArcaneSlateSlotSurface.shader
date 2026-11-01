@@ -1,13 +1,13 @@
 Shader "NinthAge/UI/ArcaneSlate/SlotSurface" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _FillTop ("Fill Top", Color) = (0.1294118,0.1647059,0.2078431,1)
-        _FillBottom ("Fill Bottom", Color) = (0.09411765,0.1254902,0.1647059,1)
-        _BorderColor ("Border Color", Color) = (0.2666667,0.3137255,0.3921569,1)
-        _BorderWidth ("Border Width (normalized)", Range(0,0.2)) = 0.012
+        _FillTop ("Fill Top", Color) = (0.16470588,0.1882353,0.22745098,1)
+        _FillBottom ("Fill Bottom", Color) = (0.1372549,0.16470588,0.2,1)
+        _BorderColor ("Border Color", Color) = (0.29411765,0.33333334,0.4,1)
+        _BorderWidth ("Border Width (px)", Range(0,32)) = 2
         _InnerBorderColor ("Inner Border Color", Color) = (0,0,0,1)
-        _InnerBorderWidth ("Inner Border Width (normalized)", Range(0,0.2)) = 0.02
-        _CornerRadius ("Corner Radius (normalized)", Range(0,0.5)) = 0.06
+        _InnerBorderWidth ("Inner Border Width (px)", Range(0,32)) = 1
+        _CornerRadius ("Corner Radius (px)", Range(0,128)) = 4
         _TopHighlightColor ("Top Highlight Color", Color) = (1,1,1,1)
         _TopHighlightStrength ("Top Highlight Strength", Range(0,1)) = 0.08
         _TopHighlightAngle ("Top Highlight Angle (deg)", Range(-60,60)) = 0.0
@@ -17,7 +17,7 @@ Shader "NinthAge/UI/ArcaneSlate/SlotSurface" {
         [Toggle]_HoverAmount ("Hover", Float) = 0
         [Toggle]_PressedAmount ("Pressed", Float) = 0
         [Toggle]_SelectedAmount ("Selected", Float) = 0
-        _SelectedColor ("Selected Color", Color) = (0.43137255,0.48235294,0.8509804,1)
+        _SelectedColor ("Selected Color", Color) = (0.8784314,0.7490196,0.44705883,1)
         _RarityColor ("Rarity Color", Color) = (0.7098039,0.6039216,0.4156863,1)
         _RarityAmount ("Rarity Amount", Range(0,1)) = 0
         _RarityPulseStrength ("Rarity Pulse Strength", Range(0,2)) = 0.8
@@ -27,7 +27,7 @@ Shader "NinthAge/UI/ArcaneSlate/SlotSurface" {
         _SelectedPulseBoost ("Selected Pulse Boost", Range(0,3)) = 1.0
         [Toggle]_DisabledAmount ("Disabled", Float) = 0
         _SelectedInnerShadowStrength ("Selected Inner Shadow Strength", Range(0,1)) = 0.7
-        _AccentColor ("Accent Color", Color) = (0.43137255,0.48235294,0.8509804,1)
+        _AccentColor ("Accent Color", Color) = (0.8784314,0.7490196,0.44705883,1)
         _AccentAmount ("Accent Amount", Range(0,1)) = 0
         
         _IconTex ("Icon Texture", 2D) = "white" {}
@@ -135,13 +135,13 @@ Shader "NinthAge/UI/ArcaneSlate/SlotSurface" {
 
                 // pixel-space coords and SDF
                 float2 p = (uv - 0.5) * rectSizePx;
-                float rPx = saturate(_CornerRadius) * minDim;
+                float rPx = min(max(0.0, _CornerRadius), minDim * 0.5);
                 float2 b = rectSizePx * 0.5 - rPx;
                 float sdf = sdRoundRect(p, b, rPx);
                 float aa = max(1.0, fwidth(sdf));
 
                 // border masks
-                float borderPx = _BorderWidth * minDim;
+                float borderPx = max(0.0, _BorderWidth);
                 float maskOuter = smoothstep(aa, -aa, sdf);
                 float maskInner = smoothstep(aa, -aa, sdf + borderPx);
                 float borderMask = saturate(maskOuter - maskInner);
@@ -260,7 +260,7 @@ Shader "NinthAge/UI/ArcaneSlate/SlotSurface" {
                 float3 finalColor = lerp(bodyWithIcon, borderBase, borderMask * 0.98);
 
                 // inner solid border overlay
-                float innerBorderPx = _InnerBorderWidth * minDim;
+                float innerBorderPx = max(0.0, _InnerBorderWidth);
                 float maskInner2 = smoothstep(aa, -aa, sdf + borderPx + innerBorderPx);
                 float innerBorderMask = saturate(maskInner - maskInner2);
                 finalColor = lerp(finalColor, _InnerBorderColor.rgb, innerBorderMask);

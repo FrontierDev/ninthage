@@ -17,60 +17,117 @@ MonoBehaviour:
   _numericFont: {fileID: 11400000, guid: af294de479d57ed418621b61ddaae695, type: 2}
   _windowTitle:
     _fontRole: 0
-    _fontSize: 16
-    _fontStyle: 16
+    _fontSize: 18
+    _fontStyle: 0
+    _fontWeight: 600
   _sectionHeading:
     _fontRole: 0
-    _fontSize: 14
-    _fontStyle: 32
+    _fontSize: 16
+    _fontStyle: 0
+    _fontWeight: 600
   _unitName:
     _fontRole: 0
     _fontSize: 14
     _fontStyle: 0
+    _fontWeight: 600
   _body:
     _fontRole: 1
-    _fontSize: 13
+    _fontSize: 14
     _fontStyle: 0
+    _fontWeight: 400
   _secondary:
     _fontRole: 1
     _fontSize: 12
     _fontStyle: 0
+    _fontWeight: 400
   _small:
     _fontRole: 1
     _fontSize: 11
     _fontStyle: 0
+    _fontWeight: 400
   _numeric:
     _fontRole: 2
-    _fontSize: 13
+    _fontSize: 14
     _fontStyle: 0
+    _fontWeight: 400
   _keybind:
     _fontRole: 1
-    _fontSize: 10
+    _fontSize: 11
     _fontStyle: 0
+    _fontWeight: 600
   _auraTimer:
     _fontRole: 2
-    _fontSize: 10
+    _fontSize: 11
     _fontStyle: 0
+    _fontWeight: 500
+  _majorScreenHeading:
+    _fontRole: 0
+    _fontSize: 24
+    _fontStyle: 0
+    _fontWeight: 600
+  _importantValue:
+    _fontRole: 2
+    _fontSize: 14
+    _fontStyle: 0
+    _fontWeight: 600
+  _smallNumeric:
+    _fontRole: 2
+    _fontSize: 11
+    _fontStyle: 0
+    _fontWeight: 500
+  _floatingCombatText:
+    _fontRole: 1
+    _fontSize: 18
+    _fontStyle: 0
+    _fontWeight: 600
+  _floatingCombatCritical:
+    _fontRole: 1
+    _fontSize: 24
+    _fontStyle: 0
+    _fontWeight: 700
   _spacingSmall: 4
   _spacingMedium: 8
   _spacingLarge: 12
-  _windowPadding: 12
-  _standardRowHeight: 24
-  _windowTitleBarHeight: 28
-  _abilityIconSize: 36
+  _windowPadding: 16
+  _standardRowHeight: 32
+  _windowTitleBarHeight: 40
+  _abilityIconSize: 40
   _auraIconSize: 28
-  _inventoryIconSize: 38
+  _inventoryIconSize: 44
   _talentIconSize: 40
-  _utilityIconSize: 22
+  _utilityIconSize: 24
   _unitPortraitSize: 50
-  _unitFrameWidth: 230
-  _unitFrameHeight: 64
-  _healthBarHeight: 16
-  _resourceBarHeight: 14
-  _castBarHeight: 16
-  _borderWidth: 1.5
-  _cornerRadius: 8
-  _background: {r: 0.90196085, g: 0.9176471, b: 0.9490197, a: 1}
+  _unitFrameWidth: 420
+  _unitFrameHeight: 70
+  _healthBarHeight: 26
+  _resourceBarHeight: 22
+  _castBarHeight: 22
+  _experienceBarHeight: 12
+  _borderWidth: 2
+  _cornerRadius: 4
+  _spacingExtraLarge: 16
+  _spacing20: 20
+  _spacing24: 24
+  _spacing32: 32
+  _compactPanelPadding: 12
+  _compactButtonHeight: 28
+  _standardButtonHeight: 36
+  _largeButtonHeight: 40
+  _compactRowHeight: 28
+  _largeRowHeight: 40
+  _inputFieldHeight: 36
+  _toggleTargetSize: 24
+  _smallAuxiliaryIconSize: 16
+  _smallGameplayIconSize: 20
+  _importantAuraIconSize: 32
+  _equipmentIconSize: 48
+  _nameplateWidth: 220
+  _nameplateHealthBarHeight: 16
+  _nameplateCastBarHeight: 12
+  _nameplateLevelIconSize: 16
+  _innerBorderWidth: 1
+  _dividerWidth: 1
+  _background: {r: 0.11764706, g: 0.13333334, b: 0.16470589, a: 1}
   _secondaryBackground: {r: 0.13725491, g: 0.16470589, b: 0.2, a: 1}
   _panel: {r: 0.16470589, g: 0.1882353, b: 0.22745098, a: 1}
   _elevatedPanel: {r: 0.20784314, g: 0.24313726, b: 0.2901961, a: 1}

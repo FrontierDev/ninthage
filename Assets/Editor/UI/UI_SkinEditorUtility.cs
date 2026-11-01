@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Game.Editor.UI
 {
@@ -13,7 +14,7 @@ namespace Game.Editor.UI
     internal static class UI_SkinEditorUtility
     {
         /// <summary>
-        /// Applies a skin while recording its affected text components for Undo.
+        /// Applies a skin while recording its affected UI components for Undo.
         /// </summary>
         /// <param name="skin">The skin to apply.</param>
         /// <param name="undoName">The Undo operation name.</param>
@@ -53,6 +54,58 @@ namespace Game.Editor.UI
                 }
             }
 
+            var graphics = new List<Graphic>();
+            if (skin.GraphicColorBindings != null)
+            {
+                foreach (var binding in skin.GraphicColorBindings)
+                {
+                    if (binding?.Target != null && seenObjects.Add(binding.Target))
+                    {
+                        graphics.Add(binding.Target);
+                        affectedObjects.Add(binding.Target);
+                    }
+                }
+            }
+
+            var linearLayoutGroups = new List<HorizontalOrVerticalLayoutGroup>();
+            if (skin.LinearLayoutBindings != null)
+            {
+                foreach (var binding in skin.LinearLayoutBindings)
+                {
+                    if (binding?.Target != null && seenObjects.Add(binding.Target))
+                    {
+                        linearLayoutGroups.Add(binding.Target);
+                        affectedObjects.Add(binding.Target);
+                    }
+                }
+            }
+
+            var gridLayoutGroups = new List<GridLayoutGroup>();
+            if (skin.GridLayoutBindings != null)
+            {
+                foreach (var binding in skin.GridLayoutBindings)
+                {
+                    if (binding?.Target != null && seenObjects.Add(binding.Target))
+                    {
+                        gridLayoutGroups.Add(binding.Target);
+                        affectedObjects.Add(binding.Target);
+                    }
+                }
+            }
+
+            var layoutElements = new List<LayoutElement>();
+            if (skin.LayoutElementBindings != null)
+            {
+                foreach (var binding in skin.LayoutElementBindings)
+                {
+                    if (binding?.Target != null && seenObjects.Add(binding.Target))
+                    {
+                        layoutElements.Add(binding.Target);
+                        affectedObjects.Add(binding.Target);
+                    }
+                }
+            }
+
             Undo.RecordObjects(affectedObjects.ToArray(), undoName);
             try
             {
@@ -74,6 +127,30 @@ namespace Game.Editor.UI
             {
                 EditorUtility.SetDirty(rectTransform);
                 PrefabUtility.RecordPrefabInstancePropertyModifications(rectTransform);
+            }
+
+            foreach (var graphic in graphics)
+            {
+                EditorUtility.SetDirty(graphic);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(graphic);
+            }
+
+            foreach (var layoutGroup in linearLayoutGroups)
+            {
+                EditorUtility.SetDirty(layoutGroup);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(layoutGroup);
+            }
+
+            foreach (var layoutGroup in gridLayoutGroups)
+            {
+                EditorUtility.SetDirty(layoutGroup);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(layoutGroup);
+            }
+
+            foreach (var layoutElement in layoutElements)
+            {
+                EditorUtility.SetDirty(layoutElement);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(layoutElement);
             }
 
             errorMessage = null;
