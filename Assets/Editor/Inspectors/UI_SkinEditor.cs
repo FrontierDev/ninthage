@@ -1,7 +1,6 @@
 using Game.Client.UI.Skin;
+using Game.Editor.UI;
 using System;
-using System.Collections.Generic;
-using TMPro;
 using UnityEditor;
 using UnityEngine;
 
@@ -13,18 +12,16 @@ namespace Game.Editor.Inspectors
     [CustomEditor(typeof(UI_Skin))]
     public sealed class UI_SkinEditor : UnityEditor.Editor
     {
-        private SerializedProperty _headingFontProperty;
-        private SerializedProperty _bodyFontProperty;
-        private SerializedProperty _numericFontProperty;
+        private SerializedProperty _configurationProperty;
         private SerializedProperty _textBindingsProperty;
+        private SerializedProperty _rectTransformBindingsProperty;
         private string _errorMessage;
 
         private void OnEnable()
         {
-            _headingFontProperty = FindRequiredProperty("_headingFont");
-            _bodyFontProperty = FindRequiredProperty("_bodyFont");
-            _numericFontProperty = FindRequiredProperty("_numericFont");
+            _configurationProperty = FindRequiredProperty("_configuration");
             _textBindingsProperty = FindRequiredProperty("_textBindings");
+            _rectTransformBindingsProperty = FindRequiredProperty("_rectTransformBindings");
         }
 
         /// <inheritdoc/>
@@ -33,27 +30,29 @@ namespace Game.Editor.Inspectors
             serializedObject.Update();
 
             EditorGUI.BeginChangeCheck();
-            EditorGUILayout.LabelField("Fonts", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_headingFontProperty, new GUIContent("Heading Font"));
-            EditorGUILayout.PropertyField(_bodyFontProperty, new GUIContent("Body Font"));
-            EditorGUILayout.PropertyField(_numericFontProperty, new GUIContent("Numeric Font"));
+            EditorGUILayout.LabelField("Configuration", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_configurationProperty, new GUIContent("UI Configuration"));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Text Bindings", EditorStyles.boldLabel);
             DrawTextBindings();
 
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Rect Transform Bindings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(_rectTransformBindingsProperty, true);
+
             if (EditorGUI.EndChangeCheck())
             {
                 serializedObject.ApplyModifiedProperties();
-                ApplyTextBindingsWithUndo();
+                ApplySkinWithUndo();
             }
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
             if (GUILayout.Button("Refresh Text Bindings"))
                 RefreshTextBindings();
-            if (GUILayout.Button("Apply Text Styles"))
-                ApplyTextBindingsWithUndo();
+            if (GUILayout.Button("Apply Skin"))
+                ApplySkinWithUndo();
 
             if (!string.IsNullOrEmpty(_errorMessage))
                 EditorGUILayout.HelpBox(_errorMessage, MessageType.Error);
@@ -76,41 +75,13 @@ namespace Game.Editor.Inspectors
             EditorUtility.SetDirty(skin);
             PrefabUtility.RecordPrefabInstancePropertyModifications(skin);
             serializedObject.Update();
-            ApplyTextBindingsWithUndo();
+            ApplySkinWithUndo();
         }
 
-        private void ApplyTextBindingsWithUndo()
+        private void ApplySkinWithUndo()
         {
             var skin = GetSkin();
-            var textObjects = new List<TMP_Text>();
-            var seenTexts = new HashSet<TMP_Text>();
-            if (skin.TextBindings != null)
-            {
-                foreach (var binding in skin.TextBindings)
-                {
-                    if (binding?.Text != null && seenTexts.Add(binding.Text))
-                        textObjects.Add(binding.Text);
-                }
-            }
-
-            Undo.RecordObjects(textObjects.ToArray(), "Apply UI Skin");
-            try
-            {
-                skin.ApplyTextBindings();
-            }
-            catch (InvalidOperationException exception)
-            {
-                _errorMessage = exception.Message;
-                return;
-            }
-
-            foreach (var text in textObjects)
-            {
-                EditorUtility.SetDirty(text);
-                PrefabUtility.RecordPrefabInstancePropertyModifications(text);
-            }
-
-            _errorMessage = null;
+            UI_SkinEditorUtility.TryApplyWithUndo(skin, "Apply UI Skin", out _errorMessage);
         }
 
         private UI_Skin GetSkin()

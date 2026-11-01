@@ -1,3 +1,4 @@
+using Game.Client.UI.Configuration;
 using System;
 using System.Collections.Generic;
 using TMPro;
@@ -6,55 +7,33 @@ using UnityEngine;
 namespace Game.Client.UI.Skin
 {
     /// <summary>
-    /// Owns the typography contract for the UI hierarchy rooted at this component.
+    /// Applies the configuration-backed text and dimension contract for the UI hierarchy rooted at this component.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class UI_Skin : MonoBehaviour
     {
-        [SerializeField] private TMP_FontAsset _headingFont;
-        [SerializeField] private TMP_FontAsset _bodyFont;
-        [SerializeField] private TMP_FontAsset _numericFont;
+        [SerializeField] private UIConfiguration _configuration;
         [SerializeField] private List<UI_SkinTextBinding> _textBindings = new();
+        [SerializeField] private List<UI_SkinRectTransformBinding> _rectTransformBindings = new();
+
+        /// <summary>
+        /// Gets the client UI configuration used to resolve this skin's text styles.
+        /// </summary>
+        public UIConfiguration Configuration => _configuration;
 
         /// <summary>
         /// Gets the bindings owned by this skin.
         /// </summary>
         public IReadOnlyList<UI_SkinTextBinding> TextBindings => _textBindings;
 
+        /// <summary>
+        /// Gets the explicit RectTransform metric mappings owned by this skin.
+        /// </summary>
+        public IReadOnlyList<UI_SkinRectTransformBinding> RectTransformBindings => _rectTransformBindings;
+
         private void Awake()
         {
-            ApplyTextBindings();
-        }
-
-        /// <summary>
-        /// Resolves the configured font for a semantic role.
-        /// </summary>
-        /// <param name="role">The semantic font role to resolve.</param>
-        /// <returns>The configured TextMeshPro font asset for the role.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="role"/> is unsupported.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the selected role has no configured font.</exception>
-        public TMP_FontAsset GetFont(UI_SkinFontRole role)
-        {
-            TMP_FontAsset font;
-            switch (role)
-            {
-                case UI_SkinFontRole.Heading:
-                    font = _headingFont;
-                    break;
-                case UI_SkinFontRole.Body:
-                    font = _bodyFont;
-                    break;
-                case UI_SkinFontRole.Numeric:
-                    font = _numericFont;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported UI skin font role.");
-            }
-
-            if (font == null)
-                throw new InvalidOperationException($"UI_Skin '{name}' has no font configured for role '{role}'.");
-
-            return font;
+            Apply();
         }
 
         /// <summary>
@@ -65,7 +44,7 @@ namespace Game.Client.UI.Skin
             var ownedTexts = new List<TMP_Text>();
             foreach (var text in GetComponentsInChildren<TMP_Text>(true))
             {
-                if (IsTextOwnedByThisSkin(text))
+                if (IsOwnedByThisSkin(text.transform))
                     ownedTexts.Add(text);
             }
 
@@ -76,7 +55,7 @@ namespace Game.Client.UI.Skin
             {
                 foreach (var binding in _textBindings)
                 {
-                    if (binding == null || binding.Text == null || !IsTextOwnedByThisSkin(binding.Text))
+                    if (binding == null || binding.Text == null || !IsOwnedByThisSkin(binding.Text.transform))
                         continue;
 
                     if (!existingBindings.ContainsKey(binding.Text))
@@ -89,7 +68,7 @@ namespace Game.Client.UI.Skin
             {
                 if (!existingBindings.TryGetValue(text, out var binding))
                 {
-                    binding = new UI_SkinTextBinding(text, UI_SkinFontRole.Body, text.fontSize, text.fontStyle);
+                    binding = new UI_SkinTextBinding(text, UITokens.TextStyle.Body);
                 }
 
                 refreshedBindings.Add(binding);
@@ -99,24 +78,44 @@ namespace Game.Client.UI.Skin
         }
 
         /// <summary>
-        /// Validates and applies this skin's configured typography to every bound text component.
+        /// Defines the skin application boundary that validates and applies resolved text and dimension tokens.
         /// </summary>
         /// <exception cref="InvalidOperationException">Thrown when any binding is invalid.</exception>
-        public void ApplyTextBindings()
+        public void Apply()
         {
             ValidateTextBindings();
+            ValidateRectTransformBindings();
 
             foreach (var binding in _textBindings)
             {
-                var text = binding.Text;
-                text.font = GetFont(binding.FontRole);
-                text.fontSize = binding.FontSize;
-                text.fontStyle = binding.FontStyle;
+                var style = _configuration.GetTextStyle(binding.TextStyle);
+                binding.Text.font = style.Font;
+                binding.Text.fontSize = style.FontSize;
+                binding.Text.fontStyle = style.FontStyle;
+            }
+
+            foreach (var binding in _rectTransformBindings)
+            {
+                if (binding.ApplyWidth)
+                {
+                    binding.Target.SetSizeWithCurrentAnchors(
+                        RectTransform.Axis.Horizontal,
+                        _configuration.GetMetric(binding.WidthMetric));
+                }
+
+                if (binding.ApplyHeight)
+                {
+                    binding.Target.SetSizeWithCurrentAnchors(
+                        RectTransform.Axis.Vertical,
+                        _configuration.GetMetric(binding.HeightMetric));
+                }
             }
         }
 
         private void ValidateTextBindings()
         {
+            if (_configuration == null)
+                throw new InvalidOperationException($"UI_Skin '{name}' has no UIConfiguration assigned.");
             if (_textBindings == null)
                 throw new InvalidOperationException($"UI_Skin '{name}' has a null text binding list.");
 
@@ -131,7 +130,7 @@ namespace Game.Client.UI.Skin
                 if (text == null)
                     throw new InvalidOperationException($"UI_Skin '{name}' has a binding at index {index} with no TMP_Text.");
 
-                if (!IsTextOwnedByThisSkin(text))
+                if (!IsOwnedByThisSkin(text.transform))
                     throw new InvalidOperationException(
                         $"UI_Skin '{name}' binding at index {index} references TMP_Text '{text.name}' that is not owned by this skin.");
 
@@ -139,35 +138,88 @@ namespace Game.Client.UI.Skin
                     throw new InvalidOperationException(
                         $"UI_Skin '{name}' has duplicate TMP_Text '{text.name}' at binding index {index}.");
 
-                if (float.IsNaN(binding.FontSize) || float.IsInfinity(binding.FontSize) || binding.FontSize <= 0f)
-                    throw new InvalidOperationException(
-                        $"UI_Skin '{name}' binding at index {index} for TMP_Text '{text.name}' has an invalid font size '{binding.FontSize}'.");
-
                 try
                 {
-                    GetFont(binding.FontRole);
+                    _configuration.GetTextStyle(binding.TextStyle);
                 }
                 catch (ArgumentOutOfRangeException exception)
                 {
                     throw new InvalidOperationException(
-                        $"UI_Skin '{name}' binding at index {index} for TMP_Text '{text.name}' has an unsupported font role.",
+                        $"UI_Skin '{name}' binding at index {index} for TMP_Text '{text.name}' has an unsupported text-style token.",
                         exception);
                 }
                 catch (InvalidOperationException exception)
                 {
                     throw new InvalidOperationException(
-                        $"UI_Skin '{name}' binding at index {index} for TMP_Text '{text.name}' cannot resolve its font.",
+                        $"UI_Skin '{name}' binding at index {index} for TMP_Text '{text.name}' cannot resolve its text-style token.",
                         exception);
                 }
             }
         }
 
-        private bool IsTextOwnedByThisSkin(TMP_Text text)
+        private void ValidateRectTransformBindings()
         {
-            if (text == null || (text.transform != transform && !text.transform.IsChildOf(transform)))
+            if (_rectTransformBindings == null)
+                throw new InvalidOperationException($"UI_Skin '{name}' has a null RectTransform binding list.");
+
+            var boundTargets = new HashSet<RectTransform>();
+            for (var index = 0; index < _rectTransformBindings.Count; index++)
+            {
+                var binding = _rectTransformBindings[index];
+                if (binding == null)
+                    throw new InvalidOperationException(
+                        $"UI_Skin '{name}' has a null RectTransform binding at index {index}.");
+
+                var target = binding.Target;
+                if (target == null)
+                    throw new InvalidOperationException(
+                        $"UI_Skin '{name}' has a RectTransform binding at index {index} with no target.");
+
+                if (!IsOwnedByThisSkin(target))
+                    throw new InvalidOperationException(
+                        $"UI_Skin '{name}' RectTransform binding at index {index} references target '{target.name}' that is not owned by this skin.");
+
+                if (!boundTargets.Add(target))
+                    throw new InvalidOperationException(
+                        $"UI_Skin '{name}' has duplicate RectTransform target '{target.name}' at binding index {index}.");
+
+                if (!binding.ApplyWidth && !binding.ApplyHeight)
+                    throw new InvalidOperationException(
+                        $"UI_Skin '{name}' RectTransform binding at index {index} for target '{target.name}' has no enabled axis.");
+
+                if (binding.ApplyWidth)
+                    ValidateMetric(binding.WidthMetric, index, target, "width");
+                if (binding.ApplyHeight)
+                    ValidateMetric(binding.HeightMetric, index, target, "height");
+            }
+        }
+
+        private void ValidateMetric(UITokens.Metric metric, int index, RectTransform target, string axis)
+        {
+            try
+            {
+                _configuration.GetMetric(metric);
+            }
+            catch (ArgumentOutOfRangeException exception)
+            {
+                throw new InvalidOperationException(
+                    $"UI_Skin '{name}' RectTransform binding at index {index} for target '{target.name}' has an unsupported {axis} metric.",
+                    exception);
+            }
+            catch (InvalidOperationException exception)
+            {
+                throw new InvalidOperationException(
+                    $"UI_Skin '{name}' RectTransform binding at index {index} for target '{target.name}' cannot resolve its {axis} metric.",
+                    exception);
+            }
+        }
+
+        private bool IsOwnedByThisSkin(Transform target)
+        {
+            if (target == null || (target != transform && !target.IsChildOf(transform)))
                 return false;
 
-            var current = text.transform;
+            var current = target;
             while (current != null)
             {
                 var skin = current.GetComponent<UI_Skin>();

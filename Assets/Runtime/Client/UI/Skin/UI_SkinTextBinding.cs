@@ -1,3 +1,4 @@
+using Game.Client.UI.Configuration;
 using System;
 using TMPro;
 using UnityEngine;
@@ -5,36 +6,13 @@ using UnityEngine;
 namespace Game.Client.UI.Skin
 {
     /// <summary>
-    /// Identifies the font-family source used by a <see cref="UI_SkinTextBinding"/>.
-    /// </summary>
-    public enum UI_SkinFontRole
-    {
-        /// <summary>
-        /// Uses the skin's heading font.
-        /// </summary>
-        Heading,
-
-        /// <summary>
-        /// Uses the skin's body font.
-        /// </summary>
-        Body,
-
-        /// <summary>
-        /// Uses the skin's numeric font.
-        /// </summary>
-        Numeric
-    }
-
-    /// <summary>
-    /// Associates one TextMeshPro text component with its hierarchy-local skin typography.
+    /// Associates one TextMeshPro text component with its semantic skin text style.
     /// </summary>
     [Serializable]
     public sealed class UI_SkinTextBinding
     {
         [SerializeField] private TMP_Text _text;
-        [SerializeField] private UI_SkinFontRole _fontRole = UI_SkinFontRole.Body;
-        [SerializeField, Min(1f)] private float _fontSize = 13f;
-        [SerializeField] private FontStyles _fontStyle = FontStyles.Normal;
+        [SerializeField] private UITokens.TextStyle _textStyle = UITokens.TextStyle.Body;
 
         /// <summary>
         /// Creates an empty text binding for Unity serialization.
@@ -44,18 +22,14 @@ namespace Game.Client.UI.Skin
         }
 
         /// <summary>
-        /// Creates a text binding with the supplied typography values.
+        /// Creates a text binding with the supplied semantic text style.
         /// </summary>
         /// <param name="text">The TextMeshPro component owned by the binding.</param>
-        /// <param name="fontRole">The semantic font role for the component.</param>
-        /// <param name="fontSize">The authored font size.</param>
-        /// <param name="fontStyle">The authored font style.</param>
-        public UI_SkinTextBinding(TMP_Text text, UI_SkinFontRole fontRole, float fontSize, FontStyles fontStyle)
+        /// <param name="textStyle">The semantic text-style token for the component.</param>
+        public UI_SkinTextBinding(TMP_Text text, UITokens.TextStyle textStyle)
         {
             _text = text;
-            _fontRole = fontRole;
-            _fontSize = fontSize;
-            _fontStyle = fontStyle;
+            _textStyle = textStyle;
         }
 
         /// <summary>
@@ -64,18 +38,8 @@ namespace Game.Client.UI.Skin
         public TMP_Text Text => _text;
 
         /// <summary>
-        /// Gets the semantic font role assigned to the text.
+        /// Gets the semantic text-style token assigned to the text.
         /// </summary>
-        public UI_SkinFontRole FontRole => _fontRole;
-
-        /// <summary>
-        /// Gets the font size assigned to the text.
-        /// </summary>
-        public float FontSize => _fontSize;
-
-        /// <summary>
-        /// Gets the font style assigned to the text.
-        /// </summary>
-        public FontStyles FontStyle => _fontStyle;
+        public UITokens.TextStyle TextStyle => _textStyle;
     }
 }
