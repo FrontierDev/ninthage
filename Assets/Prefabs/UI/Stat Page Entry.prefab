@@ -87,6 +87,7 @@ GameObject:
   - component: {fileID: 6183259190161512637}
   - component: {fileID: 2596031923039360065}
   - component: {fileID: 4178869192644353553}
+  - component: {fileID: 900000000000005001}
   m_Layer: 5
   m_Name: Stat Page Entry
   m_TagString: Untagged
@@ -328,6 +329,43 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &900000000000005001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2673904382641570204}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d65d39a6c8d4d10a3e2f78f19cb84e5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Game.Client::Game.Client.UI.Skin.UI_Skin
+  _configuration: {fileID: 11400000, guid: 1027e83ddee4b7a41b0ca0f431f58d50, type: 2}
+  _textBindings:
+  - _text: {fileID: 7829752245123556076}
+    _textStyle: 3
+  - _text: {fileID: 7269421192690177928}
+    _textStyle: 10
+  _rectTransformBindings:
+  - _target: {fileID: 3504192355735688258}
+    _applyWidth: 0
+    _widthMetric: 0
+    _applyHeight: 1
+    _heightMetric: 28
+  - _target: {fileID: 3049814995733235425}
+    _applyWidth: 1
+    _widthMetric: 33
+    _applyHeight: 1
+    _heightMetric: 33
+  _graphicColorBindings:
+  - _target: {fileID: 7829752245123556076}
+    _color: 7
+  - _target: {fileID: 7269421192690177928}
+    _color: 7
+  _linearLayoutBindings: []
+  _gridLayoutBindings: []
+  _layoutElementBindings: []
 --- !u!1 &8290485201937639676
 GameObject:
   m_ObjectHideFlags: 0

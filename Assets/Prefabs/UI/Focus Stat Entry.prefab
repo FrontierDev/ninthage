@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 8219081379375577575}
   - component: {fileID: 615066057179531257}
   - component: {fileID: 694660240586557276}
+  - component: {fileID: 900000000000004001}
   m_Layer: 5
   m_Name: Focus Stat Entry
   m_TagString: Untagged
@@ -251,6 +252,38 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &900000000000004001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 978111731478290341}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d65d39a6c8d4d10a3e2f78f19cb84e5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Game.Client::Game.Client.UI.Skin.UI_Skin
+  _configuration: {fileID: 11400000, guid: 1027e83ddee4b7a41b0ca0f431f58d50, type: 2}
+  _textBindings:
+  - _text: {fileID: 7975764057146114342}
+    _textStyle: 3
+  - _text: {fileID: 3360975800113901081}
+    _textStyle: 10
+  _rectTransformBindings:
+  - _target: {fileID: 218651349364211172}
+    _applyWidth: 0
+    _widthMetric: 0
+    _applyHeight: 1
+    _heightMetric: 28
+  _graphicColorBindings:
+  - _target: {fileID: 7975764057146114342}
+    _color: 7
+  - _target: {fileID: 3360975800113901081}
+    _color: 7
+  _linearLayoutBindings: []
+  _gridLayoutBindings: []
+  _layoutElementBindings: []
 --- !u!1 &5964990153251917673
 GameObject:
   m_ObjectHideFlags: 0

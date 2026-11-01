@@ -6903,6 +6903,7 @@ GameObject:
   - component: {fileID: 1878872621191489126}
   - component: {fileID: 4578430934948071937}
   - component: {fileID: 1164781998419004174}
+  - component: {fileID: 900000000000001001}
   m_Layer: 5
   m_Name: Character Window
   m_TagString: Untagged
@@ -6987,6 +6988,146 @@ MonoBehaviour:
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
   m_EffectDistance: {x: 0, y: -5}
   m_UseGraphicAlpha: 0
+--- !u!114 &900000000000001001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1887046614923950002}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d65d39a6c8d4d10a3e2f78f19cb84e5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Game.Client::Game.Client.UI.Skin.UI_Skin
+  _configuration: {fileID: 11400000, guid: 1027e83ddee4b7a41b0ca0f431f58d50, type: 2}
+  _textBindings:
+  - _text: {fileID: 6342036608229503370}
+    _textStyle: 0
+  - _text: {fileID: 8249853935339805708}
+    _textStyle: 4
+  - _text: {fileID: 3941936931137974437}
+    _textStyle: 4
+  - _text: {fileID: 7362343702075386246}
+    _textStyle: 4
+  - _text: {fileID: 4989495708982648376}
+    _textStyle: 2
+  - _text: {fileID: 7808431159002381139}
+    _textStyle: 4
+  - _text: {fileID: 4638754066877421432}
+    _textStyle: 3
+  - _text: {fileID: 1492958949988626025}
+    _textStyle: 3
+  - _text: {fileID: 1704197196109184860}
+    _textStyle: 3
+  - _text: {fileID: 4380206190307769348}
+    _textStyle: 1
+  - _text: {fileID: 6273363296008100945}
+    _textStyle: 1
+  - _text: {fileID: 2824173813171777826}
+    _textStyle: 1
+  - _text: {fileID: 3909159123366439526}
+    _textStyle: 1
+  - _text: {fileID: 307698936165932959}
+    _textStyle: 1
+  - _text: {fileID: 158695394867529240}
+    _textStyle: 1
+  _rectTransformBindings:
+  - _target: {fileID: 4186705710686493466}
+    _applyWidth: 0
+    _widthMetric: 0
+    _applyHeight: 1
+    _heightMetric: 5
+  - _target: {fileID: 5905893466843906716}
+    _applyWidth: 0
+    _widthMetric: 0
+    _applyHeight: 1
+    _heightMetric: 26
+  - _target: {fileID: 6871618525798982298}
+    _applyWidth: 0
+    _widthMetric: 0
+    _applyHeight: 1
+    _heightMetric: 26
+  - _target: {fileID: 3696787309544840471}
+    _applyWidth: 0
+    _widthMetric: 0
+    _applyHeight: 1
+    _heightMetric: 26
+  _graphicColorBindings:
+  - _target: {fileID: 6342036608229503370}
+    _color: 7
+  - _target: {fileID: 4989495708982648376}
+    _color: 7
+  - _target: {fileID: 4380206190307769348}
+    _color: 7
+  - _target: {fileID: 6273363296008100945}
+    _color: 7
+  - _target: {fileID: 2824173813171777826}
+    _color: 7
+  - _target: {fileID: 3909159123366439526}
+    _color: 7
+  - _target: {fileID: 307698936165932959}
+    _color: 7
+  - _target: {fileID: 158695394867529240}
+    _color: 7
+  - _target: {fileID: 8249853935339805708}
+    _color: 8
+  - _target: {fileID: 3941936931137974437}
+    _color: 8
+  - _target: {fileID: 7362343702075386246}
+    _color: 8
+  - _target: {fileID: 7808431159002381139}
+    _color: 8
+  - _target: {fileID: 4638754066877421432}
+    _color: 8
+  - _target: {fileID: 1492958949988626025}
+    _color: 8
+  - _target: {fileID: 1704197196109184860}
+    _color: 8
+  _linearLayoutBindings:
+  - _target: {fileID: 272582349667971593}
+    _applySpacing: 1
+    _spacingMetric: 1
+    _applyPadding: 0
+    _paddingMetric: 3
+  - _target: {fileID: 600373772686523458}
+    _applySpacing: 1
+    _spacingMetric: 2
+    _applyPadding: 0
+    _paddingMetric: 3
+  - _target: {fileID: 2676828726971511877}
+    _applySpacing: 1
+    _spacingMetric: 2
+    _applyPadding: 0
+    _paddingMetric: 3
+  - _target: {fileID: 2919426282757757469}
+    _applySpacing: 1
+    _spacingMetric: 2
+    _applyPadding: 0
+    _paddingMetric: 3
+  - _target: {fileID: 6431939736088348213}
+    _applySpacing: 0
+    _spacingMetric: 0
+    _applyPadding: 1
+    _paddingMetric: 3
+  - _target: {fileID: 5065475584977313205}
+    _applySpacing: 0
+    _spacingMetric: 0
+    _applyPadding: 1
+    _paddingMetric: 3
+  _gridLayoutBindings:
+  - _target: {fileID: 5315381821768251509}
+    _applyCellWidth: 0
+    _cellWidthMetric: 6
+    _applyCellHeight: 0
+    _cellHeightMetric: 6
+    _applySpacingX: 1
+    _spacingXMetric: 1
+    _applySpacingY: 1
+    _spacingYMetric: 1
+    _applyPadding: 0
+    _paddingMetric: 24
+  _layoutElementBindings: []
 --- !u!1 &1946687218293512516
 GameObject:
   m_ObjectHideFlags: 0

@@ -152,6 +152,7 @@ GameObject:
   - component: {fileID: 7703729443284386532}
   - component: {fileID: 7206095235544705878}
   - component: {fileID: 5738977938795426101}
+  - component: {fileID: 900000000000006001}
   m_Layer: 5
   m_Name: Weapon Skill Prefab
   m_TagString: Untagged
@@ -443,3 +444,30 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &900000000000006001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6067349376032476958}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d65d39a6c8d4d10a3e2f78f19cb84e5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Game.Client::Game.Client.UI.Skin.UI_Skin
+  _configuration: {fileID: 11400000, guid: 1027e83ddee4b7a41b0ca0f431f58d50, type: 2}
+  _textBindings:
+  - _text: {fileID: 2282435327015036721}
+    _textStyle: 3
+  - _text: {fileID: 5139063641343425254}
+    _textStyle: 10
+  _rectTransformBindings: []
+  _graphicColorBindings:
+  - _target: {fileID: 2282435327015036721}
+    _color: 7
+  - _target: {fileID: 5139063641343425254}
+    _color: 7
+  _linearLayoutBindings: []
+  _gridLayoutBindings: []
+  _layoutElementBindings: []

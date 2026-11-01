@@ -316,6 +316,7 @@ GameObject:
   - component: {fileID: 1384425774820421735}
   - component: {fileID: 3558273597669833255}
   - component: {fileID: 3092642122948479826}
+  - component: {fileID: 900000000000003001}
   m_Layer: 5
   m_Name: Character Stat Grid Entry
   m_TagString: Untagged
@@ -400,3 +401,35 @@ MonoBehaviour:
   statNameText: {fileID: 7157522345451064134}
   currentValueText: {fileID: 7390164415441969205}
   statDefinition: {fileID: 0}
+--- !u!114 &900000000000003001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6280188741318915687}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d65d39a6c8d4d10a3e2f78f19cb84e5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Game.Client::Game.Client.UI.Skin.UI_Skin
+  _configuration: {fileID: 11400000, guid: 1027e83ddee4b7a41b0ca0f431f58d50, type: 2}
+  _textBindings:
+  - _text: {fileID: 7157522345451064134}
+    _textStyle: 3
+  - _text: {fileID: 7390164415441969205}
+    _textStyle: 10
+  _rectTransformBindings: []
+  _graphicColorBindings:
+  - _target: {fileID: 7157522345451064134}
+    _color: 7
+  - _target: {fileID: 7390164415441969205}
+    _color: 7
+  _linearLayoutBindings:
+  - _target: {fileID: 1384425774820421735}
+    _applySpacing: 1
+    _spacingMetric: 1
+    _applyPadding: 0
+    _paddingMetric: 3
+  _gridLayoutBindings: []
+  _layoutElementBindings: []

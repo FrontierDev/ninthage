@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 5162860012970578435}
   - component: {fileID: 2247863746654049017}
   - component: {fileID: 888709694052495681}
+  - component: {fileID: 900000000000002001}
   m_Layer: 5
   m_Name: Equipment Slot Entry
   m_TagString: Untagged
@@ -151,3 +152,27 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &900000000000002001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6491314995126406493}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d65d39a6c8d4d10a3e2f78f19cb84e5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Game.Client::Game.Client.UI.Skin.UI_Skin
+  _configuration: {fileID: 11400000, guid: 1027e83ddee4b7a41b0ca0f431f58d50, type: 2}
+  _textBindings: []
+  _rectTransformBindings:
+  - _target: {fileID: 7466683350366286750}
+    _applyWidth: 1
+    _widthMetric: 35
+    _applyHeight: 1
+    _heightMetric: 35
+  _graphicColorBindings: []
+  _linearLayoutBindings: []
+  _gridLayoutBindings: []
+  _layoutElementBindings: []
