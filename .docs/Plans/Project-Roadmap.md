@@ -9,7 +9,7 @@
 **Project:** Ninth Age  
 **Branch:** `dev`  
 **Scope:** Dependency-ordered delivery plan from the current working prototype through production readiness  
-**Last updated:** 2026-10-13
+**Last updated:** 2026-11-01
 
 ---
 
@@ -65,7 +65,7 @@ Repository work is performed on `dev`.
 
 Work should be organised into focused implementation issues rather than large mixed-system changes.
 
-Each roadmap phase may contain parallel workstreams, but its exit milestone should only be declared complete when the integrated build satisfies the phase exit criteria.
+Each roadmap phase may contain parallel workstreams. Its accepted **implementation** milestone must reflect only the delivered, owner-approved scope. When the owner explicitly defers qualification work, record that decision and preserve the unmet verification gates separately; do not represent unrun tests as passed.
 
 ---
 
@@ -119,21 +119,25 @@ A client can connect to the headless server, create/select a character, enter th
 
 ---
 
-# Phase 1 — Core Runtime and Production Infrastructure
+# Phase 1 — Core Runtime and Production Infrastructure (foundation implementation complete)
 
 ## Goal
+
+**Closed as an implementation milestone on 1 November 2026.** Stages 1.0–1.9 are accepted as the delivered Phase 1 foundation. The owner explicitly deferred the original Stage 1.10 operations/regression/CI programme and Stage 1.11 integrated benchmark/stress/capacity qualification to later work. Neither was executed or declared passed by this close-out. Phase 2 gameplay implementation may proceed, while confirmed foundational defects remain actionable.
+
+This scope decision is recorded in [closed Phase 1 close-out #441](https://github.com/FrontierDev/ninthage/issues/441) and is detailed in the [Phase 1 Implementation Plan](Phase-1-Implementation-Plan.md). It claims no demonstrated maximum player count, full automated regression pass, high-density/soak benchmark pass, disaster-recovery qualification or production readiness. Optional [#440](https://github.com/FrontierDev/ninthage/issues/440) remains open as post-Phase-1 editor housekeeping; the cancelled Editor Suite #438/#439 is not part of the delivered scope.
 
 Establish **the scalable runtime architecture and durable production infrastructure** required before broad gameplay/world implementation makes foundational changes expensive. Phase 1 must anticipate high-stress MMORPG workloads and implement the reusable performance mechanisms they will depend on; it must **not** defer identifiable architectural needs until they become bottlenecks.
 
 Retain and productionise existing hybrid ECS/GameObject, PurrNet, headless-server, double-precision world-position, additive streaming and Addressables foundations rather than replacing them by default. Profile, validate and improve the existing implementation. Distinguish **architecture for scale**, **measured performance under a documented workload**, and **production-supported capacity**; the phase does not promise an arbitrary concurrency limit.
 
-**Detailed chronological plan:** [Phase 1 Implementation Plan](Phase-1-Implementation-Plan.md). This document is the implementation sequence and validation authority for Phase 1; the roadmap is the summary.
+**Detailed implementation and deferred qualification contracts:** [Phase 1 Implementation Plan](Phase-1-Implementation-Plan.md). The owner-approved 1 November 2026 scope decision supersedes the former requirement for Stage 1.10/1.11 sign-off before Phase 2.
 
 ## Work
 
 ### Performance measurement and workload contracts
 
-- Establish reproducible client/headless-server profiling, instrumentation, performance budgets and automated benchmark/regression workflows **at the start of the phase**.
+- Establish reproducible client/headless-server profiling and baseline instrumentation in the foundation programme; the automated benchmark/regression gates and evidence-based performance budget promotion remain deferred under former Stages 1.10–1.11.
 - Design around dense cities, large-scale open-world PvP, heavy NPC/AI populations, world-boss and AoE combat, rapid world traversal, dense vegetation/settlements, login/reconnect bursts and extended server operation.
 - Record representative hardware, workload sizes, CPU/tick and GPU frame-time, bandwidth, memory/GC, streaming and persistence metrics. Choose/configure budget thresholds from evidence rather than inventing capacity claims.
 
@@ -169,11 +173,11 @@ Implement the Live Content and Versioning PDD's production direction:
 
 - client and server build versions, network protocol version, gameplay-content revision, Addressables catalog revision, database-schema version and immutable release manifest;
 - compatibility handshake **before world entry** with fail-closed behaviour for incompatible authoritative state;
-- existing Addressables remote catalog/content-update pipeline, immutable content revisions, release content-state retention, remote bundle grouping and dependency/update-size validation;
-- hotfixable definition registries and removal of `Resources.Load`/direct-reference authority from content that is intended to be hotfixable;
-- structured server logging, clear development/production configuration, runtime health/load telemetry, schema/content startup checks and recovery operations.
+- the approved complete **locally installed** Player and World Server Addressables launch baseline, immutable content revisions, manifest-v2 catalog identity and release content-state provenance; no CCD/HTTP catalog lookup, remote bundle download or remote login retry is required for initial startup;
+- gameplay-definition content included in the locally installed Addressables baseline; remote hotfix download/activation and installer/patcher/distribution decisions remain future work;
+- release/schema compatibility startup checks and runtime telemetry foundations; broader structured operational diagnostics, backup/restore rehearsal and failure-recovery evidence are deferred under former Stage 1.10.
 
-### Integrated scalability validation
+### Integrated scalability validation (explicitly deferred; not a Phase 1 implementation gate)
 
 - Run combined multiplayer workloads on headless server and graphical client, including dense player/AI combat, rapid streaming, mass actor activation, reconnect bursts and soak tests.
 - Validate correctness under latency/loss, instance isolation, server authority, persistence interruptions and overload.
@@ -182,15 +186,17 @@ Implement the Live Content and Versioning PDD's production direction:
 
 ## Implementation order
 
-Follow the [dedicated Phase 1 plan](Phase-1-Implementation-Plan.md): **(1.0)** architecture contracts and profiling baseline → **(1.1)** simulation clock/scheduler → **(1.2)** spatial indexing/interest → **(1.3)** ECS ownership and efficient hot paths → **(1.4)** simulation LOD/AI activation → **(1.5)** replication scalability → **(1.6)** client rendering/resource lifetime → **(1.7)** relational persistence → **(1.8)** sessions/reconnect → **(1.9)** versioning/Addressables → **(1.10)** operations/CI → **(1.11)** integrated stress verification.
+**Completed Phase 1 foundation implementation:** (1.0) architecture/baseline → (1.1) simulation scheduling → (1.2) spatial/interest → (1.3) ECS ownership/hot paths → (1.4) activity/AI → (1.5) replication → (1.6) client streaming/resource lifetime → (1.7) persistence → (1.8) sessions/reconnect → (1.9) release identity/local Addressables.
+
+**Deferred follow-on qualification (not a Phase 2 prerequisite):** former (1.10) operations/automated regression/CI gates → former (1.11) integrated benchmarks, stress/soak, recovery and capacity verification. Preserve their detailed scope in the [Phase 1 Implementation Plan](Phase-1-Implementation-Plan.md) for later scheduling.
 
 Independent persistence schema, client fixtures and operational scaffolding may begin in parallel once their contracts are established; final integration follows the plan's prerequisite gates.
 
-## Exit milestone — Scalable, Durable Runtime Foundation
+## Exit milestone — Durable Character / foundation implementation complete
 
-A character can be created and saved in production-style persistence, enter a seamless streamed multiplayer world, change authoritative state, reconnect and survive server restart without lost or exploited state. Incompatible client/content/schema combinations are explicitly rejected. The hybrid server/client runtime has demonstrated its agreed simulation, spatial, networking, rendering, memory and streaming characteristics under **documented representative high-stress workloads**, with repeatable benchmarks and automated regression coverage.
+**Owner acceptance: 1 November 2026.** The Phase 1 implementation foundations are closed through Stage 1.9: authoritative simulation/spatial/actor/network/resource architecture, Master-owned durable character persistence and session admission/reconnect, and immutable local content-release compatibility. Existing narrow checks do not substitute for comprehensive regression, recovery or representative stress qualification.
 
-Phase 1 does **not** require full production-scale content or maximum player-capacity certification; it **does** require that foundational bottlenecks and correctness gaps identified by the exit tests are resolved or subject to an explicit architectural decision, not silently postponed as later optimisation.
+**Qualification still outstanding:** The former Stage 1.10 regression/operations programme and Stage 1.11 high-stress benchmark/soak/capacity programme are retained for later. Consequently this milestone is **not** a claim that all server/client performance budgets, resource-lifetime stress profiles, operational recovery rehearsals or automated regression gates have passed. Any confirmed foundational blocker discovered in Phase 2 must be addressed explicitly, not normalised as routine content-work debt.
 
 ---
 
@@ -810,7 +816,7 @@ Update:
 | Phase | Milestone |
 |---|---|
 | 0 | Stable Foundation |
-| 1 | Durable Character |
+| 1 | Durable Character — foundation implementation closed (1 Nov 2026); operations and stress qualification deferred |
 | 2 | Playable MMORPG Loop |
 | 3 | One Complete Zone |
 | 4 | Five-Player Dungeon |
@@ -825,15 +831,6 @@ Update:
 
 # 6. Immediate Priority Order
 
-The next implementation work should proceed in this order:
+The next implementation work is **Phase 2 — Core Playable Vertical Slice**, using the simulation, spatial, replication, resource-lifetime, durable-persistence, session and release-compatibility foundations accepted in Phase 1.
 
-1. finish the C# restyling/consistency pass;
-2. add/fix automated regression coverage around the existing working core;
-3. complete the endpoint/events/bindings terminology and lifecycle cleanup;
-4. design and implement the relational persistence migration;
-5. implement release/version/compatibility identity before content architecture expands;
-6. harden the existing world-runtime and movement foundations;
-7. build the compact Phase-2 vertical slice using existing combat/NPC/item systems;
-8. only then expand into production-scale world/content authoring.
-
-This order intentionally delays broad feature/content expansion until the systems most expensive to replace later are stable.
+The former Stage 1.10 (operations/regression/CI) and 1.11 (integrated stress/soak/capacity qualification) remain separately deferred and can be scheduled later by owner decision; they are **not** gates blocking Phase 2. Preserve their workload/budget evidence requirements and address any newly confirmed foundational defects as they arise. Post-Phase-1 editor menu issue #440 remains independently open.
