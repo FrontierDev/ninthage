@@ -30,7 +30,7 @@ namespace Game.Client.UI
 
         private void Awake()
         {
-            graphics.material = new Material(graphics.material);
+            SetMaterial(graphics.material);
         }
 
         /// <summary>
@@ -41,17 +41,17 @@ namespace Game.Client.UI
             switch (state)
             {
                 case FactionRelationState.Hostile:
-                    UIShaderProperties.SetColor(graphics, "_MainColor", Color.red);
+                    UIShaderProperties.SetMainColor(graphics, Color.red);
                     _nameText.color = _hostileColor;
                     _percentText.color = _hostileColor;
                     break;
                 case FactionRelationState.Allied:
-                    UIShaderProperties.SetColor(graphics, "_MainColor", Color.green);
+                    UIShaderProperties.SetMainColor(graphics, Color.green);
                     _nameText.color = _alliedColor;
                     _percentText.color = _alliedColor;
                     break;
                 case FactionRelationState.Neutral:
-                    UIShaderProperties.SetColor(graphics, "_MainColor", Color.softYellow);
+                    UIShaderProperties.SetMainColor(graphics, Color.softYellow);
                     _nameText.color = _neutralColor;
                     _percentText.color = _neutralColor;
                     break;
@@ -81,7 +81,7 @@ namespace Game.Client.UI
         /// </summary>
         public void SetHealthPercent(float percent)
         {
-            UIShaderProperties.SetFloat(graphics, "_FillAmount", percent);
+            UIShaderProperties.SetFillAmount(graphics, percent);
             _percentText.text = $"{percent * 100:0}%";
         }
     }

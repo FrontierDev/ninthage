@@ -25,10 +25,21 @@ namespace Game.Client.UI
         [SerializeField] private Image _thresholdIcon;
         [FormerlySerializedAs("graphics")]
         [SerializeField] private Image _graphics;
+        private Material _materialInstance;
 
         private void Awake()
         {
-            _graphics.material = new Material(_graphics.material);
+            if (_graphics != null && _graphics.material != null)
+            {
+                _materialInstance = new Material(_graphics.material);
+                _graphics.material = _materialInstance;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
         /// <inheritdoc/>
@@ -74,7 +85,7 @@ namespace Game.Client.UI
                     ? new Color(0x38 / 255f, 0xB9 / 255f, 0x86 / 255f)  // #38B986
                     : new Color(0xE8 / 255f, 0x8A / 255f, 0x52 / 255f); // #E88A52
 
-                UIShaderProperties.SetColor(_graphics, "_BorderColor", borderColor);
+                UIShaderProperties.SetBorderColor(_graphics, borderColor);
             }
         }
 
@@ -87,7 +98,7 @@ namespace Game.Client.UI
             {
                 // Reset to default border color
                 var defaultColor = new Color(0x4B / 255f, 0x55 / 255f, 0x66 / 255f); // #4B5566
-                UIShaderProperties.SetColor(_graphics, "_BorderColor", defaultColor);
+                UIShaderProperties.SetBorderColor(_graphics, defaultColor);
             }
         }
 

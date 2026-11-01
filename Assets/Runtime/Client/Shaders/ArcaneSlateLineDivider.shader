@@ -21,6 +21,7 @@ Shader "NinthAge/UI/ArcaneSlate/LineDivider" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -53,17 +54,8 @@ Shader "NinthAge/UI/ArcaneSlate/LineDivider" {
             fixed4 frag(v2f i) : SV_Target {
                 float2 uv = i.uv;
 
-                // Distance from center (uv.y = 0.5 is center)
-                float distFromCenterPx = abs((uv.y - 0.5) * max(1.0, 1.0 / fwidth(uv.y)));
-
-                // Line mask: thin horizontal band centered on uv.y = 0.5
-                float aa = 1.0;
-                float lineMask = smoothstep(_LineWidth + aa, _LineWidth - aa, distFromCenterPx);
-
-                // Fade opacity at the left and right ends
-                float leftFade = smoothstep(_EdgeFadeEnd, _EdgeFadeStart, uv.x);
-                float rightFade = smoothstep(1.0 - _EdgeFadeEnd, 1.0 - _EdgeFadeStart, uv.x);
-                float edgeMask = leftFade * rightFade;
+                float lineMask = ArcaneSlateCenterLineMask(uv.y, _LineWidth);
+                float edgeMask = ArcaneSlateEdgeFade(uv.x, _EdgeFadeStart, _EdgeFadeEnd);
 
                 // Sample sprite alpha
                 fixed4 tex = tex2D(_MainTex, i.uv);

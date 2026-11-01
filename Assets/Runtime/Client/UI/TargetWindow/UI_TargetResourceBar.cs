@@ -24,6 +24,7 @@ namespace Game.Client.UI
 
         private void Awake()
         {
+            SetMaterial(graphics.material);
             Game.Shared.Networking.ActorEndpoint.onClientLateTargetedActorChanged += OnClientLateTargetedActorChanged;
             Game.Shared.Networking.StatEndpoint.onStatsUpdated += OnStatsUpdated;
         }

@@ -1,85 +1,83 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
     /// <summary>
-    /// Provides the client-side <c>UIShaderProperties</c> implementation.
+    /// Sets supported shader state on an explicitly owned UI material instance.
     /// </summary>
     public static class UIShaderProperties
     {
-        // ── UI Image helpers ──────────────────────────────────────────────────
+        private static readonly int FILL_AMOUNT_PROPERTY = Shader.PropertyToID("_FillAmount");
+        private static readonly int MAIN_COLOR_PROPERTY = Shader.PropertyToID("_MainColor");
+        private static readonly int BORDER_COLOR_PROPERTY = Shader.PropertyToID("_BorderColor");
+        private static readonly int SELECTED_AMOUNT_PROPERTY = Shader.PropertyToID("_SelectedAmount");
+        private static readonly int DISABLED_AMOUNT_PROPERTY = Shader.PropertyToID("_DisabledAmount");
+        private static readonly int ACCENT_COLOR_PROPERTY = Shader.PropertyToID("_AccentColor");
+        private static readonly int ICON_TEXTURE_PROPERTY = Shader.PropertyToID("_IconTex");
+        private static readonly int ICON_AMOUNT_PROPERTY = Shader.PropertyToID("_IconAmount");
+        private static readonly int RARITY_COLOR_PROPERTY = Shader.PropertyToID("_RarityColor");
+        private static readonly int RARITY_AMOUNT_PROPERTY = Shader.PropertyToID("_RarityAmount");
+        private static readonly int TAB_ACTIVE_PROPERTY = Shader.PropertyToID("_IsActive");
+        private static readonly int HOVER_AMOUNT_PROPERTY = Shader.PropertyToID("_HoverAmount");
+        private static readonly int PRESSED_AMOUNT_PROPERTY = Shader.PropertyToID("_PressedAmount");
 
-        /// <summary>
-        /// Sets the value managed by <c>SetTexture</c>.
-        /// </summary>
-        public static void SetTexture(Image image, string propertyName, Texture2D texture)
+        public static void SetFillAmount(Image image, float value) => SetFloat(image, FILL_AMOUNT_PROPERTY, value);
+
+        public static void SetMainColor(Image image, Color value) => SetColor(image, MAIN_COLOR_PROPERTY, value);
+
+        public static void SetBorderColor(Image image, Color value) => SetColor(image, BORDER_COLOR_PROPERTY, value);
+
+        public static void SetSelected(Image image, bool selected) => SetSelectedAmount(image, selected ? 1f : 0f);
+
+        public static void SetSelectedAmount(Image image, float value) => SetFloat(image, SELECTED_AMOUNT_PROPERTY, value);
+
+        public static void SetDisabled(Image image, bool disabled) => SetFloat(image, DISABLED_AMOUNT_PROPERTY, disabled ? 1f : 0f);
+
+        public static void SetAccentColor(Image image, Color value) => SetColor(image, ACCENT_COLOR_PROPERTY, value);
+
+        public static void SetIcon(Image image, Texture texture) => SetTexture(image, ICON_TEXTURE_PROPERTY, texture);
+
+        public static void SetIconVisible(Image image, bool visible) => SetFloat(image, ICON_AMOUNT_PROPERTY, visible ? 1f : 0f);
+
+        public static void SetRarityColor(Image image, Color value) => SetColor(image, RARITY_COLOR_PROPERTY, value);
+
+        public static void SetRarityVisible(Image image, bool visible) => SetFloat(image, RARITY_AMOUNT_PROPERTY, visible ? 1f : 0f);
+
+        public static void SetTabActive(Image image, bool active) => SetFloat(image, TAB_ACTIVE_PROPERTY, active ? 1f : 0f);
+
+        public static void SetHover(Image image, bool hovered) => SetHoverAmount(image, hovered ? 1f : 0f);
+
+        public static void SetHoverAmount(Image image, float value) => SetFloat(image, HOVER_AMOUNT_PROPERTY, value);
+
+        public static void SetPressed(Image image, bool pressed) => SetPressedAmount(image, pressed ? 1f : 0f);
+
+        public static void SetPressedAmount(Image image, float value) => SetFloat(image, PRESSED_AMOUNT_PROPERTY, value);
+
+        private static Material GetMaterial(Image image)
         {
-            var mat = image.material;
-            if (mat == null) return;
-
-            mat.SetTexture(propertyName, texture != null ? texture : Texture2D.whiteTexture); // Set a default texture to avoid shader issues when texture is null
+            return image != null ? image.material : null;
         }
 
-        /// <summary>
-        /// Sets the value managed by <c>SetFloat</c>.
-        /// </summary>
-        public static void SetFloat(Image image, string propertyName, float value)
+        private static void SetTexture(Image image, int propertyId, Texture texture)
         {
-            var mat = image.material;
-            if (mat == null) return;
-
-            mat.SetFloat(propertyName, value);
+            var material = GetMaterial(image);
+            if (material != null)
+                material.SetTexture(propertyId, texture != null ? texture : Texture2D.whiteTexture);
         }
 
-        /// <summary>
-        /// Sets the value managed by <c>SetColor</c>.
-        /// </summary>
-        public static void SetColor(Image image, string propertyName, Color color)
+        private static void SetFloat(Image image, int propertyId, float value)
         {
-            var mat = image.material;
-            if (mat == null) return;
-
-            mat.SetColor(propertyName, color);
+            var material = GetMaterial(image);
+            if (material != null)
+                material.SetFloat(propertyId, value);
         }
 
-        // ── MeshRenderer helpers ─────────────────────────────────────────────
-        // These overloads follow the same pattern but operate on a MeshRenderer's
-        // instanced material so VFX components can share this utility.
-
-        /// <summary>
-        /// Sets the value managed by <c>SetFloat</c>.
-        /// </summary>
-        public static void SetFloat(MeshRenderer renderer, string propertyName, float value)
+        private static void SetColor(Image image, int propertyId, Color value)
         {
-            var mat = renderer != null ? renderer.material : null;
-            if (mat == null) return;
-
-            mat.SetFloat(propertyName, value);
-        }
-
-        /// <summary>
-        /// Sets the value managed by <c>SetColor</c>.
-        /// </summary>
-        public static void SetColor(MeshRenderer renderer, string propertyName, Color color)
-        {
-            var mat = renderer != null ? renderer.material : null;
-            if (mat == null) return;
-
-            mat.SetColor(propertyName, color);
-        }
-
-        /// <summary>
-        /// Sets the value managed by <c>SetTexture</c>.
-        /// </summary>
-        public static void SetTexture(MeshRenderer renderer, string propertyName, Texture2D texture)
-        {
-            var mat = renderer != null ? renderer.material : null;
-            if (mat == null) return;
-
-            mat.SetTexture(propertyName, texture != null ? texture : Texture2D.whiteTexture);
+            var material = GetMaterial(image);
+            if (material != null)
+                material.SetColor(propertyId, value);
         }
     }
 }

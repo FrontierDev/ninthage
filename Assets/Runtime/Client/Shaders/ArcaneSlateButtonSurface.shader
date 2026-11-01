@@ -44,6 +44,7 @@ Shader "NinthAge/UI/ArcaneSlate/ButtonSurface" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -95,45 +96,10 @@ Shader "NinthAge/UI/ArcaneSlate/ButtonSurface" {
                 return o;
             }
 
-            // Signed distance to rounded rectangle centered at (0,0) with half-extents b and radius r.
-            static float sdRoundRect(float2 p, float2 b, float r) {
-                float2 q = abs(p) - b;
-                float outside = length(max(q, 0.0));
-                float inside = min(max(q.x, q.y), 0.0);
-                return outside + inside - r;
-            }
-
-            static float resolveBorderWidthPx(float widthValue) {
-                return widthValue <= 1.0 ? widthValue * 100.0 : widthValue;
-            }
-
-            static float resolveCornerRadiusPx(float radiusValue, float minDim) {
-                float radiusPx = radiusValue <= 1.0 ? radiusValue * 100.0 : radiusValue;
-                return min(radiusPx, minDim * 0.5 - 1.0);
-            }
-
             fixed4 frag(v2f i) : SV_Target {
                 float2 uv = i.uv;
 
-                // Determine element size in pixels
-                float2 rectSizePx;
-                if (_RectSize.x > 1.0 && _RectSize.y > 1.0) {
-                    rectSizePx = _RectSize.xy;
-                } else {
-                    float2 gdx = ddx(uv);
-                    float2 gdy = ddy(uv);
-                    float a = gdx.x;
-                    float c = gdx.y;
-                    float b = gdy.x;
-                    float d = gdy.y;
-                    float det = a * d - b * c;
-                    float invDet = 1.0 / (abs(det) + 1e-6);
-                    float widthPx = length(float2(d, -c)) * invDet;
-                    float heightPx = length(float2(-b, a)) * invDet;
-                    widthPx = max(widthPx, 1.0);
-                    heightPx = max(heightPx, 1.0);
-                    rectSizePx = float2(widthPx, heightPx);
-                }
+                float2 rectSizePx = ArcaneSlateResolveRectSizePx(_RectSize, uv);
 
                 float minDim = min(rectSizePx.x, rectSizePx.y);
 
@@ -141,14 +107,13 @@ Shader "NinthAge/UI/ArcaneSlate/ButtonSurface" {
                 float2 p = (uv - 0.5) * rectSizePx;
 
                 // Compute pixel-space rounded-rect parameters
-                float rPx = max(0.0, resolveCornerRadiusPx(_CornerRadius, minDim));
+                float rPx = ArcaneSlateClampCornerRadiusPx(_CornerRadius, minDim);
                 float2 b = rectSizePx * 0.5 - rPx;
 
-                float sdf = sdRoundRect(p, b, rPx);
-                float aa = max(1.0, fwidth(sdf));
+                float sdf = ArcaneSlateSdRoundRect(p, b, rPx);
+                float aa = ArcaneSlateAntiAliasWidth(sdf);
 
-                // Border thickness in pixel units
-                float borderPx = resolveBorderWidthPx(_BorderWidth);
+                float borderPx = max(0.0, _BorderWidth);
 
                 // Masks (pixel-space SDF -> consistent border on all edges)
                 float maskOuter = smoothstep(aa, -aa, sdf);
@@ -192,7 +157,7 @@ Shader "NinthAge/UI/ArcaneSlate/ButtonSurface" {
                 float innerEdge = borderT;
 
                 // Inner border (solid color) in pixel units
-                float innerBorderPx = resolveBorderWidthPx(_InnerBorderWidth);
+                float innerBorderPx = max(0.0, _InnerBorderWidth);
                 float maskInner2 = smoothstep(aa, -aa, sdf + borderPx + innerBorderPx);
                 float innerBorderMask = saturate(maskInner - maskInner2);
 

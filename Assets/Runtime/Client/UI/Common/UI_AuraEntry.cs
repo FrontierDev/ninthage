@@ -28,6 +28,22 @@ namespace Game.Client.UI
         [SerializeField] private TMP_Text _durationText;
 
         private int _index;
+        private Material _materialInstance;
+
+        private void Awake()
+        {
+            if (_graphics != null && _graphics.material != null)
+            {
+                _materialInstance = new Material(_graphics.material);
+                _graphics.material = _materialInstance;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
+        }
 
         /// <inheritdoc/>
         public override void Initialize(AuraInstance _data, int index)
@@ -35,21 +51,18 @@ namespace Game.Client.UI
             this._data = _data;
             this._index = index;
 
-            if (_graphics.material != null)
-                _graphics.material = new Material(_graphics.material);
-
             if (_data.Definition.Icon != null)
             {
-                UIShaderProperties.SetTexture(_graphics, "_IconTex", _data.Definition.Icon.texture);
-                UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1.0f);
-                UIShaderProperties.SetColor(_graphics, "_RarityColor", Color.red);
-                UIShaderProperties.SetFloat(_graphics, "_RarityAmount", 1.0f);
+                UIShaderProperties.SetIcon(_graphics, _data.Definition.Icon.texture);
+                UIShaderProperties.SetIconVisible(_graphics, true);
+                UIShaderProperties.SetRarityColor(_graphics, Color.red);
+                UIShaderProperties.SetRarityVisible(_graphics, true);
             }
 
             else
             {
-                UIShaderProperties.SetTexture(_graphics, "_IconTex", Texture2D.whiteTexture);
-                UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1.0f);
+                UIShaderProperties.SetIcon(_graphics, Texture2D.whiteTexture);
+                UIShaderProperties.SetIconVisible(_graphics, true);
             }
 
             UpdateDisplay(_data.Duration);

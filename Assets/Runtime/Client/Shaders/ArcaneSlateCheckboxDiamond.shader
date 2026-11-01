@@ -33,6 +33,7 @@ Shader "NinthAge/UI/ArcaneSlate/CheckboxDiamond" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -86,32 +87,10 @@ Shader "NinthAge/UI/ArcaneSlate/CheckboxDiamond" {
                 return length(p);
             }
 
-            static float resolveBorderWidthPx(float widthValue) {
-                return widthValue <= 1.0 ? widthValue * 100.0 : widthValue;
-            }
-
             fixed4 frag(v2f i) : SV_Target {
                 float2 uv = i.uv;
 
-                // Determine element size in pixels
-                float2 rectSizePx;
-                if (_RectSize.x > 1.0 && _RectSize.y > 1.0) {
-                    rectSizePx = _RectSize.xy;
-                } else {
-                    float2 gdx = ddx(uv);
-                    float2 gdy = ddy(uv);
-                    float a = gdx.x;
-                    float c = gdx.y;
-                    float b = gdy.x;
-                    float d = gdy.y;
-                    float det = a * d - b * c;
-                    float invDet = 1.0 / (abs(det) + 1e-6);
-                    float widthPx = length(float2(d, -c)) * invDet;
-                    float heightPx = length(float2(-b, a)) * invDet;
-                    widthPx = max(widthPx, 1.0);
-                    heightPx = max(heightPx, 1.0);
-                    rectSizePx = float2(widthPx, heightPx);
-                }
+                float2 rectSizePx = ArcaneSlateResolveRectSizePx(_RectSize, uv);
 
                 float minDim = min(rectSizePx.x, rectSizePx.y);
 
@@ -119,8 +98,8 @@ Shader "NinthAge/UI/ArcaneSlate/CheckboxDiamond" {
                 float2 p = (uv - 0.5) * rectSizePx;
 
                 // Border thickness in pixel units
-                float borderPx = resolveBorderWidthPx(_BorderWidth);
-                float innerBorderPx = resolveBorderWidthPx(_InnerBorderWidth);
+                float borderPx = max(0.0, _BorderWidth);
+                float innerBorderPx = max(0.0, _InnerBorderWidth);
 
                 // Diamond SDF - size adjusted so border sits at element edge
                 float diamondSize = minDim * 0.5 - borderPx * 0.5;

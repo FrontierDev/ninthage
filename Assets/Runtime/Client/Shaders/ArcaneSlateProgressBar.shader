@@ -27,6 +27,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBar" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -62,42 +63,10 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBar" {
                 return o;
             }
 
-            static float sdRoundRect(float2 p, float2 b, float r) {
-                float2 q = abs(p) - b;
-                float outside = length(max(q, 0.0));
-                float inside = min(max(q.x, q.y), 0.0);
-                return outside + inside - r;
-            }
-
-            // Simple rectangle (sharp corners)
-            static float sdRect(float2 p, float2 b) {
-                float2 q = abs(p) - b;
-                return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
-            }
-
-            // Beveled rectangle: chamfered edges
-            static float sdBeveledRect(float2 p, float2 b, float bevel) {
-                float2 q = abs(p) - b + bevel;
-                float d = length(max(q, 0.0)) - bevel;
-                return d;
-            }
-
             fixed4 frag(v2f i) : SV_Target {
                 float2 uv = i.uv;
 
-                // Determine bar size
-                float2 rectSizePx;
-                if (_RectSize.x > 1.0 && _RectSize.y > 1.0) {
-                    rectSizePx = _RectSize.xy;
-                } else {
-                    float2 gdx = ddx(uv);
-                    float2 gdy = ddy(uv);
-                    float det = gdx.x * gdy.y - gdx.y * gdy.x;
-                    float invDet = 1.0 / (abs(det) + 1e-6);
-                    float widthPx  = length(float2(gdy.y, -gdx.y)) * invDet;
-                    float heightPx = length(float2(-gdy.x, gdx.x)) * invDet;
-                    rectSizePx = float2(max(widthPx, 1.0), max(heightPx, 1.0));
-                }
+                float2 rectSizePx = ArcaneSlateResolveRectSizePx(_RectSize, uv);
 
                 float minDim = min(rectSizePx.x, rectSizePx.y);
                 float2 p = (uv - 0.5) * rectSizePx;
@@ -105,11 +74,11 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBar" {
 
                 // Distance to beveled rectangle
                 float bevelPx = max(0.0, _BevelAmount);
-                float sdf = sdBeveledRect(p, b, bevelPx);
-                float aa = max(1.0, fwidth(sdf));
+                float sdf = ArcaneSlateSdBeveledRect(p, b, bevelPx);
+                float aa = ArcaneSlateAntiAliasWidth(sdf);
 
                 // Border masks
-                float borderPx = max(0.0, _BorderWidth <= 1.0 ? _BorderWidth * 100.0 : _BorderWidth);
+                float borderPx = max(0.0, _BorderWidth);
                 float maskOuter = smoothstep(aa, -aa, sdf);
                 float maskInner = smoothstep(aa, -aa, sdf + borderPx);
                 float borderMask = saturate(maskOuter - maskInner);

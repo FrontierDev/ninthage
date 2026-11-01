@@ -34,6 +34,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarHorseshoe" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             #define ARC_PI 3.14159265
             #define ARC_TWO_PI 6.28318530
@@ -115,18 +116,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarHorseshoe" {
                 float2 uv = i.uv;
 
                 // ---- element size in pixels ----
-                float2 rectSizePx;
-                if (_RectSize.x > 1.0 && _RectSize.y > 1.0) {
-                    rectSizePx = _RectSize.xy;
-                } else {
-                    float2 gdx = ddx(uv);
-                    float2 gdy = ddy(uv);
-                    float det    = gdx.x * gdy.y - gdx.y * gdy.x;
-                    float invDet = 1.0 / (abs(det) + 1e-6);
-                    float wPx    = length(float2( gdy.y, -gdx.y)) * invDet;
-                    float hPx    = length(float2(-gdy.x,  gdx.x)) * invDet;
-                    rectSizePx   = float2(max(wPx, 1.0), max(hPx, 1.0));
-                }
+                float2 rectSizePx = ArcaneSlateResolveRectSizePx(_RectSize, uv);
 
                 float2 p = (uv - 0.5) * rectSizePx; // pixel coords from centre
 
@@ -142,11 +132,10 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarHorseshoe" {
                 // ---- track SDF (full 270° ring with round caps) ----
                 float rel;
                 float sdf = sdArcRing(p, radiusPx, halfThick, startAng, arcSpan, rel);
-                float aa  = max(1.0, fwidth(sdf));
+                float aa  = ArcaneSlateAntiAliasWidth(sdf);
 
                 // ---- border masks ----
-                float borderPx  = max(0.0, _BorderWidth <= 1.0
-                                      ? _BorderWidth * 100.0 : _BorderWidth);
+                float borderPx  = max(0.0, _BorderWidth);
                 float maskOuter = smoothstep(aa, -aa, sdf);
                 float maskInner = smoothstep(aa, -aa, sdf + borderPx);
                 float borderMask = saturate(maskOuter - maskInner);
@@ -179,8 +168,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarHorseshoe" {
                 float3 withShadow   = withFlash * (1.0 - shadowMask * 0.6);
 
                 // ---- inner border (fill region only) ----
-                float innerBorderPx = max(0.0, _InnerBorderWidth <= 1.0
-                                         ? _InnerBorderWidth * 100.0 : _InnerBorderWidth);
+                float innerBorderPx = max(0.0, _InnerBorderWidth);
                 float maskInner2    = smoothstep(aa, -aa, sdf + borderPx + innerBorderPx);
                 float innerBorderMask = saturate(maskInner - maskInner2) * isFilled;
 

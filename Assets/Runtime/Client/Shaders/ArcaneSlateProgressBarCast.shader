@@ -35,6 +35,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarCast" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -86,46 +87,27 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarCast" {
                 return max(mainDist, notchDist);
             }
 
-            // Beveled rectangle: chamfered edges
-            static float sdBeveledRect(float2 p, float2 b, float bevel) {
-                float2 q = abs(p) - b + bevel;
-                return length(max(q, 0.0)) - bevel;
-            }
-
-            static float hash(float2 q) {
+            static float sparkleHash(float2 q) {
                 return frac(sin(dot(q, float2(127.1, 311.7))) * 43758.5453);
             }
 
             fixed4 frag(v2f i) : SV_Target {
                 float2 uv = i.uv;
 
-                // Determine bar size
-                float2 rectSizePx;
-                if (_RectSize.x > 1.0 && _RectSize.y > 1.0) {
-                    rectSizePx = _RectSize.xy;
-                } else {
-                    float2 gdx = ddx(uv);
-                    float2 gdy = ddy(uv);
-                    float det = gdx.x * gdy.y - gdx.y * gdy.x;
-                    float invDet = 1.0 / (abs(det) + 1e-6);
-                    float widthPx  = length(float2(gdy.y, -gdx.y)) * invDet;
-                    float heightPx = length(float2(-gdy.x, gdx.x)) * invDet;
-                    rectSizePx = float2(max(widthPx, 1.0), max(heightPx, 1.0));
-                }
+                float2 rectSizePx = ArcaneSlateResolveRectSizePx(_RectSize, uv);
 
                 float minDim = min(rectSizePx.x, rectSizePx.y);
                 float2 p = (uv - 0.5) * rectSizePx;
                 float2 b = rectSizePx * 0.5;
 
                 // Corner inset in pixels
-                float notchPx = max(0.0, _CornerInset <= 1.0 ? _CornerInset * 100.0 : _CornerInset);
-                notchPx = min(notchPx, minDim * 0.45);
+                float notchPx = min(max(0.0, _CornerInset), minDim * 0.45);
 
                 float sdf = sdConcaveCornerRect(p, b, notchPx);
-                float aa = max(1.0, fwidth(sdf));
+                float aa = ArcaneSlateAntiAliasWidth(sdf);
 
                 // Border masks
-                float borderPx = max(0.0, _BorderWidth <= 1.0 ? _BorderWidth * 100.0 : _BorderWidth);
+                float borderPx = max(0.0, _BorderWidth);
                 float maskOuter = smoothstep(aa, -aa, sdf);
                 float maskInner = smoothstep(aa, -aa, sdf + borderPx);
                 float borderMask = saturate(maskOuter - maskInner);
@@ -157,8 +139,8 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarCast" {
                 float2 cellUV = frac(gridCoord);
 
                 // Random center, brightness and size per cell
-                float2 sparkleCenter = float2(hash(cellId), hash(cellId + float2(7.3, 13.7)));
-                float sparkleBrightHash = hash(cellId + float2(3.1, 5.7));
+                float2 sparkleCenter = float2(sparkleHash(cellId), sparkleHash(cellId + float2(7.3, 13.7)));
+                float sparkleBrightHash = sparkleHash(cellId + float2(3.1, 5.7));
 
                 // Distance to sparkle center in cell-space
                 float2 toCenter = cellUV - sparkleCenter;
@@ -189,7 +171,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarCast" {
                 float3 withShadow = withSparkles * (1.0 - shadowMask * 0.6);
 
                 // Inner border: thin rim just inside the outer border, only on filled region
-                float innerBorderPx = max(0.0, _InnerBorderWidth <= 1.0 ? _InnerBorderWidth * 100.0 : _InnerBorderWidth);
+                float innerBorderPx = max(0.0, _InnerBorderWidth);
                 float maskInner2 = smoothstep(aa, -aa, sdf + borderPx + innerBorderPx);
                 float innerBorderMask = saturate(maskInner - maskInner2) * isFilled;
 

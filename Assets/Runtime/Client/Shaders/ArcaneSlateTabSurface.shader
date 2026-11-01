@@ -23,6 +23,7 @@ Shader "NinthAge/UI/ArcaneSlate/TabSurface" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -58,19 +59,7 @@ Shader "NinthAge/UI/ArcaneSlate/TabSurface" {
                 float2 uv = i.uv;
                 float isActive = saturate(_IsActive);
 
-                // Derive element size in pixels
-                float2 rectSizePx;
-                if (_RectSize.x > 1.0 && _RectSize.y > 1.0) {
-                    rectSizePx = _RectSize.xy;
-                } else {
-                    float2 gdx = ddx(uv);
-                    float2 gdy = ddy(uv);
-                    float det = gdx.x * gdy.y - gdx.y * gdy.x;
-                    float invDet = 1.0 / (abs(det) + 1e-6);
-                    float widthPx  = length(float2(gdy.y, -gdx.y)) * invDet;
-                    float heightPx = length(float2(-gdy.x, gdx.x)) * invDet;
-                    rectSizePx = float2(max(widthPx, 1.0), max(heightPx, 1.0));
-                }
+                float2 rectSizePx = ArcaneSlateResolveRectSizePx(_RectSize, uv);
 
                 // Pixel-space coordinates: center of tab = (0,0), bottom = (x, -halfH)
                 float2 p = (uv - 0.5) * rectSizePx;

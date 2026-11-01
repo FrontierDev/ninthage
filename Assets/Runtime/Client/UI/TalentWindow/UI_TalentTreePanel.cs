@@ -38,13 +38,17 @@ namespace Game.Client.UI
 
         // Internal private members.
         private ClassSpecialisation _specialisation;
+        private Material _materialInstance;
 
         protected override void Awake()
         {
             base.Awake();
 
             if (_graphics.material != null)
-                _graphics.material = new Material(_graphics.material);
+            {
+                _materialInstance = new Material(_graphics.material);
+                _graphics.material = _materialInstance;
+            }
 
             ActorEndpoint.onPlayerActorAssigned += OnPlayerActorAssigned;
         }
@@ -57,10 +61,16 @@ namespace Game.Client.UI
                 var classID = characterData.ClassID;
                 var classDef = ClassDefinitionLibrary.Instance.GetDefinition(classID);
                 _specialisation = classDef.Specialisations[_specIndex - 1];
-                UIShaderProperties.SetColor(_graphics, "_AccentColor", _specialisation.color);
+                UIShaderProperties.SetAccentColor(_graphics, _specialisation.color);
                 Initialize(_specialisation);
 
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
 

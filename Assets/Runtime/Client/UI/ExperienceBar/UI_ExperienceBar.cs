@@ -17,9 +17,10 @@ namespace Game.Client.UI
             CharacterEndpoint.onClientExperienceUpdated += OnExperienceUpdated;
         }
 
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
             CharacterEndpoint.onClientExperienceUpdated -= OnExperienceUpdated;
+            base.OnDestroy();
         }
 
         private void OnExperienceUpdated(int level, int experience, int delta)

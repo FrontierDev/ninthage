@@ -33,6 +33,8 @@ namespace Game.Client.UI
         [Header("Keybindings")]
         [FormerlySerializedAs("key")]
         [SerializeField] private Key _key;
+        private Material _materialInstance;
+        private float _pressedAmount;
 
         private void Awake()
         {
@@ -40,7 +42,10 @@ namespace Game.Client.UI
             canvasGroup = GetComponent<CanvasGroup>();
 
             if (_spellIconImage != null && _spellIconImage.material != null)
-                _spellIconImage.material = new Material(_spellIconImage.material);
+            {
+                _materialInstance = new Material(_spellIconImage.material);
+                _spellIconImage.material = _materialInstance;
+            }
 
             ActorEndpoint.onStartGlobalCooldown += OnStartGlobalCooldown;
         }
@@ -57,17 +62,18 @@ namespace Game.Client.UI
         void OnDestroy()
         {
             StopCoroutine(FadeOutPressedState());
+            ActorEndpoint.onStartGlobalCooldown -= OnStartGlobalCooldown;
+
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
         private IEnumerator FadeOutPressedState()
         {
-            if (_spellIconImage == null || _spellIconImage.material == null) yield break;
-
-            float pressed = _spellIconImage.material.GetFloat("_PressedAmount");
-            while (pressed > 0f)
+            while (_pressedAmount > 0f)
             {
-                pressed -= Time.deltaTime * 5f; // Fade out over 0.2 seconds
-                _spellIconImage.material.SetFloat("_PressedAmount", Mathf.Max(pressed, 0f));
+                _pressedAmount = Mathf.Max(_pressedAmount - Time.deltaTime * 5f, 0f);
+                UIShaderProperties.SetPressedAmount(_spellIconImage, _pressedAmount);
                 yield return null;
             }
         }
@@ -81,13 +87,13 @@ namespace Game.Client.UI
                 yield return null;
             }
 
-            UIShaderProperties.SetFloat(_spellIconImage, "_DisabledAmount", 0f);
+            UIShaderProperties.SetDisabled(_spellIconImage, false);
         }
 
         private void OnStartGlobalCooldown()
         {
             if (_spellIconImage != null)
-                UIShaderProperties.SetFloat(_spellIconImage, "_DisabledAmount", 1f);
+                UIShaderProperties.SetDisabled(_spellIconImage, true);
             else return;
 
             StartCoroutine(GlobalCooldownRoutine(GameConfigurationManager.Config.GlobalCooldownDuration));
@@ -98,7 +104,8 @@ namespace Game.Client.UI
         {
             if (eventData == null) return;
 
-            UIShaderProperties.SetFloat(_spellIconImage, "_PressedAmount", 1f);
+            _pressedAmount = 1f;
+            UIShaderProperties.SetPressedAmount(_spellIconImage, _pressedAmount);
             StartCoroutine(FadeOutPressedState());
 
             if (eventData.button == PointerEventData.InputButton.Left)
@@ -130,11 +137,8 @@ namespace Game.Client.UI
             _spellID = newSpellID;
             _spellRank = newSpellRank;
 
-            UIShaderProperties.SetTexture(_spellIconImage, "_IconTex", newSpellIcon != null ? newSpellIcon.texture : Texture2D.whiteTexture);
-            if (newSpellIcon != null)
-                UIShaderProperties.SetFloat(_spellIconImage, "_IconAmount", 1f);
-            else
-                UIShaderProperties.SetFloat(_spellIconImage, "_IconAmount", 0f);
+            UIShaderProperties.SetIcon(_spellIconImage, newSpellIcon != null ? newSpellIcon.texture : null);
+            UIShaderProperties.SetIconVisible(_spellIconImage, newSpellIcon != null);
 
         }
 

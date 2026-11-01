@@ -23,6 +23,7 @@ namespace Game.Client.UI
         [SerializeField] private TMP_Text _talentNameText;
         [FormerlySerializedAs("talentDescriptionText")]
         [SerializeField] private TMP_Text _talentDescriptionText;
+        private Material _materialInstance;
 
         protected override void Awake()
         {
@@ -30,8 +31,17 @@ namespace Game.Client.UI
 
             _instance = this;
 
-            if (_graphics.material != null)
-                _graphics.material = new Material(_graphics.material);
+            if (_graphics != null && _graphics.material != null)
+            {
+                _materialInstance = new Material(_graphics.material);
+                _graphics.material = _materialInstance;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
         /// <summary>
@@ -48,8 +58,8 @@ namespace Game.Client.UI
             _talentNameText.text = talent.DisplayName;
             _talentDescriptionText.text = talent.Description;
 
-            UIShaderProperties.SetTexture(_graphics, "_IconTex", talent.Icon.texture);
-            UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1f);
+            UIShaderProperties.SetIcon(_graphics, talent.Icon.texture);
+            UIShaderProperties.SetIconVisible(_graphics, true);
 
             Show();
         }

@@ -16,10 +16,21 @@ namespace Game.Client.UI
 
         private QuestItemReward _data;
         private int _index;
+        private Material _materialInstance;
 
-        void Awake()
+        private void Awake()
         {
-            _graphics.material = new Material(_graphics.material);
+            if (_graphics != null && _graphics.material != null)
+            {
+                _materialInstance = new Material(_graphics.material);
+                _graphics.material = _materialInstance;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
         /// <inheritdoc/>
@@ -28,10 +39,10 @@ namespace Game.Client.UI
             this._data = data;
             this._index = index;
 
-            UIShaderProperties.SetTexture(_graphics, "_IconTex", data.Item.Icon.texture);
-            UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1f);
-            UIShaderProperties.SetColor(_graphics, "_RarityColor", Utility.RarityColor.GetColor(data.Item.Rarity));
-            UIShaderProperties.SetFloat(_graphics, "_RarityAmount", 1.0f);
+            UIShaderProperties.SetIcon(_graphics, data.Item.Icon.texture);
+            UIShaderProperties.SetIconVisible(_graphics, true);
+            UIShaderProperties.SetRarityColor(_graphics, Utility.RarityColor.GetColor(data.Item.Rarity));
+            UIShaderProperties.SetRarityVisible(_graphics, true);
         }
 
         /// <inheritdoc/>

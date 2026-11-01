@@ -33,6 +33,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarResource" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -74,47 +75,24 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarResource" {
                 return o;
             }
 
-            // Rounded rectangle SDF
-            static float sdRoundRect(float2 p, float2 b, float r) {
-                float2 q = abs(p) - b;
-                return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
-            }
-
-            static float hash(float2 q) {
-                return frac(sin(dot(q, float2(127.1, 311.7))) * 43758.5453);
-            }
-
             fixed4 frag(v2f i) : SV_Target {
                 float2 uv = i.uv;
 
-                // Determine bar size
-                float2 rectSizePx;
-                if (_RectSize.x > 1.0 && _RectSize.y > 1.0) {
-                    rectSizePx = _RectSize.xy;
-                } else {
-                    float2 gdx = ddx(uv);
-                    float2 gdy = ddy(uv);
-                    float det = gdx.x * gdy.y - gdx.y * gdy.x;
-                    float invDet = 1.0 / (abs(det) + 1e-6);
-                    float widthPx  = length(float2(gdy.y, -gdx.y)) * invDet;
-                    float heightPx = length(float2(-gdy.x, gdx.x)) * invDet;
-                    rectSizePx = float2(max(widthPx, 1.0), max(heightPx, 1.0));
-                }
+                float2 rectSizePx = ArcaneSlateResolveRectSizePx(_RectSize, uv);
 
                 float minDim = min(rectSizePx.x, rectSizePx.y);
                 float2 p = (uv - 0.5) * rectSizePx;
                 float2 b = rectSizePx * 0.5;
 
                 // Corner radius in pixels
-                float rPx = max(0.0, _CornerRadius <= 1.0 ? _CornerRadius * 100.0 : _CornerRadius);
-                rPx = min(rPx, minDim * 0.5 - 1.0);
+                float rPx = ArcaneSlateClampCornerRadiusPx(_CornerRadius, minDim);
                 float2 bInner = b - rPx;
 
-                float sdf = sdRoundRect(p, bInner, rPx);
-                float aa = max(1.0, fwidth(sdf));
+                float sdf = ArcaneSlateSdRoundRect(p, bInner, rPx);
+                float aa = ArcaneSlateAntiAliasWidth(sdf);
 
                 // Border masks
-                float borderPx = max(0.0, _BorderWidth <= 1.0 ? _BorderWidth * 100.0 : _BorderWidth);
+                float borderPx = max(0.0, _BorderWidth);
                 float maskOuter = smoothstep(aa, -aa, sdf);
                 float maskInner = smoothstep(aa, -aa, sdf + borderPx);
                 float borderMask = saturate(maskOuter - maskInner);
@@ -146,7 +124,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarResource" {
                 float3 withShadow = withFlash * (1.0 - shadowMask * 0.6);
 
                 // Inner border: thin rim just inside the outer border, only on filled region
-                float innerBorderPx = max(0.0, _InnerBorderWidth <= 1.0 ? _InnerBorderWidth * 100.0 : _InnerBorderWidth);
+                float innerBorderPx = max(0.0, _InnerBorderWidth);
                 float maskInner2 = smoothstep(aa, -aa, sdf + borderPx + innerBorderPx);
                 float innerBorderMask = saturate(maskInner - maskInner2) * isFilled;
 

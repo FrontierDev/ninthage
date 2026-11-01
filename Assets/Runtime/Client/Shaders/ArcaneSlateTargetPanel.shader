@@ -35,6 +35,7 @@ Shader "NinthAge/UI/ArcaneSlate/TargetPanel" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -93,62 +94,23 @@ Shader "NinthAge/UI/ArcaneSlate/TargetPanel" {
                 return max(mainDist, notchDist);
             }
 
-            static float resolveBorderWidthPx(float widthValue) {
-                return widthValue <= 1.0 ? widthValue * 100.0 : widthValue;
-            }
-
-            // Simple hash-based pseudo-random function
-            static float hash(float2 q) {
-                return frac(sin(dot(q, float2(12.9898, 78.233))) * 43758.5453);
-            }
-
-            // Smooth value noise (bilinear interpolation of hashes)
-            static float valueNoise(float2 q) {
-                float2 i = floor(q);
-                float2 f = frac(q);
-                float2 u = f * f * (3.0 - 2.0 * f); // smoothstep
-                return lerp(
-                    lerp(hash(i + float2(0,0)), hash(i + float2(1,0)), u.x),
-                    lerp(hash(i + float2(0,1)), hash(i + float2(1,1)), u.x),
-                    u.y
-                );
-            }
-
             fixed4 frag(v2f i) : SV_Target {
                 float2 uv = i.uv;
 
-                float2 rectSizePx;
-                if (_RectSize.x > 1.0 && _RectSize.y > 1.0) {
-                    rectSizePx = _RectSize.xy;
-                } else {
-                    float2 gdx = ddx(uv);
-                    float2 gdy = ddy(uv);
-                    float a = gdx.x;
-                    float c = gdx.y;
-                    float b = gdy.x;
-                    float d = gdy.y;
-                    float det = a * d - b * c;
-                    float invDet = 1.0 / (abs(det) + 1e-6);
-                    float widthPx = length(float2(d, -c)) * invDet;
-                    float heightPx = length(float2(-b, a)) * invDet;
-                    widthPx = max(widthPx, 1.0);
-                    heightPx = max(heightPx, 1.0);
-                    rectSizePx = float2(widthPx, heightPx);
-                }
+                float2 rectSizePx = ArcaneSlateResolveRectSizePx(_RectSize, uv);
 
                 float minDim = min(rectSizePx.x, rectSizePx.y);
                 float2 p = (uv - 0.5) * rectSizePx;
                 float2 b = rectSizePx * 0.5;
 
                 // Corner notch radius in pixels
-                float notchPx = max(0.0, _CornerInset <= 1.0 ? _CornerInset * 100.0 : _CornerInset);
-                notchPx = min(notchPx, minDim * 0.45);
+                float notchPx = min(max(0.0, _CornerInset), minDim * 0.45);
 
                 float sdf = sdConcaveCornerRect(p, b, notchPx);
-                float aa = max(1.0, fwidth(sdf));
+                float aa = ArcaneSlateAntiAliasWidth(sdf);
 
-                float borderPx = resolveBorderWidthPx(_BorderWidth);
-                float vertBorderPx = resolveBorderWidthPx(_VerticalBorderWidth);
+                float borderPx = max(0.0, _BorderWidth);
+                float vertBorderPx = max(0.0, _VerticalBorderWidth);
 
                 // Main masks
                 float maskOuter = smoothstep(aa, -aa, sdf);
@@ -190,9 +152,9 @@ Shader "NinthAge/UI/ArcaneSlate/TargetPanel" {
                 borderColorBase += hl * highlightInfluence * outerEdge * _TopHighlightStrength * 1.8;
 
                 // Deteriorated border: erode border mask with value noise
-                float borderNoise = valueNoise(p * _BorderNoiseScale);
+                float borderNoise = ArcaneSlateValueNoise(p * _BorderNoiseScale);
                 // Second octave for finer detail
-                borderNoise = borderNoise * 0.65 + valueNoise(p * _BorderNoiseScale * 3.1) * 0.35;
+                borderNoise = borderNoise * 0.65 + ArcaneSlateValueNoise(p * _BorderNoiseScale * 3.1) * 0.35;
                 // Erode: shrink the border where noise is low, creating worn gaps
                 float erodedBorderMask = borderMask * smoothstep(
                     _BorderNoiseStrength * 0.5,
@@ -209,12 +171,12 @@ Shader "NinthAge/UI/ArcaneSlate/TargetPanel" {
                 // Radial gradient from center
                 float centerGradient = distFromCenter / length(b);
                 // Noise based on pixel position
-                float noise = hash(p * 0.05) * 0.3 + 0.7; // noise in range [0.7, 1.0]
+                float noise = ArcaneSlateHash(p * 0.05) * 0.3 + 0.7; // noise in range [0.7, 1.0]
                 float noisyGradient = centerGradient * noise;
 
                 // Erode inner border with same two-octave noise as outer border
-                float innerBorderNoise = valueNoise(p * _BorderNoiseScale * 1.3);
-                innerBorderNoise = innerBorderNoise * 0.65 + valueNoise(p * _BorderNoiseScale * 3.9) * 0.35;
+                float innerBorderNoise = ArcaneSlateValueNoise(p * _BorderNoiseScale * 1.3);
+                innerBorderNoise = innerBorderNoise * 0.65 + ArcaneSlateValueNoise(p * _BorderNoiseScale * 3.9) * 0.35;
                 float innerBorderErode = smoothstep(
                     _BorderNoiseStrength * 0.5,
                     _BorderNoiseStrength * 0.5 + 0.3,

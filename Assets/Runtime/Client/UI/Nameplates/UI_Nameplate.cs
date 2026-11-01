@@ -284,7 +284,7 @@ namespace Game.Client.UI
         public void SetTargetedIndicatorVisibility(bool isVisible)
         {
             float amount = isVisible ? 1f : 0f;
-            UIShaderProperties.SetFloat(_healthBar.graphics, "_SelectedAmount", amount);
+            UIShaderProperties.SetSelectedAmount(_healthBar.graphics, amount);
         }
 
         /// <summary>

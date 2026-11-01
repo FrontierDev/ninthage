@@ -29,6 +29,8 @@ namespace Game.Client.UI
         [SerializeField] private Image _graphics;
         [FormerlySerializedAs("stackSizeText")]
         [SerializeField] private TMP_Text _stackSizeText;
+        private Material _materialInstance;
+        private float _pressedAmount;
 
         /// <summary>
         /// Gets the <c>SlotIndex</c> value.
@@ -43,7 +45,10 @@ namespace Game.Client.UI
         {
             // Clone the shared material so each slot has its own instance for per-slot shader properties.
             if (_graphics != null && _graphics.material != null)
-                _graphics.material = new Material(_graphics.material);
+            {
+                _materialInstance = new Material(_graphics.material);
+                _graphics.material = _materialInstance;
+            }
         }
 
         /// <inheritdoc/>
@@ -56,17 +61,17 @@ namespace Game.Client.UI
         void OnDestroy()
         {
             StopCoroutine(FadeOutPressedState());
+
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
         private IEnumerator FadeOutPressedState()
         {
-            if (_graphics == null || _graphics.material == null) yield break;
-
-            float pressed = _graphics.material.GetFloat("_PressedAmount");
-            while (pressed > 0f)
+            while (_pressedAmount > 0f)
             {
-                pressed -= Time.deltaTime * 5f; // Fade out over 0.2 seconds
-                _graphics.material.SetFloat("_PressedAmount", Mathf.Max(pressed, 0f));
+                _pressedAmount = Mathf.Max(_pressedAmount - Time.deltaTime * 5f, 0f);
+                UIShaderProperties.SetPressedAmount(_graphics, _pressedAmount);
                 yield return null;
             }
         }
@@ -84,18 +89,18 @@ namespace Game.Client.UI
                 _stackSizeText.text = _itemInstance.CurrentStackSize > 1 ? _itemInstance.CurrentStackSize.ToString() : "";
 
                 var texture = definition.Icon != null ? definition.Icon.texture : null;
-                UIShaderProperties.SetTexture(_graphics, "_IconTex", texture);
-                UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1f);
-                UIShaderProperties.SetColor(_graphics, "_RarityColor", RarityColor.GetColor(definition.Quality));
-                UIShaderProperties.SetFloat(_graphics, "_RarityAmount", 1.0f);
+                UIShaderProperties.SetIcon(_graphics, texture);
+                UIShaderProperties.SetIconVisible(_graphics, true);
+                UIShaderProperties.SetRarityColor(_graphics, RarityColor.GetColor(definition.Quality));
+                UIShaderProperties.SetRarityVisible(_graphics, true);
             }
             else
             {
                 _stackSizeText.text = "";
-                UIShaderProperties.SetTexture(_graphics, "_IconTex", Texture2D.whiteTexture);
-                UIShaderProperties.SetFloat(_graphics, "_IconAmount", 0f);
-                UIShaderProperties.SetColor(_graphics, "_RarityColor", Color.clear);
-                UIShaderProperties.SetFloat(_graphics, "_RarityAmount", 0f);
+                UIShaderProperties.SetIcon(_graphics, null);
+                UIShaderProperties.SetIconVisible(_graphics, false);
+                UIShaderProperties.SetRarityColor(_graphics, Color.clear);
+                UIShaderProperties.SetRarityVisible(_graphics, false);
 
             }
         }
@@ -105,7 +110,8 @@ namespace Game.Client.UI
         {
             if (_itemInstance == null) return;
 
-            UIShaderProperties.SetFloat(_graphics, "_PressedAmount", 1f);
+            _pressedAmount = 1f;
+            UIShaderProperties.SetPressedAmount(_graphics, _pressedAmount);
             StartCoroutine(FadeOutPressedState());
 
             if (eventData != null && eventData.button == PointerEventData.InputButton.Right)
@@ -133,7 +139,7 @@ namespace Game.Client.UI
 
             base.OnPointerEnter(eventData);
 
-            UIShaderProperties.SetFloat(_graphics, "_HoverAmount", 1f);
+            UIShaderProperties.SetHover(_graphics, true);
 
             UI_TooltipWindow.Instance.Show(
                 _itemInstance != null ? ItemDefinitionLibrary.Instance.GetDefinition(_itemInstance.BaseItem.DefinitionID).DisplayName : "",
@@ -150,7 +156,7 @@ namespace Game.Client.UI
         {
             base.OnPointerExit(eventData);
             UI_TooltipWindow.Instance.HideImmediate();
-            UIShaderProperties.SetFloat(_graphics, "_HoverAmount", 0f);
+            UIShaderProperties.SetHover(_graphics, false);
         }
 
         /// <summary>

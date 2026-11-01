@@ -15,10 +15,21 @@ namespace Game.Client.UI
         [SerializeField] private Image _graphics;
         private TalentDefinition _talentDefinition;
         private int _rank;
+        private Material _materialInstance;
 
         private void Awake()
         {
-            _graphics.material = new Material(_graphics.material);
+            if (_graphics != null && _graphics.material != null)
+            {
+                _materialInstance = new Material(_graphics.material);
+                _graphics.material = _materialInstance;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
         /// <summary>
@@ -29,8 +40,8 @@ namespace Game.Client.UI
             _talentDefinition = definition;
             this._rank = rank;
 
-            UIShaderProperties.SetTexture(_graphics, "_IconTex", _talentDefinition.Icon.texture);
-            UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1f);
+            UIShaderProperties.SetIcon(_graphics, _talentDefinition.Icon.texture);
+            UIShaderProperties.SetIconVisible(_graphics, true);
         }
 
         /// <inheritdoc/>

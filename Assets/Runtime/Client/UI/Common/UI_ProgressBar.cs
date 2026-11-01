@@ -13,14 +13,24 @@ namespace Game.Client.UI
         [FormerlySerializedAs("canvasGroup")]
         [SerializeField] private CanvasGroup _canvasGroup;
         [SerializeField] internal Image graphics;
+        private Material _materialInstance;
 
         /// <summary>
         /// Sets the value managed by <c>SetMaterial</c>.
         /// </summary>
         public virtual void SetMaterial(Material material)
         {
-            if (graphics != null && material != null)
-                graphics.material = new Material(material);
+            if (graphics == null || material == null || _materialInstance != null)
+                return;
+
+            _materialInstance = new Material(material);
+            graphics.material = _materialInstance;
+        }
+
+        protected virtual void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
         /// <summary>
@@ -46,7 +56,7 @@ namespace Game.Client.UI
         {
             progress = Mathf.Clamp01(progress);
 
-            UIShaderProperties.SetFloat(graphics, "_FillAmount", progress);
+            UIShaderProperties.SetFillAmount(graphics, progress);
         }
 
         /// <summary>
@@ -54,7 +64,7 @@ namespace Game.Client.UI
         /// </summary>
         public void SetColor(Color color)
         {
-            UIShaderProperties.SetColor(graphics, "_MainColor", color);
+            UIShaderProperties.SetMainColor(graphics, color);
         }
     }
 }

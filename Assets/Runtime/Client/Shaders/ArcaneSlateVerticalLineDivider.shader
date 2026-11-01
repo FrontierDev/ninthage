@@ -23,6 +23,7 @@ Shader "NinthAge/UI/ArcaneSlate/VerticalLineDivider" {
             #pragma fragment frag
             #pragma target 3.0
             #include "UnityCG.cginc"
+            #include "ArcaneSlateCommon.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -54,43 +55,14 @@ Shader "NinthAge/UI/ArcaneSlate/VerticalLineDivider" {
                 return o;
             }
 
-            // Pseudo-Perlin noise
-            static float hash(float2 p) {
-                return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
-            }
-
-            static float noise(float2 p) {
-                float2 i = floor(p);
-                float2 f = frac(p);
-                f = f * f * (3.0 - 2.0 * f);
-
-                float a = hash(i);
-                float b = hash(i + float2(1.0, 0.0));
-                float c = hash(i + float2(0.0, 1.0));
-                float d = hash(i + float2(1.0, 1.0));
-
-                float ab = lerp(a, b, f.x);
-                float cd = lerp(c, d, f.x);
-                return lerp(ab, cd, f.y);
-            }
-
             fixed4 frag(v2f i) : SV_Target {
                 float2 uv = i.uv;
 
-                // Distance from center (uv.x = 0.5 is center)
-                float distFromCenterPx = abs((uv.x - 0.5) * max(1.0, 1.0 / fwidth(uv.x)));
-
-                // Line mask: thin vertical band centered on uv.x = 0.5
-                float aa = 1.0;
-                float lineMask = smoothstep(_LineWidth + aa, _LineWidth - aa, distFromCenterPx);
-
-                // Fade opacity at top and bottom
-                float bottomFade = smoothstep(_EdgeFadeEnd, _EdgeFadeStart, uv.y);
-                float topFade = smoothstep(1.0 - _EdgeFadeEnd, 1.0 - _EdgeFadeStart, uv.y);
-                float edgeMask = bottomFade * topFade;
+                float lineMask = ArcaneSlateCenterLineMask(uv.x, _LineWidth);
+                float edgeMask = ArcaneSlateEdgeFade(uv.y, _EdgeFadeStart, _EdgeFadeEnd);
 
                 // Subtle noise along the line
-                float noiseSample = noise(float2(uv.x * _NoiseScale, uv.y * _NoiseScale * 4.0));
+                float noiseSample = ArcaneSlateValueNoise(float2(uv.x * _NoiseScale, uv.y * _NoiseScale * 4.0));
                 float noiseAlpha = lerp(1.0 - _NoiseStrength, 1.0 + _NoiseStrength, noiseSample);
 
                 // Final output

@@ -31,11 +31,26 @@ namespace Game.Client.UI
         public TMP_Text TabText => _tabText;
 
         private UI_CharacterTabPanel _characterTabPanel;
+        private Material _materialInstance;
 
         private void Awake()
         {
-            if (_tabGraphics != null && _tabGraphics.material != null)
-                _tabGraphics.material = new Material(_tabGraphics.material);
+            EnsureMaterialInstance();
+        }
+
+        internal void EnsureMaterialInstance()
+        {
+            if (_materialInstance != null || _tabGraphics == null || _tabGraphics.material == null)
+                return;
+
+            _materialInstance = new Material(_tabGraphics.material);
+            _tabGraphics.material = _materialInstance;
+        }
+
+        private void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
         /// <summary>

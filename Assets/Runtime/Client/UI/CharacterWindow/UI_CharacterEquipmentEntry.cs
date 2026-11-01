@@ -27,13 +27,23 @@ namespace Game.Client.UI
         public ItemSlot slotID;
         [FormerlySerializedAs("graphics")]
         [SerializeField] private Image _graphics;
+        private Material _materialInstance;
 
 
         private void Awake()
         {
             // Clone the shared material so each slot has its own instance for per-slot shader properties.
             if (_graphics != null && _graphics.material != null)
-                _graphics.material = new Material(_graphics.material);
+            {
+                _materialInstance = new Material(_graphics.material);
+                _graphics.material = _materialInstance;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_materialInstance != null)
+                Destroy(_materialInstance);
         }
 
 
@@ -53,19 +63,19 @@ namespace Game.Client.UI
 
             if (item == null)
             {
-                UIShaderProperties.SetTexture(_graphics, "_IconTex", null);
-                UIShaderProperties.SetFloat(_graphics, "_IconAmount", 0f);
-                UIShaderProperties.SetColor(_graphics, "_RarityColor", Color.clear);
-                UIShaderProperties.SetFloat(_graphics, "_RarityAmount", 0f);
+                UIShaderProperties.SetIcon(_graphics, null);
+                UIShaderProperties.SetIconVisible(_graphics, false);
+                UIShaderProperties.SetRarityColor(_graphics, Color.clear);
+                UIShaderProperties.SetRarityVisible(_graphics, false);
 
             }
             else
             {
                 // Update the UI entry to show the item's icon, name, stats, etc.
-                UIShaderProperties.SetTexture(_graphics, "_IconTex", item.BaseItem.Icon.texture);
-                UIShaderProperties.SetFloat(_graphics, "_IconAmount", 1f);
-                UIShaderProperties.SetColor(_graphics, "_RarityColor", RarityColor.GetColor(item.BaseItem.Quality));
-                UIShaderProperties.SetFloat(_graphics, "_RarityAmount", 1.0f);
+                UIShaderProperties.SetIcon(_graphics, item.BaseItem.Icon.texture);
+                UIShaderProperties.SetIconVisible(_graphics, true);
+                UIShaderProperties.SetRarityColor(_graphics, RarityColor.GetColor(item.BaseItem.Quality));
+                UIShaderProperties.SetRarityVisible(_graphics, true);
             }
         }
 
@@ -91,7 +101,7 @@ namespace Game.Client.UI
 
             base.OnPointerEnter(eventData);
 
-            UIShaderProperties.SetFloat(_graphics, "_HoverAmount", 1f);
+            UIShaderProperties.SetHover(_graphics, true);
 
             UI_TooltipWindow.Instance.Show(
                 item != null ? ItemDefinitionLibrary.Instance.GetDefinition(item.BaseItem.DefinitionID).DisplayName : "",
@@ -108,7 +118,7 @@ namespace Game.Client.UI
         {
             base.OnPointerExit(eventData);
             UI_TooltipWindow.Instance.HideImmediate();
-            UIShaderProperties.SetFloat(_graphics, "_HoverAmount", 0f);
+            UIShaderProperties.SetHover(_graphics, false);
         }
 
         /// <summary>

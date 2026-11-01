@@ -49,7 +49,8 @@ namespace Game.Client.UI
             foreach (var kvp in _tabButtons)
             {
                 bool isSelected = kvp.Key == selectedButton;
-                UIShaderProperties.SetFloat(kvp.Key.TabGraphics, "_IsActive", isSelected ? 1f : 0f);
+                kvp.Key.EnsureMaterialInstance();
+                UIShaderProperties.SetTabActive(kvp.Key.TabGraphics, isSelected);
 
                 if (isSelected)
                 {

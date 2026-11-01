@@ -3,7 +3,6 @@ using Game.Shared.Runtime.VFX;
 
 namespace Game.Client.VFX
 {
-    using Game.Client.UI;
     using System.Collections;
     using UnityEngine;
     using UnityEngine.Serialization;
@@ -11,7 +10,7 @@ namespace Game.Client.VFX
     /// <summary>
     /// Drives the <c>_OpenAmount</c> shader property on the rift's MeshRenderer.
     /// Instantiates the material on Awake (so the shared asset is never modified)
-    /// and sets properties via <see cref="UIShaderProperties"/>.
+    /// and sets properties on its owned material instance.
     ///
     /// On enable the rift grows from its vertical centre outward over
     /// <see cref="openDuration"/>. After <see cref="lifetime"/> seconds
@@ -66,8 +65,7 @@ namespace Game.Client.VFX
 
         // -- Private state ---------------------------------------------------------
 
-        private const string OPEN_AMOUNT_PROPERTY = "_OpenAmount";
-
+        private static readonly int SHADER_OPEN_AMOUNT = Shader.PropertyToID("_OpenAmount");
         private static readonly int SHADER_PROGRESS = Shader.PropertyToID("_Progress");
         private static readonly int SHADER_TRAIL_STRENGTH = Shader.PropertyToID("_TrailStrength");
 
@@ -76,6 +74,7 @@ namespace Game.Client.VFX
         private Coroutine _triggerCoroutine;
         private bool _closing;
         private float _currentOpenAmount;
+        private Material _riftMaterial;
         private Material _distortionMat;
         private Transform _distortionTransform;
 
@@ -93,7 +92,10 @@ namespace Game.Client.VFX
             // Create a per-instance material so the shared asset is never modified,
             // matching the same pattern used in UI_ProgressBar.SetMaterial().
             if (_meshRenderer.sharedMaterial != null)
-                _meshRenderer.material = new Material(_meshRenderer.sharedMaterial);
+            {
+                _riftMaterial = new Material(_meshRenderer.sharedMaterial);
+                _meshRenderer.material = _riftMaterial;
+            }
 
             // Spawn the gravitational-lensing quad that persists while the rift is open.
             // It is placed slightly behind the rift (negative local Z) so the rift
@@ -144,8 +146,8 @@ namespace Game.Client.VFX
         private void OnDestroy()
         {
             // Clean up the instanced materials we created.
-            if (_meshRenderer != null && _meshRenderer.material != null)
-                Destroy(_meshRenderer.material);
+            if (_riftMaterial != null)
+                Destroy(_riftMaterial);
             if (_distortionMat != null)
                 Destroy(_distortionMat);
         }
@@ -263,7 +265,7 @@ namespace Game.Client.VFX
         private void SetOpenAmount(float value)
         {
             _currentOpenAmount = value;
-            UIShaderProperties.SetFloat(_meshRenderer, OPEN_AMOUNT_PROPERTY, value);
+            _riftMaterial?.SetFloat(SHADER_OPEN_AMOUNT, value);
             // Distortion is fully active when the rift is open (_Progress 1) and
             // invisible when closed (_Progress 0).
             _distortionMat?.SetFloat(SHADER_PROGRESS, value);
