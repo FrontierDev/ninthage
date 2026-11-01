@@ -1,17 +1,15 @@
-using Game.Editor.Suite;
-using Game.Editor.Windows;
-using Game.Shared.Data;
-using Game.Shared.Runtime.Actors;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
+using UnityEditor;
+using Game.Shared.Data;
 
-namespace Game.Editor.Suite.DataEditors
+using Game.Shared.Runtime.Actors;
+namespace Game.Editor.Windows
 {
     /// <summary>
-    /// Embedded editor panel for viewing and managing actor stat definitions.
+    /// Editor window for viewing and managing actor stat definitions.
     /// </summary>
-    internal sealed class ActorStatEditorPanel : DataDefinitionEditorPanel<ActorStatDefinition, ActorStatDefinitionLibrary>
+    public class ActorStatEditorWindow : DataDefinitionEditorWindow<ActorStatDefinition, ActorStatDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Base Value", "Regeneration" };
@@ -26,7 +24,9 @@ namespace Game.Editor.Suite.DataEditors
         [MenuItem("Data/Actor Stat Definitions")]
         public static void OpenWindow()
         {
-            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.ActorStats);
+            var window = GetWindow<ActorStatEditorWindow>("Actor Stat Definitions");
+            window.minSize = new Vector2(600, 400);
+            window.Show();
         }
 
         protected override ActorStatDefinitionLibrary GetLibraryInstance()

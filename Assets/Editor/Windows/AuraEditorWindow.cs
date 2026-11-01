@@ -1,13 +1,12 @@
-using Game.Editor.Suite;
-using Game.Shared.Data;
 using System.Collections.Generic;
+using UnityEngine;
 using UnityEditor;
 using UnityEditorInternal;
-using UnityEngine;
+using Game.Shared.Data;
 
-namespace Game.Editor.Suite.DataEditors
+namespace Game.Editor.Windows
 {
-    internal sealed class AuraEditorPanel : DataDefinitionEditorPanel<AuraDefinition, AuraDefinitionLibrary>
+    public class AuraEditorWindow : DataDefinitionEditorWindow<AuraDefinition, AuraDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Timing", "Components" };
@@ -27,7 +26,9 @@ namespace Game.Editor.Suite.DataEditors
         [MenuItem("Data/Aura Definitions")]
         public static void OpenWindow()
         {
-            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.Auras);
+            var window = GetWindow<AuraEditorWindow>("Aura Definitions");
+            window.minSize = new Vector2(600, 400);
+            window.Show();
         }
 
         protected override AuraDefinitionLibrary GetLibraryInstance()
@@ -225,7 +226,7 @@ namespace Game.Editor.Suite.DataEditors
                 pendingTooltip = true;
                 pendingTooltipText = BuildAuraTooltip();
                 pendingTooltipAccentColor = accentColor;
-                RequestRepaint();
+                Repaint();
             }
         }
 
@@ -248,9 +249,9 @@ namespace Game.Editor.Suite.DataEditors
             Vector2 mousePos = Event.current.mousePosition;
             Rect tooltipRect = new Rect(mousePos.x + 16, mousePos.y + 16, tooltipSize.x, tooltipSize.y);
 
-            if (tooltipRect.xMax > ContentBounds.width)
+            if (tooltipRect.xMax > position.width)
                 tooltipRect.x = mousePos.x - tooltipSize.x - 8;
-            if (tooltipRect.yMax > ContentBounds.height)
+            if (tooltipRect.yMax > position.height)
                 tooltipRect.y = mousePos.y - tooltipSize.y - 8;
 
             EditorGUI.DrawRect(tooltipRect, new Color(0.12f, 0.12f, 0.12f, 0.95f));

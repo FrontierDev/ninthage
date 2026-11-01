@@ -1,21 +1,20 @@
-using Game.Editor.Data;
-using Game.Editor.Suite;
-using Game.Shared;
-using Game.Shared.Data;
-using Game.Shared.Runtime.Items;
-using Game.Shared.Utility;
 using System.Collections.Generic;
 using System.Text;
+using UnityEngine;
 using UnityEditor;
 using UnityEditorInternal;
-using UnityEngine;
+using Game.Shared;
+using Game.Shared.Data;
+using Game.Editor.Data;
 
-namespace Game.Editor.Suite.DataEditors
+using Game.Shared.Runtime.Items;
+using Game.Shared.Utility;
+namespace Game.Editor.Windows
 {
     /// <summary>
-    /// Embedded editor panel for viewing and managing item definitions.
+    /// Editor window for viewing and managing item definitions.
     /// </summary>
-    internal sealed class ItemEditorPanel : DataDefinitionEditorPanel<ItemDefinition, ItemDefinitionLibrary>
+    public class ItemEditorWindow : DataDefinitionEditorWindow<ItemDefinition, ItemDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Equipment", "Trading", "Stats & Conditions" };
@@ -65,7 +64,9 @@ namespace Game.Editor.Suite.DataEditors
         [MenuItem("Data/Item Definitions")]
         public static void OpenWindow()
         {
-            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.Items);
+            var window = GetWindow<ItemEditorWindow>("Item Definitions");
+            window.minSize = new Vector2(700, 500);
+            window.Show();
         }
 
         protected override ItemDefinitionLibrary GetLibraryInstance()
@@ -261,7 +262,7 @@ namespace Game.Editor.Suite.DataEditors
                 pendingTooltip = true;
                 pendingTooltipText = BuildItemTooltip();
                 pendingTooltipAccentColor = qualityColor;
-                RequestRepaint();
+                Repaint();
             }
         }
 
@@ -284,9 +285,9 @@ namespace Game.Editor.Suite.DataEditors
             Vector2 mousePos = Event.current.mousePosition;
             Rect tooltipRect = new Rect(mousePos.x + 16, mousePos.y + 16, tooltipSize.x, tooltipSize.y);
 
-            if (tooltipRect.xMax > ContentBounds.width)
+            if (tooltipRect.xMax > position.width)
                 tooltipRect.x = mousePos.x - tooltipSize.x - 8;
-            if (tooltipRect.yMax > ContentBounds.height)
+            if (tooltipRect.yMax > position.height)
                 tooltipRect.y = mousePos.y - tooltipSize.y - 8;
 
             EditorGUI.DrawRect(tooltipRect, new Color(0.12f, 0.12f, 0.12f, 0.95f));

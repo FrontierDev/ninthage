@@ -1121,7 +1121,7 @@ The editor assembly contains two broad tool families: gameplay-data authoring an
 
 ### 20.1 Gameplay-data authoring
 
-The Editor Suite hosts reusable embedded panels for the game definition types, including:
+`Editor/Windows` contains dedicated editor windows for game definition types, including:
 
 - actor stats;
 - auras;
@@ -1129,15 +1129,15 @@ The Editor Suite hosts reusable embedded panels for the game definition types, i
 - damage schools;
 - factions;
 - items;
-- NPCs (temporarily standalone);
+- NPCs;
 - quests;
 - races;
 - spells;
 - talents.
 
-`DataDefinitionEditorPanel<TDefinition, TLibrary>` provides the reusable generic two-panel authoring framework with definition listing, filtering, sorting, asset selection, creation/cloning/deletion and a detail panel for serialized properties. The Suite-owned Data Editors selector keeps one panel instance per embedded type for the current Suite lifetime, preserving in-memory selection, search and tab state while switching types.
+`DataDefinitionEditorWindow<TDefinition, TLibrary>` provides a generic two-panel authoring framework with definition listing, filtering, sorting, asset selection, creation/cloning/deletion and a detail panel for serialized properties.
 
-The ten library-backed definition panels are embedded directly in the Suite and supply type-specific drawing and metadata. NPC authoring remains temporarily standalone because it uses a separate prefab-scanning lifecycle. The authoring library assets remain at `Assets/Data/DefinitionLibraries/`.
+Concrete windows inherit this framework and supply type-specific drawing and metadata.
 
 Custom property drawers and inspectors in `Editor/Drawers` and `Editor/Inspectors` provide specialised editing for nested gameplay structures and shared runtime components.
 
