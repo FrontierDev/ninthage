@@ -154,7 +154,8 @@ namespace Game.Editor.Build
             "buildTarget",
             "catalogRevision",
             "catalogHash",
-            "remoteLoadPath"
+            "remoteLoadPath",
+            "contentStateSHA256"
         };
 
         private static readonly string[] CATALOG_V2_PROPERTIES =
@@ -648,6 +649,7 @@ namespace Game.Editor.Build
         {
             if (!string.Equals(actual.ClientBuildVersion, expected.ClientBuildVersion, StringComparison.Ordinal)
                 || !string.Equals(actual.ClientBuildID, expected.ClientBuildID, StringComparison.Ordinal)
+                || !string.Equals(actual.BuildTarget, expected.BuildTarget, StringComparison.Ordinal)
                 || actual.ProtocolVersion != expected.ProtocolVersion
                 || actual.GameplayContentRevision != expected.GameplayContentRevision
                 || !string.Equals(
@@ -739,8 +741,10 @@ namespace Game.Editor.Build
                     }
                 }
 
-                if (manifestVersion == 2)
-                    ValidateSHA(ReadRequiredString(catalog, "contentStateSHA256", "Addressables catalog entry"), 64, "contentStateSHA256");
+                ValidateSHA(
+                    ReadRequiredString(catalog, "contentStateSHA256", "Addressables catalog entry"),
+                    64,
+                    "contentStateSHA256");
             }
 
             if (matchingCount != 1)
@@ -782,10 +786,21 @@ namespace Game.Editor.Build
         {
             try
             {
-                var parsed = JObject.Parse(File.ReadAllText(path), new JsonLoadSettings
+                using var stringReader = new StringReader(File.ReadAllText(path));
+                using var jsonReader = new JsonTextReader(stringReader)
+                {
+                    DateParseHandling = DateParseHandling.None
+                };
+                var parsed = JObject.Load(jsonReader, new JsonLoadSettings
                 {
                     DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error
                 });
+                while (jsonReader.Read())
+                {
+                    if (jsonReader.TokenType != JsonToken.Comment)
+                        throw new JsonReaderException("Additional content after Development Release Manifest JSON.");
+                }
+
                 return parsed;
             }
             catch (Exception exception) when (
@@ -803,8 +818,10 @@ namespace Game.Editor.Build
             var actual = new HashSet<string>(StringComparer.Ordinal);
             foreach (JProperty property in value.Properties())
             {
-                if (!actual.Add(property.Name) || !expected.Contains(property.Name))
-                    throw new InvalidOperationException($"Manifest: {description} contains unknown or duplicate property '{property.Name}'.");
+                if (!expected.Contains(property.Name))
+                    throw new InvalidOperationException($"Manifest: {description} contains unknown schema property '{property.Name}'.");
+                if (!actual.Add(property.Name))
+                    throw new InvalidOperationException($"Manifest: {description} contains duplicate property '{property.Name}'.");
             }
 
             if (actual.Count != expected.Count)
@@ -822,11 +839,12 @@ namespace Game.Editor.Build
             var actual = new HashSet<string>(StringComparer.Ordinal);
             foreach (JProperty property in manifest.Properties())
             {
-                if (!actual.Add(property.Name) || !allowed.Contains(property.Name))
-                {
+                if (!allowed.Contains(property.Name))
                     throw new InvalidOperationException(
-                        $"Manifest: Development Release Manifest contains unknown or duplicate property '{property.Name}'.");
-                }
+                        $"Manifest: Development Release Manifest contains unknown schema property '{property.Name}'.");
+                if (!actual.Add(property.Name))
+                    throw new InvalidOperationException(
+                        $"Manifest: Development Release Manifest contains duplicate property '{property.Name}'.");
             }
 
             foreach (string propertyName in required)
