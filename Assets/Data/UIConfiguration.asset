@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8c2a5f1743b4e609f7d2a8c5b1e9364, type: 3}
+  m_Name: UIConfiguration
+  m_EditorClassIdentifier: Game.Client::Game.Client.UI.Configuration.UIConfiguration
+  _headingFont: {fileID: 11400000, guid: 0fa35cb46f92ce94ca7e665e801bd4de, type: 2}
+  _bodyFont: {fileID: 11400000, guid: a5d834e83f40d044f91ac984cde30610, type: 2}
+  _numericFont: {fileID: 11400000, guid: af294de479d57ed418621b61ddaae695, type: 2}
+  _windowTitle:
+    _fontRole: 0
+    _fontSize: 16
+    _fontStyle: 16
+  _sectionHeading:
+    _fontRole: 0
+    _fontSize: 14
+    _fontStyle: 32
+  _unitName:
+    _fontRole: 0
+    _fontSize: 14
+    _fontStyle: 0
+  _body:
+    _fontRole: 1
+    _fontSize: 13
+    _fontStyle: 0
+  _secondary:
+    _fontRole: 1
+    _fontSize: 12
+    _fontStyle: 0
+  _small:
+    _fontRole: 1
+    _fontSize: 11
+    _fontStyle: 0
+  _numeric:
+    _fontRole: 2
+    _fontSize: 13
+    _fontStyle: 0
+  _keybind:
+    _fontRole: 1
+    _fontSize: 10
+    _fontStyle: 0
+  _auraTimer:
+    _fontRole: 2
+    _fontSize: 10
+    _fontStyle: 0
+  _spacingSmall: 4
+  _spacingMedium: 8
+  _spacingLarge: 12
+  _windowPadding: 12
+  _standardRowHeight: 24
+  _windowTitleBarHeight: 28
+  _abilityIconSize: 36
+  _auraIconSize: 28
+  _inventoryIconSize: 38
+  _talentIconSize: 40
+  _utilityIconSize: 22
+  _unitPortraitSize: 50
+  _unitFrameWidth: 230
+  _unitFrameHeight: 64
+  _healthBarHeight: 16
+  _resourceBarHeight: 14
+  _castBarHeight: 16
+  _borderWidth: 1.5
+  _cornerRadius: 8
+  _background: {r: 0.90196085, g: 0.9176471, b: 0.9490197, a: 1}
+  _secondaryBackground: {r: 0.13725491, g: 0.16470589, b: 0.2, a: 1}
+  _panel: {r: 0.16470589, g: 0.1882353, b: 0.22745098, a: 1}
+  _elevatedPanel: {r: 0.20784314, g: 0.24313726, b: 0.2901961, a: 1}
+  _raisedSurface: {r: 0.25490198, g: 0.29411766, b: 0.34901962, a: 1}
+  _border: {r: 0.29411766, g: 0.33333334, b: 0.4, a: 1}
+  _secondaryBorder: {r: 0.3529412, g: 0.4, b: 0.4745098, a: 1}
+  _primaryText: {r: 0.9019608, g: 0.91764706, b: 0.9490196, a: 1}
+  _secondaryText: {r: 0.7137255, g: 0.74509805, b: 0.8, a: 1}
+  _mutedText: {r: 0.54509807, g: 0.5803922, b: 0.64705884, a: 1}
+  _accentGold: {r: 0.8784314, g: 0.7490196, b: 0.44705883, a: 1}
+  _success: {r: 0.21960784, g: 0.7254902, b: 0.5254902, a: 1}
+  _warning: {r: 0.9098039, g: 0.5411765, b: 0.32156864, a: 1}
+  _information: {r: 0.3372549, g: 0.65882355, b: 0.9372549, a: 1}
+  _danger: {r: 0.7882353, g: 0.41568628, b: 0.3882353, a: 1}
