@@ -75,7 +75,6 @@ namespace Game.Shared
             DamageSchoolDefinitionLibrary damageSchoolDefinitionLibrary = null;
             FactionDefinitionLibrary factionDefinitionLibrary = null;
             ItemDefinitionLibrary itemDefinitionLibrary = null;
-            LootTableDefinitionLibrary lootTableDefinitionLibrary = null;
             QuestDefinitionLibrary questDefinitionLibrary = null;
             RaceDefinitionLibrary raceDefinitionLibrary = null;
             SpellDefinitionLibrary spellDefinitionLibrary = null;
@@ -171,17 +170,6 @@ namespace Game.Shared
                 yield break;
             }
 
-            yield return LoadAsset<LootTableDefinitionLibrary>(
-                nameof(LootTableDefinitionLibrary),
-                stagedHandles,
-                value => lootTableDefinitionLibrary = value,
-                exception => failure = exception);
-            if (failure != null)
-            {
-                FailInitialization(stagedHandles, failure, onFailure);
-                yield break;
-            }
-
             yield return LoadAsset<QuestDefinitionLibrary>(
                 nameof(QuestDefinitionLibrary),
                 stagedHandles,
@@ -248,7 +236,6 @@ namespace Game.Shared
                 DamageSchoolDefinitionLibrary.Initialize(damageSchoolDefinitionLibrary);
                 FactionDefinitionLibrary.Initialize(factionDefinitionLibrary);
                 ItemDefinitionLibrary.Initialize(itemDefinitionLibrary);
-                LootTableDefinitionLibrary.Initialize(lootTableDefinitionLibrary);
                 QuestDefinitionLibrary.Initialize(questDefinitionLibrary);
                 RaceDefinitionLibrary.Initialize(raceDefinitionLibrary);
                 SpellDefinitionLibrary.Initialize(spellDefinitionLibrary);
@@ -364,7 +351,6 @@ namespace Game.Shared
             SpellDefinitionLibrary.ResetInstance();
             RaceDefinitionLibrary.ResetInstance();
             QuestDefinitionLibrary.ResetInstance();
-            LootTableDefinitionLibrary.ResetInstance();
             ItemDefinitionLibrary.ResetInstance();
             FactionDefinitionLibrary.ResetInstance();
             DamageSchoolDefinitionLibrary.ResetInstance();

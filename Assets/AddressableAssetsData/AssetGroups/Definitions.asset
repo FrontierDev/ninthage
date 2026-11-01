@@ -65,11 +65,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 5d51e23a09033094e8361283f02b2dda
-    m_Address: LootTableDefinitionLibrary
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cbcf2aacd0a60cf4192cc57652b0ca84
     m_Address: QuestDefinitionLibrary
     m_ReadOnly: 0
