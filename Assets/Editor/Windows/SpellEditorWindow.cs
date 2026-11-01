@@ -36,7 +36,7 @@ namespace Game.Editor.Windows
 
         protected override SpellDefinitionLibrary GetLibraryInstance()
         {
-            return SpellDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<SpellDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()

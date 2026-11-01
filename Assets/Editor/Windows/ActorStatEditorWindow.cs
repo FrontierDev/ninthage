@@ -31,7 +31,7 @@ namespace Game.Editor.Windows
 
         protected override ActorStatDefinitionLibrary GetLibraryInstance()
         {
-            return ActorStatDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<ActorStatDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()

@@ -26,7 +26,7 @@ namespace Game.Editor.Windows
 
         protected override DamageSchoolDefinitionLibrary GetLibraryInstance()
         {
-            return DamageSchoolDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<DamageSchoolDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()

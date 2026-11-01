@@ -33,7 +33,7 @@ namespace Game.Editor.Windows
 
         protected override AuraDefinitionLibrary GetLibraryInstance()
         {
-            return AuraDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<AuraDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()

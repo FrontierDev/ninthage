@@ -1,4 +1,4 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
+using System;
 using UnityEngine;
 
 namespace Game.Shared.Data
@@ -12,23 +12,27 @@ namespace Game.Shared.Data
     {
         private static RaceDefinitionLibrary _instance;
 
-        /// <summary>
-        /// Get the singleton instance (loaded from Resources).
-        /// </summary>
+        /// <summary>Gets the library published by <see cref="GameContentBootstrap"/>.</summary>
         public static RaceDefinitionLibrary Instance
         {
             get
             {
                 if (_instance == null)
-                {
-                    _instance = Resources.Load<RaceDefinitionLibrary>("RaceDefinitionLibrary");
-                    if (_instance == null)
-                    {
-                        Debug.Error("Could not load RaceDefinitionLibrary from Resources");
-                    }
-                }
+                    throw new InvalidOperationException(
+                        "RaceDefinitionLibrary was accessed before GameContentBootstrap initialization.");
+
                 return _instance;
             }
+        }
+
+        internal static void Initialize(RaceDefinitionLibrary library)
+        {
+            if (library == null)
+                throw new ArgumentNullException(nameof(library));
+            if (_instance != null)
+                throw new InvalidOperationException("RaceDefinitionLibrary is already initialized.");
+
+            _instance = library;
         }
 
         /// <summary>

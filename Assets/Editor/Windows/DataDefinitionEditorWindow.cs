@@ -45,9 +45,15 @@ namespace Game.Editor.Windows
         protected abstract string AssetPrefix { get; }
 
         /// <summary>
-        /// Return the singleton library instance for fallback loading.
+        /// Return the authoring asset used by this editor window.
         /// </summary>
         protected abstract TLibrary GetLibraryInstance();
+
+        protected static TAsset GetAuthoringLibraryAsset<TAsset>() where TAsset : ScriptableObject
+        {
+            string assetPath = $"Assets/Data/DefinitionLibraries/{typeof(TAsset).Name}.asset";
+            return AssetDatabase.LoadAssetAtPath<TAsset>(assetPath);
+        }
 
         /// <summary>
         /// Draw type-specific fields in the right detail panel.
@@ -216,7 +222,9 @@ namespace Game.Editor.Windows
 
             if (library == null)
             {
-                EditorGUILayout.HelpBox($"Drag a {typeof(TLibrary).Name} asset above, or ensure one exists in Resources.", MessageType.Info);
+                EditorGUILayout.HelpBox(
+                    $"Drag a {typeof(TLibrary).Name} asset above, or ensure one exists in Assets/Data/DefinitionLibraries.",
+                    MessageType.Info);
             }
             else if (!string.IsNullOrEmpty(searchFilter))
             {

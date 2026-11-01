@@ -1,4 +1,4 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
+using System;
 using UnityEngine;
 
 namespace Game.Shared.Data
@@ -11,21 +11,27 @@ namespace Game.Shared.Data
     {
         private static WorldLocationDefinitionLibrary _instance;
 
-        /// <summary>Gets the world-location library loaded from Resources.</summary>
+        /// <summary>Gets the library published by <see cref="GameContentBootstrap"/>.</summary>
         public static WorldLocationDefinitionLibrary Instance
         {
             get
             {
                 if (_instance == null)
-                {
-                    _instance = Resources.Load<WorldLocationDefinitionLibrary>(
-                        "WorldLocationDefinitionLibrary");
-                    if (_instance == null)
-                        Debug.Error("Could not load WorldLocationDefinitionLibrary from Resources");
-                }
+                    throw new InvalidOperationException(
+                        "WorldLocationDefinitionLibrary was accessed before GameContentBootstrap initialization.");
 
                 return _instance;
             }
+        }
+
+        internal static void Initialize(WorldLocationDefinitionLibrary library)
+        {
+            if (library == null)
+                throw new ArgumentNullException(nameof(library));
+            if (_instance != null)
+                throw new InvalidOperationException("WorldLocationDefinitionLibrary is already initialized.");
+
+            _instance = library;
         }
 
         /// <summary>Resets the singleton instance for controlled reloads.</summary>

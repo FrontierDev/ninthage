@@ -49,6 +49,17 @@ namespace Game.Core
             }
         }
 
+        private void OnDestroy()
+        {
+            if (_instance != this)
+                return;
+
+            if (!IsHeadlessServer() && !forceServerMode)
+                Game.Shared.GameContentBootstrap.Release();
+
+            _instance = null;
+        }
+
         /// <summary>
         /// Determines if the game is running as a headless server.
         /// Headless servers are detected by:

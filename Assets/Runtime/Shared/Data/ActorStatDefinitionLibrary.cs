@@ -1,4 +1,4 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
+using System;
 using UnityEngine;
 
 using Game.Shared.Runtime.Actors;
@@ -13,23 +13,27 @@ namespace Game.Shared.Data
     {
         private static ActorStatDefinitionLibrary _instance;
 
-        /// <summary>
-        /// Get the singleton instance (loaded from Resources).
-        /// </summary>
+        /// <summary>Gets the library published by <see cref="GameContentBootstrap"/>.</summary>
         public static ActorStatDefinitionLibrary Instance
         {
             get
             {
                 if (_instance == null)
-                {
-                    _instance = Resources.Load<ActorStatDefinitionLibrary>("ActorStatDefinitionLibrary");
-                    if (_instance == null)
-                    {
-                        Debug.Error("Could not load ActorStatDefinitionLibrary from Resources");
-                    }
-                }
+                    throw new InvalidOperationException(
+                        "ActorStatDefinitionLibrary was accessed before GameContentBootstrap initialization.");
+
                 return _instance;
             }
+        }
+
+        internal static void Initialize(ActorStatDefinitionLibrary library)
+        {
+            if (library == null)
+                throw new ArgumentNullException(nameof(library));
+            if (_instance != null)
+                throw new InvalidOperationException("ActorStatDefinitionLibrary is already initialized.");
+
+            _instance = library;
         }
 
         /// <summary>

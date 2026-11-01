@@ -506,7 +506,7 @@ namespace Game.Client.VFX
 
             // Create unique filename based on shape and parameters
             string meshName = $"Projectile_{_shapeType}_{_scale:F2}seg{_segments}ring{_rings}";
-            string meshPath = $"Assets/Resources/Meshes/Projectiles/{meshName}.mesh";
+            string meshPath = $"Assets/Data/Meshes/Projectiles/{meshName}.mesh";
 
             // Ensure directory exists
             string directory = System.IO.Path.GetDirectoryName(meshPath);

@@ -34,7 +34,7 @@ namespace Game.Editor.Windows
 
         protected override ClassDefinitionLibrary GetLibraryInstance()
         {
-            return ClassDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<ClassDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()
@@ -182,7 +182,7 @@ namespace Game.Editor.Windows
 
         private void OpenStatExplorer(SerializedProperty arrayProp)
         {
-            var library = ActorStatDefinitionLibrary.Instance;
+            var library = GetAuthoringLibraryAsset<ActorStatDefinitionLibrary>();
             if (library == null)
             {
                 EditorUtility.DisplayDialog("Error", "Could not load ActorStatDefinitionLibrary", "OK");
@@ -261,7 +261,7 @@ namespace Game.Editor.Windows
 
         private void OpenGrowthStatExplorer(SerializedProperty arrayProp)
         {
-            var library = ActorStatDefinitionLibrary.Instance;
+            var library = GetAuthoringLibraryAsset<ActorStatDefinitionLibrary>();
             if (library == null)
             {
                 EditorUtility.DisplayDialog("Error", "Could not load ActorStatDefinitionLibrary", "OK");
@@ -447,7 +447,7 @@ namespace Game.Editor.Windows
 
         private void OpenStatsListExplorer(SerializedProperty arrayProp)
         {
-            var library = ActorStatDefinitionLibrary.Instance;
+            var library = GetAuthoringLibraryAsset<ActorStatDefinitionLibrary>();
             if (library == null)
             {
                 EditorUtility.DisplayDialog("Error", "Could not load ActorStatDefinitionLibrary", "OK");

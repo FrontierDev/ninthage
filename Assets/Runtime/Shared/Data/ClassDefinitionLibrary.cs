@@ -1,4 +1,4 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
+using System;
 using UnityEngine;
 
 namespace Game.Shared.Data
@@ -12,23 +12,27 @@ namespace Game.Shared.Data
     {
         private static ClassDefinitionLibrary _instance;
 
-        /// <summary>
-        /// Get the singleton instance (loaded from Resources).
-        /// </summary>
+        /// <summary>Gets the library published by <see cref="GameContentBootstrap"/>.</summary>
         public static ClassDefinitionLibrary Instance
         {
             get
             {
                 if (_instance == null)
-                {
-                    _instance = Resources.Load<ClassDefinitionLibrary>("ClassDefinitionLibrary");
-                    if (_instance == null)
-                    {
-                        Debug.Error("Could not load ClassDefinitionLibrary from Resources");
-                    }
-                }
+                    throw new InvalidOperationException(
+                        "ClassDefinitionLibrary was accessed before GameContentBootstrap initialization.");
+
                 return _instance;
             }
+        }
+
+        internal static void Initialize(ClassDefinitionLibrary library)
+        {
+            if (library == null)
+                throw new ArgumentNullException(nameof(library));
+            if (_instance != null)
+                throw new InvalidOperationException("ClassDefinitionLibrary is already initialized.");
+
+            _instance = library;
         }
 
         /// <summary>

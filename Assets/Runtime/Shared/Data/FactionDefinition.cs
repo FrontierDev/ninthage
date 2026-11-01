@@ -113,7 +113,8 @@ namespace Game.Shared.Data
             if (string.IsNullOrEmpty(DefinitionID))
                 return;
 
-            var library = FactionDefinitionLibrary.Instance;
+            var library = UnityEditor.AssetDatabase.LoadAssetAtPath<FactionDefinitionLibrary>(
+                "Assets/Data/DefinitionLibraries/FactionDefinitionLibrary.asset");
             if (library == null)
                 return;
 

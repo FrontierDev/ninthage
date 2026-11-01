@@ -32,7 +32,7 @@ namespace Game.Editor.Windows
 
         protected override RaceDefinitionLibrary GetLibraryInstance()
         {
-            return RaceDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<RaceDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()
@@ -182,7 +182,7 @@ namespace Game.Editor.Windows
 
         private void OpenStatExplorer(SerializedProperty arrayProp)
         {
-            var library = ActorStatDefinitionLibrary.Instance;
+            var library = GetAuthoringLibraryAsset<ActorStatDefinitionLibrary>();
             if (library == null)
             {
                 EditorUtility.DisplayDialog("Error", "Could not load ActorStatDefinitionLibrary", "OK");

@@ -87,8 +87,16 @@ namespace Game.Client
 
                 LoadingScreen.Instance.Tick();
 
-                // Step 2: Load game configuration.
-                yield return LoadGameConfiguration();
+                // Step 2: Load and publish all required local game content.
+                Exception contentFailure = null;
+                yield return GameContentBootstrap.Initialize(exception => contentFailure = exception);
+                if (contentFailure != null)
+                {
+                    Debug.Error($"Client game content initialization failed: {contentFailure}");
+                    LoadingScreen.Instance.ShowError(
+                        "Required local game content is missing or corrupted. Repair or reinstall Ninth Age.");
+                    yield break;
+                }
                 LoadingScreen.Instance.Tick();
 
                 // Step 3: Initialize networking as CLIENT.
@@ -223,29 +231,12 @@ namespace Game.Client
             Debug.Log(" ✓ Step 1: Addressables initialized successfully.");
         }
 
-        private static IEnumerator LoadGameConfiguration()
-        {
-            Debug.Log(" - Step 2: Loading game configuration...");
-
-            // Tell the game configuration manager to load.
-            Game.Shared.GameConfigurationManager.Initialize();
-            yield return new WaitUntil(() => Game.Shared.GameConfigurationManager.IsInitialized);
-
-            Debug.Log(" ✓ Step 2: Game configuration loaded successfully.");
-        }
-
         private static IEnumerator ClientInitializeNetworking()
         {
             Debug.Log(" - Step 3: Initializing networking as CLIENT...");
 
-            // Load NetworkManager prefab from Resources
-            var networkManagerPrefab = Resources.Load<GameObject>("NetworkManager");
-            if (networkManagerPrefab == null)
-            {
-                Debug.Error(" ✗ Failed to load NetworkManager prefab from Resources/NetworkManager");
-                yield break;
-            }
-
+            // Use the validated prefab published by the shared content bootstrap.
+            var networkManagerPrefab = GameContentBootstrap.NetworkManagerPrefab;
             // Instantiate NetworkManager
             var networkManagerObj = GameObject.Instantiate(networkManagerPrefab);
             networkManagerObj.name = "[Client] NetworkManager";

@@ -1,4 +1,4 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
+using System;
 using UnityEngine;
 
 namespace Game.Shared.Data
@@ -12,23 +12,27 @@ namespace Game.Shared.Data
     {
         private static LootTableDefinitionLibrary _instance;
 
-        /// <summary>
-        /// Get the singleton instance (loaded from Resources).
-        /// </summary>
+        /// <summary>Gets the library published by <see cref="GameContentBootstrap"/>.</summary>
         public static LootTableDefinitionLibrary Instance
         {
             get
             {
                 if (_instance == null)
-                {
-                    _instance = Resources.Load<LootTableDefinitionLibrary>("LootTableDefinitionLibrary");
-                    if (_instance == null)
-                    {
-                        Debug.Error("Could not load LootTableDefinitionLibrary from Resources");
-                    }
-                }
+                    throw new InvalidOperationException(
+                        "LootTableDefinitionLibrary was accessed before GameContentBootstrap initialization.");
+
                 return _instance;
             }
+        }
+
+        internal static void Initialize(LootTableDefinitionLibrary library)
+        {
+            if (library == null)
+                throw new ArgumentNullException(nameof(library));
+            if (_instance != null)
+                throw new InvalidOperationException("LootTableDefinitionLibrary is already initialized.");
+
+            _instance = library;
         }
 
         /// <summary>

@@ -71,7 +71,7 @@ namespace Game.Editor.Windows
 
         protected override ItemDefinitionLibrary GetLibraryInstance()
         {
-            return ItemDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<ItemDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()

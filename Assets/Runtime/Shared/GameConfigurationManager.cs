@@ -1,57 +1,55 @@
-using Debug = Game.Shared.Utility.FormattedDebug;
+using System;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 
 namespace Game.Shared
 {
-    /// <summary>Loads and exposes the shared game configuration.</summary>
+    /// <summary>Publishes and exposes the shared game configuration.</summary>
     public static class GameConfigurationManager
     {
         private static GameConfiguration _config;
+
+        /// <summary>Gets the loaded game configuration.</summary>
         public static GameConfiguration Config
         {
             get
             {
                 if (_config == null)
-                {
-                    Debug.Error("Game configuration accessed before initialization!");
-                }
+                    throw new InvalidOperationException(
+                        "Game configuration was accessed before GameContentBootstrap initialization.");
+
                 return _config;
             }
         }
 
-        private static bool _initialized = false;
+        private static bool _initialized;
+
         /// <summary>Gets whether configuration initialization has completed.</summary>
         public static bool IsInitialized => _initialized;
 
         /// <summary>
-        /// Initialize the GameBalanceManager by loading config from Addressables.
-        /// Uses reflection to load Addressables without requiring direct assembly reference.
-        /// Loads synchronously via WaitForCompletion() to avoid type reference issues.
+        /// Publishes a previously loaded game configuration after validating it.
         /// </summary>
-        public static void Initialize()
+        /// <param name="config">The configuration loaded by <see cref="GameContentBootstrap"/>.</param>
+        public static void Initialize(GameConfiguration config)
         {
-            // Check for duplicate.
             if (_initialized)
-            {
-                Debug.Warning("Attempt to initialize game configuration but it isalready initialized.");
-                return;
-            }
+                throw new InvalidOperationException("Game configuration is already initialized.");
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
 
-            // Load the configuration asset from Resources.
-            _config = Resources.Load<GameConfiguration>("GameConfiguration");
-            if (_config == null)
-            {
-                Debug.Error("Failed to load game configuration from Resources. Ensure the asset is placed in a Resources folder and named 'GameConfiguration'.");
-                return;
-            }
+            config.ValidateWorldGridConfiguration();
+            config.ValidateSpatialConfiguration();
+            config.ValidateSessionLifecycleConfiguration();
 
-            _config.ValidateWorldGridConfiguration();
-            _config.ValidateSpatialConfiguration();
-            _config.ValidateSessionLifecycleConfiguration();
-
-            // Marked as initialized.
+            _config = config;
             _initialized = true;
+        }
+
+        /// <summary>Clears the published configuration during controlled runtime teardown.</summary>
+        internal static void Reset()
+        {
+            _initialized = false;
+            _config = null;
         }
     }
 }

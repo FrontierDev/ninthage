@@ -33,7 +33,7 @@ namespace Game.Editor.Windows
 
         protected override FactionDefinitionLibrary GetLibraryInstance()
         {
-            return FactionDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<FactionDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()
@@ -207,8 +207,8 @@ namespace Game.Editor.Windows
 
                         string currentId = element.stringValue;
                         FactionDefinition currentDef = null;
-                        if (!string.IsNullOrEmpty(currentId) && FactionDefinitionLibrary.Instance != null)
-                            currentDef = FactionDefinitionLibrary.Instance.GetDefinition(currentId);
+                        if (!string.IsNullOrEmpty(currentId) && Library != null)
+                            currentDef = Library.GetDefinition(currentId);
 
                         EditorGUI.BeginChangeCheck();
                         var newDef = (FactionDefinition)EditorGUI.ObjectField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight), currentDef, typeof(FactionDefinition), false);
@@ -244,8 +244,8 @@ namespace Game.Editor.Windows
 
                         string currentId = element.stringValue;
                         FactionDefinition currentDef = null;
-                        if (!string.IsNullOrEmpty(currentId) && FactionDefinitionLibrary.Instance != null)
-                            currentDef = FactionDefinitionLibrary.Instance.GetDefinition(currentId);
+                        if (!string.IsNullOrEmpty(currentId) && Library != null)
+                            currentDef = Library.GetDefinition(currentId);
 
                         EditorGUI.BeginChangeCheck();
                         var newDef = (FactionDefinition)EditorGUI.ObjectField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight), currentDef, typeof(FactionDefinition), false);

@@ -3,6 +3,7 @@ using Game.Server.Networking.Master;
 using Game.Server.Persistence;
 using Game.Server.Services;
 using Game.Server.Systems;
+using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
 using PurrNet;
@@ -387,8 +388,13 @@ namespace Game.Server.Core
                 // Step 1: Initialize addressables.
                 yield return InitializeAddressables();
 
-                // Step 2: Load game configuration.
-                yield return LoadGameConfiguration();
+                // Step 2: Load and publish all required local game content.
+                Exception contentFailure = null;
+                yield return GameContentBootstrap.Initialize(exception => contentFailure = exception);
+                if (contentFailure != null)
+                    throw new InvalidOperationException(
+                        "Required local game content initialization failed.",
+                        contentFailure);
 
                 // Step 3: Initialize networking.
                 yield return ServerInitializeNetworking();
@@ -743,38 +749,12 @@ namespace Game.Server.Core
             Debug.Log(" ✓ Step 1: Addressables initialized successfully.");
         }
 
-        private static IEnumerator LoadGameConfiguration()
-        {
-            Debug.Log(" - Step 2: Loading game configuration...");
-
-            // Tell the game configuration manager to load.
-            Game.Shared.GameConfigurationManager.Initialize();
-            if (!Game.Shared.GameConfigurationManager.IsInitialized
-                || Game.Shared.GameConfigurationManager.Config == null)
-            {
-                throw new InvalidOperationException("Server initialization could not load GameConfiguration.");
-            }
-
-            // Perform validation on game configuration to ensure all required settings are correctly set.
-            Game.Shared.GameConfigurationManager.Config.ValidateSpatialConfiguration();
-
-            yield return null;
-
-            Debug.Log(" ✓ Step 2: Game configuration loaded successfully.");
-        }
-
         private static IEnumerator ServerInitializeNetworking()
         {
             Debug.Log(" - Step 3: Initializing networking as SERVER...");
 
-            // Load NetworkManager prefab from Resources
-            var networkManagerPrefab = Resources.Load<GameObject>("NetworkManager");
-            if (networkManagerPrefab == null)
-            {
-                Debug.Error(" ✗ Failed to load NetworkManager prefab from Resources/NetworkManager");
-                throw new InvalidOperationException("Failed to load NetworkManager prefab from Resources/NetworkManager.");
-            }
-
+            // Use the validated prefab published by the shared content bootstrap.
+            var networkManagerPrefab = GameContentBootstrap.NetworkManagerPrefab;
             // Instantiate NetworkManager
             var networkManagerObj = GameObject.Instantiate(networkManagerPrefab);
             _networkManagerObject = networkManagerObj;
@@ -946,6 +926,7 @@ namespace Game.Server.Core
             _launchWorldName = null;
             _profilingRequested = false;
             _host = null;
+            GameContentBootstrap.Release();
             ServerShutdownController.Detach();
         }
 
@@ -1017,6 +998,7 @@ namespace Game.Server.Core
             _launchWorldName = null;
             _profilingRequested = false;
             _host = null;
+            GameContentBootstrap.Release();
         }
 
         private static void DestroyNetworkManager()

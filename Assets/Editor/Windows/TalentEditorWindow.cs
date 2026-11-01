@@ -45,7 +45,7 @@ namespace Game.Editor.Windows
 
         protected override TalentDefinitionLibrary GetLibraryInstance()
         {
-            return TalentDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<TalentDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()

@@ -45,7 +45,7 @@ namespace Game.Editor.Windows
 
         protected override QuestDefinitionLibrary GetLibraryInstance()
         {
-            return QuestDefinitionLibrary.Instance;
+            return GetAuthoringLibraryAsset<QuestDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()
