@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Game.Server.Core
 {
@@ -719,18 +720,25 @@ namespace Game.Server.Core
         }
 
         /// <summary>
-        /// Initializes the Addressables system, ensuring all assets are ready for use before proceeding with further initialization steps.
+        /// Initializes the local Addressables catalog and aborts startup when initialization fails.
         /// </summary>
-        /// <returns></returns>
         private static IEnumerator InitializeAddressables()
         {
             Debug.Log(" - Step 1: Initializing Addressables...");
 
-            // Initiate async initialization
-            var initOp = Addressables.InitializeAsync();
+            AsyncOperationHandle<UnityEngine.AddressableAssets.ResourceLocators.IResourceLocator> initOp =
+                Addressables.InitializeAsync(false);
 
-            // Wait for operation to complete
-            while (!initOp.IsDone) { yield return null; }
+            while (!initOp.IsDone)
+                yield return null;
+
+            AsyncOperationStatus status = initOp.Status;
+            Exception operationException = initOp.OperationException;
+            if (initOp.IsValid())
+                Addressables.Release(initOp);
+
+            if (status != AsyncOperationStatus.Succeeded)
+                throw new InvalidOperationException("Local Addressables initialization failed.", operationException);
 
             Debug.Log(" ✓ Step 1: Addressables initialized successfully.");
         }

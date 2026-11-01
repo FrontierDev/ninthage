@@ -12,6 +12,7 @@ using System.Collections;
 using System;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
 
 namespace Game.Client
@@ -74,7 +75,16 @@ namespace Game.Client
                 LoadingScreen.Instance.Show(5);
 
                 // Step 1: Initialize addressables.
-                yield return InitializeAddressables();
+                Exception addressablesFailure = null;
+                yield return InitializeAddressables(exception => addressablesFailure = exception);
+                if (addressablesFailure != null)
+                {
+                    Debug.Error($"Client Addressables initialization failed: {addressablesFailure}");
+                    LoadingScreen.Instance.ShowError(
+                        "Required local game content is missing or corrupted. Repair or reinstall Ninth Age.");
+                    yield break;
+                }
+
                 LoadingScreen.Instance.Tick();
 
                 // Step 2: Load game configuration.
@@ -187,18 +197,28 @@ namespace Game.Client
         }
 
         /// <summary>
-        /// Initializes the Addressables system, ensuring all assets are ready for use before proceeding with further initialization steps.
+        /// Initializes the local Addressables catalog and reports failures to the client bootstrapper.
         /// </summary>
-        /// <returns></returns>
-        private static IEnumerator InitializeAddressables()
+        private static IEnumerator InitializeAddressables(Action<Exception> onFailure)
         {
             Debug.Log(" - Step 1: Initializing Addressables...");
 
-            // Initiate async initialization
-            var initOp = Addressables.InitializeAsync();
+            AsyncOperationHandle<UnityEngine.AddressableAssets.ResourceLocators.IResourceLocator> initOp =
+                Addressables.InitializeAsync(false);
 
-            // Wait for operation to complete
-            while (!initOp.IsDone) { yield return null; }
+            while (!initOp.IsDone)
+                yield return null;
+
+            AsyncOperationStatus status = initOp.Status;
+            Exception operationException = initOp.OperationException;
+            if (initOp.IsValid())
+                Addressables.Release(initOp);
+
+            if (status != AsyncOperationStatus.Succeeded)
+            {
+                onFailure(new InvalidOperationException("Local Addressables initialization failed.", operationException));
+                yield break;
+            }
 
             Debug.Log(" ✓ Step 1: Addressables initialized successfully.");
         }

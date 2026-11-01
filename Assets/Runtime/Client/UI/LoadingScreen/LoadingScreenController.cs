@@ -1,6 +1,8 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.Collections;
+using System;
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -32,11 +34,13 @@ namespace Game.Client.UI
         [SerializeField] private Image _splashImage;
         [FormerlySerializedAs("loadingIcon")]
         [SerializeField] private Image _loadingIcon;
+        [SerializeField] private TMP_Text _statusText;
 
         private int _stage = 0;
         private int _maxStages = 1;
         private float _targetFillAmount = 0f;
         private const float FILL_SPEED = 5.0f;
+        private bool _hasTerminalError;
         private bool _isShowing = false;
         private Coroutine _fadeCoroutine;
 
@@ -90,6 +94,9 @@ namespace Game.Client.UI
             this._maxStages = stages;
             this._stage = 0;
             this._targetFillAmount = 0f;
+            _hasTerminalError = false;
+            if (_statusText != null)
+                _statusText.text = string.Empty;
 
             // Reset the loading bar/loading icon.
             _loadingIcon.fillAmount = 0f;
@@ -97,6 +104,35 @@ namespace Game.Client.UI
             // Show the loading screen and refresh the splash image.
             ShowLoadingScreen();
             RefreshSplashImage();
+            _isShowing = true;
+        }
+
+        /// <summary>
+        /// Displays a terminal local-bootstrap error without allowing the loading screen to dismiss itself.
+        /// </summary>
+        /// <param name="message">The nonblank error message to display.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="message"/> is null, empty or whitespace.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when no status text has been assigned.</exception>
+        public void ShowError(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                throw new ArgumentException("A nonblank loading screen error message is required.", nameof(message));
+
+            if (_statusText == null)
+            {
+                throw new InvalidOperationException(
+                    "LoadingScreenController requires a status text reference to display a terminal error.");
+            }
+
+            if (_fadeCoroutine != null)
+            {
+                StopCoroutine(_fadeCoroutine);
+                _fadeCoroutine = null;
+            }
+
+            ShowLoadingScreen();
+            _statusText.text = message;
+            _hasTerminalError = true;
             _isShowing = true;
         }
 
@@ -113,6 +149,7 @@ namespace Game.Client.UI
         private void Update()
         {
             if (!_isShowing) return;
+            if (_hasTerminalError) return;
 
             if (_loadingIcon.fillAmount >= 0.99f) Finish();
             else _loadingIcon.fillAmount = Mathf.Lerp(_loadingIcon.fillAmount, _targetFillAmount, Time.deltaTime * FILL_SPEED);
@@ -123,6 +160,7 @@ namespace Game.Client.UI
         /// </summary>
         public void Finish()
         {
+            if (_hasTerminalError) return;
             if (!_isShowing) return;
             _isShowing = false;
             HideLoadingScreen();
@@ -139,6 +177,7 @@ namespace Game.Client.UI
                 _fadeCoroutine = null;
             }
 
+            _hasTerminalError = false;
             _isShowing = false;
             _canvasGroup.alpha = 0f;
             _canvasGroup.interactable = false;
