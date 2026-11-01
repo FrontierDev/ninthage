@@ -1,12 +1,13 @@
+using Game.Editor.Suite;
+using Game.Shared.Data;
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEditor;
 using UnityEditorInternal;
-using Game.Shared.Data;
+using UnityEngine;
 
-namespace Game.Editor.Windows
+namespace Game.Editor.Suite.DataEditors
 {
-    public class AuraEditorWindow : DataDefinitionEditorWindow<AuraDefinition, AuraDefinitionLibrary>
+    internal sealed class AuraEditorPanel : DataDefinitionEditorPanel<AuraDefinition, AuraDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Timing", "Components" };
@@ -26,9 +27,7 @@ namespace Game.Editor.Windows
         [MenuItem("Data/Aura Definitions")]
         public static void OpenWindow()
         {
-            var window = GetWindow<AuraEditorWindow>("Aura Definitions");
-            window.minSize = new Vector2(600, 400);
-            window.Show();
+            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.Auras);
         }
 
         protected override AuraDefinitionLibrary GetLibraryInstance()
@@ -226,7 +225,7 @@ namespace Game.Editor.Windows
                 pendingTooltip = true;
                 pendingTooltipText = BuildAuraTooltip();
                 pendingTooltipAccentColor = accentColor;
-                Repaint();
+                RequestRepaint();
             }
         }
 
@@ -249,9 +248,9 @@ namespace Game.Editor.Windows
             Vector2 mousePos = Event.current.mousePosition;
             Rect tooltipRect = new Rect(mousePos.x + 16, mousePos.y + 16, tooltipSize.x, tooltipSize.y);
 
-            if (tooltipRect.xMax > position.width)
+            if (tooltipRect.xMax > ContentBounds.width)
                 tooltipRect.x = mousePos.x - tooltipSize.x - 8;
-            if (tooltipRect.yMax > position.height)
+            if (tooltipRect.yMax > ContentBounds.height)
                 tooltipRect.y = mousePos.y - tooltipSize.y - 8;
 
             EditorGUI.DrawRect(tooltipRect, new Color(0.12f, 0.12f, 0.12f, 0.95f));

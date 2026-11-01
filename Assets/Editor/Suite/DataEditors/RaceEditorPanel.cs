@@ -1,13 +1,15 @@
-using UnityEngine;
-using UnityEditor;
+using Game.Editor.Suite;
+using Game.Editor.Windows;
 using Game.Shared.Data;
+using UnityEditor;
+using UnityEngine;
 
-namespace Game.Editor.Windows
+namespace Game.Editor.Suite.DataEditors
 {
     /// <summary>
-    /// Editor window for viewing and managing race definitions.
+    /// Embedded editor panel for viewing and managing race definitions.
     /// </summary>
-    public class RaceEditorWindow : DataDefinitionEditorWindow<RaceDefinition, RaceDefinitionLibrary>
+    internal sealed class RaceEditorPanel : DataDefinitionEditorPanel<RaceDefinition, RaceDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Base Stats" };
@@ -25,9 +27,7 @@ namespace Game.Editor.Windows
         [MenuItem("Data/Race Definitions")]
         public static void OpenWindow()
         {
-            var window = GetWindow<RaceEditorWindow>("Race Definitions");
-            window.minSize = new Vector2(600, 400);
-            window.Show();
+            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.Races);
         }
 
         protected override RaceDefinitionLibrary GetLibraryInstance()

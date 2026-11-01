@@ -1,17 +1,33 @@
-using UnityEngine;
-using UnityEditor;
 using Game.Shared.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
+using UnityEngine;
 
-namespace Game.Editor.Windows
+namespace Game.Editor.Suite.DataEditors
 {
     /// <summary>
-    /// Abstract base for definition library editor windows.
+    /// Defines the lifecycle and drawing contract for an embedded data editor panel.
+    /// </summary>
+    internal interface IDataDefinitionEditorPanel
+    {
+        /// <summary>
+        /// Initializes the panel's authoring state.
+        /// </summary>
+        void Initialize();
+
+        /// <summary>
+        /// Draws the panel inside the supplied local content bounds.
+        /// </summary>
+        void Draw(Rect contentBounds, Action requestRepaint);
+    }
+
+    /// <summary>
+    /// Abstract base for embedded definition library editor panels.
     /// Provides a two-panel layout with list, search, toolbar, and serialized property editing.
     /// </summary>
-    public abstract class DataDefinitionEditorWindow<TDefinition, TLibrary> : EditorWindow
+    internal abstract class DataDefinitionEditorPanel<TDefinition, TLibrary> : IDataDefinitionEditorPanel
         where TDefinition : DataDefinition
         where TLibrary : DataDefinitionLibrary<TDefinition>
     {
@@ -28,6 +44,13 @@ namespace Game.Editor.Windows
         private SortMode sortMode = SortMode.NameAsc;
         private string tagSortOrder = "";
         private bool showSortSettings;
+        private bool _initialized;
+        private Action _requestRepaint;
+
+        /// <summary>
+        /// Gets the local content bounds supplied by the Suite while drawing this panel.
+        /// </summary>
+        protected Rect ContentBounds { get; private set; }
 
         /// <summary>
         /// Display name used in UI labels (e.g. "Class", "Race").
@@ -45,7 +68,7 @@ namespace Game.Editor.Windows
         protected abstract string AssetPrefix { get; }
 
         /// <summary>
-        /// Return the authoring asset used by this editor window.
+        /// Return the authoring asset used by this editor panel.
         /// </summary>
         protected abstract TLibrary GetLibraryInstance();
 
@@ -109,9 +132,16 @@ namespace Game.Editor.Windows
         }
         protected TLibrary Library => library;
 
-        private void OnEnable()
+        /// <summary>
+        /// Initializes the panel and refreshes its authoring library once.
+        /// </summary>
+        public void Initialize()
         {
+            if (_initialized)
+                return;
+
             RefreshLibrary();
+            _initialized = true;
         }
 
         private void RefreshLibrary()
@@ -131,13 +161,44 @@ namespace Game.Editor.Windows
             }
         }
 
-        private void OnGUI()
+        /// <summary>
+        /// Draws the existing two-panel authoring UI inside the Suite.
+        /// </summary>
+        public void Draw(Rect contentBounds, Action requestRepaint)
         {
+            if (requestRepaint == null)
+                throw new ArgumentNullException(nameof(requestRepaint));
+
+            if (!_initialized)
+                throw new InvalidOperationException(
+                    $"{GetType().Name} must be initialized before drawing.");
+
+            ContentBounds = contentBounds;
+            _requestRepaint = requestRepaint;
+
             EditorGUILayout.BeginHorizontal();
-            DrawLeftPanel();
-            GUILayout.Box("", GUILayout.Width(1), GUILayout.ExpandHeight(true));
-            DrawRightPanel();
-            EditorGUILayout.EndHorizontal();
+            try
+            {
+                DrawLeftPanel();
+                GUILayout.Box("", GUILayout.Width(1), GUILayout.ExpandHeight(true));
+                DrawRightPanel();
+            }
+            finally
+            {
+                EditorGUILayout.EndHorizontal();
+            }
+        }
+
+        /// <summary>
+        /// Requests a repaint from the owning Suite window.
+        /// </summary>
+        protected void RequestRepaint()
+        {
+            if (!_initialized || _requestRepaint == null)
+                throw new InvalidOperationException(
+                    $"{GetType().Name} must be initialized before requesting a repaint.");
+
+            _requestRepaint();
         }
 
         private void DrawLeftPanel()

@@ -1,19 +1,20 @@
-using System.Collections.Generic;
-using System.Text;
-using UnityEngine;
-using UnityEditor;
-using UnityEditorInternal;
+using Game.Editor.Data;
+using Game.Editor.Suite;
 using Game.Shared;
 using Game.Shared.Data;
-using Game.Editor.Data;
-
 using Game.Shared.Data.QuestObjectives;
-namespace Game.Editor.Windows
+using System.Collections.Generic;
+using System.Text;
+using UnityEditor;
+using UnityEditorInternal;
+using UnityEngine;
+
+namespace Game.Editor.Suite.DataEditors
 {
     /// <summary>
-    /// Editor window for viewing and managing quest definitions.
+    /// Embedded editor panel for viewing and managing quest definitions.
     /// </summary>
-    public class QuestEditorWindow : DataDefinitionEditorWindow<QuestDefinition, QuestDefinitionLibrary>
+    internal sealed class QuestEditorPanel : DataDefinitionEditorPanel<QuestDefinition, QuestDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Rewards", "Objectives & Requirements", "Settings" };
@@ -38,9 +39,7 @@ namespace Game.Editor.Windows
         [MenuItem("Data/Quest Definitions")]
         public static void OpenWindow()
         {
-            var window = GetWindow<QuestEditorWindow>("Quest Definitions");
-            window.minSize = new Vector2(700, 500);
-            window.Show();
+            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.Quests);
         }
 
         protected override QuestDefinitionLibrary GetLibraryInstance()
@@ -414,7 +413,7 @@ namespace Game.Editor.Windows
                 pendingTooltip = true;
                 pendingTooltipText = BuildQuestTooltip();
                 pendingTooltipAccentColor = accentColor;
-                Repaint();
+                RequestRepaint();
             }
         }
 
@@ -437,9 +436,9 @@ namespace Game.Editor.Windows
             Vector2 mousePos = Event.current.mousePosition;
             Rect tooltipRect = new Rect(mousePos.x + 16, mousePos.y + 16, tooltipSize.x, tooltipSize.y);
 
-            if (tooltipRect.xMax > position.width)
+            if (tooltipRect.xMax > ContentBounds.width)
                 tooltipRect.x = mousePos.x - tooltipSize.x - 8;
-            if (tooltipRect.yMax > position.height)
+            if (tooltipRect.yMax > ContentBounds.height)
                 tooltipRect.y = mousePos.y - tooltipSize.y - 8;
 
             EditorGUI.DrawRect(tooltipRect, new Color(0.12f, 0.12f, 0.12f, 0.95f));

@@ -1,10 +1,12 @@
-using UnityEngine;
-using UnityEditor;
+using Game.Editor.Suite;
+using Game.Editor.Windows;
 using Game.Shared.Data;
+using UnityEditor;
+using UnityEngine;
 
-namespace Game.Editor.Windows
+namespace Game.Editor.Suite.DataEditors
 {
-    public class DamageSchoolEditorWindow : DataDefinitionEditorWindow<DamageSchoolDefinition, DamageSchoolDefinitionLibrary>
+    internal sealed class DamageSchoolEditorPanel : DataDefinitionEditorPanel<DamageSchoolDefinition, DamageSchoolDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Mitigation" };
@@ -19,9 +21,7 @@ namespace Game.Editor.Windows
         [MenuItem("Data/Damage School Definitions")]
         public static void OpenWindow()
         {
-            var window = GetWindow<DamageSchoolEditorWindow>("Damage School Definitions");
-            window.minSize = new Vector2(600, 400);
-            window.Show();
+            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.DamageSchools);
         }
 
         protected override DamageSchoolDefinitionLibrary GetLibraryInstance()

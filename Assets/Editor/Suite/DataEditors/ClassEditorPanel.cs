@@ -1,15 +1,16 @@
-using UnityEngine;
-using UnityEditor;
-using System.Collections.Generic;
-using Game.Shared.Data;
+using Game.Editor.Suite;
 using Game.Editor.Windows;
+using Game.Shared.Data;
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
 
-namespace Game.Editor.Windows
+namespace Game.Editor.Suite.DataEditors
 {
     /// <summary>
-    /// Editor window for viewing and managing class definitions.
+    /// Embedded editor panel for viewing and managing class definitions.
     /// </summary>
-    public class ClassEditorWindow : DataDefinitionEditorWindow<ClassDefinition, ClassDefinitionLibrary>
+    internal sealed class ClassEditorPanel : DataDefinitionEditorPanel<ClassDefinition, ClassDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Base Stats", "Growth", "Spells", "Focus Stats", "Weapon Types", "Specialisations" };
@@ -27,9 +28,7 @@ namespace Game.Editor.Windows
         [MenuItem("Data/Class Definitions")]
         public static void OpenWindow()
         {
-            var window = GetWindow<ClassEditorWindow>("Class Definitions");
-            window.minSize = new Vector2(600, 400);
-            window.Show();
+            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.Classes);
         }
 
         protected override ClassDefinitionLibrary GetLibraryInstance()

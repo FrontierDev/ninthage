@@ -1,14 +1,15 @@
-using UnityEngine;
+using Game.Editor.Suite;
+using Game.Shared.Data;
 using UnityEditor;
 using UnityEditorInternal;
-using Game.Shared.Data;
+using UnityEngine;
 
-namespace Game.Editor.Windows
+namespace Game.Editor.Suite.DataEditors
 {
     /// <summary>
-    /// Editor window for viewing and managing faction definitions.
+    /// Embedded editor panel for viewing and managing faction definitions.
     /// </summary>
-    public class FactionEditorWindow : DataDefinitionEditorWindow<FactionDefinition, FactionDefinitionLibrary>
+    internal sealed class FactionEditorPanel : DataDefinitionEditorPanel<FactionDefinition, FactionDefinitionLibrary>
     {
         private int selectedTab;
         private readonly string[] tabNames = { "General", "Appearance", "Relations", "Rewards" };
@@ -26,9 +27,7 @@ namespace Game.Editor.Windows
         [MenuItem("Data/Faction Definitions")]
         public static void OpenWindow()
         {
-            var window = GetWindow<FactionEditorWindow>("Faction Definitions");
-            window.minSize = new Vector2(600, 400);
-            window.Show();
+            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.Factions);
         }
 
         protected override FactionDefinitionLibrary GetLibraryInstance()
@@ -266,7 +265,7 @@ namespace Game.Editor.Windows
             return enemyList;
         }
 
-        // --- Inline array drawing helpers (matching SpellEditorWindow style) ---
+        // --- Inline array drawing helpers (matching SpellEditorPanel style) ---
 
         private void DrawThresholdVisualization(SerializedProperty arrayProp)
         {

@@ -1,42 +1,50 @@
+using Game.Editor.Suite;
+using Game.Shared;
+using Game.Shared.Data;
+using Game.Shared.Runtime.Spellcasting;
+using System;
 using System.Collections.Generic;
-using UnityEngine;
+using System.Linq;
 using UnityEditor;
 using UnityEditorInternal;
-using Game.Shared.Data;
+using UnityEngine;
 
-namespace Game.Editor.Windows
+namespace Game.Editor.Suite.DataEditors
 {
     /// <summary>
-    /// Editor window for viewing and managing spell definitions.
+    /// Embedded editor panel for viewing and managing talent definitions.
     /// </summary>
-    public class SpellEditorWindow : DataDefinitionEditorWindow<SpellDefinition, SpellDefinitionLibrary>
+    internal sealed class TalentEditorPanel : DataDefinitionEditorPanel<TalentDefinition, TalentDefinitionLibrary>
     {
         private int selectedTab;
-        private readonly string[] tabNames = { "General", "Casting", "Components", "Racial Variants" };
+        private readonly string[] tabNames = { "General", "Modifiers" };
 
         private ReorderableList componentList;
         private SerializedObject cachedSerializedObject;
-        private SpellDefinition cachedDefinition;
+        private TalentDefinition cachedDefinition;
+
+        private ReorderableList modifierList;
+        private static Type[] cachedModifierTypes;
+        private static string[] cachedModifierNames;
+
 
         private bool pendingTooltip;
         private string pendingTooltipText;
         private Color pendingTooltipAccentColor;
 
-        protected override string DefinitionTypeName => "Spell";
-        protected override string AssetDirectoryPath => "Assets/Data/SpellDefinitions";
-        protected override string AssetPrefix => "Spell";
+        protected override string DefinitionTypeName => "Talent";
+        protected override string AssetDirectoryPath => "Assets/Data/TalentDefinitions";
+        protected override string AssetPrefix => "Talent";
 
-        [MenuItem("Data/Spell Definitions")]
+        [MenuItem("Data/Talent Definitions")]
         public static void OpenWindow()
         {
-            var window = GetWindow<SpellEditorWindow>("Spell Definitions");
-            window.minSize = new Vector2(600, 400);
-            window.Show();
+            NinthAgeEditorSuiteWindow.OpenDataEditor(DataEditorKind.Talents);
         }
 
-        protected override SpellDefinitionLibrary GetLibraryInstance()
+        protected override TalentDefinitionLibrary GetLibraryInstance()
         {
-            return GetAuthoringLibraryAsset<SpellDefinitionLibrary>();
+            return GetAuthoringLibraryAsset<TalentDefinitionLibrary>();
         }
 
         protected override void DrawRightPanel()
@@ -55,9 +63,7 @@ namespace Game.Editor.Windows
                 switch (selectedTab)
                 {
                     case 0: DrawGeneralTab(serializedDef); break;
-                    case 1: DrawCastingTab(serializedDef); break;
-                    case 2: DrawComponentsTab(serializedDef); break;
-                    case 3: DrawRacialVariantsTab(serializedDef); break;
+                    case 1: DrawModifiersTab(serializedDef); break;
                 }
 
                 if (serializedDef.hasModifiedProperties)
@@ -79,7 +85,7 @@ namespace Game.Editor.Windows
             {
                 EditorGUILayout.BeginVertical();
                 GUILayout.FlexibleSpace();
-                EditorGUILayout.LabelField("Select a spell to view details", EditorStyles.centeredGreyMiniLabel);
+                EditorGUILayout.LabelField("Select a talent to view details", EditorStyles.centeredGreyMiniLabel);
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.EndVertical();
             }
@@ -90,7 +96,7 @@ namespace Game.Editor.Windows
         private void DrawGeneralTab(SerializedObject serializedObject)
         {
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Spell ID:", GUILayout.Width(120));
+            EditorGUILayout.LabelField("Talent ID:", GUILayout.Width(120));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_definitionID"), GUIContent.none);
             EditorGUILayout.EndHorizontal();
 
@@ -115,11 +121,20 @@ namespace Game.Editor.Windows
 
             EditorGUILayout.Space();
 
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_maxRank"), true);
+
+            EditorGUILayout.Space();
+
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_tags"), true);
 
             EditorGUILayout.Space();
 
-            DrawSpellPreview();
+            EditorGUILayout.LabelField("Talent Behaviour", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_talentBehaviour"), GUIContent.none);
+
+            EditorGUILayout.Space();
+
+            DrawTalentPreview();
 
             EditorGUILayout.Space();
 
@@ -140,151 +155,18 @@ namespace Game.Editor.Windows
             }
         }
 
-        private void DrawCastingTab(SerializedObject serializedObject)
+        private void DrawModifiersTab(SerializedObject serializedObject)
         {
-            EditorGUILayout.LabelField("Cast Settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseCastTime"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseRange"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_canMoveWhileCasting"));
-
-            EditorGUILayout.Space();
-
-            EditorGUILayout.LabelField("Cooldown Settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseCooldown"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_cooldownScalesWithHaste"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_useCooldownCharges"));
-            if (serializedObject.FindProperty("_useCooldownCharges").boolValue)
+            EditorGUILayout.LabelField("Talent Modifiers", EditorStyles.boldLabel);
+            var prop = serializedObject.FindProperty("_modifiers");
+            if (prop == null)
             {
-                EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseCharges"));
-                EditorGUI.indentLevel--;
-            }
-
-            EditorGUILayout.Space();
-
-            EditorGUILayout.LabelField("Channeling", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_isChanneled"));
-            if (serializedObject.FindProperty("_isChanneled").boolValue)
-            {
-                EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("_baseTotalTicks"));
-                EditorGUI.indentLevel--;
-            }
-
-            EditorGUILayout.Space();
-
-            DrawResourceCostList(serializedObject.FindProperty("_baseResourceCosts"));
-        }
-
-        private void DrawComponentsTab(SerializedObject serializedObject)
-        {
-            EditorGUILayout.LabelField("Spell Components", EditorStyles.boldLabel);
-            EditorGUILayout.Space();
-            GetComponentList(serializedObject).DoLayoutList();
-        }
-
-        private void DrawRacialVariantsTab(SerializedObject serializedObject)
-        {
-            DrawRacialVariantList(serializedObject.FindProperty("_racialVariants"));
-        }
-
-        // --- Inline array drawing (layout-based, matching SpellComponentDrawer style) ---
-
-        private void DrawResourceCostList(SerializedProperty arrayProp)
-        {
-            DrawInlineArrayHeader("Resource Costs", arrayProp);
-
-            if (arrayProp.arraySize == 0)
-            {
-                DrawInlineArrayEmpty();
+                EditorGUILayout.HelpBox("`modifiers` is not a managed-reference field. Mark the field with [SerializeReference] in TalentDefinition.", MessageType.Warning);
                 return;
             }
-
-            EditorGUI.indentLevel++;
-            var bgRect = EditorGUILayout.BeginVertical();
-            EditorGUI.DrawRect(bgRect, new Color(0f, 0f, 0f, 0.08f));
-
-            for (int i = 0; i < arrayProp.arraySize; i++)
-            {
-                var element = arrayProp.GetArrayElementAtIndex(i);
-
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.BeginVertical();
-
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.PropertyField(element.FindPropertyRelative("ResourceType"), GUIContent.none);
-                EditorGUILayout.PropertyField(element.FindPropertyRelative("Amount"), GUIContent.none, GUILayout.Width(60));
-                EditorGUILayout.EndHorizontal();
-
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.PropertyField(element.FindPropertyRelative("CastPhase"), GUIContent.none);
-                EditorGUILayout.LabelField("Refund %", GUILayout.Width(60));
-                EditorGUILayout.PropertyField(element.FindPropertyRelative("RefundOnInterrupt"), GUIContent.none, GUILayout.Width(60));
-                EditorGUILayout.EndHorizontal();
-
-                EditorGUILayout.EndVertical();
-
-                if (DrawInlineRemoveButton())
-                {
-                    arrayProp.DeleteArrayElementAtIndex(i);
-                    break;
-                }
-
-                EditorGUILayout.EndHorizontal();
-
-                if (i < arrayProp.arraySize - 1)
-                    DrawInlineSeparator();
-            }
-
-            EditorGUILayout.EndVertical();
-            EditorGUI.indentLevel--;
+            GetModifierList(serializedObject).DoLayoutList();
         }
 
-        private void DrawRacialVariantList(SerializedProperty arrayProp)
-        {
-            DrawInlineArrayHeader("Racial Name Variants", arrayProp);
-
-            if (arrayProp.arraySize == 0)
-            {
-                DrawInlineArrayEmpty();
-                return;
-            }
-
-            EditorGUI.indentLevel++;
-            var bgRect = EditorGUILayout.BeginVertical();
-            EditorGUI.DrawRect(bgRect, new Color(0f, 0f, 0f, 0.08f));
-
-            for (int i = 0; i < arrayProp.arraySize; i++)
-            {
-                var element = arrayProp.GetArrayElementAtIndex(i);
-
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.BeginVertical();
-
-                EditorGUILayout.PropertyField(element.FindPropertyRelative("Race"), new GUIContent("Race"));
-                EditorGUILayout.PropertyField(element.FindPropertyRelative("NameOverride"), new GUIContent("Name"));
-                EditorGUILayout.PropertyField(element.FindPropertyRelative("DescriptionOverride"), new GUIContent("Description"));
-                EditorGUILayout.PropertyField(element.FindPropertyRelative("IconOverride"), new GUIContent("Icon"));
-
-                EditorGUILayout.EndVertical();
-
-                if (DrawInlineRemoveButton())
-                {
-                    arrayProp.DeleteArrayElementAtIndex(i);
-                    break;
-                }
-
-                EditorGUILayout.EndHorizontal();
-
-                if (i < arrayProp.arraySize - 1)
-                    DrawInlineSeparator();
-            }
-
-            EditorGUILayout.EndVertical();
-            EditorGUI.indentLevel--;
-        }
-
-        // --- Shared inline array helpers ---
 
         private void DrawInlineArrayHeader(string label, SerializedProperty arrayProp)
         {
@@ -317,14 +199,14 @@ namespace Game.Editor.Windows
 
         // --- Existing helpers ---
 
-        private void DrawSpellPreview()
+        private void DrawTalentPreview()
         {
             if (Selected == null) return;
 
-            Color accentColor = new Color(0.2f, 0.6f, 1f, 1f); // Blue accent for spells
+            Color accentColor = new Color(0.2f, 0.6f, 1f, 1f); // Blue accent for talents
             float iconSize = 64;
 
-            EditorGUILayout.LabelField("Spell Preview", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Talent Preview", EditorStyles.boldLabel);
 
             // Outer container with dark background
             var outerRect = EditorGUILayout.BeginVertical();
@@ -367,7 +249,7 @@ namespace Game.Editor.Windows
             {
                 normal = { textColor = accentColor }
             };
-            EditorGUILayout.LabelField("Spell", infoStyle);
+            EditorGUILayout.LabelField("Talent", infoStyle);
 
             EditorGUILayout.EndVertical();
             GUILayout.FlexibleSpace();
@@ -380,9 +262,9 @@ namespace Game.Editor.Windows
             if (outerRect.width > 1 && outerRect.Contains(Event.current.mousePosition))
             {
                 pendingTooltip = true;
-                pendingTooltipText = BuildSpellTooltip();
+                pendingTooltipText = BuildTalentTooltip();
                 pendingTooltipAccentColor = accentColor;
-                Repaint();
+                RequestRepaint();
             }
         }
 
@@ -405,9 +287,9 @@ namespace Game.Editor.Windows
             Vector2 mousePos = Event.current.mousePosition;
             Rect tooltipRect = new Rect(mousePos.x + 16, mousePos.y + 16, tooltipSize.x, tooltipSize.y);
 
-            if (tooltipRect.xMax > position.width)
+            if (tooltipRect.xMax > ContentBounds.width)
                 tooltipRect.x = mousePos.x - tooltipSize.x - 8;
-            if (tooltipRect.yMax > position.height)
+            if (tooltipRect.yMax > ContentBounds.height)
                 tooltipRect.y = mousePos.y - tooltipSize.y - 8;
 
             EditorGUI.DrawRect(tooltipRect, new Color(0.12f, 0.12f, 0.12f, 0.95f));
@@ -415,7 +297,7 @@ namespace Game.Editor.Windows
             GUI.Label(tooltipRect, pendingTooltipText, tooltipStyle);
         }
 
-        private string BuildSpellTooltip()
+        private string BuildTalentTooltip()
         {
             if (Selected == null) return string.Empty;
 
@@ -424,20 +306,11 @@ namespace Game.Editor.Windows
             string hexColor = ColorUtility.ToHtmlStringRGB(accentColor);
 
             sb.AppendLine($"<color=#{hexColor}><b>{Selected.DisplayName ?? "(No Name)"}</b></color>");
-            sb.AppendLine($"<color=#{hexColor}>Spell</color>");
+            sb.AppendLine($"<color=#{hexColor}>Talent</color>");
             sb.AppendLine();
 
             // Casting info
-            if (Selected.BaseCastTime > 0)
-                sb.AppendLine($"Cast Time: {Selected.BaseCastTime:F2}s");
-            if (Selected.BaseCooldown > 0)
-                sb.AppendLine($"Cooldown: {Selected.BaseCooldown:F2}s");
-            if (Selected.BaseRange > 0)
-                sb.AppendLine($"Range: {Selected.BaseRange:F0}m");
-
-            // Channeling info
-            if (Selected.IsChanneled)
-                sb.AppendLine($"<color=#FFD100>Channeled ({Selected.BaseTotalTicks} ticks)</color>");
+            sb.AppendLine($"Max Rank: {Selected.MaxRank}");
 
             // Description
             if (!string.IsNullOrEmpty(Selected.Description))
@@ -449,7 +322,7 @@ namespace Game.Editor.Windows
             return sb.ToString().TrimEnd();
         }
 
-        private SerializedObject GetOrCreateSerializedObject(SpellDefinition definition)
+        private SerializedObject GetOrCreateSerializedObject(TalentDefinition definition)
         {
             if (cachedDefinition != definition || cachedSerializedObject == null)
             {
@@ -482,16 +355,64 @@ namespace Game.Editor.Windows
             return componentList;
         }
 
+
+        private ReorderableList GetModifierList(SerializedObject serializedObject)
+        {
+            if (modifierList != null) return modifierList;
+
+            var prop = serializedObject.FindProperty("_modifiers");
+            modifierList = new ReorderableList(serializedObject, prop, true, true, true, true)
+            {
+                drawHeaderCallback = rect => EditorGUI.LabelField(rect, "Modifiers"),
+                drawElementCallback = (rect, index, isActive, isFocused) =>
+                {
+                    var element = prop.GetArrayElementAtIndex(index);
+                    EditorGUI.PropertyField(rect, element, true);
+                },
+                elementHeightCallback = index =>
+                {
+                    var element = prop.GetArrayElementAtIndex(index);
+                    return EditorGUI.GetPropertyHeight(element, true) + 4;
+                },
+                onAddCallback = list =>
+                {
+                    prop.arraySize++;
+                    serializedObject.ApplyModifiedProperties();
+                    var newElem = prop.GetArrayElementAtIndex(prop.arraySize - 1);
+                    var modProp = newElem.FindPropertyRelative("Modifier");
+                    if (modProp != null)
+                        modProp.managedReferenceValue = null; // user will pick type
+                },
+                onRemoveCallback = list =>
+                {
+                    prop.DeleteArrayElementAtIndex(list.index);
+                }
+            };
+
+            return modifierList;
+        }
+
+        private void EnsureCachedModifierTypes()
+        {
+            if (cachedModifierTypes != null) return;
+            cachedModifierTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })
+                .Where(t => !t.IsAbstract && typeof(ISpellModifier).IsAssignableFrom(t))
+                .OrderBy(t => t.Name)
+                .ToArray();
+            cachedModifierNames = cachedModifierTypes.Select(t => ObjectNames.NicifyVariableName(t.Name)).ToArray();
+        }
+
         protected override void DrawDefinitionFields(SerializedObject serializedObject) { }
 
         protected override bool SupportsTags => true;
 
-        protected override IReadOnlyList<string> GetTags(SpellDefinition definition)
+        protected override IReadOnlyList<string> GetTags(TalentDefinition definition)
         {
             return definition.Tags;
         }
 
-        protected override bool MatchesSearchFilter(SpellDefinition definition, string lowerFilter)
+        protected override bool MatchesSearchFilter(TalentDefinition definition, string lowerFilter)
         {
             if (definition.Tags != null)
             {
