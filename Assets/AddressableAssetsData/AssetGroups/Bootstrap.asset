@@ -10,13 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
-  m_Name: UI
+  m_Name: Bootstrap
   m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
-  m_GroupName: UI
-  m_GUID: dd26eae8837a61941a5f7d73e533a425
+  m_GroupName: Bootstrap
+  m_GUID: 660011ceb26dcd34385ea70b14e80752
   m_SerializeEntries:
-  - m_GUID: 3b565d8e60b2c1e4fa016aaf1f61fbdd
-    m_Address: PlayerCamera
+  - m_GUID: 519e490eb6fffb74bbd8dd710979a1c8
+    m_Address: NetworkManager
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6499d5e5ce60485429e7e3df1a0ea4ba
+    m_Address: GameConfiguration
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -24,5 +29,5 @@ MonoBehaviour:
   m_Settings: {fileID: 11400000, guid: bfee3dc530f3027419224e878ea9ccd9, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: 1759731cd2ffb1644bf69c0b3abd1915, type: 2}
-    - {fileID: 11400000, guid: 423501379d435c7448eb04509fca2891, type: 2}
+    - {fileID: 11400000, guid: 4b80bb18598e85e40af98275b5beddb8, type: 2}
+    - {fileID: 11400000, guid: c44a64a71fb600f41acee54ae1e2b298, type: 2}

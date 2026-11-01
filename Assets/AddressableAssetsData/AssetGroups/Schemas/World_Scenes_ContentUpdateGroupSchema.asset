@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5834b5087d578d24c926ce20cd31e6d6, type: 3}
-  m_Name: UI_ContentUpdateGroupSchema
+  m_Name: World_Scenes_ContentUpdateGroupSchema
   m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.GroupSchemas.ContentUpdateGroupSchema
-  m_Group: {fileID: 11400000, guid: e5dc78ef3f594e54a8491027e2caedb1, type: 2}
+  m_Group: {fileID: 11400000, guid: 0aab383f476727e43a3cc2056992a692, type: 2}
   m_StaticContent: 0

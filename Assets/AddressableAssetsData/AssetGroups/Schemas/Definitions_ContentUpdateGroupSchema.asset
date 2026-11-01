@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5834b5087d578d24c926ce20cd31e6d6, type: 3}
-  m_Name: Creatures_ContentUpdateGroupSchema
+  m_Name: Definitions_ContentUpdateGroupSchema
   m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.GroupSchemas.ContentUpdateGroupSchema
-  m_Group: {fileID: 11400000, guid: 238344f04d242e642ac4fde108f846cc, type: 2}
+  m_Group: {fileID: 11400000, guid: 580d22cd6f038c94d99729d7e998ab44, type: 2}
   m_StaticContent: 0

@@ -10,13 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
-  m_Name: Creatures
+  m_Name: Audio
   m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
-  m_GroupName: Creatures
-  m_GUID: eb8136013ce79ff49b9364168505e692
+  m_GroupName: Audio
+  m_GUID: f64c46ccb68537c45a7f433119e7261b
   m_SerializeEntries:
-  - m_GUID: 7e1f5d7272f26f846926bc023027cd83
-    m_Address: PlayerPrefab
+  - m_GUID: 0c983847e868fc541be1c5fc4f89b68c
+    m_Address: sfx_ph_impact
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 55f409b903e9fc648892612db62e87b9
+    m_Address: sfx_click_generic
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5d94502e7a5eb3d4b92f7bbd9d3485d3
+    m_Address: sfx_ph_cast
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -24,5 +34,5 @@ MonoBehaviour:
   m_Settings: {fileID: 11400000, guid: bfee3dc530f3027419224e878ea9ccd9, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: 21816654e04222f409b47917d032b5b1, type: 2}
-    - {fileID: 11400000, guid: 7c30ca48a423bc841b8d31b792885e2b, type: 2}
+    - {fileID: 11400000, guid: 394212e0d23e4bb44a74e9266f58006d, type: 2}
+    - {fileID: 11400000, guid: 88c38c7a509f8ee41b04d03bb7577c32, type: 2}

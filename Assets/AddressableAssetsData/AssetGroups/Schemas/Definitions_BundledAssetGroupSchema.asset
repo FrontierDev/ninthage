@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e5d17a21594effb4e9591490b009e7aa, type: 3}
-  m_Name: World_Chunks_BundledAssetGroupSchema
+  m_Name: Definitions_BundledAssetGroupSchema
   m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.GroupSchemas.BundledAssetGroupSchema
-  m_Group: {fileID: 11400000, guid: 0aab383f476727e43a3cc2056992a692, type: 2}
+  m_Group: {fileID: 11400000, guid: 580d22cd6f038c94d99729d7e998ab44, type: 2}
   m_InternalBundleIdMode: 1
   m_Compression: 1
   m_IncludeAddressInCatalog: 1
@@ -38,11 +38,11 @@ MonoBehaviour:
     m_Id: ac8866eb683974d48abb24cefec3b8a9
   m_LoadPath:
     m_Id: 9addb37114df705448a3ecbf3f557991
-  m_BundleMode: 1
+  m_BundleMode: 0
   m_AssetBundleProviderType:
     m_AssemblyName: Unity.ResourceManager, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
     m_ClassName: UnityEngine.ResourceManagement.ResourceProviders.AssetBundleProvider
-  m_UseDefaultSchemaSettings: 1
+  m_UseDefaultSchemaSettings: 0
   m_SelectedPathPairIndex: 0
   m_BundleNaming: 0
   m_AssetLoadMode: 0
