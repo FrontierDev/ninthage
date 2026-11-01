@@ -302,11 +302,15 @@ Do not compensate for unreadable icons by making every control larger.
 
 ## 11. Typography
 
-The core functional UI font family is:
+Functional UI typography is defined by semantic font roles:
 
-**Manrope.**
+- **Heading** — window titles, section headings and identity headings;
+- **Body** — ordinary labels, descriptions, buttons, quest/reputation/inventory text and other routine UI information;
+- **Numeric** — values, timers, percentages and other number-dense UI.
 
-Manrope is used for:
+The concrete TMP font assets for these roles are assigned centrally in the `UIConfiguration` asset. Per-window styling must consume the configured semantic role rather than hard-code a typeface name.
+
+These roles cover:
 
 - buttons;
 - labels;
@@ -328,7 +332,7 @@ A future display typeface may be used sparingly for:
 - loading presentation;
 - exceptional narrative headings.
 
-It must not replace Manrope for functional information.
+It must not replace the semantic roles for functional information.
 
 ---
 
@@ -349,6 +353,8 @@ At 1920×1080 / 100%:
 | Critical floating combat text | 24 px | Bold |
 
 These sizes should be implemented through shared TextMesh Pro styles/presets.
+
+The Radiant Slate typography scale is the design authority for token sizes. Font-family selection through the semantic roles and font-size selection through these shared tokens are separate concerns.
 
 Do not independently type arbitrary font sizes onto every prefab.
 
@@ -699,7 +705,7 @@ Implementation requires a central source for:
 
 - colour tokens;
 - spacing tokens;
-- font styles;
+- semantic font roles, shared font styles and their configured TMP font assets;
 - icon sizes;
 - standard dimensions;
 - shader/material presets;
@@ -713,7 +719,7 @@ This may be implemented through:
 - TMP style assets;
 - a combination.
 
-Product authority is the token system, not a specific C# representation.
+For typography, `UIConfiguration` is the central authority for the `Heading`, `Body` and `Numeric` roles, their concrete TMP font assets and the shared text-style tokens. Product authority is the token system, not a specific C# representation, and per-window prefabs must not select production typefaces independently.
 
 ---
 
@@ -2031,7 +2037,7 @@ The following decisions are locked:
 11. Normal inner/divider border is 1 px.
 12. Standard corner radius is 4 px.
 13. Standard panel padding is 16 px.
-14. Manrope is the functional UI typeface.
+14. Functional UI typography uses the `Heading`, `Body` and `Numeric` semantic roles; their concrete TMP font assets are owned by the central `UIConfiguration` asset.
 15. Standard UI text is 14 px at the reference scale.
 16. Window headings are 18 px.
 17. Major screen headings are 24 px.
@@ -2159,9 +2165,11 @@ The UI/UX system satisfies this PDD when all of the following are true.
 
 ### 97.3 Typography
 
-- Manrope is used across functional UI.
-- Standard body UI is 14 px at reference scale.
-- Window titles use the standard heading token.
+- Functional UI uses `Heading` for window titles, section headings and identity headings.
+- Functional UI uses `Body` for ordinary labels, descriptions, buttons and quest/reputation/inventory text.
+- Functional UI uses `Numeric` for values, timers, percentages and other number-dense UI.
+- The central `UIConfiguration` asset owns the concrete TMP font assets for these roles; per-window styling does not hard-code a typeface name.
+- Shared typography styles use the Radiant Slate token sizes at reference scale, including 14 px standard body UI and the standard window-heading token.
 - Text colour follows Primary/Secondary/Muted semantics.
 - Text remains readable at supported resolutions/scales.
 
