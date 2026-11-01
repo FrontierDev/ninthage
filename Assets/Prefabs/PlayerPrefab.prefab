@@ -96,7 +96,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
   _syncPosition: 0
   _syncRotation: 1
@@ -130,7 +130,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
   isDead: 0
   hitLocation: {fileID: 0}
@@ -172,7 +172,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
 --- !u!114 &-7706612264853232162
 MonoBehaviour:
@@ -195,7 +195,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
   _knownSpellIDs: []
 --- !u!114 &-121763205668716912
@@ -219,7 +219,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
   _spellEffectSpawnPoint: {fileID: 3192055068746235593}
 --- !u!114 &8549504979250741271
@@ -243,7 +243,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
 --- !u!114 &3282940790697861004
 MonoBehaviour:
@@ -266,7 +266,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
   _pvpFaction: {fileID: 0}
 --- !u!114 &245089617336762274
@@ -290,7 +290,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
 --- !u!114 &969522152533613822
 MonoBehaviour:
@@ -313,7 +313,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
 --- !u!114 &4332955469127647555
 MonoBehaviour:
@@ -336,7 +336,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
 --- !u!114 &3363564965647839178
 MonoBehaviour:
@@ -359,7 +359,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
 --- !u!114 &8006263507724345872
 MonoBehaviour:
@@ -382,7 +382,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
 --- !u!114 &7396654915169398101
 MonoBehaviour:
@@ -405,7 +405,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
 --- !u!114 &8366347903346478222
 MonoBehaviour:
@@ -464,7 +464,7 @@ MonoBehaviour:
   _parent: {fileID: 0}
   _invertedPathToNearestParent: 
   _directChildren: []
-  _networkRules: {fileID: 0}
+  _networkRules: {fileID: 11400000, guid: 2682add2998e4a778ed426c6b32ded75, type: 2}
   _visitiblityRules: {fileID: 0}
   _animator: {fileID: 1505419476842940553}
   _ownerAuth: 1
