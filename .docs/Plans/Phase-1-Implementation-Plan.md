@@ -393,19 +393,20 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 **Locked Stage 1.9 decisions:**
 
 - The Master Server owns the active Release State for its process lifetime.
-- Release Manifest schema version 1 is exactly the contract defined by the Live Content and Versioning PDD §15.
-- `ReleaseID` is a nonempty immutable GUID. Protocol Version starts at 1; Gameplay Content Revision and per-build-target Catalog Revision are positive signed 64-bit revisions.
+- Stage 1.9 executes against the proposed Release Manifest schema version 2. It preserves every schema v1 identity and provenance field except the per-catalog `RemoteLoadPath`; removing that field is a schema break, and schema v1 must not be silently reinterpreted as schema v2.
+- `ReleaseID` is a nonempty immutable GUID. Protocol Version starts at 1; Gameplay Content Revision and per-build-target Catalog Revision are positive signed 64-bit revisions. Server-build, protocol, gameplay-content, per-target catalog and required database-schema identities remain part of Release State.
 - The Master uses the exact required EF Core migration ID as `DatabaseSchemaVersion`.
-- Unity CCD is the initial remote content host, with Development / Staging / Production environments and matching platform buckets; the initial client target is `StandaloneWindows64`.
-- CCD `latest` is Development iteration convenience only. A formal Release Manifest pins an immutable release-specific CCD URL.
+- The complete launch baseline, including World chunks, character models and common presentation, is included in the locally installed Player and World Server build artifacts. Addressables still loads and unloads scenes/assets on demand from disk.
+- Initial client and World startup performs no CCD or other HTTP catalog lookup, remote bundle acquisition or `latest` fallback. Bootstrap UI remains local. Installed content is a build/deployment concern, not a network download step.
+- `contentStateSHA256` remains retained build provenance for the exact build-target content-state artifact. It is not an active downloading requirement and does not turn local startup into a content-verification download flow.
 - The active manifest is selected explicitly at Master startup in Phase 1. Changing active Release State requires controlled Master restart/deployment; no online release switcher is introduced here.
-- Promotion to another environment creates a new environment-specific immutable Release Manifest / `ReleaseID` because the CCD release URL changes.
+- A different v2 manifest/content release creates a new immutable `ReleaseID`, correct client/server build IDs and an actual local catalog identity. The old remote release is not reused as if it were the unchanged local release.
 
 **Implementation order:**
 
 1. **Release contracts and validation**
-   - Add the canonical Release Manifest / Addressables catalog contract on the Master side.
-   - Validate all required identities, hashes, build-target uniqueness, environment and immutable remote-path rules.
+   - Add the canonical proposed schema v2 Release Manifest / Addressables catalog contract and client projection on the Master side. The Master contract issue owns the actual schema/projection change.
+   - Validate all required identities, hashes, build-target uniqueness, environment, schema version and local catalog declarations. Remove validation that requires `RemoteLoadPath`; reject schema v1 rather than reinterpreting it.
    - Add no compatibility fallback or implicit `latest` lookup.
 
 2. **Master active-release authority**
@@ -418,35 +419,38 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
    - World Server registration presents its server build/protocol/gameplay-content identity.
    - Master rejects a World run that does not match the active Release State.
    - An accepted registration snapshot is pinned to the accepted `ReleaseID` for that `WorldServerRunID`.
+   - The World uses the locally installed catalog declaration for its target and fails explicitly if local Addressables initialization or a required World scene load cannot complete.
 
 4. **Pre-authentication client compatibility**
    - Add one compatibility negotiation before credential authentication/world entry.
    - Client reports build, protocol, gameplay-content and loaded catalog identity.
    - World validates against its pinned Release State and returns an actionable compatibility result.
    - Credential validation must not run for a client that has not satisfied compatibility.
+   - Preserve the existing eight-field comparison: Client Build Version, Client Build ID, Protocol Version, Gameplay Content Revision, Gameplay Content Manifest Hash, Build Target, Catalog Revision and Catalog Hash. A mismatch fails closed; it does not trigger a client login retry.
 
 5. **Addressables release-state integration**
-   - Replace runtime authority based on a movable Development `latest` path with the pinned catalog identity/load path supplied by Release State.
-   - Complete remote catalog check/update, required dependency download, cache reuse and explicit content-verification failure UX.
-   - Preserve the local bootstrap required to show update/maintenance/content errors.
+   - Replace runtime authority based on a movable Development `latest` path with the locally installed catalog selected by the build/package and the Master-owned catalog declaration.
+   - Initialize Addressables from disk and load/unload local scenes/assets on demand. Do not perform remote catalog checks, catalog updates, bundle downloads, `preworld` downloads or remote cache reuse.
+   - Treat matching catalog declarations as compatibility evidence and successful Addressables initialization as catalog-load evidence. Neither proves file-level integrity of every bundle; do not claim automatic full-content cryptographic verification.
+   - Preserve the local bootstrap and fail startup explicitly when the installed catalog or required local content cannot be loaded.
 
 6. **Hotfixable gameplay-definition registries**
    - Keep stable `DefinitionID` values.
-   - Migrate only approved hotfixable definition domains away from `Resources.Load` / direct-reference authority to registries populated from the active Addressables content set.
-   - Preserve local/executable-bound definitions where remote hotfixing is not required.
+   - Keep the Stage 1.9 launch baseline and approved definition content in the locally installed Addressables package; load it from disk through the existing content owners.
+   - Do not implement remote hotfix downloads or remote definition activation in this stage. Preserve local/executable-bound definitions where remote hotfixing is not required.
 
 7. **Release artifacts and update workflow**
-   - Retain the exact per-build-target `addressables_content_state.bin` and record its SHA-256 in the Release Manifest.
-   - Build content updates only against the exact retained baseline.
-   - Retain manifest, catalog/hash, bundle/dependency report, content-state artifact and build/source identities for every promoted release.
+   - Retain the exact per-build-target `addressables_content_state.bin` and record its SHA-256 in the Release Manifest as build provenance.
+   - Build and package the complete local Addressables baseline for each supported Player/World Server target, with the catalog revision/hash identifying the catalog actually installed in that artifact.
+   - Retain the manifest, local catalog/package, bundle/dependency report, content-state artifact and build/source identities for every release. Installer, patcher, storage preflight, distribution provider and cross-environment deployment remain later decisions.
 
 8. **Controlled hotfix / rollback validation**
-   - Prove a compatible content-only update can advance gameplay/catalog content without rebuilding the executable.
-   - Prove incompatible client/protocol/content/schema combinations fail closed before world entry.
-   - Prove cached unchanged bundles are reused and changed bundles alone are downloaded.
-   - Prove rollback selects a known-good immutable release and does not silently cross incompatible database/content state.
+   - Prove a complete locally installed package starts with the declared client/World compatibility identities and no network content request.
+   - Prove incompatible client/protocol/content/catalog/schema combinations fail closed before credential authentication or world entry.
+   - Prove the World can initialize Addressables from disk and load/unload a representative World scene through the existing scene owner.
+   - Do not accept remote hotfix, live rollback, bundle-cache reuse or cross-environment deployment as Stage 1.9 gates; those require later transport and operations decisions.
 
-**Gate:** Controlled compatible hotfix works without rebuilding the client; incompatible builds/content/schema cannot enter; Master/World/client are pinned to one explicit release; catalog/bundle updates are reproducible and auditable; release artifacts, dependency/patch-size evidence and update telemetry are sufficient for later integrated performance qualification.
+**Gate:** A complete local Player/World Server package starts without CCD, HTTP catalog lookup, remote bundle acquisition, `preworld` download or client login retry; Master/World/client retain one explicit process-lifetime Release State and the existing eight-field pre-authentication comparison; incompatible identities fail closed; Addressables initializes from disk and a representative World scene loads; local release artifacts are reproducible and auditable. Hotfix downloads, distribution provider, storage preflight, patcher, game installer and cross-environment deployment remain later decisions.
 
 ### Stage 1.10 — Runtime operations, failure handling and CI performance gates
 
