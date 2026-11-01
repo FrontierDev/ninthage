@@ -25,7 +25,8 @@ zServerCommands.txt
 /Assets/Audio/
 /Assets/Materials/
 /Assets/Scenes/
-/Assets/Prefabs/
+/Assets/Prefabs/Terrain/
+/Assets/Prefabs/Test/
 /Assets/TextMesh Pro/
 /Assets/ThirdParty/
 /AssetBundles/
