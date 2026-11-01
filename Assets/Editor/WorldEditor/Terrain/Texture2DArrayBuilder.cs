@@ -25,7 +25,7 @@ namespace Game.Editor.WorldEditor
 
         // ── Window entry point ────────────────────────────────────────────────────
 
-        [MenuItem("Window/NinthAge/Texture2D Array Builder", priority = 200)]
+        [MenuItem("Tools/Ninth Age/Texture2D Array Builder", priority = 200)]
         public static void Open() => GetWindow<Texture2DArrayBuilder>("Texture2D Array Builder");
 
         // ── GUI ───────────────────────────────────────────────────────────────────

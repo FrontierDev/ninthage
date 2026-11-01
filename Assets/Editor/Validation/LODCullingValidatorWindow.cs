@@ -77,7 +77,7 @@ namespace Game.Editor.Validation
         private int _passedPrefabCount;
         private int _skippedSelectionCount;
 
-        [MenuItem("Tools/Validation/LOD and Culling Assets")]
+        [MenuItem("Tools/Ninth Age/Validation/LOD and Culling Assets")]
         private static void ShowWindow()
         {
             var window = GetWindow<LODCullingValidatorWindow>();

@@ -15,7 +15,7 @@ namespace Game.Editor.Build
         private DevelopmentReleasePreparationResult _lastResult;
         private bool _isPreparing;
 
-        [MenuItem("Window/NinthAge/Development Release")]
+        [MenuItem("Tools/Ninth Age/Development Release")]
         private static void Open()
         {
             var window = GetWindow<DevelopmentReleaseWindow>();

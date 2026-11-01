@@ -28,7 +28,7 @@ namespace Game.Editor.Dialogue
         private int hoveredLinkTargetId = -1;
         private GUIStyle nodeTextStyle;
 
-        [MenuItem("Window/NinthAge/Dialogue Editor")]
+        [MenuItem("Data/Dialogue Editor")]
         public static void ShowWindow()
         {
             var w = GetWindow<DialogueEditorWindow>("Dialogue Editor");
