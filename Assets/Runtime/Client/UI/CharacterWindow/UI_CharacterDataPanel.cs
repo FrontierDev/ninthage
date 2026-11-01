@@ -68,11 +68,12 @@ namespace Game.Client.UI
                 _characterNameText.text = characterData.Name;
                 _characterTitleText.text = characterData.Title;
                 _characterLevelText.text = $"Level {actor.GetLevel()}";
-                _characterClassText.text = characterData.ClassID;
-                _characterRaceText.text = characterData.RaceID;
 
                 var classDef = Shared.Data.ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID);
                 var raceDef = Shared.Data.RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID);
+
+                _characterClassText.text = classDef?.DisplayName ?? characterData.ClassID;
+                _characterRaceText.text = raceDef?.DisplayName ?? characterData.RaceID;
 
                 if (classDef != null && classDef.Icon != null)
                 {

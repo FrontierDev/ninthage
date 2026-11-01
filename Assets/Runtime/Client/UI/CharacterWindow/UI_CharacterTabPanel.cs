@@ -1,4 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
+using Game.Client.UI.Configuration;
+using Game.Client.UI.Skin;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -20,6 +23,7 @@ namespace Game.Client.UI
         [SerializeField] private Dictionary<UI_CharacterTabButton, UI_Panel> _tabButtons = new();
         [FormerlySerializedAs("tabButtonList")]
         [SerializeField] private List<UI_CharacterTabButton> _tabButtonList; // For inspector assignment
+        private UI_Skin _skin;
 
         protected override void Awake()
         {
@@ -29,6 +33,12 @@ namespace Game.Client.UI
                 return;
             }
             _instance = this;
+
+            _skin = GetComponentInParent<UI_Skin>(true);
+            if (_skin == null)
+                throw new InvalidOperationException("Character tab panel requires a parent UI_Skin.");
+            if (_skin.Configuration == null)
+                throw new InvalidOperationException("Character tab panel parent UI_Skin has no UIConfiguration.");
 
             foreach (UI_CharacterTabButton button in _tabButtonList)
             {
@@ -55,12 +65,12 @@ namespace Game.Client.UI
                 if (isSelected)
                 {
                     if (kvp.Value != null) kvp.Value.ShowImmediate();
-                    kvp.Key.TabText.color = Utility.UIConstants.PRIMARY_TEXT; // Set active tab text color
+                    kvp.Key.TabText.color = _skin.Configuration.GetColor(UITokens.Color.PrimaryText);
                 }
                 else
                 {
                     if (kvp.Value != null) kvp.Value.HideImmediate();
-                    kvp.Key.TabText.color = Utility.UIConstants.SECONDARY_TEXT; // Set inactive tab text color
+                    kvp.Key.TabText.color = _skin.Configuration.GetColor(UITokens.Color.SecondaryText);
                 }
             }
         }
