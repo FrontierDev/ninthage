@@ -2,10 +2,20 @@
 
 **Phase:** 1 — Core Runtime and Production Infrastructure  
 **Branch:** `dev`  
-**Status:** In progress — Stages 1.0/1.1 complete; Stage 1.2 foundations are partially implemented and the continuous server physical-space cleanup is pending  
-**Last updated:** 2026-10-27
+**Status:** Phase 1 foundation implementation closed (1 November 2026) — Stages 1.0–1.9 accepted; 1.10–1.11 explicitly deferred  
+**Last updated:** 2026-11-01
 **Parent roadmap:** [Project Roadmap](Project-Roadmap.md)  
 **Implementation baseline:** Existing Phase 0 runtime; not a greenfield replacement
+
+---
+
+## Phase 1 implementation close-out — owner decision, 1 November 2026
+
+[Closed GitHub close-out #441](https://github.com/FrontierDev/ninthage/issues/441) records the owner's decision to **complete Phase 1 as a foundation-implementation milestone at the end of Stage 1.9**. Stages 1.0–1.9 are accepted as implemented, including the Master/World persistence and gameplay-session boundaries and the local Addressables release/compatibility baseline. Work may advance to Phase 2 without treating the former Stage 1.10 and 1.11 gates as prerequisites.
+
+**Stage 1.10 (runtime operations, automated regression and CI performance gates) and Stage 1.11 (integrated benchmark, stress, soak and capacity qualification) are deferred to later work, not cancelled or marked passed.** Their detailed contracts remain below for future scheduling. Deferred owner-operated smoke checks and validation records remain outstanding evidence, not implicit successes. In particular, this close-out makes **no numerical capacity, full regression, stress-test, production reliability or production-readiness claim**. Confirmed foundational defects must still be corrected when encountered.
+
+The one-world/one-World-Server-process/one-machine topology, separate Master authority, server-authoritative simulation and all existing product PDD contracts remain unchanged. Optional editor-menu housekeeping [#440](https://github.com/FrontierDev/ninthage/issues/440) is post-Phase-1 work; cancelled/reverted Editor Suite proposals #438/#439 are not delivered foundations.
 
 ---
 
@@ -17,7 +27,7 @@ Ninth Age is an MMO built with Unity 6.3, URP Forward+, a headless authoritative
 
 **Governing principle:** Anticipate the highest-stress plausible scenarios and implement their reusable architectural prerequisites now. Do not defer an identifiable foundational dependency until it becomes a production bottleneck. Equally, do not adopt speculative frameworks or rewrite functional systems without demonstrable architectural justification.
 
-**Foundation-first verification sequencing:** Stages **1.1–1.9** build the server/client foundations and the instrumentation needed to observe them. During those stages, use compilation/static validation and narrow owner-operated smoke checks needed to prove that an implementation works and that telemetry is connected. Do **not** create new regression-test suites/issues, representative benchmark campaigns, density/capacity sweeps, soak campaigns, comparative optimisation studies or new numerical performance thresholds as stage gates. Systematic regression coverage and repeatable performance regression gates begin in **Stage 1.10**, after the functional foundations are assembled; the full representative benchmark/stress matrix is executed in **Stage 1.11**.
+**Foundation-first verification sequencing:** Stages **1.1–1.9** established the server/client foundations and the instrumentation needed to observe them, with compilation/static validation and narrow owner-operated smoke checks. New regression-test suites, representative benchmark campaigns, density/capacity sweeps, soak campaigns, comparative optimisation studies and new numerical performance thresholds were not foundation-stage gates. Systematic regression coverage and repeatable performance gating remain specified in **deferred Stage 1.10**; the representative benchmark/stress matrix remains specified in **deferred Stage 1.11**. Neither is a condition of the owner-approved Phase 1 implementation close-out.
 
 A scalable architectural design, an instrumented runtime, a tested workload, and a guaranteed production capacity are **different claims**. No numerical server or player capacity is implied by completion of a foundation stage.
 
@@ -48,11 +58,11 @@ Preserve these established decisions:
 8. **One world / one process / one physical machine.** Every map, public area, private instance and simulated actor of a persistent world remains inside its one World Server process. Distinct worlds have distinct World Server machines; no cross-machine world sharding or separate instance-hosting processes.
 9. **A separate Master Server owns the global control plane**: durable world registry, authentication, account/character persistence service authority, one-account/one-session exclusivity, world admission/transfer coordination and later cross-world social routing. It does not run Unity world simulation. The Stage 1.2 launch-generated `WorldID` remains an intentionally temporary test identifier until the durable registry is integrated.
 
-Phase 1 first establishes the common mechanisms and instrumentation, then verifies the assembled runtime under synthetic stress in Stages 1.10–1.11. Foundation stages must not repeatedly stop to run broad performance campaigns before the dependent server/client architecture exists. Full zone production, sophisticated AI content, private-dungeon gameplay, **concurrent multi-world hosting and cross-world transfers (Phase 3)**, final art-density tuning, final capacity promises and deployment at commercial scale remain later work. Splitting a single world across machines is prohibited by the approved topology, not deferred future work.
+Phase 1 established the common mechanisms and instrumentation through Stage 1.9. Broad synthetic-stress, regression and operations qualification remains deferred under the retained 1.10–1.11 specifications; it does not block the owner-approved implementation close-out or the start of Phase 2. Foundation stages did not repeatedly stop to run broad performance campaigns before the dependent server/client architecture existed. Full zone production, sophisticated AI content, private-dungeon gameplay, **concurrent multi-world hosting and cross-world transfers (Phase 3)**, final art-density tuning, final capacity promises and deployment at commercial scale remain later work. Splitting a single world across machines is prohibited by the approved topology, not deferred future work.
 
 ## 3. Execution rules
 
-1. Execute stages in the order below **unless a stage explicitly identifies independent parallel work**. Each stage ends with concrete artifacts and a validation gate; failing a gate blocks dependent stages.
+1. Stages 1.0–1.9 were executed as the Phase 1 foundation sequence; the owner-approved 1 November 2026 close-out supersedes the former dependency on 1.10–1.11 before Phase 2. The retained 1.10–1.11 gates apply when their deferred qualification work is scheduled, and do not claim an already passing result.
 2. Begin with baseline instrumentation so later integrated verification can attribute failures and cost. Preserve regression coverage that already exists, but do not add new regression-test suites/issues during Stages 1.1–1.9 unless the owner explicitly makes an exception for a blocking defect. Foundation-stage validation is compilation/static checking plus narrow manual smoke validation; systematic automated regression expansion belongs to Stage 1.10.
 3. Make timing, relevance, actor lifetime and data-ownership contracts explicit before other features adopt them.
 4. Refactor real hot paths at the appropriate stage; do not merely add abstract interfaces while leaving the original per-frame scans and allocations active.
@@ -70,7 +80,7 @@ Phase 1 first establishes the common mechanisms and instrumentation, then verifi
 | Interest and spatial subscriptions | `ServerInterestManager.cs` — `OnInterestRequest`; `Shared/Networking/ChunkSubscriptions.cs`; `ChunkVisibilityRule.cs` |
 | Actor state / network-visible representation | `Server/Systems/ActorComponent.cs`; `Shared/Runtime/Actors/Actor.cs`; `NPCActor.cs`; `ServerSpawnManager.cs` |
 | Movement / position transport | `Shared/Movement/MovementSimulation.cs`; `Shared/Networking/MovementEndpoint.cs`; `ServerPositionManager.cs` |
-| Server physical/NavMesh representation | `ServerPhysicsManager.cs` — continuous physical conversion, physics queries and streamed NavMesh binding; fixed-grid region state is pending removal |
+| Server physical/NavMesh representation | `ServerPhysicsManager.cs` — continuous physical conversion, physics queries and streamed NavMesh binding (the fixed-grid removal below records the Stage 1.2 implementation work) |
 | Client streaming / floating origin | `ClientWorldManager.cs`; `ClientPositionManager.cs`; `Shared/Utility/WorldPosition.cs` |
 | Networking and serialisation | `Shared/Networking/*Endpoint.cs`, `PackWorldPosition.cs`, `PackStatSnapshot.cs`; project-owned PurrNet integration |
 | Persistence / account ownership | `Server/Persistence/PlayerDatabase.cs`, `PlayerAccountData.cs`; `Server/Services/PlayerAuthService.cs`; `Shared/Persistence/CharacterData.cs` |
@@ -118,6 +128,8 @@ Names above identify the **current baseline**, not a requirement to preserve eve
 
 ### Stage 1.2 — Instance-aware spatial indexing, continuous physical space and interest foundations
 
+**Historical implementation contract:** The baseline/remaining-work language in this section describes the Stage 1.2 planning snapshot, not outstanding Phase 1 work as of the 1 November 2026 close-out.
+
 **Prerequisite:** Stage 1.1 authoritative timing contract and the World Runtime/Movement PDDs.  
 **Unblocks:** NPC activity tiers, scalable perception/combat queries, authoritative actor relevance and later replication scaling.
 
@@ -138,7 +150,7 @@ At Stage 1.2 completion:
 
 #### Existing implementation baseline to preserve
 
-The current `dev` branch already contains useful Stage 1.2 foundations that should not be rewritten without a demonstrated correctness problem:
+At the Stage 1.2 planning baseline, `dev` already contained useful foundations that were to be preserved unless a demonstrated correctness problem required change:
 
 - immutable `ActorSpatialContext (WorldID, MapID, InstanceID)`;
 - independent spatial-index/visibility configuration, initially 64 m index cells with 80 m entry and 96 m exit visibility radii;
@@ -151,9 +163,9 @@ The current `dev` branch already contains useful Stage 1.2 foundations that shou
 - the shared centred 256 m `GameConfiguration.ChunkSize` grid and existing client floating-origin behaviour;
 - the current accepted-player-position/FPO correctness path.
 
-The fixed-grid physical-region implementation currently present on `dev` is **not** part of the preserved baseline. The approved target is simpler: the current active public map/runtime instance uses one continuous server physical/NavMesh space. `ServerPhysicsManager` remains the reusable physical-query/NavMesh-binding owner without becoming an actor-position owner; `ServerWorldManager` remains context-qualified scene-streaming owner; and `ServerPositionManager` remains position/network transport conversion only. Future authored simulation regions or server-worker ownership boundaries are deferred architecture and must not inherit the current tile-derived fixed-grid semantics by default.
+The fixed-grid physical-region implementation present at that planning baseline was **not** part of the preserved baseline. The approved target is simpler: the current active public map/runtime instance uses one continuous server physical/NavMesh space. `ServerPhysicsManager` remains the reusable physical-query/NavMesh-binding owner without becoming an actor-position owner; `ServerWorldManager` remains context-qualified scene-streaming owner; and `ServerPositionManager` remains position/network transport conversion only. Future authored simulation regions or server-worker ownership boundaries are deferred architecture and must not inherit the current tile-derived fixed-grid semantics by default.
 
-#### Remaining implementation sequence — execute strictly in this order
+#### Historical Stage 1.2 implementation sequence (completed in the foundation programme)
 
 1. **Preserve and validate player accepted-position correctness and player spatial publication.**
    - Retain focused regression coverage proving a client origin rebase cannot change the accepted absolute position or trigger false speed correction.
@@ -386,7 +398,9 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 
 **Gate:** No duplicate authoritative sessions/actors or lost/duplicated items; the Master Server is the sole account/session admission authority even with multiple connection attempts; the initial World Server can register and authenticate admission against it; reconnect and restart preserve relevant state; admission/reconnect telemetry is present for later burst/stress verification.
 
-### Stage 1.9 — Release identity, compatibility and Addressables content delivery
+### Stage 1.9 — Release identity, compatibility and Addressables content delivery (implementation accepted)
+
+**Close-out status:** The owner accepted the Stage 1.9 implementation as complete on 1 November 2026. This is not a blanket claim that every deferred release-package smoke check or integrated compatibility matrix has been run.
 
 **Prerequisite:** Stable persistence schema and gameplay-definition ownership; client asset lifetime baseline 1.6.
 
@@ -452,12 +466,12 @@ The fixed-grid physical-region implementation currently present on `dev` is **no
 
 **Gate:** A complete local Player/World Server package starts without CCD, HTTP catalog lookup, remote bundle acquisition, `preworld` download or client login retry; Master/World/client retain one explicit process-lifetime Release State and the existing eight-field pre-authentication comparison; incompatible identities fail closed; Addressables initializes from disk and a representative World scene loads; local release artifacts are reproducible and auditable. Hotfix downloads, distribution provider, storage preflight, patcher, game installer and cross-environment deployment remain later decisions.
 
-### Stage 1.10 — Runtime operations, failure handling and CI performance gates
+### Stage 1.10 — Runtime operations, failure handling and CI performance gates (deferred)
 
 **Prerequisite:** 1.0–1.9 interfaces and metrics are established.  
 **Some logging/config/CI scaffolding may begin in parallel after 1.0.**
 
-This is the **first Phase 1 stage that owns systematic regression-test expansion and may promote repeatable performance comparisons into actual regression gates**. Earlier foundation-stage smoke checks/reports remain developmental validation only.
+**Deferred workstream:** This retained specification owns systematic regression-test expansion and may promote repeatable performance comparisons into actual regression gates when scheduled later. It was **not executed or accepted** as part of the 1 November 2026 Phase 1 implementation close-out. Earlier foundation-stage smoke checks/reports remain developmental validation only.
 
 **Implement:**
 
@@ -471,11 +485,11 @@ This is the **first Phase 1 stage that owns systematic regression-test expansion
 
 **Gate:** Operational failure and overload are observable; backup/restore and migration rehearsal are demonstrated; representative CI/workflow runs produce comparable, inspectable artifacts.
 
-### Stage 1.11 — Integrated stress verification and Phase 1 sign-off
+### Stage 1.11 — Integrated stress verification and capacity qualification (deferred)
 
 **Prerequisite:** All prior stage gates passed.
 
-This stage owns the representative benchmark campaigns intentionally deferred from Stages 1.1–1.9, including dense rendering, rapid traversal/repeated lifetime, population scaling, network-load, reconnect-burst and soak workloads.
+**Deferred workstream:** This retained specification owns the representative benchmark campaigns deferred from Stages 1.1–1.9, including dense rendering, rapid traversal/repeated lifetime, population scaling, network-load, reconnect-burst and soak workloads. It was **not executed or accepted** as part of the 1 November 2026 Phase 1 implementation close-out. Its performance/production-supportability qualification must be separately evidenced later.
 
 Run the Phase 1 benchmark matrix against a release-like headless server and graphical client, exercising **combined** workloads rather than isolated microbenchmarks:
 
@@ -501,7 +515,7 @@ Run the Phase 1 benchmark matrix against a release-like headless server and grap
 6. Representative headless and client test results are recorded and comparable; automated regression checks exist for the critical contracts.
 7. Later Phase 2–3 gameplay, AI and world-authoring implementations can consume documented shared infrastructure without inventing local schedulers, interest models, pooling schemes or persistence access.
 
-**Exit milestone — Scalable, Durable Runtime Foundation:** A durable character can enter and traverse a seamless multiplayer world, change authoritative state, reconnect and survive restart; compatibility mismatches are rejected; and the hybrid server/client runtime has **demonstrated** its agreed performance and resource-lifetime behaviour on documented high-stress workloads.
+**Deferred qualification milestone — Scalable, Durable Runtime Foundation:** When this workstream is eventually performed, a durable character must enter/traverse a seamless multiplayer world, change authoritative state, reconnect and survive restart; compatibility mismatches must be rejected; and the hybrid server/client runtime must **demonstrate** its agreed performance and resource-lifetime behaviour on documented high-stress workloads. This qualification was **not** claimed by the Phase 1 implementation close-out.
 
 ---
 
@@ -540,16 +554,19 @@ Phase 0 stable foundation
       |                      |
       +-----------+----------+
                   v
-       1.9 Release/version/content delivery
+       1.9 Release/version/local content
                   |
                   v
-       1.10 Operations and automated gates
+       Phase 1 implementation CLOSED
                   |
                   v
-       1.11 Integrated stress verification
+       1.10 Operations and automated gates [DEFERRED]
+                  |
+                  v
+       1.11 Integrated stress verification [DEFERRED]
 ```
 
-The diagram illustrates **integration dependencies**, not a demand to leave independent teams idle. Persistence schema work, early operational scaffolding and client benchmark fixture work can begin once 1.0 contracts are established. They cannot be considered integrated until their respective prerequisites pass.
+The diagram preserves the **original technical sequence**, not a Phase 2 blocking dependency: the Phase 1 foundation implementation is closed at 1.9, while 1.10 and 1.11 are deliberately deferred qualification work. Persistence schema work, early operational scaffolding and client benchmark fixture work can begin once 1.0 contracts are established. They cannot be considered integrated until their respective prerequisites pass.
 
 ## 6. Hand-off contracts for later phases
 
@@ -560,7 +577,7 @@ The diagram illustrates **integration dependencies**, not a demand to leave inde
 - **Phase 3 presentation:** author art according to the Phase 1 renderer/LOD/culling/streaming contracts, then tune quality and density through measured budgets.
 - **Phases 4–7 gameplay breadth:** integrate new persistent state through transactional central persistence and versioned definitions; Phase 5 cross-world social/chat routing uses the Master Server and local world-specific/spatial channels remain World Server-scoped.
 - **Phase 8 hardening:** increase validated density, soak duration, supported capacity and fault tolerance, rather than first introducing scheduling, spatial indexing, activity tiers or observability.
-- **Stages 1.10/1.11 performance qualification:** own the deferred larger/longer capacity, impairment and sustained-overload campaigns and the production-supportability decision; Stage 1.5 does not claim those results.
+- **Deferred Stages 1.10/1.11 performance qualification:** retain ownership of larger/longer capacity, impairment, operational regression and sustained-overload campaigns and the later production-supportability decision. Their non-execution does not prevent Phase 2 implementation, and Stage 1.5 or the Phase 1 close-out does not claim those results.
 
 ## 7. Issue decomposition and evidence requirements
 
@@ -574,6 +591,6 @@ Create narrowly scoped GitHub issues under Phase 1 stage labels/fields, respecti
 - Baseline-versus-result measurements where performance is material.
 - Passing acceptance criteria and evidence links.
 
-**Do not close an implementation issue simply because it compiles, produces a microbenchmark improvement or works in a single-player empty scene.** Validate the relevant shared contract and regression scenarios.
+**Do not close an implementation issue simply because it compiles, produces a microbenchmark improvement or works in a single-player empty scene.** Validate its agreed implementation contract. The owner-approved Phase 1 phase-level close-out is a separate scope decision: it does not retrospectively mark deferred manual checks, Stage 1.10 regression tests or Stage 1.11 stress gates as passed.
 
 The plan is intended to be revised as specific implementation decisions are measured, but changes to its foundational guarantees require a deliberate architectural review rather than silent deferral.
