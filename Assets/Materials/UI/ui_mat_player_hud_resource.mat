@@ -30,18 +30,18 @@ Material:
     m_Ints: []
     m_Floats:
     - _BorderWidth: 1
-    - _FillAmount: 1
+    - _FillAmount: 0.688
     - _FillBottomStrength: 0.25
     - _FillDirection: 0
-    - _FillEdgeStrength: 0.2
+    - _FillEdgeStrength: 1
     - _FillInset: 1
     - _FillTopStrength: 0.18
-    - _FrameInset: 2
-    - _InnerHighlightStrength: 0.18
+    - _FrameInset: 3
+    - _InnerHighlightStrength: 0
     - _InnerShadowStrength: 0.3
     - _LeftChamfer: 0
     - _Opacity: 1
-    - _RightChamfer: 8
+    - _RightChamfer: 16
     m_Colors:
     - _BorderColor: {r: 0.03529412, g: 0.03921569, b: 0.04705882, a: 1}
     - _FillEdgeColor: {r: 0.68, g: 0.84, b: 1, a: 1}

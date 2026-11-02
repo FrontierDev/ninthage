@@ -66,6 +66,34 @@ float ArcaneSlateSdAsymmetricChamferRect(
                max(max(leftTop, leftBottom), max(rightTop, rightBottom)));
 }
 
+float ArcaneSlateSdPointedBar(
+    float2 p,
+    float2 halfExtents,
+    float endPointDepthPx,
+    float endShoulderInsetPx)
+{
+    float2 b = max(halfExtents, float2(0.5, 0.5));
+    float pointDepth = clamp(endPointDepthPx, 0.001, max(b.x - 0.5, 0.001));
+    float shoulderInset = clamp(endShoulderInsetPx, 0.0, max(b.y - 0.5, 0.0));
+    float bodyHalfWidth = max(0.5, b.x - pointDepth);
+    float triangleHalfHeight = max(0.5, b.y - shoulderInset);
+    float diagonalLength = max(length(float2(pointDepth, triangleHalfHeight)), 0.001);
+
+    float body = max(abs(p.x) - bodyHalfWidth, abs(p.y) - b.y);
+
+    float leftUpper = (pointDepth * p.y - triangleHalfHeight * (p.x + b.x)) / diagonalLength;
+    float leftLower = (-pointDepth * p.y - triangleHalfHeight * (p.x + b.x)) / diagonalLength;
+    float leftPoint = max(max(-p.x - b.x, p.x + b.x - pointDepth),
+                          max(leftUpper, leftLower));
+
+    float rightUpper = (pointDepth * p.y + triangleHalfHeight * (p.x - b.x)) / diagonalLength;
+    float rightLower = (-pointDepth * p.y + triangleHalfHeight * (p.x - b.x)) / diagonalLength;
+    float rightPoint = max(max(p.x - b.x, -p.x + b.x - pointDepth),
+                           max(rightUpper, rightLower));
+
+    return min(body, min(leftPoint, rightPoint));
+}
+
 float ArcaneSlateHash(float2 p)
 {
     return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
