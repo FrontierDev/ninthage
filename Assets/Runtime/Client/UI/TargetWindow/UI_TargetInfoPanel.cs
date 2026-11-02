@@ -32,7 +32,7 @@ namespace Game.Client.UI
                 if (newTarget.TryGetComponent<Game.Shared.Runtime.Actors.NPCActor>(out var npc))
                 {
                     _actorNameText.text = npc.GetName();
-                    _actorInfoText.text = $"Level {npc.GetLevel()}";
+                    _actorInfoText.text = $"{npc.GetLevel()}";
                 }
                 else
                 {
@@ -42,7 +42,7 @@ namespace Game.Client.UI
                     var raceDef = Game.Shared.Data.RaceDefinitionLibrary.Instance.GetDefinition(player.raceID.value);
                     var classDef = Game.Shared.Data.ClassDefinitionLibrary.Instance.GetDefinition(player.classID.value);
 
-                    _actorInfoText.text = $"Level {player.level.value} {raceDef.DisplayName} {classDef.DisplayName}";
+                    _actorInfoText.text = $"{player.level.value}";
                 }
             }
             else
