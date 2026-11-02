@@ -19,6 +19,7 @@ namespace Game.Client.UI.Configuration
 
         [Header("Text Styles")]
         [SerializeField] private TextStyleDefinition _windowTitle = new(UITokens.FontRole.Heading, 18f, FontStyles.Normal, FontWeight.SemiBold);
+        [SerializeField] private TextStyleDefinition _tabLabel = new(UITokens.FontRole.Body, 12f, FontStyles.UpperCase, FontWeight.Regular);
         [SerializeField] private TextStyleDefinition _sectionHeading = new(UITokens.FontRole.Heading, 16f, FontStyles.Normal, FontWeight.SemiBold);
         [SerializeField] private TextStyleDefinition _unitName = new(UITokens.FontRole.Heading, 14f, FontStyles.Normal, FontWeight.SemiBold);
         [SerializeField] private TextStyleDefinition _body = new(UITokens.FontRole.Body, 14f, FontStyles.Normal, FontWeight.Regular);
@@ -178,6 +179,9 @@ namespace Game.Client.UI.Configuration
                     break;
                 case UITokens.TextStyle.FloatingCombatCritical:
                     definition = _floatingCombatCritical;
+                    break;
+                case UITokens.TextStyle.TabLabel:
+                    definition = _tabLabel;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(token), token, "Unsupported UI text-style token.");

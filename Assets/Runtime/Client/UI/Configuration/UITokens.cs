@@ -94,7 +94,11 @@ namespace Game.Client.UI.Configuration
             /// <summary>
             /// Identifies critical floating combat text.
             /// </summary>
-            FloatingCombatCritical
+            FloatingCombatCritical,
+            /// <summary>
+            /// Identifies the tab label text style.
+            /// </summary>
+            TabLabel,
         }
 
         /// <summary>
