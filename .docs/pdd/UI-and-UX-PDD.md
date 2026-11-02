@@ -857,6 +857,50 @@ The UI PDD requires windows to share:
 - the same spacing/tokens;
 - the same interaction conventions.
 
+### 35.1 Standard RPG Window Authoring Contract
+
+Ordinary RPG windows use the following canonical outer hierarchy:
+
+```text
+Root
+├── _ Graphics
+├── Header
+├── Tabs
+├── Body
+└── Footer
+```
+
+The outer RectTransform is authored by the window variant. Window dimensions are
+variant-owned; there is no global window width/height token and the shell must not
+be resized by an outer layout system.
+
+The standard shell contract is:
+
+- `_ Graphics` is the first sibling, full-stretch, uses the shared
+  `ui_mat_panel.mat` surface and remains raycastable so empty window areas block
+  click-through;
+- `Header` owns common title, icon, close and divider chrome;
+- `Tabs` and `Footer` are standard ownership slots, but each window may author
+  their geometry and content to suit its composition;
+- the root `UI_Skin` owns shell presentation, including the Header and any Tabs or
+  Footer presentation;
+- `Body` contains exactly one nested `UI_Skin` for feature-specific static
+  presentation;
+- nested prefab-local skins remain independent ownership boundaries for spawned or
+  otherwise self-contained feature prefabs;
+- the root has no LayoutGroup, LayoutElement or ContentSizeFitter;
+- each axis has one sizing authority: an authored RectTransform, a parent
+  LayoutGroup with a child LayoutElement, or a ContentSizeFitter. These authorities
+  must not compete for the same axis;
+- LayoutGroups and Fitters may be used inside feature content where appropriate,
+  but never as the outer window-shell sizing authority;
+- major ordinary RPG windows should be standalone prefab variants instantiated by
+  `UI_Root`, rather than large direct-authored subtrees inside `UI_Root`.
+
+This contract applies to ordinary RPG windows. It does not automatically govern
+HUD modules, tooltips, context menus, cast bars, nameplates or other specialised
+surfaces, which retain their own composition requirements.
+
 ---
 
 ## 36. Window Stack and Escape Behaviour
