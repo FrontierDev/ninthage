@@ -32,14 +32,12 @@ namespace Game.Client.UI
         [SerializeField] private CanvasGroup _canvasGroup;
         [FormerlySerializedAs("splashImage")]
         [SerializeField] private Image _splashImage;
-        [FormerlySerializedAs("loadingIcon")]
-        [SerializeField] private Image _loadingIcon;
+        [FormerlySerializedAs("_loadingIcon")]
+        [SerializeField] private Image _progressBarFill;
         [SerializeField] private TMP_Text _statusText;
 
-        private int _stage = 0;
-        private int _maxStages = 1;
-        private float _targetFillAmount = 0f;
-        private const float FILL_SPEED = 5.0f;
+        private float _targetProgress;
+        private const float PROGRESS_FILL_SPEED = 5f;
         private bool _hasTerminalError;
         private bool _isShowing = false;
         private Coroutine _fadeCoroutine;
@@ -81,7 +79,7 @@ namespace Game.Client.UI
         /// <summary>
         /// Executes the client-side <c>Show</c> operation.
         /// </summary>
-        public void Show(int stages = 1)
+        public void Show()
         {
             // Cancel any in-progress fade-out from a previous loading screen.
             if (_fadeCoroutine != null)
@@ -90,16 +88,13 @@ namespace Game.Client.UI
                 _fadeCoroutine = null;
             }
 
-            // Set the expected number of stages.
-            this._maxStages = stages;
-            this._stage = 0;
-            this._targetFillAmount = 0f;
+            _targetProgress = 0f;
             _hasTerminalError = false;
             if (_statusText != null)
                 _statusText.text = string.Empty;
 
-            // Reset the loading bar/loading icon.
-            _loadingIcon.fillAmount = 0f;
+            // Reset the loading bar.
+            _progressBarFill.fillAmount = 0f;
 
             // Show the loading screen and refresh the splash image.
             ShowLoadingScreen();
@@ -137,13 +132,32 @@ namespace Game.Client.UI
         }
 
         /// <summary>
-        /// Executes the client-side <c>Tick</c> operation.
+        /// Sets the target loading progress displayed by the loading screen.
         /// </summary>
-        public void Tick()
+        /// <param name="progress">Monotonic normalized progress in the inclusive range 0..1.</param>
+        public void SetProgress(float progress)
         {
-            if (_stage >= _maxStages) return;
-            _stage++;
-            _targetFillAmount = (float)_stage / _maxStages;
+            if (float.IsNaN(progress)
+                || float.IsInfinity(progress)
+                || progress < 0f
+                || progress > 1f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(progress),
+                    progress,
+                    "Loading progress must be finite and within the inclusive range 0..1.");
+            }
+
+            if (!_isShowing)
+                throw new InvalidOperationException("Loading progress cannot be set while the screen is hidden.");
+
+            if (progress < _targetProgress)
+            {
+                throw new InvalidOperationException(
+                    "Loading progress cannot move backwards during a loading-screen session.");
+            }
+
+            _targetProgress = progress;
         }
 
         private void Update()
@@ -151,8 +165,10 @@ namespace Game.Client.UI
             if (!_isShowing) return;
             if (_hasTerminalError) return;
 
-            if (_loadingIcon.fillAmount >= 0.99f) Finish();
-            else _loadingIcon.fillAmount = Mathf.Lerp(_loadingIcon.fillAmount, _targetFillAmount, Time.deltaTime * FILL_SPEED);
+            _progressBarFill.fillAmount = Mathf.MoveTowards(
+                _progressBarFill.fillAmount,
+                _targetProgress,
+                Time.unscaledDeltaTime * PROGRESS_FILL_SPEED);
         }
 
         /// <summary>
@@ -162,6 +178,8 @@ namespace Game.Client.UI
         {
             if (_hasTerminalError) return;
             if (!_isShowing) return;
+            _targetProgress = 1f;
+            _progressBarFill.fillAmount = 1f;
             _isShowing = false;
             HideLoadingScreen();
         }
@@ -178,6 +196,8 @@ namespace Game.Client.UI
             }
 
             _hasTerminalError = false;
+            _targetProgress = 0f;
+            _progressBarFill.fillAmount = 0f;
             _isShowing = false;
             _canvasGroup.alpha = 0f;
             _canvasGroup.interactable = false;

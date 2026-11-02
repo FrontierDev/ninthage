@@ -72,7 +72,7 @@ namespace Game.Client
                 Debug.Log("Client Initialization started.");
 
                 yield return new WaitUntil(() => LoadingScreen.Instance != null);
-                LoadingScreen.Instance.Show(5);
+                LoadingScreen.Instance.Show();
 
                 // Step 1: Initialize addressables.
                 Exception addressablesFailure = null;
@@ -85,8 +85,6 @@ namespace Game.Client
                     yield break;
                 }
 
-                LoadingScreen.Instance.Tick();
-
                 // Step 2: Load and publish all required local game content.
                 Exception contentFailure = null;
                 yield return GameContentBootstrap.Initialize(exception => contentFailure = exception);
@@ -97,11 +95,8 @@ namespace Game.Client
                         "Required local game content is missing or corrupted. Repair or reinstall Ninth Age.");
                     yield break;
                 }
-                LoadingScreen.Instance.Tick();
-
                 // Step 3: Initialize networking as CLIENT.
                 yield return ClientInitializeNetworking();
-                LoadingScreen.Instance.Tick();
 
                 if (launchOptions.ProfilingEnabled)
                 {
@@ -111,10 +106,8 @@ namespace Game.Client
 
                 // Step 4: ECS Worlds after network initialized.
                 yield return ClientInitializeECSWorlds();
-                LoadingScreen.Instance.Tick();
 
                 yield return ClientInitializeWorldManager();
-                LoadingScreen.Instance.Tick();
 
                 // Step 5: Unload the initialisation scene.
                 yield return UnloadInitializationScene();

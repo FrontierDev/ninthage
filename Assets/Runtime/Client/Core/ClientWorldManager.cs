@@ -18,6 +18,10 @@ namespace Game.Client
     /// </summary>
     public sealed class ClientWorldManager : MonoBehaviour
     {
+        private const float GLOBAL_WORLD_PROGRESS_END = 0.8f;
+        private const float STREAMED_INTEREST_READY_PROGRESS = 0.9f;
+        private const float UNITY_SCENE_LOAD_READY_PROGRESS = 0.9f;
+
         private static readonly PerformanceMarker SCENE_ACTIVATION_MARKER = new(
             ClientPerformanceMetrics.SCENE_ACTIVATION_DURATION,
             "Client.WorldManager.SceneActivation");
@@ -346,7 +350,7 @@ namespace Game.Client
 
         private IEnumerator EnterWorldPresentation(Vector2Int spawnChunk, int generation)
         {
-            LoadingScreenController.Instance.Show(2);
+            LoadingScreenController.Instance.Show();
 
             if (generation != _worldPresentationGeneration
                 || _worldPresentationState != WorldPresentationState.Entering)
@@ -371,11 +375,19 @@ namespace Game.Client
             }
 
             while (!_globalWorldLoadOperation.isDone)
+            {
+                float normalizedSceneProgress = Mathf.Clamp01(
+                    _globalWorldLoadOperation.progress / UNITY_SCENE_LOAD_READY_PROGRESS);
+                LoadingScreenController.Instance.SetProgress(
+                    normalizedSceneProgress * GLOBAL_WORLD_PROGRESS_END);
                 yield return null;
+            }
 
             if (generation != _worldPresentationGeneration
                 || _worldPresentationState != WorldPresentationState.Entering)
                 yield break;
+
+            LoadingScreenController.Instance.SetProgress(GLOBAL_WORLD_PROGRESS_END);
 
             if (_globalWorldLoadTimestamp > 0)
             {
@@ -403,11 +415,20 @@ namespace Game.Client
             _globalWorldLoadOperation = null;
             RecordPendingSceneOperations();
 
+            bool streamedInterestProgressReported = false;
             while (!AreRequiredStreamedScenesLoaded(spawnChunk))
             {
                 if (generation != _worldPresentationGeneration
                     || _worldPresentationState != WorldPresentationState.Entering)
                     yield break;
+
+                if (!streamedInterestProgressReported
+                    && _hasRequiredStreamedSceneSet
+                    && _requiredStreamedSceneCoordinates.Contains(spawnChunk))
+                {
+                    LoadingScreenController.Instance.SetProgress(STREAMED_INTEREST_READY_PROGRESS);
+                    streamedInterestProgressReported = true;
+                }
 
                 yield return null;
             }
@@ -415,6 +436,13 @@ namespace Game.Client
             if (generation != _worldPresentationGeneration
                 || _worldPresentationState != WorldPresentationState.Entering)
                 yield break;
+
+            if (!streamedInterestProgressReported
+                && _hasRequiredStreamedSceneSet
+                && _requiredStreamedSceneCoordinates.Contains(spawnChunk))
+            {
+                LoadingScreenController.Instance.SetProgress(STREAMED_INTEREST_READY_PROGRESS);
+            }
 
             _worldPresentationState = WorldPresentationState.Ready;
             _isWorldReady = true;

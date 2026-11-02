@@ -1854,6 +1854,10 @@ Loading and reconnect presentation should distinguish:
 
 Do not imply that reconnect means a fresh character spawn if the Persistence PDD is reclaiming an existing runtime actor.
 
+Loading progress must be derived from the real operation or lifecycle milestone owned by the workflow, not from an arbitrary timer. The UI may visually interpolate toward reported progress, but it must not infer lifecycle completion from the displayed progress; the owning lifecycle dismisses the screen.
+
+The current detached-world entry flow uses measured global-world scene progress plus streamed-interest and spawn-scene readiness milestones. Ordinary seamless world streaming does not show this screen.
+
 ---
 
 ## 85. Local UI Settings

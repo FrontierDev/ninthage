@@ -288,7 +288,7 @@ namespace Game.Client
             // Step 1: Hide the main menu and show the loading screen.
             Debug.Log(" - Step 1: Hiding main menu, showing loading screen...");
             MainMenu.Instance.Hide();
-            LoadingScreen.Instance.Show(10);
+            LoadingScreen.Instance.Show();
             Debug.Log(" ✓ Step 1: Done.");
 
             // Step 2: Connect to the server.
@@ -316,7 +316,6 @@ namespace Game.Client
 
                 // Start the client.
                 Debug.Log(" ✓ Step 2: Attempting to connect to server...");
-                LoadingScreen.Instance.Tick();
                 networkManager.StartClient();
 
                 yield return new WaitUntil(

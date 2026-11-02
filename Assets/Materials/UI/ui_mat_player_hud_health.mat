@@ -33,12 +33,12 @@ Material:
     - _FillAmount: 0.688
     - _FillBottomStrength: 0.25
     - _FillDirection: 1
-    - _FillEdgeStrength: 0.098
+    - _FillEdgeStrength: 1
     - _FillInset: 1
     - _FillTopStrength: 0.18
     - _FrameInset: 3
-    - _InnerHighlightStrength: 0.18
-    - _InnerShadowStrength: 0.3
+    - _InnerHighlightStrength: 0.357
+    - _InnerShadowStrength: 1
     - _LeftChamfer: 16
     - _Opacity: 1
     - _RightChamfer: 0
@@ -47,7 +47,7 @@ Material:
     - _FillEdgeColor: {r: 0.65882355, g: 0.13725491, b: 0.13725491, a: 1}
     - _FrameColor: {r: 0.11372549, g: 0.11764706, b: 0.12156863, a: 1}
     - _FrameHighlightColor: {r: 0.29411766, g: 0.28235295, b: 0.2627451, a: 1}
-    - _InnerHighlightColor: {r: 1, g: 1, b: 1, a: 1}
+    - _InnerHighlightColor: {r: 0.38679248, g: 0, b: 0, a: 1}
     - _InnerShadowColor: {r: 0, g: 0, b: 0, a: 1}
     - _MainColor: {r: 0.59607846, g: 0.13725491, b: 0.13725491, a: 1}
     - _RectSize: {r: 0, g: 0, b: 0, a: 0}
