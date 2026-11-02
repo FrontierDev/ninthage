@@ -34834,11 +34834,6 @@ MonoBehaviour:
     _widthMetric: 0
     _applyHeight: 1
     _heightMetric: 5
-  - _target: {fileID: 7296476719556449227}
-    _applyWidth: 0
-    _widthMetric: 0
-    _applyHeight: 0
-    _heightMetric: 4
   - _target: {fileID: 3184128964201646202}
     _applyWidth: 0
     _widthMetric: 0
@@ -34964,11 +34959,6 @@ MonoBehaviour:
     _spacingMetric: 0
     _applyPadding: 0
     _paddingMetric: 3
-  - _target: {fileID: 910000000000000007}
-    _applySpacing: 0
-    _spacingMetric: 1
-    _applyPadding: 0
-    _paddingMetric: 3
   - _target: {fileID: 910000000000000011}
     _applySpacing: 1
     _spacingMetric: 0
@@ -35036,42 +35026,6 @@ MonoBehaviour:
     _applyPreferredWidth: 0
     _preferredWidthMetric: 0
     _applyPreferredHeight: 1
-    _preferredHeightMetric: 5
-  - _target: {fileID: 910000000000000004}
-    _applyMinWidth: 0
-    _minWidthMetric: 0
-    _applyMinHeight: 0
-    _minHeightMetric: 5
-    _applyPreferredWidth: 0
-    _preferredWidthMetric: 0
-    _applyPreferredHeight: 0
-    _preferredHeightMetric: 5
-  - _target: {fileID: 910000000000000008}
-    _applyMinWidth: 0
-    _minWidthMetric: 0
-    _applyMinHeight: 0
-    _minHeightMetric: 5
-    _applyPreferredWidth: 0
-    _preferredWidthMetric: 0
-    _applyPreferredHeight: 0
-    _preferredHeightMetric: 5
-  - _target: {fileID: 910000000000000012}
-    _applyMinWidth: 0
-    _minWidthMetric: 0
-    _applyMinHeight: 0
-    _minHeightMetric: 5
-    _applyPreferredWidth: 0
-    _preferredWidthMetric: 0
-    _applyPreferredHeight: 0
-    _preferredHeightMetric: 5
-  - _target: {fileID: 910000000000000016}
-    _applyMinWidth: 0
-    _minWidthMetric: 0
-    _applyMinHeight: 0
-    _minHeightMetric: 5
-    _applyPreferredWidth: 0
-    _preferredWidthMetric: 0
-    _applyPreferredHeight: 0
     _preferredHeightMetric: 5
   - _target: {fileID: 910000001003}
     _applyMinWidth: 0
