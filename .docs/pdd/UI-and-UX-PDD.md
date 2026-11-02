@@ -1362,7 +1362,27 @@ Do not hand-write UI-only rules that can drift from authoritative gameplay data.
 
 ## 64. Inventory
 
-The existing grid inventory model is retained.
+Inventory uses a deterministic 476 × 448 px Radiant Slate window shell with the
+shared 16 px inset and 12 px major-section rhythm. The shell contains a 40 px
+title bar, a 36 px category-tab strip, a 280 px body and a 24 px footer.
+
+The category strip is visual-only and contains three equal tabs in this order:
+
+- ITEMS (active);
+- MATERIALS (inactive);
+- CURRENCIES (inactive).
+
+The body uses a 52 px icon-only filter rail beside a 380 px item area. The rail
+contains exactly six vertically stacked 40 × 40 px filter buttons with 4 px
+gaps: all items, equipment, consumables, crafting, quest items and other.
+These controls are enabled for future interaction wiring, but this visual pass
+does not add callbacks or tooltips.
+
+The item area contains a 236 × 32 px visual-only search field, an adjacent
+136 × 32 px static `Sort: Default` control, the existing bag label and the
+existing live inventory grid inside a 380 × 188 px vertically scrolling
+viewport. Search and sort are presentation-only in this pass; inventory data
+and grid population remain owned by the existing inventory systems.
 
 Inventory slots use:
 
@@ -2226,7 +2246,8 @@ The UI/UX system satisfies this PDD when all of the following are true.
 
 ### 97.10 RPG windows
 
-- Inventory uses 44 px slots.
+- Inventory uses the tabbed/icon-rail shell and working 44 px item slots
+  specified in §64; its live grid remains scrollable and uses eight columns.
 - Equipment uses 48 px slots.
 - Character, Talent, Quest and Reputation windows use shared design tokens.
 - Talent trees use explicit authored layout.
