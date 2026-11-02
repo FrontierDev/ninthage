@@ -144,6 +144,9 @@ namespace Game.Shared
         [SerializeField]
         /// <summary>Gets or sets the server port.</summary>
         public ushort ServerPort = 8888;
+        [SerializeField]
+        /// <summary>Gets or sets the public Master Server base URL used by the game client.</summary>
+        public string MasterServerURL = "http://127.0.0.1:5080";
 
         /// <summary>Validates the fixed shared 256 metre origin, network and authored environment grid.</summary>
         /// <exception cref="InvalidOperationException">Thrown when <see cref="ChunkSize"/> is not exactly 256.</exception>

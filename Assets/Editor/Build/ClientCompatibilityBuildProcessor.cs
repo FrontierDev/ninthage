@@ -1,4 +1,5 @@
 using Game.Shared.Networking;
+using Game.Shared.Utility;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -65,14 +66,41 @@ namespace Game.Editor.Build
             var metadataPath = Path.Combine(
                 streamingAssetsDirectory,
                 ClientCompatibilityIdentity.METADATA_FILE_NAME);
+            var sourceBranchMetadataPath = Path.Combine(
+                streamingAssetsDirectory,
+                ClientSourceBranch.METADATA_FILE_NAME);
 
             try
             {
                 ValidatePackagedLocalCatalog(streamingAssetsDirectory, identity);
                 // Existing Player installations are never mutated; rebuilding is required to remove obsolete metadata.
                 Directory.CreateDirectory(streamingAssetsDirectory);
+                string sourceBranch;
+                try
+                {
+                    sourceBranch = ClientSourceBranch.LoadCurrent();
+                }
+                catch (Exception exception)
+                {
+                    throw new BuildFailedException(
+                        $"Could not determine the client source branch for '{sourceBranchMetadataPath}': {exception.Message}");
+                }
+
                 var metadataJson = JsonConvert.SerializeObject(identity, Formatting.Indented);
                 File.WriteAllText(metadataPath, metadataJson, Encoding.UTF8);
+
+                try
+                {
+                    File.WriteAllText(
+                        sourceBranchMetadataPath,
+                        sourceBranch + "\n",
+                        Encoding.UTF8);
+                }
+                catch (Exception exception)
+                {
+                    throw new BuildFailedException(
+                        $"Could not write client source branch metadata to '{sourceBranchMetadataPath}': {exception.Message}");
+                }
             }
             catch (Exception exception) when (
                 exception is IOException

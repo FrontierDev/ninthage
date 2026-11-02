@@ -59,3 +59,4 @@ MonoBehaviour:
   AutoAttackSpell: {fileID: 11400000, guid: dcbf135932663c241b07ac631e967313, type: 2}
   ServerAddress: 127.0.0.1
   ServerPort: 8888
+  MasterServerURL: http://127.0.0.1:5080
