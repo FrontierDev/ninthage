@@ -1,7 +1,7 @@
 Shader "NinthAge/UI/ArcaneSlate/TabSurface" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _GlowColor ("Glow Color", Color) = (0.88,0.75,0.45,1)
+        _GlowColor ("Glow Color", Color) = (0.79607844,0.6901961,0.47058824,1)
         _UnderlineWidth ("Underline Width (px)", Range(0,8)) = 2.0
         _UnderlineInset ("Underline Inset (px)", Range(0,64)) = 8.0
         _GlowRadius ("Glow Radius (px)", Range(0,256)) = 48.0

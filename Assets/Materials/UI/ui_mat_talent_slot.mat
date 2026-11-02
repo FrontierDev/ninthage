@@ -155,20 +155,20 @@ Material:
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _AccentColor: {r: 0.4313725, g: 0.4823529, b: 0.8509804, a: 1}
+    - _AccentColor: {r: 0.79607844, g: 0.6901961, b: 0.47058824, a: 1}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _BorderColor: {r: 0.8784314, g: 0.7490196, b: 0.44705883, a: 1}
+    - _BorderColor: {r: 0.29411765, g: 0.28235295, b: 0.2627451, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FillBottom: {r: 0.11764706, g: 0.13333334, b: 0.16470584, a: 1}
-    - _FillTop: {r: 0.11764706, g: 0.13333334, b: 0.16470589, a: 1}
+    - _FillBottom: {r: 0.14117648, g: 0.14117648, b: 0.14117648, a: 1}
+    - _FillTop: {r: 0.1882353, g: 0.1882353, b: 0.18431373, a: 1}
     - _IconOffset: {r: 0, g: 0, b: 0, a: 0}
     - _IconTint: {r: 1, g: 1, b: 1, a: 1}
     - _InnerBorderColor: {r: 0.6415094, g: 0.5352973, b: 0.28746885, a: 1}
     - _InnerShadowColor: {r: 0, g: 0, b: 0, a: 1}
     - _RarityColor: {r: 1, g: 1, b: 1, a: 0}
     - _RectSize: {r: 0, g: 0, b: 0, a: 0}
-    - _SelectedColor: {r: 0.4313725, g: 0.4823529, b: 0.8509804, a: 1}
+    - _SelectedColor: {r: 0.79607844, g: 0.6901961, b: 0.47058824, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _TopHighlightColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

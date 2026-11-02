@@ -1,9 +1,9 @@
 Shader "NinthAge/UI/ArcaneSlate/PanelSurface" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _FillTop ("Fill Top", Color) = (0.16470588,0.1882353,0.22745098,1)
-        _FillBottom ("Fill Bottom", Color) = (0.1372549,0.16470588,0.2,1)
-        _BorderColor ("Border Color", Color) = (0.29411765,0.33333334,0.4,1)
+        _FillTop ("Fill Top", Color) = (0.14117648,0.14117648,0.14117648,1)
+        _FillBottom ("Fill Bottom", Color) = (0.11372549,0.11764706,0.12156863,1)
+        _BorderColor ("Border Color", Color) = (0.29411765,0.28235295,0.2627451,1)
         _BorderWidth ("Border Width (px)", Range(0,32)) = 2.0
         _CornerRadius ("Corner Radius (px)", Range(0,128)) = 4.0
         _TopHighlightColor ("Top Highlight Color", Color) = (1,1,1,1)
@@ -12,7 +12,7 @@ Shader "NinthAge/UI/ArcaneSlate/PanelSurface" {
         _InnerShadowColor ("Inner Shadow Color", Color) = (0,0,0,1)
         _InnerShadowStrength ("Inner Shadow Width (normalized)", Range(0,0.3)) = 0.06
         _InnerDarkenStrength ("Inner Darken Strength", Range(0,1)) = 0.8
-        _AccentColor ("Accent Color", Color) = (0.8784314,0.7490196,0.44705883,1)
+        _AccentColor ("Accent Color", Color) = (0.79607844,0.6901961,0.47058824,1)
         _InnerBorderColor ("Inner Border Color", Color) = (0,0,0,1)
         _InnerBorderWidth ("Inner Border Width (px)", Range(0,32)) = 1.0
         _AccentAmount ("Accent Amount", Range(0,1)) = 0

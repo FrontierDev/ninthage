@@ -129,18 +129,18 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _BorderColor: {r: 0.22745094, g: 0.27450976, b: 0.33725488, a: 1}
+    - _BorderColor: {r: 0.29411765, g: 0.28235295, b: 0.2627451, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _FillColorActive: {r: 0.15686262, g: 0.1882352, b: 0.25098032, a: 0}
-    - _FillColorInactive: {r: 0.12549013, g: 0.15686265, b: 0.19999993, a: 0}
-    - _GlowColor: {r: 0.88, g: 0.75, b: 0.45, a: 1}
+    - _FillColorActive: {r: 0.1882353, g: 0.1882353, b: 0.18431373, a: 0}
+    - _FillColorInactive: {r: 0.14117648, g: 0.14117648, b: 0.14117648, a: 0}
+    - _GlowColor: {r: 0.79607844, g: 0.6901961, b: 0.47058824, a: 1}
     - _RectSize: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _TextColor: {r: 0.6, g: 0.6, b: 0.65, a: 1}
     - _TextColorActive: {r: 0.9, g: 0.9, b: 0.95, a: 1}
     - _TopHighlightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _UnderlineColor: {r: 0.88, g: 0.75, b: 0.45, a: 1}
+    - _UnderlineColor: {r: 0.79607844, g: 0.6901961, b: 0.47058824, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &9080260237212354799

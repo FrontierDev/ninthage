@@ -142,9 +142,9 @@ Material:
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _BackgroundColor: {r: 0.12549016, g: 0.15686268, b: 0.19999996, a: 1}
+    - _BackgroundColor: {r: 0.11372549, g: 0.11764706, b: 0.12156863, a: 1}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _BorderColor: {r: 0.16470589, g: 0.1882353, b: 0.22745098, a: 1}
+    - _BorderColor: {r: 0.29411765, g: 0.28235295, b: 0.2627451, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _FlashColor: {r: 0.45490196, g: 0.050980393, b: 0.8117647, a: 1}
@@ -152,7 +152,7 @@ Material:
     - _InnerShadowColor: {r: 0, g: 0, b: 0, a: 1}
     - _MainColor: {r: 0.45490196, g: 0.050980393, b: 0.8117647, a: 1}
     - _RectSize: {r: 0, g: 0, b: 0, a: 0}
-    - _SelectedColor: {r: 0.8784314, g: 0.7490196, b: 0.44705883, a: 1}
+    - _SelectedColor: {r: 0.79607844, g: 0.6901961, b: 0.47058824, a: 1}
     - _SparkleColor: {r: 1, g: 0.95, b: 0.75, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []

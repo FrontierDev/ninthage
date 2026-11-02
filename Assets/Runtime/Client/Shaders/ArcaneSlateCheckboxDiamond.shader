@@ -1,12 +1,12 @@
 Shader "NinthAge/UI/ArcaneSlate/CheckboxDiamond" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _BorderColor ("Border Color", Color) = (0.22745098,0.2745098,0.3372549,1)
+        _BorderColor ("Border Color", Color) = (0.29411765,0.28235295,0.2627451,1)
         _BorderWidth ("Border Width (px)", Range(0,16)) = 2.0
         _InnerBorderColor ("Inner Border Color", Color) = (0,0,0,1)
         _InnerBorderWidth ("Inner Border Width (px)", Range(0,16)) = 1.0
-        _EmptyFillColor ("Empty Fill Color", Color) = (0.0901961,0.1176471,0.1529412,1)
-        _CheckedFillColor ("Checked Fill Color", Color) = (0.43137255,0.48235294,0.8509804,1)
+        _EmptyFillColor ("Empty Fill Color", Color) = (0.11372549,0.11764706,0.12156863,1)
+        _CheckedFillColor ("Checked Fill Color", Color) = (0.79607844,0.6901961,0.47058824,1)
         _TopHighlightColor ("Top Highlight Color", Color) = (1,1,1,1)
         _TopHighlightStrength ("Top Highlight Strength", Range(0,1)) = 0.06
         _InnerShadowColor ("Inner Shadow Color", Color) = (0,0,0,1)

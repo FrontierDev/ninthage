@@ -89,7 +89,7 @@ No subsystem should create its own unrelated visual language.
 
 Its character is:
 
-- dark slate and charcoal surfaces;
+- neutral charcoal surfaces;
 - restrained aged-metal structure;
 - narrow, precise borders;
 - subtle gradients and inner shadows;
@@ -366,9 +366,9 @@ Radiant Slate text tokens are:
 
 | Token | Colour |
 |---|---|
-| Text.Primary | `#E6EAF2` |
-| Text.Secondary | `#B6BECC` |
-| Text.Muted | `#8B94A5` |
+| Text.Primary | `#EBE8E1` |
+| Text.Secondary | `#C3BFB6` |
+| Text.Muted | `#969189` |
 | Text.Disabled | derived muted/low-opacity treatment |
 
 Primary text is used for:
@@ -398,13 +398,13 @@ The Radiant Slate structural palette is:
 
 | Token | Colour |
 |---|---|
-| Slate.Deep / Background | `#1E222A` |
-| Slate.Panel | `#2A303A` |
-| Slate.Elevated | `#353E4A` |
-| Slate.Border | `#4B5566` |
-| Slate.PanelAlt | `#232A33` |
-| Slate.Raised | `#414B59` |
-| Slate.BorderSoft | `#5A6679` |
+| Charcoal.Deep / Background | `#161718` |
+| Charcoal.Recessed / Secondary Background | `#1D1E1F` |
+| Charcoal.Panel | `#242424` |
+| Charcoal.Elevated | `#30302F` |
+| Charcoal.Raised | `#3B3A38` |
+| Charcoal.Border | `#4B4843` |
+| Charcoal.BorderSoft | `#625E57` |
 
 The overwhelming majority of normal UI chrome should remain within this family.
 
@@ -416,7 +416,7 @@ Semantic accents are:
 
 | Token | Colour |
 |---|---|
-| Accent.Primary / Radiant Gold | `#E0BF72` |
+| Accent.Primary / Muted Radiant Gold | `#CBB078` |
 | Accent.Positive | `#38B986` |
 | Accent.Warning | `#E88A52` |
 | Accent.Information | `#56A8EF` |
@@ -458,7 +458,7 @@ Colour should have a reason.
 
 Examples:
 
-- gold = selection/focus/high-value structure;
+- muted gold = selection/focus/high-value structure;
 - red = damage/error/hostility where appropriate;
 - green = positive/healing/success where appropriate;
 - orange = warning;
@@ -551,7 +551,7 @@ The default Radiant Slate panel uses approximately:
 ```text
 2 px structural outer border
 1 px dark inner separation
-subtle vertical slate gradient
+subtle vertical charcoal gradient
 subtle inner shadow
 restrained top-edge highlight
 restrained vignette
@@ -589,7 +589,7 @@ Interactive controls use one consistent state system.
 
 ### 23.1 Normal
 
-Neutral slate surface.
+Neutral charcoal surface.
 
 ### 23.2 Hover
 
@@ -691,7 +691,7 @@ Target/player frames may use:
 
 - slightly more pronounced aged-metal structure;
 - subtle asymmetry/inset corners;
-- restrained Radiant Gold structural accents.
+- restrained muted Radiant Gold structural accents.
 
 Inventory/settings/quest windows should remain calmer.
 
@@ -1911,13 +1911,13 @@ Move standard component geometry to pixel-space semantics.
 
 ### 92.3 Standardise accents
 
-Current shader defaults mix:
+Legacy shader defaults still mix:
 
 - blue-purple focus/selection;
 - gold;
 - bright yellow.
 
-Normal selection/focus should use Radiant Gold.
+Normal selection/focus should use muted Radiant Gold `#CBB078`.
 
 Semantic colours remain separate.
 
@@ -2042,7 +2042,7 @@ The following decisions are locked:
 16. Window headings are 18 px.
 17. Major screen headings are 24 px.
 18. Radiant Slate text colours use the defined Primary/Secondary/Muted tokens.
-19. Radiant Gold `#E0BF72` is the ordinary selection/focus accent.
+19. Muted Radiant Gold `#CBB078` is the ordinary selection/focus accent.
 20. Strong glow is exceptional, not normal-button presentation.
 21. Standard controls use the defined compact/standard/large dimensions.
 22. Action-bar slots are 40×40 px at 100%.
@@ -2159,7 +2159,7 @@ The UI/UX system satisfies this PDD when all of the following are true.
 
 - ArcaneSlate remains the shared shader foundation.
 - Slot shader geometry uses consistent pixel-space semantics.
-- Standard focus/selection uses Radiant Gold.
+- Standard focus/selection uses muted Radiant Gold `#CBB078`.
 - Shader/material presets exist for normal component classes.
 - Ordinary prefab authors do not need to hand-tune the full shader parameter set.
 
@@ -2271,7 +2271,7 @@ Ninth Age UI is not a collection of independently styled game windows.
 
 It is one coherent **Radiant Slate** interface system.
 
-Radiant Slate uses a disciplined 4 px layout grid, Manrope typography, dark slate structural surfaces, restrained aged-metal shader treatment, pale text and Radiant Gold selection/focus accents.
+Radiant Slate uses a disciplined 4 px layout grid, Manrope typography, neutral charcoal structural surfaces, restrained aged-metal shader treatment, warm pale text and muted Radiant Gold selection/focus accents.
 
 The existing ArcaneSlate shaders are retained as **historically named technical infrastructure**, not as a second UI theme; they should be standardised toward the approved Radiant Slate palette and component behaviour. Final spell-icon artwork is complete, opaque and painted to its edges, without baked action-bar framing.
 

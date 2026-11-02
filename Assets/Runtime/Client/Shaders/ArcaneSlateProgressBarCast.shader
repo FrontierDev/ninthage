@@ -1,7 +1,7 @@
 Shader "NinthAge/UI/ArcaneSlate/ProgressBarCast" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _BackgroundColor ("Background Color", Color) = (0.1254902,0.1568627,0.2,1)
+        _BackgroundColor ("Background Color", Color) = (0.11372549,0.11764706,0.12156863,1)
         _MainColor ("Main Color", Color) = (0.58,0.42,0.08,1)
         _FlashColor ("Flash Color", Color) = (1,0.95,0.7,1)
         _FlashWidth ("Flash Width (px)", Range(0,32)) = 4.0

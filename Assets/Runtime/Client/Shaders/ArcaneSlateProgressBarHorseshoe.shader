@@ -1,11 +1,11 @@
 Shader "NinthAge/UI/ArcaneSlate/ProgressBarHorseshoe" {
     Properties {
         _MainTex ("Sprite Texture", 2D) = "white" {}
-        _BackgroundColor ("Background Color", Color) = (0.1254902,0.1568627,0.2,1)
+        _BackgroundColor ("Background Color", Color) = (0.11372549,0.11764706,0.12156863,1)
         _MainColor ("Main Color", Color) = (0.38,0.74,0.54,1)
         _FlashColor ("Flash Color", Color) = (1,0.95,0.7,1)
         _FlashWidth ("Flash Width (px)", Range(0,32)) = 4.0
-        _BorderColor ("Border Color", Color) = (0.22745098,0.2745098,0.3372549,1)
+        _BorderColor ("Border Color", Color) = (0.29411765,0.28235295,0.2627451,1)
         _BorderWidth ("Border Width (px)", Range(0,16)) = 1.5
         _ArcRadius ("Arc Radius (px)", Range(4,512)) = 60.0
         _ArcThickness ("Arc Thickness (px)", Range(2,100)) = 14.0
@@ -15,7 +15,7 @@ Shader "NinthAge/UI/ArcaneSlate/ProgressBarHorseshoe" {
         _InnerBorderColor ("Inner Border Color", Color) = (1,1,1,1)
         _InnerBorderWidth ("Inner Border Width (px)", Range(0,8)) = 1.0
         _InnerBorderStrength ("Inner Border Strength", Range(0,1)) = 0.25
-        _SelectedColor ("Selected Color", Color) = (1,1,0,1)
+        _SelectedColor ("Selected Color", Color) = (0.79607844,0.6901961,0.47058824,1)
         _SelectedAmount ("Selected Amount", Range(0,1)) = 0.0
         _Opacity ("Opacity", Range(0,1)) = 1.0
         _RectSize ("Rect Size (px)", Vector) = (0,0,0,0)

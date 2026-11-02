@@ -78,17 +78,17 @@ namespace Game.Client.UI.Configuration
         [SerializeField, Min(0.01f)] private float _dividerWidth = 1f;
 
         [Header("Radiant Slate Colors")]
-        [SerializeField] private UnityEngine.Color _background = new(30f / 255f, 34f / 255f, 42f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _secondaryBackground = new(35f / 255f, 42f / 255f, 51f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _panel = new(42f / 255f, 48f / 255f, 58f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _elevatedPanel = new(53f / 255f, 62f / 255f, 74f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _raisedSurface = new(65f / 255f, 75f / 255f, 89f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _border = new(75f / 255f, 85f / 255f, 102f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _secondaryBorder = new(90f / 255f, 102f / 255f, 121f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _primaryText = new(230f / 255f, 234f / 255f, 242f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _secondaryText = new(182f / 255f, 190f / 255f, 204f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _mutedText = new(139f / 255f, 148f / 255f, 165f / 255f, 1f);
-        [SerializeField] private UnityEngine.Color _accentGold = new(224f / 255f, 191f / 255f, 114f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _background = new(22f / 255f, 23f / 255f, 24f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _secondaryBackground = new(29f / 255f, 30f / 255f, 31f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _panel = new(36f / 255f, 36f / 255f, 36f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _elevatedPanel = new(48f / 255f, 48f / 255f, 47f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _raisedSurface = new(59f / 255f, 58f / 255f, 56f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _border = new(75f / 255f, 72f / 255f, 67f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _secondaryBorder = new(98f / 255f, 94f / 255f, 87f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _primaryText = new(235f / 255f, 232f / 255f, 225f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _secondaryText = new(195f / 255f, 191f / 255f, 182f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _mutedText = new(150f / 255f, 145f / 255f, 137f / 255f, 1f);
+        [SerializeField] private UnityEngine.Color _accentGold = new(203f / 255f, 176f / 255f, 120f / 255f, 1f);
         [SerializeField] private UnityEngine.Color _success = new(56f / 255f, 185f / 255f, 134f / 255f, 1f);
         [SerializeField] private UnityEngine.Color _warning = new(232f / 255f, 138f / 255f, 82f / 255f, 1f);
         [SerializeField] private UnityEngine.Color _information = new(86f / 255f, 168f / 255f, 239f / 255f, 1f);

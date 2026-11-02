@@ -6,18 +6,18 @@
   <title>Radiant Slate UI Style Guide</title>
   <style>
     :root {
-      --bg: #1e222a;
-      --bg-2: #232a33;
-      --panel: #2a303a;
-      --panel-2: #353e4a;
-      --panel-3: #414b59;
-      --border: #4b5566;
-      --border-soft: #5a6679;
-      --line: rgba(230, 234, 242, 0.10);
-      --text: #e6eaf2;
-      --text-muted: #b6becc;
-      --text-faint: #8b94a5;
-      --gold: #e0bf72;
+      --bg: #161718;
+      --bg-2: #1d1e1f;
+      --panel: #242424;
+      --panel-2: #30302f;
+      --panel-3: #3b3a38;
+      --border: #4b4843;
+      --border-soft: #625e57;
+      --line: rgba(235, 232, 225, 0.10);
+      --text: #ebe8e1;
+      --text-muted: #c3bfb6;
+      --text-faint: #969189;
+      --gold: #cbb078;
       --success: #38b986;
       --warning: #e88a52;
       --info: #56a8ef;
@@ -35,8 +35,8 @@
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
         radial-gradient(circle at top, rgba(255,255,255,0.035), transparent 24%),
-        radial-gradient(circle at 82% 16%, rgba(224,191,114,0.06), transparent 18%),
-        linear-gradient(180deg, #181c23 0%, var(--bg) 100%);
+        radial-gradient(circle at 82% 16%, rgba(203,176,120,0.06), transparent 18%),
+        linear-gradient(180deg, #161718 0%, var(--bg) 100%);
       color: var(--text);
       line-height: 1.55;
     }
@@ -48,11 +48,11 @@
     }
 
     .hero {
-      border: 1px solid rgba(90,102,121,0.62);
-      background: linear-gradient(180deg, rgba(42,48,58,0.97), rgba(35,42,51,0.98));
+      border: 1px solid rgba(98,94,87,0.62);
+      background: linear-gradient(180deg, rgba(48,48,47,0.97), rgba(36,36,36,0.98));
       border-radius: 24px;
       padding: 34px 32px 28px;
-      box-shadow: 0 20px 50px var(--shadow), inset 0 1px 0 rgba(230,234,242,0.05);
+      box-shadow: 0 20px 50px var(--shadow), inset 0 1px 0 rgba(235,232,225,0.05);
       margin-bottom: 26px;
       position: relative;
       overflow: hidden;
@@ -63,7 +63,7 @@
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(circle at 84% 20%, rgba(224,191,114,0.11), transparent 18%),
+        radial-gradient(circle at 84% 20%, rgba(203,176,120,0.11), transparent 18%),
         radial-gradient(circle at 72% 82%, rgba(86,168,239,0.06), transparent 18%);
       pointer-events: none;
     }
@@ -108,8 +108,8 @@
     .tag {
       padding: 8px 12px;
       border-radius: 999px;
-      border: 1px solid rgba(90,102,121,0.65);
-      background: rgba(28,33,40,0.68);
+      border: 1px solid rgba(98,94,87,0.65);
+      background: rgba(29,30,31,0.68);
       color: var(--text);
       font-size: 0.92rem;
     }
@@ -122,11 +122,11 @@
 
     .card {
       grid-column: span 12;
-      background: linear-gradient(180deg, rgba(42,48,58,0.98), rgba(35,41,50,0.98));
-      border: 1px solid rgba(90,102,121,0.6);
+      background: linear-gradient(180deg, rgba(48,48,47,0.98), rgba(29,30,31,0.98));
+      border: 1px solid rgba(98,94,87,0.6);
       border-radius: 20px;
       padding: 22px;
-      box-shadow: 0 14px 36px rgba(0,0,0,0.24), inset 0 1px 0 rgba(230,234,242,0.04);
+      box-shadow: 0 14px 36px rgba(0,0,0,0.24), inset 0 1px 0 rgba(235,232,225,0.04);
     }
 
     .two-col { grid-column: span 6; }
@@ -165,8 +165,8 @@
     .sample-window {
       margin-top: 16px;
       border-radius: 18px;
-      border: 1px solid rgba(90,102,121,0.66);
-      background: linear-gradient(180deg, #313846, #262d37);
+      border: 1px solid rgba(98,94,87,0.66);
+      background: linear-gradient(180deg, #30302f, #242424);
       overflow: hidden;
     }
 
@@ -175,8 +175,8 @@
       justify-content: space-between;
       align-items: center;
       padding: 12px 16px;
-      border-bottom: 1px solid rgba(90,102,121,0.52);
-      background: linear-gradient(180deg, rgba(65,75,89,0.94), rgba(53,62,74,0.95));
+      border-bottom: 1px solid rgba(98,94,87,0.52);
+      background: linear-gradient(180deg, rgba(59,58,56,0.94), rgba(48,48,47,0.95));
     }
 
     .sample-tabs {
@@ -189,7 +189,7 @@
     .tab {
       padding: 8px 12px;
       border-radius: 10px 10px 0 0;
-      border: 1px solid rgba(90,102,121,0.56);
+      border: 1px solid rgba(98,94,87,0.56);
       border-bottom: none;
       color: var(--text-muted);
       background: rgba(255,255,255,0.02);
@@ -215,11 +215,11 @@
     }
 
     .slot, .mini-panel {
-      background: linear-gradient(180deg, #394352, #2b3340);
-      border: 1px solid rgba(90,102,121,0.58);
+      background: linear-gradient(180deg, #3b3a38, #30302f);
+      border: 1px solid rgba(98,94,87,0.58);
       border-radius: 10px;
       min-height: 46px;
-      box-shadow: inset 0 1px 0 rgba(230,234,242,0.04);
+      box-shadow: inset 0 1px 0 rgba(235,232,225,0.04);
     }
 
     .mini-panel { padding: 14px; }
@@ -227,13 +227,13 @@
     .meter {
       margin-top: 10px;
       height: 12px;
-      background: #252c36;
-      border: 1px solid rgba(90,102,121,0.56);
+      background: #242424;
+      border: 1px solid rgba(98,94,87,0.56);
       border-radius: 999px;
       overflow: hidden;
     }
 
-    .fill-gold { height: 100%; width: 64%; background: linear-gradient(90deg, #b48f41, var(--gold)); }
+    .fill-gold { height: 100%; width: 64%; background: linear-gradient(90deg, #cbb078, var(--gold)); }
     .fill-success { height: 100%; width: 78%; background: linear-gradient(90deg, #2f936c, var(--success)); }
     .fill-info { height: 100%; width: 46%; background: linear-gradient(90deg, #3d82bf, var(--info)); }
 
@@ -268,8 +268,8 @@
     .state {
       padding: 14px;
       border-radius: 12px;
-      border: 1px solid rgba(90,102,121,0.56);
-      background: linear-gradient(180deg, #37404d, #2a313d);
+      border: 1px solid rgba(98,94,87,0.56);
+      background: linear-gradient(180deg, #30302f, #242424);
     }
 
     .state strong { display: block; margin-bottom: 6px; }
@@ -284,17 +284,17 @@
     .btn {
       padding: 11px 16px;
       border-radius: 10px;
-      border: 1px solid rgba(90,102,121,0.64);
-      background: linear-gradient(180deg, #3b4452, #2c3441);
+      border: 1px solid rgba(98,94,87,0.64);
+      background: linear-gradient(180deg, #3b3a38, #30302f);
       color: var(--text);
       font-weight: 600;
       letter-spacing: 0.01em;
-      box-shadow: inset 0 1px 0 rgba(230,234,242,0.04);
+      box-shadow: inset 0 1px 0 rgba(235,232,225,0.04);
     }
 
     .btn.primary {
-      border-color: rgba(224,191,114,0.78);
-      box-shadow: 0 0 0 1px rgba(224,191,114,0.12), inset 0 1px 0 rgba(230,234,242,0.06);
+      border-color: rgba(203,176,120,0.78);
+      box-shadow: 0 0 0 1px rgba(203,176,120,0.12), inset 0 1px 0 rgba(235,232,225,0.06);
     }
 
     .btn.secondary {
@@ -309,7 +309,7 @@
       margin-top: 24px;
       padding: 16px 18px;
       border-radius: 16px;
-      border: 1px solid rgba(90,102,121,0.56);
+      border: 1px solid rgba(98,94,87,0.56);
       background: rgba(0,0,0,0.12);
       color: var(--text-muted);
     }
@@ -328,7 +328,7 @@
       <p class="lede">A refined evolution of Arcane Slate that preserves the same clean structure, restrained ornament, and premium dark-fantasy feel, while using lifted neutral values for much stronger readability in both bright and dark gameplay environments. The UI should stay neutral first, with fantasy identity carried by icons and selective accent usage rather than a tinted base palette.</p>
       <div class="tag-row">
         <span class="tag">Minimal Arcane structure</span>
-        <span class="tag">Lifted neutral slate materials</span>
+        <span class="tag">Neutral charcoal materials</span>
         <span class="tag">Thin steel borders</span>
         <span class="tag">Gold-led neutral accents</span>
         <span class="tag">Higher gameplay readability</span>
@@ -338,13 +338,13 @@
     <section class="grid">
       <div class="card two-col">
         <h2>Design Intent</h2>
-        <p>Radiant Slate keeps the disciplined layout language of Arcane Slate, but removes the purple-biased base treatment. The palette is more neutral, slightly brighter, and more robust against real in-game lighting. The interface should feel calm, clean, and engineered, while the icon set carries most of the stylisation and fantasy expression.</p>
+        <p>Radiant Slate keeps the disciplined layout language of Arcane Slate, but replaces the blue-grey base treatment with neutral charcoal and muted gold. The palette preserves clear layer separation and remains robust against real in-game lighting. The interface should feel calm, clean, and engineered, while the icon set carries most of the stylisation and fantasy expression.</p>
         <div class="rule-box">
           <h3>Core Rules</h3>
           <ul>
             <li>Preserve the same flat planes, soft gradients, thin borders, and minimal bevel.</li>
-            <li>Keep the base UI neutral. Do not tint whole windows purple, teal, or any other fantasy hue.</li>
-            <li>Use gold as the primary UI emphasis colour for selected states, prestige, headings, and key affordances.</li>
+            <li>Keep the base UI neutral charcoal. Do not tint whole windows blue, purple, teal, or any other fantasy hue.</li>
+            <li>Use muted gold as the primary UI emphasis colour for selected states, prestige, headings, and key affordances.</li>
             <li>Reserve green, orange, and blue for semantic information such as health, warnings, and utility.</li>
           </ul>
         </div>
@@ -353,13 +353,17 @@
       <div class="card two-col">
         <h2>Palette</h2>
         <div class="swatches">
-          <div class="swatch"><div class="swatch-color" style="background:#1e222a"></div><div class="swatch-body"><strong>Background</strong><div class="code">#1E222A</div></div></div>
-          <div class="swatch"><div class="swatch-color" style="background:#2a303a"></div><div class="swatch-body"><strong>Panel</strong><div class="code">#2A303A</div></div></div>
-          <div class="swatch"><div class="swatch-color" style="background:#353e4a"></div><div class="swatch-body"><strong>Elevated Panel</strong><div class="code">#353E4A</div></div></div>
-          <div class="swatch"><div class="swatch-color" style="background:#4b5566"></div><div class="swatch-body"><strong>Border</strong><div class="code">#4B5566</div></div></div>
-          <div class="swatch"><div class="swatch-color" style="background:#e6eaf2"></div><div class="swatch-body"><strong>Primary Text</strong><div class="code">#E6EAF2</div></div></div>
-          <div class="swatch"><div class="swatch-color" style="background:#b6becc"></div><div class="swatch-body"><strong>Secondary Text</strong><div class="code">#B6BECC</div></div></div>
-          <div class="swatch"><div class="swatch-color" style="background:#e0bf72"></div><div class="swatch-body"><strong>Accent Gold</strong><div class="code">#E0BF72</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#161718"></div><div class="swatch-body"><strong>Background</strong><div class="code">#161718</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#1d1e1f"></div><div class="swatch-body"><strong>Secondary Background</strong><div class="code">#1D1E1F</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#242424"></div><div class="swatch-body"><strong>Panel</strong><div class="code">#242424</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#30302f"></div><div class="swatch-body"><strong>Elevated Panel</strong><div class="code">#30302F</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#3b3a38"></div><div class="swatch-body"><strong>Raised Surface</strong><div class="code">#3B3A38</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#4b4843"></div><div class="swatch-body"><strong>Border</strong><div class="code">#4B4843</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#625e57"></div><div class="swatch-body"><strong>Soft Border</strong><div class="code">#625E57</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#ebe8e1"></div><div class="swatch-body"><strong>Primary Text</strong><div class="code">#EBE8E1</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#c3bfb6"></div><div class="swatch-body"><strong>Secondary Text</strong><div class="code">#C3BFB6</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#969189"></div><div class="swatch-body"><strong>Muted Text</strong><div class="code">#969189</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#cbb078"></div><div class="swatch-body"><strong>Muted Gold</strong><div class="code">#CBB078</div></div></div>
           <div class="swatch"><div class="swatch-color" style="background:#38b986"></div><div class="swatch-body"><strong>Success</strong><div class="code">#38B986</div></div></div>
           <div class="swatch"><div class="swatch-color" style="background:#e88a52"></div><div class="swatch-body"><strong>Warning</strong><div class="code">#E88A52</div></div></div>
           <div class="swatch"><div class="swatch-color" style="background:#56a8ef"></div><div class="swatch-body"><strong>Info</strong><div class="code">#56A8EF</div></div></div>
