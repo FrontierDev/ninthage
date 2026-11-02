@@ -16774,7 +16774,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 2100000, guid: fe89fbb658b4e9547a2b1a0ee7b618f3, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -34991,33 +34991,6 @@ MonoBehaviour:
     _preferredWidthMetric: 0
     _applyPreferredHeight: 1
     _preferredHeightMetric: 5
-  - _target: {fileID: 900000000000010008}
-    _applyMinWidth: 0
-    _minWidthMetric: 0
-    _applyMinHeight: 1
-    _minHeightMetric: 30
-    _applyPreferredWidth: 0
-    _preferredWidthMetric: 0
-    _applyPreferredHeight: 1
-    _preferredHeightMetric: 30
-  - _target: {fileID: 900000000000010009}
-    _applyMinWidth: 0
-    _minWidthMetric: 0
-    _applyMinHeight: 1
-    _minHeightMetric: 23
-    _applyPreferredWidth: 0
-    _preferredWidthMetric: 0
-    _applyPreferredHeight: 1
-    _preferredHeightMetric: 23
-  - _target: {fileID: 900000000000010010}
-    _applyMinWidth: 0
-    _minWidthMetric: 0
-    _applyMinHeight: 1
-    _minHeightMetric: 23
-    _applyPreferredWidth: 0
-    _preferredWidthMetric: 0
-    _applyPreferredHeight: 1
-    _preferredHeightMetric: 23
   - _target: {fileID: 910000000000001002}
     _applyMinWidth: 0
     _minWidthMetric: 0
