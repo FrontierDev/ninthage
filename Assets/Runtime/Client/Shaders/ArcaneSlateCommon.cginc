@@ -42,6 +42,30 @@ float ArcaneSlateSdBeveledRect(float2 p, float2 halfExtents, float bevel)
     return length(max(q, 0.0)) - bevel;
 }
 
+float ArcaneSlateSdAsymmetricChamferRect(
+    float2 p,
+    float2 halfExtents,
+    float leftChamferPx,
+    float rightChamferPx)
+{
+    float2 b = max(halfExtents, float2(0.5, 0.5));
+    float leftChamfer = clamp(leftChamferPx, 0.0, b.y);
+    float rightChamfer = clamp(rightChamferPx, 0.0, b.y);
+    const float diagonalScale = 0.70710678118;
+
+    float top = p.y - b.y;
+    float bottom = -p.y - b.y;
+    float left = -p.x - b.x;
+    float right = p.x - b.x;
+    float leftTop = (-b.x - b.y + leftChamfer - p.x + p.y) * diagonalScale;
+    float leftBottom = (-b.x - b.y + leftChamfer - p.x - p.y) * diagonalScale;
+    float rightTop = (p.x + p.y - b.x - b.y + rightChamfer) * diagonalScale;
+    float rightBottom = (p.x - p.y - b.x - b.y + rightChamfer) * diagonalScale;
+
+    return max(max(max(top, bottom), max(left, right)),
+               max(max(leftTop, leftBottom), max(rightTop, rightBottom)));
+}
+
 float ArcaneSlateHash(float2 p)
 {
     return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
