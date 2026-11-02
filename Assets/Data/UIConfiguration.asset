@@ -20,6 +20,11 @@ MonoBehaviour:
     _fontSize: 18
     _fontStyle: 48
     _fontWeight: 600
+  _tabLabel:
+    _fontRole: 1
+    _fontSize: 12
+    _fontStyle: 16
+    _fontWeight: 400
   _sectionHeading:
     _fontRole: 0
     _fontSize: 16
@@ -99,7 +104,7 @@ MonoBehaviour:
   _unitPortraitSize: 50
   _unitFrameWidth: 420
   _unitFrameHeight: 70
-  _healthBarHeight: 26
+  _healthBarHeight: 22
   _resourceBarHeight: 22
   _castBarHeight: 22
   _experienceBarHeight: 12
