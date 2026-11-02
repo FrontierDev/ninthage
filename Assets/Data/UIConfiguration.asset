@@ -104,7 +104,7 @@ MonoBehaviour:
   _unitPortraitSize: 50
   _unitFrameWidth: 420
   _unitFrameHeight: 70
-  _healthBarHeight: 22
+  _healthBarHeight: 26
   _resourceBarHeight: 22
   _castBarHeight: 22
   _experienceBarHeight: 12

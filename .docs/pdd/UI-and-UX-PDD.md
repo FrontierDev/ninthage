@@ -1076,14 +1076,18 @@ A GCD should not make a spell look permanently disabled.
 Player and target frames should be low-profile, high-information Radiant Slate HUD modules.
 
 The player frame is authored as a bottom-centre module above the action bars. Its
-horizontal composition is:
+five-part composition is:
 
 ```text
+                 [ special resource ]
 [ health: fills left ]  [ level diamond ]  [ resource: fills right ]
+                [       experience       ]
 ```
 
 The player health bar is on the left, the central level diamond contains a
-single upright level numeral, and the player resource bar is on the right.
+single upright level numeral, and the player resource bar is on the right. A
+class-specific special-resource bar is centred above the diamond, and the
+experience bar is centred immediately beneath the main row.
 
 The frame remains a separate HUD module; it is not reparented under the action
 bars.
@@ -1109,18 +1113,20 @@ Portraits remain appropriate in:
 
 ## 47. Major Unit-Frame Dimensions
 
-At 100% scale, the player frame uses a `420 × 70 px` root positioned `108 px`
+At 100% scale, the player frame uses a `420 × 104 px` root positioned `108 px`
 above the bottom-centre anchor. Its authored composition is:
 
 - health bar: `176 × 26 px`;
 - resource bar: `176 × 22 px`;
 - level diamond: `52 × 52 px`;
+- special-resource bar: `96 × 12 px`, centred `48 px` above the row;
+- experience bar: `364 × 12 px`, centred `20 px` below the row;
 - `8 px` horizontal gaps between the bars and diamond.
 
 Player and target frames should otherwise target approximately:
 
 - **400–440 px width**;
-- **64–76 px height**;
+- **64–104 px height**;
 
 before externally associated aura/cast extensions.
 
@@ -1151,9 +1157,14 @@ Health/resource text should remain legible without overwhelming the fill.
 
 The health bar fills toward the left and the player resource bar fills toward
 the right. Both bars retain their existing value and percentage text bindings.
-The level diamond uses the existing shared panel visual, with a neutral
-charcoal surface and muted-gold border/accent language. Its level text is a
-numeric, primary-text numeral with autosizing disabled.
+The level diamond uses the dedicated shared player-HUD diamond visual, with a
+neutral charcoal surface and muted-gold border/accent language. Its level text
+is a numeric, primary-text numeral with autosizing disabled.
+
+Health, resource, special-resource and experience bars use the shared player-
+HUD bar visual language. Health fills from the inner/right edge outward to the
+left; resource and experience fill left-to-right. Special-resource direction
+and tint remain owned by the existing class-specific presentation.
 
 ---
 
@@ -1161,8 +1172,14 @@ numeric, primary-text numeral with autosizing disabled.
 
 Resources use authored semantic colour.
 
-The player frame is layered above the action bars so its health, level and
-resource information remains readable during combat.
+The player frame is layered above the action bars so its health, level,
+resource, special-resource and experience information remains readable during
+combat.
+
+The special-resource presentation is visible only when the active class has an
+authoritative special resource. Unsupported classes hide the bar rather than
+showing a fake empty placeholder. Experience remains integrated into the same
+module and continues to use the existing progression authority.
 
 Examples may include:
 
