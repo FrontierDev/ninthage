@@ -54,6 +54,22 @@ namespace Game.Client.UI
                 _instance = this;
             }
 
+            if (_canvasGroup == null)
+                throw new InvalidOperationException(
+                    "LoadingScreenController requires a _canvasGroup reference.");
+            if (_splashImage == null)
+                throw new InvalidOperationException(
+                    "LoadingScreenController requires a _splashImage reference.");
+            if (_progressBarFill == null)
+                throw new InvalidOperationException(
+                    "LoadingScreenController requires a _progressBarFill reference.");
+
+            SetHiddenState();
+            _isShowing = false;
+            _targetProgress = 0f;
+            _progressBarFill.fillAmount = 0f;
+            _hasTerminalError = false;
+
             if (Collection == null)
             {
                 Debug.Warning("No default LoadingScreenCollection has been assigned to LoadingScreenController.");
@@ -88,16 +104,13 @@ namespace Game.Client.UI
             }
 
             _targetProgress = 0f;
+            _progressBarFill.fillAmount = 0f;
             _hasTerminalError = false;
             if (_statusText != null)
                 _statusText.text = string.Empty;
 
-            // Reset the loading bar.
-            _progressBarFill.fillAmount = 0f;
-
-            // Show the loading screen and refresh the splash image.
-            ShowLoadingScreen();
             RefreshSplashImage();
+            ShowLoadingScreen();
             _isShowing = true;
         }
 
@@ -188,9 +201,7 @@ namespace Game.Client.UI
             _targetProgress = 0f;
             _progressBarFill.fillAmount = 0f;
             _isShowing = false;
-            _canvasGroup.alpha = 0f;
-            _canvasGroup.interactable = false;
-            _canvasGroup.blocksRaycasts = false;
+            SetHiddenState();
         }
         #endregion
 
@@ -200,6 +211,13 @@ namespace Game.Client.UI
             _canvasGroup.alpha = 1f;
             _canvasGroup.interactable = true;
             _canvasGroup.blocksRaycasts = true;
+        }
+
+        private void SetHiddenState()
+        {
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.interactable = false;
+            _canvasGroup.blocksRaycasts = false;
         }
 
         private void HideLoadingScreen()
@@ -214,15 +232,13 @@ namespace Game.Client.UI
 
             while (elapsedTime < duration)
             {
-                elapsedTime += Time.deltaTime;
+                elapsedTime += Time.unscaledDeltaTime;
                 float alpha = Mathf.Lerp(1f, 0f, elapsedTime / duration);
                 _canvasGroup.alpha = alpha;
                 yield return null;
             }
 
-            _canvasGroup.alpha = 0f;
-            _canvasGroup.interactable = false;
-            _canvasGroup.blocksRaycasts = false;
+            SetHiddenState();
             _fadeCoroutine = null;
         }
 
