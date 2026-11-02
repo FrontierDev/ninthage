@@ -22,6 +22,14 @@ namespace Game.Client
         private const float STREAMED_INTEREST_READY_PROGRESS = 0.9f;
         private const float UNITY_SCENE_LOAD_READY_PROGRESS = 0.9f;
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [Min(0f)]
+        [SerializeField] private float _globalWorldLoadTestDelaySeconds;
+
+        [Min(0f)]
+        [SerializeField] private float _streamedWorldReadyTestDelaySeconds;
+#endif
+
         private static readonly PerformanceMarker SCENE_ACTIVATION_MARKER = new(
             ClientPerformanceMetrics.SCENE_ACTIVATION_DURATION,
             "Client.WorldManager.SceneActivation");
@@ -415,6 +423,16 @@ namespace Game.Client
             _globalWorldLoadOperation = null;
             RecordPendingSceneOperations();
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            yield return WaitForLoadingScreenTestDelay(_globalWorldLoadTestDelaySeconds);
+
+            if (generation != _worldPresentationGeneration
+                || _worldPresentationState != WorldPresentationState.Entering)
+            {
+                yield break;
+            }
+#endif
+
             bool streamedInterestProgressReported = false;
             while (!AreRequiredStreamedScenesLoaded(spawnChunk))
             {
@@ -444,11 +462,31 @@ namespace Game.Client
                 LoadingScreenController.Instance.SetProgress(STREAMED_INTEREST_READY_PROGRESS);
             }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            yield return WaitForLoadingScreenTestDelay(_streamedWorldReadyTestDelaySeconds);
+
+            if (generation != _worldPresentationGeneration
+                || _worldPresentationState != WorldPresentationState.Entering)
+            {
+                yield break;
+            }
+#endif
+
             _worldPresentationState = WorldPresentationState.Ready;
             _isWorldReady = true;
             Game.Shared.Networking.AccountEndpoint.onEnteredWorld?.Invoke();
             LoadingScreenController.Instance.Finish();
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private static IEnumerator WaitForLoadingScreenTestDelay(float seconds)
+        {
+            if (seconds <= 0f)
+                yield break;
+
+            yield return new WaitForSecondsRealtime(seconds);
+        }
+#endif
 
         /// <summary>
         /// Ends the current client world-presentation session and begins owned scene cleanup.
