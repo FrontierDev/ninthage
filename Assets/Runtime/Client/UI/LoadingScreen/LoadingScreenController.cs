@@ -37,7 +37,6 @@ namespace Game.Client.UI
         [SerializeField] private TMP_Text _statusText;
 
         private float _targetProgress;
-        private const float PROGRESS_FILL_SPEED = 5f;
         private bool _hasTerminalError;
         private bool _isShowing = false;
         private Coroutine _fadeCoroutine;
@@ -158,17 +157,7 @@ namespace Game.Client.UI
             }
 
             _targetProgress = progress;
-        }
-
-        private void Update()
-        {
-            if (!_isShowing) return;
-            if (_hasTerminalError) return;
-
-            _progressBarFill.fillAmount = Mathf.MoveTowards(
-                _progressBarFill.fillAmount,
-                _targetProgress,
-                Time.unscaledDeltaTime * PROGRESS_FILL_SPEED);
+            _progressBarFill.fillAmount = progress;
         }
 
         /// <summary>
