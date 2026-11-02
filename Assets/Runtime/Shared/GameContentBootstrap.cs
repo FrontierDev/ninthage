@@ -17,6 +17,7 @@ namespace Game.Shared
     {
         private const string GAME_CONFIGURATION_ADDRESS = "GameConfiguration";
         private const string NETWORK_MANAGER_ADDRESS = "NetworkManager";
+        private const int REQUIRED_ASSET_COUNT = 13;
 
         private static readonly List<AsyncOperationHandle> OWNED_HANDLES = new();
 
@@ -49,6 +50,18 @@ namespace Game.Shared
         /// <param name="onFailure">Called exactly once when loading or validation fails.</param>
         public static IEnumerator Initialize(Action<Exception> onFailure)
         {
+            return Initialize(onFailure, null);
+        }
+
+        /// <summary>
+        /// Asynchronously loads and publishes all required local bootstrap content.
+        /// </summary>
+        /// <param name="onFailure">Called exactly once when loading or validation fails.</param>
+        /// <param name="onProgress">
+        /// Optional callback receiving monotonic normalized required-content progress in the inclusive range 0..1.
+        /// </param>
+        public static IEnumerator Initialize(Action<Exception> onFailure, Action<float> onProgress)
+        {
             if (onFailure == null)
                 throw new ArgumentNullException(nameof(onFailure));
             if (_initialized || _initializationInProgress)
@@ -61,12 +74,13 @@ namespace Game.Shared
             }
 
             _initializationInProgress = true;
-            return InitializeContent(onFailure);
+            return InitializeContent(onFailure, onProgress);
         }
 
-        private static IEnumerator InitializeContent(Action<Exception> onFailure)
+        private static IEnumerator InitializeContent(Action<Exception> onFailure, Action<float> onProgress)
         {
             var stagedHandles = new List<AsyncOperationHandle>();
+            int completedAssetCount = 0;
             GameConfiguration gameConfiguration = null;
             GameObject networkManagerPrefab = null;
             ActorStatDefinitionLibrary actorStatDefinitionLibrary = null;
@@ -92,6 +106,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<GameObject>(
                 NETWORK_MANAGER_ADDRESS,
@@ -103,6 +119,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<ActorStatDefinitionLibrary>(
                 nameof(ActorStatDefinitionLibrary),
@@ -114,6 +132,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<AuraDefinitionLibrary>(
                 nameof(AuraDefinitionLibrary),
@@ -125,6 +145,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<ClassDefinitionLibrary>(
                 nameof(ClassDefinitionLibrary),
@@ -136,6 +158,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<DamageSchoolDefinitionLibrary>(
                 nameof(DamageSchoolDefinitionLibrary),
@@ -147,6 +171,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<FactionDefinitionLibrary>(
                 nameof(FactionDefinitionLibrary),
@@ -158,6 +184,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<ItemDefinitionLibrary>(
                 nameof(ItemDefinitionLibrary),
@@ -169,6 +197,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<QuestDefinitionLibrary>(
                 nameof(QuestDefinitionLibrary),
@@ -180,6 +210,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<RaceDefinitionLibrary>(
                 nameof(RaceDefinitionLibrary),
@@ -191,6 +223,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<SpellDefinitionLibrary>(
                 nameof(SpellDefinitionLibrary),
@@ -202,6 +236,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<TalentDefinitionLibrary>(
                 nameof(TalentDefinitionLibrary),
@@ -213,6 +249,8 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             yield return LoadAsset<WorldLocationDefinitionLibrary>(
                 nameof(WorldLocationDefinitionLibrary),
@@ -224,9 +262,15 @@ namespace Game.Shared
                 FailInitialization(stagedHandles, failure, onFailure);
                 yield break;
             }
+            completedAssetCount++;
+            onProgress?.Invoke((float)completedAssetCount / REQUIRED_ASSET_COUNT);
 
             try
             {
+                if (completedAssetCount != REQUIRED_ASSET_COUNT)
+                    throw new InvalidOperationException(
+                        $"Expected {REQUIRED_ASSET_COUNT} required bootstrap assets but completed {completedAssetCount}.");
+
                 ValidateNetworkManagerPrefab(networkManagerPrefab);
 
                 GameConfigurationManager.Initialize(gameConfiguration);

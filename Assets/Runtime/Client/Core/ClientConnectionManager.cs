@@ -30,6 +30,10 @@ namespace Game.Client
     /// </summary>
     public class ClientConnectionManager : MonoBehaviour
     {
+        private const float CONNECTION_ESTABLISHED_PROGRESS = 0.50f;
+        private const float CHARACTER_LIST_READY_PROGRESS = 0.75f;
+        private const float UNITY_SCENE_LOAD_READY_PROGRESS = 0.90f;
+
         private static ClientConnectionManager _instance;
         /// <summary>
         /// Gets the shared client-side instance.
@@ -323,6 +327,7 @@ namespace Game.Client
                         || _connectionState == ConnectionState.Disconnected);
                 if (_connectionState != ConnectionState.Connected)
                     yield break;
+                LoadingScreen.Instance.SetProgress(CONNECTION_ESTABLISHED_PROGRESS);
                 Debug.Log(" ✓ Step 3: Connection process completed. Moving to character selection or creation.");
 
                 yield return new WaitUntil(
@@ -330,19 +335,56 @@ namespace Game.Client
                         || _connectionState == ConnectionState.Disconnected);
                 if (_connectionState != ConnectionState.Connected)
                     yield break;
+                LoadingScreen.Instance.SetProgress(CHARACTER_LIST_READY_PROGRESS);
 
-                if (ClientAccountManager.TryGetCharacterList(out var characterList) && characterList.Count > 0)
+                string connectionUISceneName;
+                bool hasCharacters =
+                    ClientAccountManager.TryGetCharacterList(out var characterList)
+                    && characterList.Count > 0;
+                if (hasCharacters)
                 {
                     Debug.Log($" ✓ Received character list with {characterList.Count} characters. Showing character selection.");
-                    SceneManager.LoadSceneAsync("CharacterSelection", LoadSceneMode.Additive);
-                    Game.Client.UI.UI_CharacterSelectWindow.Instance.Show();
+                    connectionUISceneName = "CharacterSelection";
                 }
                 else
                 {
                     Debug.Log(" ✓ Received empty character list. Showing character creation.");
-                    SceneManager.LoadSceneAsync("CharacterCreation", LoadSceneMode.Additive);
-                    Game.Client.UI.UI_CharacterCreationWindow.Instance.Show();
+                    connectionUISceneName = "CharacterCreation";
                 }
+
+                AsyncOperation sceneLoadOperation =
+                    SceneManager.LoadSceneAsync(connectionUISceneName, LoadSceneMode.Additive);
+                if (sceneLoadOperation == null)
+                {
+                    Debug.Error($"Failed to start the connection UI scene load for '{connectionUISceneName}'.");
+                    _connectionState = ConnectionState.Disconnected;
+                    LoadingScreen.Instance.Finish();
+                    MainMenu.Instance.Show();
+                    yield break;
+                }
+
+                while (!sceneLoadOperation.isDone)
+                {
+                    if (_connectionState != ConnectionState.Connected)
+                        yield break;
+
+                    float normalizedProgress = Mathf.Clamp01(
+                        sceneLoadOperation.progress / UNITY_SCENE_LOAD_READY_PROGRESS);
+                    float loadingProgress = Mathf.Lerp(
+                        CHARACTER_LIST_READY_PROGRESS,
+                        1f,
+                        normalizedProgress);
+                    LoadingScreen.Instance.SetProgress(loadingProgress);
+                    yield return null;
+                }
+
+                if (_connectionState != ConnectionState.Connected)
+                    yield break;
+
+                if (hasCharacters)
+                    Game.Client.UI.UI_CharacterSelectWindow.Instance.Show();
+                else
+                    Game.Client.UI.UI_CharacterCreationWindow.Instance.Show();
 
                 LoadingScreen.Instance.Finish();
             }

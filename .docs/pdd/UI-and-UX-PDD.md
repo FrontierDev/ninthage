@@ -1856,7 +1856,9 @@ Do not imply that reconnect means a fresh character spawn if the Persistence PDD
 
 Loading progress must be derived from the real operation or lifecycle milestone owned by the workflow, not from an arbitrary timer. The UI may visually interpolate toward reported progress, but it must not infer lifecycle completion from the displayed progress; the owning lifecycle dismisses the screen.
 
-The current detached-world entry flow uses measured global-world scene progress plus streamed-interest and spawn-scene readiness milestones. Ordinary seamless world streaming does not show this screen.
+The Loading Screen is a reusable presentation surface. The workflow that calls `Show()` owns that loading session's progress and termination, either by completing it or by presenting a terminal error. Where a real asynchronous operation exposes progress, the workflow reports that operation's progress. Where continuous progress is unavailable, it reports concrete completed lifecycle milestones. Elapsed-time fake progress is not used.
+
+Client bootstrap, connection/authentication, and detached world entry are separate loading sessions with separate progress calculations. `LoadingScreenController` presents the values supplied by its workflow and must not infer completion from the displayed progress. The detached-world entry flow uses measured global-world scene progress plus streamed-interest and spawn-scene readiness milestones. Ordinary seamless world streaming does not show this screen.
 
 ---
 

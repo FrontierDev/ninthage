@@ -25,6 +25,13 @@ namespace Game.Client
         private const string PROFILING_ARGUMENT = "--profiling";
         private const string PROFILE_ID_ARGUMENT = "--profile-id";
         private const string DEFAULT_PROFILE_ID = "live-client";
+        private const float ADDRESSABLES_PROGRESS_END = 0.10f;
+        private const float CONTENT_PROGRESS_END = 0.50f;
+        private const float NETWORKING_READY_PROGRESS = 0.60f;
+        private const float ECS_READY_PROGRESS = 0.70f;
+        private const float WORLD_MANAGER_READY_PROGRESS = 0.75f;
+        private const float MAIN_MENU_LOAD_PROGRESS_END = 0.95f;
+        private const float UNITY_SCENE_LOAD_READY_PROGRESS = 0.90f;
 
         private readonly struct ClientLaunchOptions
         {
@@ -87,7 +94,17 @@ namespace Game.Client
 
                 // Step 2: Load and publish all required local game content.
                 Exception contentFailure = null;
-                yield return GameContentBootstrap.Initialize(exception => contentFailure = exception);
+                yield return GameContentBootstrap.Initialize(
+                    exception => contentFailure = exception,
+                    progress =>
+                    {
+                        float loadingProgress = Mathf.Lerp(
+                            ADDRESSABLES_PROGRESS_END,
+                            CONTENT_PROGRESS_END,
+                            Mathf.Clamp01(progress));
+
+                        LoadingScreen.Instance.SetProgress(loadingProgress);
+                    });
                 if (contentFailure != null)
                 {
                     Debug.Error($"Client game content initialization failed: {contentFailure}");
@@ -95,8 +112,11 @@ namespace Game.Client
                         "Required local game content is missing or corrupted. Repair or reinstall Ninth Age.");
                     yield break;
                 }
+                LoadingScreen.Instance.SetProgress(CONTENT_PROGRESS_END);
+
                 // Step 3: Initialize networking as CLIENT.
                 yield return ClientInitializeNetworking();
+                LoadingScreen.Instance.SetProgress(NETWORKING_READY_PROGRESS);
 
                 if (launchOptions.ProfilingEnabled)
                 {
@@ -106,11 +126,14 @@ namespace Game.Client
 
                 // Step 4: ECS Worlds after network initialized.
                 yield return ClientInitializeECSWorlds();
+                LoadingScreen.Instance.SetProgress(ECS_READY_PROGRESS);
 
                 yield return ClientInitializeWorldManager();
+                LoadingScreen.Instance.SetProgress(WORLD_MANAGER_READY_PROGRESS);
 
                 // Step 5: Unload the initialisation scene.
                 yield return UnloadInitializationScene();
+                LoadingScreen.Instance.Finish();
                 initializationCompleted = true;
             }
             finally
@@ -207,19 +230,34 @@ namespace Game.Client
             AsyncOperationHandle<UnityEngine.AddressableAssets.ResourceLocators.IResourceLocator> initOp =
                 Addressables.InitializeAsync(false);
 
+            float reportedProgress = 0f;
             while (!initOp.IsDone)
+            {
+                float normalizedProgress = Mathf.Clamp01(initOp.PercentComplete);
+                float loadingProgress = normalizedProgress * ADDRESSABLES_PROGRESS_END;
+                if (loadingProgress > reportedProgress)
+                {
+                    LoadingScreen.Instance.SetProgress(loadingProgress);
+                    reportedProgress = loadingProgress;
+                }
+
                 yield return null;
+            }
 
             AsyncOperationStatus status = initOp.Status;
             Exception operationException = initOp.OperationException;
-            if (initOp.IsValid())
-                Addressables.Release(initOp);
-
             if (status != AsyncOperationStatus.Succeeded)
             {
+                if (initOp.IsValid())
+                    Addressables.Release(initOp);
+
                 onFailure(new InvalidOperationException("Local Addressables initialization failed.", operationException));
                 yield break;
             }
+
+            LoadingScreen.Instance.SetProgress(ADDRESSABLES_PROGRESS_END);
+            if (initOp.IsValid())
+                Addressables.Release(initOp);
 
             Debug.Log(" ✓ Step 1: Addressables initialized successfully.");
         }
@@ -298,11 +336,39 @@ namespace Game.Client
             GameObject.DontDestroyOnLoad(GameObject.FindGameObjectWithTag("CinemachineCamera"));
 
             // Unload the initialization scene to free up resources.
-            var loadOp = SceneManager.LoadSceneAsync("MainMenu", LoadSceneMode.Additive);
-            while (!loadOp.isDone) { yield return null; }
+            AsyncOperation loadOperation = SceneManager.LoadSceneAsync("MainMenu", LoadSceneMode.Additive);
+            if (loadOperation == null)
+                throw new InvalidOperationException("Failed to start the MainMenu scene load.");
 
-            var unloadOp = SceneManager.UnloadSceneAsync("Bootstrapper");
-            while (!unloadOp.isDone) { yield return null; }
+            while (!loadOperation.isDone)
+            {
+                float normalizedProgress = Mathf.Clamp01(
+                    loadOperation.progress / UNITY_SCENE_LOAD_READY_PROGRESS);
+                float loadingProgress = Mathf.Lerp(
+                    WORLD_MANAGER_READY_PROGRESS,
+                    MAIN_MENU_LOAD_PROGRESS_END,
+                    normalizedProgress);
+                LoadingScreen.Instance.SetProgress(loadingProgress);
+                yield return null;
+            }
+
+            LoadingScreen.Instance.SetProgress(MAIN_MENU_LOAD_PROGRESS_END);
+
+            AsyncOperation unloadOperation = SceneManager.UnloadSceneAsync("Bootstrapper");
+            if (unloadOperation == null)
+                throw new InvalidOperationException("Failed to start the Bootstrapper scene unload.");
+
+            while (!unloadOperation.isDone)
+            {
+                float normalizedProgress = Mathf.Clamp01(
+                    unloadOperation.progress / UNITY_SCENE_LOAD_READY_PROGRESS);
+                float loadingProgress = Mathf.Lerp(
+                    MAIN_MENU_LOAD_PROGRESS_END,
+                    1f,
+                    normalizedProgress);
+                LoadingScreen.Instance.SetProgress(loadingProgress);
+                yield return null;
+            }
 
             Debug.Log(" ✓ Step 7: Initialization scene unloaded successfully.");
         }
