@@ -118,6 +118,10 @@ namespace Game.Server.Networking.Master
             /// <summary>Gets or sets the accepted Release Manifest's client compatibility projection.</summary>
             [JsonProperty("clientCompatibility")]
             public ClientCompatibilityRequirements ClientCompatibility { get; set; }
+
+            /// <summary>Gets or sets the Master-authorized client build/catalog relaxation policy.</summary>
+            [JsonProperty("relaxClientBuildAndCatalog")]
+            public bool? RelaxClientBuildAndCatalog { get; set; }
         }
 
         /// <summary>Wire request for renewing or releasing a World Server lease.</summary>

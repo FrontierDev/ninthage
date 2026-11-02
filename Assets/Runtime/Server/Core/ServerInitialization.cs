@@ -63,6 +63,7 @@ namespace Game.Server.Core
         private static ServerTimeAuthority _timeAuthority;
         private static MasterWorldClient _masterWorldClient;
         private static ClientCompatibilityIdentity _clientCompatibilityRequirements;
+        private static bool _relaxClientBuildAndCatalog;
         private static MasterSessionClient _masterSessionClient;
         private static WorldSessionCoordinator _worldSessionCoordinator;
         private static MasterPersistenceClient _masterPersistenceClient;
@@ -454,6 +455,8 @@ namespace Game.Server.Core
                     $"Master registration for world '{_launchWorldName}' was rejected with result {registrationResponse.Result}.");
             }
 
+            _relaxClientBuildAndCatalog =
+                registrationResponse.RelaxClientBuildAndCatalog.Value;
             _clientCompatibilityRequirements = new ClientCompatibilityIdentity(
                 registrationResponse.ClientCompatibility.ClientBuildVersion,
                 registrationResponse.ClientCompatibility.ClientBuildID,
@@ -671,7 +674,7 @@ namespace Game.Server.Core
         private static void CancelAndDisposePersistenceStateSynchronously()
         {
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
-            Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(null);
+            Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(null, false);
             ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
 
             if (_worldPersistenceCoordinator != null)
@@ -723,6 +726,7 @@ namespace Game.Server.Core
             _masterWorldClient?.Dispose();
             _masterWorldClient = null;
             _clientCompatibilityRequirements = null;
+            _relaxClientBuildAndCatalog = false;
         }
 
         /// <summary>
@@ -843,7 +847,7 @@ namespace Game.Server.Core
                 ServerControlEndpoint.Detach();
                 StopInitializationCoroutine();
                 Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
-                Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(null);
+                Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(null, false);
                 ServerConnectionManager.Instance.StopAcceptingCharacterControlPlane();
                 ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
 
@@ -1101,7 +1105,8 @@ namespace Game.Server.Core
             }
 
             Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(
-                _clientCompatibilityRequirements);
+                _clientCompatibilityRequirements,
+                _relaxClientBuildAndCatalog);
             WorldSessionCoordinator coordinator = SessionCoordinator;
             var authService = new PlayerAuthService(coordinator);
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(authService);

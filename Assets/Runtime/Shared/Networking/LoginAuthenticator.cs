@@ -25,6 +25,7 @@ namespace Game.Shared.Networking
         #region Fields - Server Side
         private static IPlayerAuthService _authService;
         private static ClientCompatibilityIdentity _clientCompatibilityRequirements;
+        private static bool _relaxClientBuildAndCatalog;
         #endregion
 
         #region Public API - Client Setup
@@ -49,9 +50,25 @@ namespace Game.Shared.Networking
 
         /// <summary>Registers or clears the World-pinned client compatibility requirements.</summary>
         public static void SetClientCompatibilityRequirements(
-            ClientCompatibilityIdentity compatibilityRequirements)
+            ClientCompatibilityIdentity compatibilityRequirements,
+            bool relaxClientBuildAndCatalog)
         {
+            if (compatibilityRequirements == null && relaxClientBuildAndCatalog)
+            {
+                throw new ArgumentException(
+                    "A client build/catalog relaxation policy requires compatibility requirements.",
+                    nameof(relaxClientBuildAndCatalog));
+            }
+
+            if (compatibilityRequirements == null || !relaxClientBuildAndCatalog)
+            {
+                _relaxClientBuildAndCatalog = false;
+                _clientCompatibilityRequirements = compatibilityRequirements;
+                return;
+            }
+
             _clientCompatibilityRequirements = compatibilityRequirements;
+            _relaxClientBuildAndCatalog = true;
         }
         #endregion
 
@@ -95,6 +112,7 @@ namespace Game.Shared.Networking
             AuthenticationPayload payload)
         {
             var expectedCompatibility = _clientCompatibilityRequirements;
+            bool relaxClientBuildAndCatalog = _relaxClientBuildAndCatalog;
             if (expectedCompatibility == null || !connection.isValid)
             {
                 Debug.Error(
@@ -106,7 +124,8 @@ namespace Game.Shared.Networking
 
             var compatibilityDenial = GetCompatibilityDenial(
                 payload,
-                expectedCompatibility);
+                expectedCompatibility,
+                relaxClientBuildAndCatalog);
             if (compatibilityDenial.HasValue)
             {
                 Debug.Warning($"Client compatibility was rejected: {compatibilityDenial.Value}.");
@@ -135,6 +154,7 @@ namespace Game.Shared.Networking
             }
             if (!ReferenceEquals(authService, _authService)
                 || !ReferenceEquals(expectedCompatibility, _clientCompatibilityRequirements)
+                || relaxClientBuildAndCatalog != _relaxClientBuildAndCatalog
                 || !connection.isValid)
             {
                 Debug.Warning("Authentication completed after service teardown or connection loss.");
@@ -216,17 +236,21 @@ namespace Game.Shared.Networking
 
         private static LoginDenialReason? GetCompatibilityDenial(
             AuthenticationPayload payload,
-            ClientCompatibilityIdentity expectedCompatibility)
+            ClientCompatibilityIdentity expectedCompatibility,
+            bool relaxClientBuildAndCatalog)
         {
-            if (payload == null
-                || !string.Equals(
+            if (payload == null)
+                return LoginDenialReason.ClientUpdateRequired;
+
+            if (!relaxClientBuildAndCatalog
+                && (!string.Equals(
                     payload.ClientBuildVersion,
                     expectedCompatibility.ClientBuildVersion,
                     StringComparison.Ordinal)
                 || !string.Equals(
                     payload.ClientBuildID,
                     expectedCompatibility.ClientBuildID,
-                    StringComparison.Ordinal))
+                    StringComparison.Ordinal)))
             {
                 return LoginDenialReason.ClientUpdateRequired;
             }
@@ -253,10 +277,12 @@ namespace Game.Shared.Networking
                 return LoginDenialReason.UnsupportedBuildTarget;
             }
 
-            if (payload.CatalogRevision != expectedCompatibility.CatalogRevision)
+            if (!relaxClientBuildAndCatalog
+                && payload.CatalogRevision != expectedCompatibility.CatalogRevision)
                 return LoginDenialReason.AddressablesCatalogUpdateRequired;
 
-            if (!string.Equals(
+            if (!relaxClientBuildAndCatalog
+                && !string.Equals(
                     payload.CatalogHash,
                     expectedCompatibility.CatalogHash,
                     StringComparison.Ordinal))

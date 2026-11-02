@@ -1115,6 +1115,15 @@ Before authentication/world entry, the client must prove or update to the pinned
 
 The client may have newer inactive content cached, but it must use the catalog/content revision selected by the pinned active Release State.
 
+Strict compatibility remains the default for Staging and Production. An accepted World Server may receive a Master-authorized Development policy, `RelaxClientBuildAndCatalog=true`, for rapid client iteration. That policy relaxes only:
+
+- Client Build Version;
+- Client Build ID;
+- build-target-specific Addressables Catalog Revision;
+- build-target-specific Addressables Catalog hash.
+
+The policy does not relax Protocol Version, Gameplay Content Revision, Gameplay Content Manifest Hash or Build Target compatibility. It also does not bypass credentials, gameplay-session admission or World Server-to-Master release pinning. The Master selects the policy during World registration and the World pins it for that server run; a client cannot request or override it. Clients continue to send their complete compatibility identity.
+
 # 49. Production Environments
 
 At minimum, release workflow distinguishes:
@@ -1123,7 +1132,7 @@ At minimum, release workflow distinguishes:
 - **Staging**
 - **Production**
 
-Development may use local/rapid content iteration.
+Development may use local/rapid content iteration through the Master-authorized exception described in §48. Explicit strict Development mode remains supported for release-flow validation.
 
 Staging should reproduce the production content-delivery and compatibility model closely enough to validate releases.
 

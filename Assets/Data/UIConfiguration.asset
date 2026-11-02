@@ -18,7 +18,7 @@ MonoBehaviour:
   _windowTitle:
     _fontRole: 0
     _fontSize: 18
-    _fontStyle: 0
+    _fontStyle: 48
     _fontWeight: 600
   _sectionHeading:
     _fontRole: 0
@@ -38,7 +38,7 @@ MonoBehaviour:
   _secondary:
     _fontRole: 1
     _fontSize: 12
-    _fontStyle: 0
+    _fontStyle: 16
     _fontWeight: 400
   _small:
     _fontRole: 1
@@ -132,7 +132,7 @@ MonoBehaviour:
   _panel: {r: 0.14117648, g: 0.14117648, b: 0.14117648, a: 1}
   _elevatedPanel: {r: 0.1882353, g: 0.1882353, b: 0.18431373, a: 1}
   _raisedSurface: {r: 0.23137255, g: 0.22745098, b: 0.21960784, a: 1}
-  _border: {r: 0.29411765, g: 0.28235295, b: 0.2627451, a: 1}
+  _border: {r: 0.29411766, g: 0.28235295, b: 0.2627451, a: 1}
   _secondaryBorder: {r: 0.38431373, g: 0.36862746, b: 0.34117648, a: 1}
   _primaryText: {r: 0.92156863, g: 0.9098039, b: 0.88235295, a: 1}
   _secondaryText: {r: 0.7647059, g: 0.7490196, b: 0.7137255, a: 1}
