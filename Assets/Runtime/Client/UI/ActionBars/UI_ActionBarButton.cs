@@ -47,6 +47,7 @@ namespace Game.Client.UI
                 _spellIconImage.material = _materialInstance;
             }
 
+            RefreshAssignmentPresentation();
             ActorEndpoint.onStartGlobalCooldown += OnStartGlobalCooldown;
         }
 
@@ -104,9 +105,12 @@ namespace Game.Client.UI
         {
             if (eventData == null) return;
 
-            _pressedAmount = 1f;
-            UIShaderProperties.SetPressedAmount(_spellIconImage, _pressedAmount);
-            StartCoroutine(FadeOutPressedState());
+            if (!string.IsNullOrEmpty(_spellID))
+            {
+                _pressedAmount = 1f;
+                UIShaderProperties.SetPressedAmount(_spellIconImage, _pressedAmount);
+                StartCoroutine(FadeOutPressedState());
+            }
 
             if (eventData.button == PointerEventData.InputButton.Left)
             {
@@ -139,7 +143,14 @@ namespace Game.Client.UI
 
             UIShaderProperties.SetIcon(_spellIconImage, newSpellIcon != null ? newSpellIcon.texture : null);
             UIShaderProperties.SetIconVisible(_spellIconImage, newSpellIcon != null);
+            RefreshAssignmentPresentation();
+        }
 
+        private void RefreshAssignmentPresentation()
+        {
+            if (_spellIconImage == null) return;
+
+            _spellIconImage.gameObject.SetActive(!string.IsNullOrEmpty(_spellID));
         }
 
         private void OpenSpellContextMenu(Vector2 screenPosition)

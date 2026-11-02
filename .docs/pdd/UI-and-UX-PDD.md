@@ -998,47 +998,50 @@ The player is not restricted to a small action-RPG active-skill loadout.
 
 ## 42. Action-Bar Structure
 
-A standard action bar contains:
+A standard default HUD exposes four visible independent action bars:
 
-**12 slots.**
+- Bar 1 — primary bottom-centre row at `(0,16)`, size **524 × 40 px**;
+- Bar 2 — secondary bottom-centre row directly above Bar 1 at `(0,60)`, size
+  **524 × 40 px**;
+- Bar 3 — inner right-side column at `(-60,12)`, size **40 × 524 px**;
+- Bar 4 — outer right-side column at `(-16,12)`, size **40 × 524 px**.
 
-The UI should support at least:
+Bars 1 and 2 use centre-bottom anchors and pivots. Bars 3 and 4 use
+right-bottom anchors and pivots. Every bar contains exactly **12 slots**,
+giving 48 visible slot positions by default. Horizontal bars use a fixed
+12-column grid; vertical bars use a fixed 12-row grid. All bars use 40 × 40 px
+cells, 4 px gaps and zero grid padding at 100% HUD scale.
+
+The architecture must still support at least:
 
 **6 action bars**,
 
-for at least 72 ordinary bindable slots.
-
-Only the primary bar needs to be visible by default.
-
-Additional bars can be enabled/repositioned through HUD configuration.
-
-The architecture may support more without changing this PDD.
+for at least 72 ordinary bindable slots. Additional bars and HUD Edit Mode
+remain future configuration work. Bar 1 retains the existing keyboard
+bindings; the additional default bars do not invent keyboard bindings.
 
 ---
 
 ## 43. Action-Bar Slot Presentation
 
-Default action-bar slot size:
+The default action-bar slot footprint is **40 × 40 px** with a **4 px gap** at
+100% HUD scale.
 
-**40 × 40 px**
+Every slot retains a full 40 × 40 px invisible root hit target for assignment.
+Its presentation is:
 
-with:
+- assigned slot — the full 40 × 40 px action visual plus a small badge;
+- unassigned slot — no full action visual, only the badge;
+- keybinding badge — 16 × 16 px, bottom-centred, using the Radiant Slate
+  secondary-background token;
+- keybinding text — the semantic `Keybind` style, centred within the badge.
 
-**4 px gap**
-
-at 100% HUD scale.
-
-A slot displays, where relevant:
-
-- ability/item icon;
-- keybind;
-- cooldown overlay;
-- charge count;
-- rank where presentation requires it;
-- unavailable/disabled state;
-- resource/range invalid state.
-
-The icon remains the dominant visual element. A spell icon must be **fully opaque painted artwork including its own painted background**, while the **slot border and all gameplay overlays are UI-provided**. New spell-icon art is reviewed against the [Spell Icon Art Direction PDD](Spell-Icon-Art-Direction-PDD.md) at the 40 px default size.
+The badge remains visible regardless of assignment. The icon remains the
+dominant visual element when assigned. A spell icon must be **fully opaque
+painted artwork including its own painted background**, while the **slot border
+and all gameplay overlays are UI-provided**. New spell-icon art is reviewed
+against the [Spell Icon Art Direction PDD](Spell-Icon-Art-Direction-PDD.md) at
+the 40 px default size.
 
 ---
 
@@ -1407,24 +1410,29 @@ Do not hand-write UI-only rules that can drift from authoritative gameplay data.
 ## 64. Inventory
 
 Inventory uses a deterministic 476 × 448 px Radiant Slate window shell with the
-shared 16 px inset and 12 px major-section rhythm. The shell contains a 40 px
-title bar, a 36 px category-tab strip, a 280 px body and a 24 px footer.
+shared 16 px inset and 12 px major-section rhythm. Its canonical 40 px top row
+is shared by the title, close/divider chrome and visual-only category tabs. The
+tabs occupy a 240 × 40 px region at x=136/y=0 with 8 px medium spacing. The
+body is a 444 × 344 px region at x=16/y=52, and the active footer is 444 × 24
+px with 16 px side and bottom insets, leaving the canonical 12 px gap below
+the body.
 
-The category strip is visual-only and contains three equal tabs in this order:
+The category tabs are visual-only, use no active underline GameObject, and
+contain three equal tabs in this order:
 
 - ITEMS (active);
 - MATERIALS (inactive);
 - CURRENCIES (inactive).
 
-The body uses a 52 px icon-only filter rail beside a 380 px item area. The rail
-contains exactly six vertically stacked 40 × 40 px filter buttons with 4 px
-gaps: all items, equipment, consumables, crafting, quest items and other.
-These controls are enabled for future interaction wiring, but this visual pass
-does not add callbacks or tooltips.
+The body uses a 52 × 344 px icon-only filter rail beside a 380 × 344 px item
+area. The rail contains exactly six vertically stacked 40 × 40 px filter buttons
+with 4 px gaps: all items, equipment, consumables, crafting, quest items and
+other. These controls are enabled for future interaction wiring, but this
+visual pass does not add callbacks or tooltips.
 
 The item area contains a 236 × 32 px visual-only search field, an adjacent
 136 × 32 px static `Sort: Default` control, the existing bag label and the
-existing live inventory grid inside a 380 × 188 px vertically scrolling
+existing live inventory grid inside a 380 × 276 px vertically scrolling
 viewport. Search and sort are presentation-only in this pass; inventory data
 and grid population remain owned by the existing inventory systems.
 
