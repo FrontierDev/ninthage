@@ -40,7 +40,10 @@ namespace Game.Client.UI
         private void Start()
         {
             UI_CharacterSelectWindow.Instance.onCharacterSelected += SetCharacterInfo;
-            SetCharacterInfo(CharacterSelectionManager.Instance.SelectedCharacter);
+
+            CharacterData selectedCharacter =
+                CharacterSelectionManager.Instance?.SelectedCharacter;
+            SetCharacterInfo(selectedCharacter);
         }
 
         private void OnDestroy()

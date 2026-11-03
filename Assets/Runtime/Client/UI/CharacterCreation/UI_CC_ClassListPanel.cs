@@ -27,18 +27,23 @@ namespace Game.Client.UI
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        private void Start()
+        private void Initialize()
         {
-            _classDefinitionLibrary = ClassDefinitionLibrary.Instance;
-            if (_classDefinitionLibrary == null)
-            {
-                Debug.Error("Could not load ClassDefinitionLibrary");
+            if (_classDefinitionLibrary != null)
                 return;
-            }
 
-            UI_CharacterCreationWindow.Instance.onClassSelected += OnClassSelected;
-
+            _classDefinitionLibrary = ClassDefinitionLibrary.Instance;
             PopulateList();
+            UI_CharacterCreationWindow.Instance.onClassSelected += OnClassSelected;
+        }
+
+        private void OnDestroy()
+        {
+            if (_classDefinitionLibrary != null &&
+                UI_CharacterCreationWindow.Instance != null)
+            {
+                UI_CharacterCreationWindow.Instance.onClassSelected -= OnClassSelected;
+            }
         }
 
         /// <inheritdoc/>
@@ -50,6 +55,7 @@ namespace Game.Client.UI
         /// <inheritdoc/>
         public override void Show()
         {
+            Initialize();
             base.Show();
             if (CharacterCreationManager.Instance != null && CharacterCreationManager.Instance.GetCurrentClassID() != "")
             {

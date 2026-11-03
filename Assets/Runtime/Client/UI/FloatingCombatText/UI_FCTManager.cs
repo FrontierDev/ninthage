@@ -7,6 +7,7 @@ using Game.Shared.Performance;
 using Game.Shared.Runtime.Actors;
 using Game.Shared.Runtime.Spellcasting;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
@@ -89,6 +90,12 @@ namespace Game.Client.UI
         {
             ActorEndpoint.onCombatLogEntryReceived += OnCombatLogEntryReceived;
             CharacterEndpoint.onClientExperienceUpdated += OnExperienceUpdated;
+            StartCoroutine(SubscribeToWorldManagerWhenReady());
+        }
+
+        private IEnumerator SubscribeToWorldManagerWhenReady()
+        {
+            yield return new WaitUntil(() => ClientWorldManager.Initialized);
             ClientWorldManager.Instance.onWorldPresentationEnding += OnWorldPresentationEnding;
         }
 

@@ -27,23 +27,29 @@ namespace Game.Client.UI
         /// </summary>
         public List<UI_ListEntry> currentEntries { get; set; } = new();
 
-        private void Start()
+        private void Initialize()
         {
-            _raceDefinitionLibrary = RaceDefinitionLibrary.Instance;
-            if (_raceDefinitionLibrary == null)
-            {
-                Debug.Error("Could not load RaceDefinitionLibrary");
+            if (_raceDefinitionLibrary != null)
                 return;
-            }
 
-            UI_CharacterCreationWindow.Instance.onRaceSelected += OnRaceSelected;
-
+            _raceDefinitionLibrary = RaceDefinitionLibrary.Instance;
             PopulateList();
+            UI_CharacterCreationWindow.Instance.onRaceSelected += OnRaceSelected;
+        }
+
+        private void OnDestroy()
+        {
+            if (_raceDefinitionLibrary != null &&
+                UI_CharacterCreationWindow.Instance != null)
+            {
+                UI_CharacterCreationWindow.Instance.onRaceSelected -= OnRaceSelected;
+            }
         }
 
         /// <inheritdoc/>
         public override void Show()
         {
+            Initialize();
             base.Show();
             if (CharacterCreationManager.Instance != null && CharacterCreationManager.Instance.GetCurrentRaceID() != "")
             {

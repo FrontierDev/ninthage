@@ -52,17 +52,7 @@ namespace Game.Client
         /// <summary>
         /// Gets the shared client-side instance.
         /// </summary>
-        public static ClientWorldManager Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = new();
-                }
-                return _instance;
-            }
-        }
+        public static ClientWorldManager Instance => _instance;
         private static bool _initialized = false;
         /// <summary>
         /// Gets the <c>Initialized</c> value.
