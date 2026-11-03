@@ -4,6 +4,9 @@
 *.csproj
 *.log
 
+PerformanceTestRunInfo*
+PerformanceTestRunSettings*
+
 task.md
 todo.txt
 zDefaultPrompt.txt
