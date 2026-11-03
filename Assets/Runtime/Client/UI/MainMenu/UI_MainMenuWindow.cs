@@ -46,6 +46,10 @@ namespace Game.Client.UI
         [SerializeField] private TMP_Text _loginStatusText;
         [SerializeField] private UI_WorldSelectionPanel _worldSelectionPanel;
 
+        [Header("UI References - Main Menu Chrome")]
+        [SerializeField] private GameObject _logoRoot;
+        [SerializeField] private GameObject _messageOfTheDayRoot;
+
         [Header("UI References - MOTD")]
         [SerializeField] private TMP_Text _messageOfTheDayText;
 
@@ -92,10 +96,19 @@ namespace Game.Client.UI
 
         public override void Show()
         {
+            SetPrimaryMenuChromeVisible(true);
             _loginButton.EnableButton();
             _worldSelectionPanel?.HideImmediate();
             base.Show();
             RefreshMessageOfTheDay();
+        }
+
+        private void SetPrimaryMenuChromeVisible(bool visible)
+        {
+            if (_logoRoot != null)
+                _logoRoot.SetActive(visible);
+            if (_messageOfTheDayRoot != null)
+                _messageOfTheDayRoot.SetActive(visible);
         }
         #endregion
 
@@ -249,6 +262,7 @@ namespace Game.Client.UI
         /// <summary>Shows a bounded login failure and restores the ordinary login state.</summary>
         internal void ShowLoginFailure(string message)
         {
+            SetPrimaryMenuChromeVisible(true);
             if (_loginStatusText != null)
                 _loginStatusText.text = BoundStatusMessage(message);
 
@@ -270,6 +284,7 @@ namespace Game.Client.UI
             {
                 _loginStatusText?.SetText(string.Empty);
                 _worldSelectionPanel.Initialize(catalogue);
+                SetPrimaryMenuChromeVisible(false);
                 _worldSelectionPanel.Show();
             }
             catch (InvalidOperationException)
