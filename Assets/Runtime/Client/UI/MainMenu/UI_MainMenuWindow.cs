@@ -21,7 +21,9 @@ namespace Game.Client.UI
     {
         private const int MOTD_TIMEOUT_SECONDS = 5;
         private const int MOTD_MAX_LENGTH = 2048;
-        private const int LOGIN_STATUS_MAX_LENGTH = 256;
+        private const int LOGIN_TOAST_MAX_LENGTH = 256;
+        private const float LOGIN_TOAST_VISIBLE_SECONDS = 4f;
+        private const float LOGIN_TOAST_FADE_SECONDS = 0.15f;
         private const string REMEMBER_ACCOUNT_NAME_SETTING =
             "login_remember_account_name";
         private const string REMEMBERED_ACCOUNT_NAME_SETTING =
@@ -29,6 +31,7 @@ namespace Game.Client.UI
 
         private static UI_MainMenuWindow _instance;
         private Coroutine _motdCoroutine;
+        private Coroutine _loginToastCoroutine;
 
         /// <summary>
         /// Gets the shared client-side instance.
@@ -43,7 +46,8 @@ namespace Game.Client.UI
         [FormerlySerializedAs("loginButton")]
         [SerializeField] private UI_Button _loginButton;
         [SerializeField] private Toggle _rememberAccountNameToggle;
-        [SerializeField] private TMP_Text _loginStatusText;
+        [SerializeField] private CanvasGroup _loginToastCanvasGroup;
+        [SerializeField] private TMP_Text _loginToastText;
         [SerializeField] private UI_WorldSelectionPanel _worldSelectionPanel;
 
         [Header("UI References - Main Menu Chrome")]
@@ -60,6 +64,7 @@ namespace Game.Client.UI
         protected override void Start()
         {
             base.Start();
+            HideLoginToastImmediate();
 
             if (_instance != null)
             {
@@ -96,6 +101,7 @@ namespace Game.Client.UI
 
         public override void Show()
         {
+            HideLoginToastImmediate();
             SetPrimaryMenuChromeVisible(true);
             _loginButton.EnableButton();
             _worldSelectionPanel?.HideImmediate();
@@ -263,8 +269,7 @@ namespace Game.Client.UI
         internal void ShowLoginFailure(string message)
         {
             SetPrimaryMenuChromeVisible(true);
-            if (_loginStatusText != null)
-                _loginStatusText.text = BoundStatusMessage(message);
+            ShowLoginToast(message);
 
             _loginButton.EnableButton();
             _worldSelectionPanel?.HideImmediate();
@@ -282,8 +287,8 @@ namespace Game.Client.UI
 
             try
             {
-                _loginStatusText?.SetText(string.Empty);
                 _worldSelectionPanel.Initialize(catalogue);
+                HideLoginToastImmediate();
                 SetPrimaryMenuChromeVisible(false);
                 _worldSelectionPanel.Show();
             }
@@ -291,6 +296,64 @@ namespace Game.Client.UI
             {
                 ShowLoginFailure("World selection is unavailable.");
             }
+        }
+
+        private void ShowLoginToast(string message)
+        {
+            if (_loginToastCanvasGroup == null || _loginToastText == null)
+                throw new InvalidOperationException(
+                    "UI_MainMenuWindow requires serialized login toast CanvasGroup and TMP_Text references.");
+
+            if (_loginToastCoroutine != null)
+            {
+                StopCoroutine(_loginToastCoroutine);
+                _loginToastCoroutine = null;
+            }
+
+            _loginToastText.text = BoundStatusMessage(message);
+            _loginToastCanvasGroup.alpha = 1f;
+            _loginToastCanvasGroup.interactable = false;
+            _loginToastCanvasGroup.blocksRaycasts = false;
+            _loginToastCoroutine = StartCoroutine(LoginToastLifetime());
+        }
+
+        private IEnumerator LoginToastLifetime()
+        {
+            yield return new WaitForSecondsRealtime(LOGIN_TOAST_VISIBLE_SECONDS);
+
+            float elapsed = 0f;
+            while (elapsed < LOGIN_TOAST_FADE_SECONDS)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                _loginToastCanvasGroup.alpha = Mathf.Lerp(
+                    1f,
+                    0f,
+                    Mathf.Clamp01(elapsed / LOGIN_TOAST_FADE_SECONDS));
+                yield return null;
+            }
+
+            _loginToastCanvasGroup.alpha = 0f;
+            _loginToastText.text = string.Empty;
+            _loginToastCoroutine = null;
+        }
+
+        private void HideLoginToastImmediate()
+        {
+            if (_loginToastCoroutine != null)
+            {
+                StopCoroutine(_loginToastCoroutine);
+                _loginToastCoroutine = null;
+            }
+
+            if (_loginToastCanvasGroup != null)
+            {
+                _loginToastCanvasGroup.alpha = 0f;
+                _loginToastCanvasGroup.interactable = false;
+                _loginToastCanvasGroup.blocksRaycasts = false;
+            }
+
+            if (_loginToastText != null)
+                _loginToastText.text = string.Empty;
         }
 
         internal UI_WorldSelectionPanel GetWorldSelectionPanel() => _worldSelectionPanel;
@@ -301,8 +364,8 @@ namespace Game.Client.UI
                 ? "Master unavailable."
                 : message.Trim();
 
-            if (boundedMessage.Length > LOGIN_STATUS_MAX_LENGTH)
-                boundedMessage = boundedMessage.Substring(0, LOGIN_STATUS_MAX_LENGTH);
+            if (boundedMessage.Length > LOGIN_TOAST_MAX_LENGTH)
+                boundedMessage = boundedMessage.Substring(0, LOGIN_TOAST_MAX_LENGTH);
 
             return boundedMessage;
         }

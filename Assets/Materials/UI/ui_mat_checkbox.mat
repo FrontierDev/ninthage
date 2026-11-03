@@ -103,9 +103,9 @@ Material:
     - _BlendModePreserveSpecular: 1
     - _BorderNoiseScale: 0.024
     - _BorderNoiseStrength: 0.789
-    - _BorderWidth: 0.04
+    - _BorderWidth: 1.82
     - _BumpScale: 1
-    - _CheckFillAmount: 1
+    - _CheckFillAmount: 0
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
     - _CornerInset: 16
@@ -147,7 +147,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _BorderColor: {r: 0.29411765, g: 0.28235295, b: 0.2627451, a: 1}
+    - _BorderColor: {r: 0.29411766, g: 0.28235295, b: 0.2627451, a: 1}
     - _CheckedFillColor: {r: 0.79607844, g: 0.6901961, b: 0.47058824, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
