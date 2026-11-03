@@ -100,7 +100,7 @@ namespace Game.Client.UI
 
         private IEnumerator FetchMessageOfTheDay()
         {
-            yield return null;
+            yield return new WaitUntil(() => GameContentBootstrap.IsInitialized);
 
             if (!TryCreateMessageOfTheDayEndpoint(out Uri endpoint, out string failure))
             {
@@ -168,6 +168,12 @@ namespace Game.Client.UI
                 !string.IsNullOrEmpty(masterServerUri.Fragment))
             {
                 failure = "Master Server URL contains unsupported user info, query, or fragment data";
+                return false;
+            }
+
+            if (!string.Equals(masterServerUri.AbsolutePath, "/", StringComparison.Ordinal))
+            {
+                failure = "Master Server URL must not contain a path";
                 return false;
             }
 
