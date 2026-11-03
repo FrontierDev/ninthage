@@ -124,7 +124,7 @@ Material:
     - _InnerBorderWidth: 0
     - _InnerDarkenStrength: 0
     - _InnerShadowStrength: 0
-    - _IsChecked: 1
+    - _IsChecked: 0
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _Opacity: 1
