@@ -38,6 +38,26 @@ namespace Game.Server.Networking.Master
             return response;
         }
 
+        /// <summary>Redeems a Master-issued World-entry handoff for a gameplay session.</summary>
+        internal async Task<MasterSessionProtocol.WorldEntryRedeemResponse> RedeemWorldEntryAsync(
+            MasterSessionProtocol.WorldEntryRedeemRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            (HttpStatusCode statusCode, string responseBody) = await _worldClient.PostJsonAsync(
+                MasterSessionProtocol.REDEEM_WORLD_ENTRY_PATH,
+                JsonConvert.SerializeObject(request),
+                cancellationToken).ConfigureAwait(false);
+
+            MasterSessionProtocol.WorldEntryRedeemResponse response =
+                DeserializeWorldEntryRedeemResponse(responseBody);
+            ValidateStatus(statusCode, response.Result);
+            ValidateWorldEntryRedeemResponse(response);
+            return response;
+        }
+
         /// <summary>Disconnects an authenticated gameplay session.</summary>
         internal async Task<MasterSessionProtocol.SessionResponse> DisconnectAsync(
             MasterSessionProtocol.DisconnectRequest request,
@@ -520,6 +540,46 @@ namespace Game.Server.Networking.Master
             }
         }
 
+        private static MasterSessionProtocol.WorldEntryRedeemResponse DeserializeWorldEntryRedeemResponse(
+            string responseBody)
+        {
+            if (string.IsNullOrWhiteSpace(responseBody))
+            {
+                throw new InvalidOperationException(
+                    "The Master World-entry handoff redemption response body was empty.");
+            }
+
+            ValidateResultField(responseBody, "World-entry handoff redemption");
+            try
+            {
+                MasterSessionProtocol.WorldEntryRedeemResponse response =
+                    JsonConvert.DeserializeObject<MasterSessionProtocol.WorldEntryRedeemResponse>(responseBody);
+                if (response == null)
+                {
+                    throw new InvalidOperationException(
+                        "The Master World-entry handoff redemption response was null.");
+                }
+
+                if (!Enum.IsDefined(typeof(MasterSessionProtocol.GameplaySessionResult), response.Result))
+                {
+                    throw new InvalidOperationException(
+                        "The Master World-entry handoff redemption response has an unknown result.");
+                }
+
+                return response;
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (exception is JsonException || exception is ArgumentException)
+            {
+                throw new InvalidOperationException(
+                    "The Master World-entry handoff redemption response was malformed.",
+                    exception);
+            }
+        }
+
         private static MasterSessionProtocol.SessionResponse DeserializeSessionResponse(string responseBody)
         {
             if (string.IsNullOrWhiteSpace(responseBody))
@@ -606,6 +666,47 @@ namespace Game.Server.Networking.Master
             }
         }
 
+        private static void ValidateWorldEntryRedeemResponse(
+            MasterSessionProtocol.WorldEntryRedeemResponse response)
+        {
+            if (response.Result == MasterSessionProtocol.GameplaySessionResult.Accepted)
+            {
+                if (!response.GameplaySessionID.HasValue
+                    || response.GameplaySessionID.Value == Guid.Empty
+                    || !response.AccountID.HasValue
+                    || response.AccountID.Value == Guid.Empty
+                    || !response.HomeWorldID.HasValue
+                    || response.HomeWorldID.Value == Guid.Empty
+                    || !response.Revision.HasValue
+                    || response.Revision.Value < 1
+                    || !response.Disposition.HasValue
+                    || !Enum.IsDefined(
+                        typeof(MasterSessionProtocol.GameplaySessionDisposition),
+                        response.Disposition.Value)
+                    || (response.SelectedCharacterID.HasValue
+                        && response.SelectedCharacterID.Value == Guid.Empty)
+                    || string.IsNullOrWhiteSpace(response.LegacyUsername))
+                {
+                    throw new InvalidOperationException(
+                        "The accepted Master World-entry handoff redemption response was contradictory.");
+                }
+
+                return;
+            }
+
+            if (response.GameplaySessionID.HasValue
+                || response.AccountID.HasValue
+                || response.HomeWorldID.HasValue
+                || response.Revision.HasValue
+                || response.Disposition.HasValue
+                || response.SelectedCharacterID.HasValue
+                || !string.IsNullOrEmpty(response.LegacyUsername))
+            {
+                throw new InvalidOperationException(
+                    "The rejected Master World-entry handoff redemption response contained success fields.");
+            }
+        }
+
         private static void ValidateStatus(
             HttpStatusCode statusCode,
             MasterSessionProtocol.GameplaySessionResult result)
@@ -624,6 +725,9 @@ namespace Game.Server.Networking.Master
                 MasterSessionProtocol.GameplaySessionResult.HomeWorldMismatch => HttpStatusCode.Conflict,
                 MasterSessionProtocol.GameplaySessionResult.SessionAlreadyActive => HttpStatusCode.Conflict,
                 MasterSessionProtocol.GameplaySessionResult.StaleSession => HttpStatusCode.Conflict,
+                MasterSessionProtocol.GameplaySessionResult.HandoffInvalid => HttpStatusCode.Conflict,
+                MasterSessionProtocol.GameplaySessionResult.HandoffExpired => HttpStatusCode.Conflict,
+                MasterSessionProtocol.GameplaySessionResult.AccountUnavailable => HttpStatusCode.Forbidden,
                 _ => throw new InvalidOperationException("The Master gameplay-session response has an unknown result.")
             };
 

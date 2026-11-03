@@ -63,6 +63,30 @@ namespace Game.Server.Networking.Master
                 cancellationToken);
         }
 
+        /// <summary>Redeems one Master-issued World-entry handoff through the registered World identity.</summary>
+        internal Task<MasterSessionProtocol.WorldEntryRedeemResponse> RedeemWorldEntryAsync(
+            string handoffToken,
+            CancellationToken cancellationToken)
+        {
+            if (!IsLowercaseHex(handoffToken, 64))
+            {
+                throw new ArgumentException(
+                    "The World-entry handoff token must be exactly 64 lowercase hexadecimal characters.",
+                    nameof(handoffToken));
+            }
+
+            MasterSessionProtocol.WorldEntryRedeemRequest request = new()
+            {
+                WorldID = WorldID,
+                WorldServerRunID = WorldServerRunID,
+                AuthenticationAttemptID = Guid.NewGuid(),
+                HandoffToken = handoffToken
+            };
+            return ExecuteWithTransientRetryAsync(
+                token => _client.RedeemWorldEntryAsync(request, token),
+                cancellationToken);
+        }
+
         /// <summary>Disconnects one gameplay session through the Master, replaying only transient transport failures.</summary>
         internal Task<MasterSessionProtocol.SessionResponse> DisconnectAsync(
             Guid gameplaySessionID,
@@ -149,6 +173,22 @@ namespace Game.Server.Networking.Master
                 throw new InvalidOperationException("The session retry loop completed without a result or transient failure.");
 
             throw finalTransientException;
+        }
+
+        private static bool IsLowercaseHex(string value, int expectedLength)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length != expectedLength)
+                return false;
+
+            foreach (char character in value)
+            {
+                bool isDigit = character >= '0' && character <= '9';
+                bool isLowercaseHexLetter = character >= 'a' && character <= 'f';
+                if (!isDigit && !isLowercaseHexLetter)
+                    return false;
+            }
+
+            return true;
         }
     }
 }

@@ -7,6 +7,7 @@ namespace Game.Server.Networking.Master
     internal static class MasterSessionProtocol
     {
         internal const string AUTHENTICATE_PATH = "/world/v1/sessions/authenticate";
+        internal const string REDEEM_WORLD_ENTRY_PATH = "/world/v1/sessions/redeem-entry";
         internal const string DISCONNECT_PATH = "/world/v1/sessions/disconnect";
         internal const string CLOSE_PATH = "/world/v1/sessions/close";
         internal const string CHARACTER_ROSTER_PATH = "/world/v1/sessions/characters/roster";
@@ -30,7 +31,10 @@ namespace Game.Server.Networking.Master
             SessionAlreadyActive = 8,
             StaleSession = 9,
             PersistenceUnavailable = 10,
-            AuthenticationThrottled = 11
+            AuthenticationThrottled = 11,
+            HandoffInvalid = 12,
+            HandoffExpired = 13,
+            AccountUnavailable = 14
         }
 
         /// <summary>Describes how the Master established an accepted gameplay session.</summary>
@@ -282,6 +286,50 @@ namespace Game.Server.Networking.Master
 
             [JsonProperty("selectedCharacterID")]
             public Guid? SelectedCharacterID { get; set; }
+        }
+
+        /// <summary>Redeems one Master-issued World-entry handoff for a gameplay session.</summary>
+        internal sealed class WorldEntryRedeemRequest
+        {
+            [JsonProperty("worldID")]
+            public Guid WorldID { get; set; }
+
+            [JsonProperty("worldServerRunID")]
+            public Guid WorldServerRunID { get; set; }
+
+            [JsonProperty("authenticationAttemptID")]
+            public Guid AuthenticationAttemptID { get; set; }
+
+            [JsonProperty("handoffToken")]
+            public string HandoffToken { get; set; }
+        }
+
+        /// <summary>Master response returned after World-entry handoff redemption.</summary>
+        internal sealed class WorldEntryRedeemResponse
+        {
+            [JsonProperty("result")]
+            public GameplaySessionResult Result { get; set; }
+
+            [JsonProperty("gameplaySessionID")]
+            public Guid? GameplaySessionID { get; set; }
+
+            [JsonProperty("accountID")]
+            public Guid? AccountID { get; set; }
+
+            [JsonProperty("homeWorldID")]
+            public Guid? HomeWorldID { get; set; }
+
+            [JsonProperty("revision")]
+            public long? Revision { get; set; }
+
+            [JsonProperty("disposition")]
+            public GameplaySessionDisposition? Disposition { get; set; }
+
+            [JsonProperty("selectedCharacterID")]
+            public Guid? SelectedCharacterID { get; set; }
+
+            [JsonProperty("legacyUsername")]
+            public string LegacyUsername { get; set; }
         }
 
         /// <summary>Disconnects one previously authenticated gameplay session.</summary>

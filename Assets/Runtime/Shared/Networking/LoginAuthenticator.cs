@@ -24,6 +24,7 @@ namespace Game.Shared.Networking
 
         #region Fields - Server Side
         private static IPlayerAuthService _authService;
+        private static IWorldEntryAuthService _worldEntryAuthService;
         private static ClientCompatibilityIdentity _clientCompatibilityRequirements;
         private static bool _relaxClientBuildAndCatalog;
         #endregion
@@ -39,6 +40,20 @@ namespace Game.Shared.Networking
             _clientPayload = new AuthenticationPayload(username, password, compatibilityIdentity);
             Debug.Log($"Credentials set for: {username}");
         }
+
+        /// <summary>Sets the Master-issued World-entry handoff token to be sent during authentication.</summary>
+        public static void SetWorldEntryHandoff(string handoffToken)
+        {
+            if (!IsLowercaseHex(handoffToken, 64))
+            {
+                throw new ArgumentException(
+                    "The World-entry handoff token must be exactly 64 lowercase hexadecimal characters.",
+                    nameof(handoffToken));
+            }
+
+            var compatibilityIdentity = ClientCompatibilityIdentity.LoadCurrent();
+            _clientPayload = new AuthenticationPayload(handoffToken, compatibilityIdentity);
+        }
         #endregion
 
         #region Public API - Service Registration
@@ -47,6 +62,12 @@ namespace Game.Shared.Networking
         /// Called by ServerInitialization (Step 7) after Master gameplay-session coordination is available.
         /// </summary>
         public static void SetAuthService(IPlayerAuthService authService) { _authService = authService; }
+
+        /// <summary>Registers the server-side World-entry handoff authentication service.</summary>
+        public static void SetWorldEntryAuthService(IWorldEntryAuthService authService)
+        {
+            _worldEntryAuthService = authService;
+        }
 
         /// <summary>Registers or clears the World-pinned client compatibility requirements.</summary>
         public static void SetClientCompatibilityRequirements(
@@ -130,6 +151,65 @@ namespace Game.Shared.Networking
             {
                 Debug.Warning($"Client compatibility was rejected: {compatibilityDenial.Value}.");
                 return AuthenticationResponse<LoginDenialReason>.Deny(compatibilityDenial.Value);
+            }
+
+            bool credentialMode = !string.IsNullOrEmpty(payload.Username)
+                && !string.IsNullOrEmpty(payload.Password)
+                && string.IsNullOrEmpty(payload.WorldEntryHandoffToken);
+            bool handoffMode = string.IsNullOrEmpty(payload.Username)
+                && string.IsNullOrEmpty(payload.Password)
+                && !string.IsNullOrWhiteSpace(payload.WorldEntryHandoffToken);
+            if (!credentialMode && !handoffMode)
+            {
+                Debug.Warning("Authentication payload contains an invalid authentication mode.");
+                return AuthenticationResponse<LoginDenialReason>.Deny(
+                    LoginDenialReason.AuthenticationRejected);
+            }
+
+            if (handoffMode)
+            {
+                var worldEntryAuthService = _worldEntryAuthService;
+                var pendingAuthService = _authService;
+                if (worldEntryAuthService == null || !connection.isValid)
+                {
+                    Debug.Error(
+                        "No valid World-entry authentication service or connection is available. "
+                        + "Cannot authenticate the client.");
+                    return AuthenticationResponse<LoginDenialReason>.Deny(
+                        LoginDenialReason.AuthenticationRejected);
+                }
+
+                var handoffAuthenticated = await worldEntryAuthService.AuthenticateWorldEntryConnectionAsync(
+                    connection,
+                    payload.WorldEntryHandoffToken,
+                    CancellationToken.None);
+
+                if (!handoffAuthenticated)
+                {
+                    Debug.Warning("World-entry handoff authentication failed.");
+                    return AuthenticationResponse<LoginDenialReason>.Deny(
+                        LoginDenialReason.AuthenticationRejected);
+                }
+
+                if (!ReferenceEquals(worldEntryAuthService, _worldEntryAuthService)
+                    || !ReferenceEquals(pendingAuthService, _authService)
+                    || !ReferenceEquals(expectedCompatibility, _clientCompatibilityRequirements)
+                    || relaxClientBuildAndCatalog != _relaxClientBuildAndCatalog
+                    || !connection.isValid)
+                {
+                    Debug.Warning("World-entry authentication completed after service teardown or connection loss.");
+                    if (pendingAuthService != null)
+                    {
+                        await pendingAuthService.AbandonPendingAuthenticationAsync(
+                            connection,
+                            CancellationToken.None);
+                    }
+
+                    return AuthenticationResponse<LoginDenialReason>.Deny(
+                        LoginDenialReason.AuthenticationRejected);
+                }
+
+                return AuthenticationResponse<LoginDenialReason>.Accept();
             }
 
             var authService = _authService;
@@ -291,6 +371,22 @@ namespace Game.Shared.Networking
             }
 
             return null;
+        }
+
+        private static bool IsLowercaseHex(string value, int expectedLength)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length != expectedLength)
+                return false;
+
+            foreach (char character in value)
+            {
+                bool isDigit = character >= '0' && character <= '9';
+                bool isLowercaseLetter = character >= 'a' && character <= 'f';
+                if (!isDigit && !isLowercaseLetter)
+                    return false;
+            }
+
+            return true;
         }
         #endregion
     }

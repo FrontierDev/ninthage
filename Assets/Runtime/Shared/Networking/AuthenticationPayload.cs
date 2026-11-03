@@ -15,6 +15,9 @@ namespace Game.Shared.Networking
         /// <summary>Gets or sets the password credential.</summary>
         public string Password { get; set; }
 
+        /// <summary>Gets or sets the opaque Master-issued World-entry handoff token.</summary>
+        public string WorldEntryHandoffToken { get; set; }
+
         /// <summary>Gets or sets the human-facing client build version.</summary>
         public string ClientBuildVersion { get; set; }
 
@@ -53,6 +56,7 @@ namespace Game.Shared.Networking
 
             Username = username;
             Password = password;
+            WorldEntryHandoffToken = string.Empty;
             ClientBuildVersion = compatibilityIdentity.ClientBuildVersion;
             ClientBuildID = compatibilityIdentity.ClientBuildID;
             ProtocolVersion = compatibilityIdentity.ProtocolVersion;
@@ -68,6 +72,7 @@ namespace Game.Shared.Networking
         {
             Username = string.Empty;
             Password = string.Empty;
+            WorldEntryHandoffToken = string.Empty;
             ClientBuildVersion = string.Empty;
             ClientBuildID = string.Empty;
             ProtocolVersion = 0;
@@ -76,6 +81,29 @@ namespace Game.Shared.Networking
             BuildTarget = string.Empty;
             CatalogRevision = 0;
             CatalogHash = string.Empty;
+        }
+
+        /// <summary>Initializes a World-entry handoff token and the immutable client compatibility projection.</summary>
+        /// <param name="worldEntryHandoffToken">The opaque Master-issued World-entry handoff token.</param>
+        /// <param name="compatibilityIdentity">The validated client compatibility identity.</param>
+        public AuthenticationPayload(
+            string worldEntryHandoffToken,
+            ClientCompatibilityIdentity compatibilityIdentity)
+        {
+            if (compatibilityIdentity == null)
+                throw new ArgumentNullException(nameof(compatibilityIdentity));
+
+            Username = string.Empty;
+            Password = string.Empty;
+            WorldEntryHandoffToken = worldEntryHandoffToken;
+            ClientBuildVersion = compatibilityIdentity.ClientBuildVersion;
+            ClientBuildID = compatibilityIdentity.ClientBuildID;
+            ProtocolVersion = compatibilityIdentity.ProtocolVersion;
+            GameplayContentRevision = compatibilityIdentity.GameplayContentRevision;
+            GameplayContentManifestHash = compatibilityIdentity.GameplayContentManifestHash;
+            BuildTarget = compatibilityIdentity.BuildTarget;
+            CatalogRevision = compatibilityIdentity.CatalogRevision;
+            CatalogHash = compatibilityIdentity.CatalogHash;
         }
     }
 }
