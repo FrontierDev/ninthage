@@ -1,6 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Persistence;
 using System;
+using System.Collections.Generic;
 
 namespace Game.Client.UI
 {
@@ -39,11 +40,14 @@ namespace Game.Client.UI
         /// <summary>
         /// Executes the client-side <c>PopulateCharacterList</c> operation.
         /// </summary>
-        public void PopulateCharacterList(System.Collections.Generic.List<CharacterData> characters)
+        public void PopulateCharacterList(List<CharacterData> characters)
         {
             if (TryGetPanel("CharacterListPanel", out UI_Panel panel))
                 if (panel is UI_CharacterListPanel characterListPanel)
-                    characterListPanel.Refresh();
+                {
+                    IReadOnlyList<CharacterData> roster = characters ?? new List<CharacterData>();
+                    characterListPanel.PopulateList(roster);
+                }
                 else
                     Debug.Error("Panel 'CharacterListPanel' not found in UI_CharacterSelectWindow.");
             else

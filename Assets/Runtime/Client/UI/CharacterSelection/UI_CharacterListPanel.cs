@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Game.Shared.Persistence;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -21,6 +23,8 @@ namespace Game.Client.UI
         [SerializeField] private GameObject _contentContainer;
         [FormerlySerializedAs("entryPrefab")]
         [SerializeField] private GameObject _entryPrefab;
+        [SerializeField] private TMP_Text _characterCountText;
+        [SerializeField] private UI_Button _createCharacterButton;
         GameObject IListPanel.contentContainer => _contentContainer;
         GameObject IListPanel.entryPrefab => _entryPrefab;
 
@@ -40,13 +44,27 @@ namespace Game.Client.UI
         /// </summary>
         public void PopulateList(bool forceClear = false)
         {
-            if (forceClear) ((IListPanel)this).ClearList();
+            if (!Game.Client.ClientAccountManager.TryGetCharacterList(
+                    out List<CharacterData> characters))
+            {
+                characters = new List<CharacterData>();
+            }
 
-            if (Game.Client.ClientAccountManager.TryGetCharacterList(out List<Game.Shared.Persistence.CharacterData> characters))
+            PopulateList(characters);
+        }
+
+        /// <summary>Populates the panel with the supplied account roster in order.</summary>
+        public void PopulateList(IReadOnlyList<CharacterData> characters)
+        {
+            ((IListPanel)this).ClearList();
+            currentEntries.Clear();
+
+            if (characters != null)
             {
                 int index = 0;
-                foreach (var character in characters)
+                for (int characterIndex = 0; characterIndex < characters.Count; characterIndex++)
                 {
+                    CharacterData character = characters[characterIndex];
                     var entryObj = Instantiate(_entryPrefab, _contentContainer.transform);
                     if (entryObj.TryGetComponent(out UI_CharacterListEntry entry))
                     {
@@ -55,6 +73,17 @@ namespace Game.Client.UI
                         index++;
                     }
                 }
+            }
+
+            if (_characterCountText != null)
+                _characterCountText.text = $"{currentEntries.Count} / 12";
+
+            if (_createCharacterButton != null)
+            {
+                if (currentEntries.Count >= 12)
+                    _createCharacterButton.DisableButton();
+                else
+                    _createCharacterButton.EnableButton();
             }
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_contentContainer.GetComponent<RectTransform>());

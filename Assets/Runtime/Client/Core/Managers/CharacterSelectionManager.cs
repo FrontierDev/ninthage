@@ -1,6 +1,7 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.UI;
 using Game.Shared.Persistence;
+using System;
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -44,7 +45,7 @@ namespace Game.Client
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld += OnEnteringWorld;
 
             if (Game.Client.ClientAccountManager.TryGetCharacterList(out List<CharacterData> characters))
-                _characterSelectionWindow.PopulateCharacterList(characters);
+                OnCharacterListReceived(characters);
         }
 
         private void OnDestroy()
@@ -67,14 +68,58 @@ namespace Game.Client
         /// </summary>
         public void SelectCharacter(CharacterData character)
         {
-            _selectedCharacter = character;
-            _characterSelectionWindow.onCharacterSelected?.Invoke(character);
+            if (character == null ||
+                !Game.Client.ClientAccountManager.TryGetCharacterList(
+                    out List<CharacterData> characters))
+            {
+                return;
+            }
+
+            CharacterData currentCharacter = FindCharacterByGUID(characters, character.GUID);
+            if (currentCharacter == null)
+                return;
+
+            _selectedCharacter = currentCharacter;
+            _characterSelectionWindow.onCharacterSelected?.Invoke(currentCharacter);
         }
 
         private void OnCharacterListReceived(List<CharacterData> characters)
         {
             _characterSelectionWindow.PopulateCharacterList(characters);
+
+            CharacterData selectedCharacter = null;
+            if (_selectedCharacter != null)
+                selectedCharacter = FindCharacterByGUID(characters, _selectedCharacter.GUID);
+
+            if (selectedCharacter == null && characters != null && characters.Count > 0)
+                selectedCharacter = characters[0];
+
+            _selectedCharacter = selectedCharacter;
+            _characterSelectionWindow.onCharacterSelected?.Invoke(_selectedCharacter);
         }
+
+        private static CharacterData FindCharacterByGUID(
+            IReadOnlyList<CharacterData> characters,
+            string characterGUID)
+        {
+            if (characters == null)
+                return null;
+
+            for (int index = 0; index < characters.Count; index++)
+            {
+                CharacterData character = characters[index];
+                if (character != null &&
+                    string.Equals(character.GUID, characterGUID, StringComparison.Ordinal))
+                {
+                    return character;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>Gets the currently selected account character.</summary>
+        public CharacterData SelectedCharacter => _selectedCharacter;
 
         /// <summary>
         /// Executes the client-side <c>EnterWorld</c> operation.
