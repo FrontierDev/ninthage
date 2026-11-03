@@ -163,18 +163,6 @@ namespace Game.Server.Services
                     characterID);
                 yield break;
             }
-            if (currentAccountContext.HomeWorldID != currentPublicContext.WorldID)
-            {
-                Debug.Error(
-                    $"Account home WorldID {currentAccountContext.HomeWorldID} does not match current WorldID "
-                    + $"{currentPublicContext.WorldID} for player {playerID}.");
-                yield return LeaveAdmittedCharacter(
-                    coordinator,
-                    accountContext.GameplaySessionID,
-                    characterID);
-                yield break;
-            }
-
             IReadOnlyList<CharacterWorldEntryLocationResolver.RecoveryCandidate> candidates =
                 CharacterWorldEntryLocationResolver.BuildCandidates(
                     admissionResponse.Character,
