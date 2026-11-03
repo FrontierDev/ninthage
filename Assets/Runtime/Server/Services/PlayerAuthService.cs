@@ -13,7 +13,7 @@ namespace Game.Server.Services
     /// Authenticates through Master and owns the exact-connection session handoff.
     /// Registered with LoginAuthenticator during server initialization (Step 7).
     /// </summary>
-    public class PlayerAuthService : IPlayerAuthService
+    public class PlayerAuthService : IPlayerAuthService, IWorldEntryAuthService
     {
         private readonly Dictionary<object, AuthenticatedSessionContext> _pendingAuthentications = new();
         private readonly object _pendingAuthenticationLock = new();
@@ -92,17 +92,77 @@ namespace Game.Server.Services
                 response.Disposition.Value == MasterSessionProtocol.GameplaySessionDisposition.Reclaimed,
                 response.SelectedCharacterID);
 
-            lock (_pendingAuthenticationLock)
-            {
-                if (_pendingAuthentications.TryGetValue(connection, out _))
-                {
-                    throw new InvalidOperationException(
-                        "The connection already has a pending authenticated session.");
-                }
+            StorePendingAuthentication(connection, sessionContext);
 
-                _pendingAuthentications.Add(connection, sessionContext);
+            return true;
+        }
+
+        /// <summary>Redeems a World-entry handoff and stores its accepted session context.</summary>
+        public async Task<bool> AuthenticateWorldEntryConnectionAsync(
+            object connection,
+            string handoffToken,
+            CancellationToken cancellationToken)
+        {
+            if (connection == null)
+                throw new ArgumentNullException(nameof(connection));
+            if (string.IsNullOrWhiteSpace(handoffToken))
+                return false;
+
+            MasterSessionProtocol.WorldEntryRedeemResponse response;
+            try
+            {
+                response = await _sessionCoordinator.RedeemWorldEntryAsync(
+                    handoffToken,
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    "Master World-entry handoff redemption was unavailable ("
+                    + exception.GetType().Name
+                    + "): "
+                    + exception.Message);
+                return false;
             }
 
+            if (response == null
+                || response.Result != MasterSessionProtocol.GameplaySessionResult.Accepted)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.LegacyUsername)
+                || !response.GameplaySessionID.HasValue
+                || response.GameplaySessionID.Value == Guid.Empty
+                || !response.AccountID.HasValue
+                || response.AccountID.Value == Guid.Empty
+                || !response.HomeWorldID.HasValue
+                || response.HomeWorldID.Value == Guid.Empty
+                || !response.Revision.HasValue
+                || response.Revision.Value < 1
+                || !response.Disposition.HasValue
+                || !Enum.IsDefined(
+                    typeof(MasterSessionProtocol.GameplaySessionDisposition),
+                    response.Disposition.Value)
+                || (response.SelectedCharacterID.HasValue
+                    && response.SelectedCharacterID.Value == Guid.Empty))
+            {
+                return false;
+            }
+
+            AuthenticatedSessionContext sessionContext = new(
+                response.LegacyUsername,
+                response.GameplaySessionID.Value,
+                response.AccountID.Value,
+                response.HomeWorldID.Value,
+                response.Revision.Value,
+                response.Disposition.Value == MasterSessionProtocol.GameplaySessionDisposition.Reclaimed,
+                response.SelectedCharacterID);
+            StorePendingAuthentication(connection, sessionContext);
             return true;
         }
 
@@ -199,6 +259,22 @@ namespace Game.Server.Services
             {
                 Debug.Error(
                     $"Master gameplay-session cleanup for {sessionContext.GameplaySessionID} failed: {exception.Message}");
+            }
+        }
+
+        private void StorePendingAuthentication(
+            object connection,
+            AuthenticatedSessionContext sessionContext)
+        {
+            lock (_pendingAuthenticationLock)
+            {
+                if (_pendingAuthentications.TryGetValue(connection, out _))
+                {
+                    throw new InvalidOperationException(
+                        "The connection already has a pending authenticated session.");
+                }
+
+                _pendingAuthentications.Add(connection, sessionContext);
             }
         }
     }

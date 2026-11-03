@@ -821,6 +821,7 @@ namespace Game.Server.Core
         private static void CancelAndDisposePersistenceStateSynchronously()
         {
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+            Game.Shared.Networking.LoginAuthenticator.SetWorldEntryAuthService(null);
             Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(null, false);
             ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
 
@@ -996,6 +997,7 @@ namespace Game.Server.Core
                 ServerControlEndpoint.Detach();
                 StopInitializationCoroutine();
                 Game.Shared.Networking.LoginAuthenticator.SetAuthService(null);
+                Game.Shared.Networking.LoginAuthenticator.SetWorldEntryAuthService(null);
                 Game.Shared.Networking.LoginAuthenticator.SetClientCompatibilityRequirements(null, false);
                 ServerConnectionManager.Instance.StopAcceptingCharacterControlPlane();
                 ServerConnectionManager.Instance.StopPeriodicCharacterCheckpoints();
@@ -1263,6 +1265,7 @@ namespace Game.Server.Core
             WorldSessionCoordinator coordinator = SessionCoordinator;
             var authService = new PlayerAuthService(coordinator);
             Game.Shared.Networking.LoginAuthenticator.SetAuthService(authService);
+            Game.Shared.Networking.LoginAuthenticator.SetWorldEntryAuthService(authService);
 
             yield return null;
             Debug.Log(" ✓ Step 7: Master authentication initialized successfully.");
