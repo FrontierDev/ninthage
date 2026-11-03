@@ -1,6 +1,7 @@
 using Authentication = Game.Shared.Networking.LoginAuthenticator;
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
+using Game.Shared.Data;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
 using Newtonsoft.Json;
@@ -38,6 +39,9 @@ namespace Game.Client
         private const float CHARACTER_LIST_READY_PROGRESS = 0.75f;
         private const float UNITY_SCENE_LOAD_READY_PROGRESS = 0.90f;
         private const int MASTER_REQUEST_TIMEOUT_SECONDS = 10;
+        private const string CHARACTER_SELECTION_BACKGROUND_SCENE_PREFIX = "CharacterSelectionBackground_";
+        private const string CHARACTER_SELECTION_BACKGROUND_SCENE_PATH =
+            "Assets/Runtime/Client/Scenes/CharacterSelection/";
 
         private static ClientConnectionManager _instance;
         /// <summary>
@@ -77,6 +81,9 @@ namespace Game.Client
         private string _selectionSessionToken;
         private Guid? _selectedWorldID;
         private readonly HashSet<string> _pendingConnectionUISceneUnloads = new();
+        private string _desiredCharacterSelectionBackgroundScene;
+        private string _loadedCharacterSelectionBackgroundScene;
+        private Coroutine _characterSelectionBackgroundTransitionCoroutine;
 
         /// <summary>Gets the transient World selected during the pre-World flow.</summary>
         internal Guid? SelectedWorldID => _selectedWorldID;
@@ -185,6 +192,7 @@ namespace Game.Client
                     _connectionState = ConnectionState.Disconnected;
                     _authenticatedForCurrentConnection = false;
                     _inWorldForCurrentConnection = false;
+                    ClearCharacterSelectionBackground();
                     if (PerformanceTelemetry.IsEnabled)
                     {
                         if (wasActive)
@@ -214,7 +222,7 @@ namespace Game.Client
 
         private void OnConnectionUISceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            if (scene.name != "CharacterSelection" && scene.name != "CharacterCreation")
+            if (!IsConnectionUISceneName(scene.name))
                 return;
 
             if (CurrentConnectionState != ConnectionState.Disconnected)
@@ -227,30 +235,295 @@ namespace Game.Client
         {
             RequestConnectionUISceneUnload("CharacterSelection");
             RequestConnectionUISceneUnload("CharacterCreation");
+            RequestConnectionUISceneUnload("CharacterSelectionBackground_arhin");
+            RequestConnectionUISceneUnload("CharacterSelectionBackground_eldani");
         }
 
-        private void RequestConnectionUISceneUnload(string sceneName)
+        internal void SelectCharacterSelectionBackground(string raceID)
         {
-            if (sceneName != "CharacterSelection" && sceneName != "CharacterCreation")
+            string sceneName = null;
+            if (!string.IsNullOrEmpty(raceID) &&
+                !TryGetCharacterSelectionBackgroundSceneName(raceID, out sceneName))
+            {
+                _desiredCharacterSelectionBackgroundScene = null;
+                EnsureCharacterSelectionBackgroundTransition();
+                return;
+            }
+
+            _desiredCharacterSelectionBackgroundScene = sceneName;
+            EnsureCharacterSelectionBackgroundTransition();
+        }
+
+        internal void ClearCharacterSelectionBackground()
+        {
+            _desiredCharacterSelectionBackgroundScene = null;
+            EnsureCharacterSelectionBackgroundTransition();
+        }
+
+        private void EnsureCharacterSelectionBackgroundTransition()
+        {
+            if (_characterSelectionBackgroundTransitionCoroutine == null)
+            {
+                _characterSelectionBackgroundTransitionCoroutine = StartCoroutine(
+                    SettleCharacterSelectionBackground());
+            }
+        }
+
+        private IEnumerator SettleCharacterSelectionBackground()
+        {
+            while (true)
+            {
+                if (CurrentConnectionState == ConnectionState.Disconnected)
+                    _desiredCharacterSelectionBackgroundScene = null;
+
+                string desiredScene = _desiredCharacterSelectionBackgroundScene;
+                string loadedScene = _loadedCharacterSelectionBackgroundScene;
+                if (!string.IsNullOrEmpty(loadedScene) &&
+                    !string.Equals(loadedScene, desiredScene, StringComparison.Ordinal))
+                {
+                    AsyncOperation unloadOperation = RequestConnectionUISceneUnload(loadedScene);
+                    if (unloadOperation != null)
+                        yield return unloadOperation;
+                    else
+                    {
+                        while (_pendingConnectionUISceneUnloads.Contains(loadedScene))
+                            yield return null;
+                    }
+
+                    if (string.Equals(
+                            _loadedCharacterSelectionBackgroundScene,
+                            loadedScene,
+                            StringComparison.Ordinal))
+                    {
+                        _loadedCharacterSelectionBackgroundScene = null;
+                    }
+
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(desiredScene))
+                    break;
+
+                if (!string.Equals(
+                        _loadedCharacterSelectionBackgroundScene,
+                        desiredScene,
+                        StringComparison.Ordinal))
+                {
+                    Scene existingScene = SceneManager.GetSceneByName(desiredScene);
+                    if (existingScene.IsValid() && existingScene.isLoaded)
+                    {
+                        _loadedCharacterSelectionBackgroundScene = desiredScene;
+                        continue;
+                    }
+
+                    AsyncOperation loadOperation;
+                    try
+                    {
+                        loadOperation = SceneManager.LoadSceneAsync(desiredScene, LoadSceneMode.Additive);
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.Error(
+                            $"Failed to load character-selection background '{desiredScene}': "
+                            + $"{exception.GetType().Name}: {exception.Message}");
+                        if (string.Equals(
+                                _desiredCharacterSelectionBackgroundScene,
+                                desiredScene,
+                                StringComparison.Ordinal))
+                        {
+                            _desiredCharacterSelectionBackgroundScene = null;
+                        }
+
+                        continue;
+                    }
+
+                    if (loadOperation == null)
+                    {
+                        Debug.Error(
+                            $"Failed to start character-selection background scene load for '{desiredScene}'.");
+                        if (string.Equals(
+                                _desiredCharacterSelectionBackgroundScene,
+                                desiredScene,
+                                StringComparison.Ordinal))
+                        {
+                            _desiredCharacterSelectionBackgroundScene = null;
+                        }
+
+                        continue;
+                    }
+
+                    _loadedCharacterSelectionBackgroundScene = desiredScene;
+                    yield return loadOperation;
+
+                    bool isStillDesired =
+                        CurrentConnectionState != ConnectionState.Disconnected
+                        && string.Equals(
+                            _desiredCharacterSelectionBackgroundScene,
+                            desiredScene,
+                            StringComparison.Ordinal);
+                    Scene loadedResult = SceneManager.GetSceneByName(desiredScene);
+                    if (!isStillDesired)
+                    {
+                        if (loadedResult.IsValid() && loadedResult.isLoaded)
+                        {
+                            AsyncOperation unloadOperation = RequestConnectionUISceneUnload(desiredScene);
+                            if (unloadOperation != null)
+                                yield return unloadOperation;
+                            else
+                            {
+                                while (_pendingConnectionUISceneUnloads.Contains(desiredScene))
+                                    yield return null;
+                            }
+                        }
+
+                        if (string.Equals(
+                                _loadedCharacterSelectionBackgroundScene,
+                                desiredScene,
+                                StringComparison.Ordinal))
+                        {
+                            _loadedCharacterSelectionBackgroundScene = null;
+                        }
+
+                        continue;
+                    }
+
+                    if (!loadedResult.IsValid() || !loadedResult.isLoaded)
+                    {
+                        Debug.Error(
+                            $"Character-selection background scene '{desiredScene}' did not finish loading.");
+                        _loadedCharacterSelectionBackgroundScene = null;
+                        _desiredCharacterSelectionBackgroundScene = null;
+                    }
+
+                    continue;
+                }
+
+                if (_pendingConnectionUISceneUnloads.Contains(desiredScene))
+                {
+                    while (_pendingConnectionUISceneUnloads.Contains(desiredScene))
+                        yield return null;
+
+                    if (string.Equals(
+                            _loadedCharacterSelectionBackgroundScene,
+                            desiredScene,
+                            StringComparison.Ordinal))
+                    {
+                        _loadedCharacterSelectionBackgroundScene = null;
+                    }
+
+                    continue;
+                }
+
+                Scene currentScene = SceneManager.GetSceneByName(desiredScene);
+                if (!currentScene.IsValid() || !currentScene.isLoaded)
+                {
+                    Debug.Error(
+                        $"Character-selection background scene '{desiredScene}' is no longer loaded.");
+                    _loadedCharacterSelectionBackgroundScene = null;
+                    _desiredCharacterSelectionBackgroundScene = null;
+                    continue;
+                }
+
+                break;
+            }
+
+            _characterSelectionBackgroundTransitionCoroutine = null;
+        }
+
+        private static bool TryGetCharacterSelectionBackgroundSceneName(
+            string raceID,
+            out string sceneName)
+        {
+            sceneName = null;
+
+            RaceDefinition raceDefinition;
+            try
+            {
+                raceDefinition = RaceDefinitionLibrary.Instance.GetDefinition(raceID);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"Cannot resolve character-selection background for race '{raceID}': "
+                    + $"{exception.GetType().Name}: {exception.Message}");
+                return false;
+            }
+
+            if (raceDefinition == null || !raceDefinition.IsPlayable)
+            {
+                Debug.Error($"No playable race definition exists for character-selection race '{raceID}'.");
+                return false;
+            }
+
+            sceneName = raceID switch
+            {
+                "arhin" => $"{CHARACTER_SELECTION_BACKGROUND_SCENE_PREFIX}arhin",
+                "eldani" => $"{CHARACTER_SELECTION_BACKGROUND_SCENE_PREFIX}eldani",
+                _ => null
+            };
+            if (sceneName == null)
+            {
+                Debug.Error(
+                    $"No character-selection background scene is authorized for playable race '{raceID}'.");
+                return false;
+            }
+
+            string scenePath = $"{CHARACTER_SELECTION_BACKGROUND_SCENE_PATH}{sceneName}.unity";
+            if (SceneUtility.GetBuildIndexByScenePath(scenePath) < 0)
+            {
+                Debug.Error(
+                    $"Character-selection background scene '{sceneName}' is missing or disabled in Build Settings.");
+                sceneName = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsConnectionUISceneName(string sceneName)
+        {
+            return sceneName == "CharacterSelection"
+                || sceneName == "CharacterCreation"
+                || sceneName == "CharacterSelectionBackground_arhin"
+                || sceneName == "CharacterSelectionBackground_eldani";
+        }
+
+        private AsyncOperation RequestConnectionUISceneUnload(string sceneName)
+        {
+            if (!IsConnectionUISceneName(sceneName))
                 throw new ArgumentException($"Unsupported connection UI scene: {sceneName}", nameof(sceneName));
 
             if (_pendingConnectionUISceneUnloads.Contains(sceneName))
-                return;
+                return null;
 
             var scene = SceneManager.GetSceneByName(sceneName);
             if (!scene.IsValid() || !scene.isLoaded)
-                return;
+                return null;
 
             _pendingConnectionUISceneUnloads.Add(sceneName);
-            var unloadOperation = SceneManager.UnloadSceneAsync(scene);
+            AsyncOperation unloadOperation;
+            try
+            {
+                unloadOperation = SceneManager.UnloadSceneAsync(scene);
+            }
+            catch (Exception exception)
+            {
+                _pendingConnectionUISceneUnloads.Remove(sceneName);
+                Debug.Error(
+                    $"Failed to unload connection UI scene '{sceneName}': "
+                    + $"{exception.GetType().Name}: {exception.Message}");
+                return null;
+            }
+
             if (unloadOperation == null)
             {
                 _pendingConnectionUISceneUnloads.Remove(sceneName);
                 Debug.Error($"Failed to request unload for connection UI scene '{sceneName}'.");
-                return;
+                return null;
             }
 
             unloadOperation.completed += _ => _pendingConnectionUISceneUnloads.Remove(sceneName);
+            return unloadOperation;
         }
 
         /// <summary>Requests the local client disconnect from pre-World Character Selection.</summary>

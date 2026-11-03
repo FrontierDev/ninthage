@@ -23,6 +23,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/global_actors.unity
     guid: 28b4d96a6ce1f1d438e580b258317e8a
+  - enabled: 1
+    path: Assets/Runtime/Client/Scenes/CharacterSelection/CharacterSelectionBackground_arhin.unity
+    guid: 29752e949f3d9574ba72da31b045ab7a
+  - enabled: 1
+    path: Assets/Runtime/Client/Scenes/CharacterSelection/CharacterSelectionBackground_eldani.unity
+    guid: f797919cde5126d44b7498111587d2ff
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 5c76ee8f87447be43b552aa020020889, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 238f611af955b0e40a87f647e45af618, type: 3}

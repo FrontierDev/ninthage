@@ -53,6 +53,9 @@ namespace Game.Client
             if (!ReferenceEquals(_instance, this))
                 return;
 
+            if (ClientConnectionManager.Initialized)
+                ClientConnectionManager.Instance.ClearCharacterSelectionBackground();
+
             Game.Shared.Networking.AccountEndpoint.onCharacterListReceived -= OnCharacterListReceived;
             Game.Shared.Networking.AccountEndpoint.onEnteringWorld -= OnEnteringWorld;
             _instance = null;
@@ -68,8 +71,16 @@ namespace Game.Client
         /// </summary>
         public void SelectCharacter(CharacterData character)
         {
-            if (character == null ||
-                !Game.Client.ClientAccountManager.TryGetCharacterList(
+            if (character == null)
+            {
+                _selectedCharacter = null;
+                if (ClientConnectionManager.Initialized)
+                    ClientConnectionManager.Instance.ClearCharacterSelectionBackground();
+                _characterSelectionWindow.onCharacterSelected?.Invoke(null);
+                return;
+            }
+
+            if (!Game.Client.ClientAccountManager.TryGetCharacterList(
                     out List<CharacterData> characters))
             {
                 return;
@@ -80,6 +91,8 @@ namespace Game.Client
                 return;
 
             _selectedCharacter = currentCharacter;
+            if (ClientConnectionManager.Initialized)
+                ClientConnectionManager.Instance.SelectCharacterSelectionBackground(currentCharacter.RaceID);
             _characterSelectionWindow.onCharacterSelected?.Invoke(currentCharacter);
         }
 
@@ -95,6 +108,8 @@ namespace Game.Client
                 selectedCharacter = characters[0];
 
             _selectedCharacter = selectedCharacter;
+            if (ClientConnectionManager.Initialized)
+                ClientConnectionManager.Instance.SelectCharacterSelectionBackground(_selectedCharacter?.RaceID);
             _characterSelectionWindow.onCharacterSelected?.Invoke(_selectedCharacter);
         }
 
@@ -138,6 +153,8 @@ namespace Game.Client
         private void OnEnteringWorld(CharacterData characterData, string sceneName)
         {
             Debug.Log("Entering world...");
+            if (ClientConnectionManager.Initialized)
+                ClientConnectionManager.Instance.ClearCharacterSelectionBackground();
             UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync("CharacterSelection");
             UI_Manager.Instance.HideWindow("CharacterSelect");
             UI_Manager.Instance.HideWindow("CharacterCreation");
