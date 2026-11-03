@@ -754,7 +754,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &5433831700292610676
 RectTransform:
   m_ObjectHideFlags: 0
@@ -772,7 +772,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 32, y: 32}
+  m_SizeDelta: {x: 16, y: 16}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &639507346199420760
 CanvasRenderer:
@@ -1712,7 +1712,7 @@ MonoBehaviour:
   sfxAddress: sfx_click_generic
   isFocused: 0
   _favouriteButton: {fileID: 8730283224000121326}
-  _favouriteText: {fileID: 0}
+  _favouriteImage: {fileID: 347980770803526990}
   _worldNameText: {fileID: 6698371407323762731}
   _locationText: {fileID: 2005415602102667694}
   _typeText: {fileID: 3634173786306322700}

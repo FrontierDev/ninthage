@@ -12,7 +12,7 @@ namespace Game.Client.UI.WorldSelection
     public sealed class UI_WorldListEntry : UI_ListEntry<ClientMasterSelectionProtocol.WorldSelectionWorld>
     {
         [SerializeField] private UnityEngine.UI.Button _favouriteButton;
-        [SerializeField] private TMP_Text _favouriteText;
+        [SerializeField] private UnityEngine.UI.Image _favouriteImage;
         [SerializeField] private TMP_Text _worldNameText;
         [SerializeField] private TMP_Text _locationText;
         [SerializeField] private TMP_Text _typeText;
@@ -70,7 +70,7 @@ namespace Game.Client.UI.WorldSelection
                     ClientMasterSelectionProtocol.WorldSelectionAccessState.Available;
             }
 
-            UpdateFavouriteGlyph();
+            UpdateFavouriteImage();
         }
 
         /// <inheritdoc/>
@@ -108,10 +108,10 @@ namespace Game.Client.UI.WorldSelection
                 _selectionHighlight.SetActive(false);
         }
 
-        private void UpdateFavouriteGlyph()
+        private void UpdateFavouriteImage()
         {
-            if (_favouriteText != null)
-                _favouriteText.text = _data.IsHomeWorld ? "★" : "☆";
+            if (_favouriteImage != null)
+                _favouriteImage.gameObject.SetActive(_data.IsHomeWorld);
         }
 
         private static string GetWorldTypeDisplay(string worldType)
