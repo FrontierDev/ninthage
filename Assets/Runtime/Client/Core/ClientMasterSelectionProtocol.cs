@@ -80,6 +80,9 @@ namespace Game.Client
             [JsonProperty("capacity")]
             public int Capacity { get; set; }
 
+            [JsonProperty("onlinePlayerCount")]
+            public int OnlinePlayerCount { get; set; }
+
             [JsonProperty("worldType")]
             public string WorldType { get; set; }
 

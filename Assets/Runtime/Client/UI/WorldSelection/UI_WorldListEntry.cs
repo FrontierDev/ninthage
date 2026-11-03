@@ -2,8 +2,6 @@ using System;
 using System.Globalization;
 using Game.Client;
 using Game.Client.UI;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -18,9 +16,9 @@ namespace Game.Client.UI.WorldSelection
         [SerializeField] private TMP_Text _worldNameText;
         [SerializeField] private TMP_Text _locationText;
         [SerializeField] private TMP_Text _typeText;
-        [SerializeField] private TMP_Text _capacityText;
+        [SerializeField] private TMP_Text _playersOnlineText;
         [SerializeField] private TMP_Text _statusText;
-        [SerializeField] private TMP_Text _requirementsText;
+        [SerializeField] private GameObject _offlineOverlay;
         [SerializeField] private GameObject _selectionHighlight;
 
         private ClientMasterSelectionProtocol.WorldSelectionWorld _data;
@@ -55,14 +53,22 @@ namespace Game.Client.UI.WorldSelection
                 _locationText.text = data.Location;
             if (_typeText != null)
                 _typeText.text = GetWorldTypeDisplay(data.WorldType);
-            if (_capacityText != null)
-                _capacityText.text = data.Capacity.ToString(CultureInfo.InvariantCulture);
+            if (_playersOnlineText != null)
+                _playersOnlineText.text = data.OnlinePlayerCount.ToString(CultureInfo.InvariantCulture);
             if (_statusText != null)
                 _statusText.text = GetStatusDisplay(data.AccessState);
-            if (_requirementsText != null)
-                _requirementsText.text = HasAdditionalRequirements(data.AccessRequirementsJson)
-                    ? "Additional"
-                    : "None";
+
+            bool isOffline =
+                data.AccessState == ClientMasterSelectionProtocol.WorldSelectionAccessState.Offline;
+            if (_offlineOverlay != null)
+                _offlineOverlay.SetActive(isOffline);
+
+            if (button != null)
+            {
+                button.interactable =
+                    data.AccessState ==
+                    ClientMasterSelectionProtocol.WorldSelectionAccessState.Available;
+            }
 
             UpdateFavouriteGlyph();
         }
@@ -137,22 +143,6 @@ namespace Game.Client.UI.WorldSelection
                     "Additional requirements",
                 _ => "Additional requirements"
             };
-        }
-
-        private static bool HasAdditionalRequirements(string requirementsJson)
-        {
-            if (string.IsNullOrWhiteSpace(requirementsJson))
-                return true;
-
-            try
-            {
-                JToken token = JToken.Parse(requirementsJson);
-                return token.Type != JTokenType.Array || token.HasValues;
-            }
-            catch (JsonException)
-            {
-                return true;
-            }
         }
     }
 }

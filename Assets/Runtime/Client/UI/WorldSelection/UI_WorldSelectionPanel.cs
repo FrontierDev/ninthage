@@ -34,7 +34,7 @@ namespace Game.Client.UI.WorldSelection
             World,
             Location,
             Type,
-            Capacity,
+            PlayersOnline,
             Status
         }
 
@@ -111,8 +111,8 @@ namespace Game.Client.UI.WorldSelection
         /// <summary>Sorts the visible rows by World type.</summary>
         public void SortByType() => SetSortColumn(SortColumn.Type);
 
-        /// <summary>Sorts the visible rows by numeric capacity.</summary>
-        public void SortByCapacity() => SetSortColumn(SortColumn.Capacity);
+        /// <summary>Sorts the visible rows by online player count.</summary>
+        public void SortByPlayersOnline() => SetSortColumn(SortColumn.PlayersOnline);
 
         /// <summary>Sorts the visible rows by access status.</summary>
         public void SortByStatus() => SetSortColumn(SortColumn.Status);
@@ -334,7 +334,7 @@ namespace Game.Client.UI.WorldSelection
                 SortColumn.World => StringComparer.OrdinalIgnoreCase.Compare(left.WorldName, right.WorldName),
                 SortColumn.Location => StringComparer.OrdinalIgnoreCase.Compare(left.Location, right.Location),
                 SortColumn.Type => StringComparer.OrdinalIgnoreCase.Compare(left.WorldType, right.WorldType),
-                SortColumn.Capacity => left.Capacity.CompareTo(right.Capacity),
+                SortColumn.PlayersOnline => left.OnlinePlayerCount.CompareTo(right.OnlinePlayerCount),
                 SortColumn.Status => GetStatusSortOrder(left.AccessState).CompareTo(
                     GetStatusSortOrder(right.AccessState)),
                 _ => 0
