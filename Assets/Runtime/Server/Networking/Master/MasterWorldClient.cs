@@ -28,7 +28,9 @@ namespace Game.Server.Networking.Master
         internal MasterWorldClient(
             string worldName,
             Guid worldServerRunID,
-            WorldServerReleaseIdentity releaseIdentity)
+            WorldServerReleaseIdentity releaseIdentity,
+            string clientHost,
+            int clientPort)
         {
             if (string.IsNullOrWhiteSpace(worldName))
                 throw new ArgumentException("A nonblank world name is required.", nameof(worldName));
@@ -36,6 +38,10 @@ namespace Game.Server.Networking.Master
                 throw new ArgumentException("A nonempty World Server run ID is required.", nameof(worldServerRunID));
             if (releaseIdentity == null)
                 throw new ArgumentNullException(nameof(releaseIdentity));
+            if (string.IsNullOrWhiteSpace(clientHost))
+                throw new ArgumentException("A nonblank client host is required.", nameof(clientHost));
+            if (clientPort < 1 || clientPort > 65535)
+                throw new ArgumentOutOfRangeException(nameof(clientPort), "The client port must be in the range 1..65535.");
 
             bool development = Application.isEditor || UnityEngine.Debug.isDebugBuild;
             string masterURL = Environment.GetEnvironmentVariable(MASTER_URL_ENVIRONMENT_VARIABLE)?.Trim();
@@ -61,6 +67,8 @@ namespace Game.Server.Networking.Master
             WorldName = worldName;
             WorldServerRunID = worldServerRunID;
             ReleaseIdentity = releaseIdentity;
+            ClientHost = clientHost;
+            ClientPort = clientPort;
             _httpClient = httpClient;
         }
 
@@ -72,6 +80,12 @@ namespace Game.Server.Networking.Master
 
         /// <summary>Gets the immutable release identity sent in registration.</summary>
         internal WorldServerReleaseIdentity ReleaseIdentity { get; }
+
+        /// <summary>Gets the immutable client host advertised during registration.</summary>
+        internal string ClientHost { get; }
+
+        /// <summary>Gets the immutable client port advertised during registration.</summary>
+        internal int ClientPort { get; }
 
         /// <summary>Registers this World Server and returns the validated Master response.</summary>
         internal async Task<MasterWorldProtocol.RegistrationResponse> RegisterAsync(
@@ -85,7 +99,9 @@ namespace Game.Server.Networking.Master
                 ServerBuildID = ReleaseIdentity.ServerBuildID,
                 ProtocolVersion = ReleaseIdentity.ProtocolVersion,
                 GameplayContentRevision = ReleaseIdentity.GameplayContentRevision,
-                GameplayContentManifestHash = ReleaseIdentity.GameplayContentManifestHash
+                GameplayContentManifestHash = ReleaseIdentity.GameplayContentManifestHash,
+                ClientHost = ClientHost,
+                ClientPort = ClientPort
             };
             (HttpStatusCode statusCode, string responseBody) = await PostJsonAsync(
                 REGISTER_PATH,
@@ -302,6 +318,8 @@ namespace Game.Server.Networking.Master
                 MasterWorldProtocol.RegistrationResult.InvalidProtocolVersion => HttpStatusCode.BadRequest,
                 MasterWorldProtocol.RegistrationResult.InvalidGameplayContentRevision => HttpStatusCode.BadRequest,
                 MasterWorldProtocol.RegistrationResult.InvalidGameplayContentManifestHash => HttpStatusCode.BadRequest,
+                MasterWorldProtocol.RegistrationResult.InvalidClientHost => HttpStatusCode.BadRequest,
+                MasterWorldProtocol.RegistrationResult.InvalidClientPort => HttpStatusCode.BadRequest,
                 MasterWorldProtocol.RegistrationResult.ReleaseIDMismatch => HttpStatusCode.Conflict,
                 MasterWorldProtocol.RegistrationResult.ServerBuildIDMismatch => HttpStatusCode.Conflict,
                 MasterWorldProtocol.RegistrationResult.ProtocolVersionMismatch => HttpStatusCode.Conflict,

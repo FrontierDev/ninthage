@@ -12,6 +12,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -27,8 +28,12 @@ namespace Game.Server.Core
         private const string PROFILING_ARGUMENT = "--profiling";
         private const string PROFILE_ID_ARGUMENT = "--profile-id";
         private const string CONTROL_PORT_ARGUMENT = "--control-port";
+        private const string CLIENT_HOST_ENVIRONMENT_VARIABLE = "NINTHAGE_CLIENT_HOST";
+        private const string CLIENT_PORT_ENVIRONMENT_VARIABLE = "NINTHAGE_CLIENT_PORT";
         private const string DEFAULT_PROFILE_ID = "live-server";
         private const int DEFAULT_CONTROL_PORT = 8890;
+        private const string DEFAULT_CLIENT_HOST = "127.0.0.1";
+        private const int DEFAULT_CLIENT_PORT = 8888;
         private const int SERVER_PLAYER_LOOP_TARGET_FRAME_RATE = 60;
 
         private static readonly Guid WORLD_SERVER_RUN_ID = CreateWorldServerRunID();
@@ -52,6 +57,8 @@ namespace Game.Server.Core
         private static MonoBehaviour _host;
         private static GameObject _networkManagerObject;
         private static string _launchWorldName;
+        private static string _clientHost;
+        private static int _clientPort;
         private static bool _profilingRequested;
         private static Coroutine _initializationCoroutine;
         private static Coroutine _fatalShutdownCoroutine;
@@ -173,6 +180,11 @@ namespace Game.Server.Core
             if (_initializationCoroutine != null || ServerECSManager.Initialized || ServerSimulationClock.IsRunning)
                 throw new InvalidOperationException("The server initialization sequence is already active.");
 
+            _clientHost = null;
+            _clientPort = 0;
+            ResolveClientEndpoint(out string clientHost, out int clientPort);
+            _clientHost = clientHost;
+            _clientPort = clientPort;
             _timeAuthority = new ServerTimeAuthority();
             _host = host;
             _launchWorldName = launchWorldName;
@@ -193,6 +205,8 @@ namespace Game.Server.Core
                 CancelAndDisposeMasterStateSynchronously();
                 _timeAuthority = null;
                 _launchWorldName = null;
+                _clientHost = null;
+                _clientPort = 0;
                 _profilingRequested = false;
                 _host = null;
                 ServerControlEndpoint.Detach();
@@ -236,6 +250,137 @@ namespace Game.Server.Core
             }
 
             return worldName;
+        }
+
+        private static void ResolveClientEndpoint(out string clientHost, out int clientPort)
+        {
+            bool development = Application.isEditor || UnityEngine.Debug.isDebugBuild;
+            string configuredHost = Environment.GetEnvironmentVariable(CLIENT_HOST_ENVIRONMENT_VARIABLE);
+            if (string.IsNullOrWhiteSpace(configuredHost))
+            {
+                if (!development)
+                {
+                    throw new InvalidOperationException(
+                        $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} is required outside Development.");
+                }
+
+                clientHost = DEFAULT_CLIENT_HOST;
+            }
+            else
+            {
+                clientHost = ValidateClientHost(configuredHost);
+            }
+
+            string configuredPort = Environment.GetEnvironmentVariable(CLIENT_PORT_ENVIRONMENT_VARIABLE);
+            if (string.IsNullOrWhiteSpace(configuredPort))
+            {
+                if (!development)
+                {
+                    throw new InvalidOperationException(
+                        $"{CLIENT_PORT_ENVIRONMENT_VARIABLE} is required outside Development.");
+                }
+
+                clientPort = DEFAULT_CLIENT_PORT;
+                return;
+            }
+
+            configuredPort = configuredPort.Trim();
+            if (!int.TryParse(
+                    configuredPort,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out clientPort)
+                || clientPort < 1
+                || clientPort > 65535)
+            {
+                throw new InvalidOperationException(
+                    $"{CLIENT_PORT_ENVIRONMENT_VARIABLE} must be an integer in the range 1..65535.");
+            }
+        }
+
+        private static string ValidateClientHost(string configuredHost)
+        {
+            string clientHost = configuredHost.Trim();
+            if (clientHost.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must be a nonblank host.");
+            }
+
+            if (clientHost.Length > 253)
+            {
+                throw new InvalidOperationException(
+                    $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must be at most 253 characters.");
+            }
+
+            foreach (char character in clientHost)
+            {
+                if (char.IsWhiteSpace(character) || char.IsControl(character))
+                {
+                    throw new InvalidOperationException(
+                        $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must not contain whitespace or control characters.");
+                }
+            }
+
+            if (clientHost.IndexOfAny(new[] { '/', '\\', '?', '#' }) >= 0)
+            {
+                throw new InvalidOperationException(
+                    $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must be a host without a scheme, path, query, or fragment.");
+            }
+
+            if (clientHost[0] == '[' || clientHost[^1] == ']')
+            {
+                throw new InvalidOperationException(
+                    $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must not use bracketed or port-qualified host syntax.");
+            }
+
+            if (IPAddress.TryParse(clientHost, out _))
+            {
+                if (clientHost.IndexOf('%') >= 0)
+                {
+                    throw new InvalidOperationException(
+                        $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must use an IPv4/IPv6 literal without a zone suffix.");
+                }
+
+                return clientHost;
+            }
+
+            if (clientHost.IndexOf(':') >= 0
+                || Uri.CheckHostName(clientHost) != UriHostNameType.Dns)
+            {
+                throw new InvalidOperationException(
+                    $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must be an IPv4/IPv6 literal or DNS hostname without a port.");
+            }
+
+            string dnsHost = clientHost.EndsWith(".", StringComparison.Ordinal)
+                ? clientHost[..^1]
+                : clientHost;
+            string[] labels = dnsHost.Split('.');
+            foreach (string label in labels)
+            {
+                if (label.Length == 0
+                    || label.Length > 63
+                    || label[0] == '-'
+                    || label[^1] == '-')
+                {
+                    throw new InvalidOperationException(
+                        $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must be a valid DNS hostname.");
+                }
+
+                foreach (char character in label)
+                {
+                    bool isAsciiLetter = character >= 'A' && character <= 'Z'
+                        || character >= 'a' && character <= 'z';
+                    bool isAsciiDigit = character >= '0' && character <= '9';
+                    if (!isAsciiLetter && !isAsciiDigit && character != '-')
+                    {
+                        throw new InvalidOperationException(
+                            $"{CLIENT_HOST_ENVIRONMENT_VARIABLE} must be a valid DNS hostname.");
+                    }
+                }
+            }
+
+            return clientHost;
         }
 
         private static ServerLaunchOptions ResolveLaunchOptions()
@@ -440,7 +585,9 @@ namespace Game.Server.Core
             _masterWorldClient = new MasterWorldClient(
                 _launchWorldName,
                 WORLD_SERVER_RUN_ID,
-                releaseIdentity);
+                releaseIdentity,
+                _clientHost,
+                _clientPort);
 
             Task<MasterWorldProtocol.RegistrationResponse> registrationTask =
                 _masterWorldClient.RegisterAsync(CancellationToken.None);
@@ -780,12 +927,14 @@ namespace Game.Server.Core
                 throw new InvalidOperationException("The NetworkManager prefab has no UDPTransport component.");
             }
 
+            transport.serverPort = (ushort)_clientPort;
+
             // Give NetworkManager time to initialize
             yield return new WaitForSeconds(0.5f);
 
             // Explicitly start server.
             networkManager.StartServer();
-            Debug.Log(" - Server started (listening on port 8888).");
+            Debug.Log($" - Server started (listening on port {_clientPort}).");
             networkManagerObj.AddComponent<ServerConnectionManager>();
             Debug.Log(" - Initialised the server connection manager.");
 
@@ -928,6 +1077,8 @@ namespace Game.Server.Core
                 "Server initialization was aborted before the runtime became ready.");
             _initializationSucceeded = false;
             _launchWorldName = null;
+            _clientHost = null;
+            _clientPort = 0;
             _profilingRequested = false;
             _host = null;
             GameContentBootstrap.Release();
@@ -1000,6 +1151,8 @@ namespace Game.Server.Core
             _initializationCoroutine = null;
             _initializationSucceeded = false;
             _launchWorldName = null;
+            _clientHost = null;
+            _clientPort = 0;
             _profilingRequested = false;
             _host = null;
             GameContentBootstrap.Release();

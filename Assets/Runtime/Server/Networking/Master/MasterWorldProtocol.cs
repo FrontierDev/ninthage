@@ -26,6 +26,8 @@ namespace Game.Server.Networking.Master
             ProtocolVersionMismatch = 14,
             GameplayContentRevisionMismatch = 15,
             GameplayContentManifestHashMismatch = 16,
+            InvalidClientHost = 17,
+            InvalidClientPort = 18,
         }
 
         /// <summary>Canonical outcomes for a World Server lease request.</summary>
@@ -62,6 +64,12 @@ namespace Game.Server.Networking.Master
 
             [JsonProperty("gameplayContentManifestHash")]
             public string GameplayContentManifestHash { get; set; }
+
+            [JsonProperty("clientHost")]
+            public string ClientHost { get; set; }
+
+            [JsonProperty("clientPort")]
+            public int ClientPort { get; set; }
         }
 
         /// <summary>Client compatibility requirements projected from the accepted Release Manifest.</summary>
