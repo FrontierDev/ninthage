@@ -18,7 +18,7 @@ namespace Game.Client.UI
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password)) { return; }
             else
             {
-                ClientConnectionManager.Instance.ConnectToServer(username, password);
+                ClientConnectionManager.Instance.AuthenticateWithMaster(username, password);
                 DisableButton();
             }
 

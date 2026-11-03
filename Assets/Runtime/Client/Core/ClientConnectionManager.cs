@@ -3,8 +3,11 @@ using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared;
 using Game.Shared.Networking;
 using Game.Shared.Performance;
+using Newtonsoft.Json;
+using System.Text;
 using LoadingScreen = Game.Client.UI.LoadingScreenController;
 using MainMenu = Game.Client.UI.UI_MainMenuWindow;
+using WorldSelection = Game.Client.UI.WorldSelection.UI_WorldSelectionPanel;
 using PurrNet;
 using PurrNet.Transports;
 using System;
@@ -12,6 +15,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Networking;
 
 namespace Game.Client
 {
@@ -33,6 +37,7 @@ namespace Game.Client
         private const float CONNECTION_ESTABLISHED_PROGRESS = 0.50f;
         private const float CHARACTER_LIST_READY_PROGRESS = 0.75f;
         private const float UNITY_SCENE_LOAD_READY_PROGRESS = 0.90f;
+        private const int MASTER_REQUEST_TIMEOUT_SECONDS = 10;
 
         private static ClientConnectionManager _instance;
         /// <summary>
@@ -65,7 +70,14 @@ namespace Game.Client
         private ITransport _transport;
         private bool _authenticatedForCurrentConnection;
         private bool _inWorldForCurrentConnection;
+        private Coroutine _masterAuthenticationCoroutine;
+        private Coroutine _homeWorldUpdateCoroutine;
+        private string _selectionSessionToken;
+        private Guid? _selectedWorldID;
         private readonly HashSet<string> _pendingConnectionUISceneUnloads = new();
+
+        /// <summary>Gets the transient World selected during the pre-World flow.</summary>
+        internal Guid? SelectedWorldID => _selectedWorldID;
 
         #region Lifecycle
         private void Awake()
@@ -126,6 +138,7 @@ namespace Game.Client
             _connectionState = ConnectionState.Disconnected;
             _authenticatedForCurrentConnection = false;
             _inWorldForCurrentConnection = false;
+            ClearPreWorldSelectionState();
             _initialized = false;
         }
 
@@ -185,6 +198,7 @@ namespace Game.Client
                     // Dismiss the loading screen and return to the main menu.
                     // Destroy the client account manager to clear any character data, etc. that may have been loaded.
                     LoadingScreen.Instance.Finish();
+                    ClearPreWorldSelectionState();
                     MainMenu.Instance.Show();
                     if (TryGetComponent<ClientAccountManager>(out var accountManager))
                     {
@@ -251,6 +265,416 @@ namespace Game.Client
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_CONNECTION_ATTEMPT_COUNT, 1);
             StartCoroutine(ConnectionProcess(usernameInput, passwordInput));
+        }
+
+        /// <summary>Authenticates against the Master before requesting the World catalogue.</summary>
+        public void AuthenticateWithMaster(string username, string password)
+        {
+            if (_masterAuthenticationCoroutine != null)
+            {
+                Debug.Warning("Master authentication is already in progress. Aborting duplicate request.");
+                return;
+            }
+
+            ClearSelectionTokenAndWorld();
+            _masterAuthenticationCoroutine = StartCoroutine(MasterAuthenticationProcess(username, password));
+        }
+
+        /// <summary>Requests an expected-revision-controlled Home World change from the Master.</summary>
+        internal void RequestHomeWorldChange(Guid worldID, long expectedAccountRevision)
+        {
+            if (_homeWorldUpdateCoroutine != null)
+            {
+                Debug.Warning("A Home World update is already in progress. Aborting duplicate request.");
+                return;
+            }
+
+            if (worldID == Guid.Empty || expectedAccountRevision < 1)
+            {
+                ShowWorldSelectionStatus("Home World update could not be requested.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_selectionSessionToken))
+            {
+                ShowWorldSelectionStatus("Selection session expired.");
+                return;
+            }
+
+            _homeWorldUpdateCoroutine = StartCoroutine(
+                HomeWorldUpdateProcess(worldID, expectedAccountRevision));
+        }
+
+        /// <summary>Selects a World locally for the later allocation handoff.</summary>
+        internal void SelectWorld(Guid worldID)
+        {
+            if (worldID == Guid.Empty)
+            {
+                Debug.Warning("Cannot select an empty World ID.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_selectionSessionToken))
+            {
+                Debug.Warning("Cannot select a World without an active selection session.");
+                return;
+            }
+
+            _selectedWorldID = worldID;
+        }
+
+        /// <summary>Clears all transient pre-World selection state and active Master requests.</summary>
+        internal void ClearPreWorldSelectionState()
+        {
+            if (_masterAuthenticationCoroutine != null)
+            {
+                StopCoroutine(_masterAuthenticationCoroutine);
+                _masterAuthenticationCoroutine = null;
+            }
+
+            if (_homeWorldUpdateCoroutine != null)
+            {
+                StopCoroutine(_homeWorldUpdateCoroutine);
+                _homeWorldUpdateCoroutine = null;
+            }
+
+            ClearSelectionTokenAndWorld();
+        }
+
+        private IEnumerator MasterAuthenticationProcess(string username, string password)
+        {
+            if (!GameContentBootstrap.IsInitialized)
+            {
+                FailMasterAuthentication("Master unavailable.");
+                yield break;
+            }
+
+            if (!ClientMasterEndpointUtility.TryCreateEndpoint(
+                    "client/v1/authenticate",
+                    out Uri endpoint,
+                    out _))
+            {
+                FailMasterAuthentication("Master unavailable.");
+                yield break;
+            }
+
+            ClientMasterSelectionProtocol.ClientAuthenticationRequest payload = new()
+            {
+                LegacyUsername = username,
+                Password = password
+            };
+
+            ClientMasterSelectionProtocol.ClientAuthenticationResponse response;
+            if (!TrySerialize(payload, out string authenticationJson))
+            {
+                FailMasterAuthentication("Malformed or unavailable service.");
+                yield break;
+            }
+
+            using (UnityWebRequest request = CreateJsonPostRequest(
+                       endpoint,
+                       authenticationJson))
+            {
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.ConnectionError ||
+                    request.result == UnityWebRequest.Result.DataProcessingError)
+                {
+                    FailMasterAuthentication("Master unavailable.");
+                    yield break;
+                }
+
+                if (!TryDeserialize(request.downloadHandler.text, out response))
+                {
+                    FailMasterAuthentication("Malformed or unavailable service.");
+                    yield break;
+                }
+
+                if (response.Result == ClientMasterSelectionProtocol.ClientAuthenticationResult.Accepted &&
+                    request.responseCode != 200)
+                {
+                    FailMasterAuthentication("Malformed or unavailable service.");
+                    yield break;
+                }
+            }
+
+            if (response.Result != ClientMasterSelectionProtocol.ClientAuthenticationResult.Accepted)
+            {
+                FailMasterAuthentication(GetAuthenticationFailureMessage(response.Result));
+                yield break;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.SelectionSessionToken) ||
+                !response.ExpiresAtUtc.HasValue ||
+                response.ExpiresAtUtc.Value <= DateTimeOffset.UtcNow)
+            {
+                FailMasterAuthentication("Malformed or unavailable service.");
+                yield break;
+            }
+
+            _selectionSessionToken = response.SelectionSessionToken;
+            yield return RequestWorldCatalogue();
+
+            if (_masterAuthenticationCoroutine != null)
+                _masterAuthenticationCoroutine = null;
+        }
+
+        private IEnumerator RequestWorldCatalogue()
+        {
+            if (!ClientMasterEndpointUtility.TryCreateEndpoint(
+                    "client/v1/worlds",
+                    out Uri endpoint,
+                    out _))
+            {
+                FailMasterAuthentication("Master unavailable.");
+                yield break;
+            }
+
+            using (UnityWebRequest request = UnityWebRequest.Get(endpoint.AbsoluteUri))
+            {
+                request.timeout = MASTER_REQUEST_TIMEOUT_SECONDS;
+                request.SetRequestHeader("Authorization", $"Bearer {_selectionSessionToken}");
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.ConnectionError ||
+                    request.result == UnityWebRequest.Result.DataProcessingError)
+                {
+                    FailMasterAuthentication("Master unavailable.");
+                    yield break;
+                }
+
+                if (!TryDeserialize(
+                        request.downloadHandler.text,
+                        out ClientMasterSelectionProtocol.WorldSelectionCatalogueResponse response))
+                {
+                    FailMasterAuthentication("Malformed or unavailable service.");
+                    yield break;
+                }
+
+                if (request.responseCode != 200 ||
+                    response.Result != ClientMasterSelectionProtocol.WorldSelectionResult.Accepted ||
+                    !TryValidateCatalogue(response))
+                {
+                    FailMasterAuthentication(GetCatalogueFailureMessage(response.Result));
+                    yield break;
+                }
+
+                MainMenu.Instance?.ShowWorldSelection(response);
+            }
+        }
+
+        private IEnumerator HomeWorldUpdateProcess(Guid worldID, long expectedAccountRevision)
+        {
+            if (!ClientMasterEndpointUtility.TryCreateEndpoint(
+                    "client/v1/worlds/home",
+                    out Uri endpoint,
+                    out _))
+            {
+                FailHomeWorldUpdate("Master unavailable.");
+                yield break;
+            }
+
+            ClientMasterSelectionProtocol.HomeWorldUpdateRequest payload = new()
+            {
+                WorldID = worldID,
+                ExpectedAccountRevision = expectedAccountRevision
+            };
+
+            if (!TrySerialize(payload, out string homeWorldJson))
+            {
+                FailHomeWorldUpdate("Malformed or unavailable service.");
+                yield break;
+            }
+
+            using (UnityWebRequest request = CreateJsonPostRequest(
+                       endpoint,
+                       homeWorldJson))
+            {
+                request.SetRequestHeader("Authorization", $"Bearer {_selectionSessionToken}");
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.ConnectionError ||
+                    request.result == UnityWebRequest.Result.DataProcessingError)
+                {
+                    FailHomeWorldUpdate("Master unavailable.");
+                    yield break;
+                }
+
+                if (!TryDeserialize(
+                        request.downloadHandler.text,
+                        out ClientMasterSelectionProtocol.HomeWorldUpdateResponse response))
+                {
+                    FailHomeWorldUpdate("Malformed or unavailable service.");
+                    yield break;
+                }
+
+                if (response.Result == ClientMasterSelectionProtocol.WorldSelectionResult.Unauthorized ||
+                    response.Result == ClientMasterSelectionProtocol.WorldSelectionResult.SessionExpired)
+                {
+                    FailHomeWorldUpdate("Selection session expired. Please log in again.", true);
+                    yield break;
+                }
+
+                if (request.responseCode != 200 ||
+                    response.Result != ClientMasterSelectionProtocol.WorldSelectionResult.Accepted ||
+                    !response.HomeWorldID.HasValue ||
+                    response.HomeWorldID.Value == Guid.Empty ||
+                    !response.AccountRevision.HasValue ||
+                    response.AccountRevision.Value < 1)
+                {
+                    FailHomeWorldUpdate(GetHomeWorldFailureMessage(response.Result));
+                    yield break;
+                }
+
+                WorldSelection panel = MainMenu.Instance?.GetWorldSelectionPanel();
+                if (panel == null)
+                {
+                    FailHomeWorldUpdate("World selection is unavailable.");
+                    yield break;
+                }
+
+                panel.ApplyHomeWorldUpdate(
+                    response.HomeWorldID.Value,
+                    response.AccountRevision.Value);
+            }
+
+            _homeWorldUpdateCoroutine = null;
+        }
+
+        private void FailMasterAuthentication(string message)
+        {
+            ClearSelectionTokenAndWorld();
+            _masterAuthenticationCoroutine = null;
+            MainMenu.Instance?.ShowLoginFailure(message);
+        }
+
+        private void FailHomeWorldUpdate(string message, bool returnToLogin = false)
+        {
+            _homeWorldUpdateCoroutine = null;
+            if (returnToLogin)
+            {
+                ClearSelectionTokenAndWorld();
+                MainMenu.Instance?.ShowLoginFailure(message);
+                return;
+            }
+
+            ShowWorldSelectionStatus(message);
+        }
+
+        private void ShowWorldSelectionStatus(string message)
+        {
+            MainMenu.Instance?.GetWorldSelectionPanel()?.ShowStatus(message);
+        }
+
+        private static UnityWebRequest CreateJsonPostRequest(Uri endpoint, string json)
+        {
+            UnityWebRequest request = new(endpoint.AbsoluteUri, UnityWebRequest.kHttpVerbPOST)
+            {
+                uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json)),
+                downloadHandler = new DownloadHandlerBuffer(),
+                timeout = MASTER_REQUEST_TIMEOUT_SECONDS
+            };
+            request.SetRequestHeader("Content-Type", "application/json");
+            return request;
+        }
+
+        private static bool TryDeserialize<T>(string json, out T response) where T : class
+        {
+            response = null;
+            if (string.IsNullOrWhiteSpace(json))
+                return false;
+
+            try
+            {
+                response = JsonConvert.DeserializeObject<T>(json);
+                return response != null;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        private static bool TrySerialize<T>(T payload, out string json)
+        {
+            json = null;
+            try
+            {
+                json = JsonConvert.SerializeObject(payload);
+                return !string.IsNullOrEmpty(json);
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        private static bool TryValidateCatalogue(
+            ClientMasterSelectionProtocol.WorldSelectionCatalogueResponse response)
+        {
+            if (!response.HomeWorldID.HasValue ||
+                response.HomeWorldID.Value == Guid.Empty ||
+                !response.AccountRevision.HasValue ||
+                response.AccountRevision.Value < 1 ||
+                response.Worlds == null)
+            {
+                return false;
+            }
+
+            HashSet<Guid> worldIDs = new();
+            foreach (ClientMasterSelectionProtocol.WorldSelectionWorld world in response.Worlds)
+            {
+                if (world == null || world.WorldID == Guid.Empty || !worldIDs.Add(world.WorldID))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static string GetAuthenticationFailureMessage(
+            ClientMasterSelectionProtocol.ClientAuthenticationResult result)
+        {
+            return result switch
+            {
+                ClientMasterSelectionProtocol.ClientAuthenticationResult.InvalidCredentials => "Invalid credentials.",
+                ClientMasterSelectionProtocol.ClientAuthenticationResult.AuthenticationThrottled =>
+                    "Too many attempts. Please try again later.",
+                ClientMasterSelectionProtocol.ClientAuthenticationResult.SessionAlreadyActive =>
+                    "Account already active.",
+                _ => "Malformed or unavailable service."
+            };
+        }
+
+        private static string GetCatalogueFailureMessage(
+            ClientMasterSelectionProtocol.WorldSelectionResult result)
+        {
+            return result switch
+            {
+                ClientMasterSelectionProtocol.WorldSelectionResult.Unauthorized =>
+                    "Selection session expired. Please log in again.",
+                ClientMasterSelectionProtocol.WorldSelectionResult.SessionExpired =>
+                    "Selection session expired. Please log in again.",
+                ClientMasterSelectionProtocol.WorldSelectionResult.PersistenceUnavailable => "Master unavailable.",
+                _ => "Malformed or unavailable service."
+            };
+        }
+
+        private static string GetHomeWorldFailureMessage(
+            ClientMasterSelectionProtocol.WorldSelectionResult result)
+        {
+            return result switch
+            {
+                ClientMasterSelectionProtocol.WorldSelectionResult.RevisionConflict =>
+                    "Home World changed elsewhere. Refresh and try again.",
+                ClientMasterSelectionProtocol.WorldSelectionResult.PersistenceUnavailable => "Master unavailable.",
+                _ => "Home World could not be changed."
+            };
+        }
+
+        private void ClearSelectionTokenAndWorld()
+        {
+            _selectionSessionToken = null;
+            _selectedWorldID = null;
         }
 
         private void OnCharacterListReceived(System.Collections.Generic.List<Game.Shared.Persistence.CharacterData> characterList)

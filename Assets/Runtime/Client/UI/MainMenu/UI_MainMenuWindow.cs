@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using Game.Client;
+using Game.Client.UI.WorldSelection;
 using Game.Shared;
 using Game.Shared.Utility;
 using Newtonsoft.Json;
@@ -18,6 +20,7 @@ namespace Game.Client.UI
     {
         private const int MOTD_TIMEOUT_SECONDS = 5;
         private const int MOTD_MAX_LENGTH = 2048;
+        private const int LOGIN_STATUS_MAX_LENGTH = 256;
 
         private static UI_MainMenuWindow _instance;
         private Coroutine _motdCoroutine;
@@ -34,6 +37,8 @@ namespace Game.Client.UI
         [SerializeField] private TMP_InputField _passwordInput;
         [FormerlySerializedAs("loginButton")]
         [SerializeField] private UI_Button _loginButton;
+        [SerializeField] private TMP_Text _loginStatusText;
+        [SerializeField] private UI_WorldSelectionPanel _worldSelectionPanel;
 
         [Header("UI References - MOTD")]
         [SerializeField] private TMP_Text _messageOfTheDayText;
@@ -63,6 +68,7 @@ namespace Game.Client.UI
         public override void Show()
         {
             _loginButton.EnableButton();
+            _worldSelectionPanel?.HideImmediate();
             base.Show();
             RefreshMessageOfTheDay();
         }
@@ -141,45 +147,7 @@ namespace Game.Client.UI
 
         private static bool TryCreateMessageOfTheDayEndpoint(out Uri endpoint, out string failure)
         {
-            endpoint = null;
-            string masterServerUrl = GameConfigurationManager.Config.MasterServerURL;
-
-            if (string.IsNullOrWhiteSpace(masterServerUrl))
-            {
-                failure = "Master Server URL is blank";
-                return false;
-            }
-
-            if (!Uri.TryCreate(masterServerUrl, UriKind.Absolute, out Uri masterServerUri))
-            {
-                failure = "Master Server URL is not absolute";
-                return false;
-            }
-
-            if ((masterServerUri.Scheme != Uri.UriSchemeHttp && masterServerUri.Scheme != Uri.UriSchemeHttps) ||
-                string.IsNullOrEmpty(masterServerUri.Host))
-            {
-                failure = "Master Server URL does not use HTTP(S) with an authority";
-                return false;
-            }
-
-            if (!string.IsNullOrEmpty(masterServerUri.UserInfo) ||
-                !string.IsNullOrEmpty(masterServerUri.Query) ||
-                !string.IsNullOrEmpty(masterServerUri.Fragment))
-            {
-                failure = "Master Server URL contains unsupported user info, query, or fragment data";
-                return false;
-            }
-
-            if (!string.Equals(masterServerUri.AbsolutePath, "/", StringComparison.Ordinal))
-            {
-                failure = "Master Server URL must not contain a path";
-                return false;
-            }
-
-            endpoint = new Uri(masterServerUri, "client/v1/motd");
-            failure = null;
-            return true;
+            return ClientMasterEndpointUtility.TryCreateEndpoint("client/v1/motd", out endpoint, out failure);
         }
 
         private static bool TryParseMessageOfTheDay(string response, out string message, out string failure)
@@ -225,6 +193,54 @@ namespace Game.Client.UI
             _messageOfTheDayText.text = "Message unavailable.";
             _motdCoroutine = null;
             Debug.LogError($"Unable to retrieve the message of the day: {failure}.");
+        }
+        #endregion
+
+        #region Login and World Selection State
+        /// <summary>Shows a bounded login failure and restores the ordinary login state.</summary>
+        internal void ShowLoginFailure(string message)
+        {
+            if (_loginStatusText != null)
+                _loginStatusText.text = BoundStatusMessage(message);
+
+            _loginButton.EnableButton();
+            _worldSelectionPanel?.HideImmediate();
+        }
+
+        /// <summary>Initializes and shows the in-place World Selection panel.</summary>
+        internal void ShowWorldSelection(
+            ClientMasterSelectionProtocol.WorldSelectionCatalogueResponse catalogue)
+        {
+            if (_worldSelectionPanel == null)
+            {
+                ShowLoginFailure("World selection is unavailable.");
+                return;
+            }
+
+            try
+            {
+                _loginStatusText?.SetText(string.Empty);
+                _worldSelectionPanel.Initialize(catalogue);
+                _worldSelectionPanel.Show();
+            }
+            catch (InvalidOperationException)
+            {
+                ShowLoginFailure("World selection is unavailable.");
+            }
+        }
+
+        internal UI_WorldSelectionPanel GetWorldSelectionPanel() => _worldSelectionPanel;
+
+        private static string BoundStatusMessage(string message)
+        {
+            string boundedMessage = string.IsNullOrWhiteSpace(message)
+                ? "Master unavailable."
+                : message.Trim();
+
+            if (boundedMessage.Length > LOGIN_STATUS_MAX_LENGTH)
+                boundedMessage = boundedMessage.Substring(0, LOGIN_STATUS_MAX_LENGTH);
+
+            return boundedMessage;
         }
         #endregion
 
