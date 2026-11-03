@@ -43,6 +43,8 @@ namespace Game.Client.UI.WorldSelection
         [SerializeField] private TMP_Dropdown _availabilityFilter;
         [SerializeField] private UI_WorldListPanel _worldListPanel;
         [SerializeField] private TMP_Text _statusText;
+        [SerializeField] private UI_Button _confirmButton;
+        [SerializeField] private TMP_Text _homeWorldText;
 
         private readonly List<ClientMasterSelectionProtocol.WorldSelectionWorld> _worlds = new();
         private Guid _homeWorldID;
@@ -92,18 +94,10 @@ namespace Game.Client.UI.WorldSelection
             _sortAscending = true;
             SetDefaultFilters();
             SetStatus(string.Empty);
+            ClientConnectionManager.Instance.ClearSelectedWorld();
+            SetConfirmEnabled(false);
 
-            ClientMasterSelectionProtocol.WorldSelectionWorld selectedWorld = _worlds.FirstOrDefault(
-                world => world.WorldID == _homeWorldID &&
-                    world.AccessState == ClientMasterSelectionProtocol.WorldSelectionAccessState.Available);
-            selectedWorld ??= _worlds.FirstOrDefault(
-                world => world.AccessState == ClientMasterSelectionProtocol.WorldSelectionAccessState.Available);
-
-            if (selectedWorld != null)
-            {
-                _selectedWorldID = selectedWorld.WorldID;
-                ClientConnectionManager.Instance.SelectWorld(selectedWorld.WorldID);
-            }
+            UpdateHomeWorldText();
 
             ApplyFiltersAndPopulate();
         }
@@ -137,6 +131,21 @@ namespace Game.Client.UI.WorldSelection
             _selectedWorldID = worldID;
             ClientConnectionManager.Instance.SelectWorld(worldID);
             RefreshSelectionFocus();
+            SetConfirmEnabled(true);
+        }
+
+        /// <summary>Requests Master approval to enter the explicitly selected World.</summary>
+        public void ConfirmSelection()
+        {
+            if (!_selectedWorldID.HasValue)
+            {
+                SetConfirmEnabled(false);
+                return;
+            }
+
+            SetConfirmEnabled(false);
+            SetStatus("Connecting...");
+            ClientConnectionManager.Instance.RequestWorldEntry(_selectedWorldID.Value);
         }
 
         /// <summary>Requests a Home World change using the current catalogue revision.</summary>
@@ -159,6 +168,7 @@ namespace Game.Client.UI.WorldSelection
             foreach (ClientMasterSelectionProtocol.WorldSelectionWorld world in _worlds)
                 world.IsHomeWorld = world.WorldID == _homeWorldID;
 
+            UpdateHomeWorldText();
             SetStatus(string.Empty);
             ApplyFiltersAndPopulate();
         }
@@ -167,6 +177,16 @@ namespace Game.Client.UI.WorldSelection
         internal void ShowStatus(string message)
         {
             SetStatus(message);
+        }
+
+        /// <summary>Displays a World-entry failure and restores confirmation when selection remains valid.</summary>
+        internal void SetWorldEntryFailure(string message)
+        {
+            SetStatus(message);
+            bool hasSelectedAvailableWorld = _selectedWorldID.HasValue && _worlds.Any(
+                world => world.WorldID == _selectedWorldID.Value &&
+                    world.AccessState == ClientMasterSelectionProtocol.WorldSelectionAccessState.Available);
+            SetConfirmEnabled(hasSelectedAvailableWorld);
         }
 
         /// <summary>Returns to the ordinary Main Menu login state and clears the local snapshot.</summary>
@@ -240,6 +260,14 @@ namespace Game.Client.UI.WorldSelection
             List<ClientMasterSelectionProtocol.WorldSelectionWorld> visibleWorlds = _worlds
                 .Where(world => MatchesFilter(world, filter, typeFilter, availabilityFilter))
                 .ToList();
+
+            if (_selectedWorldID.HasValue && !visibleWorlds.Any(
+                    world => world.WorldID == _selectedWorldID.Value))
+            {
+                _selectedWorldID = null;
+                ClientConnectionManager.Instance.ClearSelectedWorld();
+                SetConfirmEnabled(false);
+            }
 
             if (_sortColumn.HasValue)
                 visibleWorlds.Sort(CompareWorlds);
@@ -362,7 +390,28 @@ namespace Game.Client.UI.WorldSelection
             _sortAscending = true;
             SetDefaultFilters();
             SetStatus(string.Empty);
+            if (_homeWorldText != null)
+                _homeWorldText.text = string.Empty;
+            SetConfirmEnabled(false);
             _worldListPanel?.ClearRows();
+        }
+
+        private void SetConfirmEnabled(bool enabled)
+        {
+            if (enabled)
+                _confirmButton?.EnableButton();
+            else
+                _confirmButton?.DisableButton();
+        }
+
+        private void UpdateHomeWorldText()
+        {
+            if (_homeWorldText == null)
+                return;
+
+            ClientMasterSelectionProtocol.WorldSelectionWorld homeWorld = _worlds.FirstOrDefault(
+                world => world.WorldID == _homeWorldID);
+            _homeWorldText.text = homeWorld == null ? string.Empty : $"Home World: {homeWorld.WorldName}";
         }
 
         private void SetStatus(string message)

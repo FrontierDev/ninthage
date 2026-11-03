@@ -137,5 +137,51 @@ namespace Game.Client
             [JsonProperty("accountRevision")]
             public long? AccountRevision { get; set; }
         }
+
+        /// <summary>Describes the outcome of requesting entry to an eligible World.</summary>
+        public enum WorldEntryResult
+        {
+            Accepted = 0,
+            InvalidRequest = 1,
+            Unauthorized = 2,
+            SessionExpired = 3,
+            AccountUnavailable = 4,
+            WorldNotFound = 5,
+            WorldUnavailable = 6,
+            WorldAccessDenied = 7,
+            SessionAlreadyActive = 8,
+            HandoffExpired = 9,
+            HandoffInvalid = 10,
+            PersistenceUnavailable = 11
+        }
+
+        /// <summary>Requests Master-approved entry to one selected World.</summary>
+        public sealed class WorldEntryRequest
+        {
+            [JsonProperty("worldID")]
+            public Guid WorldID { get; set; }
+        }
+
+        /// <summary>Returns the endpoint and short-lived handoff for World entry.</summary>
+        public sealed class WorldEntryResponse
+        {
+            [JsonProperty("result")]
+            public WorldEntryResult Result { get; set; }
+
+            [JsonProperty("worldID")]
+            public Guid? WorldID { get; set; }
+
+            [JsonProperty("clientHost")]
+            public string ClientHost { get; set; }
+
+            [JsonProperty("clientPort")]
+            public int? ClientPort { get; set; }
+
+            [JsonProperty("handoffToken")]
+            public string HandoffToken { get; set; }
+
+            [JsonProperty("expiresAtUtc")]
+            public DateTimeOffset? ExpiresAtUtc { get; set; }
+        }
     }
 }

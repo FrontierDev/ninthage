@@ -72,6 +72,7 @@ namespace Game.Client
         private bool _inWorldForCurrentConnection;
         private Coroutine _masterAuthenticationCoroutine;
         private Coroutine _homeWorldUpdateCoroutine;
+        private Coroutine _worldEntryCoroutine;
         private string _selectionSessionToken;
         private Guid? _selectedWorldID;
         private readonly HashSet<string> _pendingConnectionUISceneUnloads = new();
@@ -323,6 +324,44 @@ namespace Game.Client
             _selectedWorldID = worldID;
         }
 
+        /// <summary>Requests Master approval to enter the selected World.</summary>
+        internal void RequestWorldEntry(Guid worldID)
+        {
+            if (_worldEntryCoroutine != null)
+            {
+                Debug.Warning("A World-entry request is already in progress. Aborting duplicate request.");
+                return;
+            }
+
+            if (worldID == Guid.Empty || !_selectedWorldID.HasValue || _selectedWorldID.Value != worldID)
+            {
+                Debug.Warning("Cannot request World entry without the selected World ID.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_selectionSessionToken))
+            {
+                Debug.Warning("Cannot request World entry without an active selection session.");
+                return;
+            }
+
+            if (_connectionState != ConnectionState.Disconnected ||
+                _networkManager == null ||
+                _networkManager.clientState != PurrNet.Transports.ConnectionState.Disconnected)
+            {
+                Debug.Warning("Cannot request World entry while the client is connecting or connected.");
+                return;
+            }
+
+            _worldEntryCoroutine = StartCoroutine(WorldEntryProcess(worldID));
+        }
+
+        /// <summary>Clears the transient World selection without ending the selection session.</summary>
+        internal void ClearSelectedWorld()
+        {
+            _selectedWorldID = null;
+        }
+
         /// <summary>Clears all transient pre-World selection state and active Master requests.</summary>
         internal void ClearPreWorldSelectionState()
         {
@@ -336,6 +375,12 @@ namespace Game.Client
             {
                 StopCoroutine(_homeWorldUpdateCoroutine);
                 _homeWorldUpdateCoroutine = null;
+            }
+
+            if (_worldEntryCoroutine != null)
+            {
+                StopCoroutine(_worldEntryCoroutine);
+                _worldEntryCoroutine = null;
             }
 
             ClearSelectionTokenAndWorld();
@@ -417,6 +462,91 @@ namespace Game.Client
 
             if (_masterAuthenticationCoroutine != null)
                 _masterAuthenticationCoroutine = null;
+        }
+
+        private IEnumerator WorldEntryProcess(Guid worldID)
+        {
+            if (!ClientMasterEndpointUtility.TryCreateEndpoint(
+                    "client/v1/worlds/enter",
+                    out Uri endpoint,
+                    out _))
+            {
+                FailWorldEntry("Master unavailable.");
+                yield break;
+            }
+
+            ClientMasterSelectionProtocol.WorldEntryRequest payload = new()
+            {
+                WorldID = worldID
+            };
+
+            if (!TrySerialize(payload, out string worldEntryJson))
+            {
+                FailWorldEntry("Malformed or unavailable service.");
+                yield break;
+            }
+
+            ClientMasterSelectionProtocol.WorldEntryResponse response;
+            using (UnityWebRequest request = CreateJsonPostRequest(endpoint, worldEntryJson))
+            {
+                request.SetRequestHeader("Authorization", $"Bearer {_selectionSessionToken}");
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.ConnectionError ||
+                    request.result == UnityWebRequest.Result.DataProcessingError)
+                {
+                    FailWorldEntry("Master unavailable.");
+                    yield break;
+                }
+
+                if (!TryDeserialize(request.downloadHandler.text, out response))
+                {
+                    FailWorldEntry("Malformed or unavailable service.");
+                    yield break;
+                }
+
+                if (response.Result == ClientMasterSelectionProtocol.WorldEntryResult.Accepted)
+                {
+                    if (request.responseCode != 200 || !TryValidateWorldEntryResponse(response, worldID))
+                    {
+                        FailWorldEntry("Malformed or unavailable service.");
+                        yield break;
+                    }
+                }
+            }
+
+            if (response.Result != ClientMasterSelectionProtocol.WorldEntryResult.Accepted)
+            {
+                FailWorldEntry(
+                    GetWorldEntryFailureMessage(response.Result),
+                    response.Result == ClientMasterSelectionProtocol.WorldEntryResult.Unauthorized ||
+                    response.Result == ClientMasterSelectionProtocol.WorldEntryResult.SessionExpired ||
+                    response.Result == ClientMasterSelectionProtocol.WorldEntryResult.SessionAlreadyActive);
+                yield break;
+            }
+
+            try
+            {
+                Authentication.SetWorldEntryHandoff(response.HandoffToken);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"World-entry authentication preparation failed: {exception.GetType().Name}: {exception.Message}");
+                FailWorldEntry("Malformed or unavailable service.");
+                yield break;
+            }
+
+            string approvedHost = response.ClientHost;
+            ushort approvedPort = (ushort)response.ClientPort.Value;
+            response.HandoffToken = null;
+            _selectionSessionToken = null;
+            _worldEntryCoroutine = null;
+            _connectionState = ConnectionState.Connecting;
+            if (PerformanceTelemetry.IsEnabled)
+                PerformanceTelemetry.TryRecord(NetworkingPerformanceMetrics.CLIENT_CONNECTION_ATTEMPT_COUNT, 1);
+
+            yield return PreparedConnectionProcess(approvedHost, approvedPort);
         }
 
         private IEnumerator RequestWorldCatalogue()
@@ -561,6 +691,19 @@ namespace Game.Client
             ShowWorldSelectionStatus(message);
         }
 
+        private void FailWorldEntry(string message, bool returnToLogin = false)
+        {
+            _worldEntryCoroutine = null;
+            if (returnToLogin)
+            {
+                ClearPreWorldSelectionState();
+                MainMenu.Instance?.ShowLoginFailure(message);
+                return;
+            }
+
+            MainMenu.Instance?.GetWorldSelectionPanel()?.SetWorldEntryFailure(message);
+        }
+
         private void ShowWorldSelectionStatus(string message)
         {
             MainMenu.Instance?.GetWorldSelectionPanel()?.ShowStatus(message);
@@ -631,6 +774,38 @@ namespace Game.Client
             return true;
         }
 
+        private static bool TryValidateWorldEntryResponse(
+            ClientMasterSelectionProtocol.WorldEntryResponse response,
+            Guid requestedWorldID)
+        {
+            return response.WorldID.HasValue &&
+                response.WorldID.Value == requestedWorldID &&
+                !string.IsNullOrWhiteSpace(response.ClientHost) &&
+                response.ClientPort.HasValue &&
+                response.ClientPort.Value >= 1 &&
+                response.ClientPort.Value <= ushort.MaxValue &&
+                IsLowercaseHex(response.HandoffToken, 64) &&
+                response.ExpiresAtUtc.HasValue &&
+                response.ExpiresAtUtc.Value > DateTimeOffset.UtcNow;
+        }
+
+        private static bool IsLowercaseHex(string value, int expectedLength)
+        {
+            if (value == null || value.Length != expectedLength)
+                return false;
+
+            foreach (char character in value)
+            {
+                if (!(character >= '0' && character <= '9') &&
+                    !(character >= 'a' && character <= 'f'))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private static string GetAuthenticationFailureMessage(
             ClientMasterSelectionProtocol.ClientAuthenticationResult result)
         {
@@ -668,6 +843,25 @@ namespace Game.Client
                     "Home World changed elsewhere. Refresh and try again.",
                 ClientMasterSelectionProtocol.WorldSelectionResult.PersistenceUnavailable => "Master unavailable.",
                 _ => "Home World could not be changed."
+            };
+        }
+
+        private static string GetWorldEntryFailureMessage(
+            ClientMasterSelectionProtocol.WorldEntryResult result)
+        {
+            return result switch
+            {
+                ClientMasterSelectionProtocol.WorldEntryResult.Unauthorized =>
+                    "Selection session expired. Please log in again.",
+                ClientMasterSelectionProtocol.WorldEntryResult.SessionExpired =>
+                    "Selection session expired. Please log in again.",
+                ClientMasterSelectionProtocol.WorldEntryResult.WorldUnavailable =>
+                    "World is currently unavailable.",
+                ClientMasterSelectionProtocol.WorldEntryResult.WorldAccessDenied =>
+                    "You cannot access this World.",
+                ClientMasterSelectionProtocol.WorldEntryResult.SessionAlreadyActive => "Account already active.",
+                ClientMasterSelectionProtocol.WorldEntryResult.PersistenceUnavailable => "Master unavailable.",
+                _ => "Unable to enter the selected World."
             };
         }
 
@@ -710,8 +904,31 @@ namespace Game.Client
         private IEnumerator ConnectionProcess(string username, string password)
         {
             Debug.Log("Connection process started.");
-            var networkManager = GetComponent<NetworkManager>();
-            var transport = networkManager.GetComponentInChildren<PurrNet.Transports.UDPTransport>();
+            try
+            {
+                Authentication.SetCredentials(username, password);
+            }
+            catch (Exception exception)
+            {
+                Debug.Error(
+                    $"Client authentication preparation failed: {exception.GetType().Name}: {exception.Message}");
+                _connectionState = ConnectionState.Disconnected;
+                LoadingScreen.Instance.Finish();
+                MainMenu.Instance.Show();
+                yield break;
+            }
+
+            yield return PreparedConnectionProcess(
+                GameConfigurationManager.Config.ServerAddress,
+                GameConfigurationManager.Config.ServerPort);
+        }
+
+        private IEnumerator PreparedConnectionProcess(string serverAddress, ushort serverPort)
+        {
+            NetworkManager networkManager = _networkManager ?? GetComponent<NetworkManager>();
+            PurrNet.Transports.UDPTransport transport = networkManager == null
+                ? null
+                : networkManager.GetComponentInChildren<PurrNet.Transports.UDPTransport>();
 
             // Step 1: Hide the main menu and show the loading screen.
             Debug.Log(" - Step 1: Hiding main menu, showing loading screen...");
@@ -719,28 +936,31 @@ namespace Game.Client
             LoadingScreen.Instance.Show();
             Debug.Log(" ✓ Step 1: Done.");
 
+            if (networkManager == null)
+            {
+                Debug.Error("Client connection cannot start without a NetworkManager.");
+                _connectionState = ConnectionState.Disconnected;
+                LoadingScreen.Instance.Finish();
+                MainMenu.Instance.Show();
+                yield break;
+            }
+
+            if (transport == null)
+            {
+                Debug.Error("Client connection cannot start without a UDPTransport.");
+                _connectionState = ConnectionState.Disconnected;
+                LoadingScreen.Instance.Finish();
+                MainMenu.Instance.Show();
+                yield break;
+            }
+
             // Step 2: Connect to the server.
             Debug.Log(" - Step 2: Setting up connection...");
             if (networkManager.clientState == PurrNet.Transports.ConnectionState.Disconnected)
             {
-                // Set the credentials of the login authentication payload.
-                try
-                {
-                    Authentication.SetCredentials(username, password);
-                }
-                catch (Exception exception)
-                {
-                    Debug.Error(
-                        $"Client authentication preparation failed: {exception.GetType().Name}: {exception.Message}");
-                    _connectionState = ConnectionState.Disconnected;
-                    LoadingScreen.Instance.Finish();
-                    MainMenu.Instance.Show();
-                    yield break;
-                }
-
                 // Set the address and server port of the transport.
-                transport.address = GameConfigurationManager.Config.ServerAddress;
-                transport.serverPort = GameConfigurationManager.Config.ServerPort;
+                transport.address = serverAddress;
+                transport.serverPort = serverPort;
 
                 // Start the client.
                 Debug.Log(" ✓ Step 2: Attempting to connect to server...");

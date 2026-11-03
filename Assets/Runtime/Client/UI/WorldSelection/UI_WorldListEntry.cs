@@ -21,6 +21,7 @@ namespace Game.Client.UI.WorldSelection
         [SerializeField] private TMP_Text _capacityText;
         [SerializeField] private TMP_Text _statusText;
         [SerializeField] private TMP_Text _requirementsText;
+        [SerializeField] private GameObject _selectionHighlight;
 
         private ClientMasterSelectionProtocol.WorldSelectionWorld _data;
         private UI_WorldSelectionPanel _panel;
@@ -88,17 +89,17 @@ namespace Game.Client.UI.WorldSelection
         /// <inheritdoc/>
         public override void Focus()
         {
-            if (canvasGroup != null)
-                canvasGroup.alpha = 1f;
             isFocused = true;
+            if (_selectionHighlight != null)
+                _selectionHighlight.SetActive(true);
         }
 
         /// <inheritdoc/>
         public override void Unfocus()
         {
-            if (canvasGroup != null)
-                canvasGroup.alpha = 0.8f;
             isFocused = false;
+            if (_selectionHighlight != null)
+                _selectionHighlight.SetActive(false);
         }
 
         private void UpdateFavouriteGlyph()
