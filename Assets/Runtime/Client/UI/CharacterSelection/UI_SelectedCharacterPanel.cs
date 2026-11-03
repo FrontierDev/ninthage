@@ -1,3 +1,4 @@
+using Game.Shared.Data;
 using Game.Shared.Persistence;
 using TMPro;
 using UnityEngine;
@@ -39,19 +40,38 @@ namespace Game.Client.UI
         private void Start()
         {
             UI_CharacterSelectWindow.Instance.onCharacterSelected += SetCharacterInfo;
+            SetCharacterInfo(CharacterSelectionManager.Instance.SelectedCharacter);
+        }
+
+        private void OnDestroy()
+        {
+            if (UI_CharacterSelectWindow.Instance != null)
+                UI_CharacterSelectWindow.Instance.onCharacterSelected -= SetCharacterInfo;
+
+            if (ReferenceEquals(_instance, this))
+                _instance = null;
         }
 
         private void SetCharacterInfo(CharacterData characterData)
         {
             if (characterData == null)
             {
+                _characterNameText.text = string.Empty;
+                _characterInfoText.text = string.Empty;
+                _enterWorldButton.DisableButton();
                 HideImmediate();
                 return;
             }
 
+            RaceDefinition raceDefinition = RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID);
+            ClassDefinition classDefinition = ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID);
+            string raceName = raceDefinition != null ? raceDefinition.DisplayName : "Unavailable";
+            string className = classDefinition != null ? classDefinition.DisplayName : "Unavailable";
+
             Show();
             _characterNameText.text = characterData.Name;
-            _characterInfoText.text = $"Level {characterData.Level} {characterData.RaceID} {characterData.ClassID}";
+            _characterInfoText.text = $"Level {characterData.Level} {raceName} {className}";
+            _enterWorldButton.EnableButton();
         }
     }
 }

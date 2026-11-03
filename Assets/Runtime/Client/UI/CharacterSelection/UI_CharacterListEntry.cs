@@ -1,3 +1,4 @@
+using System;
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Shared.Data;
 using Game.Shared.Persistence;
@@ -23,6 +24,7 @@ namespace Game.Client.UI
         [SerializeField] private TMP_Text _characterInfoText;
         [FormerlySerializedAs("factionIcon")]
         [SerializeField] private Image _factionIcon;
+        [SerializeField] private GameObject _selectionHighlight;
 
         /// <summary>
         /// Stores the <c>characterData</c> value.
@@ -39,13 +41,18 @@ namespace Game.Client.UI
 
             // UI setup.
             _characterNameText.text = characterData.Name;
-            _characterInfoText.text = $"Level {characterData.Level} {characterData.RaceID} {characterData.ClassID}";
-            _classIconImage.sprite = ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID)?.Icon;
+            RaceDefinition raceDefinition = RaceDefinitionLibrary.Instance.GetDefinition(characterData.RaceID);
+            ClassDefinition classDefinition = ClassDefinitionLibrary.Instance.GetDefinition(characterData.ClassID);
+            string raceName = raceDefinition != null ? raceDefinition.DisplayName : "Unavailable";
+            string className = classDefinition != null ? classDefinition.DisplayName : "Unavailable";
+            _characterInfoText.text = $"Level {characterData.Level} {raceName} {className}";
+            _classIconImage.sprite = classDefinition?.Icon;
 
             // NYI factionIcon.sprite = FactionDefinitionLibrary.Instance.GetDefinition(characterData.FactionID)?.Icon
 
             // Set up the callback for when this entry is clicked.
             UI_CharacterSelectWindow.Instance.onCharacterSelected += OnCharacterSelected;
+            OnCharacterSelected(CharacterSelectionManager.Instance.SelectedCharacter);
         }
 
         private void OnDestroy()
@@ -59,7 +66,9 @@ namespace Game.Client.UI
         /// </summary>
         public void OnCharacterSelected(CharacterData character)
         {
-            if (character == characterData) Focus();
+            if (character?.GUID != null && characterData?.GUID != null &&
+                string.Equals(character.GUID, characterData.GUID, StringComparison.Ordinal))
+                Focus();
             else Unfocus();
         }
 
@@ -87,15 +96,17 @@ namespace Game.Client.UI
         /// <inheritdoc/>
         public override void Focus()
         {
-            canvasGroup.alpha = 1f;
             isFocused = true;
+            if (_selectionHighlight != null)
+                _selectionHighlight.SetActive(true);
         }
 
         /// <inheritdoc/>
         public override void Unfocus()
         {
-            canvasGroup.alpha = 0.8f;
             isFocused = false;
+            if (_selectionHighlight != null)
+                _selectionHighlight.SetActive(false);
         }
     }
 }
