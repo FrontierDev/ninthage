@@ -10,6 +10,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.Serialization;
+using UnityEngine.UI;
 
 namespace Game.Client.UI
 {
@@ -21,6 +22,10 @@ namespace Game.Client.UI
         private const int MOTD_TIMEOUT_SECONDS = 5;
         private const int MOTD_MAX_LENGTH = 2048;
         private const int LOGIN_STATUS_MAX_LENGTH = 256;
+        private const string REMEMBER_ACCOUNT_NAME_SETTING =
+            "login_remember_account_name";
+        private const string REMEMBERED_ACCOUNT_NAME_SETTING =
+            "login_remembered_account_name";
 
         private static UI_MainMenuWindow _instance;
         private Coroutine _motdCoroutine;
@@ -37,6 +42,7 @@ namespace Game.Client.UI
         [SerializeField] private TMP_InputField _passwordInput;
         [FormerlySerializedAs("loginButton")]
         [SerializeField] private UI_Button _loginButton;
+        [SerializeField] private Toggle _rememberAccountNameToggle;
         [SerializeField] private TMP_Text _loginStatusText;
         [SerializeField] private UI_WorldSelectionPanel _worldSelectionPanel;
 
@@ -61,8 +67,27 @@ namespace Game.Client.UI
                 _instance = this;
             }
 
+            bool rememberAccountName =
+                ClientSettingsManager.GetSetting(REMEMBER_ACCOUNT_NAME_SETTING, false);
+            _rememberAccountNameToggle?.SetIsOnWithoutNotify(rememberAccountName);
+            if (rememberAccountName)
+            {
+                string rememberedAccountName = ClientSettingsManager.GetSetting(
+                    REMEMBERED_ACCOUNT_NAME_SETTING,
+                    string.Empty);
+                if (!string.IsNullOrWhiteSpace(rememberedAccountName))
+                    _usernameInput.text = rememberedAccountName;
+            }
+
+            _rememberAccountNameToggle?.onValueChanged.AddListener(OnRememberAccountNameChanged);
+
             RefreshBuildInfo();
             RefreshMessageOfTheDay();
+        }
+
+        private void OnDestroy()
+        {
+            _rememberAccountNameToggle?.onValueChanged.RemoveListener(OnRememberAccountNameChanged);
         }
 
         public override void Show()
@@ -197,6 +222,30 @@ namespace Game.Client.UI
         #endregion
 
         #region Login and World Selection State
+        private void OnRememberAccountNameChanged(bool remember)
+        {
+            ClientSettingsManager.SetSetting(REMEMBER_ACCOUNT_NAME_SETTING, remember);
+            if (!remember)
+                ClientSettingsManager.DeleteSetting(REMEMBERED_ACCOUNT_NAME_SETTING);
+        }
+
+        internal void PersistSubmittedAccountName(string accountName)
+        {
+            if (_rememberAccountNameToggle == null || !_rememberAccountNameToggle.isOn)
+            {
+                ClientSettingsManager.DeleteSetting(REMEMBERED_ACCOUNT_NAME_SETTING);
+                return;
+            }
+
+            string trimmedAccountName = accountName?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedAccountName))
+                ClientSettingsManager.DeleteSetting(REMEMBERED_ACCOUNT_NAME_SETTING);
+            else
+                ClientSettingsManager.SetSetting(
+                    REMEMBERED_ACCOUNT_NAME_SETTING,
+                    trimmedAccountName);
+        }
+
         /// <summary>Shows a bounded login failure and restores the ordinary login state.</summary>
         internal void ShowLoginFailure(string message)
         {

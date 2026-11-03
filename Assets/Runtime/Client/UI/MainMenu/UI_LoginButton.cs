@@ -16,11 +16,10 @@ namespace Game.Client.UI
             var password = UI_MainMenuWindow.Instance.GetPassword();
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password)) { return; }
-            else
-            {
-                ClientConnectionManager.Instance.AuthenticateWithMaster(username, password);
-                DisableButton();
-            }
+
+            UI_MainMenuWindow.Instance.PersistSubmittedAccountName(username);
+            ClientConnectionManager.Instance.AuthenticateWithMaster(username, password);
+            DisableButton();
 
             base.OnClick(eventData); // Play SFX if assigned in the inspector.
         }
