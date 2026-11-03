@@ -70,6 +70,7 @@ namespace Game.Client
         private ITransport _transport;
         private bool _authenticatedForCurrentConnection;
         private bool _inWorldForCurrentConnection;
+        private bool _logoutInProgress;
         private Coroutine _masterAuthenticationCoroutine;
         private Coroutine _homeWorldUpdateCoroutine;
         private Coroutine _worldEntryCoroutine;
@@ -178,6 +179,7 @@ namespace Game.Client
                     break;
 
                 case PurrNet.Transports.ConnectionState.Disconnected:
+                    _logoutInProgress = false;
                     var wasConnecting = _connectionState == ConnectionState.Connecting;
                     var wasActive = _connectionState != ConnectionState.Disconnected;
                     _connectionState = ConnectionState.Disconnected;
@@ -249,6 +251,25 @@ namespace Game.Client
             }
 
             unloadOperation.completed += _ => _pendingConnectionUISceneUnloads.Remove(sceneName);
+        }
+
+        /// <summary>Requests the local client disconnect from pre-World Character Selection.</summary>
+        public void LogoutToMainMenu()
+        {
+            if (_connectionState != ConnectionState.Connected || _inWorldForCurrentConnection)
+            {
+                Debug.Warning("Cannot logout to Main Menu while the client is not in pre-World Character Selection.");
+                return;
+            }
+
+            if (_logoutInProgress)
+            {
+                Debug.Warning("Logout to Main Menu is already in progress.");
+                return;
+            }
+
+            _logoutInProgress = true;
+            _networkManager.StopClient();
         }
 
         /// <summary>
