@@ -409,9 +409,15 @@ Unique buildings are appropriate for landmarks, major civic structures, dungeons
 
 ### 9.3 Architectural Asset Production Order
 
-Use **author first, generalise second, automate third**. Begin with an artist-directed Blender blockout, inspect proportions and silhouette from normal gameplay cameras, then refine meaningful medium-scale geometry and construction logic. Obtain visual approval of the form before committing to production UVs, materials, generator infrastructure, LODs or colliders unless needed to test the form. One approved reference module can subsequently yield reusable pieces and explicit modular interfaces; only then extract repeated operations into Python or Geometry Nodes. Code-generated geometry is an assistance mechanism, not an aesthetic acceptance criterion.
+Architecture is authored as a **material library plus atomic construction components**, not as monolithic preassembled wall/building meshes.
 
-Visible detail includes deep openings, buttresses, sill and parapet profiles, masonry irregularity where it changes depth or shadow, exposed beam ends, and deliberately selected damage. Do not model every stone pore, shallow mortar groove or chip. Equally, do not replace meaningful geometric depth with a flat surface and a normal map. Quality must be judged in solid neutral lighting before material effects are introduced.
+For a new architectural family, establish and approve its reusable base materials first on simple test primitives under neutral lighting. Physical scale, colour/value range, roughness, normal strength and stylisation must be understood before geometry is designed around them. Approved external CC0 material sources may be used as source data, but must be reviewed and adapted to the Ninth Age style rather than imported unchanged.
+
+After material approval, author the smallest useful architectural components independently. Examples include wall bodies, foundation/plinth pieces, parapet/coping pieces, crenellation elements or strips, walkways, supports, buttresses, trims and damage replacements. A complete straight wall is normally an **assembly test**, not the atomic source asset.
+
+Use **author first, generalise second, automate third** within each component family. Establish an artist-directed component, inspect it at gameplay cameras, approve its medium-scale form, then generalise repeat dimensions, sockets and variants. Only after repeated needs are proven should Python, Geometry Nodes or other procedural helpers be extracted. Code-generated geometry is an assistance mechanism, not an aesthetic acceptance criterion.
+
+Visible detail includes meaningful recesses, support profiles, large masonry relief, exposed beam ends, coping depth and selected silhouette damage. Do not model every stone pore, shallow mortar groove or chip. Equally, do not replace meaningful three-dimensional depth with a flat surface and a normal map. Assemblies must remain decomposable so optional elements such as walkways can be added or removed without duplicating the underlying wall body.
 
 ### 9.4 Architectural Weathering Ownership
 
@@ -533,7 +539,15 @@ The preferred hierarchy is:
 
 The material should still read correctly when seen from a normal gameplay camera.
 
-### 12.3 Texture Resolution
+### 12.3 Material Prototyping and Source Libraries
+
+Reusable architectural materials should be approved independently of final architecture on standard primitive tests such as cubes and planes. Test physical scale, tiling, colour/value range, roughness, normal strength and distance readability before assigning the material to production components.
+
+Third-party source materials are acceptable when provenance and licence permit production use. Poly Haven is an approved source library for material exploration and production input. Its source textures must still be evaluated and, where necessary, adapted to Ninth Age's restrained stylised direction: reduce excessive scan noise, rebalance colour and roughness, choose appropriate map resolution, preserve real-world scale where useful, and separate environment-variable dirt/moss/wetness from the reusable base material.
+
+A third-party material is not automatically an approved Ninth Age material merely because it is technically high quality or physically accurate.
+
+### 12.4 Texture Resolution
 
 Texture resolution must be justified by screen-space usage and reuse.
 
@@ -548,7 +562,7 @@ General principles:
 
 Exact per-category texel-density targets may be defined later in a dedicated asset-budget document without changing the art direction in this PDD.
 
-### 12.4 Decals and Local Variation
+### 12.5 Decals and Local Variation
 
 Use decals, masks and local overlays for:
 
@@ -564,7 +578,7 @@ Use decals, masks and local overlays for:
 
 Do not bake all local variation into unique geometry or unique base textures when a reusable overlay solves the problem.
 
-### 12.5 Shared Runtime Weathering
+### 12.6 Shared Runtime Weathering
 
 The art-to-engine material contract separates **base surface**, **authored eligibility/exposure masks**, **environmental/weathering profile**, and **temporary conditions**. Suitable inputs include local curvature/cavity/exposure information, surface orientation, material class, climate, stable per-object variation, age and condition. Shader-driven dirt, moss, corrosion and dampness should remain visually plausible and consistent with approved painted/stylised materials; random full-surface noise and photo-real overlay detail are not substitutes for design.
 
@@ -776,21 +790,23 @@ The interface must remain legible over bright snow, dark marshes, volcanic scene
 A standard non-character asset should normally pass through:
 
 ```text
-brief / approved references and provisional dimensions
+brief / approved references
     ↓
-author-directed blockout, proportions and gameplay-camera review
+base-material candidates on cubes/planes
     ↓
-visual approval of primary form
+material approval and physical-scale contract
     ↓
-medium-scale modelling and construction detail
+atomic component blockout
     ↓
-visual approval of untextured geometry
+medium-scale component modelling and approval
     ↓
-extract reusable modules/generators where justified
+component repeat/interface contract
     ↓
-UVs, shared base materials, trims and authored weathering masks
+assemble components into representative wall/building tests
     ↓
-optional source-only bake and texture export
+extract reusable generators only where repetition is proven
+    ↓
+authored weathering masks / optional source-only bake
     ↓
 Unity material/weathering verification
     ↓
