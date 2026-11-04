@@ -210,6 +210,10 @@ namespace Game.Client
                     // Destroy the client account manager to clear any character data, etc. that may have been loaded.
                     LoadingScreen.Instance.Finish();
                     ClearPreWorldSelectionState();
+
+                    Game.Client.UI.UI_CharacterSelectWindow.Instance?.HideImmediate();
+                    Game.Client.UI.UI_CharacterCreationWindow.Instance?.HideImmediate();
+
                     MainMenu.Instance.Show();
                     if (TryGetComponent<ClientAccountManager>(out var accountManager))
                     {
