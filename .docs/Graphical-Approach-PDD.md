@@ -5,7 +5,7 @@
 **Engine:** Unity 6.3  
 **Rendering:** Universal Render Pipeline (URP), Forward+  
 **Scope:** World visuals, environment assets, terrain integration, architecture, foliage, actors, props, VFX, lighting, atmosphere, post-processing and UI cohesion  
-**Last updated:** 2026-10-04
+**Last updated:** 2026-11-04
 
 ---
 
@@ -20,6 +20,8 @@ Where a future asset, shader, scene, tool or rendering feature conflicts with th
 The central rule is:
 
 > **The authored world is mid-poly. The presentation of that world is high-fidelity.**
+
+Here, **mid-poly means detailed at meaningful visual scales**, not flat, crude, uniformly faceted or minimally modelled. Architectural massing and medium-scale craftsmanship must look substantial before shaders or weathering are applied. Small-scale scratches, pores and erosion can be delegated to materials; sculpt-level microgeometry is not the target.
 
 The game should look richer than the underlying asset complexity would suggest. Perceived fidelity should come primarily from composition, lighting, fog, weather, VFX, material response and atmospheric depth rather than from excessive geometric or texture detail.
 
@@ -405,6 +407,20 @@ Variation should come from recombining a controlled kit through:
 
 Unique buildings are appropriate for landmarks, major civic structures, dungeons and other important locations.
 
+### 9.3 Architectural Asset Production Order
+
+Use **author first, generalise second, automate third**. Begin with an artist-directed Blender blockout, inspect proportions and silhouette from normal gameplay cameras, then refine meaningful medium-scale geometry and construction logic. Obtain visual approval of the form before committing to production UVs, materials, generator infrastructure, LODs or colliders unless needed to test the form. One approved reference module can subsequently yield reusable pieces and explicit modular interfaces; only then extract repeated operations into Python or Geometry Nodes. Code-generated geometry is an assistance mechanism, not an aesthetic acceptance criterion.
+
+Visible detail includes deep openings, buttresses, sill and parapet profiles, masonry irregularity where it changes depth or shadow, exposed beam ends, and deliberately selected damage. Do not model every stone pore, shallow mortar groove or chip. Equally, do not replace meaningful geometric depth with a flat surface and a normal map. Quality must be judged in solid neutral lighting before material effects are introduced.
+
+### 9.4 Architectural Weathering Ownership
+
+Architectural source meshes define permanent form and structural damage. Reusable base materials and authored eligibility/exposure masks define material identity and where deposition, growth or deterioration may appear. A small family of Unity URP architectural shaders applies environmental profiles, surface age/condition and temporary wetness to those authored inputs. The same source asset should work across climates without a unique fully weathered texture per biome.
+
+The detailed source/export standards live in [ninthage-art](https://github.com/FrontierDev/ninthage-art/tree/main/docs); that repository does not own Unity shader implementations or gameplay state.
+
+Shaders may alter colour, smoothness/roughness and apparent normal detail for dirt, moss, lichen, corrosion, paint fading, rot and wetness. They do not create real missing stones, holes, broken beams, changed collision or major silhouette damage; use authored geometry/variants and independent physics for those. Weathering must be artistically constrained, material-specific and stable across modular seams, not indiscriminate world-space noise.
+
 ---
 
 ## 10. Characters and Actors
@@ -547,6 +563,14 @@ Use decals, masks and local overlays for:
 - environmental storytelling.
 
 Do not bake all local variation into unique geometry or unique base textures when a reusable overlay solves the problem.
+
+### 12.5 Shared Runtime Weathering
+
+The art-to-engine material contract separates **base surface**, **authored eligibility/exposure masks**, **environmental/weathering profile**, and **temporary conditions**. Suitable inputs include local curvature/cavity/exposure information, surface orientation, material class, climate, stable per-object variation, age and condition. Shader-driven dirt, moss, corrosion and dampness should remain visually plausible and consistent with approved painted/stylised materials; random full-surface noise and photo-real overlay detail are not substitutes for design.
+
+A small set of shared stone/plaster, timber and metal shader families should reuse common weathering logic where practical. Mask packing, UV/vertex-data channels and shader property names require a versioned contract between the art and Unity projects; example RGBA layouts are not global policy until validated. Avoid authoring irreversible shadowing in albedo to mimic runtime weathering.
+
+Temporary rain wetness or seasonal overlays are driven by the client environment system. Persistent age, damage and deterioration require stable object/world state where gameplay-relevant; only compact state needs storage/synchronisation, not textures or per-frame visual simulation on the server. Weathering should simplify with distance and quality tiers.
 
 ---
 
@@ -752,27 +776,27 @@ The interface must remain legible over bright snow, dark marshes, volcanic scene
 A standard non-character asset should normally pass through:
 
 ```text
-brief / concept
+brief / approved references and provisional dimensions
     ↓
-blockout and scale validation
+author-directed blockout, proportions and gameplay-camera review
     ↓
-high/source model if needed
+visual approval of primary form
     ↓
-production mesh / retopology
+medium-scale modelling and construction detail
     ↓
-UV and material assignment
+visual approval of untextured geometry
     ↓
-bake where required
+extract reusable modules/generators where justified
     ↓
-texture/material authoring
+UVs, shared base materials, trims and authored weathering masks
     ↓
-LOD creation
+optional source-only bake and texture export
     ↓
-collision
+Unity material/weathering verification
     ↓
-Unity import and validation
+production LODs and separate collision
     ↓
-placement test in representative lighting
+Unity assembly, distance and performance validation
 ```
 
 No asset is complete merely because it looks correct in a modelling package.
@@ -849,6 +873,7 @@ Artists and asset-generation tools must consider:
 - triangle count;
 - draw calls;
 - material count;
+- shader texture samples, weathering branches and shader variants;
 - texture memory;
 - transparency/overdraw;
 - shadow-casting cost;
@@ -971,6 +996,8 @@ A representative Ninth Age scene is visually on-target when all of the following
 - architecture reads clearly at gameplay distance;
 - actor silhouettes remain readable against the environment;
 - materials remain believable but restrained;
+- architectural forms carry convincing medium-scale depth without weathering shaders;
+- environment-driven wear is plausible across wet/dry climates and does not expose modular seams;
 - fog and atmosphere establish depth;
 - lighting materially improves the scene without being required to hide asset problems;
 - the scene works under multiple times of day;
@@ -993,6 +1020,9 @@ An individual asset is not ready for production unless it satisfies the applicab
 - material count is justified;
 - surface detail is not excessively noisy;
 - normals/tangents produce the intended shading;
+- any weathering mask channels and material category are defined and tested against the Unity shader contract;
+- permanent physical damage is distinguished from shader-only surface deterioration;
+- required clean/aged/wet/biome variants are visually reviewed, including distant LOD simplification;
 - UVs or world-space mapping are appropriate;
 - terrain-contact blending is supported where required;
 - LODs exist where required;
