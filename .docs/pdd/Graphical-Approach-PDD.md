@@ -561,6 +561,8 @@ Use decals, masks and local overlays for:
 
 Do not bake all local variation into unique geometry or unique base textures when a reusable overlay solves the problem.
 
+For compatible static architecture, ground proximity over a 0–4 m range may be baked in the Editor into vertex colour R on placement-specific meshes. The architectural HLSL shader consumes this mask; dirt appearance and intensity remain material controls at runtime, without runtime ground detection. Vertex colour G/B/A remain unassigned by this implementation. Dynamic or procedural objects whose terrain relationship changes are outside this contract.
+
 ---
 
 ## 13. VFX
