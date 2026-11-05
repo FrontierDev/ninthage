@@ -561,7 +561,7 @@ Use decals, masks and local overlays for:
 
 Do not bake all local variation into unique geometry or unique base textures when a reusable overlay solves the problem.
 
-Static geometry and terrain contact relationships are computed by Editor tooling into one shared architecture-weathering atlas per world chunk. Architecture meshes and materials remain shared; renderer secondary UVs and serialized atlas-rectangle bindings address the atlas. Runtime shaders sample the baked weathering mask without sampling terrain height, and floating-origin shifts require no weathering update. Dirt and mud appearance remains configurable through material PBR textures and intensity. Atlas channel R stores ground-contact susceptibility; other environmental channels are not defined here.
+Static architecture may use live shader-based terrain intersection blending. A local binding component supplies the assigned Unity Terrain heightmap to its architecture hierarchy, and the project-owned architectural material samples it directly. Source meshes and materials remain shared; no generated contact meshes or weathering atlases are required. Dirt and mud appearance remains a reusable PBR material layer. Larger moss, wetness and corrosion systems remain separate future concerns.
 
 ---
 

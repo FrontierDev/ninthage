@@ -29,6 +29,8 @@ half _DetailAlbedoMapScale;
 half _DetailNormalMapScale;
 half _DirtNormalScale;
 half _DirtStrength;
+float _DirtFullHeight;
+float _DirtFadeHeight;
 half _DirtSmoothness;
 half _DirtUseMaskMap;
 half _Surface;
@@ -46,13 +48,10 @@ TEXTURE2D(_DirtMaskMap); SAMPLER(sampler_DirtMaskMap);
 TEXTURE2D(_DirtNormalMap); SAMPLER(sampler_DirtNormalMap);
 
 #if defined(ARCHITECTURE_FORWARD_PASS)
-TEXTURE2D_ARRAY(_NAArchitectureWeatheringAtlasArray);
-SAMPLER(sampler_NAArchitectureWeatheringAtlasArray);
-UNITY_INSTANCING_BUFFER_START(ArchitectureWeathering)
-    UNITY_DEFINE_INSTANCED_PROP(float4, _NAArchitectureWeatheringAtlasST)
-    UNITY_DEFINE_INSTANCED_PROP(float, _NAArchitectureWeatheringAtlasSlice)
-    UNITY_DEFINE_INSTANCED_PROP(float, _NAArchitectureWeatheringEnabled)
-UNITY_INSTANCING_BUFFER_END(ArchitectureWeathering)
+TEXTURE2D(_NATerrainHeightmap);
+float4x4 _NATerrainObjectToTerrain;
+float4 _NATerrainSize;
+float _NATerrainBlendEnabled;
 #endif
 
 void ApplyPerPixelDisplacement(half3 viewDirTS, inout float2 uv)
@@ -72,7 +71,7 @@ half3 ApplyDetailNormal(float2 uv, half3 normalTS, half mask)
 #endif
 }
 
-void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float2 weatheringUV, out SurfaceData surface)
+void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, out SurfaceData surface)
 {
     surface = (SurfaceData)0;
     half4 baseSample = SampleAlbedoAlpha(uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
@@ -109,18 +108,24 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float2 weatheringUV
     surface.normalTS = ApplyDetailNormal(detailUV, surface.normalTS, detailMask);
 #endif
 #if defined(_DIRT_ON) && defined(ARCHITECTURE_FORWARD_PASS)
-    // Environment state is shared by all architecture materials.
+    // The renderer binding identifies its assigned Terrain.
     [branch] if (_DirtStrength > 0.0h)
     {
-        float enabled = UNITY_ACCESS_INSTANCED_PROP(ArchitectureWeathering, _NAArchitectureWeatheringEnabled);
-        if (enabled <= 0.0)
+        if (_NATerrainBlendEnabled < 0.5 || any(_NATerrainSize.xyz <= 0.0))
             return;
-        float4 atlasST = UNITY_ACCESS_INSTANCED_PROP(ArchitectureWeathering, _NAArchitectureWeatheringAtlasST);
-        float slice = UNITY_ACCESS_INSTANCED_PROP(ArchitectureWeathering, _NAArchitectureWeatheringAtlasSlice);
-        float2 atlasUV = weatheringUV * atlasST.xy + atlasST.zw;
-        half bakedContactMask = SAMPLE_TEXTURE2D_ARRAY(_NAArchitectureWeatheringAtlasArray,
-            sampler_NAArchitectureWeatheringAtlasArray, atlasUV, slice).r * enabled;
-        half mask = saturate(bakedContactMask * _DirtStrength);
+        float3 terrainLocalPosition = mul(_NATerrainObjectToTerrain, float4(positionOS, 1.0)).xyz;
+        float2 terrainUV = terrainLocalPosition.xz / _NATerrainSize.xz;
+        if (any(terrainUV < 0.0) || any(terrainUV > 1.0))
+            return;
+        float4 packedHeight = SAMPLE_TEXTURE2D_LOD(_NATerrainHeightmap, sampler_LinearClamp, terrainUV, 0);
+        // Unity stores normalized terrain heights in the 0..32766/65535 range.
+        float normalizedHeight = UnpackHeightmap(packedHeight) * (65535.0 / 32766.0);
+        float terrainLocalHeight = normalizedHeight * _NATerrainSize.y;
+        float verticalDistance = max(0.0, terrainLocalPosition.y - terrainLocalHeight);
+        float fullHeight = max(0.0, _DirtFullHeight);
+        float fadeHeight = max(fullHeight + 0.001, _DirtFadeHeight);
+        float contactMask = 1.0 - smoothstep(fullHeight, fadeHeight, verticalDistance);
+        half mask = saturate(contactMask * _DirtStrength);
         float2 uvDirt = dirtUV * _DirtTiling.xy + _DirtOffset.xy;
         half3 dirtAlbedo = SAMPLE_TEXTURE2D(_DirtBaseMap, sampler_DirtBaseMap, uvDirt).rgb * _DirtColor.rgb;
         half4 dirtPacked = half4(0, 1, 0, _DirtSmoothness);
@@ -171,7 +176,7 @@ struct ArchitectureVaryings
 #if defined(USE_APV_PROBE_OCCLUSION)
     float4 probeOcclusion : TEXCOORD8;
 #endif
-    float2 weatheringUV : TEXCOORD9;
+    float3 positionOS : TEXCOORD9;
     UNITY_VERTEX_INPUT_INSTANCE_ID
     UNITY_VERTEX_OUTPUT_STEREO
 };
@@ -185,7 +190,7 @@ ArchitectureVaryings ArchitectureVertex(ArchitectureAttributes input)
     VertexPositionInputs position = GetVertexPositionInputs(input.positionOS.xyz);
     VertexNormalInputs normal = GetVertexNormalInputs(input.normalOS, input.tangentOS);
     output.positionCS = position.positionCS;
-    output.weatheringUV = input.lightmapUV;
+    output.positionOS = input.positionOS.xyz;
     output.positionWS = position.positionWS;
     output.normalWS = normal.normalWS;
     output.tangentWS = half4(normal.tangentWS, input.tangentOS.w * GetOddNegativeScale());
@@ -222,7 +227,7 @@ void ArchitectureFragment(ArchitectureVaryings input, out half4 outColor : SV_Ta
     ApplyPerPixelDisplacement(GetViewDirectionTangentSpace(input.tangentWS, input.normalWS, viewDir), uv);
 #endif
     SurfaceData surface;
-    InitializeArchitectureSurface(uv, input.uv.zw, input.weatheringUV, surface);
+    InitializeArchitectureSurface(uv, input.uv.zw, input.positionOS, surface);
 #if defined(LOD_FADE_CROSSFADE)
     LODFadeCrossFade(input.positionCS);
 #endif
@@ -289,7 +294,7 @@ ArchitectureMetaVaryings ArchitectureMetaVertex(ArchitectureMetaAttributes input
 half4 ArchitectureMetaFragment(ArchitectureMetaVaryings input) : SV_Target
 {
     SurfaceData surface;
-    InitializeArchitectureSurface(input.uv.xy, input.uv.zw, float2(0, 0), surface);
+    InitializeArchitectureSurface(input.uv.xy, input.uv.zw, float3(0, 0, 0), surface);
     BRDFData brdf;
     InitializeBRDFData(surface.albedo, surface.metallic, surface.specular, surface.smoothness, surface.alpha, brdf);
     MetaInput meta = (MetaInput)0;

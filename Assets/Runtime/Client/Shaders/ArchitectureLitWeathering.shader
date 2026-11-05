@@ -41,6 +41,8 @@ Shader "Ninth Age/Architecture Lit Weathering"
         _DirtTiling("Dirt Tiling", Vector) = (1,1,0,0)
         _DirtOffset("Dirt Offset", Vector) = (0,0,0,0)
         _DirtStrength("Dirt Strength", Range(0,1)) = 0
+        _DirtFullHeight("Dirt Full Height (m)", Float) = 0.10
+        _DirtFadeHeight("Dirt Fade Height (m)", Float) = 1.50
         [HideInInspector] _Surface("Surface", Float) = 0
         [HideInInspector][NoScaleOffset] unity_Lightmaps("unity_Lightmaps", 2DArray) = "" {}
         [HideInInspector][NoScaleOffset] unity_LightmapsInd("unity_LightmapsInd", 2DArray) = "" {}
