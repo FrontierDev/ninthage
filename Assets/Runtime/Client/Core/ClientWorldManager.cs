@@ -1,4 +1,5 @@
 using Game.Client.Performance;
+using Game.Client.Rendering;
 using Game.Client.UI;
 using Game.Shared.Performance;
 using PurrNet;
@@ -312,6 +313,7 @@ namespace Game.Client
 
             // Offset the new scene to match the current floating origin.
             ClientPositionManager.Instance.ApplyOriginToScene(state.scene);
+            ClientArchitectureWeatheringManager.Instance.RefreshFromWorldScenes(new List<Scene>(_loadedScenes.Values));
             RecordPendingSceneOperations();
         }
 
@@ -324,6 +326,8 @@ namespace Game.Client
             using var markerScope = SCENE_UNLOAD_MARKER.Begin();
             if (!_loadedScenes.Remove(sceneID))
                 return;
+
+            ClientArchitectureWeatheringManager.Instance.RefreshFromWorldScenes(new List<Scene>(_loadedScenes.Values));
 
             if (PerformanceTelemetry.IsEnabled)
             {
@@ -494,6 +498,7 @@ namespace Game.Client
             _hasRequiredStreamedSceneSet = false;
             onWorldPresentationEnding?.Invoke();
             _loadedScenes.Clear();
+            ClientArchitectureWeatheringManager.Instance.RefreshFromWorldScenes(new List<Scene>(_loadedScenes.Values));
             if (PerformanceTelemetry.IsEnabled)
                 PerformanceTelemetry.TryRecord(ClientPerformanceMetrics.TRACKED_SCENE_COUNT, 0);
 

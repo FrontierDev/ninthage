@@ -172,7 +172,7 @@
                 },
                 {
                     "mode": 0,
-                    "h_Iterations": 10,
+                    "h_Iterations": 100000,
                     "h_Resolution": 256,
                     "h_ErosionSteps": 3,
                     "w_Windiness": 0.5,

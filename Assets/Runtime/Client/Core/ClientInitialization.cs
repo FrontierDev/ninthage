@@ -1,5 +1,6 @@
 using Debug = Game.Shared.Utility.FormattedDebug;
 using Game.Client.Performance;
+using Game.Client.Rendering;
 using Game.Shared;
 using Game.Shared.Data;
 using Game.Shared.Networking;
@@ -313,6 +314,7 @@ namespace Game.Client
             // Create a new GameObject for the ClientWorldManager and add the component.
             var worldManagerObj = new GameObject("[Client] WorldManager");
             GameObject.DontDestroyOnLoad(worldManagerObj);
+            worldManagerObj.AddComponent<ClientArchitectureWeatheringManager>();
             var worldManager = worldManagerObj.AddComponent<ClientWorldManager>();
             var positionManager = worldManagerObj.AddComponent<ClientPositionManager>();
             var cameraManager = worldManagerObj.AddComponent<CameraManager>();

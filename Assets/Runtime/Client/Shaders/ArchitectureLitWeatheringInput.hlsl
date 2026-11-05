@@ -29,8 +29,6 @@ half _DetailAlbedoMapScale;
 half _DetailNormalMapScale;
 half _DirtNormalScale;
 half _DirtStrength;
-float _DirtFullHeight;
-float _DirtFadeHeight;
 half _DirtSmoothness;
 half _DirtUseMaskMap;
 half _Surface;
@@ -46,6 +44,16 @@ TEXTURE2D(_DetailNormalMap); SAMPLER(sampler_DetailNormalMap);
 TEXTURE2D(_DirtBaseMap); SAMPLER(sampler_DirtBaseMap);
 TEXTURE2D(_DirtMaskMap); SAMPLER(sampler_DirtMaskMap);
 TEXTURE2D(_DirtNormalMap); SAMPLER(sampler_DirtNormalMap);
+
+#if defined(ARCHITECTURE_FORWARD_PASS)
+TEXTURE2D_ARRAY(_NAArchitectureWeatheringAtlasArray);
+SAMPLER(sampler_NAArchitectureWeatheringAtlasArray);
+UNITY_INSTANCING_BUFFER_START(ArchitectureWeathering)
+    UNITY_DEFINE_INSTANCED_PROP(float4, _NAArchitectureWeatheringAtlasST)
+    UNITY_DEFINE_INSTANCED_PROP(float, _NAArchitectureWeatheringAtlasSlice)
+    UNITY_DEFINE_INSTANCED_PROP(float, _NAArchitectureWeatheringEnabled)
+UNITY_INSTANCING_BUFFER_END(ArchitectureWeathering)
+#endif
 
 void ApplyPerPixelDisplacement(half3 viewDirTS, inout float2 uv)
 {
@@ -64,7 +72,7 @@ half3 ApplyDetailNormal(float2 uv, half3 normalTS, half mask)
 #endif
 }
 
-void InitializeArchitectureSurface(float2 uv, float2 dirtUV, half proximity, out SurfaceData surface)
+void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float2 weatheringUV, out SurfaceData surface)
 {
     surface = (SurfaceData)0;
     half4 baseSample = SampleAlbedoAlpha(uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
@@ -100,14 +108,19 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, half proximity, out
     surface.albedo *= LerpWhiteTo(detail, detailMask);
     surface.normalTS = ApplyDetailNormal(detailUV, surface.normalTS, detailMask);
 #endif
-#if defined(_DIRT_ON)
-    // A uniform branch also avoids the three dirt samples when strength is zero.
+#if defined(_DIRT_ON) && defined(ARCHITECTURE_FORWARD_PASS)
+    // Environment state is shared by all architecture materials.
     [branch] if (_DirtStrength > 0.0h)
     {
-        float fullHeight = clamp(_DirtFullHeight, 0.0, 3.9999);
-        float fadeHeight = clamp(_DirtFadeHeight, fullHeight + 0.0001, 4.0);
-        float distanceMetres = (1.0 - saturate(proximity)) * 4.0;
-        half mask = saturate((1.0 - smoothstep(fullHeight, fadeHeight, distanceMetres)) * _DirtStrength);
+        float enabled = UNITY_ACCESS_INSTANCED_PROP(ArchitectureWeathering, _NAArchitectureWeatheringEnabled);
+        if (enabled <= 0.0)
+            return;
+        float4 atlasST = UNITY_ACCESS_INSTANCED_PROP(ArchitectureWeathering, _NAArchitectureWeatheringAtlasST);
+        float slice = UNITY_ACCESS_INSTANCED_PROP(ArchitectureWeathering, _NAArchitectureWeatheringAtlasSlice);
+        float2 atlasUV = weatheringUV * atlasST.xy + atlasST.zw;
+        half bakedContactMask = SAMPLE_TEXTURE2D_ARRAY(_NAArchitectureWeatheringAtlasArray,
+            sampler_NAArchitectureWeatheringAtlasArray, atlasUV, slice).r * enabled;
+        half mask = saturate(bakedContactMask * _DirtStrength);
         float2 uvDirt = dirtUV * _DirtTiling.xy + _DirtOffset.xy;
         half3 dirtAlbedo = SAMPLE_TEXTURE2D(_DirtBaseMap, sampler_DirtBaseMap, uvDirt).rgb * _DirtColor.rgb;
         half4 dirtPacked = half4(0, 1, 0, _DirtSmoothness);
@@ -137,7 +150,6 @@ struct ArchitectureAttributes
     float2 uv : TEXCOORD0;
     float2 lightmapUV : TEXCOORD1;
     float2 dynamicLightmapUV : TEXCOORD2;
-    half4 color : COLOR;
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -159,7 +171,7 @@ struct ArchitectureVaryings
 #if defined(USE_APV_PROBE_OCCLUSION)
     float4 probeOcclusion : TEXCOORD8;
 #endif
-    half proximity : TEXCOORD9;
+    float2 weatheringUV : TEXCOORD9;
     UNITY_VERTEX_INPUT_INSTANCE_ID
     UNITY_VERTEX_OUTPUT_STEREO
 };
@@ -173,11 +185,11 @@ ArchitectureVaryings ArchitectureVertex(ArchitectureAttributes input)
     VertexPositionInputs position = GetVertexPositionInputs(input.positionOS.xyz);
     VertexNormalInputs normal = GetVertexNormalInputs(input.normalOS, input.tangentOS);
     output.positionCS = position.positionCS;
+    output.weatheringUV = input.lightmapUV;
     output.positionWS = position.positionWS;
     output.normalWS = normal.normalWS;
     output.tangentWS = half4(normal.tangentWS, input.tangentOS.w * GetOddNegativeScale());
     output.uv = float4(TRANSFORM_TEX(input.uv, _BaseMap), input.uv);
-    output.proximity = input.color.r;
     half fog = 0;
 #if !defined(_FOG_FRAGMENT)
     fog = ComputeFogFactor(position.positionCS.z);
@@ -210,7 +222,7 @@ void ArchitectureFragment(ArchitectureVaryings input, out half4 outColor : SV_Ta
     ApplyPerPixelDisplacement(GetViewDirectionTangentSpace(input.tangentWS, input.normalWS, viewDir), uv);
 #endif
     SurfaceData surface;
-    InitializeArchitectureSurface(uv, input.uv.zw, input.proximity, surface);
+    InitializeArchitectureSurface(uv, input.uv.zw, input.weatheringUV, surface);
 #if defined(LOD_FADE_CROSSFADE)
     LODFadeCrossFade(input.positionCS);
 #endif
@@ -261,26 +273,23 @@ struct ArchitectureMetaAttributes
     float2 uv : TEXCOORD0;
     float2 lightmapUV : TEXCOORD1;
     float2 dynamicLightmapUV : TEXCOORD2;
-    half4 color : COLOR;
 };
 struct ArchitectureMetaVaryings
 {
     float4 positionCS : SV_POSITION;
     float4 uv : TEXCOORD0;
-    half proximity : TEXCOORD1;
 };
 ArchitectureMetaVaryings ArchitectureMetaVertex(ArchitectureMetaAttributes input)
 {
     ArchitectureMetaVaryings output;
     output.positionCS = UnityMetaVertexPosition(input.positionOS.xyz, input.lightmapUV, input.dynamicLightmapUV);
     output.uv = float4(TRANSFORM_TEX(input.uv, _BaseMap), input.uv);
-    output.proximity = input.color.r;
     return output;
 }
 half4 ArchitectureMetaFragment(ArchitectureMetaVaryings input) : SV_Target
 {
     SurfaceData surface;
-    InitializeArchitectureSurface(input.uv.xy, input.uv.zw, input.proximity, surface);
+    InitializeArchitectureSurface(input.uv.xy, input.uv.zw, float2(0, 0), surface);
     BRDFData brdf;
     InitializeBRDFData(surface.albedo, surface.metallic, surface.specular, surface.smoothness, surface.alpha, brdf);
     MetaInput meta = (MetaInput)0;

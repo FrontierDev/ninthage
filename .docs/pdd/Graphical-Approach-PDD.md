@@ -561,7 +561,7 @@ Use decals, masks and local overlays for:
 
 Do not bake all local variation into unique geometry or unique base textures when a reusable overlay solves the problem.
 
-For compatible static architecture, ground proximity over a 0–4 m range may be baked in the Editor into vertex colour R on placement-specific meshes. The architectural HLSL shader consumes this mask; dirt appearance and intensity remain material controls at runtime, without runtime ground detection. Vertex colour G/B/A remain unassigned by this implementation. Dynamic or procedural objects whose terrain relationship changes are outside this contract.
+Static geometry and terrain contact relationships are computed by Editor tooling into one shared architecture-weathering atlas per world chunk. Architecture meshes and materials remain shared; renderer secondary UVs and serialized atlas-rectangle bindings address the atlas. Runtime shaders sample the baked weathering mask without sampling terrain height, and floating-origin shifts require no weathering update. Dirt and mud appearance remains configurable through material PBR textures and intensity. Atlas channel R stores ground-contact susceptibility; other environmental channels are not defined here.
 
 ---
 
