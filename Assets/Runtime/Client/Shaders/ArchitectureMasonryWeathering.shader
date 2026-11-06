@@ -31,9 +31,9 @@ Shader "Ninth Age/Architecture Masonry Weathering"
         [Normal] _DetailNormalMap("Detail Normal Map", 2D) = "bump" {}
         _DetailNormalMapScale("Detail Normal Scale", Range(0,2)) = 1
         [Toggle(_AGING_ON)] _UseAging("Use Aging", Float) = 0
-        _WeatheringMask("Weathering Mask (R Damage, G Cavity, B Biology, A Grime)", 2D) = "black" {}
+        [NoScaleOffset] _WeatheringMask("Weathering Mask (R Damage, G Cavity, B Biology, A Grime)", 2D) = "black" {}
         _DamageColor("Damage Color", Color) = (1,1,1,1)
-        [Normal] _DamageNormalMap("Damage Normal", 2D) = "bump" {}
+        [Normal][NoScaleOffset] _DamageNormalMap("Damage Normal", 2D) = "bump" {}
         _DamageNormalScale("Damage Normal Scale", Float) = 1
         _DamageStrength("Damage Strength", Range(0,1)) = 0
         _DamageSmoothnessOffset("Damage Smoothness Offset", Range(-1,1)) = -0.15
@@ -44,9 +44,9 @@ Shader "Ninth Age/Architecture Masonry Weathering"
         _MacroSmoothnessVariation("Macro Smoothness Variation", Range(0,1)) = 0.08
         _WeatheringBreakupInfluence("Weathering Breakup Influence", Range(0,1)) = 0.65
         [Toggle(_DIRT_ON)] _UseDirt("Use Dirt", Float) = 0
-        _DirtBaseMap("Dirt Base Map", 2D) = "white" {}
+        [NoScaleOffset] _DirtBaseMap("Dirt Base Map", 2D) = "white" {}
         _DirtColor("Dirt Color", Color) = (1,1,1,1)
-        [Normal] _DirtNormalMap("Dirt Normal", 2D) = "bump" {}
+        [Normal][NoScaleOffset] _DirtNormalMap("Dirt Normal", 2D) = "bump" {}
         _DirtNormalScale("Dirt Normal Scale", Float) = 1
         _DirtSmoothness("Dirt Smoothness", Range(0,1)) = 0.2
         _DirtAO("Dirt AO", Range(0,1)) = 1
@@ -59,7 +59,7 @@ Shader "Ninth Age/Architecture Masonry Weathering"
         _CavityDirtStrength("Cavity Dirt Strength", Range(0,1)) = 0
         _RunoffDirtStrength("Runoff Dirt Strength", Range(0,1)) = 0
         _GrimeDirtStrength("Grime Strength", Range(0,1)) = 0
-        _RunoffMap("Runoff Map (R Coverage)", 2D) = "white" {}
+        [NoScaleOffset] _RunoffMap("Runoff Map (R Coverage)", 2D) = "white" {}
         _RunoffTiling("Runoff Tiling", Vector) = (1,1,0,0)
         _RunoffOffset("Runoff Offset", Vector) = (0,0,0,0)
         _RunoffVerticalFullNormalY("Runoff Full Normal Y", Range(0,1)) = 0.15
@@ -75,9 +75,9 @@ Shader "Ninth Age/Architecture Masonry Weathering"
         _WetSmoothness("Wet Smoothness", Range(0,1)) = 0.75
         _WetNormalFlattening("Wet Normal Flattening", Range(0,1)) = 0.20
         [Toggle(_MOSS_ON)] _UseMoss("Use Moss", Float) = 0
-        _MossBaseMap("Moss Base Map (A Coverage)", 2D) = "white" {}
+        [NoScaleOffset] _MossBaseMap("Moss Base Map (A Coverage)", 2D) = "white" {}
         _MossColor("Moss Color", Color) = (1,1,1,1)
-        [Normal] _MossNormalMap("Moss Normal", 2D) = "bump" {}
+        [Normal][NoScaleOffset] _MossNormalMap("Moss Normal", 2D) = "bump" {}
         _MossNormalScale("Moss Normal Scale", Float) = 1
         _MossSmoothness("Moss Smoothness", Range(0,1)) = 0.2
         _MossAO("Moss AO", Range(0,1)) = 1

@@ -37,6 +37,8 @@ half _Surface;
 UNITY_TEXTURE_STREAMING_DEBUG_VARS;
 CBUFFER_END
 
+float4 _NAWeatheringOffset;
+
 TEXTURE2D(_MetallicGlossMap); SAMPLER(sampler_MetallicGlossMap);
 TEXTURE2D(_ParallaxMap); SAMPLER(sampler_ParallaxMap);
 TEXTURE2D(_OcclusionMap); SAMPLER(sampler_OcclusionMap);
@@ -76,18 +78,26 @@ half3 ApplyDetailNormal(float2 uv, half3 normalTS, half mask)
 }
 
 #if defined(ARCHITECTURE_FORWARD_PASS) && (defined(_DIRT_ON) || defined(_WETNESS_ON))
-float TerrainContact(float3 positionOS, float fullHeight, float fadeHeight)
+bool TryGetTerrainVerticalDistance(float3 positionOS, out float verticalDistance)
 {
+    verticalDistance = 0.0;
     if (_NATerrainBlendEnabled < 0.5 || any(_NATerrainSize.xyz <= 0.0))
-        return 0.0;
+        return false;
     float3 terrainLocalPosition = mul(_NATerrainObjectToTerrain, float4(positionOS, 1.0)).xyz;
     float2 terrainUV = terrainLocalPosition.xz / _NATerrainSize.xz;
     if (any(terrainUV < 0.0) || any(terrainUV > 1.0))
-        return 0.0;
+        return false;
     float4 packedHeight = SAMPLE_TEXTURE2D_LOD(_NATerrainHeightmap, sampler_LinearClamp, terrainUV, 0);
     float terrainLocalHeight = UnpackHeightmap(packedHeight) * (65535.0 / 32766.0) * _NATerrainSize.y;
-    float verticalDistance = max(0.0, terrainLocalPosition.y - terrainLocalHeight);
-    return 1.0 - smoothstep(max(0.0, fullHeight), max(fullHeight + 0.001, fadeHeight), verticalDistance);
+    verticalDistance = max(0.0, terrainLocalPosition.y - terrainLocalHeight);
+    return true;
+}
+
+float GroundContactFromDistance(float verticalDistance, float fullHeight, float fadeHeight)
+{
+    float validatedFullHeight = max(0.0, fullHeight);
+    float validatedFadeHeight = max(validatedFullHeight + 0.001, fadeHeight);
+    return 1.0 - smoothstep(validatedFullHeight, validatedFadeHeight, verticalDistance);
 }
 #endif
 
@@ -138,8 +148,9 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, 
     surface.albedo *= LerpWhiteTo(detail, detailMask);
     surface.normalTS = ApplyDetailNormal(detailUV, surface.normalTS, detailMask);
 #endif
+    float3 weatheringPositionOS = positionOS + _NAWeatheringOffset.xyz;
     float tileSize = max(_MacroTileSize, 0.001);
-    float3 macroPosition = positionOS / tileSize;
+    float3 macroPosition = weatheringPositionOS / tileSize;
     float3 weights = pow(abs(normalize(normalOS)), max(_MacroBlendSharpness, 1.0));
     weights /= max(weights.x + weights.y + weights.z, 0.0001);
     float3 macroRGB = SAMPLE_TEXTURE2D_LOD(_BaseMap, sampler_BaseMap, macroPosition.zy, _MacroMip).rgb * weights.x
@@ -161,23 +172,37 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, 
 #if defined(ARCHITECTURE_FORWARD_PASS)
     float wetness = 0.0;
 #if defined(_DIRT_ON) || defined(_WETNESS_ON)
-    float2 sideWeights = abs(normalize(normalOS).xz);
-    sideWeights /= max(sideWeights.x + sideWeights.y, 0.0001);
-    float2 runoffUVX = positionOS.zy * _RunoffTiling.xy + _RunoffOffset.xy;
-    float2 runoffUVZ = positionOS.xy * _RunoffTiling.xy + _RunoffOffset.xy;
-    float runoffTexture = SAMPLE_TEXTURE2D(_RunoffMap, sampler_RunoffMap, runoffUVX).r * sideWeights.x
-        + SAMPLE_TEXTURE2D(_RunoffMap, sampler_RunoffMap, runoffUVZ).r * sideWeights.y;
-    float verticalMask = 1.0 - smoothstep(saturate(_RunoffVerticalFullNormalY),
-        max(saturate(_RunoffVerticalFullNormalY) + 0.001, saturate(_RunoffVerticalFadeNormalY)), abs(normalize(normalWS).y));
+    float verticalDistance;
+    bool hasTerrainDistance = TryGetTerrainVerticalDistance(positionOS, verticalDistance);
+    float runoffTexture = 0.0;
+    float verticalMask = 0.0;
+    bool needsRunoff = false;
+#if defined(_DIRT_ON)
+    needsRunoff = needsRunoff || (_RunoffDirtStrength > 0.0);
 #endif
 #if defined(_WETNESS_ON)
-    float groundWetness = saturate(TerrainContact(positionOS, _WetGroundFullHeight, _WetGroundFadeHeight) * _WetGroundInfluence);
+    needsRunoff = needsRunoff || (_WetRunoffInfluence > 0.0);
+#endif
+    [branch] if (needsRunoff)
+    {
+        float2 sideWeights = abs(normalize(normalOS).xz);
+        sideWeights /= max(sideWeights.x + sideWeights.y, 0.0001);
+        float2 runoffUVX = weatheringPositionOS.zy * _RunoffTiling.xy + _RunoffOffset.xy;
+        float2 runoffUVZ = weatheringPositionOS.xy * _RunoffTiling.xy + _RunoffOffset.xy;
+        runoffTexture = SAMPLE_TEXTURE2D(_RunoffMap, sampler_RunoffMap, runoffUVX).r * sideWeights.x
+            + SAMPLE_TEXTURE2D(_RunoffMap, sampler_RunoffMap, runoffUVZ).r * sideWeights.y;
+        verticalMask = 1.0 - smoothstep(saturate(_RunoffVerticalFullNormalY),
+            max(saturate(_RunoffVerticalFullNormalY) + 0.001, saturate(_RunoffVerticalFadeNormalY)), abs(normalize(normalWS).y));
+    }
+#endif
+#if defined(_WETNESS_ON)
+    float groundWetness = saturate((hasTerrainDistance ? GroundContactFromDistance(verticalDistance, _WetGroundFullHeight, _WetGroundFadeHeight) : 0.0) * _WetGroundInfluence);
     float runoffWetness = saturate(runoffTexture * verticalMask * _WetRunoffInfluence);
     float cavityWetness = saturate(weatheringMask.g * weatheringBreakup * _WetCavityInfluence);
     wetness = saturate((1.0 - (1.0 - groundWetness) * (1.0 - runoffWetness) * (1.0 - cavityWetness)) * _WetnessStrength);
 #endif
 #if defined(_DIRT_ON)
-    float groundDirt = saturate(TerrainContact(positionOS, _GroundDirtFullHeight, _GroundDirtFadeHeight) * weatheringBreakup * _GroundDirtStrength);
+    float groundDirt = saturate((hasTerrainDistance ? GroundContactFromDistance(verticalDistance, _GroundDirtFullHeight, _GroundDirtFadeHeight) : 0.0) * weatheringBreakup * _GroundDirtStrength);
     float cavityDirt = saturate(weatheringMask.g * weatheringBreakup * _CavityDirtStrength);
     float runoffDirt = saturate(runoffTexture * verticalMask * _RunoffDirtStrength);
     float surfaceGrime = saturate(weatheringMask.a * weatheringBreakup * _GrimeDirtStrength);

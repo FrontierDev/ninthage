@@ -13,6 +13,7 @@ namespace Game.Client.Rendering
         private static readonly int OBJECT_TO_TERRAIN_ID = Shader.PropertyToID("_NATerrainObjectToTerrain");
         private static readonly int TERRAIN_SIZE_ID = Shader.PropertyToID("_NATerrainSize");
         private static readonly int BLEND_ENABLED_ID = Shader.PropertyToID("_NATerrainBlendEnabled");
+        private static readonly int WEATHERING_OFFSET_ID = Shader.PropertyToID("_NAWeatheringOffset");
 
         [SerializeField] private Terrain _terrain;
 
@@ -58,7 +59,9 @@ namespace Game.Client.Rendering
             {
                 if (!UsesArchitectureShader(renderer))
                     continue;
+                Vector3 weatheringOffset = _terrain.transform.InverseTransformPoint(renderer.transform.position);
                 renderer.GetPropertyBlock(properties);
+                properties.SetVector(WEATHERING_OFFSET_ID, new Vector4(weatheringOffset.x, weatheringOffset.y, weatheringOffset.z, 0f));
                 properties.SetTexture(TERRAIN_HEIGHTMAP_ID, heightmap);
                 properties.SetMatrix(OBJECT_TO_TERRAIN_ID, _terrain.transform.worldToLocalMatrix * renderer.transform.localToWorldMatrix);
                 properties.SetVector(TERRAIN_SIZE_ID, new Vector4(size.x, size.y, size.z, 0f));
@@ -76,6 +79,7 @@ namespace Game.Client.Rendering
                     continue;
                 renderer.GetPropertyBlock(properties);
                 properties.SetFloat(BLEND_ENABLED_ID, 0f);
+                properties.SetVector(WEATHERING_OFFSET_ID, Vector4.zero);
                 renderer.SetPropertyBlock(properties);
             }
         }
