@@ -17,8 +17,14 @@ float4 _DetailAlbedoMap_ST;
 half4 _BaseColor;
 half4 _EmissionColor;
 half4 _DirtColor;
+half4 _MossColor;
+half4 _RunoffColor;
 float4 _DirtTiling;
 float4 _DirtOffset;
+float4 _MossTiling;
+float4 _MossOffset;
+float4 _RunoffTiling;
+float4 _RunoffOffset;
 half _Cutoff;
 half _Smoothness;
 half _Metallic;
@@ -33,6 +39,16 @@ float _DirtFullHeight;
 float _DirtFadeHeight;
 half _DirtSmoothness;
 half _DirtUseMaskMap;
+half _MossNormalScale;
+half _MossSmoothness;
+half _MossUseMaskMap;
+half _MossStrength;
+float _MossFullNormalY;
+float _MossFadeNormalY;
+half _RunoffStrength;
+half _RunoffSmoothness;
+float _RunoffFullNormalY;
+float _RunoffFadeNormalY;
 half _Surface;
 UNITY_TEXTURE_STREAMING_DEBUG_VARS;
 CBUFFER_END
@@ -46,6 +62,10 @@ TEXTURE2D(_DetailNormalMap); SAMPLER(sampler_DetailNormalMap);
 TEXTURE2D(_DirtBaseMap); SAMPLER(sampler_DirtBaseMap);
 TEXTURE2D(_DirtMaskMap); SAMPLER(sampler_DirtMaskMap);
 TEXTURE2D(_DirtNormalMap); SAMPLER(sampler_DirtNormalMap);
+TEXTURE2D(_MossBaseMap); SAMPLER(sampler_MossBaseMap);
+TEXTURE2D(_MossMaskMap); SAMPLER(sampler_MossMaskMap);
+TEXTURE2D(_MossNormalMap); SAMPLER(sampler_MossNormalMap);
+TEXTURE2D(_RunoffMap); SAMPLER(sampler_RunoffMap);
 
 #if defined(ARCHITECTURE_FORWARD_PASS)
 TEXTURE2D(_NATerrainHeightmap);
@@ -71,7 +91,43 @@ half3 ApplyDetailNormal(float2 uv, half3 normalTS, half mask)
 #endif
 }
 
-void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, out SurfaceData surface)
+void ApplyArchitectureGroundDirt(float2 dirtUV, float3 positionOS, inout SurfaceData surface)
+{
+#if defined(_DIRT_ON) && defined(ARCHITECTURE_FORWARD_PASS)
+    // The renderer binding identifies its assigned Terrain.
+    [branch] if (_DirtStrength > 0.0h)
+    {
+        if (_NATerrainBlendEnabled < 0.5 || any(_NATerrainSize.xyz <= 0.0))
+            return;
+        float3 terrainLocalPosition = mul(_NATerrainObjectToTerrain, float4(positionOS, 1.0)).xyz;
+        float2 terrainUV = terrainLocalPosition.xz / _NATerrainSize.xz;
+        if (any(terrainUV < 0.0) || any(terrainUV > 1.0))
+            return;
+        float4 packedHeight = SAMPLE_TEXTURE2D_LOD(_NATerrainHeightmap, sampler_LinearClamp, terrainUV, 0);
+        // Unity stores normalized terrain heights in the 0..32766/65535 range.
+        float normalizedHeight = UnpackHeightmap(packedHeight) * (65535.0 / 32766.0);
+        float terrainLocalHeight = normalizedHeight * _NATerrainSize.y;
+        float verticalDistance = max(0.0, terrainLocalPosition.y - terrainLocalHeight);
+        float fullHeight = max(0.0, _DirtFullHeight);
+        float fadeHeight = max(fullHeight + 0.001, _DirtFadeHeight);
+        float contactMask = 1.0 - smoothstep(fullHeight, fadeHeight, verticalDistance);
+        half mask = saturate(contactMask * _DirtStrength);
+        float2 uvDirt = dirtUV * _DirtTiling.xy + _DirtOffset.xy;
+        half3 dirtAlbedo = SAMPLE_TEXTURE2D(_DirtBaseMap, sampler_DirtBaseMap, uvDirt).rgb * _DirtColor.rgb;
+        half4 dirtPacked = half4(0, 1, 0, _DirtSmoothness);
+        [branch] if (_DirtUseMaskMap > 0.5h)
+            dirtPacked = SAMPLE_TEXTURE2D(_DirtMaskMap, sampler_DirtMaskMap, uvDirt);
+        half3 dirtNormal = UnpackNormalScale(SAMPLE_TEXTURE2D(_DirtNormalMap, sampler_DirtNormalMap, uvDirt), _DirtNormalScale);
+        surface.albedo = lerp(surface.albedo, dirtAlbedo, mask);
+        surface.metallic = lerp(surface.metallic, dirtPacked.r, mask);
+        surface.occlusion = lerp(surface.occlusion, dirtPacked.g, mask);
+        surface.smoothness = lerp(surface.smoothness, dirtPacked.a, mask);
+        surface.normalTS = normalize(lerp(surface.normalTS, dirtNormal, mask));
+    }
+#endif
+}
+
+void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, float3 normalOS, float3 normalWS, out SurfaceData surface)
 {
     surface = (SurfaceData)0;
     half4 baseSample = SampleAlbedoAlpha(uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
@@ -107,37 +163,46 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, 
     surface.albedo *= LerpWhiteTo(detail, detailMask);
     surface.normalTS = ApplyDetailNormal(detailUV, surface.normalTS, detailMask);
 #endif
-#if defined(_DIRT_ON) && defined(ARCHITECTURE_FORWARD_PASS)
-    // The renderer binding identifies its assigned Terrain.
-    [branch] if (_DirtStrength > 0.0h)
+#if defined(ARCHITECTURE_FORWARD_PASS)
+    ApplyArchitectureGroundDirt(dirtUV, positionOS, surface);
+
+#if defined(_MOSS_ON)
+    [branch] if (_MossStrength > 0.0h)
     {
-        if (_NATerrainBlendEnabled < 0.5 || any(_NATerrainSize.xyz <= 0.0))
-            return;
-        float3 terrainLocalPosition = mul(_NATerrainObjectToTerrain, float4(positionOS, 1.0)).xyz;
-        float2 terrainUV = terrainLocalPosition.xz / _NATerrainSize.xz;
-        if (any(terrainUV < 0.0) || any(terrainUV > 1.0))
-            return;
-        float4 packedHeight = SAMPLE_TEXTURE2D_LOD(_NATerrainHeightmap, sampler_LinearClamp, terrainUV, 0);
-        // Unity stores normalized terrain heights in the 0..32766/65535 range.
-        float normalizedHeight = UnpackHeightmap(packedHeight) * (65535.0 / 32766.0);
-        float terrainLocalHeight = normalizedHeight * _NATerrainSize.y;
-        float verticalDistance = max(0.0, terrainLocalPosition.y - terrainLocalHeight);
-        float fullHeight = max(0.0, _DirtFullHeight);
-        float fadeHeight = max(fullHeight + 0.001, _DirtFadeHeight);
-        float contactMask = 1.0 - smoothstep(fullHeight, fadeHeight, verticalDistance);
-        half mask = saturate(contactMask * _DirtStrength);
-        float2 uvDirt = dirtUV * _DirtTiling.xy + _DirtOffset.xy;
-        half3 dirtAlbedo = SAMPLE_TEXTURE2D(_DirtBaseMap, sampler_DirtBaseMap, uvDirt).rgb * _DirtColor.rgb;
-        half4 dirtPacked = half4(0, 1, 0, _DirtSmoothness);
-        [branch] if (_DirtUseMaskMap > 0.5h)
-            dirtPacked = SAMPLE_TEXTURE2D(_DirtMaskMap, sampler_DirtMaskMap, uvDirt);
-        half3 dirtNormal = UnpackNormalScale(SAMPLE_TEXTURE2D(_DirtNormalMap, sampler_DirtNormalMap, uvDirt), _DirtNormalScale);
-        surface.albedo = lerp(surface.albedo, dirtAlbedo, mask);
-        surface.metallic = lerp(surface.metallic, dirtPacked.r, mask);
-        surface.occlusion = lerp(surface.occlusion, dirtPacked.g, mask);
-        surface.smoothness = lerp(surface.smoothness, dirtPacked.a, mask);
-        surface.normalTS = normalize(lerp(surface.normalTS, dirtNormal, mask));
+        float fullNormalY = saturate(_MossFullNormalY);
+        float fadeNormalY = max(fullNormalY + 0.001, saturate(_MossFadeNormalY));
+        float upwardMask = smoothstep(fullNormalY, fadeNormalY, saturate(normalWS.y));
+        float2 mossUV = positionOS.xz * _MossTiling.xy + _MossOffset.xy;
+        half4 mossBase = SAMPLE_TEXTURE2D(_MossBaseMap, sampler_MossBaseMap, mossUV);
+        half mossMask = saturate(upwardMask * mossBase.a * _MossStrength);
+        half4 mossPacked = half4(0, 1, 0, _MossSmoothness);
+        [branch] if (_MossUseMaskMap > 0.5h)
+            mossPacked = SAMPLE_TEXTURE2D(_MossMaskMap, sampler_MossMaskMap, mossUV);
+        half3 mossNormal = UnpackNormalScale(SAMPLE_TEXTURE2D(_MossNormalMap, sampler_MossNormalMap, mossUV), _MossNormalScale);
+        surface.albedo = lerp(surface.albedo, mossBase.rgb * _MossColor.rgb, mossMask);
+        surface.metallic = lerp(surface.metallic, mossPacked.r, mossMask);
+        surface.occlusion = lerp(surface.occlusion, mossPacked.g, mossMask);
+        surface.smoothness = lerp(surface.smoothness, mossPacked.a, mossMask);
+        surface.normalTS = normalize(lerp(surface.normalTS, mossNormal, mossMask));
     }
+#endif
+#if defined(_RUNOFF_ON)
+    [branch] if (_RunoffStrength > 0.0h)
+    {
+        float fullNormalY = saturate(_RunoffFullNormalY);
+        float fadeNormalY = max(fullNormalY + 0.001, saturate(_RunoffFadeNormalY));
+        float verticalMask = 1.0 - smoothstep(fullNormalY, fadeNormalY, abs(normalWS.y));
+        float2 runoffUVX = positionOS.zy * _RunoffTiling.xy + _RunoffOffset.xy;
+        float2 runoffUVZ = positionOS.xy * _RunoffTiling.xy + _RunoffOffset.xy;
+        float2 sideWeights = abs(normalOS.xz);
+        sideWeights /= max(sideWeights.x + sideWeights.y, 0.0001);
+        half runoffX = SAMPLE_TEXTURE2D(_RunoffMap, sampler_RunoffMap, runoffUVX).r;
+        half runoffZ = SAMPLE_TEXTURE2D(_RunoffMap, sampler_RunoffMap, runoffUVZ).r;
+        half runoffMask = saturate(verticalMask * (runoffX * sideWeights.x + runoffZ * sideWeights.y) * _RunoffStrength);
+        surface.albedo = lerp(surface.albedo, surface.albedo * _RunoffColor.rgb, runoffMask);
+        surface.smoothness = lerp(surface.smoothness, _RunoffSmoothness, runoffMask);
+    }
+#endif
 #endif
 }
 
@@ -177,6 +242,7 @@ struct ArchitectureVaryings
     float4 probeOcclusion : TEXCOORD8;
 #endif
     float3 positionOS : TEXCOORD9;
+    half3 normalOS : TEXCOORD10;
     UNITY_VERTEX_INPUT_INSTANCE_ID
     UNITY_VERTEX_OUTPUT_STEREO
 };
@@ -191,6 +257,7 @@ ArchitectureVaryings ArchitectureVertex(ArchitectureAttributes input)
     VertexNormalInputs normal = GetVertexNormalInputs(input.normalOS, input.tangentOS);
     output.positionCS = position.positionCS;
     output.positionOS = input.positionOS.xyz;
+    output.normalOS = input.normalOS;
     output.positionWS = position.positionWS;
     output.normalWS = normal.normalWS;
     output.tangentWS = half4(normal.tangentWS, input.tangentOS.w * GetOddNegativeScale());
@@ -227,7 +294,7 @@ void ArchitectureFragment(ArchitectureVaryings input, out half4 outColor : SV_Ta
     ApplyPerPixelDisplacement(GetViewDirectionTangentSpace(input.tangentWS, input.normalWS, viewDir), uv);
 #endif
     SurfaceData surface;
-    InitializeArchitectureSurface(uv, input.uv.zw, input.positionOS, surface);
+    InitializeArchitectureSurface(uv, input.uv.zw, input.positionOS, normalize(input.normalOS), NormalizeNormalPerPixel(input.normalWS), surface);
 #if defined(LOD_FADE_CROSSFADE)
     LODFadeCrossFade(input.positionCS);
 #endif
@@ -294,7 +361,7 @@ ArchitectureMetaVaryings ArchitectureMetaVertex(ArchitectureMetaAttributes input
 half4 ArchitectureMetaFragment(ArchitectureMetaVaryings input) : SV_Target
 {
     SurfaceData surface;
-    InitializeArchitectureSurface(input.uv.xy, input.uv.zw, float3(0, 0, 0), surface);
+    InitializeArchitectureSurface(input.uv.xy, input.uv.zw, float3(0, 0, 0), float3(0, 1, 0), float3(0, 1, 0), surface);
     BRDFData brdf;
     InitializeBRDFData(surface.albedo, surface.metallic, surface.specular, surface.smoothness, surface.alpha, brdf);
     MetaInput meta = (MetaInput)0;

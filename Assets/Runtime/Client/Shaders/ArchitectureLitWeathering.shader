@@ -43,6 +43,28 @@ Shader "Ninth Age/Architecture Lit Weathering"
         _DirtStrength("Dirt Strength", Range(0,1)) = 0
         _DirtFullHeight("Dirt Full Height (m)", Float) = 0.10
         _DirtFadeHeight("Dirt Fade Height (m)", Float) = 1.50
+        [Toggle(_MOSS_ON)] _UseMoss("Use Moss", Float) = 0
+        _MossBaseMap("Moss Base Map (A Coverage)", 2D) = "white" {}
+        _MossColor("Moss Color", Color) = (1,1,1,1)
+        [ToggleUI] _MossUseMaskMap("Use Moss Mask Map", Float) = 0
+        _MossMaskMap("Moss Mask (R Metallic, G AO, A Smoothness)", 2D) = "white" {}
+        [Normal] _MossNormalMap("Moss Normal Map", 2D) = "bump" {}
+        _MossNormalScale("Moss Normal Scale", Float) = 1
+        _MossSmoothness("Moss Default Smoothness", Range(0,1)) = 0.2
+        _MossTiling("Moss Tiling", Vector) = (1,1,0,0)
+        _MossOffset("Moss Offset", Vector) = (0,0,0,0)
+        _MossStrength("Moss Strength", Range(0,1)) = 0
+        _MossFullNormalY("Moss Fade Start (Normal Y)", Range(0,1)) = 0.65
+        _MossFadeNormalY("Moss Full Coverage (Normal Y)", Range(0,1)) = 0.90
+        [Toggle(_RUNOFF_ON)] _UseRunoff("Use Runoff", Float) = 0
+        _RunoffMap("Runoff Map (R Coverage)", 2D) = "white" {}
+        _RunoffColor("Runoff Color", Color) = (0.65,0.65,0.65,1)
+        _RunoffTiling("Runoff Tiling", Vector) = (1,1,0,0)
+        _RunoffOffset("Runoff Offset", Vector) = (0,0,0,0)
+        _RunoffStrength("Runoff Strength", Range(0,1)) = 0
+        _RunoffSmoothness("Runoff Smoothness", Range(0,1)) = 0.65
+        _RunoffFullNormalY("Runoff Full Coverage (Normal Y)", Range(0,1)) = 0.15
+        _RunoffFadeNormalY("Runoff Fade End (Normal Y)", Range(0,1)) = 0.55
         [HideInInspector] _Surface("Surface", Float) = 0
         [HideInInspector][NoScaleOffset] unity_Lightmaps("unity_Lightmaps", 2DArray) = "" {}
         [HideInInspector][NoScaleOffset] unity_LightmapsInd("unity_LightmapsInd", 2DArray) = "" {}
@@ -71,6 +93,8 @@ Shader "Ninth Age/Architecture Lit Weathering"
             #pragma shader_feature_local_fragment _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
             #pragma shader_feature_local_fragment _OCCLUSIONMAP
             #pragma shader_feature_local_fragment _DIRT_ON
+            #pragma shader_feature_local_fragment _MOSS_ON
+            #pragma shader_feature_local_fragment _RUNOFF_ON
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile _ EVALUATE_SH_MIXED EVALUATE_SH_VERTEX

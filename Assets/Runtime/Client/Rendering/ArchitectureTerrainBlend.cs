@@ -7,7 +7,8 @@ namespace Game.Client.Rendering
     [DisallowMultipleComponent]
     public sealed class ArchitectureTerrainBlend : MonoBehaviour
     {
-        private const string SHADER_NAME = "Ninth Age/Architecture Lit Weathering";
+        private const string ARCHITECTURE_LIT_SHADER_NAME = "Ninth Age/Architecture Lit Weathering";
+        private const string ARCHITECTURE_MASONRY_SHADER_NAME = "Ninth Age/Architecture Masonry Weathering";
         private static readonly int TERRAIN_HEIGHTMAP_ID = Shader.PropertyToID("_NATerrainHeightmap");
         private static readonly int OBJECT_TO_TERRAIN_ID = Shader.PropertyToID("_NATerrainObjectToTerrain");
         private static readonly int TERRAIN_SIZE_ID = Shader.PropertyToID("_NATerrainSize");
@@ -82,7 +83,9 @@ namespace Game.Client.Rendering
         private static bool UsesArchitectureShader(MeshRenderer renderer)
         {
             foreach (Material material in renderer.sharedMaterials)
-                if (material != null && material.shader != null && material.shader.name == SHADER_NAME)
+                if (material != null && material.shader != null &&
+                    (material.shader.name == ARCHITECTURE_LIT_SHADER_NAME ||
+                     material.shader.name == ARCHITECTURE_MASONRY_SHADER_NAME))
                     return true;
             return false;
         }
