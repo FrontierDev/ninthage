@@ -21,16 +21,16 @@ float4 _DirtTiling, _DirtOffset, _MossTiling, _MossOffset, _RunoffTiling, _Runof
 half _Cutoff, _Smoothness, _Metallic, _BumpScale, _Parallax, _OcclusionStrength;
 half _DetailAlbedoMapScale, _DetailNormalMapScale;
 half _DamageNormalScale, _DamageStrength, _DamageSmoothnessOffset;
-float _MacroTileSize, _MacroBlendSharpness;
-half _MacroAlbedoVariation, _MacroSmoothnessVariation;
-half _DirtNormalScale, _DirtStrength, _DirtSmoothness, _DirtUseMaskMap;
+float _MacroTileSize, _MacroMip, _MacroBlendSharpness;
+half _MacroAlbedoVariation, _MacroSmoothnessVariation, _WeatheringBreakupInfluence;
+half _DirtNormalScale, _DirtStrength, _DirtSmoothness, _DirtAO;
 float _GroundDirtStrength, _GroundDirtFullHeight, _GroundDirtFadeHeight;
 half _CavityDirtStrength, _RunoffDirtStrength, _GrimeDirtStrength;
 float _RunoffVerticalFullNormalY, _RunoffVerticalFadeNormalY;
 half _WetnessStrength, _WetGroundInfluence, _WetRunoffInfluence, _WetCavityInfluence;
 float _WetGroundFullHeight, _WetGroundFadeHeight;
 half _WetAlbedoMultiplier, _WetSmoothness, _WetNormalFlattening;
-half _MossNormalScale, _MossUseMaskMap, _MossStrength;
+half _MossNormalScale, _MossSmoothness, _MossAO, _MossStrength;
 float _MossStartNormalY, _MossFullNormalY;
 half _MossMoistureInfluence, _MossMinimumMoisture;
 half _Surface;
@@ -44,14 +44,11 @@ TEXTURE2D(_DetailMask); SAMPLER(sampler_DetailMask);
 TEXTURE2D(_DetailAlbedoMap); SAMPLER(sampler_DetailAlbedoMap);
 TEXTURE2D(_DetailNormalMap); SAMPLER(sampler_DetailNormalMap);
 TEXTURE2D(_DirtBaseMap); SAMPLER(sampler_DirtBaseMap);
-TEXTURE2D(_DirtMaskMap); SAMPLER(sampler_DirtMaskMap);
 TEXTURE2D(_DirtNormalMap); SAMPLER(sampler_DirtNormalMap);
 TEXTURE2D(_MossBaseMap); SAMPLER(sampler_MossBaseMap);
-TEXTURE2D(_MossMaskMap); SAMPLER(sampler_MossMaskMap);
 TEXTURE2D(_MossNormalMap); SAMPLER(sampler_MossNormalMap);
-TEXTURE2D(_SurfaceMask); SAMPLER(sampler_SurfaceMask);
+TEXTURE2D(_WeatheringMask); SAMPLER(sampler_WeatheringMask);
 TEXTURE2D(_DamageNormalMap); SAMPLER(sampler_DamageNormalMap);
-TEXTURE2D(_MacroMap); SAMPLER(sampler_MacroMap);
 TEXTURE2D(_RunoffMap); SAMPLER(sampler_RunoffMap);
 
 #if defined(ARCHITECTURE_FORWARD_PASS)
@@ -104,6 +101,7 @@ half3 ApplyDamageNormal(float2 uv, half3 normalTS, half damageMask)
 #endif
 }
 
+#if defined(ARCHITECTURE_FORWARD_PASS) || defined(ARCHITECTURE_META_PASS)
 void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, float3 normalOS, float3 normalWS, out SurfaceData surface)
 {
     surface = (SurfaceData)0;
@@ -140,25 +138,27 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, 
     surface.albedo *= LerpWhiteTo(detail, detailMask);
     surface.normalTS = ApplyDetailNormal(detailUV, surface.normalTS, detailMask);
 #endif
-    half4 surfaceMask = 0;
-    half4 macro = 1;
-#if defined(_AGING_ON)
-    surfaceMask = SAMPLE_TEXTURE2D(_SurfaceMask, sampler_SurfaceMask, uv);
-    float3 macroPosition = positionOS / max(_MacroTileSize, 0.001);
+    float tileSize = max(_MacroTileSize, 0.001);
+    float3 macroPosition = positionOS / tileSize;
     float3 weights = pow(abs(normalize(normalOS)), max(_MacroBlendSharpness, 1.0));
     weights /= max(weights.x + weights.y + weights.z, 0.0001);
-    macro = SAMPLE_TEXTURE2D(_MacroMap, sampler_MacroMap, macroPosition.zy) * weights.x
-        + SAMPLE_TEXTURE2D(_MacroMap, sampler_MacroMap, macroPosition.xz) * weights.y
-        + SAMPLE_TEXTURE2D(_MacroMap, sampler_MacroMap, macroPosition.xy) * weights.z;
-    surface.albedo *= 1.0 + (macro.r * 2.0 - 1.0) * _MacroAlbedoVariation;
-    surface.smoothness = saturate(surface.smoothness + (macro.g * 2.0 - 1.0) * _MacroSmoothnessVariation);
-    half damageMask = saturate(surfaceMask.r * _DamageStrength);
+    float3 macroRGB = SAMPLE_TEXTURE2D_LOD(_BaseMap, sampler_BaseMap, macroPosition.zy, _MacroMip).rgb * weights.x
+        + SAMPLE_TEXTURE2D_LOD(_BaseMap, sampler_BaseMap, macroPosition.xz, _MacroMip).rgb * weights.y
+        + SAMPLE_TEXTURE2D_LOD(_BaseMap, sampler_BaseMap, macroPosition.xy, _MacroMip).rgb * weights.z;
+    float macroSignal = saturate(dot(macroRGB, float3(0.2126, 0.7152, 0.0722)));
+    float centeredMacro = macroSignal * 2.0 - 1.0;
+    surface.albedo *= 1.0 + centeredMacro * _MacroAlbedoVariation;
+    surface.smoothness = saturate(surface.smoothness + centeredMacro * _MacroSmoothnessVariation);
+    float weatheringBreakup = saturate(lerp(1.0, macroSignal, _WeatheringBreakupInfluence));
+    half4 weatheringMask = 0;
+#if defined(_AGING_ON)
+    weatheringMask = SAMPLE_TEXTURE2D(_WeatheringMask, sampler_WeatheringMask, uv);
+    half damageMask = saturate(weatheringMask.r * _DamageStrength);
     surface.albedo = lerp(surface.albedo, surface.albedo * _DamageColor.rgb, damageMask);
     surface.smoothness = saturate(surface.smoothness + _DamageSmoothnessOffset * damageMask);
     surface.normalTS = ApplyDamageNormal(uv, surface.normalTS, damageMask);
 #endif
 #if defined(ARCHITECTURE_FORWARD_PASS)
-    float dirtBreakup = macro.b;
     float wetness = 0.0;
 #if defined(_DIRT_ON) || defined(_WETNESS_ON)
     float2 sideWeights = abs(normalize(normalOS).xz);
@@ -173,26 +173,23 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, 
 #if defined(_WETNESS_ON)
     float groundWetness = saturate(TerrainContact(positionOS, _WetGroundFullHeight, _WetGroundFadeHeight) * _WetGroundInfluence);
     float runoffWetness = saturate(runoffTexture * verticalMask * _WetRunoffInfluence);
-    float cavityWetness = saturate(surfaceMask.g * dirtBreakup * _WetCavityInfluence);
+    float cavityWetness = saturate(weatheringMask.g * weatheringBreakup * _WetCavityInfluence);
     wetness = saturate((1.0 - (1.0 - groundWetness) * (1.0 - runoffWetness) * (1.0 - cavityWetness)) * _WetnessStrength);
 #endif
 #if defined(_DIRT_ON)
-    float groundDirt = saturate(TerrainContact(positionOS, _GroundDirtFullHeight, _GroundDirtFadeHeight) * dirtBreakup * _GroundDirtStrength);
-    float cavityDirt = saturate(surfaceMask.g * dirtBreakup * _CavityDirtStrength);
+    float groundDirt = saturate(TerrainContact(positionOS, _GroundDirtFullHeight, _GroundDirtFadeHeight) * weatheringBreakup * _GroundDirtStrength);
+    float cavityDirt = saturate(weatheringMask.g * weatheringBreakup * _CavityDirtStrength);
     float runoffDirt = saturate(runoffTexture * verticalMask * _RunoffDirtStrength);
-    float surfaceGrime = saturate(surfaceMask.a * dirtBreakup * _GrimeDirtStrength);
+    float surfaceGrime = saturate(weatheringMask.a * weatheringBreakup * _GrimeDirtStrength);
     float dirtMask = 1.0 - (1.0 - groundDirt) * (1.0 - cavityDirt) * (1.0 - runoffDirt) * (1.0 - surfaceGrime);
     dirtMask = saturate(dirtMask * _DirtStrength);
     float2 dirtCoords = dirtUV * _DirtTiling.xy + _DirtOffset.xy;
     half3 dirtAlbedo = SAMPLE_TEXTURE2D(_DirtBaseMap, sampler_DirtBaseMap, dirtCoords).rgb * _DirtColor.rgb;
-    half4 dirtPacked = half4(0, 1, 0, _DirtSmoothness);
-    if (_DirtUseMaskMap > 0.5h)
-        dirtPacked = SAMPLE_TEXTURE2D(_DirtMaskMap, sampler_DirtMaskMap, dirtCoords);
     half3 dirtNormal = UnpackNormalScale(SAMPLE_TEXTURE2D(_DirtNormalMap, sampler_DirtNormalMap, dirtCoords), _DirtNormalScale);
     surface.albedo = lerp(surface.albedo, dirtAlbedo, dirtMask);
-    surface.metallic = lerp(surface.metallic, dirtPacked.r, dirtMask);
-    surface.occlusion = lerp(surface.occlusion, dirtPacked.g, dirtMask);
-    surface.smoothness = lerp(surface.smoothness, dirtPacked.a, dirtMask);
+    surface.metallic = lerp(surface.metallic, 0.0h, dirtMask);
+    surface.occlusion = lerp(surface.occlusion, _DirtAO, dirtMask);
+    surface.smoothness = lerp(surface.smoothness, _DirtSmoothness, dirtMask);
     surface.normalTS = normalize(lerp(surface.normalTS, dirtNormal, dirtMask));
 #endif
 #if defined(_MOSS_ON) && defined(_AGING_ON)
@@ -200,15 +197,12 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, 
     half4 mossBase = SAMPLE_TEXTURE2D(_MossBaseMap, sampler_MossBaseMap, mossUV);
     float upwardMask = smoothstep(saturate(_MossStartNormalY), max(saturate(_MossStartNormalY) + 0.001, saturate(_MossFullNormalY)), saturate(normalize(normalWS).y));
     float moistureFactor = lerp(1.0, saturate(_MossMinimumMoisture + wetness), _MossMoistureInfluence);
-    float mossMask = saturate(upwardMask * surfaceMask.b * macro.a * mossBase.a * moistureFactor * _MossStrength);
-    half4 mossPacked = half4(0, 1, 0, 0.2);
-    if (_MossUseMaskMap > 0.5h)
-        mossPacked = SAMPLE_TEXTURE2D(_MossMaskMap, sampler_MossMaskMap, mossUV);
+    float mossMask = saturate(upwardMask * weatheringMask.b * weatheringBreakup * mossBase.a * moistureFactor * _MossStrength);
     half3 mossNormal = UnpackNormalScale(SAMPLE_TEXTURE2D(_MossNormalMap, sampler_MossNormalMap, mossUV), _MossNormalScale);
     surface.albedo = lerp(surface.albedo, mossBase.rgb * _MossColor.rgb, mossMask);
-    surface.metallic = lerp(surface.metallic, mossPacked.r, mossMask);
-    surface.occlusion = lerp(surface.occlusion, mossPacked.g, mossMask);
-    surface.smoothness = lerp(surface.smoothness, mossPacked.a, mossMask);
+    surface.metallic = lerp(surface.metallic, 0.0h, mossMask);
+    surface.occlusion = lerp(surface.occlusion, _MossAO, mossMask);
+    surface.smoothness = lerp(surface.smoothness, _MossSmoothness, mossMask);
     surface.normalTS = normalize(lerp(surface.normalTS, mossNormal, mossMask));
 #endif
 #if defined(_WETNESS_ON)
@@ -218,6 +212,7 @@ void InitializeArchitectureSurface(float2 uv, float2 dirtUV, float3 positionOS, 
 #endif
 #endif
 }
+#endif
 
 #if defined(ARCHITECTURE_FORWARD_PASS)
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -450,7 +445,7 @@ void MasonryDepthNormalsFragment(MasonryDepthVaryings input, out half4 outNormal
     normalTS = ApplyDetailNormal(detailUV, normalTS, detailMask);
 #endif
 #if defined(_AGING_ON)
-    half damageMask = saturate(SAMPLE_TEXTURE2D(_SurfaceMask, sampler_SurfaceMask, uv).r * _DamageStrength);
+    half damageMask = saturate(SAMPLE_TEXTURE2D(_WeatheringMask, sampler_WeatheringMask, uv).r * _DamageStrength);
     normalTS = ApplyDamageNormal(uv, normalTS, damageMask);
 #endif
     half3 bitangent = input.tangentWS.w * cross(input.normalWS, input.tangentWS.xyz);
