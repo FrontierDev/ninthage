@@ -5,7 +5,7 @@
 **Engine:** Unity 6.3  
 **Rendering:** Universal Render Pipeline (URP), Forward+  
 **Scope:** World visuals, environment assets, terrain integration, architecture, foliage, actors, props, VFX, lighting, atmosphere, post-processing and UI cohesion  
-**Last updated:** 2026-10-27
+**Last updated:** 2026-11-12
 
 ---
 
@@ -826,6 +826,98 @@ Architecture pieces should snap cleanly according to the relevant kit standard.
 Rendering geometry and collision geometry should be treated separately where appropriate.
 
 Do not use unnecessarily detailed visual meshes as colliders when a simpler collider communicates the same gameplay surface.
+
+---
+
+### 19.6 Concept-Art Reference Generation for Modular Assets
+
+Concept images are **asset-production references**, not finished game art, environmental splash art, or substitutes for tested 3D geometry. Their purpose is to specify a reproducible silhouette, construction vocabulary, materials and modular relationships before modelling. This workflow applies to architecture and smaller props alike, and can be reused for different cultures, factions, locations and art directions by changing the design brief rather than the reference-delivery rules.
+
+#### 19.6.1 Establish the design language before generating images
+
+For each asset family or cultural kit, define:
+
+- **Use and scale:** what the object does, its approximate dimensions, gameplay viewing distance, and whether it is standalone, modular or assembled from several modules.
+- **Silhouette and proportions:** overall massing, dominant shapes, height-to-width relationships, roof/upper termination, openings, bases and supports.
+- **Construction vocabulary:** structural material, wall thickness, repeated courses, joints, joins, corner treatment, load-bearing details, roofs, walkways, frames and fasteners as applicable.
+- **Cultural identity:** a distinct structural grammar, not merely a colour or ornament swap. Architectural families may differ in plan, vertical rhythm, tower shapes, wall profiles, gateways, roofs, terraces and connecting structures.
+- **Material palette and wear:** restrained colour families, material response, level and distribution of age, wear and environmental exposure.
+- **Production constraints:** intended modular pieces, repeated dimensions, material reuse, gameplay-distance silhouette requirements and the division between real mesh detail and shaders/material maps.
+
+The **Ninth Age baseline remains grounded mid-poly**, but a style brief may specify other cultural or regional treatments within that baseline. For example, a human masonry kit might have squared defensive masses, visibly larger foundation stones and smaller upper brick courses, timber rampart decking and simple slate roof caps; a High Elven kit may instead use curved or angled walls, slender polygonal towers, terraces and open arcades. These are **examples, not universal rules**: do not reuse one culture's castle footprint and simply replace its roofs or decorations to claim another identity.
+
+#### 19.6.2 Single-view image contract — mandatory
+
+**Produce exactly one camera view per image file. Never combine views in one image.**
+
+- A three-quarter perspective/isometric *concept* render is its own standalone image.
+- **Front elevation** is a separate image.
+- **Side elevation** is a separate image.
+- **Top plan** is a separate image.
+- Rear, opposite side, underside, exploded construction, material close-ups and individual module renders, when needed, are each **additional separate images**.
+- Do **not** generate a contact sheet, storyboard, turnaround sheet, collage, grid, multi-panel layout or composite placing a perspective view next to front/side/top plans.
+- Do **not** combine front, side and top views in a single image either. This prohibition applies even when all views are orthographic.
+- Do **not** place assembled architecture and its kit-piece thumbnails within a single concept image; give the assembled structure and each isolated module their own images.
+- The requested view must occupy most of its frame, with the complete object in shot and comfortable margins. No image-in-image insets, crop comparisons, decorative borders or caption panels.
+
+The consistent deliverable is a **set of separate, individually usable image files**, not a single sheet. Suggested names:
+
+    <asset>_perspective.png
+    <asset>_front.png
+    <asset>_side.png
+    <asset>_top.png
+
+If a request specifies only a perspective concept or only particular elevations, generate only those views. Do not manufacture extra panels as a purported convenience.
+
+#### 19.6.3 Camera and continuity rules
+
+- **Perspective concept:** use an elevated three-quarter camera (orthographic/isometric-like if helpful) that clearly communicates depth, primary silhouette and construction. A perspective view is not an elevation.
+- **Front:** true orthographic projection, camera perpendicular to the designated front face, no convergence or visible second face.
+- **Side:** true orthographic projection rotated exactly 90 degrees around the object from the front, with the same vertical axis and consistent framing/scale.
+- **Top:** true orthographic camera looking directly downward, showing the actual footprint, roof geometry, wall thickness, walkway, or open container as applicable; no tilted or three-quarter top view.
+- Preserve **one identical asset** across all views: geometry, structural features, module counts, course heights, supports, roof pitch, colours and weathering must not be silently redesigned between views.
+- When orthographic images are used together, align the object to a consistent world up/front direction, keep elevations at matching scale where practical, and avoid clipping at the extremities.
+- AI image references are **illustrative** and can contain projection inconsistencies. Modellers must resolve ambiguous dimensions, physical connections and alignment against the actual 3D source or a separately approved dimensioned drawing. Do not claim image-generated orthographic views are CAD-accurate without validation.
+
+#### 19.6.4 Presentation and object isolation
+
+Use a clean, uniform, neutral studio background and soft directional/diffuse light sufficient to reveal planes, seams and depth. An unobtrusive contact shadow is acceptable. The visual should read as a plausible in-game 3D model or material-aware blockout, **not** an HD landscape illustration, painterly environment scene or photoreal architectural visualisation.
+
+By default, omit landscape, terrain, mountains, sky, clouds, foliage, characters, atmospheric fog, distant buildings, UI, watermarks, descriptive labels and unrelated dressing. Keep the same neutral presentation across view files.
+
+Treat optional details as **opt-in**. Do not add flags, banners, pennants, heraldry, windows, arbitrary decoration or environment effects unless the approved brief calls for them. A revision that removes a feature must remove it from **all** requested views, not only the hero image.
+
+For objects with runtime effects—such as braziers, torches, fountains, machinery and magical props—author the **base object separately from VFX**. A lit hero reference can show the intended effect when explicitly requested, but modelling elevations should ordinarily exclude flames, smoke, sparks, water effects, glows and other obscuring particles. Show the underlying physical construction clearly.
+
+#### 19.6.5 Fidelity, surface treatment and mesh/shader boundary
+
+- Spend geometry on **silhouette, readable bevels, meaningful recesses, major stone courses, supports, openings, construction junctions and other forms visible in play**.
+- Deliver small chips, fine mortar roughness, grain, soot, dirt, moss, corrosion, small scratches and surface variation through materials, normal/height maps, masks, decals or runtime shaders where appropriate, rather than modelling all such details into a dense mesh.
+- Give masonry and timber **subtle, controlled weathering**: slight per-block value variation, darker joints, worn edges and credible material response. Avoid featureless plastic cleanliness, but also avoid photographic noise and excessive grunge.
+- Render textures as **stylised, low-to-medium spatial-frequency material information**; detail must not obscure the underlying construction.
+- Avoid inventing intricate geometry in a concept that the planned procedural Blender kit or runtime shader system cannot reproduce economically.
+- Asset concepts should not depend on sunlight, fog, HDR effects or busy backgrounds to make economical geometry appear convincing.
+
+#### 19.6.6 Modular kit continuity
+
+Start with a single representative module (for example a straight wall) and establish its scale, material assignments and repeatable construction pattern before expanding to corners, posts, stairs, gates and towers.
+
+- Share measured connection heights, widths, end caps, snapping planes, parapet profiles, masonry scale and material vocabulary across compatible pieces.
+- Design standalone variants for straight sections, corners, terminations and openings where required. Each module is represented by **its own isolated perspective image**, with separate orthographic files if requested.
+- Ensure exposed and connecting sides are physically plausible. Repeated details such as merlons, timber brackets, roof tiles and masonry courses must not change count or scale arbitrarily across related components.
+- An assembled-building concept may show the intended result of the kit, but is **not** a substitute for isolated module references or validated mesh connections.
+- Use generic procedural shape generators and reusable material recipes for shared construction; apply culture-specific silhouettes, structural profiles and decorative choices on top. Avoid a one-off sculpt for every variation.
+
+#### 19.6.7 Reference generation and acceptance workflow
+
+1. Write a brief that explicitly specifies **asset identity, style/culture, construction, excluded features and requested single view**.
+2. Generate **one isolated perspective concept image** if silhouette/design approval is needed. Iterate only on requested changes, keeping approved proportions and materials stable.
+3. Define or approve the module breakdown; generate **one separate image for each module** that requires an isolated concept.
+4. When modelling references are needed, generate the front, side and top **as separate outputs in separate requests or generation passes**, each using the approved concept/asset as the continuity reference.
+5. Review the images for consistent structure, no unintended props/effects, no mixed camera views, correct neutral presentation and credible mid-poly construction.
+6. Validate the source Blender geometry, scale, snapping and materials against the approved references. Treat exact dimensions as modelling specifications, not measurements inferred from AI imagery.
+
+**Reject and regenerate** a reference if it combines viewpoints or module thumbnails in one image; uses perspective instead of a requested true elevation; adds unrequested flags/windows/effects; presents high-definition scenery instead of an isolated asset; drifts between cultural styles; or introduces excessive surface mesh detail inconsistent with the mid-poly target.
 
 ---
 
