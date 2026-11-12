@@ -5,7 +5,7 @@
 **Engine:** Unity 6.3  
 **Rendering:** Universal Render Pipeline (URP), Forward+  
 **Scope:** World visuals, environment assets, terrain integration, architecture, foliage, actors, props, VFX, lighting, atmosphere, post-processing and UI cohesion  
-**Last updated:** 2026-11-04
+**Last updated:** 2026-11-12
 
 ---
 
