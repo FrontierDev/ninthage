@@ -785,6 +785,20 @@ The interface must remain legible over bright snow, dark marshes, volcanic scene
 
 ## 19. Asset Production Standards
 
+### Concept Art Generation — Default Single-Asset Reference
+
+For requests to generate a **concept image of an individual game asset** (including buildings, architecture modules, props, creatures and equipment), the default deliverable is **one isolated three-quarter-view image of that asset**. This is a modelling reference, not a presentation slide, architectural documentation set, scene illustration or marketing key art. User-specified output format takes precedence.
+
+- **Composition:** show exactly one design/asset, centred, complete and uncropped. Use a clear three-quarter view showing the front, one side and enough of the top to understand the three-dimensional form; raise the viewpoint slightly for roofs, containers and comparable assets. Use a natural product/asset-concept perspective, not a dramatic cinematic camera.
+- **Backdrop:** use a plain, neutral, muted cool-grey studio background (a gentle gradient is acceptable) with restrained diffuse lighting and a soft contact shadow. Keep the asset visually separated from the background.
+- **Art treatment:** match the approved Ninth Age *hand-painted, grounded mid-poly game-asset concept* appearance: strong readable silhouettes, deliberate medium-scale construction, economical but convincing bevels/recesses, controlled faceting where the material warrants it, restrained painted colour variation, coherent stylised material response and subtle wear. Preserve genuinely smooth materials as smooth. Avoid photorealistic noise, high-poly sculptural clutter, crude primitive blockouts, cartoon proportions, excessive glow and cinematic polish that conceals the model's form.
+- **No unsolicited extras:** do **not** include titles, captions, text, diagrams, sheet layouts, borders, frames, secondary views, orthographic elevations, floor plans, material swatches, inset details, multiple variants, people, props, paths, landscaping, terrain or a surrounding city unless the specific brief asks for them. The default composition is **one asset on the neutral background**, not a designed presentation board or diorama.
+- **Reference fidelity:** interpret provided images according to their stated role. A style reference controls rendering, shape language and level of detail only to the extent requested; it must not silently impose the reference's subject, faction, material or architecture on a different brief. Asset-specific constraints (such as smooth white walls without brick seams) override generic fantasy ornament.
+- **Fresh-start corrections:** when a user rejects a design and explicitly requests a fresh start, generate a new subject composition from the approved brief and references. Do not keep varying the rejected layout, and do not allow previous presentation-board prompts to leak into the new request.
+- **Pre-delivery check:** verify that the result is a *single full-asset three-quarter view* with the requested style, materials and silhouette, no incidental presentation layout, and legible modelling-relevant shapes. A visually appealing sheet is a failed result if a standalone asset reference was requested.
+
+Additional views (front/side/top orthographic projections, turnarounds, detail callouts, exploded kit pieces or technical sheets) are **separate, explicitly requested deliverables**. This concept-art output rule does not replace the multiple-angle renders, gameplay-distance checks and assembly evidence required later for Blender/Unity **asset validation**.
+
 ### 19.1 General Asset Workflow
 
 A standard non-character asset should normally pass through:
