@@ -3,7 +3,7 @@
 **Status:** Authoritative design index and project-level design baseline  
 **Project:** Ninth Age  
 **Scope:** Product-wide MMORPG design, subsystem ownership, PDD hierarchy, cross-system principles and unresolved product decisions  
-**Last updated:** 2026-10-05
+**Last updated:** 2026-11-13
 
 ---
 
@@ -220,6 +220,7 @@ MMORPG Master PDD
 │
 ├── World and PvE Content
 │   ├── World and Zone Design PDD               [EXISTS]
+│   ├── Culture Design PDD                      [EXISTS / DRAFT]
 │   ├── Movement and Traversal PDD               [EXISTS]
 │   ├── NPC and Creature Design PDD              [EXISTS]
 │   ├── AI and Encounter Behaviour PDD           [EXISTS]
@@ -612,6 +613,20 @@ The exact role of reputation in Ninth Age remains to be designed.
 
 ---
 
+## 7.9 Culture Design PDD — Existing / Draft
+
+**Document:**
+
+- [Culture Design PDD](Culture-Design-PDD.md)
+
+This document owns racial and cultural identities, established cultural lore, visual traditions, religious and political symbolism, and culture-specific art direction.
+
+It currently establishes the **Eldani** as the first cultural baseline, separating fixed history and heraldry from proposed artistic treatment and open worldbuilding decisions. Future cultures should be recorded in the same document.
+
+The Graphical Approach PDD remains authoritative for actual asset fidelity, materials, modelling standards, shader behaviour and production workflows. The World and Zone Design PDD continues to own geographical and settlement-structure rules.
+
+---
+
 # 8. Economy and Profession PDDs
 
 ## 8.1 Crafting System PDD — Existing
@@ -961,7 +976,8 @@ The following dependencies should be treated as particularly important.
 | Abilities/Talents | Classes, Combat, Stats, UI |
 | Items/Loot | Stats, Combat, Classes, Crafting, Economy |
 | Crafting | Items/Loot, Economy, Gathering/world resources |
-| World/Zones | Graphics, Traversal, Quests, NPCs, Events |
+| World/Zones | Graphics, Traversal, Quests, NPCs, Events, Culture |
+| Culture | Graphics, World/Zones, Character Identity, Factions, Narrative |
 | Dungeons | Combat, Classes, AI, Groups, Loot, World Runtime |
 | NPCs | Stats, Combat, AI, Quests, Economy |
 | Quests/Narrative | World, NPCs, Groups, Persistence |
@@ -1106,6 +1122,7 @@ The project currently has the following major product-design documents:
 | [Graphical Approach PDD](../Graphical-Approach-PDD.md) | Authoritative | Visual identity and graphical presentation |
 | [Crafting System PDD](Crafting-System-PDD.md) | Authoritative | Gathering, professions, mastery and cooperative crafting |
 | [Class Design PDD](Class-Design-PDD.md) | Draft / design baseline | Class roster, identity and unresolved class mechanics |
+| [Culture Design PDD](Culture-Design-PDD.md) | Draft / design baseline | Racial cultures, established lore, faith, aristocracy, visual identity and unresolved art decisions |
 | **MMORPG Master PDD** | Authoritative index / baseline | Product-wide design hierarchy and subsystem map |
 | [Combat System PDD](Combat-System-PDD.md) | Authoritative | Core combat model, combat state, targeting, threat and combat resolution |
 | [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md) | Authoritative | Persistent worlds, streaming, floating origin, actor visibility and runtime instances |
