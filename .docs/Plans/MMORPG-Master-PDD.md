@@ -221,6 +221,7 @@ MMORPG Master PDD
 ├── World and PvE Content
 │   ├── World and Zone Design PDD               [EXISTS]
 │   ├── Culture Design PDD                      [EXISTS / DRAFT]
+│   │   └── Cultures/Eldani-Culture-PDD.md       [EXISTS / DRAFT]
 │   ├── Movement and Traversal PDD               [EXISTS]
 │   ├── NPC and Creature Design PDD              [EXISTS]
 │   ├── AI and Encounter Behaviour PDD           [EXISTS]
@@ -619,9 +620,9 @@ The exact role of reputation in Ninth Age remains to be designed.
 
 - [Culture Design PDD](Culture-Design-PDD.md)
 
-This document owns racial and cultural identities, established cultural lore, visual traditions, religious and political symbolism, and culture-specific art direction.
+This parent document owns the cultural roster, cross-cultural design principles and links to one **dedicated sub-PDD per culture**. Each sub-PDD owns that culture's established lore, visual traditions, religious and political symbolism, detailed art direction and outstanding decisions.
 
-It currently establishes the **Eldani** as the first cultural baseline, separating fixed history and heraldry from proposed artistic treatment and open worldbuilding decisions. Future cultures should be recorded in the same document.
+The first documented culture is **Eldani (Human)**: [Eldani Culture PDD](Cultures/Eldani-Culture-PDD.md). Future cultures must have their own files under `.docs/Plans/Cultures/` rather than becoming additional long sections in the parent PDD.
 
 The Graphical Approach PDD remains authoritative for actual asset fidelity, materials, modelling standards, shader behaviour and production workflows. The World and Zone Design PDD continues to own geographical and settlement-structure rules.
 
@@ -1105,6 +1106,12 @@ Examples:
 .docs/Plans/World-and-Zone-Design-PDD.md
 ```
 
+For race-specific cultural sub-PDDs, use:
+
+```text
+.docs/Plans/Cultures/<Culture-Name>-Culture-PDD.md
+```
+
 Exceptions may remain outside `.docs/Plans` where already established, such as the existing Graphical Approach PDD.
 
 The Master PDD should link to the canonical document rather than requiring files to be moved solely for directory consistency.
@@ -1122,7 +1129,8 @@ The project currently has the following major product-design documents:
 | [Graphical Approach PDD](../Graphical-Approach-PDD.md) | Authoritative | Visual identity and graphical presentation |
 | [Crafting System PDD](Crafting-System-PDD.md) | Authoritative | Gathering, professions, mastery and cooperative crafting |
 | [Class Design PDD](Class-Design-PDD.md) | Draft / design baseline | Class roster, identity and unresolved class mechanics |
-| [Culture Design PDD](Culture-Design-PDD.md) | Draft / design baseline | Racial cultures, established lore, faith, aristocracy, visual identity and unresolved art decisions |
+| [Culture Design PDD](Culture-Design-PDD.md) | Draft / design baseline | Parent cultural index, shared principles and links to culture-specific sub-PDDs |
+| [Eldani Culture PDD](Cultures/Eldani-Culture-PDD.md) | Draft / design baseline | Eldani historical identity, Astonian Mahlism, crown and houses, architecture, materials, heraldry and art direction |
 | **MMORPG Master PDD** | Authoritative index / baseline | Product-wide design hierarchy and subsystem map |
 | [Combat System PDD](Combat-System-PDD.md) | Authoritative | Core combat model, combat state, targeting, threat and combat resolution |
 | [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md) | Authoritative | Persistent worlds, streaming, floating origin, actor visibility and runtime instances |
