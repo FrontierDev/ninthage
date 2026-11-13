@@ -35,13 +35,15 @@ The Arhîn are **functionally immortal** but **do not naturally possess godlike 
 
 Their society revolves around a three-caste hierarchy, material dependence on protectors, concentrated magical authority and the management of access to light.
 
-**Defining visual premise:** luminous, elevated privilege above an ancient forest world, with progressively darker and more dependent forms of habitation at lower levels. The civilisation is both magnificent and vulnerable.
+**Defining visual premise:** luminous, elevated privilege above an ancient forest world, with progressively darker and more dependent forms of habitation at lower levels. The civilisation is both magnificent and vulnerable. **Its present splendour is the diminished inheritance of a more accomplished Aurësén civilisation, not a new golden age.**
 
 ## 2.2 Historical Foundation — Established
 
 - The Aurësén are the Arhîn's ancestors.
 - The Serpent War ended approximately 1,000 years ago and culminated in the **loss of the Gift of Light** and the destruction of **Yer-Aranie**, a great Aurësén city.
 - Following this loss, the Arhîn became susceptible to **the Withering**.
+- Over the subsequent millennium, Arhîn architectural expertise and the ability to construct their grandest buildings have **degraded**: master designers and craftsmen died in the Serpent War or were later lost to the Withering.
+- Despite retaining a highly sophisticated civilisation and splendid buildings, **contemporary Arhîn architecture is generally less accomplished than architecture from the Aurësén peak**. Only the highest rulers retain truly opulent abodes.
 - The present Arhîn primarily occupy the **three Great Forests** around the **Culosíma**.
 - Existing race data identifies the ancestral realm as the **Aurësén Diarchy**, with Arhîn lands continuing part of its former western territory.
 - Existing race data uses the older terms **Terhat-Ilu** for the cataclysmic war and **Annokal** for the Gift of Light. These terms appear in existing game definitions and may be retained as in-world terms, but their preferred forms and spelling should be reviewed before further use.
@@ -196,6 +198,8 @@ Controlled canopy gaps, courtyards and shafts of light can tell a social and eco
 
 **Established:** **Yer-Aranie** was a great Aurësén city, inhabited before its destruction in the catastrophic conclusion of the Serpent War.
 
+**Established comparative constraint:** Aurësén civilisation reached an architectural peak that present Arhîn builders generally cannot match; the loss of many original master craftsmen and designers, both in the Serpent War and subsequently to the Withering, must remain apparent in how the ages are compared.
+
 **Proposed art direction:** its ruins should feel **older and architecturally distinct** from contemporary Arhîn tower settlements. They may contain monumental public plazas, broken light-gathering structures, ruined transparent enclosures and remnants of an unusually confident civilisation from before the Gift was lost.
 
 The contrast should be archaeological rather than a simple colour swap. The Aurësén were the ancestors of the Arhîn, but their built world need not have been organised around the same desperate need for sunlight.
@@ -212,14 +216,24 @@ Suggested supporting design grammar:
 
 | Asset family | Visual direction |
 |---|---|
-| Privileged residences | Slender, tall towers with glass-wall panels, prominent domed roofs, light-facing chambers and elevated terraces |
+| Privileged residences | Slender, tall towers with glass-wall panels, domed roofs and light-facing chambers; **genuinely opulent architectural treatment is restricted to the highest rulers**, not every wealthy inhabitant |
 | Structural frames | Elegant but functional stone, metal or composite ribs and mullions; legible beams, joints and supports |
 | Shared residential levels | Low, robust foundations; service halls, sheltered galleries and domestic rooms at ground level |
 | Work and teaching spaces | Compact workshops, arcaded galleries, educational halls and trade rooms attached to larger residences |
 | Civic and sacred buildings | Taller ceremonial halls, luminous domes, processional stairs, vaults and colonnades |
 | Forest infrastructure | Raised connections, bridge sections, retaining structures, clearings, stair towers and sheltered ground paths |
-| Defensive elements | Graceful but genuinely protective barriers, watchtowers and engineered gateways rather than arbitrary glass fortresses |
+| Defensive elements | Defensive outer shells, overlapping sloped bastions, strongly controlled gates and protected open-to-sun inner spaces, with glazing concentrated away from directly vulnerable outer faces |
 | Ancient Aurësén ruins | Monumental remains with related but earlier shape language, distinct from survival-driven modern towers |
+
+### A millennium of diminished craftsmanship — Established and proposed visual translation
+
+**Established:** Arhîn society is living through a long architectural decline. Important Aurësén designers and craftsmen were killed during the Serpent War or subsequently lost to the Withering. Therefore even splendid contemporary construction should be recognisably **less ambitious and less accomplished than the greatest Aurësén work**. Only the highest rulers still possess truly opulent residences.
+
+**Approved cultural art-direction implication:** do not make all Arhîn buildings pristine, extravagantly glazed palaces. A typical tower may remain elegant and expensive by Eldani standards, but its construction should show simplified profiles, repeated stock components, imperfect replacements, restrained ornament and older exceptional elements selectively preserved within later work. A very few royal or supreme-ruler precincts may retain outstanding luxury.
+
+**Proposed visual methods:** a broken rhythm of replaced dome panes; a finely carved ancient colonnade connected to a comparatively plain later gallery; patched metal mullions; different masonry epochs; abandoned ornamental recesses now filled with practical stone; smaller and more repetitive modern arches set beside far finer surviving Aurësén details. Such contrasts should emerge from coherent construction history, not random damage decals.
+
+Decline is **not** general collapse, technological primitiveness or universal poverty. The Arhîn are still sophisticated, intensely magical and capable of maintaining formidable defences and their defining glazed towers.
 
 ### Geometry
 
@@ -236,6 +250,24 @@ The Eldani emphasise masonry mass, defensible enclosures, steep rooflines, heral
 The brightest and most private spaces belong to the most privileged. The deeper living levels should reveal the need for magical support where direct sun is scarce. This contrast is crucial; it should not be flattened by making every interior equally luminous.
 
 Magical illumination can be visualised through controlled light wells, enclosed luminaires, protected chambers or conduits, **but the devices and their energy systems remain proposals**. A normal lantern must not silently become an approved replacement for sunlight or magical sources of power.
+
+### Fortress archetype: the Sunward Redoubt — Approved concept direction
+
+**Status:** approved **cultural fortress concept**, not a claim that every Arhîn fortress has this exact plan, name, origin, size or magical mechanism.
+
+The fortress has a deliberately defensive silhouette unlike an Eldani castle or an uninterrupted Aurësén pleasure-palace: **a heavy protective outer shell wrapped around a delicate, light-filled architectural heart**.
+
+- **Petal-shaped defensive shell:** massive, sloping, overlapping stone bastions arranged radially around the stronghold. Interlocking faces and flanking approaches make the perimeter read as a functional defensive work rather than an ornamental wall. Number of bastions and exact military engineering remain open.
+- **Defended open-air solar court:** a substantial sun-exposed inner courtyard protected by surrounding walls and gateways. Maintaining access to daylight is a guiding architectural objective even in wartime.
+- **One exceptional ancient core:** a distinguished **glazed, domed central tower**, visually representing surviving greater Aurësén workmanship. This is a *concept choice for this example fortress*, not a universal rule that all contemporary fortresses contain an Aurësén tower.
+- **Sun-catching reflective arrays:** large, visibly angled bronze or other reflective panels suggested for redirecting sunlight into the fortress's sheltered spaces; they must have readable supports and adjustable or plausible fixed orientations. Their actual biological efficacy, whether magical assistance is needed and the underlying technology are **not established**.
+- **Diminished contemporary outer construction:** later bastions, galleries and service ranges use larger, plainer pieces, reused elements, replaced glazing and conspicuous but purposeful repairs. The outer fortress should communicate a civilisation maintaining inherited magnificence rather than duplicating its ancestral peak.
+- **Vertical caste contrast:** prestigious sunlit rooms and outlooks occupy the upper central precinct, while practical garrison, workshops and dependent residences occupy less luxurious lower levels. Ground-floor habitation by indentured dependants follows the established caste structure.
+- **Site relationship:** an elevated forest-edge or rocky approach is a plausible setting for this fortress **concept**, but cliffs, waterfalls and other incidental features in exploratory illustrations are not required cultural canon.
+
+**Explicit exclusions:** a sprawling open palace complex; a uniform skyline of equally sumptuous glass towers; unprotected perimeter walls built primarily of fragile curtain glazing; arbitrary floating architecture; default sunburst flags, purple livery or religious emblems copied from exploratory imagery without separate heraldic approval.
+
+The image-concept composition and any presentation-board framing are **not** approved world assets. Actual game-asset references must follow the [Graphical Approach PDD](../../Graphical-Approach-PDD.md): one isolated complete three-quarter-view modelling reference against a plain neutral background unless another format is expressly requested.
 
 ## 2.12 Materials and Colour — Proposed
 
@@ -297,13 +329,13 @@ Proposed military equipment may use slender but plausible protection, curved or 
 
 Do not assume constant free energy, universal magical illumination, flying towers, unlimited teleportation, immortality via resurrection or any defined combat ability. These belong to other design systems and may require later lore decisions.
 
-## 2.16 Historical Layering — Proposed
+## 2.16 Historical Layering — Established history / proposed visual translation
 
 Representative sites may distinguish:
-1. **Aurësén inheritance:** structures or ruins from before the Gift of Light was lost;
-2. **The Serpent War's aftermath:** broken monuments, abandonment and reoccupation;
-3. **The current Arhîn adaptation:** architecture reorganised to favour sunlight and protected magical access;
-4. **Present-day maintenance and dependence:** replaced glass, repaired ribs, protected illumination systems, subdivided ground-level living and powerful tower precincts.
+1. **Aurësén inheritance:** the surviving works and remnants of an older architectural peak, potentially exhibiting craftsmanship no longer reproducible by most current builders;
+2. **The Serpent War's aftermath:** destruction, depopulation and loss of master artisans and designers, with further loss across centuries to the Withering;
+3. **The current Arhîn adaptation:** architecture reorganised to favour sunlight and protected magical access, with reduced technical ambition and greater reliance on simpler, reusable building parts;
+4. **Present-day selective splendour and maintenance:** repaired glazing, replaced ribs, mismatched masonry, adapted older structures, dependent ground-floor residences, and exceptional opulence retained only by the highest rulers.
 
 These are visual strata, not a formally approved chronology, and not all settlements need contain every layer.
 
@@ -331,6 +363,8 @@ The glass-heavy identity introduces additional constraints:
 | Light and ritual props | Brackets, sockets, housings, ceremonial furniture | Religious, civic, residential |
 | Public memory scriptures | Engraved rune-pattern panels, wall insets, freestanding supports and gathering-space assemblies | Location, scale, age, approved rune families |
 | Ruins | Broken ribs, displaced panels, fractured foundations, collapsed dome pieces | Ancient Aurësén, later Arhîn |
+| Fortress outer shell | Sloping petal-bastion segments, flanking walls, gate throat modules, coping and repair blocks | Radial layout, attack-facing elements, simplified later construction |
+| Solar courtyard and reflectors | Ground paving, perimeter galleries, reflector panels, mount frames, support brackets | Court dimensions, reflection direction, material age |
 
 These are potential component families, **not** an instruction to create them before art approval.
 
@@ -347,6 +381,8 @@ An Arhîn concept, building or scene should:
 8. Meet grounded mid-poly, modularity, material and performance requirements at MMO camera distances.
 9. Allow Arataure, Mortaure and Histaure variants to appear related without relying on arbitrary permanent times of day.
 10. Represent public runic scripture viewing as a commonplace, inward-looking practice: Arhîn viewers may seem simply to stare at patterns to outsiders.
+11. Contemporary grandeur should read as **splendour in decline** relative to Aurësén excellence, with true opulence restricted to the highest rulers.
+12. A Sunward Redoubt-style fortress should read as a **defensible shell around a protected sunlit court**, retaining one exceptional ancient dome while showing simpler repaired later construction.
 
 ---
 
@@ -398,6 +434,9 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 ## 3.6 Architecture and Character Art
 
 - Final tower profiles and glass-to-masonry ratio.
+- How widespread the Sunward Redoubt fortress pattern is, whether this is an actual named site or a concept archetype, and its military capabilities.
+- Exact geometry and support design of overlapping bastions, solar court and reflective arrays; their physical/magical effectiveness.
+- Which surviving Aurësén structures are original and which contemporary rulers can still maintain or commission exceptional opulence.
 - Final dome geometry, structural materials and colour palette.
 - Whether canopy-clearance and magical support influence settlement planning.
 - Historical shape language of pre-War Aurësén versus contemporary Arhîn.
