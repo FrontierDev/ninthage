@@ -48,7 +48,30 @@ Their society revolves around a three-caste hierarchy, material dependence on pr
 
 **Important:** the history does not establish the full politics of the Aurësén Diarchy, whether Yer-Aranie was its capital, how the Gift was originally obtained or what happened to every Aurësén elsewhere. Do not infer those details.
 
-## 2.3 The Withering — Established
+## 2.3 Nostalgia and Public Memory-Viewing Scriptures — Established / Proposed
+
+### Cultural nostalgia — Established
+
+The Arhîn are **inherently nostalgic** for their ancestral civilisation and the times of the **Aurësén**. Reflecting on ancient times is a **common pastime**, not merely an occasional scholarly or religious activity.
+
+Public spaces contain **magical runic scriptures** whose patterns induce **trances and memory viewing** in Arhîn who contemplate them. To an outsider, the practice can seem strange: the Arhîn appear simply to **stand or sit staring at the runic patterns**, while the experience of remembering unfolds inwardly.
+
+The contrast between their outward stillness and inward engagement with the lost past should be central to their everyday cultural portrayal. Nostalgia must not be treated as a symptom of the Withering: it is an established characteristic of Arhîn culture in its own right.
+
+This information does **not** establish whether the memories are first-hand recollections, preserved Aurësén records, inherited/collective memories or magically constructed representations. The precise mechanism, historical accuracy, and whether outsiders can experience the trance remain open. The practice does not, by itself, establish worship of the runes or any protective effect against the Withering.
+
+### Public-space and visual direction — Proposed
+
+- Incorporate runic scriptures into **ordinary shared public spaces**—for example, along squares, galleries, passages or sheltered gathering areas—rather than reserving them exclusively for temples or elite libraries.
+- Present the scriptures as carefully authored **legible patterned surfaces**: inset stone or metal panels, engraved walls or freestanding tablets are possible forms, not yet fixed designs.
+- Arrange some public spaces to allow people to pause and contemplate the patterns without obstructing circulation. These places may form quiet counterpoints to Arhîn towers, markets and workshops.
+- Use restrained ambient effects around the scriptures; the primary observable behaviour should remain an Arhîn character **quietly gazing at the runes**. A large holographic projection visible to every bystander would undermine the established outsider's perspective.
+- Depict the experience through still poses, subtle shifts in posture and sustained attention rather than treating every trance as a dramatic magical ceremony.
+- If memory-viewing scenes are ever visualised to the player, their form and narrative reliability require a separate approved presentation design.
+
+**Design distinction:** these runic scriptures are a **widespread cultural medium for memory viewing**. Their relationship to temples, Tiandre, the Grey Ones, magic-sourced protection and the three-caste hierarchy is not yet established.
+
+## 2.4 The Withering — Established
 
 The Withering is a consequence of the loss of the Gift of Light. **Prolonged withdrawal from sunlight or magical sources of power** causes:
 1. increasingly deep negative and violent emotions;
@@ -71,7 +94,7 @@ Use several visually understandable **conceptual states**, not a fixed gameplay 
 
 VFX should feel uncanny and tragic rather than casually demonic. Whether a Withered shadow retains its identity, can recover or can be destroyed remains unresolved.
 
-## 2.4 The Three-Caste Society — Established
+## 2.5 The Three-Caste Society — Established
 
 Arhîn society is divided into **exactly three castes** as currently defined:
 
@@ -97,7 +120,7 @@ The ground floor is specifically established as the place where lower-caste depe
 
 **Critical tension:** protection may be genuine and necessary, but is also a form of power exercised over dependants. Residential design must convey both.
 
-## 2.5 Government — Established
+## 2.6 Government — Established
 
 The Arhîn are ruled by **Queen Ilya**, who is also **High Priestess of Tiandre**.
 
@@ -107,7 +130,7 @@ The game faction definition identifies the Arhîn dominion as **Culosimlond**, o
 
 The precise relationship between royal rule, the caste system, high nobles, temples and scholarly institutions remains unestablished. Do not replace the three castes with a hereditary noble-house structure modelled on the Eldani.
 
-## 2.6 Religion — Tiandre and the Grey Ones — Established
+## 2.7 Religion — Tiandre and the Grey Ones — Established
 
 **Tiandre** is the **Queen of the Summer Court** and **one of the Grey Ones**.
 
@@ -124,7 +147,7 @@ The presence of several revered beings should be reflected in religious diversit
 
 **Do not assume** that Tiandre directly grants immunity to the Withering, that the Suntower is powered by Tiandre, or that devotion is required to control magic. Those relationships are open.
 
-## 2.7 The Suntower — Established / Proposed
+## 2.8 The Suntower — Established / Proposed
 
 **Established:** The Suntower is Queen Ilya's seat and is **blindingly bright**, such that it cannot be safely looked upon without protection.
 
@@ -139,7 +162,7 @@ The Suntower's supernatural visual effect should be presented with a scalable co
 
 **Unresolved:** exact shape, source of radiance, whether it is the tallest building, material composition, the nature of its protective viewing devices, and the relation between its brightness and the Withering.
 
-## 2.8 Geography — The Three Great Forests — Established
+## 2.9 Geography — The Three Great Forests — Established
 
 The Arhîn primarily inhabit three Great Forests around the **Culosíma**:
 
@@ -169,7 +192,7 @@ Do not turn Arhîn settlements into a uniform network of treehouses. Large trunk
 
 Controlled canopy gaps, courtyards and shafts of light can tell a social and ecological story without implying that every tree is magically altered.
 
-## 2.9 Yer-Aranie — Established / Proposed
+## 2.10 Yer-Aranie — Established / Proposed
 
 **Established:** **Yer-Aranie** was a great Aurësén city, inhabited before its destruction in the catastrophic conclusion of the Serpent War.
 
@@ -179,7 +202,7 @@ The contrast should be archaeological rather than a simple colour swap. The Aur�
 
 **Unresolved:** the city's original plan, geography, size, surviving materials, precise destruction mechanism and whether its ruins remain accessible. No assertion of floating buildings, technological superiority or a specific magical cause of destruction is implied.
 
-## 2.10 Architectural Design Language — Proposed
+## 2.11 Architectural Design Language — Proposed
 
 **Central architectural principle:** **light is both a survival resource and a visible instrument of social hierarchy**.
 
@@ -214,7 +237,7 @@ The brightest and most private spaces belong to the most privileged. The deeper 
 
 Magical illumination can be visualised through controlled light wells, enclosed luminaires, protected chambers or conduits, **but the devices and their energy systems remain proposals**. A normal lantern must not silently become an approved replacement for sunlight or magical sources of power.
 
-## 2.11 Materials and Colour — Proposed
+## 2.12 Materials and Colour — Proposed
 
 Suggested material palette for concepting; **not approved material/shader values**:
 
@@ -234,7 +257,7 @@ Glass should appear as **glass** rather than unlit aquamarine stone or holograph
 
 The [Graphical Approach PDD](../../Graphical-Approach-PDD.md) remains authoritative for physical material scale, normal-detail frequency, shared wear and final in-engine appearance.
 
-## 2.12 Heraldry and Ornament — Established / Proposed
+## 2.13 Heraldry and Ornament — Established / Proposed
 
 **Established:** No specific Arhîn royal banner, caste device, state insignia, symbol of Tiandre or icon for any Grey One is defined by the present brief.
 
@@ -248,7 +271,7 @@ Symbols of Tiandre, Queen Ilya, Culosimlond and individual caste institutions sh
 
 The name **Grey Ones** does not itself imply that their symbols, bodies or architecture are grey.
 
-## 2.13 Clothing and Physical Presentation — Proposed
+## 2.14 Clothing and Physical Presentation — Proposed
 
 The Arhîn need a recognisable humanoid visual design, but neither facial anatomy nor canonical clothing has been specified. Do not silently settle ear shape, eye colour, skin tone, body proportions or how functional immortality affects appearance.
 
@@ -261,11 +284,12 @@ Caste distinction should be readable through silhouette, quality, cut, accessori
 
 Proposed military equipment may use slender but plausible protection, curved or finely proportioned weapon forms, glass-derived motifs in ornament and compact symbolic devices. Avoid compulsory glowing crystals, nonfunctional oversized armour or claims that every Arhîn is a spellcaster.
 
-## 2.14 Magic and Everyday Life — Established / Proposed
+## 2.15 Magic and Everyday Life — Established / Proposed
 
 **Established:** Arhîn society is intensely magical; magical sources of power can protect against withdrawal that would otherwise cause the Withering. The Arhîn do not naturally possess godlike powers.
 
 **Proposed environmental storytelling:**
+- public runic scriptures and apparently motionless Arhîn viewers, providing recognisable daily-life scenes of memory contemplation;
 - supervised rooms, wells or fixtures that visibly provide magical refuge where sunlight cannot reach;
 - upper-caste-controlled access to particular bright or magically protected areas;
 - workshops and scholarly halls with precise, purposeful magical equipment;
@@ -273,7 +297,7 @@ Proposed military equipment may use slender but plausible protection, curved or 
 
 Do not assume constant free energy, universal magical illumination, flying towers, unlimited teleportation, immortality via resurrection or any defined combat ability. These belong to other design systems and may require later lore decisions.
 
-## 2.15 Historical Layering — Proposed
+## 2.16 Historical Layering — Proposed
 
 Representative sites may distinguish:
 1. **Aurësén inheritance:** structures or ruins from before the Gift of Light was lost;
@@ -283,7 +307,7 @@ Representative sites may distinguish:
 
 These are visual strata, not a formally approved chronology, and not all settlements need contain every layer.
 
-## 2.16 Production and Reuse Constraints
+## 2.17 Production and Reuse Constraints
 
 Arhîn components must follow the [Graphical Approach PDD](../../Graphical-Approach-PDD.md): material approval first, **atomic modular architectural parts**, meaningful medium-scale geometry, reusable textures and masks, controlled runtime weathering, scalable LODs and gameplay-distance validation.
 
@@ -305,11 +329,12 @@ The glass-heavy identity introduces additional constraints:
 | Ground service level | Entrances, workshops, rooms, corridors, supports, partitions | Residential, teaching, trade, service |
 | Bridges and forest adaptation | Supports, railings, walking surfaces, attachment sockets | Canopy crossing, ground crossing, sacred |
 | Light and ritual props | Brackets, sockets, housings, ceremonial furniture | Religious, civic, residential |
+| Public memory scriptures | Engraved rune-pattern panels, wall insets, freestanding supports and gathering-space assemblies | Location, scale, age, approved rune families |
 | Ruins | Broken ribs, displaced panels, fractured foundations, collapsed dome pieces | Ancient Aurësén, later Arhîn |
 
 These are potential component families, **not** an instruction to create them before art approval.
 
-## 2.17 Arhîn Art Acceptance Criteria
+## 2.18 Arhîn Art Acceptance Criteria
 
 An Arhîn concept, building or scene should:
 1. Read as Arhîn from its **tall glazed, domed construction and light-seeking silhouette**, not simply from leaf motifs or glowing ornaments.
@@ -321,6 +346,7 @@ An Arhîn concept, building or scene should:
 7. Remain distinct from Eldani masonry-and-heraldry architecture.
 8. Meet grounded mid-poly, modularity, material and performance requirements at MMO camera distances.
 9. Allow Arataure, Mortaure and Histaure variants to appear related without relying on arbitrary permanent times of day.
+10. Represent public runic scripture viewing as a commonplace, inward-looking practice: Arhîn viewers may seem simply to stare at patterns to outsiders.
 
 ---
 
@@ -378,6 +404,17 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 - Physiognomy and skin/eye/hair variations.
 - Caste clothing, equipment and armour styles.
 - Performance-approved glass and Withering shader approaches.
+
+## 3.7 Nostalgia and Runic Memory Viewing
+
+- Are the viewed memories personal, inherited, archived, collectively shared or reconstructed?
+- What determines a scripture's subject, authenticity and association with specific Aurësén periods or individuals?
+- Can non-Arhîn perceive the same memories, or do they see only the external trance?
+- Are scriptures publicly accessible to all three castes, and are any viewed memories restricted by status or institution?
+- What visual grammar, material, placement and maintenance rules define the runic patterns?
+- How long do trances last, can they be interrupted, and are there any consequences beyond remembrance?
+- Do the scriptures have any separate religious, political or protective-magic function, or are they solely for contemplation?
+- How should any player-facing memory experience be conveyed without implying that bystanders see the memories?
 
 No unresolved detail should be inferred as canon solely from a visual prototype.
 
