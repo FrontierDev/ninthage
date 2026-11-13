@@ -55,7 +55,7 @@ All cultures use the global **grounded, mature mid-poly fantasy** target. Assets
 | Culture | Sub-PDD | Status | Short identity |
 |---|---|---|---|
 | **Eldani (Human)** | [Eldani Culture PDD](Cultures/Eldani-Culture-PDD.md) | Established lore / provisional visual baseline | Astonian stone towns and castles, late-medieval/Renaissance design, inherited elven influence, Mahlism and hereditary noble houses |
-| **Arhîn (Dawn Children)** | [Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md) | Established lore / provisional visual baseline | Ancient Aurësén descendants dependent on light; three-caste society, glazed domed towers, magical forests, Tiandre and the Withering |
+| **Arhîn (Dawn Children)** | [Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md) | Established lore / provisional visual baseline | Aurësén descendants dependent on light; caste society and nostalgia, glazed towers, declining craftsmanship, protected solar fortresses, Tiandre and the Withering |
 
 This is an **index of cultures documented so far**, not an assertion that Eldani are the only playable race. Additional sub-PDDs will be created as cultural briefs are established.
 
