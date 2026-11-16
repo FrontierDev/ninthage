@@ -33,7 +33,7 @@ The Aurësén lost the **Gift of Light** at the end of the **Serpent War**, appr
 
 The Arhîn are **functionally immortal** but **do not naturally possess godlike powers**. Longevity is not equivalent to divinity, invulnerability or exemption from the Withering.
 
-Their society revolves around a three-caste hierarchy, material dependence on protectors, concentrated magical authority and the management of access to light.
+Their society revolves around a three-caste hierarchy, material dependence on protectors, concentrated magical authority and the management of access to light. Their security rests primarily on **diplomacy, espionage and the deterrent of extraordinary magical power**, rather than a standing military.
 
 **Defining visual premise:** luminous, elevated privilege above an ancient forest world, with progressively darker and more dependent forms of habitation at lower levels. The civilisation is both magnificent and vulnerable. **Its present splendour is the diminished inheritance of a more accomplished Aurësén civilisation, not a new golden age.**
 
@@ -130,7 +130,9 @@ Queen Ilya rules from the mystical **Suntower**, a structure so intensely bright
 
 The game faction definition identifies the Arhîn dominion as **Culosimlond**, on the shores of the **Culosíma**, and describes the queen as reclusive. It also describes high nobles obeying her commands. The name **Culosimlond** is therefore an existing in-game faction name, not a newly devised term.
 
-The precise relationship between royal rule, the caste system, high nobles, temples and scholarly institutions remains unestablished. Do not replace the three castes with a hereditary noble-house structure modelled on the Eldani.
+**Histalion** is the Arhîn **supreme military commander** and rules territory in the **Mortaure**. His command exists despite the Arhîn having **no standing military**; the process by which Arhîn power is brought together in wartime is not yet established.
+
+The precise relationship between royal rule, the caste system, high nobles, temples and scholarly institutions remains unestablished. Do not replace the three castes with a hereditary noble-house structure modelled on the Eldani. Histalion's specific constitutional relationship to Queen Ilya, the other rulers and the three castes is likewise unresolved.
 
 ## 2.7 Religion — Tiandre and the Grey Ones — Established
 
@@ -262,7 +264,7 @@ The fortress has a deliberately defensive silhouette unlike an Eldani castle or 
 - **One exceptional ancient core:** a distinguished **glazed, domed central tower**, visually representing surviving greater Aurësén workmanship. This is a *concept choice for this example fortress*, not a universal rule that all contemporary fortresses contain an Aurësén tower.
 - **Sun-catching reflective arrays:** large, visibly angled bronze or other reflective panels suggested for redirecting sunlight into the fortress's sheltered spaces; they must have readable supports and adjustable or plausible fixed orientations. Their actual biological efficacy, whether magical assistance is needed and the underlying technology are **not established**.
 - **Diminished contemporary outer construction:** later bastions, galleries and service ranges use larger, plainer pieces, reused elements, replaced glazing and conspicuous but purposeful repairs. The outer fortress should communicate a civilisation maintaining inherited magnificence rather than duplicating its ancestral peak.
-- **Vertical caste contrast:** prestigious sunlit rooms and outlooks occupy the upper central precinct, while practical garrison, workshops and dependent residences occupy less luxurious lower levels. Ground-floor habitation by indentured dependants follows the established caste structure.
+- **Vertical caste contrast:** prestigious sunlit rooms and outlooks occupy the upper central precinct, while practical defence, workshops and dependent residences occupy less luxurious lower levels. Ground-floor habitation by indentured dependants follows the established caste structure.
 - **Site relationship:** an elevated forest-edge or rocky approach is a plausible setting for this fortress **concept**, but cliffs, waterfalls and other incidental features in exploratory illustrations are not required cultural canon.
 
 **Explicit exclusions:** a sprawling open palace complex; a uniform skyline of equally sumptuous glass towers; unprotected perimeter walls built primarily of fragile curtain glazing; arbitrary floating architecture; default sunburst flags, purple livery or religious emblems copied from exploratory imagery without separate heraldic approval.
@@ -314,7 +316,7 @@ Potential costume language:
 
 Caste distinction should be readable through silhouette, quality, cut, accessories and environmental context, not merely three fixed colours. Indenture is a social structure, not a reason to make every lower-caste character visually identical.
 
-Proposed military equipment may use slender but plausible protection, curved or finely proportioned weapon forms, glass-derived motifs in ornament and compact symbolic devices. Avoid compulsory glowing crystals, nonfunctional oversized armour or claims that every Arhîn is a spellcaster.
+**Proposed exceptional military equipment** may use slender but plausible protection, curved or finely proportioned weapon forms, glass-derived motifs in ornament and compact symbolic devices. Such armoured figures should not be interpreted as evidence of large permanent infantry formations. Arhîn martial visual identity should place **magical capability and carefully conserved exceptional equipment** before generic rows of melee footsoldiers. Avoid compulsory glowing crystals, nonfunctional oversized armour or claims that every Arhîn is individually a spellcaster.
 
 ## 2.15 Magic and Everyday Life — Established / Proposed
 
@@ -383,6 +385,46 @@ An Arhîn concept, building or scene should:
 10. Represent public runic scripture viewing as a commonplace, inward-looking practice: Arhîn viewers may seem simply to stare at patterns to outsiders.
 11. Contemporary grandeur should read as **splendour in decline** relative to Aurësén excellence, with true opulence restricted to the highest rulers.
 12. A Sunward Redoubt-style fortress should read as a **defensible shell around a protected sunlit court**, retaining one exceptional ancient dome while showing simpler repaired later construction.
+13. Military scenes must **not imply a standing conventional army**; their strongest Arhîn identity should be intense magical capability, rare preserved expertise and pre-emptive diplomacy or intelligence.
+
+---
+
+## 2.19 Military, Diplomacy and Deterrence — Established / Proposed
+
+### The Arhîn approach to security — Established
+
+- The Arhîn **do not possess a standing military**. Earlier exploratory proposals for standing professional infantry households, permanent garrison armies or a conventional large heavy-infantry backbone are **superseded**, not approved lore.
+- They prefer to **influence world events through espionage and diplomacy**, seeking to ensure their enemies have neither the desire nor opportunity to attack them.
+- Despite the decline of their civilisation relative to the Aurësén peak, the Arhîn remain **extremely formidable**.
+- The defining basis of their formidable power is their **intensely magical nature**. Arhîn defence and warfare must not be primarily represented by conventional melee footsoldiers.
+- **Histalion** holds the position of **supreme military commander** and **rules territory in the Mortaure**.
+- The existence of a supreme military commander **does not** imply an always-mobilised army.
+
+These principles override any inference from the Sunward Redoubt fortress concept that the Arhîn routinely keep permanent conventional garrisons. The existence of fortifications does not establish permanent troops stationed in them.
+
+### Cultural and strategic interpretation — Proposed
+
+The Arhîn should generally seek **victory before battle**: discouraging enemies through diplomacy, intelligence collection, careful influence over foreign interests and the credible prospect of severe magical retaliation. Their reluctance to wage conventional war must **not** be confused with inability to fight.
+
+Where open conflict is unavoidable, **magic should be central to the response**. A potential wartime force could combine specialist magical capability with temporary protective, reconnaissance and support formations, but the manner of mobilisation, numbers, individual magical powers and availability of any non-magical troops remain unapproved. No system of magically powered siege engines, instant teleportation, universal warding or other specific spell effects is established here.
+
+Arhîn longevity, historical memory and deep magical culture may inform strategic caution and institutional continuity, but must not be used as a basis for declaring that every individual Arhîn is a powerful mage. Their dependence on sunlight or magical sources of power remains a relevant strategic vulnerability whose exact operational consequences are unresolved.
+
+### Histalion — Established scope and open boundaries
+
+Histalion is **the supreme military commander** and a **territorial ruler in the Mortaure**. His title, personal magical capabilities, relation to Queen Ilya, specific territory, political alliances, peacetime responsibilities and authority to mobilise Arhîn society have **not** been specified.
+
+His office may be expressed through a distinctive residence, retinue or command venue in future art direction, but such representations are proposals pending additional cultural decisions.
+
+### Military visual identity — Proposed
+
+- Prioritise figures conveying **focused magical mastery**, authority, inherited scholarship and carefully maintained ritual or operational equipment.
+- Reserve heavy armour for appropriately justified exceptional defenders and rare circumstances, not the default visual population of an Arhîn settlement.
+- Visualise espionage and diplomatic influence through environments, institutions, observers and discreet equipment where appropriate; avoid inventing a standard spy uniform.
+- Depict military artefacts as inherited, preserved or comparatively simplified reproductions of Aurësén originals, consistent with the millennium of lost craftsmanship.
+- Avoid defaulting to generic elven archers, permanent battalions, ranks of polearm infantry or huge armies simply because the Arhîn are formidable.
+
+**Hierarchy of emphasis:** diplomacy and espionage in peacetime; extraordinary magical deterrence; magical intervention if conflict occurs; conventional weapons and armour as supporting, not defining elements.
 
 ---
 
@@ -421,7 +463,8 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 - Whether and how dependants obtain protected light or magic at ground level.
 - Laws, sanctions, mobility, employment and protection obligations.
 - Relationship of intellectual, religious, noble and royal authority.
-- Titles, institutions and identities other than Queen Ilya.
+- Titles, institutions and identities other than Queen Ilya and Histalion.
+- Histalion's precise political position, territory within Mortaure and relationship to Queen Ilya.
 
 ## 3.5 Religion and Heraldry
 
@@ -454,6 +497,17 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 - How long do trances last, can they be interrupted, and are there any consequences beyond remembrance?
 - Do the scriptures have any separate religious, political or protective-magic function, or are they solely for contemplation?
 - How should any player-facing memory experience be conveyed without implying that bystanders see the memories?
+
+## 3.8 Military Mobilisation and Magical Power
+
+- How, when and by whom are Arhîn capabilities assembled for wartime service if there is no standing military?
+- Does Histalion command only during war, or does he maintain separate peacetime strategic authority?
+- What are the specific relationships between Histalion, Queen Ilya and territorial rulers?
+- What forms of espionage, diplomacy, foreign influence and intelligence institutions exist?
+- What categories of magical intervention are feasible, and how rare or concentrated is individual magical talent?
+- What safeguards or logistical limitations apply to magical power during prolonged campaigns away from sunlight?
+- What, if any, permanent defensive personnel exist at strategic sites without constituting a standing army?
+- Which combat equipment, magical instruments and ceremonial objects are characteristic of rare military operations?
 
 No unresolved detail should be inferred as canon solely from a visual prototype.
 
