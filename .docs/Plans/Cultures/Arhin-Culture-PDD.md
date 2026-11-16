@@ -386,6 +386,7 @@ An Arhîn concept, building or scene should:
 11. Contemporary grandeur should read as **splendour in decline** relative to Aurësén excellence, with true opulence restricted to the highest rulers.
 12. A Sunward Redoubt-style fortress should read as a **defensible shell around a protected sunlit court**, retaining one exceptional ancient dome while showing simpler repaired later construction.
 13. Military scenes must **not imply a standing conventional army**; their strongest Arhîn identity should be intense magical capability, rare preserved expertise and pre-emptive diplomacy or intelligence.
+14. A military scene should primarily feature **small battlemage groups, on foot or using forest-mobile salamander-like mounts**, and should avoid massed open-field formations as the normal Arhîn or historic Aurësén method.
 
 ---
 
@@ -399,6 +400,10 @@ An Arhîn concept, building or scene should:
 - The defining basis of their formidable power is their **intensely magical nature**. Arhîn defence and warfare must not be primarily represented by conventional melee footsoldiers.
 - **Histalion** holds the position of **supreme military commander** and **rules territory in the Mortaure**.
 - The existence of a supreme military commander **does not** imply an always-mobilised army.
+- The enormous scale and difficult terrain of the **Great Forests** make the movement of conventional armies difficult.
+- Arhîn military strength is primarily exercised by **small groups of battlemages**, some fighting on foot and others **mounted on salamander-like creatures adapted to moving easily through forests**.
+- The Arhîn **rarely engage in open battle** because they lack the numbers available to many of their enemies.
+- **The Aurësén likewise faced numerical inferiority** and rarely met their enemies in open battle. This is a continuity of military circumstance across the Serpent War, not merely a contemporary adaptation to decline.
 
 These principles override any inference from the Sunward Redoubt fortress concept that the Arhîn routinely keep permanent conventional garrisons. The existence of fortifications does not establish permanent troops stationed in them.
 
@@ -406,9 +411,24 @@ These principles override any inference from the Sunward Redoubt fortress concep
 
 The Arhîn should generally seek **victory before battle**: discouraging enemies through diplomacy, intelligence collection, careful influence over foreign interests and the credible prospect of severe magical retaliation. Their reluctance to wage conventional war must **not** be confused with inability to fight.
 
-Where open conflict is unavoidable, **magic should be central to the response**. A potential wartime force could combine specialist magical capability with temporary protective, reconnaissance and support formations, but the manner of mobilisation, numbers, individual magical powers and availability of any non-magical troops remain unapproved. No system of magically powered siege engines, instant teleportation, universal warding or other specific spell effects is established here.
+Where violence cannot be prevented, the Arhîn's primary military instrument is **the small battlemage group**, operating **on foot or mounted on forest-adapted salamander-like creatures**. The strategic challenge of marching armies through the Great Forests, combined with Arhîn numerical inferiority, favours dispersed movement and actions that do not require a massed battle line. The exact magical effects, numbers, unit command structures and non-magical support elements remain to be defined; no system of teleportation, magical siege engines, universal warding or particular offensive spells is established here.
 
 Arhîn longevity, historical memory and deep magical culture may inform strategic caution and institutional continuity, but must not be used as a basis for declaring that every individual Arhîn is a powerful mage. Their dependence on sunlight or magical sources of power remains a relevant strategic vulnerability whose exact operational consequences are unresolved.
+
+### Battlemage groups and forest-mounted warfare — Established foundations / proposed doctrine
+
+**Established deployment form:** Arhîn combat power is primarily concentrated in **groups of battlemages**, both **unmounted** and **mounted on a salamander-like forest-traversing creature**. This creature is a military mount adapted to moving easily through forest terrain. Its name, natural history, size, temperament, anatomy beyond the broad salamander-like description, magical properties and precise means of traversal remain undecided.
+
+**Established strategic constraint:** The Great Forests are large and difficult to cross with conventional armies. Arhîn numbers are insufficient to regularly meet their enemies in conventional open battle. **The Aurësén faced the same numerical asymmetry and also rarely fought open battles**; this feature of their military tradition therefore predates the Serpent War.
+
+**Proposed implications, not additional canon:**
+- On-foot battlemage teams can operate in locations where mounts are inappropriate, including defensive positions and restricted routes.
+- Mounted battlemage teams could use the salamander-like creature's forest mobility for rapid movement between dispersed objectives without depending upon roads suited to large infantry formations.
+- Intelligence-led selection of engagements, local concentration of magical force and withdrawal before an enemy can assemble superior numbers are plausible doctrinal developments.
+- Prepared refuges and protection from Withering may become important during prolonged operations, but their construction, portability, spell requirements and logistics have not been established.
+- Forest mobility does not prove that the mount climbs vertical trunks, traverses walls, jumps extraordinary distances or uses supernatural transport. Its actual capabilities require a dedicated creature design.
+
+The battlemage is the **defining martial archetype** for Arhîn concept work, while conventional plate-armoured footsoldiers are occasional secondary or exceptional figures rather than the standard military force. No standing army should be inferred from the existence of organised battlemage groups; their mobilisation and peacetime organisation are unresolved.
 
 ### Histalion — Established scope and open boundaries
 
@@ -418,11 +438,12 @@ His office may be expressed through a distinctive residence, retinue or command 
 
 ### Military visual identity — Proposed
 
-- Prioritise figures conveying **focused magical mastery**, authority, inherited scholarship and carefully maintained ritual or operational equipment.
+- Prioritise **small on-foot battlemage teams and mounted battlemages on forest-adapted salamander-like creatures**, depicting focused magical mastery, authority, inherited scholarship and carefully maintained operational equipment.
 - Reserve heavy armour for appropriately justified exceptional defenders and rare circumstances, not the default visual population of an Arhîn settlement.
 - Visualise espionage and diplomatic influence through environments, institutions, observers and discreet equipment where appropriate; avoid inventing a standard spy uniform.
 - Depict military artefacts as inherited, preserved or comparatively simplified reproductions of Aurësén originals, consistent with the millennium of lost craftsmanship.
 - Avoid defaulting to generic elven archers, permanent battalions, ranks of polearm infantry or huge armies simply because the Arhîn are formidable.
+- Mount design should communicate **forest mobility and a salamander-like body plan**, not generic horses, dragons, giant war-lizards covered in armour or an implied supernatural movement ability.
 
 **Hierarchy of emphasis:** diplomacy and espionage in peacetime; extraordinary magical deterrence; magical intervention if conflict occurs; conventional weapons and armour as supporting, not defining elements.
 
@@ -500,14 +521,17 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 ## 3.8 Military Mobilisation and Magical Power
 
-- How, when and by whom are Arhîn capabilities assembled for wartime service if there is no standing military?
+- How, when and by whom are Arhîn **battlemage groups** assembled for wartime service if there is no standing military?
 - Does Histalion command only during war, or does he maintain separate peacetime strategic authority?
 - What are the specific relationships between Histalion, Queen Ilya and territorial rulers?
 - What forms of espionage, diplomacy, foreign influence and intelligence institutions exist?
 - What categories of magical intervention are feasible, and how rare or concentrated is individual magical talent?
 - What safeguards or logistical limitations apply to magical power during prolonged campaigns away from sunlight?
 - What, if any, permanent defensive personnel exist at strategic sites without constituting a standing army?
-- Which combat equipment, magical instruments and ceremonial objects are characteristic of rare military operations?
+- Which combat equipment, magical instruments and ceremonial objects are characteristic of battlemage groups?
+- What is the salamander-like mount's species/name, appearance, habitat, natural locomotion, size, tack, husbandry and relationship with its rider?
+- What distinguishes mounted and foot battlemage roles beyond forest mobility, and how are small groups coordinated?
+- What particular historical Aurësén tactics survive, and how did their own numerical inferiority shape those tactics?
 
 No unresolved detail should be inferred as canon solely from a visual prototype.
 
