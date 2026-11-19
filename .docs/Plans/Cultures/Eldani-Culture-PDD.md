@@ -249,7 +249,7 @@ A representative Eldani asset or scene should satisfy these tests:
 5. Meaningful geometric detail survives gameplay-distance tests; micro-wear is not needlessly sculpted.
 6. Buildings assembled from the kit can support varying ages, regions, wealth and institutional ownership.
 7. An Astonian urban scene communicates historical depth and a plausible relationship to its landscape.
-8. Regional Eldani assets must reflect their specific province and climate: Highland forms are not defaulted indiscriminately to Perramere, whose Germanic-inspired urban forms and savannah adaptation must be distinguishable in silhouette and construction.
+8. Regional Eldani assets must reflect their specific province and climate: Highland forms are not defaulted indiscriminately to Perramere, whose Germanic-inspired urban forms and savannah adaptation must be distinguishable in silhouette and construction, or to the Ninh Sea coast, whose maritime infrastructure and proposed Mediterranean-derived waterfront forms should establish a separate identity.
 
 ---
 
@@ -294,9 +294,46 @@ Lighter natural textiles, reduced heavy layering, shorter jackets and adjustable
 
 Kimius and Vonich share a regional basis but should eventually be distinguished through separately approved political, material and artistic features. Do not invent opposing heraldry, political systems, ethnic ancestry or military allegiances to distinguish them prematurely.
 
+### The Ninh Sea coast — Established
+
+- The **Ninh Sea** lies east of the Rift of Perramere and south of **Eldanon**.
+- The rebellious Eldani states along the coast have established **maritime traditions**.
+- They trade with the **Arhîn**, the **Adritan humans** (ancient-Greek-like city-states), and more distant civilisations including the **Moveli** (Roman-inspired) and **Trebari** (African-inspired).
+- Their climate is comparable to the hotter, drier Rift of Perramere, but **coastal**.
+
+The names, number, borders, political arrangements and precise status of these coastal states are not yet established. Trading relationships are established; the specific commodities, routes, institutions and extent of cultural borrowing are not. Do not equate contact with shared religion, ethnicity, government or wholesale adoption of foreign architecture.
+
+### Ninh Sea architecture and settlement identity — Proposed
+
+The coast should be a distinctly maritime and cosmopolitan Eldani regional tradition, drawing primarily on late-medieval and Renaissance Mediterranean port architecture (particularly Venetian and Genoese construction forms), rather than on Highland castles or Perramere's Germanic gables.
+
+| Asset family | Proposed direction |
+|---|---|
+| Urban housing | Pale stone or plastered masonry, relatively tall narrow street façades, shutters, balconies, recessed windows, shaded ground floors |
+| Merchant residences | Arcaded courtyards, arched openings, decorated waterfront façades, prestigious upper reception rooms; assimilated Arhîn detailing where justified |
+| Harbours and trade | Stone quays, warehouses, covered markets, loading platforms, lifting equipment and customs facilities |
+| Coastal fortification | Sea walls, defensive harbour towers, gates and compact sea-facing fortresses, preserving clear construction and protection logic |
+| Civic and sacred architecture | Municipal and commercial halls, galleries, shaded courtyards and locally adapted Mahlite buildings where religious affiliation is established; retain appropriate Eldani institutional imagery |
+| Shipbuilding | Timber workshops, slipways, sheltered construction areas, sailmaking and rigging facilities; exact vessel types remain open |
+| Climate adaptation | Ventilation, recessed openings, shutters, shade, sheltered courtyards, water storage and coastal weathering; local conditions and building materials must govern the details |
+
+Proposed materials: warm off-white lime plaster, pale limestone or sandstone, warm terracotta tile, salt-weathered timber, oxidised copper or bronze where appropriate and muted maritime blues and greens used selectively. Coastal exposure should be conveyed through shared material and shader treatments, not excessive geometry or uniformly ruined structures.
+
+Architecture should read as Eldani through its late-medieval/early-Renaissance masonry, practical urban construction and locally adapted Arhîn inheritance. The Mediterranean reference is an art-direction proposal, not a claim that the coastal states reproduce Venetian or Genoese institutions. Repeated arches, galleries and waterfront massing should distinguish the region from Perramere even without different colours.
+
+### Maritime trade, clothing and military identity — Proposed
+
+Merchants, shipowners, craftspeople and seafarers may provide a particularly visible expression of the region's cosmopolitan character. Retain Eldani fitted garment construction while using lighter linen and wool where appropriate, shorter coats, practical belts, durable deck footwear and layered garments suited to wind and heat. Wealthy merchant garments may incorporate imported textiles, jewellery and selective ornament; specific foreign influences must follow the relevant culture's eventual PDD.
+
+- Arhîn trade offers a possible continuing source of refined geometric ornament, fine textiles and specialist goods, rather than solely historical influence; specific imports are not established.
+- Adritan and Moveli trade may inform selected decorative and commercial forms, but port architecture must not default to ancient Greek or Roman temples.
+- Trebari trade creates opportunities for imported textiles, objects and artistic exchange; do not assign particular African regional motifs or technologies before the Trebari cultural design is established.
+
+Proposed naval and military expression: practical maritime equipment, coastal defence, shipboard personnel and locally adapted armour with restrained metal protection where appropriate. Formal naval organisation, vessels, fleets, recruitment and insignia remain unresolved. No common coastal heraldry, independent republics, pirates or merchant oligarchies are established by the rebellious political status.
+
 ### Regional production rules
 
-Maintain shared Eldani construction, garment and equipment foundations where appropriate, but develop distinct regional gable, roof, wall, shutter, gallery and courtyard modules. Preserve the grounded mid-poly and modular-production standards of the Graphical Approach PDD. The proposed palette does not constitute final shader or environmental specifications.
+Maintain shared Eldani construction, garment and equipment foundations where appropriate, but develop distinct regional gable, roof, wall, shutter, gallery and courtyard modules. For the Ninh Sea coast, add reusable waterfront, quay, warehouse, sea-wall, harbour tower and shipyard modules where appropriate; preserve shared masonry and other asset families without flattening provincial silhouettes. Preserve the grounded mid-poly and modular-production standards of the Graphical Approach PDD. The proposed palette does not constitute final shader or environmental specifications.
 
 ---
 
@@ -306,8 +343,9 @@ Maintain shared Eldani construction, garment and equipment foundations where app
 - Exact name and layout of Astonia's principal Black Peaks foothill city.
 - Timeline and nature of elven–proto-Eldani contact.
 - Precise relationship among the Merrshaulk conflict, Mahlfach's intervention and the emergence of the kingdom.
-- Additional Eldani provincial subcultures outside the Astonian Highlands and Rift of Perramere.
+- Additional Eldani provincial subcultures outside the Astonian Highlands, Rift of Perramere and Ninh Sea coast.
 - The precise geography of the Rift, its settlements, resources and trade routes; individual identities of Kimius and Vonich, the nature of their rebellion, and extent of Miut and Adritan influence.
+- Names and individual identities of the rebellious Ninh Sea coastal states; their relationship to Eldanon, the Crown and each other; ports, coastal geography, trade routes, commodities, foreign influence, shipbuilding, fleets and territorial boundaries.
 
 ## 3.2 Religion
 - Formal Mahlite institution names, ranks, vestments, rituals and sacred spaces.
