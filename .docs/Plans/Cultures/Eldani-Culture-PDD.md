@@ -249,7 +249,7 @@ A representative Eldani asset or scene should satisfy these tests:
 5. Meaningful geometric detail survives gameplay-distance tests; micro-wear is not needlessly sculpted.
 6. Buildings assembled from the kit can support varying ages, regions, wealth and institutional ownership.
 7. An Astonian urban scene communicates historical depth and a plausible relationship to its landscape.
-8. Regional Eldani assets must reflect their specific province and climate: Highland forms are not defaulted indiscriminately to Perramere, whose Germanic-inspired urban forms and savannah adaptation must be distinguishable in silhouette and construction, or to the Ninh Sea coast, whose maritime infrastructure and proposed Mediterranean-derived waterfront forms should establish a separate identity.
+8. Regional Eldani assets must reflect their specific province and climate: Highland forms are not defaulted indiscriminately to Perramere, whose Germanic-inspired urban forms and savannah adaptation must be distinguishable in silhouette and construction, or to the Ninh Sea coast, whose maritime infrastructure and proposed Mediterranean-derived waterfront forms should establish a separate identity. Northern Eldani assets primarily adapt existing forms to cold conditions, rather than copying Estyenni culture. Dalmen assets communicate proto-Eldani continuity, orthodox Mahlism, poorer material circumstances and a cool, dry highland climate.
 
 ---
 
@@ -331,9 +331,62 @@ Merchants, shipowners, craftspeople and seafarers may provide a particularly vis
 
 Proposed naval and military expression: practical maritime equipment, coastal defence, shipboard personnel and locally adapted armour with restrained metal protection where appropriate. Formal naval organisation, vessels, fleets, recruitment and insignia remain unresolved. No common coastal heraldry, independent republics, pirates or merchant oligarchies are established by the rebellious political status.
 
+### Selheim Basin and the northern Eldani — Established
+
+- The **Selheim Basin** lies to the north and is inhabited by the **Estyenni**, a Viking/Scandinavian-inspired people with a strong cultural identity.
+- The Selheim Basin was formerly part of the Kingdom of Astonia but has broken away, reflecting that distinct cultural identity.
+- The northern climate is considerably colder than the Astonian Highlands.
+- Northern Eldani cultural adaptations are primarily **practical responses to the cold**, not a wholesale adoption of Estyenni culture.
+
+The Estyenni are a distinct cultural identity; this Eldani PDD records their relationship to the former kingdom and neighbouring northern Eldani communities, not their complete cultural design. The precise political borders, dates and circumstances of separation, and present relations between Astonia and the Estyenni remain unspecified. Do not assume that all inhabitants of the Selheim Basin are Eldani or that the basin remains an Astonian province.
+
+### Northern Eldani visual direction — Proposed
+
+Retain the underlying Highland-derived Eldani construction grammar, fitted tailoring, heraldic distinctions and selective assimilated Arhîn influence where applicable. Climate adaptation, not borrowed Scandinavian motifs, is the primary differentiator.
+
+- **Architecture:** substantial masonry foundations, insulated timber or masonry walls, smaller recessed openings, shutters, sheltered entrances, steep roof pitches where snowfall and materials warrant them, enclosed circulation and prominent hearths or chimneys.
+- **Settlements and defences:** compact protected streets, wind shelter, covered work areas, enclosed guardhouses and robust fortifications adapted to cold conditions.
+- **Dress:** thick wool, layered fitted garments, lined and heavy cloaks, gloves, practical insulated boots and weather-protective headwear. Fur and other specific materials depend on availability.
+- **Military equipment:** conventional Eldani plate, mail and padded equipment adapted for cold-weather service, with greater emphasis on insulated underlayers and sheltered fittings rather than a new Scandinavian armour language.
+- **Material direction:** weathered grey stone, dark timber, subdued wool colours and restrained cold-weather surface effects, following the Graphical Approach PDD and the actual biome.
+
+The amount of snowfall, availability of timber, specific northern settlements and degree of cultural exchange with the Estyenni are unresolved. Develop Estyenni architecture, dress, religion, military and heraldry separately rather than using the northern Eldani variant as a substitute.
+
+### Dalmen Highlands — Established
+
+- The **Dalmen Highlands** lie **west of Eldanon**.
+- The inhabitants are generally **poor** and adhere to an **orthodox form of Mahlism**.
+- They retain stronger connections to their **proto-Eldani past**, with an **Anglo-Saxon-like** cultural reference.
+- The climate is **cool and dry**.
+
+The region is culturally conservative in its ancestral connections and religious identity. Orthodox Mahlism is a form of Mahlism; its doctrine, institutions, relationship to mainstream Astonian Mahlism, ritual practices and the precise meaning or origin of its orthodoxy have not yet been defined. Stronger proto-Eldani continuity does not imply surviving worship of Lythaer or other pantheonic gods, nor does it establish reduced Arhîn ancestry. Poverty is a regional socioeconomic characteristic, not a claim that every individual is poor or incapable of skilled craftsmanship.
+
+### Dalmen architectural and material identity — Proposed
+
+Use early medieval Anglo-Saxon-derived building forms as a historical reference, while retaining a recognisably contemporary Eldani culture rather than depicting a society frozen in the past. Distinguish Dalmen through simpler construction, economical materials, visible maintenance and the deliberate preservation of old forms.
+
+| Asset family | Proposed direction |
+|---|---|
+| Rural houses and halls | Low timber-framed or stone-based buildings, simple rectangular plans, pronounced roof silhouettes, modest windows and practical hearths |
+| Settlement structures | Small clustered farmsteads and villages, livestock enclosures, common halls, practical walls and sheltered storage |
+| Religious buildings | Austere stone sanctuaries or small village chapels, compact naves and simple monumental entrances; selectively preserved older Eldani ornament |
+| Defence | Economical stone or timber works, earthworks and modest fortified halls where appropriate; no universal grand castle standard |
+| Material character | Weathered stone, rough plaster, dark or greyed timber, muted natural fabrics and locally appropriate roofing |
+
+The cool, dry climate suggests sheltered interiors, durable construction and restrained water-management features where needed. Exact vegetation, rainfall, roofing materials and resources remain unestablished. Avoid indiscriminately applying northern snow effects, a hot-desert palette or the elaborate stone and roofline detailing of affluent Astonian Highland cities.
+
+### Dalmen dress, faith and ancestral continuity — Proposed
+
+- Practical wool and linen tunics, simple trousers or hose, pinned cloaks, substantial belts and sturdy boots. Economical construction, repairs and restrained ornament should distinguish everyday attire.
+- Older interlace, geometric borders and simple metal clasps may provide a distinctive proto-Eldani-derived decorative vocabulary, pending approval of that ancestral visual language.
+- Orthodox Mahlite sacred objects and vestments may be visually austere, with emphasis on the Masked Saint and inherited ceremonial forms rather than opulence. Do not invent doctrinal differences or formal restrictions on wealth.
+- If martial equipment is depicted, use plausible practical Eldani equipment with economical maintenance and older design influences: padded clothing, shields, mail or simple helmets where appropriate. No separate military doctrine, force composition or heraldry is established by this brief.
+
+Dalmen should not be reduced to a generic Viking culture or treated as identical to the Estyenni. Its proposed visual distinctiveness lies in stronger proto-Eldani continuity, orthodox Mahlism, comparatively modest material circumstances and cool-dry highland adaptation. Preserve differences in craftsmanship, age and wealth within the region.
+
 ### Regional production rules
 
-Maintain shared Eldani construction, garment and equipment foundations where appropriate, but develop distinct regional gable, roof, wall, shutter, gallery and courtyard modules. For the Ninh Sea coast, add reusable waterfront, quay, warehouse, sea-wall, harbour tower and shipyard modules where appropriate; preserve shared masonry and other asset families without flattening provincial silhouettes. Preserve the grounded mid-poly and modular-production standards of the Graphical Approach PDD. The proposed palette does not constitute final shader or environmental specifications.
+Maintain shared Eldani construction, garment and equipment foundations where appropriate, but develop distinct regional gable, roof, wall, shutter, gallery and courtyard modules. For the Ninh Sea coast, add reusable waterfront, quay, warehouse, sea-wall, harbour tower and shipyard modules where appropriate; preserve shared masonry and other asset families without flattening provincial silhouettes. Northern Eldani variants should reuse Highland construction families with sheltered openings, roofing, insulation and cold-weather adaptations. Dalmen requires a simpler ancestral-influenced set of halls, modest dwellings and chapels; do not substitute Estyenni modules for Dalmen. Preserve the grounded mid-poly and modular-production standards of the Graphical Approach PDD. The proposed palettes do not constitute final shader or environmental specifications.
 
 ---
 
@@ -343,12 +396,15 @@ Maintain shared Eldani construction, garment and equipment foundations where app
 - Exact name and layout of Astonia's principal Black Peaks foothill city.
 - Timeline and nature of elven–proto-Eldani contact.
 - Precise relationship among the Merrshaulk conflict, Mahlfach's intervention and the emergence of the kingdom.
-- Additional Eldani provincial subcultures outside the Astonian Highlands, Rift of Perramere and Ninh Sea coast.
+- Any additional Eldani provincial subcultures and their relationship to the Astonian Highlands, Rift of Perramere, Ninh Sea coast, northern Eldani communities and Dalmen Highlands.
 - The precise geography of the Rift, its settlements, resources and trade routes; individual identities of Kimius and Vonich, the nature of their rebellion, and extent of Miut and Adritan influence.
 - Names and individual identities of the rebellious Ninh Sea coastal states; their relationship to Eldanon, the Crown and each other; ports, coastal geography, trade routes, commodities, foreign influence, shipbuilding, fleets and territorial boundaries.
+- Selheim Basin separation history, present political relations, northern Eldani settlement locations and the boundary with Estyenni cultural territory.
+- Dalmen settlement patterns, resources, origins and persistence of poverty, regional political institutions and extent of proto-Eldani cultural continuity.
 
 ## 3.2 Religion
 - Formal Mahlite institution names, ranks, vestments, rituals and sacred spaces.
+- Doctrine, liturgy, organisation and visual distinctions of orthodox Mahlism in the Dalmen Highlands, and its relationship to mainstream Astonian Mahlism.
 - Iconographic design of Mahlfach's mask and whether any depiction of the Saint is restricted.
 - What historical Lythaer imagery survives and how Mahlism interprets it.
 - Whether the eight-point royal sun has any formal theological meaning.
