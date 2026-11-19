@@ -4,7 +4,7 @@
 **Document Type:** Cultural Sub-PDD  
 **Status:** Draft / Design Baseline  
 **Scope:** Eldani human culture, Kingdom of Astonia, Astonian Mahlism, the aristocratic houses, visual identity and cultural asset direction  
-**Last updated:** 2026-11-13
+**Last updated:** 2026-11-20
 
 ---
 
@@ -35,7 +35,8 @@ Their appearance and society have been shaped by contact with other cultures. Th
 
 - The Eldani descend from **proto-Eldani** peoples.
 - Approximately **1,000 years ago**, a godlike figure known as **Mahlfach, the Masked Saint**, saved the proto-Eldani from the **Merrshaulk**, the Serpent-men.
-- Eldani society also experienced significant **elven cultural influence around 1,000 years ago**.
+- Eldani society experienced significant **Arhîn cultural influence around 1,000 years ago**, which has been assimilated into its own traditions.
+- **Much of the Eldani royal lineage has some degree of Arhîn ancestry.** The specific genealogies, extent of ancestry in individual families and biological consequences are not yet defined.
 - The proto-Eldani had practised a **pantheonic religion** in which **Lythaer**, the god of light and renewal, held a central place.
 - From that earlier religious tradition, **Astonian Mahlism** developed and became overwhelmingly dominant in Eldani society.
 
@@ -71,7 +72,7 @@ Avoid uniformly pristine masonry. Building age may be conveyed through changes i
 
 ### Elven inheritance — Proposed visual expression
 
-The Eldani should not look like elves who happen to use stone. Elven influence is historical, adapted and partly assimilated.
+The Eldani should not look like Arhîn who happen to use stone. Their Arhîn influence is historical, adapted and assimilated into a distinctly human design language. Its expression is especially important in the aristocracy, merchant classes and military, as well as prestigious architecture.
 
 Possible surviving elements include:
 - more graceful window proportions and tall, narrow openings;
@@ -157,7 +158,7 @@ These are statements about **Eldani historical tradition and belief**, not final
 
 Astonian aristocracy is **devolved into hereditary houses**. These houses **inherit land across the kingdom** and are loyal to **King Achov III**.
 
-This structure permits local identities while maintaining a recognisable Astonian national identity.
+This structure permits local identities while maintaining a recognisable Astonian national identity. Much of the Eldani royal lineage has some Arhîn ancestry; this connection should inform aristocratic visual culture without implying that every noble house or wealthy family has Arhîn ancestry, or that ancestry determines social status.
 
 **Established hierarchy of identity:**
 - **The Crown** represents the kingdom and the royal standard.
@@ -175,7 +176,7 @@ The precise constitutional powers of the houses, their titles, number, names, ri
 
 **Constraint:** noble houses vary through heraldry, dress, building detail and resources, not wholly disconnected racial architectural styles. House heraldry must not be confused with the red/blue quartering of the Crown.
 
-## 2.10 Civilian Dress and Equipment — Proposed
+## 2.10 Civilian Dress and Equipment — Established cultural constraints / proposed visual design
 
 **Clothing:** layered tunics, fitted doublets, linen, wool, cloaks, belts, gowns and period-inspired hats. Tailoring, fabric quality, embroidery and jewellery communicate rank and profession.
 
@@ -184,6 +185,22 @@ The precise constitutional powers of the houses, their titles, number, names, ri
 **Visual rule:** start from functional equipment and introduce fantasy variation selectively through ornament, symbolism, materials, magical effects or silhouette. Avoid excessive sculptural clutter on common equipment.
 
 **Identity layers:** clothing and armour should be able to express royal service, household allegiance, religious office or civilian profession without requiring entirely independent equipment systems for each.
+
+### Arhîn inheritance in Eldani dress and martial equipment
+
+**Established design constraint:** Arhîn cultural influence and the Arhîn ancestry of much of the Eldani royalty should be reflected particularly in aristocratic, merchant and military visual culture. Eldani designs must nevertheless be clearly distinct from Arhîn designs. Cultural borrowing is not evidence of biological ancestry in every wearer.
+
+**Proposed clothing grammar:** retain substantial late-medieval/early-Renaissance tailoring, fitted torsos, structured shoulders, emphatic waists, layered fabrics and recognisably human garment proportions. Adapt Arhîn-derived collar curves, shoulder-yoke construction, geometric seam lines, embroidery and clasp forms into these human garments. Do not copy long cascading panel coats, pervasive narrow bronze framing or the full ceremonial vertical silhouette of Arhîn dress.
+
+- **Aristocracy:** sculpted collars, broad mantles, fitted doublets and structured gowns, velvet, brocade and fine wool, restrained goldwork and inherited geometric ornament integrated with house heraldry. The Crown's red-and-blue quartering and eight-point sun remain distinct from Arhîn symbols. The finest garments may retain more elaborate forms of inherited ornament without becoming Arhîn court dress.
+- **Merchant classes:** shorter tailored coats and fitted doublets, shaped cuffs, selective geometric woven or embroidered bands, refined clasps and high-quality dyed cloth. Adapt prestigious fashions into practical garments for commerce, travel and urban life; expensive fabrics and craftsmanship rather than aristocratic heraldry alone express wealth.
+- **Commoners:** functional linen and wool shirts, tunics, hose, aprons and cloaks; occasional simplified inherited collar or trim motifs, without universal elaborate ornament.
+- **Military:** retain believable human steel plate, mail, brigandine and padded garments. Arhîn inheritance may appear in shaped gorgets, gently curved shoulder plates, shallow architectural fluting or incised geometric borders. Use robust silhouettes, recognisable human armour articulation, heraldic surcoats, shields and livery. Elite and ceremonial equipment may express inherited refinement more strongly than common issue; do not default to Arhîn battlemage attire, slender bronze-framed plate or magical accessories.
+- **Mahlite institutions:** preserve a distinct religious silhouette and Masked Saint symbolism. Inherited geometric details may be adopted as ornament, but do not equate Arhîn religious iconography with Mahlism.
+
+### Physical appearance and lineage — Further consideration required
+
+Eldani are human. Arhîn ancestry in much of the royal lineage is established, but its prevalence outside royal families and any visible inherited traits are not. Possible subtle differences in facial refinement or ear shape among particular individuals may be explored as proposals; do not assign Arhîn skull geometry, pointed ears, eye colours, functional immortality, magical aptitude or Withering susceptibility to Eldani by default. The appearance of specific descendants, inheritance rules and character-creation implications require separate approval.
 
 ## 2.11 Historical Layering — Proposed
 
@@ -227,7 +244,7 @@ A representative Eldani asset or scene should satisfy these tests:
 
 1. Its construction, scale and silhouette are credible within a grounded late-medieval/early-Renaissance human culture.
 2. It remains recognisable as Eldani before heraldry, small carvings or surface textures are added.
-3. Elven inheritance is subtle and selective, not the dominant structural language.
+3. Arhîn inheritance is selective and assimilated, especially evident in aristocratic, merchant and military design; human tailoring, construction, heraldry and silhouettes remain dominant. An Eldani asset must still read as Eldani without a faction emblem.
 4. Crown, religious and house symbols are used in the correct contexts and remain visually distinct.
 5. Meaningful geometric detail survives gameplay-distance tests; micro-wear is not needlessly sculpted.
 6. Buildings assembled from the kit can support varying ages, regions, wealth and institutional ownership.
@@ -251,7 +268,7 @@ A representative Eldani asset or scene should satisfy these tests:
 - Whether there are minority, surviving or syncretic religious practices among the Eldani.
 
 ## 3.3 Houses and Crown
-- The number, names, territories, lineages and political privileges of the houses.
+- The number, names, territories, lineages and political privileges of the houses, including the distribution and history of Arhîn ancestry in royal and other genealogies.
 - Design of individual coats of arms and any restrictions on heraldic inheritance.
 - Royal versus house military organisation and its effect on visual identity.
 - Exact colours, geometry and field rules of the Astonian sun banner.
@@ -259,7 +276,8 @@ A representative Eldani asset or scene should satisfy these tests:
 ## 3.4 Asset Direction
 - Approved final material swatches and calibrated in-engine appearances.
 - Degree of Renaissance versus late-medieval expression in different building ages.
-- Formal distinction of everyday, sacred, aristocratic and royal clothing.
+- Formal distinction of everyday, merchant, sacred, aristocratic and royal clothing; exact Arhîn-derived motifs, tailoring details and military armour variants.
+- Whether and how Arhîn ancestry manifests in the physical appearance or other inherited characteristics of particular Eldani individuals.
 - Extent of fantasy elements in elite architecture and ceremonial equipment.
 - Final library of architectural motifs, sacred symbols and modular asset components.
 
