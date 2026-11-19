@@ -52,7 +52,7 @@ These events provide historical context for the culture; this PDD does not yet s
 - Gothic civic and ecclesiastical architecture;
 - selective early-Renaissance symmetry, courtyards and refinement.
 
-The aim is neither a literal reconstruction nor an eclectic collection of recognisable historical buildings. Eldani work must feel part of one coherent, independently developed civilisation with substantial regional variation. The Highland baseline is a reference point, not a universal provincial kit.
+The aim is neither a literal reconstruction nor an eclectic collection of recognisable historical buildings. Eldani work must feel part of one coherent, independently developed civilisation with substantial regional variation. The Highland baseline is a reference point, not a universal provincial kit. **Established governing principle: Eldani first, regional adaptations second.** After approximately 1,000 years of cultural development, the regional Eldani peoples share a coherent Eldani identity. Climate, trade, ancestral continuity and external influences modify this identity rather than replace it. Real-world historical references are secondary design tools, not separate in-world civilisations.
 
 ## 2.4 Architecture and Settlement Language — Proposed
 
@@ -249,11 +249,19 @@ A representative Eldani asset or scene should satisfy these tests:
 5. Meaningful geometric detail survives gameplay-distance tests; micro-wear is not needlessly sculpted.
 6. Buildings assembled from the kit can support varying ages, regions, wealth and institutional ownership.
 7. An Astonian urban scene communicates historical depth and a plausible relationship to its landscape.
-8. Regional Eldani assets must reflect their specific province and climate: Highland forms are not defaulted indiscriminately to Perramere, whose Germanic-inspired urban forms and savannah adaptation must be distinguishable in silhouette and construction, or to the Ninh Sea coast, whose maritime infrastructure and proposed Mediterranean-derived waterfront forms should establish a separate identity. Northern Eldani assets primarily adapt existing forms to cold conditions, rather than copying Estyenni culture. Dalmen assets communicate proto-Eldani continuity, orthodox Mahlism, poorer material circumstances and a cool, dry highland climate.
+8. Regional Eldani assets must read as **Eldani first, regional adaptations second**, even without heraldry. They must also reflect their specific province and climate: Highland forms are not defaulted indiscriminately to Perramere, whose Germanic-inspired urban forms and savannah adaptation must be distinguishable in silhouette and construction, or to the Ninh Sea coast, whose maritime infrastructure and proposed Mediterranean-derived waterfront forms should establish a separate identity. Northern Eldani assets primarily adapt existing forms to cold conditions, rather than copying Estyenni culture. Dalmen assets communicate proto-Eldani continuity, orthodox Mahlism, poorer material circumstances and a cool, dry highland climate.
 
 ---
 
 ## 2.14 Regional Subcultures — Established / Proposed
+
+### Governing principle — Eldani first, adaptations second (Established)
+
+All Eldani regional subcultures are **Eldani first**. A millennium of shared cultural development has produced an identifiable civilisation across its provinces, notwithstanding political rebellion, local poverty, differences in religious practice and foreign contact. Regional expressions are adaptations of that civilisation, not independent aesthetic systems based directly on real-world analogues.
+
+**Art-direction hierarchy:** start with the shared Eldani design grammar (human medieval-to-Renaissance construction and tailoring, assimilated Arhîn influence and applicable Mahlite and heraldic traditions); then modify it for local climate, resources, economy, historical continuity and trade. The Astonian Highlands remain the primary reference, but common Eldani forms need not be identical to the royal heartland's most affluent forms. Maintain recognisable relationships in door and window composition, masonry and timber construction, garment cuts, armour articulation and ornament. Provincial identities must remain distinguishable in silhouette and practical adaptations without relying on a separate racial kit or royal heraldry to demonstrate Eldani identity.
+
+Historical references (French-Gothic, Germanic, Mediterranean and Anglo-Saxon) indicate relative tendencies within the Eldani vocabulary, not instructions to reproduce those cultures wholesale. Political rebellion does not remove Eldani cultural identity or require royal livery. The **Estyenni** are a distinct people and are not included in this rule; it applies to northern Eldani communities, not the independent Estyenni culture.
 
 ### Astonian Highlands — primary cultural reference
 
@@ -286,7 +294,7 @@ Use late-medieval and early-Renaissance Germanic urban forms as the main referen
 
 Proposed materials: warm sand-coloured masonry, ochre and off-white plaster, dark weathered timber used selectively, dusty terracotta, iron and muted earth pigments. Timber framing depends on availability; do not assume open savannah supplies abundant construction wood.
 
-Germanic identity should be legible in gable profiles, façade proportions, framing rhythm and civic silhouettes, not merely a recoloured Highland kit. Shade and airflow should be functional. Do not default to desert or ancient Greek architecture.
+The stronger Germanic influence should be legible in gable profiles, façade proportions, framing rhythm and civic silhouettes, as a regional inflection of Eldani architecture rather than either a direct German historical recreation or merely a recoloured Highland kit. Shade and airflow should be functional. Do not default to desert or ancient Greek architecture.
 
 ### Clothing, military and cultural exchange — Proposed
 
@@ -305,7 +313,7 @@ The names, number, borders, political arrangements and precise status of these c
 
 ### Ninh Sea architecture and settlement identity — Proposed
 
-The coast should be a distinctly maritime and cosmopolitan Eldani regional tradition, drawing primarily on late-medieval and Renaissance Mediterranean port architecture (particularly Venetian and Genoese construction forms), rather than on Highland castles or Perramere's Germanic gables.
+The coast should be a distinctly maritime and cosmopolitan Eldani regional tradition, adapting common Eldani architecture to coastal needs with secondary references to late-medieval and Renaissance Mediterranean port forms (particularly Venetian and Genoese construction forms). These references inform regional features, not an independent architectural identity.
 
 | Asset family | Proposed direction |
 |---|---|
@@ -363,7 +371,7 @@ The region is culturally conservative in its ancestral connections and religious
 
 ### Dalmen architectural and material identity — Proposed
 
-Use early medieval Anglo-Saxon-derived building forms as a historical reference, while retaining a recognisably contemporary Eldani culture rather than depicting a society frozen in the past. Distinguish Dalmen through simpler construction, economical materials, visible maintenance and the deliberate preservation of old forms.
+Use early medieval Anglo-Saxon-derived building forms as a secondary reference for retained proto-Eldani traditions within recognisably contemporary Eldani architecture, rather than depicting a separate early medieval society frozen in the past. Distinguish Dalmen through simpler construction, economical materials, visible maintenance and the deliberate preservation of old forms.
 
 | Asset family | Proposed direction |
 |---|---|
@@ -385,6 +393,8 @@ The cool, dry climate suggests sheltered interiors, durable construction and res
 Dalmen should not be reduced to a generic Viking culture or treated as identical to the Estyenni. Its proposed visual distinctiveness lies in stronger proto-Eldani continuity, orthodox Mahlism, comparatively modest material circumstances and cool-dry highland adaptation. Preserve differences in craftsmanship, age and wealth within the region.
 
 ### Regional production rules
+
+Shared Eldani asset families and construction principles are the default foundation. Create regional variants and genuinely necessary climate- or function-specific modules; do not develop unrelated complete race kits from real-world historical references. The acceptance test is whether assets read as Eldani even before regional colours or political emblems are added, while still communicating their local circumstances.
 
 Maintain shared Eldani construction, garment and equipment foundations where appropriate, but develop distinct regional gable, roof, wall, shutter, gallery and courtyard modules. For the Ninh Sea coast, add reusable waterfront, quay, warehouse, sea-wall, harbour tower and shipyard modules where appropriate; preserve shared masonry and other asset families without flattening provincial silhouettes. Northern Eldani variants should reuse Highland construction families with sheltered openings, roofing, insulation and cold-weather adaptations. Dalmen requires a simpler ancestral-influenced set of halls, modest dwellings and chapels; do not substitute Estyenni modules for Dalmen. Preserve the grounded mid-poly and modular-production standards of the Graphical Approach PDD. The proposed palettes do not constitute final shader or environmental specifications.
 
