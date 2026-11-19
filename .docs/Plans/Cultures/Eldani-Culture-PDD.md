@@ -3,7 +3,7 @@
 **Project:** Ninth Age  
 **Document Type:** Cultural Sub-PDD  
 **Status:** Draft / Design Baseline  
-**Scope:** Eldani human culture, Kingdom of Astonia, Astonian Mahlism, the aristocratic houses, visual identity and cultural asset direction  
+**Scope:** Eldani human culture, Kingdom of Astonia, Astonian Mahlism, the aristocratic houses, regional subcultures, visual identity and cultural asset direction  
 **Last updated:** 2026-11-20
 
 ---
@@ -44,7 +44,7 @@ These events provide historical context for the culture; this PDD does not yet s
 
 ## 2.3 Visual Archetype — Established / Proposed
 
-**Established:** Eldani architecture and culture most closely resemble **late-medieval to Renaissance Europe**. The Eldani build castles and stone towns. Their visual culture retains an elven inheritance from a millennium earlier.
+**Established:** Eldani architecture and culture most closely resemble **late-medieval to Renaissance Europe**. The Eldani build castles and stone towns. Their visual culture retains an elven inheritance from a millennium earlier. The previously established architectural, clothing and material baseline primarily describes the **Astonian Highlands**; it must not be imposed uniformly on every province. The Kingdom of Astonia contains diverse Eldani regional subcultures. Shared racial, historical and institutional foundations remain applicable where established; see section 2.14 for regional constraints.
 
 **Proposed historical-art references:**
 - French late-medieval castle and military engineering;
@@ -52,7 +52,7 @@ These events provide historical context for the culture; this PDD does not yet s
 - Gothic civic and ecclesiastical architecture;
 - selective early-Renaissance symmetry, courtyards and refinement.
 
-The aim is neither a literal reconstruction nor an eclectic collection of recognisable historical buildings. Eldani work must feel part of one coherent, independently developed civilisation.
+The aim is neither a literal reconstruction nor an eclectic collection of recognisable historical buildings. Eldani work must feel part of one coherent, independently developed civilisation with substantial regional variation. The Highland baseline is a reference point, not a universal provincial kit.
 
 ## 2.4 Architecture and Settlement Language — Proposed
 
@@ -248,7 +248,55 @@ A representative Eldani asset or scene should satisfy these tests:
 4. Crown, religious and house symbols are used in the correct contexts and remain visually distinct.
 5. Meaningful geometric detail survives gameplay-distance tests; micro-wear is not needlessly sculpted.
 6. Buildings assembled from the kit can support varying ages, regions, wealth and institutional ownership.
-7. An Astonian urban scene communicates stone construction, historical depth and a plausible relationship to its landscape.
+7. An Astonian urban scene communicates historical depth and a plausible relationship to its landscape.
+8. Regional Eldani assets must reflect their specific province and climate: Highland forms are not defaulted indiscriminately to Perramere, whose Germanic-inspired urban forms and savannah adaptation must be distinguishable in silhouette and construction.
+
+---
+
+## 2.14 Regional Subcultures — Established / Proposed
+
+### Astonian Highlands — primary cultural reference
+
+**Established:** the previously developed Eldani architectural and aesthetic baseline applies primarily to the **Astonian Highlands**, rather than to every province of the Kingdom of Astonia. The kingdom's provincial subcultures differ according to geography and local history.
+
+The Highland baseline includes substantial stone castles, fortified stone towns, late-medieval and early Renaissance forms, assimilated Arhîn influence and visible Crown, House and Faith identities. Existing architectural, clothing, armour and palette proposals in this PDD are Highland-first defaults unless expressly identified as wider cultural rules.
+
+### The Rift of Perramere — Established
+
+- The **Rift of Perramere** lies south of the Astonian Highlands.
+- Its climate is **hotter and drier** than the Highlands, with **savannah-like conditions**.
+- It lies at a crossroads between the **Miut** (tabaxi) to the west, the **Astonian Highlands** to the north, and the **Adritan**, ancient-Greek-like city-states, to the south.
+- Its two main provinces are the rebellious states of **Kimius** and **Vonich**, within the Kingdom of Astonia.
+- Their architecture has a **stronger German-like character**, adapted to the region's savannah-like conditions.
+
+The precise political status, nature and chronology of their rebellion, capitals, borders, heraldry and individual differences are not yet defined. Cultural contact does not establish that Miut or Adritan motifs are widespread, that inhabitants adhere to foreign religions, or that the provinces have become independent.
+
+### Perramere architecture — Proposed
+
+Use late-medieval and early-Renaissance Germanic urban forms as the main reference, adapting them to climate rather than importing a cold-climate town unchanged.
+
+| Asset family | Proposed direction |
+|---|---|
+| Urban houses | Masonry lower storeys, plastered timber frames where materials permit, projecting upper storeys, shaded street fronts and shutters |
+| Roofs | Recognisably gabled Germanic silhouettes and stepped or articulated gable ends; moderately reduced pitches where rainfall and materials allow; weathered clay tile |
+| Markets | Shaded galleries, covered street-level arcades, courtyards, loading yards and road-facing shopfronts |
+| Fortifications | Compact stone or brick works, strong gatehouses and practical towers; avoid uniformly replicating Highland castles |
+| Civic buildings | Strong gabled façades, square or polygonal towers, substantial masonry, selective assimilated Arhîn geometric detail |
+| Climate adaptation | Recessed windows, shutters, projecting eaves, shaded courtyards, ventilation and water storage; subject to local climate and material availability |
+
+Proposed materials: warm sand-coloured masonry, ochre and off-white plaster, dark weathered timber used selectively, dusty terracotta, iron and muted earth pigments. Timber framing depends on availability; do not assume open savannah supplies abundant construction wood.
+
+Germanic identity should be legible in gable profiles, façade proportions, framing rhythm and civic silhouettes, not merely a recoloured Highland kit. Shade and airflow should be functional. Do not default to desert or ancient Greek architecture.
+
+### Clothing, military and cultural exchange — Proposed
+
+Lighter natural textiles, reduced heavy layering, shorter jackets and adjustable outer garments retain Eldani fitted tailoring while adapting to heat. Merchants may adopt foreign textiles, practical travel goods and selective Miut or Adritan decorative features through contact, subject to separate designs for those cultures. Military equipment may retain practical Eldani plate, mail and padded clothing with adaptations for movement and heat. Provincial military insignia, recruitment and organisation are unresolved.
+
+Kimius and Vonich share a regional basis but should eventually be distinguished through separately approved political, material and artistic features. Do not invent opposing heraldry, political systems, ethnic ancestry or military allegiances to distinguish them prematurely.
+
+### Regional production rules
+
+Maintain shared Eldani construction, garment and equipment foundations where appropriate, but develop distinct regional gable, roof, wall, shutter, gallery and courtyard modules. Preserve the grounded mid-poly and modular-production standards of the Graphical Approach PDD. The proposed palette does not constitute final shader or environmental specifications.
 
 ---
 
@@ -258,7 +306,8 @@ A representative Eldani asset or scene should satisfy these tests:
 - Exact name and layout of Astonia's principal Black Peaks foothill city.
 - Timeline and nature of elven–proto-Eldani contact.
 - Precise relationship among the Merrshaulk conflict, Mahlfach's intervention and the emergence of the kingdom.
-- Distinct regional Eldani cultures outside the royal centre.
+- Additional Eldani provincial subcultures outside the Astonian Highlands and Rift of Perramere.
+- The precise geography of the Rift, its settlements, resources and trade routes; individual identities of Kimius and Vonich, the nature of their rebellion, and extent of Miut and Adritan influence.
 
 ## 3.2 Religion
 - Formal Mahlite institution names, ranks, vestments, rituals and sacred spaces.
