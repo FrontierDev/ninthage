@@ -33,7 +33,7 @@ The Aurësén lost the **Gift of Light** at the end of the **Serpent War**, appr
 
 The Arhîn are **functionally immortal** but **do not naturally possess godlike powers**. Longevity is not equivalent to divinity, invulnerability or exemption from the Withering.
 
-Their society revolves around a three-caste hierarchy, material dependence on protectors, concentrated magical authority and the management of access to light. Their security rests primarily on **diplomacy, espionage and the deterrent of extraordinary magical power**, rather than a standing military.
+Their mainstream society revolves around a three-caste hierarchy, material dependence on protectors, concentrated magical authority and the management of access to light; naturalists occupy a socially distinct outsider caste. Their security rests primarily on **diplomacy, espionage and the deterrent of extraordinary magical power**, rather than a standing military.
 
 **Defining visual premise:** luminous, elevated privilege above an ancient forest world, with progressively darker and more dependent forms of habitation at lower levels. The civilisation is both magnificent and vulnerable. **Its present splendour is the diminished inheritance of a more accomplished Aurësén civilisation, not a new golden age.**
 
@@ -98,7 +98,7 @@ VFX should feel uncanny and tragic rather than casually demonic. Whether a Withe
 
 ## 2.5 The Three-Caste Society — Established
 
-Arhîn society is divided into **exactly three castes** as currently defined:
+Mainstream Arhîn society is organised into **three castes**, alongside a socially distinct outsider caste of naturalists (see below):
 
 | Caste | Established social description | Spatial and art implication |
 |---|---|---|
@@ -158,6 +158,12 @@ Other Grey Ones are revered in various capacities. Do not assume that all Grey O
 Tiandre remains the principal deity of the Arhîn; Auris Koth remains highly revered for bestowing the Gift of Light. **Othruum is a deity of the Summer Court.** His association with druidism does not establish his relative prominence among the Arhîn, his relationship to the Grey Ones, or that all druids worship him exclusively. The nature of his teachings, domains, symbols, practices, followers and the institutional relationship between druidism and Arhîn clergy remain to be defined. Do not assume druidism is restricted to the Arhîn.
 
 **Proposed visual distinction:** organised Arhîn clergy retain their refined cultural tailoring, ceremonial textiles and carefully crafted shrine objects. Druidic attire and ritual objects may place greater emphasis on practical woodland clothing and natural materials, but specific druidic iconography, sacred locations, vestments and rites require separate approval. Woodland setting alone must not be used to identify a character or shrine as druidic. In particular, Arhîn shrines dedicated to Othruum use the same sacred-site vocabulary as shrines of other deities; do not assign them a separate druidic grove kit. Avoid default antlers, animal pelts, leaf-covered robes or living-wood accessories on ordinary Arhîn priests.
+
+### Arhîn naturalists — Established
+
+Arhîn naturalists occupy a socially distinct, effectively separate caste of hermits and outsiders, rather than a normal profession within the mainstream three-caste hierarchy. They possess deep knowledge of the natural world. Through that pursuit they become increasingly attuned to the darker side of Arhîn and Aurësén ancestry. They are regarded with suspicion and fear within Arhîn society and are characterised as **druidic occultists**.
+
+Their visual identity should reflect their separation from ordinary Arhîn clergy and lay society: animal hides, antlers and other animal parts are established attire and adornment directions. Proposed treatments include weathered leather, bone or teeth accessories, practical layered garments, subdued earth colours and selective remnants of recognisable Arhîn tailoring. These materials need not imply that every naturalist wears identical equipment or that every item is a ritual object. Do not equate their ancestral attunement with the Withering, evil, specific magical powers or worship of a particular deity without further lore. Their social and legal position relative to the three mainstream castes, particular occult practices and relationship with Othruum's priesthood remain open.
 
 ### Woodland shrines — Established
 
@@ -517,7 +523,7 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 ## 3.4 Caste, Protection and Authority
 
-- How caste membership, indenture and inheritance function.
+- How caste membership, indenture and inheritance function, including the legal and social relationship of the distinct naturalist outsider caste to the three mainstream castes.
 - Whether and how dependants obtain protected light or magic at ground level.
 - Laws, sanctions, mobility, employment and protection obligations.
 - Relationship of intellectual, religious, noble and royal authority.
