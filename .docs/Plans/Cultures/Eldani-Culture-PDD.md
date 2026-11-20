@@ -204,6 +204,14 @@ The precise constitutional powers of the houses, their titles, number, names, ri
 
 Eldani are human. Arhîn ancestry in much of the royal lineage is established, but its prevalence outside royal families and any visible inherited traits are not. Possible subtle differences in facial refinement or ear shape among particular individuals may be explored as proposals; do not assign Arhîn skull geometry, pointed ears, eye colours, functional immortality, magical aptitude or Withering susceptibility to Eldani by default. The appearance of specific descendants, inheritance rules and character-creation implications require separate approval.
 
+### Eldani naturalists — Established / Proposed
+
+**Established:** Eldani naturalists are visually subtler than Arhîn naturalists. They wear clothing similar to ordinary Eldani civilians, using various wools and plant-based natural adornments rather than the conspicuous animal-part attire associated with Arhîn occultist naturalists.
+
+**Proposed treatment:** familiar fitted tunics, doublets, bodices, skirts and shoulder mantles; layered wool and linen appropriate to local climate; modest dried herb bundles, woven botanical motifs, plant-fibre ties and wooden accessories. Prefer practical herbalist or field-scholar silhouettes over elaborate ritual robes, antler headdresses or conspicuous bone trophies. Regional adaptations follow the same Eldani-first principles as civilian clothing.
+
+Their social status, religious affiliations, formal organisation, magical practices and relationship to Mahlism or Othruum remain undefined. Visual subtlety is not evidence of universal acceptance or religious orthodoxy. Do not assign Crown heraldry or an unapproved religious emblem by default.
+
 ## 2.11 Historical Layering — Proposed
 
 Built environments may contain several visibly distinguishable layers:
