@@ -144,6 +144,7 @@ The Arhîn practise organised worship of various **fey deities**, with **Tiandre
 |---|---|
 | Tiandre | Queen of the Summer Court; one of the Grey Ones; principal deity of the Arhîn; Queen Ilya is her High Priestess |
 | Auris Koth | Prince of Daylight; highly revered because he bestowed the Gift of Light upon the Aurësén |
+| Othruum | The Greenbringer; a deity of the Summer Court; druidism is often expressed through his worship and teachings |
 | Other fey deities | Further identities, titles and roles to be supplied |
 
 The Aurësén subsequently lost the Gift of Light at the end of the Serpent War, as established in sections 2.1–2.4. Auris Koth's bestowal of the Gift is established, but the mechanism by which it was lost, his involvement in its loss, and the possibility of its restoration are not. His reverence may be expressed through gratitude and remembrance as a proposed artistic or narrative direction, not a fixed doctrine.
@@ -154,13 +155,15 @@ Other Grey Ones are revered in various capacities. Do not assume that all Grey O
 
 **Established:** fey worship has a druidic element, but organised Arhîn religion and druidism are distinct traditions. Druidism is often expressed through the worship and teachings of **Othruum, the Greenbringer**. Do not equate all fey worship with druidism, all Arhîn clergy with druids, or the use of woodland shrines with a specifically druidic practice.
 
-Tiandre remains the principal deity of the Arhîn; Auris Koth remains highly revered for bestowing the Gift of Light. Othruum's association with druidism does not establish his relative prominence among the Arhîn, his court affiliation, his relationship to the Grey Ones, or that all druids worship him exclusively. The nature of his teachings, domains, symbols, practices, followers and the institutional relationship between druidism and Arhîn clergy remain to be defined. Do not assume druidism is restricted to the Arhîn.
+Tiandre remains the principal deity of the Arhîn; Auris Koth remains highly revered for bestowing the Gift of Light. **Othruum is a deity of the Summer Court.** His association with druidism does not establish his relative prominence among the Arhîn, his relationship to the Grey Ones, or that all druids worship him exclusively. The nature of his teachings, domains, symbols, practices, followers and the institutional relationship between druidism and Arhîn clergy remain to be defined. Do not assume druidism is restricted to the Arhîn.
 
-**Proposed visual distinction:** organised Arhîn clergy retain their refined cultural tailoring, ceremonial textiles and carefully crafted shrine objects. Druidic attire and ritual objects may place greater emphasis on practical woodland clothing and natural materials, but specific druidic iconography, sacred locations, vestments and rites require separate approval. Woodland setting alone must not be used to identify a character or shrine as druidic. Avoid default antlers, animal pelts, leaf-covered robes or living-wood accessories on ordinary Arhîn priests.
+**Proposed visual distinction:** organised Arhîn clergy retain their refined cultural tailoring, ceremonial textiles and carefully crafted shrine objects. Druidic attire and ritual objects may place greater emphasis on practical woodland clothing and natural materials, but specific druidic iconography, sacred locations, vestments and rites require separate approval. Woodland setting alone must not be used to identify a character or shrine as druidic. In particular, Arhîn shrines dedicated to Othruum use the same sacred-site vocabulary as shrines of other deities; do not assign them a separate druidic grove kit. Avoid default antlers, animal pelts, leaf-covered robes or living-wood accessories on ordinary Arhîn priests.
 
 ### Woodland shrines — Established
 
 The Arhîn **do not dedicate large temples to their deities**. They pay tribute to them at **small, sacred shrines in woodland areas**. Organised religion and the existence of clergy do not imply large urban temples, cathedrals or monumental religious precincts. Queen Ilya's position as High Priestess does not by itself make the Suntower a temple.
+
+**An Arhîn grove dedicated to Othruum is identical in kind to a sacred shrine dedicated to any other deity.** It belongs to the same Arhîn religious tradition, with no special druidic architectural or institutional category. Worship of Othruum at an Arhîn shrine does not by itself make its worshippers or officiants druids. Differences in deity-specific iconography or rites remain to be established and must not be used to invent a separate shrine type for Othruum.
 
 The specific distribution of shrines, their custodianship, access, rites, offerings, frequency of worship and whether shrines are shared by multiple deities remain unresolved.
 
@@ -525,7 +528,7 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 - Further fey deities, their identities, aspects, symbols, relative significance and relationship to the Grey Ones and Tiandre; Auris Koth's iconography and religious practices.
 - Clerical hierarchy, caste membership, deity-specific priesthoods, duties, training and relationship to royal authority.
-- Othruum's teachings, iconography, affiliations and importance within the Arhîn pantheon; the organisation, extent, practices and visual identity of druidism and its relationship to organised fey worship.
+- Othruum's teachings, iconography, relationship to other Summer Court deities and importance within the Arhîn pantheon; the organisation, extent, practices and visual identity of druidism and its relationship to organised fey worship. His Summer Court membership and the equivalence of his Arhîn groves to other deity shrines are established.
 - Woodland shrine layouts, custodianship, rites, offerings, access and approved deity-specific iconography.
 - Iconography and theology of Tiandre's Summer Court.
 - Whether Tiandre's power is related to the Suntower or Withering.
