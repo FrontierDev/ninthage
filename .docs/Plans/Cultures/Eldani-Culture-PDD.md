@@ -138,7 +138,9 @@ Mahlism developed out of the earlier proto-Eldani pantheonic tradition, notably 
 
 These are statements about **Eldani historical tradition and belief**, not final metaphysical rules for how divinity functions in the setting.
 
-### Religious visual identity — Proposed
+### Mainstream Astonian Mahlite religious visual identity — Proposed
+
+This visual direction applies to mainstream Astonian Mahlism, not Orthodox Mahlism. **Established:** mainstream priests wear hoods and gold masks; Orthodox Mahlist priests do not wear masks or use mask imagery, and idolatry is forbidden in Orthodox Mahlism. See the Dalmen Highlands section for the orthodox distinction.
 
 **Primary subject:** the **Masked Saint**. The mask and masked figure are the strongest prospective motifs for:
 - statuary, reliefs, murals and reliquaries;
@@ -152,7 +154,7 @@ These are statements about **Eldani historical tradition and belief**, not final
 
 **Proposed institutional palette:** ivory (**#E5D9BA**), old gold (**#B49659**), deep crimson (**#6F172A**), charcoal (**#424858**) and stone grey (**#A7A39A**). This is an art-direction starting point only.
 
-**Important distinction:** the **mask** is the proposed emblem of the Mahlite faith; the **eight-pointed sun** is established royal heraldry; historical **Lythaer** imagery is a separate older visual tradition. Their relationship should not be merged by assumption.
+**Important distinction:** the **mask** is the proposed emblem of mainstream Astonian Mahlism, not Orthodox Mahlism; the **eight-pointed sun** is established royal heraldry; historical **Lythaer** imagery is a separate older visual tradition. Their relationship should not be merged by assumption. Do not substitute the royal sun for a religious emblem in either tradition.
 
 ## 2.9 Aristocracy and Political Structure — Established
 
@@ -196,7 +198,7 @@ The precise constitutional powers of the houses, their titles, number, names, ri
 - **Merchant classes:** shorter tailored coats and fitted doublets, shaped cuffs, selective geometric woven or embroidered bands, refined clasps and high-quality dyed cloth. Adapt prestigious fashions into practical garments for commerce, travel and urban life; expensive fabrics and craftsmanship rather than aristocratic heraldry alone express wealth.
 - **Commoners:** functional linen and wool shirts, tunics, hose, aprons and cloaks; occasional simplified inherited collar or trim motifs, without universal elaborate ornament.
 - **Military:** retain believable human steel plate, mail, brigandine and padded garments. Arhîn inheritance may appear in shaped gorgets, gently curved shoulder plates, shallow architectural fluting or incised geometric borders. Use robust silhouettes, recognisable human armour articulation, heraldic surcoats, shields and livery. Elite and ceremonial equipment may express inherited refinement more strongly than common issue; do not default to Arhîn battlemage attire, slender bronze-framed plate or magical accessories.
-- **Mahlite institutions:** preserve a distinct religious silhouette and Masked Saint symbolism. Inherited geometric details may be adopted as ornament, but do not equate Arhîn religious iconography with Mahlism.
+- **Mahlite institutions:** preserve distinct religious silhouettes and denomination-specific symbolism. Mainstream Astonian Mahlism uses Masked Saint symbolism; Orthodox Mahlism prohibits masks and mask imagery and forbids idolatry. Inherited non-figurative geometric details may be explored as ornament, but do not equate Arhîn religious iconography with Mahlism.
 
 ### Physical appearance and lineage — Further consideration required
 
@@ -367,7 +369,7 @@ The amount of snowfall, availability of timber, specific northern settlements an
 - They retain stronger connections to their **proto-Eldani past**, with an **Anglo-Saxon-like** cultural reference.
 - The climate is **cool and dry**.
 
-The region is culturally conservative in its ancestral connections and religious identity. Orthodox Mahlism is a form of Mahlism; its doctrine, institutions, relationship to mainstream Astonian Mahlism, ritual practices and the precise meaning or origin of its orthodoxy have not yet been defined. Stronger proto-Eldani continuity does not imply surviving worship of Lythaer or other pantheonic gods, nor does it establish reduced Arhîn ancestry. Poverty is a regional socioeconomic characteristic, not a claim that every individual is poor or incapable of skilled craftsmanship.
+The region is culturally conservative in its ancestral connections and religious identity. Orthodox Mahlism is a form of Mahlism. **Established doctrine: idolatry is not permitted. Orthodox Mahlist priests do not wear masks or use mask imagery.** This distinguishes their practice from mainstream Astonian Mahlism without changing the shared worship of Mahlfach. The remainder of its doctrine, institutions, relationship to mainstream Astonian Mahlism, ritual practices and the precise origin of its orthodoxy have not yet been defined. Stronger proto-Eldani continuity does not imply surviving worship of Lythaer or other pantheonic gods, nor does it establish reduced Arhîn ancestry. Poverty is a regional socioeconomic characteristic, not a claim that every individual is poor or incapable of skilled craftsmanship.
 
 ### Dalmen architectural and material identity — Proposed
 
@@ -387,7 +389,7 @@ The cool, dry climate suggests sheltered interiors, durable construction and res
 
 - Practical wool and linen tunics, simple trousers or hose, pinned cloaks, substantial belts and sturdy boots. Economical construction, repairs and restrained ornament should distinguish everyday attire.
 - Older interlace, geometric borders and simple metal clasps may provide a distinctive proto-Eldani-derived decorative vocabulary, pending approval of that ancestral visual language.
-- Orthodox Mahlite sacred objects and vestments may be visually austere, with emphasis on the Masked Saint and inherited ceremonial forms rather than opulence. Do not invent doctrinal differences or formal restrictions on wealth.
+- Orthodox Mahlite sacred objects and vestments must respect the established prohibition on idolatry: no worn masks, mask-shaped pendants or brooches, embroidered masks, mask imagery or devotional idols. A proposed priestly outfit uses an uncovered face beneath a simple hood, austere wool or linen vestments, a plain sash or cord and restrained non-figurative woven ornament. Places of worship and ritual objects must likewise respect the prohibition; do not introduce devotional figurative imagery by default. Do not use the Crown's eight-pointed sun as a substitute faith emblem. Specific permitted non-figurative religious symbols, the full scope of permissible representations, other doctrinal differences and formal restrictions on wealth remain unresolved.
 - If martial equipment is depicted, use plausible practical Eldani equipment with economical maintenance and older design influences: padded clothing, shields, mail or simple helmets where appropriate. No separate military doctrine, force composition or heraldry is established by this brief.
 
 Dalmen should not be reduced to a generic Viking culture or treated as identical to the Estyenni. Its proposed visual distinctiveness lies in stronger proto-Eldani continuity, orthodox Mahlism, comparatively modest material circumstances and cool-dry highland adaptation. Preserve differences in craftsmanship, age and wealth within the region.
@@ -414,8 +416,8 @@ Maintain shared Eldani construction, garment and equipment foundations where app
 
 ## 3.2 Religion
 - Formal Mahlite institution names, ranks, vestments, rituals and sacred spaces.
-- Doctrine, liturgy, organisation and visual distinctions of orthodox Mahlism in the Dalmen Highlands, and its relationship to mainstream Astonian Mahlism.
-- Iconographic design of Mahlfach's mask and whether any depiction of the Saint is restricted.
+- Further doctrine, liturgy, organisation, permissible non-figurative ornament and visual distinctions of Orthodox Mahlism in the Dalmen Highlands, and its relationship to mainstream Astonian Mahlism, beyond the established prohibition on idolatry, worn masks and mask imagery.
+- Final iconographic design of Mahlfach's mask in mainstream Astonian Mahlism and any additional restrictions on depictions of the Saint; Orthodox Mahlism already forbids masks and mask imagery and prohibits idolatry.
 - What historical Lythaer imagery survives and how Mahlism interprets it.
 - Whether the eight-point royal sun has any formal theological meaning.
 - Whether there are minority, surviving or syncretic religious practices among the Eldani.
