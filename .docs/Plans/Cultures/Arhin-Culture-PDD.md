@@ -3,8 +3,8 @@
 **Project:** Ninth Age  
 **Document Type:** Cultural Sub-PDD  
 **Status:** Draft / Design Baseline  
-**Scope:** Arhîn (Dawn Children), Aurësén inheritance, the Withering, Culosíma and the Great Forests, caste society, Queen Ilya, Tiandre and the Suntower; cultural visual identity and asset direction  
-**Last updated:** 2026-11-13
+**Scope:** Arhîn (Dawn Children), Aurësén inheritance, the Withering, Culosíma and the Great Forests, caste society, Queen Ilya, organised worship of the fey deities, Tiandre, Auris Koth and the Suntower; cultural visual identity and asset direction  
+**Last updated:** 2026-11-20
 
 ---
 
@@ -64,14 +64,14 @@ This information does **not** establish whether the memories are first-hand reco
 
 ### Public-space and visual direction — Proposed
 
-- Incorporate runic scriptures into **ordinary shared public spaces**—for example, along squares, galleries, passages or sheltered gathering areas—rather than reserving them exclusively for temples or elite libraries.
+- Incorporate runic scriptures into **ordinary shared public spaces**—for example, along squares, galleries, passages or sheltered gathering areas—rather than reserving them exclusively for religious sites or elite libraries.
 - Present the scriptures as carefully authored **legible patterned surfaces**: inset stone or metal panels, engraved walls or freestanding tablets are possible forms, not yet fixed designs.
 - Arrange some public spaces to allow people to pause and contemplate the patterns without obstructing circulation. These places may form quiet counterpoints to Arhîn towers, markets and workshops.
 - Use restrained ambient effects around the scriptures; the primary observable behaviour should remain an Arhîn character **quietly gazing at the runes**. A large holographic projection visible to every bystander would undermine the established outsider's perspective.
 - Depict the experience through still poses, subtle shifts in posture and sustained attention rather than treating every trance as a dramatic magical ceremony.
 - If memory-viewing scenes are ever visualised to the player, their form and narrative reliability require a separate approved presentation design.
 
-**Design distinction:** these runic scriptures are a **widespread cultural medium for memory viewing**. Their relationship to temples, Tiandre, the Grey Ones, magic-sourced protection and the three-caste hierarchy is not yet established.
+**Design distinction:** these runic scriptures are a **widespread cultural medium for memory viewing**. Their relationship to woodland shrines, Tiandre, the Grey Ones, magic-sourced protection and the three-caste hierarchy is not yet established.
 
 ## 2.4 The Withering — Established
 
@@ -132,22 +132,46 @@ The game faction definition identifies the Arhîn dominion as **Culosimlond**, o
 
 **Histalion** is the Arhîn **supreme military commander** and rules territory in the **Mortaure**. His command exists despite the Arhîn having **no standing military**; the process by which Arhîn power is brought together in wartime is not yet established.
 
-The precise relationship between royal rule, the caste system, high nobles, temples and scholarly institutions remains unestablished. Do not replace the three castes with a hereditary noble-house structure modelled on the Eldani. Histalion's specific constitutional relationship to Queen Ilya, the other rulers and the three castes is likewise unresolved.
+The precise relationship between royal rule, the caste system, high nobles, clergy and scholarly institutions remains unestablished. Do not replace the three castes with a hereditary noble-house structure modelled on the Eldani. Histalion's specific constitutional relationship to Queen Ilya, the other rulers and the three castes is likewise unresolved.
 
-## 2.7 Religion — Tiandre and the Grey Ones — Established
+## 2.7 Religion — Worship of the fey deities — Established / Proposed
 
-**Tiandre** is the **Queen of the Summer Court** and **one of the Grey Ones**.
+### Pantheon and organised worship — Established
 
-Queen Ilya is her High Priestess. **Other Grey Ones are also revered in various capacities**.
+The Arhîn practise organised worship of various **fey deities**, with **Tiandre** as their principal deity. They have clergy. Worship of multiple deities is an established religious tradition, not merely informal reverence for magical beings.
 
-The presence of several revered beings should be reflected in religious diversity within Arhîn visual culture. It does **not** yet establish a formal pantheon hierarchy, unified priesthood, precise doctrine, or claims about which Grey Ones are deities.
+| Deity | Established title and significance |
+|---|---|
+| Tiandre | Queen of the Summer Court; one of the Grey Ones; principal deity of the Arhîn; Queen Ilya is her High Priestess |
+| Auris Koth | Prince of Daylight; highly revered because he bestowed the Gift of Light upon the Aurësén |
+| Other fey deities | Further identities, titles and roles to be supplied |
 
-### Proposed sacred visual language
+The Aurësén subsequently lost the Gift of Light at the end of the Serpent War, as established in sections 2.1–2.4. Auris Koth's bestowal of the Gift is established, but the mechanism by which it was lost, his involvement in its loss, and the possibility of its restoration are not. His reverence may be expressed through gratitude and remembrance as a proposed artistic or narrative direction, not a fixed doctrine.
 
-- Tiandre-associated spaces: warm radiance, open-to-sky sanctuaries, carefully directed sunbeams, elevated ritual spaces and solar-responsive architecture.
-- Court symbolism: elegant repetitive radial forms, seasonal motifs and formal processional layouts; their final designs are undefined.
-- Other Grey Ones: distinct symbolic treatments can exist within the same cultural design language, but **their identities, names, domains, symbols and relative importance are not established**.
-- Sacred spaces should feel intensely magical without resorting to unbounded levitation, excessive glowing lines or a single generic golden symbol on every building.
+Other Grey Ones are revered in various capacities. Do not assume that all Grey Ones are deities, that all fey deities are Grey Ones, that Auris Koth belongs to the Summer Court, or that a complete hierarchy beyond Tiandre's principal status has been defined.
+
+### Woodland shrines — Established
+
+The Arhîn **do not dedicate large temples to their deities**. They pay tribute to them at **small, sacred shrines in woodland areas**. Organised religion and the existence of clergy do not imply large urban temples, cathedrals or monumental religious precincts. Queen Ilya's position as High Priestess does not by itself make the Suntower a temple.
+
+The specific distribution of shrines, their custodianship, access, rites, offerings, frequency of worship and whether shrines are shared by multiple deities remain unresolved.
+
+### Shrine art direction — Proposed
+
+Use the existing Arhîn design language at an intimate scale: finely shaped pale stone, graceful curved supports, restrained bronze detailing and preserved older Aurësén craftsmanship where appropriate. Woodland surroundings are integral to the shrine's identity; the built element should remain subordinate in scale to the natural site.
+
+- Modest freestanding altars, low stone platforms, carved markers and small open-sided shrine structures may provide modular starting points.
+- Selective canopy openings, filtered daylight or small clearings may connect shrine composition to the Arhîn relationship with light; do not assume the structures provide protection from the Withering.
+- Tiandre-associated shrines may use warmer material tones, subtle seasonal ornament and controlled shafts of light.
+- Auris Koth-associated shrines may explore daylight-oriented composition and early Aurësén-derived details.
+- Deity-specific emblems, statues, offerings, carved figures and magical effects are not established. Do not invent a universal sun emblem or import Eldani religious symbols.
+- Avoid grand temple buildings, oversized altars, sprawling paved courtyards, obligatory treehouse architecture and excessive magical emission.
+
+### Clergy and religious dress — Established / Proposed
+
+**Established:** the Arhîn have clergy, and Queen Ilya is High Priestess of Tiandre. The organisation of the principal deity's clergy, separate priesthoods for other deities, ranks, caste status, duties, training, residency and relationship to royal authority remain to be defined.
+
+**Proposed art direction:** religious clothing should retain distinctively Arhîn tailoring, refined collars, geometric shoulder treatments and elongated cloth panels, adapted to movement through woodland and attendance at small shrines. Use restrained textiles, metal fastenings and deity-specific accents only once approved. Do not copy Eldani clerical hoods, masks, stoles or ecclesiastical heraldry as default Arhîn dress. Avoid treating all priests as members of the highest caste, immensely wealthy, or inherently combat-capable. Queen Ilya's exceptional status should not be used as a baseline for ordinary clergy attire.
 
 **Do not assume** that Tiandre directly grants immunity to the Withering, that the Suntower is powered by Tiandre, or that devotion is required to control magic. Those relationships are open.
 
@@ -222,7 +246,8 @@ Suggested supporting design grammar:
 | Structural frames | Elegant but functional stone, metal or composite ribs and mullions; legible beams, joints and supports |
 | Shared residential levels | Low, robust foundations; service halls, sheltered galleries and domestic rooms at ground level |
 | Work and teaching spaces | Compact workshops, arcaded galleries, educational halls and trade rooms attached to larger residences |
-| Civic and sacred buildings | Taller ceremonial halls, luminous domes, processional stairs, vaults and colonnades |
+| Civic buildings | Taller ceremonial halls, luminous domes, stairs, vaults and colonnades; not large temples dedicated to the fey deities |
+| Woodland shrines | Small sacred structures integrated into woodland, with intimate scale and Arhîn-derived construction; exact forms and deity-specific ornament provisional |
 | Forest infrastructure | Raised connections, bridge sections, retaining structures, clearings, stair towers and sheltered ground paths |
 | Defensive elements | Defensive outer shells, overlapping sloped bastions, strongly controlled gates and protected open-to-sun inner spaces, with glazing concentrated away from directly vulnerable outer faces |
 | Ancient Aurësén ruins | Monumental remains with related but earlier shape language, distinct from survival-driven modern towers |
@@ -363,6 +388,7 @@ The glass-heavy identity introduces additional constraints:
 | Ground service level | Entrances, workshops, rooms, corridors, supports, partitions | Residential, teaching, trade, service |
 | Bridges and forest adaptation | Supports, railings, walking surfaces, attachment sockets | Canopy crossing, ground crossing, sacred |
 | Light and ritual props | Brackets, sockets, housings, ceremonial furniture | Religious, civic, residential |
+| Woodland shrines | Small platforms, altar bases, markers, curved supports and restrained trim components | Deity, location, age, approved symbols; no large deity temples |
 | Public memory scriptures | Engraved rune-pattern panels, wall insets, freestanding supports and gathering-space assemblies | Location, scale, age, approved rune families |
 | Ruins | Broken ribs, displaced panels, fractured foundations, collapsed dome pieces | Ancient Aurësén, later Arhîn |
 | Fortress outer shell | Sloping petal-bastion segments, flanking walls, gate throat modules, coping and repair blocks | Radial layout, attack-facing elements, simplified later construction |
@@ -378,7 +404,7 @@ An Arhîn concept, building or scene should:
 3. Convey a magical but physically grounded civilisation that can plausibly exist within great forests.
 4. Preserve the distinction between sunlight, magical power and decorative lights.
 5. Show the Withering as progressively corporeal disappearance, not default dark-elf or undead makeup.
-6. Keep Queen Ilya, Tiandre, the Grey Ones and the Suntower visually meaningful without inventing undocumented religious symbols.
+6. Keep Queen Ilya, Tiandre, Auris Koth, the Grey Ones and the Suntower visually meaningful without inventing undocumented religious symbols. Portray organised fey worship through small sacred woodland shrines and clergy rather than large deity temples; do not conflate royal architecture with religious sites.
 7. Remain distinct from Eldani masonry-and-heraldry architecture.
 8. Meet grounded mid-poly, modularity, material and performance requirements at MMO camera distances.
 9. Allow Arataure, Mortaure and Histaure variants to appear related without relying on arbitrary permanent times of day.
@@ -461,7 +487,7 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 ## 3.2 History, Geography and Aurësén
 
-- Origin and function of the Gift of Light.
+- Mechanism and function of the Gift of Light, bestowed on the Aurësén by Auris Koth; precise circumstances of its loss and whether restoration is possible.
 - Exact timeline, consequences and participants of the Serpent War.
 - Relationship of the historical Aurësén Diarchy to today's Arhîn dominion.
 - Geography, construction, destruction and remaining ruins of Yer-Aranie.
@@ -489,7 +515,9 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 ## 3.5 Religion and Heraldry
 
-- Identities, aspects, symbols and ritual significance of the Grey Ones.
+- Further fey deities, their identities, aspects, symbols, relative significance and relationship to the Grey Ones and Tiandre; Auris Koth's iconography and religious practices.
+- Clerical hierarchy, caste membership, deity-specific priesthoods, duties, training and relationship to royal authority.
+- Woodland shrine layouts, custodianship, rites, offerings, access and approved deity-specific iconography.
 - Iconography and theology of Tiandre's Summer Court.
 - Whether Tiandre's power is related to the Suntower or Withering.
 - Personal, royal, factional and caste emblems.
