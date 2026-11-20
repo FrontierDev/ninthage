@@ -150,6 +150,14 @@ The Aurësén subsequently lost the Gift of Light at the end of the Serpent War,
 
 Other Grey Ones are revered in various capacities. Do not assume that all Grey Ones are deities, that all fey deities are Grey Ones, that Auris Koth belongs to the Summer Court, or that a complete hierarchy beyond Tiandre's principal status has been defined.
 
+### Distinction between fey worship and druidism — Established / Proposed
+
+**Established:** fey worship has a druidic element, but organised Arhîn religion and druidism are distinct traditions. Druidism is often expressed through the worship and teachings of **Othruum, the Greenbringer**. Do not equate all fey worship with druidism, all Arhîn clergy with druids, or the use of woodland shrines with a specifically druidic practice.
+
+Tiandre remains the principal deity of the Arhîn; Auris Koth remains highly revered for bestowing the Gift of Light. Othruum's association with druidism does not establish his relative prominence among the Arhîn, his court affiliation, his relationship to the Grey Ones, or that all druids worship him exclusively. The nature of his teachings, domains, symbols, practices, followers and the institutional relationship between druidism and Arhîn clergy remain to be defined. Do not assume druidism is restricted to the Arhîn.
+
+**Proposed visual distinction:** organised Arhîn clergy retain their refined cultural tailoring, ceremonial textiles and carefully crafted shrine objects. Druidic attire and ritual objects may place greater emphasis on practical woodland clothing and natural materials, but specific druidic iconography, sacred locations, vestments and rites require separate approval. Woodland setting alone must not be used to identify a character or shrine as druidic. Avoid default antlers, animal pelts, leaf-covered robes or living-wood accessories on ordinary Arhîn priests.
+
 ### Woodland shrines — Established
 
 The Arhîn **do not dedicate large temples to their deities**. They pay tribute to them at **small, sacred shrines in woodland areas**. Organised religion and the existence of clergy do not imply large urban temples, cathedrals or monumental religious precincts. Queen Ilya's position as High Priestess does not by itself make the Suntower a temple.
@@ -164,14 +172,14 @@ Use the existing Arhîn design language at an intimate scale: finely shaped pale
 - Selective canopy openings, filtered daylight or small clearings may connect shrine composition to the Arhîn relationship with light; do not assume the structures provide protection from the Withering.
 - Tiandre-associated shrines may use warmer material tones, subtle seasonal ornament and controlled shafts of light.
 - Auris Koth-associated shrines may explore daylight-oriented composition and early Aurësén-derived details.
-- Deity-specific emblems, statues, offerings, carved figures and magical effects are not established. Do not invent a universal sun emblem or import Eldani religious symbols.
+- Deity-specific emblems, statues, offerings, carved figures and magical effects are not established. Woodland shrines are not inherently druidic sites and must not be assigned Othruum's symbolism merely because they are surrounded by trees. Do not invent a universal sun emblem or import Eldani religious symbols.
 - Avoid grand temple buildings, oversized altars, sprawling paved courtyards, obligatory treehouse architecture and excessive magical emission.
 
 ### Clergy and religious dress — Established / Proposed
 
 **Established:** the Arhîn have clergy, and Queen Ilya is High Priestess of Tiandre. The organisation of the principal deity's clergy, separate priesthoods for other deities, ranks, caste status, duties, training, residency and relationship to royal authority remain to be defined.
 
-**Proposed art direction:** religious clothing should retain distinctively Arhîn tailoring, refined collars, geometric shoulder treatments and elongated cloth panels, adapted to movement through woodland and attendance at small shrines. Use restrained textiles, metal fastenings and deity-specific accents only once approved. Do not copy Eldani clerical hoods, masks, stoles or ecclesiastical heraldry as default Arhîn dress. Avoid treating all priests as members of the highest caste, immensely wealthy, or inherently combat-capable. Queen Ilya's exceptional status should not be used as a baseline for ordinary clergy attire.
+**Proposed art direction:** religious clothing should retain distinctively Arhîn tailoring, refined collars, geometric shoulder treatments and elongated cloth panels, adapted to movement through woodland and attendance at small shrines. Use restrained textiles, metal fastenings and deity-specific accents only once approved. Do not copy Eldani clerical hoods, masks, stoles or ecclesiastical heraldry as default Arhîn dress. Avoid treating all priests as members of the highest caste, immensely wealthy, or inherently combat-capable. Queen Ilya's exceptional status should not be used as a baseline for ordinary clergy attire. Ordinary Arhîn clergy must remain visually and conceptually distinct from druids; shared woodland associations do not imply identical vestments or practices.
 
 **Do not assume** that Tiandre directly grants immunity to the Withering, that the Suntower is powered by Tiandre, or that devotion is required to control magic. Those relationships are open.
 
@@ -517,6 +525,7 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 - Further fey deities, their identities, aspects, symbols, relative significance and relationship to the Grey Ones and Tiandre; Auris Koth's iconography and religious practices.
 - Clerical hierarchy, caste membership, deity-specific priesthoods, duties, training and relationship to royal authority.
+- Othruum's teachings, iconography, affiliations and importance within the Arhîn pantheon; the organisation, extent, practices and visual identity of druidism and its relationship to organised fey worship.
 - Woodland shrine layouts, custodianship, rites, offerings, access and approved deity-specific iconography.
 - Iconography and theology of Tiandre's Summer Court.
 - Whether Tiandre's power is related to the Suntower or Withering.
