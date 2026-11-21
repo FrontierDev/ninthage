@@ -28,11 +28,11 @@ A small number of Aurësén **refused the pact**. They were subsequently **sacri
 
 ## 2.2 Government and popular legitimacy
 
-The Cehîn **govern themselves**, with **Lord Thraen** as their leader. Thraen was already the lord of this territory before the Serpent War; his leadership is ancient and continuous, not a recently established royal bloodline. His authority is accepted largely **because he secured the community's protection from the Withering**, rather than through routine coercive rule or by virtue of a central priestly dictatorship.
+The Cehîn **govern themselves**, with **Lord Thraen** as their leader. Thraen was already the lord of this territory before the Serpent War; his leadership is ancient and continuous, not a recently established royal bloodline. His authority is accepted largely **because he secured the community's protection from the Withering**, rather than through routine coercive rule. He combines **secular leadership** with the supreme religious office of **High Priest of Myrhufrun**.
 
 **Myrhufrun is their patron deity** and the recipient of their pact. He is not the day-to-day ruler of Cehîn civil government. He lives **at the Moonlight Well among the Cehîn**.
 
-**Lord Thraen appoints the senior priests of Myrhufrun's organised priesthood.** Their appointment places senior clerical selection under his authority, although the subordinate offices, religious duties, wider laws, succession rules, political councils and boundaries of Thraen's rule remain open.
+As **High Priest of Myrhufrun**, **Lord Thraen exercises authority over the priesthood's religious practices** and **appoints its senior priests**. His authority is not limited to clerical appointments. Subordinate offices, specific rites and duties, wider laws, succession rules, political councils and boundaries of Thraen's rule remain open.
 
 # 3. Geography, Settlements and Architecture
 
@@ -62,7 +62,7 @@ It is a world-linked magical font, not a portal to the Grey. The Aurësén origi
 
 ## 4.1 Myrhufrun and the priesthood — Established
 
-The Stag King is the **Cehîn's patron deity**. The Cehîn possess an **organised priesthood dedicated to Myrhufrun, whose priests are also practitioners of druidism**. Priesthood and druidic practice are therefore **integrated**, not separate institutions, among the Cehîn. Their druidic traditions include **darker practices**, including ritual sacrifice. **Lord Thraen appoints the senior priests**. Whether every Cehîn druid belongs to the priesthood is not established. Lower clerical appointment methods, internal hierarchy, robes, shrine requirements and precise priestly duties remain open.
+The Stag King is the **Cehîn's patron deity**. The Cehîn possess an **organised priesthood dedicated to Myrhufrun, whose priests are also practitioners of druidism**. Priesthood and druidic practice are therefore **integrated**, not separate institutions, among the Cehîn. Their druidic traditions include **darker practices**, including ritual sacrifice. **Lord Thraen is the High Priest of Myrhufrun**, directs the priesthood's religious practices and **appoints its senior priests**. Whether every Cehîn druid belongs to the priesthood is not established. Lower clerical appointment methods, internal hierarchy, robes, shrine requirements and precise priestly duties remain open.
 
 ## 4.2 The Ertniiagra — Established
 
