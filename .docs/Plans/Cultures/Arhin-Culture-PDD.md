@@ -4,7 +4,7 @@
 **Document Type:** Cultural Sub-PDD  
 **Status:** Draft / Design Baseline  
 **Scope:** Arhîn (Dawn Children), Aurësén inheritance, the Withering, Culosíma and the Great Forests, caste society, Queen Ilya, organised worship of the fey deities, Tiandre, Auris Koth and the Suntower; cultural visual identity and asset direction  
-**Last updated:** 2026-11-20
+**Last updated:** 2026-11-21
 
 ---
 
@@ -46,9 +46,9 @@ Their mainstream society revolves around a three-caste hierarchy, material depen
 - Despite retaining a highly sophisticated civilisation and splendid buildings, **contemporary Arhîn architecture is generally less accomplished than architecture from the Aurësén peak**. Only the highest rulers retain truly opulent abodes.
 - The present Arhîn primarily occupy the **three Great Forests** around the **Culosíma**.
 - Existing race data identifies the ancestral realm as the **Aurësén Diarchy**, with Arhîn lands continuing part of its former western territory.
-- Existing race data uses the older terms **Terhat-Ilu** for the cataclysmic war and **Annokal** for the Gift of Light. These terms appear in existing game definitions and may be retained as in-world terms, but their preferred forms and spelling should be reviewed before further use.
+- **Terhat-Ilu** is the catastrophe at the Serpent War's end, when the world was bound inside the Night Serpent's mind. **Annokal** is the established name for the Gift of Light. It protects Aurësén from control via Titramech's blood, not from ageing or weak magical ability; it failed when Auris Koth was incapacitated.
 
-**Important:** the history does not establish the full politics of the Aurësén Diarchy, whether Yer-Aranie was its capital, how the Gift was originally obtained or what happened to every Aurësén elsewhere. Do not infer those details.
+**Important:** the Grey Ones' origins, creation of Aurësén, the Black Winter, the Annokal and the Terhat-Ilu are established in [World Lore and History](../World-Lore-and-History-PDD.md). The Aurësén Diarchy's full politics, Yer-Aranie's status as capital or otherwise, and the fate of every Aurësén community remain unresolved.
 
 ## 2.3 Nostalgia and Public Memory-Viewing Scriptures — Established / Proposed
 
@@ -110,7 +110,7 @@ The **lower castes are invariably indentured servants of those in the caste abov
 
 The system is not simply a distinction of wealth: control of shelter and access to protection is woven into social dependence. Its architecture should depict the imbalance without portraying indenture as an uncomplicated luxury.
 
-**Not established:** how individuals enter or leave a caste, the legal terms of indenture, inheritance rules, whether all intelligentsia are nobles or spellcasters, which offices the castes may hold or how duties work between families.
+**Further established (§2.20):** caste normally persists by inheritance; extraordinary magical or martial achievement may secure rare elevation. The lower caste receives wages and may acquire personal wealth, but only the upper caste owns land. Middle-caste businesses operate under upper-caste patronage. Indentured servants can change households, though it is often considered an insult. Accommodation is guaranteed, but food is not uniformly guaranteed. Inter-caste marriage is possible though unusual. Detailed legal rights remain open.
 
 ### Vertical social organisation — Proposed spatial interpretation
 
@@ -130,9 +130,9 @@ Queen Ilya rules from the mystical **Suntower**, a structure so intensely bright
 
 The game faction definition identifies the Arhîn dominion as **Culosimlond**, on the shores of the **Culosíma**, and describes the queen as reclusive. It also describes high nobles obeying her commands. The name **Culosimlond** is therefore an existing in-game faction name, not a newly devised term.
 
-**Histalion** is the Arhîn **supreme military commander** and rules territory in the **Mortaure**. His command exists despite the Arhîn having **no standing military**; the process by which Arhîn power is brought together in wartime is not yet established.
+**Histalion** is the Arhîn **supreme military commander** and rules territory in the **Mortaure**. His command exists despite the Arhîn having **no standing military**. Defensive forces usually fight in their existing household/scholarly communities; foreign campaigns are organised centrally by Histalion.
 
-The precise relationship between royal rule, the caste system, high nobles, clergy and scholarly institutions remains unestablished. Do not replace the three castes with a hereditary noble-house structure modelled on the Eldani. Histalion's specific constitutional relationship to Queen Ilya, the other rulers and the three castes is likewise unresolved.
+**Established:** the immortal **Tinithas** have ruled their territories since appointment at the start of the Second Age for resisting Kabithh: **Úrien** (Daughter of Sunlight) rules **Arataure** from **Ara-Úr**; **Iluvantar** rules **Mortaure** from **Thel-Didnel**; **Histalion** rules **Histaure** from a city not yet named, and is supreme military commander. **Queen Ilya** replaced **Queen Ilvielle** and became High Priestess of Tiandre at the start of that Age. Precise constitutional distinctions remain open; do not impose Eldani hereditary-house structures.
 
 ## 2.7 Religion — Worship of the fey deities — Established / Proposed
 
@@ -140,22 +140,37 @@ The precise relationship between royal rule, the caste system, high nobles, cler
 
 The Arhîn practise organised worship of various **fey deities**, with **Tiandre** as their principal deity. They have clergy. Worship of multiple deities is an established religious tradition, not merely informal reverence for magical beings.
 
-| Deity | Established title and significance |
+The Twelve Grey Ones (six per Court) are **political** factions rather than opposed magical or moral essences. Arhîn worship Grey Ones from **both** Courts, although not all enjoy equal esteem.
+
+| Summer Court | Established identity |
 |---|---|
-| Tiandre | Queen of the Summer Court; one of the Grey Ones; principal deity of the Arhîn; Queen Ilya is her High Priestess |
-| Auris Koth | Prince of Daylight; highly revered because he bestowed the Gift of Light upon the Aurësén |
-| Othruum | The Greenbringer; a deity of the Summer Court; druidism is often expressed through his worship and teachings |
-| Other fey deities | Further identities, titles and roles to be supplied |
+| **Tiandre** | Queen of the Summer Court; principal Arhîn deity, whose High Priestess is Queen Ilya |
+| **Auris Koth** | Prince of Daylight; bestowed the Annokal, highly revered |
+| **Othruum** | The Greenbringer; strongly associated with druidism |
+| **Titramech** | The Seven-Legged Stalker; creator of Aurësén with Ninathell; worship cautiously regarded, not prohibited like Kabithh's |
+| **Myrhufrun** | The Stag King; patron of the Cehîn at the Moonlight Well |
+| **Lurur** | Maiden of the Three Tides |
 
-The Aurësén subsequently lost the Gift of Light at the end of the Serpent War, as established in sections 2.1–2.4. Auris Koth's bestowal of the Gift is established, but the mechanism by which it was lost, his involvement in its loss, and the possibility of its restoration are not. His reverence may be expressed through gratitude and remembrance as a proposed artistic or narrative direction, not a fixed doctrine.
+| Winter Court | Established identity |
+|---|---|
+| **Ythralla** | Queen of the Winter Court; maintains the frozen Sanctum of Starlight and Auris Koth's body |
+| **Kabithh** | Lady of Deceit, formerly Cenotet; enemy of Arhîn, worship heavily forbidden, patron of Durhîn |
+| **Ninathell** | Princess of Glass; co-creator of Aurësén with Titramech |
+| **Gov Govril** | The Lord of Bats |
+| **Eelibron** | The Emerald Jester |
+| **Unspecified** | Sixth Winter Court member not yet recalled |
 
-Other Grey Ones are revered in various capacities. Do not assume that all Grey Ones are deities, that all fey deities are Grey Ones, that Auris Koth belongs to the Summer Court, or that a complete hierarchy beyond Tiandre's principal status has been defined.
+The Grey Ones were once Malamer who entered the Grey with the Cabal of Twelve. All are still alive and active in the Ninth Age but trapped in the physical world with reduced power. The existence and social roles of any other religious beings are not inferred.
+
+**Priesthoods are independently organised for each deity.** Queen Ilya is the highly respected High Priestess of Tiandre but **does not govern all priesthoods**. Clergy are **socially stratified**, with almost no mobility between strata.
+
+**Annokal:** Auris Koth granted it after the Black Winter, when Kabithh had used Titramech's blood to control the Aurësén. It prevented that control but granted neither immortality nor magic. Auris Koth's incapacitation during the Serpent War caused its failure, and **restoring him would reactivate it and end the Withering**. Queen Ilya and the Tinithas do not know he can be restored; see [World Lore and History](../World-Lore-and-History-PDD.md).
 
 ### Distinction between fey worship and druidism — Established / Proposed
 
 **Established:** fey worship has a druidic element, but organised Arhîn religion and druidism are distinct traditions. Druidism is often expressed through the worship and teachings of **Othruum, the Greenbringer**. Do not equate all fey worship with druidism, all Arhîn clergy with druids, or the use of woodland shrines with a specifically druidic practice.
 
-Tiandre remains the principal deity of the Arhîn; Auris Koth remains highly revered for bestowing the Gift of Light. **Othruum is a deity of the Summer Court.** His association with druidism does not establish his relative prominence among the Arhîn, his relationship to the Grey Ones, or that all druids worship him exclusively. The nature of his teachings, domains, symbols, practices, followers and the institutional relationship between druidism and Arhîn clergy remain to be defined. Do not assume druidism is restricted to the Arhîn.
+Tiandre remains the principal deity of the Arhîn; Auris Koth remains highly revered for bestowing the Gift of Light. **Othruum is a deity of the Summer Court.** His association with druidism does not establish his relative prominence among the Arhîn, his relationship to the Grey Ones, or that all druids worship him exclusively. The precise teachings, domains, symbols and druidic practices remain to be defined. Do not assume druidism is restricted to the Arhîn.
 
 **Proposed visual distinction:** organised Arhîn clergy retain their refined cultural tailoring, ceremonial textiles and carefully crafted shrine objects. Druidic attire and ritual objects may place greater emphasis on practical woodland clothing and natural materials, but specific druidic iconography, sacred locations, vestments and rites require separate approval. Woodland setting alone must not be used to identify a character or shrine as druidic. In particular, Arhîn shrines dedicated to Othruum use the same sacred-site vocabulary as shrines of other deities; do not assign them a separate druidic grove kit. Avoid default antlers, animal pelts, leaf-covered robes or living-wood accessories on ordinary Arhîn priests.
 
@@ -163,7 +178,7 @@ Tiandre remains the principal deity of the Arhîn; Auris Koth remains highly rev
 
 Arhîn naturalists occupy a socially distinct, effectively separate caste of hermits and outsiders, rather than a normal profession within the mainstream three-caste hierarchy. They possess deep knowledge of the natural world. Through that pursuit they become increasingly attuned to the darker side of Arhîn and Aurësén ancestry. They are regarded with suspicion and fear within Arhîn society and are characterised as **druidic occultists**.
 
-Their visual identity should reflect their separation from ordinary Arhîn clergy and lay society: animal hides, antlers and other animal parts are established attire and adornment directions. Proposed treatments include weathered leather, bone or teeth accessories, practical layered garments, subdued earth colours and selective remnants of recognisable Arhîn tailoring. These materials need not imply that every naturalist wears identical equipment or that every item is a ritual object. Do not equate their ancestral attunement with the Withering, evil, specific magical powers or worship of a particular deity without further lore. Their social and legal position relative to the three mainstream castes, particular occult practices and relationship with Othruum's priesthood remain open.
+Their visual identity should reflect their separation from ordinary Arhîn clergy and lay society: animal hides, antlers and other animal parts are established attire and adornment directions. The druidic practice **unintentionally** deepens Arhîn attunement to their darker Aurësén ancestry; Eldani naturalists **do not** undergo this phenomenon. Proposed treatments include weathered leather, bone or teeth accessories, practical layered garments, subdued earth colours and selective remnants of recognisable Arhîn tailoring. These materials need not imply that every naturalist wears identical equipment or that every item is a ritual object. Do not equate their ancestral attunement with the Withering, evil, specific magical powers or worship of a particular deity without further lore. Their social and legal position relative to the three mainstream castes, particular occult practices and relationship with Othruum's priesthood remain open.
 
 ### Woodland shrines — Established
 
@@ -349,7 +364,7 @@ The name **Grey Ones** does not itself imply that their symbols, bodies or archi
 
 ## 2.14 Clothing and Physical Presentation — Proposed
 
-The Arhîn need a recognisable humanoid visual design, but neither facial anatomy nor canonical clothing has been specified. Do not silently settle ear shape, eye colour, skin tone, body proportions or how functional immortality affects appearance.
+**Established appearance:** slender and graceful; subtly elongated skulls tapering posteriorly, short pointed ears set high and close to the head, prominent brows and cheekbones, strong sharp jawlines and slightly projecting pointed chins, pointed noses; dull burnished-gold, blue or green eyes without natural glow. Childhood/adolescence lasts **four to five years longer than in humans**. Mature adults acquire faint wrinkles slowly; injuries and an air of wisdom communicate age more readily. Exact skin/hair palettes and final implementation proportions remain open.
 
 Potential costume language:
 - **Intelligentsia / powerful:** long, carefully cut layered garments, light-catching surfaces, translucent over-layers, refined metal ornaments and formal silhouettes that prioritise upper-body visibility in lit spaces.
@@ -358,7 +373,7 @@ Potential costume language:
 
 Caste distinction should be readable through silhouette, quality, cut, accessories and environmental context, not merely three fixed colours. Indenture is a social structure, not a reason to make every lower-caste character visually identical.
 
-**Proposed exceptional military equipment** may use slender but plausible protection, curved or finely proportioned weapon forms, glass-derived motifs in ornament and compact symbolic devices. Such armoured figures should not be interpreted as evidence of large permanent infantry formations. Arhîn martial visual identity should place **magical capability and carefully conserved exceptional equipment** before generic rows of melee footsoldiers. Avoid compulsory glowing crystals, nonfunctional oversized armour or claims that every Arhîn is individually a spellcaster.
+**Proposed exceptional military equipment** may use slender but plausible protection, curved or finely proportioned weapon forms, glass-derived motifs in ornament and compact symbolic devices. Such armoured figures should not be interpreted as evidence of large permanent infantry formations. Arhîn martial visual identity should place **magical capability and carefully conserved exceptional equipment** before generic rows of melee footsoldiers. Avoid compulsory glowing crystals, nonfunctional oversized armour or claims that every Arhîn is an accomplished sorcerer. Almost all Arhîn warriors, however, possess **some magical ability**, even if primarily martial.
 
 ## 2.15 Magic and Everyday Life — Established / Proposed
 
@@ -492,6 +507,74 @@ His office may be expressed through a distinctive residence, retinue or command 
 
 ---
 
+## 2.20 Arhîn Society and Institutions — Established Canon
+
+### Caste, property and household duties
+
+Mainstream Arhîn have **three castes**, usually inherited. **Elevation for exceptional magical ability, scholarly achievement or military achievement is possible**, but extraordinarily uncommon and celebrated by family, friends and neighbours. Wealth and caste are independent: even a **very wealthy** lower-caste person remains lower-caste.
+
+**Only the upper caste can own land.** Middle-caste trade and business operate **under an upper-caste household's patronage**. Indentured dependants **receive wages**, can accumulate personal wealth and have **guaranteed accommodation on lower floors** of the house they serve. They **may leave for another household**, though this is often felt as an insult. Middle-caste households frequently **feed** their lower-caste dependants and **share meals as equals**. The **upper caste** offers **no guarantee of sustenance outside crises**. This is paid, mobile indenture, not a presumption of chattel slavery or unpaid lifetime confinement.
+
+**Inter-caste marriage is permitted but considered odd**. Children usually receive the **higher caste** of their two parents; the higher-caste member has **no obligation to acknowledge an elevation in the status of the lower-caste spouse**.
+
+Naturalists are a **socially separate outsider caste** of hermits and feared druidic occultists rather than a fourth conventional economic tier. Their deep naturalistic practices **unintentionally** attune them to the sinister side of Aurësén heritage, and their attire uses **animal hides, antlers and animal parts**. Comparable Eldani practices do not cause this effect.
+
+### Reproduction, ageing and mixed ancestry
+
+Arhîn are **naturally less fertile** than humans, but their extreme rarity of births has a concealed cause: a particular **berry used widely in the Great Forests' cuisine** acts as an **Arhîn contraceptive**. The Arhîn **do not know this**. Wild animals consume the same berry. When wild-animal populations boom, competition for the berry reduces Arhîn consumption, so **their birth rate increases in the same year**. The Arhîn instead believe those years reflect a shared gift of fertility for every creature in that region.
+
+Arhîn abroad for extended periods are **more fertile** because they do not consume the berry regularly, with a **grace period after returning**. Distant warfare therefore commonly yields **a modest postwar increase in Arhîn births**. No berry name, dosage, biological thresholds or duration are established.
+
+Childhood and adolescence last about **four to five years longer than for humans**. Thereafter ageing continues extremely slowly: **fine wrinkles** are minor; accumulated **injuries** and perceived **wisdom** give more obvious signs of age.
+
+Within the Great Forests, interracial relationships are **socially unacceptable**; outside, they are **uncommon**. Aurësén and descendants are compatible **only with humans and orcs**, due to a **vague shared Malamer lineage**. Mixed children are **neither immortal nor subject to the Withering**, but their proportion of Aurësén ancestry can influence **emotional volatility** and **higher intelligence**. The exact hereditary thresholds remain open.
+
+### Education and scholarly communities
+
+All three castes receive **magical education**. Young Arhîn are initially taught by **dedicated early-years tutors** owing to the low birth rate. By adolescence, aptitude determines whether further sorcerer training is worthwhile. Promising pupils enter an **apprenticeship under an accomplished sorcerer**, alongside **approximately four to six other adolescent students**. Being apprenticed does not automatically confer upper-caste status; **extraordinary achievement** might later secure that elevation.
+
+Mature sorcerers often join the service of **lords and ladies**, forming **small close-knit scholarly communities** responsible for **libraries** and the **magic of nearby towns**. Broad ability across **several disciplines** is expected for noble service, though individual **specialisations** naturally arise.
+
+Those not selected for sorcery are **encouraged to train for combat**. They can learn within households or at the **few specialised martial schools**. Enrolment in a martial school effectively prevents a future **scholarly career**. Almost no Arhîn soldiers are completely nonmagical: even primarily weapon-using warriors possess **some ability in magic**.
+
+### Military mobilisation
+
+The Arhîn **do not maintain a standing army**. Sorcerers are **obliged to serve in wartime**. In a **defensive war**, combatants normally retain their established household and scholarly communities as units. For **campaigns abroad**, **Histalion** undertakes a more centralised military organisation. Smaller magically competent forces, on foot and on forest-adapted salamander-like mounts, remain their defining approach. **Exceptional military deeds** can secure a rare rise in caste.
+
+### The Tinithas and authority
+
+**Queen Ilya** replaced **Queen Ilvielle** and became **High Priestess of Tiandre** at the **start of the Second Age**. For resisting Kabithh, the three **immortal Tinithas** were granted territorial authority at that time; they **have held it ever since**:
+
+| Region | Ruler | City |
+|---|---|---|
+| **Arataure** | **Lady Úrien**, Daughter of Sunlight | **Ara-Úr** |
+| **Mortaure** | **Lord Iluvantar** | **Thel-Didnel** |
+| **Histaure** | **Lord Histalion**, supreme military commander | **Undecided** |
+
+Before the Terhat-Ilu, the Tinithas **deliberately allowed the Night Serpent to bind the world in its mind for a 1,000-year search for the Silver Key**. They then **claimed publicly that they had bound the Serpent beneath the Culosíma**. They believe the Ertniiagra's sacrifices help maintain the world's binding. In reality **Kabithh uses sylvan blood to suppress the Serpent itself**. The Tinithas do not know this; **Iluvantar suspects** Kabithh's manipulation because the bargain was her idea.
+
+The Arhîn opposed **Achov III's exclusion and planned eviction of western centaurs** from their sacred migration route to the Moonlight Well, and sought to **remove Achov** to restore that migration. The Arhîn did **not know** that **Talen Perydain** had killed Achov's father and blamed the centaurs. Their intervention was independent of Perydain's conspiracy.
+
+### Afterlife beliefs and funerals
+
+The Arhîn **traditionally believe** that at death the soul would travel through the Moonlight Well to the **Grey**, to be reincarnated by a Grey One. **They now know the Well was never a gateway**, believe that the Grey is **inaccessible** and acknowledge that **they have no right to enter the Grey Ones' realm**. Do not describe the reincarnation belief as confirmed cosmological fact.
+
+Funerals employ **ritual desiccation**. The wrapped body is **dehydrated** before the funeral proper. During the ceremony the extracted water is **poured into a river flowing to the Culosíma**. The wrapped, desiccated body is **cremated** and the ashes **scattered at a woodland shrine to the Grey One chosen by the deceased**. Those who have **fully Withered** have no body for the rite and are believed **spiritually lost without redemption**.
+
+All Grey Ones' priesthoods are **independently organised** and **stratified**. Queen Ilya is highly revered among them, but is not their universal supreme priestess. **Kabithh's worship is forbidden**; **Titramech's** receives cautious, suspicious toleration.
+
+### Contemporary knowledge of the Annokal
+
+In the Sanctum of Starlight at Yer-Aranie, **Ythralla** holds the ice to preserve Auris Koth's body; she knows his soul is in a ring elsewhere. Restoration of the spirit to his body by magic **would restore the Annokal and stop the Withering**. Queen Ilya and the Tinithas **believe him permanently lost**. Kabithh mistakenly believes his spirit remains in the ice. See [World Lore and History](../World-Lore-and-History-PDD.md) for the bow, ring, Messa, Czera and Kabithh's intended second Black Winter.
+
+### Neighbours of Aurësén descent
+
+The **Durhîn**, Kabithh-serving Aurësén descendants who partially embraced the Withering, retain bodies but suffer persistent negative violent emotion. They live in northern tundra/taiga **north of Arataure**, capital **Hara-Ur**; Arhîn and Durhîn **hate one another**.
+
+The **Cehîn**, formerly the Aurësén of **Ytharivandor**, secured protection from the Withering via Lord Thraen's pact with **Myrhufrun**, acquiring **antlers, leaf-like skin and piercing golden eyes**. The Arhîn consider the change an affront to heritage; the Cehîn regard the Arhîn as arrogant and foolish. Relations are troubled, though **trade and diplomacy continue**. See their [culture PDD](Cehin-Culture-PDD.md).
+
+---
+
 # 3. Further Consideration Required
 
 ## 3.1 Terminology and Legacy Game Data
@@ -504,11 +587,11 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 ## 3.2 History, Geography and Aurësén
 
-- Mechanism and function of the Gift of Light, bestowed on the Aurësén by Auris Koth; precise circumstances of its loss and whether restoration is possible.
-- Exact timeline, consequences and participants of the Serpent War.
+- Detailed magic of the Annokal and Auris Koth's restoration; its protective purpose, failure through incapacitation and possibility of restoration are **established**.
+- Remaining detailed dates and participants of the Serpent War; the Terhat-Ilu bargain and destruction of Yer-Aranie are established in the shared lore PDD.
 - Relationship of the historical Aurësén Diarchy to today's Arhîn dominion.
 - Geography, construction, destruction and remaining ruins of Yer-Aranie.
-- Exact arrangement and political differences of the three Great Forests.
+- Specific borders and political differences among the Great Forests; rulers and two named seats are established.
 - Nature and size of Culosíma and of Culosimlond.
 
 ## 3.3 The Withering and Light
@@ -523,17 +606,17 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 ## 3.4 Caste, Protection and Authority
 
-- How caste membership, indenture and inheritance function, including the legal and social relationship of the distinct naturalist outsider caste to the three mainstream castes.
+- Legal details of indenture and naturalists' position; inheritance, wealth, wages, land ownership, household mobility and mixed-caste marriage have now been established in §2.20.
 - Whether and how dependants obtain protected light or magic at ground level.
-- Laws, sanctions, mobility, employment and protection obligations.
+- Detailed law and sanctions beyond the established accommodation, paid service, household mobility and non-uniform sustenance guarantees.
 - Relationship of intellectual, religious, noble and royal authority.
-- Titles, institutions and identities other than Queen Ilya and Histalion.
+- Further noble offices and local rulers beyond Queen Ilya and the three Tinithas, and Histalion's city.
 - Histalion's precise political position, territory within Mortaure and relationship to Queen Ilya.
 
 ## 3.5 Religion and Heraldry
 
-- Further fey deities, their identities, aspects, symbols, relative significance and relationship to the Grey Ones and Tiandre; Auris Koth's iconography and religious practices.
-- Clerical hierarchy, caste membership, deity-specific priesthoods, duties, training and relationship to royal authority.
+- The unnamed sixth Winter Court member, divine symbols, additional rites and detailed relative significance of the known Grey Ones.
+- Internal priestly offices, training, rites and symbols beyond the established independent stratified priesthoods and Queen Ilya's special status.
 - Othruum's teachings, iconography, relationship to other Summer Court deities and importance within the Arhîn pantheon; the organisation, extent, practices and visual identity of druidism and its relationship to organised fey worship. His Summer Court membership and the equivalence of his Arhîn groves to other deity shrines are established.
 - Woodland shrine layouts, custodianship, rites, offerings, access and approved deity-specific iconography.
 - Iconography and theology of Tiandre's Summer Court.
@@ -569,9 +652,9 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 - How, when and by whom are Arhîn **battlemage groups** assembled for wartime service if there is no standing military?
 - Does Histalion command only during war, or does he maintain separate peacetime strategic authority?
-- What are the specific relationships between Histalion, Queen Ilya and territorial rulers?
+- Precise constitution and boundaries of Queen Ilya and the Tinithas' authority beyond established regional and wartime roles.
 - What forms of espionage, diplomacy, foreign influence and intelligence institutions exist?
-- What categories of magical intervention are feasible, and how rare or concentrated is individual magical talent?
+- Specific magical ability levels, schools and battlefield powers beyond the established tutored and apprentice education system.
 - What safeguards or logistical limitations apply to magical power during prolonged campaigns away from sunlight?
 - What, if any, permanent defensive personnel exist at strategic sites without constituting a standing army?
 - Which combat equipment, magical instruments and ceremonial objects are characteristic of battlemage groups?
@@ -586,6 +669,8 @@ No unresolved detail should be inferred as canon solely from a visual prototype.
 # 4. Dependencies and Document Boundaries
 
 - [Culture Design PDD](../Culture-Design-PDD.md): parent cultural index and cross-cultural constraints.
+- [World Lore and History](../World-Lore-and-History-PDD.md): the Grey, Night Serpent, Annokal, Moonlight Well, Serpent War and Ninth Age plot.
+- [Cehîn Culture PDD](Cehin-Culture-PDD.md) and [Durhîn Culture PDD](Durhin-Culture-PDD.md): Aurësén descendants and diplomatic context.
 - [MMORPG Master PDD](../MMORPG-Master-PDD.md): design hierarchy and product boundaries.
 - [Graphical Approach PDD](../../Graphical-Approach-PDD.md): mandatory art style, rendering, shaders, modular assets and production workflow.
 - [World and Zone Design PDD](../World-and-Zone-Design-PDD.md): placement and terrain integration of the Great Forests, Culosíma, settlements and ruins.
