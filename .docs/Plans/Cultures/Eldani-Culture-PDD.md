@@ -4,7 +4,7 @@
 **Document Type:** Cultural Sub-PDD  
 **Status:** Draft / Design Baseline  
 **Scope:** Eldani human culture, Kingdom of Astonia, Astonian Mahlism, the aristocratic houses, regional subcultures, visual identity and cultural asset direction  
-**Last updated:** 2026-11-20
+**Last updated:** 2026-11-21
 
 ---
 
@@ -34,11 +34,11 @@ Their appearance and society have been shaped by contact with other cultures. Th
 ## 2.2 Historical Foundation — Established
 
 - The Eldani descend from **proto-Eldani** peoples.
-- Approximately **1,000 years ago**, a godlike figure known as **Mahlfach, the Masked Saint**, saved the proto-Eldani from the **Merrshaulk**, the Serpent-men.
+- Approximately **1,000 years ago**, a godlike figure known as **Mahlfach, the Masked Saint**, saved the proto-Eldani from the **Merrshaulk**, the Serpent-men. **Established historical truth, unknown to Eldani:** Mahlfach was **Osmutuun**, the Malamer God-King. See [World Lore and History](../World-Lore-and-History-PDD.md).
 - Eldani society experienced significant **Arhîn cultural influence around 1,000 years ago**, which has been assimilated into its own traditions.
 - **Much of the Eldani royal lineage has some degree of Arhîn ancestry.** The specific genealogies, extent of ancestry in individual families and biological consequences are not yet defined.
 - The proto-Eldani had practised a **pantheonic religion** in which **Lythaer**, the god of light and renewal, held a central place.
-- From that earlier religious tradition, **Astonian Mahlism** developed and became overwhelmingly dominant in Eldani society.
+- From that earlier religious tradition, **Orthodox Mahlism first** developed as an interpretation of Mahlfach's example, and **Astonian Mahlism developed later** amid successive crises and a public desire for a god to pray to after the loss of the earlier Erôthian pantheon. Astonian Mahlism became overwhelmingly dominant in Eldani society.
 
 These events provide historical context for the culture; this PDD does not yet specify the chronology or exact causal relationship between elven contact, the deliverance from the Merrshaulk and the rise of Mahlism.
 
@@ -136,7 +136,7 @@ Its worship centres on **Mahlfach, the Masked Saint**. Within the religion, Mahl
 
 Mahlism developed out of the earlier proto-Eldani pantheonic tradition, notably the worship of **Lythaer**, god of light and renewal. Lythaer belongs to that earlier pantheon; he should **not** be depicted as a second active deity of Mahlism without a separately approved theological decision.
 
-These are statements about **Eldani historical tradition and belief**, not final metaphysical rules for how divinity functions in the setting.
+These descriptions are **Eldani religious beliefs**, not proof that Mahlfach is a deity dispensing spells. **Established hidden truth:** Mahlfach is **Osmutuun**. **Light magic is the positive aspect of soul/spirit magic**; Mahlist conviction in the teachings itself manifests apparent divine power, without requiring Osmutuun to actively grant it. Osmutuun was imprisoned during the Seventh and Eighth Ages and returned to his former place of imprisonment after the Serpent War, withdrawing from the world's events.
 
 ### Mainstream Astonian Mahlite religious visual identity — Proposed
 
@@ -410,21 +410,97 @@ Maintain shared Eldani construction, garment and equipment foundations where app
 
 ---
 
+## 2.15 Established Mahlite Theology and Institutions
+
+### The two religious traditions — Established
+
+**Orthodox Mahlism** is the older tradition, founded on the proto-Eldani interpretation of **Mahlfach/Osmutuun's deeds during the Serpent War**, not on explicit doctrine personally taught by Osmutuun. Orthodoxy teaches that individuals should **improve themselves to protect the vulnerable**. It rejects the premise that gods give power freely: divine offers instead demand **servitude**. It therefore rejects **idolatry and mask imagery of Mahlfach**, encouraging believers to **follow his example** rather than venerate his representation.
+
+Orthodox Mahlism **has no concept of a promised afterlife**. Doing good merely to secure a personal reward after death contradicts its ethics: adherents should act **for the benefit of living others**. Devotion is **primarily personal**. Orthodox communities, monasteries and individual teachers operate **without a single central ecclesiastical authority**. Orthodoxy is notably associated with the **Dalmen Highlands**. Orthodox Mahlists **generally do not concern themselves with druidic worship**.
+
+**Astonian Mahlism** grew later from Orthodox Mahlism amid successive political and societal crises that increased demand for a deity to pray to in the absence of the **old Erôthian pantheon**. Its theology holds the **opposite emphasis**: believers seek **divine aid and protection from Mahlfach**. **Regular attendance at temples is expected.** Mainstream clergy wear hoods and **gold masks**; their organisation and imagery must not be imposed on Orthodox communities.
+
+In Astonian belief, the **faithful's souls go to Mahlfach after death** and are **reborn when he summons them to confront the world's evils again**. After that final campaign, they anticipate a **paradisal afterlife** as their reward. This is **religious belief**, not verified actual post-mortem cosmology.
+
+**Both branches' Light magic** arises from conviction: it is the positive aspect of **soul/spirit magic**. The magical result does **not require Osmutuun to intervene personally**, although Astonian and Orthodox adherents interpret it differently.
+
+### Church governance — Established
+
+The **King of Astonia is head of the Astonian Church**. A **High Priest directly beneath the king** administers its day-to-day affairs. Exact titles beneath this office, ranks, revenues, control of temples and regional offices remain open.
+
+**Orthodox Mahlism** instead has no unified central head and is taught through **local communities, individual teachers and monasteries**. Its rejection of masks and idolatry is established.
+
+**Exemplars:** some serve the **Crown** directly; others belong to **militant Mahlist orders**. Some orders operate **independently of both Crown and central Church**, especially in distant territories. Their precise orders, command, rulebooks and iconography remain unspecified.
+
+### Eldani naturalists and regional attitudes — Established
+
+Eldani naturalists wear **ordinary Eldani-style garments**, with **various wools and understated plant-based natural adornments**, not the conspicuous animal-hide, bone and antler dress of Arhîn occultist naturalists. **Only Arhîn** become attuned to their sinister ancestry through druidic practice; this **does not happen to Eldani**.
+
+**Regional attitudes vary:** in **Estyenni** communities druidism is ordinary daily practice; in cosmopolitan areas it is regarded as unusual; closer to **Eldanon**, mainstream Mahlist priests are increasingly hostile; **Orthodox Mahlists generally do not care**. No single universal legal ban on druidism has been established. The precise roles, theology, community standing and class affiliation of Eldani naturalists remain open.
+
+## 2.16 The Eldanon Academy and Magical Regulation — Established
+
+Town communities often possess **magic schools affiliated with the Eldanon Academy of the Arcane Arts**, headed by **Arch-Lector Roderich Squall**. Admissions depend on **aptitude, merit and ability to pay tuition**. Poor children may be unable to attend, although **limited scholarships are available**. The Academy's precise governing charter, curriculum, campus map and credential system remain open.
+
+**Independent magical practice is permitted**, but magical laws are **strictly enforced** throughout **Astonia and its rebellious states**.
+
+- **Necromancy is outright prohibited**.
+- **Transmutation is forbidden in regulated uses** due to its **economic effects** (the exact scope needs definition).
+- **Illusion is forbidden in various applications** (scope unspecified).
+- **Teleportation is heavily regulated** rather than universally banned.
+
+Do not generalise the bans beyond the established categories and uses or invent enforcement agencies, penalties or exemptions.
+
+## 2.17 Military Institutions and the Secessions — Established
+
+**Astonia maintains a substantial standing royal army** and **draws upon, incorporates and integrates household forces**. Its main organised magical military wing is the **Astonian Royal Arcanists**, recruited **directly from the Eldanon Academy of the Arcane Arts**, with **additional direct-entry routes**.
+
+**The breakaway states maintain volunteer armies** and **do not possess a centralised military sorcery wing** comparable to the Royal Arcanists. This does **not** mean no individual rebel soldiers can use magic.
+
+The secession of the **Ninh Sea maritime states** caused Astonia to lose **about 90% of its naval forces**. Some **loyal ships and crews escaped**, retaining a much-reduced royal naval capability. The loss must not automatically be attributed to a naval battle or the destruction of ships: the mechanism includes political loss of territory, fleets and personnel.
+
+The **Estyenni in the north** had **already seceded during the reign of King Achov III's father**, before Achov's rule began. They are an independent people, not merely colder-climate Eldani.
+
+## 2.18 The Astonian Political Crisis — Established Facts and Open Motives
+
+### Confirmed facts
+
+- **King Achov III** rules Astonia, with **Lord Talen Perydain** as his **High Chancellor**.
+- **Perydain was responsible for assassinating Achov's father**, intending to **destabilise the monarchy** and **blame the assassination on the centaurs**.
+- Two of Achov's principal advisers were working, respectively, for the interests of the **Arhîn** and **Urngor (mountain dwarves)**. Their identities, exact demands and coordination are **not specified**.
+- The **Arhîn adviser** was working in the interests of a people who particularly **wanted Achov removed**, but the Arhîn **were unaware of Perydain's assassination plot and his attempt to blame the centaurs**.
+- The centaurs were **already inside Astonian territory** when Achov prohibited their **migration/passage**. They travelled from the **western steppes** along a **sacred route** towards the **Moonlight Well**, for the generational **Ertniiagra** sacrifice of chosen **western and eastern centaurs**.
+- The Arhîn sought the removal of Achov **to restore the sacred centaur migration corridor**, not because they had jointly orchestrated the assassination.
+- The **southern Perramere provinces**, including **Kimius and Vonich**, are rebellious; the **Ninh Sea maritime states seceded**; the **Estyenni departure predates Achov's reign**.
+- The distinct Urngor adviser's strategic objectives and whether any of the conspirators knowingly collaborated remain undefined.
+
+### Possible immediate military catalyst — Proposed, not yet established
+
+With centaurs already in Astonian territory, **Achov could have deployed troops north to evict them**. This may have further alienated maritime soldiers asked to serve far from their homes and simultaneously reduced available loyal troops in the south, allowing already-organised rebels to seize ports, arsenals or government buildings. **The deployment, defections and revolt sequence are proposals, not approved historical fact.**
+
+The previously discussed **royal centralisation, provincial rights, merchant wealth, fiscal grievance, ecclesiastical interference and military patronage** are **candidate underlying tensions**, not yet canon. Their relative importance, protagonists, constitutional mechanisms and the exact casus belli of the Ninh Sea secession remain to be established.
+
+### Cross-cultural stakes
+
+The centaurs perform the **Ertniiagra** at the Moonlight Well. Publicly, the sacrifices are thought to preserve the imprisonment of the Night Serpent. The hidden truth is that they **supply sylvan blood**, which **Kabithh uses to suppress the Night Serpent inside its own mind**; the Tinithas misrepresented the original bargain. The Arhîn interest in preserving the migration route is established, but that **does not imply the Arhîn adviser or Achov knew Kabithh's hidden purpose**. See [World Lore and History](../World-Lore-and-History-PDD.md).
+
+---
+
 # 3. Further Consideration Required
 
 ## 3.1 Eldani History and Geography
 - Exact name and layout of Astonia's principal Black Peaks foothill city.
-- Timeline and nature of elven–proto-Eldani contact.
+- Timeline and circumstances of Arhîn–proto-Eldani contact; Mahlfach's hidden identity as Osmutuun and the later theological divergence of Orthodox and Astonian Mahlism are established.
 - Precise relationship among the Merrshaulk conflict, Mahlfach's intervention and the emergence of the kingdom.
 - Any additional Eldani provincial subcultures and their relationship to the Astonian Highlands, Rift of Perramere, Ninh Sea coast, northern Eldani communities and Dalmen Highlands.
 - The precise geography of the Rift, its settlements, resources and trade routes; individual identities of Kimius and Vonich, the nature of their rebellion, and extent of Miut and Adritan influence.
 - Names and individual identities of the rebellious Ninh Sea coastal states; their relationship to Eldanon, the Crown and each other; ports, coastal geography, trade routes, commodities, foreign influence, shipbuilding, fleets and territorial boundaries.
-- Selheim Basin separation history, present political relations, northern Eldani settlement locations and the boundary with Estyenni cultural territory.
+- Present political relations, northern Eldani settlement locations and the Estyenni territorial boundary; the **Estyenni secession under Achov III's father** is established.
 - Dalmen settlement patterns, resources, origins and persistence of poverty, regional political institutions and extent of proto-Eldani cultural continuity.
 
 ## 3.2 Religion
-- Formal Mahlite institution names, ranks, vestments, rituals and sacred spaces.
-- Further doctrine, liturgy, organisation, permissible non-figurative ornament and visual distinctions of Orthodox Mahlism in the Dalmen Highlands, and its relationship to mainstream Astonian Mahlism, beyond the established prohibition on idolatry, worn masks and mask imagery.
+- Clerical offices and rites below the established **king-as-head** and subordinate daily **High Priest**, and Orthodox community/monastery arrangements.
+- Further Orthodox liturgy, non-figurative decoration and visual identity beyond the established absence of idolatry and masks, personal devotion, decentralised organisation and ethics of self-improvement for others.
 - Final iconographic design of Mahlfach's mask in mainstream Astonian Mahlism and any additional restrictions on depictions of the Saint; Orthodox Mahlism already forbids masks and mask imagery and prohibits idolatry.
 - What historical Lythaer imagery survives and how Mahlism interprets it.
 - Whether the eight-point royal sun has any formal theological meaning.
@@ -433,7 +509,7 @@ Maintain shared Eldani construction, garment and equipment foundations where app
 ## 3.3 Houses and Crown
 - The number, names, territories, lineages and political privileges of the houses, including the distribution and history of Arhîn ancestry in royal and other genealogies.
 - Design of individual coats of arms and any restrictions on heraldic inheritance.
-- Royal versus house military organisation and its effect on visual identity.
+- Detail of royal army integration with household forces, the Royal Arcanists and the volunteer armies of the breakaway states; their broad arrangements are established.
 - Exact colours, geometry and field rules of the Astonian sun banner.
 
 ## 3.4 Asset Direction
@@ -451,6 +527,7 @@ None of these questions should be silently settled by a single concept image or 
 # 4. Dependencies and Document Boundaries
 
 - [MMORPG Master PDD](../MMORPG-Master-PDD.md): product design authority, cross-document governance.
+- [World Lore and History](../World-Lore-and-History-PDD.md): Osmutuun/Mahlfach, the Grey Ones, Ertniiagra, Night Serpent, Silver Key and shared chronology.
 - [Graphical Approach PDD](../../Graphical-Approach-PDD.md): mandatory global visual constraints and asset-production workflow.
 - [World and Zone Design PDD](../World-and-Zone-Design-PDD.md): placement of settlements, city routes, terrain integration and world geography.
 - [Character Creation and Identity PDD](../Character-Creation-and-Identity-PDD.md): player-facing race and appearance systems.
