@@ -16,7 +16,7 @@ The **Durhîn (Dark Children)** are a distinct Aurësén-descended people. This 
 
 The Durhîn are descended from a **group of Aurësén who swore service to Kabithh**, Lady of Deceit of the Winter Court, **in return for partially embracing the Withering**.
 
-Unlike Arhîn afflicted by the Withering, the Durhîn **retain their physical bodies**. Their sanity is **only partially preserved**. They are continually subject to **negative, typically violent emotional states**. They are not simply ordinary healthy Arhîn liberated from the need for sunlight, nor fully disembodied Withered shadows. The exact magical mechanisms of Kabithh's patronage, their physical ageing, reproduction and any light requirements are not established.
+Unlike Arhîn afflicted by the Withering, the Durhîn **retain their physical bodies**. Their sanity is **only partially preserved**. They are continually subject to **negative, typically violent emotional states**. They are not simply ordinary healthy Arhîn liberated from the need for sunlight, nor fully disembodied Withered shadows. **The Durhîn retain the same underlying physical proportions and facial anatomy as the Arhîn and Cehîn**. Their partial Withering does not establish a different body build or facial structure; other aspects of their appearance remain to be defined. The exact magical mechanisms of Kabithh's patronage, their physical ageing, reproduction and any light requirements are not established.
 
 Kabithh is their **patron** and is **revered** by the Durhîn. By contrast, her worship among the Arhîn is **heavily forbidden**, and the Arhîn regard her as an enemy.
 
