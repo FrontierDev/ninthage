@@ -30,7 +30,7 @@ A small number of Aurësén **refused the pact**. They were subsequently **sacri
 
 The Cehîn **govern themselves**, with **Lord Thraen** as their leader. Thraen was already the lord of this territory before the Serpent War; his leadership is ancient and continuous, not a recently established royal bloodline. His authority is accepted largely **because he secured the community's protection from the Withering**, rather than through routine coercive rule. He combines **secular leadership** with the supreme religious office of **High Priest of Myrhufrun**.
 
-**Myrhufrun is their patron deity** and the recipient of their pact. He is not the day-to-day ruler of Cehîn civil government. He lives **at the Moonlight Well among the Cehîn**.
+**Myrhufrun is their patron deity** and the recipient of their pact. He lives **at the Moonlight Well among the Cehîn**, but **does not participate in or govern any aspect of Cehîn civilisation**, including its political and military affairs. These remain entirely under Cehîn authority, principally Lord Thraen. His direct communication with Thraen and the priesthood must not be mistaken for engagement in governing or organising Cehîn society.
 
 As **High Priest of Myrhufrun**, **Lord Thraen exercises authority over the priesthood's religious practices** and **appoints its senior priests**. His authority is not limited to clerical appointments. Subordinate offices, specific rites and duties, wider laws, succession rules, political councils and boundaries of Thraen's rule remain open.
 
