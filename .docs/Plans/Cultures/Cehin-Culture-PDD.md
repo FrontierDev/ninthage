@@ -50,7 +50,7 @@ Most Cehîn live in **small woodland enclaves**, rather than numerous large urba
 
 Te'tutivae's **lower architectural levels** use **ancient, mossy brickwork** reminiscent of historical Aurësén construction. Its **upper levels** incorporate **trees**. Both ancient trees naturally integrated into the settlement and **magically shaped living trees** are present.
 
-The design must visibly join an inherited built foundation to a predominantly woodland upper environment. The exact engineering, density, tree species, floor heights, bridges and housing plans are not established. Avoid substituting either a uniformly pristine Aurësén city or a wholly timberless tree village.
+The design must visibly join an inherited built foundation to a predominantly woodland upper environment. **New Cehîn buildings are created primarily through druidic treeshaping**, rather than conventional timber framing or new masonry. **Treeshaping is a rare druidic talent; druids who specialise in it are highly respected and sought after** for their ability to form living trees into architecture. This construction practice applies throughout Cehîn settlements, not only Te'tutivae. The exact engineering, density, tree species, floor heights, bridges, shaping limitations and housing plans are not established. Avoid substituting either a uniformly pristine Aurësén city or a wholly timberless tree village.
 
 **Proposed interpretation:** legible old brick bases, moss and vegetation delivered predominantly through materials/shaders, living trunks rising through ancient courts, elevated timber or living-wood walkways and compact residential structures where construction is plausible. These are art proposals, not mandated individual building assets.
 
