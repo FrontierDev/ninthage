@@ -44,6 +44,8 @@ Ytharivandor is the **Ancient Forest**, bordering the **Arhîn territories to it
 
 Most Cehîn live in **small woodland enclaves**, rather than numerous large urban settlements. There is **one major settlement**, **Te'tutivae**, at the Moonlight Well. It is **Lord Thraen's permanent seat**.
 
+**Ytharivandor was among the earliest regions settled by the Aurësén** and preserves **some of their oldest architecture**. Ancient Aurësén masonry is incorporated **throughout the smaller Cehîn woodland settlements**, not only at Te'tutivae; the settlements combine that inherited built fabric with trees and natural materials. The amount of surviving masonry and its condition vary by location and have not been specified.
+
 ## 3.2 Te'tutivae — Established design language
 
 Te'tutivae's **lower architectural levels** use **ancient, mossy brickwork** reminiscent of historical Aurësén construction. Its **upper levels** incorporate **trees**. Both ancient trees naturally integrated into the settlement and **magically shaped living trees** are present.
