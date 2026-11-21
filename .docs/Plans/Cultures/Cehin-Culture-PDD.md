@@ -32,6 +32,8 @@ The Cehîn **govern themselves**, with **Lord Thraen** as their leader. Thraen w
 
 **Myrhufrun is their patron deity** and the recipient of their pact. He lives **at the Moonlight Well among the Cehîn**, but **does not participate in or govern any aspect of Cehîn civilisation**, including its political and military affairs. These remain entirely under Cehîn authority, principally Lord Thraen. His direct communication with Thraen and the priesthood must not be mistaken for engagement in governing or organising Cehîn society.
 
+**Myrhufrun wanders freely throughout Ytharivandor** rather than remaining in the Moonlight Well's glade. **Anyone who sees him while he wanders never lives to tell the tale**. The **only occasion on which it is safe to see him** is **at the Moonlight Well during special ceremonies**. The specific cause of death or disappearance during other encounters is **not yet established**; do not assume his mere appearance or gaze automatically kills on sight. These ceremonial appearances do not imply broader involvement in Cehîn civilisation.
+
 As **High Priest of Myrhufrun**, **Lord Thraen exercises authority over the priesthood's religious practices** and **appoints its senior priests**. His authority is not limited to clerical appointments. Subordinate offices, specific rites and duties, wider laws, succession rules, political councils and boundaries of Thraen's rule remain open.
 
 # 3. Geography, Settlements and Architecture
