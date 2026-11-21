@@ -76,7 +76,7 @@ The Cehîn continue **ritual sacrifice** in the Ninth Age. The killing of their 
 
 The ordinary outsider sacrifices are a **separate practice** from the Ertniiagra's specific centaur rite; neither should be described as a blanket licence for any traveller to enter the Well's restricted glade.
 
-The rites' specific purposes, officiants, frequency, selection procedures, sacred objects and supernatural effects have not been established. Do not invent them.
+**Only the organised priesthood of Myrhufrun conducts ritual sacrifices.** Ordinary Cehîn do not conduct such sacrifices independently. The rites' precise purposes, frequency, selection procedures, sacred objects and supernatural effects have not been established. Do not invent them.
 
 # 5. Foreign Relations and Trade
 
