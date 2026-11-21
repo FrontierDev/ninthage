@@ -20,7 +20,7 @@ Use **Established** for stated canon, **Proposed** for design interpretation and
 
 The Cehîn were **not a separate people before the Serpent War**. They were Aurësén living in **Ytharivandor (the Ancient Forest)**, a forest on the **southern edge of the Great Forests**.
 
-At the conclusion of the Serpent War, the ancient territorial ruler **Lord Thraen** negotiated a pact with **Myrhufrun, the Stag King** (one of the **six Summer Court Grey Ones**). The pact protected those who accepted it from the **Withering**, but changed their appearance, with **leaf-like skin and piercing golden eyes**. **Some ordinary Cehîn also develop small natural antlers or antler-like stubs**, though not all do. These are **much smaller than Lord Thraen's full pair of antlers**.
+At the conclusion of the Serpent War, the ancient territorial ruler **Lord Thraen** negotiated a pact with **Myrhufrun, the Stag King** (one of the **six Summer Court Grey Ones**). The pact protected those who accepted it from the **Withering**, but changed their appearance, with **leaf-like skin and piercing golden eyes**. **Some ordinary Cehîn also develop small natural antlers or antler-like stubs**, though not all do. Their presence and size reflect **individual variation**, not an established relationship with age or ancestry. These are **much smaller than Lord Thraen's full pair of antlers**.
 
 The Cehîn were obliged to **protect Ytharivandor** and effectively became the Stag King's **indentured servants**. These terms did **not** forbid them from leaving the forest: the Cehîn **may leave**, although culturally they rarely choose to.
 
