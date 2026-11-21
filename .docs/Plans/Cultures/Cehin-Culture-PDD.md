@@ -32,7 +32,7 @@ The Cehîn **govern themselves**, with **Lord Thraen** as their leader. Thraen w
 
 **Myrhufrun is their patron deity** and the recipient of their pact. He is not the day-to-day ruler of Cehîn civil government. He lives **at the Moonlight Well among the Cehîn**.
 
-The precise subordinate offices, laws, succession rules, political councils and boundaries of Thraen's rule remain open.
+**Lord Thraen appoints the senior priests of Myrhufrun's organised priesthood.** Their appointment places senior clerical selection under his authority, although the subordinate offices, religious duties, wider laws, succession rules, political councils and boundaries of Thraen's rule remain open.
 
 # 3. Geography, Settlements and Architecture
 
@@ -62,7 +62,7 @@ It is a world-linked magical font, not a portal to the Grey. The Aurësén origi
 
 ## 4.1 Myrhufrun and the priesthood — Established
 
-The Stag King is the **Cehîn's patron deity**. The Cehîn possess an **organised priesthood**. This must not be collapsed into druidism: they also practise **darker forms of druidism**, but an established priesthood exists separately as a religious institution. Individual appointments, hierarchy, robes, shrine requirements and relations with Lord Thraen remain open.
+The Stag King is the **Cehîn's patron deity**. The Cehîn possess an **organised priesthood**. This must not be collapsed into druidism: they also practise **darker forms of druidism**, but an established priesthood exists separately as a religious institution. **Lord Thraen appoints the senior priests**. Lower clerical appointment methods, internal hierarchy, robes, shrine requirements and priestly duties remain open.
 
 ## 4.2 The Ertniiagra — Established
 
