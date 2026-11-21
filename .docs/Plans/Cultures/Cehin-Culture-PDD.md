@@ -64,7 +64,7 @@ It is a world-linked magical font, not a portal to the Grey. The Aurësén origi
 
 ## 4.1 Myrhufrun and the priesthood — Established
 
-**Myrhufrun's appearance:** He resembles an **enormous stag**, marked by a **bright golden rune on his forehead** and **bright golden eyes**. **The Cehîn recognise the forehead rune as Myrhufrun's own symbol**; its significance to them is his identity and patronage, not an unknown religious mystery. The rune's precise geometry and any other meaning remain unspecified. In encounters within Ytharivandor, observers typically perceive **only his vast silhouette**, with the golden eyes and forehead rune shining visibly. The exact form of the rune, the proportions of his body, the shape of his antlers and any additional features remain undescribed; do not invent a humanoid form or assume his whole body is illuminated.
+**Myrhufrun's appearance:** He resembles an **enormous stag**, marked by a **bright golden rune on his forehead** and **bright golden eyes**. **The Cehîn recognise the forehead rune as Myrhufrun's own symbol**: it is a **spiral flame rune**, expressing his identity and patronage rather than an unknown religious mystery. The precise rendering of the spiral flame and any additional meaning remain unspecified. In encounters within Ytharivandor, observers typically perceive **only his vast silhouette**, with the golden eyes and forehead rune shining visibly. The proportions of his body, the shape of his antlers and any additional features remain undescribed; do not invent a humanoid form or assume his whole body is illuminated.
 
 The Stag King is the **Cehîn's patron deity**. **Myrhufrun communicates directly with Lord Thraen and the Cehîn priesthood**; despite dwelling at the Moonlight Well, he is not generally isolated from his religious representatives. The Cehîn possess an **organised priesthood dedicated to Myrhufrun, whose priests are also practitioners of druidism**. Priesthood and druidic practice are therefore **integrated**, not separate institutions, among the Cehîn. Their druidic traditions include **darker practices**, including ritual sacrifice. **Lord Thraen is the High Priest of Myrhufrun**, directs the priesthood's religious practices and **appoints its senior priests**. Whether every Cehîn druid belongs to the priesthood is not established. Lower clerical appointment methods, internal hierarchy, robes, shrine requirements and precise priestly duties remain open.
 
@@ -98,7 +98,7 @@ The Cehîn **typically export forest goods**. This serves a strategic social pur
 
 # 6. Visual and Asset Identity
 
-**Established:** Aurësén descent; the distinct living transformation of antlers, leaf-like skin and piercing gold eyes; compact woodland enclaves; Te'tutivae's mossy Aurësén-like lower brickwork and living-tree upper architecture; the silvery Well in an opalescent-ringed glade; organised Myrhufrun priesthood and darker druidic ritual traditions. **Myrhufrun** is a gigantic stag, typically glimpsed as a dark silhouette punctuated by **luminous golden eyes** and a **luminous golden rune on his forehead**.
+**Established:** Aurësén descent; the distinct living transformation of antlers, leaf-like skin and piercing gold eyes; compact woodland enclaves; Te'tutivae's mossy Aurësén-like lower brickwork and living-tree upper architecture; the silvery Well in an opalescent-ringed glade; organised Myrhufrun priesthood and darker druidic ritual traditions. **Myrhufrun** is a gigantic stag, typically glimpsed as a dark silhouette punctuated by **luminous golden eyes** and a **luminous golden spiral flame rune on his forehead**. **The Cehîn reproduce this rune on shrines, ceremonial clothing and religious objects**; it is not reserved solely for depictions of Myrhufrun himself.
 
 **Proposed only:** practical and ceremonial plant-fibre cloth, botanical adornments, restrained old Aurësén geometric forms preserved in ancestral objects, compact buildings supported by ancient masonry, naturalistic living-wood elements and distinctive druidic ritual props. Avoid copying the fully wild animal-hide identity of Arhîn occultist naturalists for every Cehîn; exact everyday dress and priestly clothing are not yet canon.
 
@@ -108,7 +108,8 @@ Potential asset categories:
 - natural and shaped living-tree building components;
 - Lord Thraen's seat and organised priesthood spaces (specific shapes open);
 - Moonlight Well pool, opalescent stone and surrounding forest glade;
-- forest trade goods and historically grounded domestic objects.
+- forest trade goods and historically grounded domestic objects;
+- **spiral flame rune** motifs for Cehîn shrines, ceremonial clothing and religious objects.
 
 # 7. Further Consideration Required
 
