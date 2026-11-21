@@ -4,7 +4,7 @@
 **Document Type:** Parent Product Design Document  
 **Status:** Draft / Design Baseline  
 **Purpose:** Maintain the cultural design roster, cross-cultural principles and index of race-specific sub-PDDs.  
-**Last updated:** 2026-11-13
+**Last updated:** 2026-11-21
 
 ---
 
@@ -55,9 +55,13 @@ All cultures use the global **grounded, mature mid-poly fantasy** target. Assets
 | Culture | Sub-PDD | Status | Short identity |
 |---|---|---|---|
 | **Eldani (Human)** | [Eldani Culture PDD](Cultures/Eldani-Culture-PDD.md) | Established lore / provisional visual baseline | Astonian stone towns and castles, late-medieval/Renaissance design, inherited elven influence, Mahlism and hereditary noble houses |
-| **Arhîn (Dawn Children)** | [Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md) | Established lore / provisional visual baseline | Aurësén descendants dependent on light; caste society and nostalgia, glazed towers, declining craftsmanship, protected solar fortresses, Tiandre and the Withering |
+| **Arhîn (Dawn Children)** | [Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md) | Established lore / provisional visual baseline | Aurësén descendants with caste hierarchy, the Withering and Annokal, the Tinithas, organised fey worship, magical communities and forest defences |
+| **Cehîn (Weald Children)** | [Cehîn Culture PDD](Cultures/Cehin-Culture-PDD.md) | Established foundations / visual direction open | Aurësén descendants transformed through pact with Myrhufrun; Lord Thraen, Te'tutivae, Moonlight Well, woodland priesthood and forest enclaves |
+| **Durhîn (Dark Children)** | [Durhîn Culture PDD](Cultures/Durhin-Culture-PDD.md) | Initial established lore / substantial open design | Kabithh-serving Aurësén descendants, partial Withering, northern tundra and taiga, Hara-Ur |
 
-This is an **index of cultures documented so far**, not an assertion that Eldani are the only playable race. Additional sub-PDDs will be created as cultural briefs are established.
+This is an **index of cultures documented so far**, not an assertion that all listed cultures are playable races. Additional sub-PDDs will be created as cultural briefs are established.
+
+Cross-cultural metaphysics and shared historical continuity (the Grey Ones, Malamer, Terhat-Ilu, Silver Key, Annokal and Ertniiagra) are recorded in the [World Lore and History PDD](World-Lore-and-History-PDD.md), not repeated as competing canonical chronologies within individual cultures.
 
 ---
 
@@ -94,6 +98,7 @@ These are a consistent authoring vocabulary, not a mandate to invent unapproved 
 # 5. Ownership and Dependencies
 
 - The **Culture Design PDD** owns cross-cultural rules and the canonical cultural document index.
+- The [World Lore and History PDD](World-Lore-and-History-PDD.md) owns shared cosmological and historical continuity, clearly separating world truth, cultural belief, deception and character intention.
 - Each **culture sub-PDD** owns its own established lore and culture-specific art direction.
 - The [Graphical Approach PDD](../Graphical-Approach-PDD.md) owns game-wide presentation, fidelity, shaders and asset workflow.
 - The [World and Zone Design PDD](World-and-Zone-Design-PDD.md) owns geographical and settlement placement rules.
