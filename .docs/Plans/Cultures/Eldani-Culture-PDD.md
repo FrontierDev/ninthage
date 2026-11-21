@@ -202,7 +202,7 @@ The precise constitutional powers of the houses, their titles, number, names, ri
 
 ### Physical appearance and lineage — Further consideration required
 
-Eldani are human. Arhîn ancestry in much of the royal lineage is established, but its prevalence outside royal families and any visible inherited traits are not. Possible subtle differences in facial refinement or ear shape among particular individuals may be explored as proposals; do not assign Arhîn skull geometry, pointed ears, eye colours, functional immortality, magical aptitude or Withering susceptibility to Eldani by default. The appearance of specific descendants, inheritance rules and character-creation implications require separate approval.
+Eldani are human. Arhîn ancestry in much of the royal lineage is established, but its prevalence outside royal families and any visible inherited traits remain open. **Established for Aurësén–human or Aurësén–orc descendants:** mixed children are **not immortal** and **do not Wither**; some may show **emotional volatility and higher intelligence**, depending on their proportion of Aurësén ancestry. Specific inheritance thresholds, facial appearance and character-creation implications remain open. Do not automatically assign Arhîn skull shape, pointed ears, muted eye colours or particular magic talents to Eldani characters merely because royal bloodlines contain Arhîn ancestry.
 
 ### Eldani naturalists — Established / Proposed
 
@@ -210,7 +210,7 @@ Eldani are human. Arhîn ancestry in much of the royal lineage is established, b
 
 **Proposed treatment:** familiar fitted tunics, doublets, bodices, skirts and shoulder mantles; layered wool and linen appropriate to local climate; modest dried herb bundles, woven botanical motifs, plant-fibre ties and wooden accessories. Prefer practical herbalist or field-scholar silhouettes over elaborate ritual robes, antler headdresses or conspicuous bone trophies. Regional adaptations follow the same Eldani-first principles as civilian clothing.
 
-Their social status, religious affiliations, formal organisation, magical practices and relationship to Mahlism or Othruum remain undefined. Visual subtlety is not evidence of universal acceptance or religious orthodoxy. Do not assign Crown heraldry or an unapproved religious emblem by default.
+Their formal organisation, precise religious affiliations and magical practices remain open, but **regional religious attitudes are established**: Orthodox Mahlists are generally unconcerned by druidism, which is normal among Estyenni; cosmopolitan districts regard it as strange, and mainstream priests toward Eldanon are more hostile. Eldani naturalists do **not** experience the darker ancestral attunement characteristic of Arhîn druids. Do not assign Crown heraldry or an unapproved religious emblem by default.
 
 ## 2.11 Historical Layering — Proposed
 
@@ -516,7 +516,7 @@ The centaurs perform the **Ertniiagra** at the Moonlight Well. Publicly, the sac
 - Approved final material swatches and calibrated in-engine appearances.
 - Degree of Renaissance versus late-medieval expression in different building ages.
 - Formal distinction of everyday, merchant, sacred, aristocratic and royal clothing; exact Arhîn-derived motifs, tailoring details and military armour variants.
-- Whether and how Arhîn ancestry manifests in the physical appearance or other inherited characteristics of particular Eldani individuals.
+- The exact prevalence and appearance of Arhîn ancestry in Eldani individuals; mixed descendants' **lack of immortality and Withering**, and their **possible volatile emotion and increased intelligence**, are already established.
 - Extent of fantasy elements in elite architecture and ceremonial equipment.
 - Final library of architectural motifs, sacred symbols and modular asset components.
 
