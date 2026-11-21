@@ -1,0 +1,128 @@
+# Ninth Age — Cehîn Culture Product Design Document
+
+**Project:** Ninth Age  
+**Document type:** Cultural Sub-PDD  
+**Status:** Established lore / provisional visual baseline  
+**Scope:** Cehîn (Weald Children), the Ancient Forest, the pact with Myrhufrun, Lord Thraen, Te'tutivae and the Moonlight Well  
+**Last updated:** 2026-11-21
+
+---
+
+# 1. Purpose and Authority
+
+The **Cehîn (Weald Children)** are a distinct contemporary people descended from the **Aurësén**. This is their culture-specific record under the [Culture Design PDD](../Culture-Design-PDD.md). Shared history of the Grey Ones, the Serpent War, the Night Serpent and the Ertniiagra is documented in [World Lore and History](../World-Lore-and-History-PDD.md).
+
+Use **Established** for stated canon, **Proposed** for design interpretation and **Further Consideration Required** for open questions. Cultural lore does not prescribe gameplay class, playable race, magic rules or actual in-engine assets.
+
+# 2. Established History and Identity
+
+## 2.1 Origin in the Aurësén
+
+The Cehîn were **not a separate people before the Serpent War**. They were Aurësén living in **Ytharivandor (the Ancient Forest)**, a forest on the **southern edge of the Great Forests**.
+
+At the conclusion of the Serpent War, the ancient territorial ruler **Lord Thraen** negotiated a pact with **Myrhufrun, the Stag King** (one of the **six Summer Court Grey Ones**). The pact protected those who accepted it from the **Withering**, but changed their appearance, with **antlers, leaf-like skin and piercing golden eyes**.
+
+The Cehîn were obliged to **protect Ytharivandor** and effectively became the Stag King's **indentured servants**. These terms did **not** forbid them from leaving the forest: the Cehîn **may leave**, although culturally they rarely choose to.
+
+A small number of Aurësén **refused the pact**. They were subsequently **sacrificed by Lord Thraen and his followers**, acting **independently of the pact's terms**. Do not describe their deaths as a price Myrhufrun imposed.
+
+## 2.2 Government and popular legitimacy
+
+The Cehîn **govern themselves**, with **Lord Thraen** as their leader. Thraen was already the lord of this territory before the Serpent War; his leadership is ancient and continuous, not a recently established royal bloodline. His authority is accepted largely **because he secured the community's protection from the Withering**, rather than through routine coercive rule or by virtue of a central priestly dictatorship.
+
+**Myrhufrun is their patron deity** and the recipient of their pact. He is not the day-to-day ruler of Cehîn civil government. He lives **at the Moonlight Well among the Cehîn**.
+
+The precise subordinate offices, laws, succession rules, political councils and boundaries of Thraen's rule remain open.
+
+# 3. Geography, Settlements and Architecture
+
+## 3.1 Ytharivandor
+
+Ytharivandor is the **Ancient Forest**, bordering the **Arhîn territories to its north** and the **Moveli to its south**. The southern boundary includes **mountains**. Moveli encroachment across these mountains periodically produces **border skirmishes**.
+
+Most Cehîn live in **small woodland enclaves**, rather than numerous large urban settlements. There is **one major settlement**, **Te'tutivae**, at the Moonlight Well. It is **Lord Thraen's permanent seat**.
+
+## 3.2 Te'tutivae — Established design language
+
+Te'tutivae's **lower architectural levels** use **ancient, mossy brickwork** reminiscent of historical Aurësén construction. Its **upper levels** incorporate **trees**. Both ancient trees naturally integrated into the settlement and **magically shaped living trees** are present.
+
+The design must visibly join an inherited built foundation to a predominantly woodland upper environment. The exact engineering, density, tree species, floor heights, bridges and housing plans are not established. Avoid substituting either a uniformly pristine Aurësén city or a wholly timberless tree village.
+
+**Proposed interpretation:** legible old brick bases, moss and vegetation delivered predominantly through materials/shaders, living trunks rising through ancient courts, elevated timber or living-wood walkways and compact residential structures where construction is plausible. These are art proposals, not mandated individual building assets.
+
+## 3.3 The Moonlight Well — Established
+
+The Moonlight Well remains **exposed to the sky deep within a wooded glade** in Te'tutivae. It is a **natural pool surrounded by stone** with a **pale blue opalescent quality**. Its water has a **silvery surface** and possesses **healing properties**.
+
+It is a world-linked magical font, not a portal to the Grey. The Aurësén originally emerged into the world there. Since the Terhat-Ilu, its connection to the physical world also links it to the Night Serpent. See the shared lore document for the actual mechanism and competing beliefs.
+
+**Access is heavily restricted by Lord Thraen**. Entry is ordinarily permitted to relevant **Cehîn religious officials** and **participants in the Ertniiagra**. Others may receive permission **under exceptional circumstances**. It is neither a public healing spring nor a freely accessible pilgrimage destination.
+
+# 4. Religion, Druidism and Sacrifice
+
+## 4.1 Myrhufrun and the priesthood — Established
+
+The Stag King is the **Cehîn's patron deity**. The Cehîn possess an **organised priesthood**. This must not be collapsed into druidism: they also practise **darker forms of druidism**, but an established priesthood exists separately as a religious institution. Individual appointments, hierarchy, robes, shrine requirements and relations with Lord Thraen remain open.
+
+## 4.2 The Ertniiagra — Established
+
+The Cehîn regard the **Ertniiagra** as profoundly important, as do the centaurs. It is the generational journey in which chosen **western and eastern centaurs** are sacrificed at the Moonlight Well. The public explanation is that the rite helps preserve the supposed imprisonment of the Night Serpent, consistent with the Tinithas' lie.
+
+**Hidden truth:** the sacrifices deliver **sylvan blood** to the Well. Kabithh uses that blood to suppress the Night Serpent from within its mind. The Cehîn **do not know the hidden mechanism**; they share the conventional understanding that sacrifices are needed to keep the Night Serpent bound. The older Arhîn theology of soul passage through the Well should not be conflated with the Ertniiagra.
+
+## 4.3 Other Cehîn sacrifices — Established
+
+The Cehîn continue **ritual sacrifice** in the Ninth Age. The killing of their own people who refused the original pact was **exceptional**, not their ordinary present practice. Today they **typically sacrifice outsiders**, most often **travellers and intruders who enter Ytharivandor**, rather than sending capture parties specifically to raid foreign lands. Outsiders commonly **do not know the danger beforehand** because the Cehîn do not actively publicise it with warnings.
+
+The ordinary outsider sacrifices are a **separate practice** from the Ertniiagra's specific centaur rite; neither should be described as a blanket licence for any traveller to enter the Well's restricted glade.
+
+The rites' specific purposes, officiants, frequency, selection procedures, sacred objects and supernatural effects have not been established. Do not invent them.
+
+# 5. Foreign Relations and Trade
+
+## 5.1 The Arhîn — Established
+
+Cehîn–Arhîn relations are **troubled**. The Arhîn see the transformation into antlered, leaf-skinned descendants as an **affront to Aurësén heritage**. The Cehîn consider the Arhîn **arrogant and bigoted**, and regard them as fools for not seeking a similar escape from the Withering. These attitudes coexist with **diplomatic and trading relations**; they do not imply permanent open warfare.
+
+## 5.2 The Moveli — Established
+
+The **Moveli** are the principal southern neighbours. They sometimes **encroach across the mountains** into Cehîn lands, provoking skirmishes along the border. The Cehîn nevertheless maintain trading/diplomatic relationships with neighbouring civilisations.
+
+## 5.3 Export economy — Established
+
+The Cehîn **typically export forest goods**. This serves a strategic social purpose: supplying outsiders with forest products **reduces their incentive to enter the sacred forest themselves**. Specific goods, prices, trade routes, diplomatic offices and foreign concessions remain undefined.
+
+# 6. Visual and Asset Identity
+
+**Established:** Aurësén descent; the distinct living transformation of antlers, leaf-like skin and piercing gold eyes; compact woodland enclaves; Te'tutivae's mossy Aurësén-like lower brickwork and living-tree upper architecture; the silvery Well in an opalescent-ringed glade; organised Myrhufrun priesthood and darker druidic ritual traditions.
+
+**Proposed only:** practical and ceremonial plant-fibre cloth, botanical adornments, restrained old Aurësén geometric forms preserved in ancestral objects, compact buildings supported by ancient masonry, naturalistic living-wood elements and distinctive druidic ritual props. Avoid copying the fully wild animal-hide identity of Arhîn occultist naturalists for every Cehîn; exact everyday dress and priestly clothing are not yet canon.
+
+Potential asset categories:
+- antlered Cehîn heads, skin treatments and hair variants;
+- small woodland dwellings and ancient brick bases;
+- natural and shaped living-tree building components;
+- Lord Thraen's seat and organised priesthood spaces (specific shapes open);
+- Moonlight Well pool, opalescent stone and surrounding forest glade;
+- forest trade goods and historically grounded domestic objects.
+
+# 7. Further Consideration Required
+
+- Cehîn population, household structure, occupations and relation of priesthood to social hierarchy.
+- The town plan, building typologies and governance facilities of Te'tutivae, as opposed to the smaller enclaves.
+- How much of the old Aurësén architecture survives, and specific rules for magic shaping living trees.
+- Distinct secular, priestly and druidic appearance, clergy vestments and ritual symbols.
+- Religious doctrine, sacrifices, ritual frequency, practices and consequences beyond the established examples.
+- How visitors obtain Well permission, the authority of guards/priests and the role of the Ertniiagra.
+- The degree to which Myrhufrun's protection is conditional and the impact of his possible death.
+- Names and identities of specific Moveli border posts and Cehîn enclave sites.
+- Any formal diplomatic/treaty arrangements, forest goods and trade institutions.
+
+# 8. Dependencies
+
+- [Culture Design PDD](../Culture-Design-PDD.md): cross-cultural policy and roster.
+- [World Lore and History](../World-Lore-and-History-PDD.md): cosmology, Serpent War, Night Serpent, Ertniiagra and Myrhufrun.
+- [Arhîn Culture PDD](Arhin-Culture-PDD.md): ancestry, Withering and Cehîn–Arhîn relations.
+- [World and Zone Design PDD](../World-and-Zone-Design-PDD.md): world placement.
+- [Graphical Approach PDD](../../Graphical-Approach-PDD.md): global target fidelity, assets and shaders.
+- [Quest, Narrative and Dialogue PDD](../Quest-Narrative-and-Dialogue-PDD.md): narrative and gameplay presentation.
