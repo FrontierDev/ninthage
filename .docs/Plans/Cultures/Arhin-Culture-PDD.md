@@ -633,8 +633,8 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 - Final dome geometry, structural materials and colour palette.
 - Whether canopy-clearance and magical support influence settlement planning.
 - Historical shape language of pre-War Aurësén versus contemporary Arhîn.
-- Physiognomy and skin/eye/hair variations.
-- Caste clothing, equipment and armour styles.
+- Final facial proportions and **skin/hair palettes** beyond the established skull, ear, brow, cheekbone, jaw, chin and muted gold/blue/green eye characteristics.
+- Final visual motifs and precise caste clothing, equipment and armour construction beyond the established cultural tailoring and naturalist animal-hide attire.
 - Performance-approved glass and Withering shader approaches.
 
 ## 3.7 Nostalgia and Runic Memory Viewing
@@ -650,8 +650,8 @@ The race/faction assets currently omit accents in display names (**Arhin**, **Au
 
 ## 3.8 Military Mobilisation and Magical Power
 
-- How, when and by whom are Arhîn **battlemage groups** assembled for wartime service if there is no standing military?
-- Does Histalion command only during war, or does he maintain separate peacetime strategic authority?
+- Precise battlemage formation strength, command hierarchy and field coordination beyond the established **local defensive formations** and **Histalion's centralised expeditionary mobilisation**.
+- The extent of Histalion's **peacetime** strategic and military authority, beyond his established position as supreme commander.
 - Precise constitution and boundaries of Queen Ilya and the Tinithas' authority beyond established regional and wartime roles.
 - What forms of espionage, diplomacy, foreign influence and intelligence institutions exist?
 - Specific magical ability levels, schools and battlefield powers beyond the established tutored and apprentice education system.
