@@ -20,7 +20,7 @@ Use **Established** for stated canon, **Proposed** for design interpretation and
 
 The Cehîn were **not a separate people before the Serpent War**. They were Aurësén living in **Ytharivandor (the Ancient Forest)**, a forest on the **southern edge of the Great Forests**.
 
-At the conclusion of the Serpent War, the ancient territorial ruler **Lord Thraen** negotiated a pact with **Myrhufrun, the Stag King** (one of the **six Summer Court Grey Ones**). The pact protected those who accepted it from the **Withering**, but changed their appearance, with **antlers, leaf-like skin and piercing golden eyes**.
+At the conclusion of the Serpent War, the ancient territorial ruler **Lord Thraen** negotiated a pact with **Myrhufrun, the Stag King** (one of the **six Summer Court Grey Ones**). The pact protected those who accepted it from the **Withering**, but changed their appearance, with **leaf-like skin and piercing golden eyes**. **Some ordinary Cehîn also develop small natural antlers or antler-like stubs**, though not all do. These are **much smaller than Lord Thraen's full pair of antlers**.
 
 The Cehîn were obliged to **protect Ytharivandor** and effectively became the Stag King's **indentured servants**. These terms did **not** forbid them from leaving the forest: the Cehîn **may leave**, although culturally they rarely choose to.
 
@@ -98,12 +98,12 @@ The Cehîn **typically export forest goods**. This serves a strategic social pur
 
 # 6. Visual and Asset Identity
 
-**Established:** Aurësén descent; the distinct living transformation of antlers, leaf-like skin and piercing gold eyes; compact woodland enclaves; Te'tutivae's mossy Aurësén-like lower brickwork and living-tree upper architecture; the silvery Well in an opalescent-ringed glade; organised Myrhufrun priesthood and darker druidic ritual traditions. **Myrhufrun** is a gigantic stag, typically glimpsed as a dark silhouette punctuated by **luminous golden eyes** and a **luminous golden spiral flame rune on his forehead**. **The Cehîn reproduce this rune on shrines, ceremonial clothing and religious objects**; it is not reserved solely for depictions of Myrhufrun himself. **Priestly attire includes an antler crown and antler collar**, both forbidden as worn adornments to non-priests. **Lord Thraen** has a pair of antlers emerging from his head and the **spiral flame rune of Myrhufrun on his forehead**; the rune's colour or luminosity on Thraen has not been specified.
+**Established:** Aurësén descent; leaf-like skin and piercing gold eyes, with **small natural antlers or stubs on some individuals** (not universal); compact woodland enclaves; Te'tutivae's mossy Aurësén-like lower brickwork and living-tree upper architecture; the silvery Well in an opalescent-ringed glade; organised Myrhufrun priesthood and darker druidic ritual traditions. **Myrhufrun** is a gigantic stag, typically glimpsed as a dark silhouette punctuated by **luminous golden eyes** and a **luminous golden spiral flame rune on his forehead**. **The Cehîn reproduce this rune on shrines, ceremonial clothing and religious objects**; it is not reserved solely for depictions of Myrhufrun himself. **Priestly attire includes an antler crown and antler collar**, both forbidden as worn adornments to non-priests. **Lord Thraen** has a pair of antlers emerging from his head and the **spiral flame rune of Myrhufrun on his forehead**; the rune's colour or luminosity on Thraen has not been specified.
 
 **Proposed only:** practical and ceremonial plant-fibre cloth, botanical adornments, restrained old Aurësén geometric forms preserved in ancestral objects, compact buildings supported by ancient masonry, naturalistic living-wood elements and distinctive druidic ritual props. Avoid copying the fully wild animal-hide identity of Arhîn occultist naturalists for every Cehîn; exact everyday dress and priestly clothing are not yet canon.
 
 Potential asset categories:
-- antlered Cehîn heads, skin treatments and hair variants;
+- Cehîn head variants with and without small natural antlers or stubs, skin treatments and hair variants;
 - small woodland dwellings and ancient brick bases;
 - natural and shaped living-tree building components;
 - Lord Thraen's seat and organised priesthood spaces (specific shapes open);
