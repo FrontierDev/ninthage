@@ -220,9 +220,12 @@ MMORPG Master PDD
 │
 ├── World and PvE Content
 │   ├── World and Zone Design PDD               [EXISTS]
+│   ├── World Lore and History PDD             [EXISTS / DRAFT]
 │   ├── Culture Design PDD                      [EXISTS / DRAFT]
 │   │   ├── Cultures/Eldani-Culture-PDD.md       [EXISTS / DRAFT]
-│   │   └── Cultures/Arhin-Culture-PDD.md        [EXISTS / DRAFT]
+│   │   ├── Cultures/Arhin-Culture-PDD.md        [EXISTS / DRAFT]
+│   │   ├── Cultures/Cehin-Culture-PDD.md        [EXISTS / DRAFT]
+│   │   └── Cultures/Durhin-Culture-PDD.md       [EXISTS / DRAFT]
 │   ├── Movement and Traversal PDD               [EXISTS]
 │   ├── NPC and Creature Design PDD              [EXISTS]
 │   ├── AI and Encounter Behaviour PDD           [EXISTS]
@@ -623,7 +626,7 @@ The exact role of reputation in Ninth Age remains to be designed.
 
 This parent document owns the cultural roster, cross-cultural design principles and links to one **dedicated sub-PDD per culture**. Each sub-PDD owns that culture's established lore, visual traditions, religious and political symbolism, detailed art direction and outstanding decisions.
 
-The documented cultures are **Eldani (Human)** ([Eldani Culture PDD](Cultures/Eldani-Culture-PDD.md)) and **Arhîn (Dawn Children)** ([Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md)). Future cultures must have their own files under `.docs/Plans/Cultures/` rather than becoming additional long sections in the parent PDD.
+The documented cultures are **Eldani (Human)** ([Eldani Culture PDD](Cultures/Eldani-Culture-PDD.md)), **Arhîn (Dawn Children)** ([Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md)), **Cehîn (Weald Children)** ([Cehîn Culture PDD](Cultures/Cehin-Culture-PDD.md)) and **Durhîn (Dark Children)** ([Durhîn Culture PDD](Cultures/Durhin-Culture-PDD.md)). Cross-cultural history and the Grey Ones are documented in the [World Lore and History PDD](World-Lore-and-History-PDD.md). Future cultures must have their own files under `.docs/Plans/Cultures/` rather than becoming additional long sections in the parent PDD.
 
 The Graphical Approach PDD remains authoritative for actual asset fidelity, materials, modelling standards, shader behaviour and production workflows. The World and Zone Design PDD continues to own geographical and settlement-structure rules.
 
@@ -1130,9 +1133,12 @@ The project currently has the following major product-design documents:
 | [Graphical Approach PDD](../Graphical-Approach-PDD.md) | Authoritative | Visual identity and graphical presentation |
 | [Crafting System PDD](Crafting-System-PDD.md) | Authoritative | Gathering, professions, mastery and cooperative crafting |
 | [Class Design PDD](Class-Design-PDD.md) | Draft / design baseline | Class roster, identity and unresolved class mechanics |
+| [World Lore and History PDD](World-Lore-and-History-PDD.md) | Draft / established lore | Cross-cultural cosmology, ancient history, the Serpent War, Grey Ones, Night Serpent, Silver Key and continuity boundaries |
 | [Culture Design PDD](Culture-Design-PDD.md) | Draft / design baseline | Parent cultural index, shared principles and links to culture-specific sub-PDDs |
 | [Eldani Culture PDD](Cultures/Eldani-Culture-PDD.md) | Draft / design baseline | Eldani historical identity, Astonian Mahlism, crown and houses, architecture, materials, heraldry and art direction |
 | [Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md) | Draft / design baseline | Aurësén inheritance, Withering, the Great Forests, Arhîn castes, Tiandre, Suntower and visual direction |
+| [Cehîn Culture PDD](Cultures/Cehin-Culture-PDD.md) | Draft / established lore | Weald Children, Myrhufrun pact, Thraen, Te'tutivae and Moonlight Well |
+| [Durhîn Culture PDD](Cultures/Durhin-Culture-PDD.md) | Draft / initial lore | Dark Children, Kabithh patronage, partial Withering and Hara-Ur |
 | **MMORPG Master PDD** | Authoritative index / baseline | Product-wide design hierarchy and subsystem map |
 | [Combat System PDD](Combat-System-PDD.md) | Authoritative | Core combat model, combat state, targeting, threat and combat resolution |
 | [World Runtime and Instancing PDD](World-Runtime-and-Instancing-PDD.md) | Authoritative | Persistent worlds, streaming, floating origin, actor visibility and runtime instances |
