@@ -62,7 +62,7 @@ It is a world-linked magical font, not a portal to the Grey. The Aurësén origi
 
 ## 4.1 Myrhufrun and the priesthood — Established
 
-The Stag King is the **Cehîn's patron deity**. The Cehîn possess an **organised priesthood**. This must not be collapsed into druidism: they also practise **darker forms of druidism**, but an established priesthood exists separately as a religious institution. **Lord Thraen appoints the senior priests**. Lower clerical appointment methods, internal hierarchy, robes, shrine requirements and priestly duties remain open.
+The Stag King is the **Cehîn's patron deity**. The Cehîn possess an **organised priesthood dedicated to Myrhufrun, whose priests are also practitioners of druidism**. Priesthood and druidic practice are therefore **integrated**, not separate institutions, among the Cehîn. Their druidic traditions include **darker practices**, including ritual sacrifice. **Lord Thraen appoints the senior priests**. Whether every Cehîn druid belongs to the priesthood is not established. Lower clerical appointment methods, internal hierarchy, robes, shrine requirements and precise priestly duties remain open.
 
 ## 4.2 The Ertniiagra — Established
 
