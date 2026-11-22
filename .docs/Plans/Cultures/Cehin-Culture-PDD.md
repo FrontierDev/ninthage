@@ -95,6 +95,12 @@ The Cehîn have a **distinctive written tradition** in which **ink is used to in
 
 This practice is an established form of Cehîn writing and historical recordkeeping. **Library plants are magically maintained**, preserving their living leaves and the inscriptions written upon them rather than relying on periodic copying to replace naturally shed leaves. The plants used for these libraries are **ordinary plant species**, not specialised species bred for magical recordkeeping; their preservation derives from **applied magic**. **Retrieval depends on specialist librarians who know where individual texts are growing**, rather than on plants being systematically arranged by subject and age. These librarians preserve the practical knowledge needed to locate writings amid the living gardens and orchards. **Librarians maintain written catalogues of the locations of texts**, ensuring that knowledge of where records grow can be passed between generations rather than depending solely on instruction or individual memory. **The catalogues themselves are inscribed on living leaves still attached to their plants**, just like the texts they index; they are not portable books or loose records. **The living libraries are generally accessible to ordinary Cehîn**, not restricted to scholars, druids or the priesthood. Specialist librarians assist with locating written works, but their expertise does not imply exclusive access to the collections. Their indexing conventions and how librarians navigate between catalogue plants and the indexed writings remain undecided. Which ordinary species are preferred and the precise nature and limits of the sustaining magic also remain to be determined.
 
+## 3.5 Literacy and oral tradition — Established
+
+**Literacy is not widespread among the Cehîn and is not part of a universal childhood education.** Reading and writing are learned chiefly by people pursuing **scholarly, religious or administrative roles**, including those involved in tending written records. The living libraries remain generally accessible to ordinary Cehîn, but **public access does not imply universal literacy**.
+
+**Oral history is also an important part of Cehîn society**, existing alongside the written tradition of living-leaf libraries. The identity of storytellers, modes of transmission, ceremonial functions and relation between written and oral accounts remain to be defined.
+
 # 4. Religion, Druidism and Sacrifice
 
 ## 4.1 Myrhufrun and the priesthood — Established
