@@ -93,7 +93,7 @@ It is a world-linked magical font, not a portal to the Grey. The Aurësén origi
 
 The Cehîn have a **distinctive written tradition** in which **ink is used to inscribe broad leaves while the leaves remain attached to their living plants**. The leaves themselves serve as the writing surface; the text is not ordinarily presented as writing on detached, dried leaves or bound paper books. Consequently, **Cehîn libraries resemble gardens and orchards**, with living plants functioning as repositories of written knowledge.
 
-This practice is an established form of Cehîn writing and historical recordkeeping. The plant species used, whether the leaves are magically sustained, how records survive seasonal leaf loss or plant death, techniques for indexing and retrieving texts, and the organisation of these garden-libraries remain to be determined.
+This practice is an established form of Cehîn writing and historical recordkeeping. **Library plants are magically maintained**, preserving their living leaves and the inscriptions written upon them rather than relying on periodic copying to replace naturally shed leaves. The plant species used, the precise nature and limits of the sustaining magic, techniques for indexing and retrieving texts, and the organisation of these garden-libraries remain to be determined.
 
 # 4. Religion, Druidism and Sacrifice
 
