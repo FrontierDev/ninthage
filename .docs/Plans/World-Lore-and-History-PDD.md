@@ -122,6 +122,8 @@ The Moonlight Well is a **physical natural pool** deep in a **wooded glade**, in
 
 It is an ancient **font of magical power linked to the world**, and, since the Terhat-Ilu, by extension to the **Night Serpent**. The Aurësén emerged into the world there. It has **never been a passageway to the Grey**.
 
+**Cehîn pact transformations — established truth:** Myrhufrun's transformative magic and a formal ceremony conducted by Lord Thraen and the Cehîn priesthood initiate the change. **Drinking water from the Moonlight Well completes the transformation**; a candidate who does not drink it becomes a **mindless husk** instead of a conscious Cehîn. This applies to Arhîn newly entering Myrhufrun's pact, as well as to the established nature of Cehîn transformation. The water also leaves the transformed Cehîn vulnerable to **direct control by Kabithh if her planned killing of Myrhufrun succeeds**. That vulnerability is hidden lore and its exploitation remains **conditional**, not a present accomplishment.
+
 **Arhîn historical belief:** souls were thought to reach the Grey through the Moonlight Well for reincarnation by a Grey One. **Contemporary Arhîn know that the Well is not an accessible portal to the Grey and do not believe they have a right to enter the Grey.** Their past and present funerary beliefs should be recorded without asserting that reincarnation actually occurs.
 
 # 6. Yer-Aranie, the Annokal and the surviving Grey Ones
@@ -155,7 +157,7 @@ Kabithh seeks the **Silver Key** for herself. She intends to gain total control 
 
 **Myrhufrun**, the Stag King of the Summer Court, lives beside the Moonlight Well among his Cehîn worshippers. Kabithh is engineering his death: she plans to **appear to Messa visibly but not to Myrhufrun**, positioning herself before the Stag King so that Messa fires at her. Because the Bow **cannot harm Kabithh**, the arrow would pass through her and **kill Myrhufrun**, spilling his blood into the Well.
 
-**Expected result:** Myrhufrun's blood could give Kabithh effectively **permanent control of the Night Serpent**, ending her dependence on continued Ertniiagra sacrifices. This is Kabithh's **plan and anticipated consequence**, not an event that has already occurred.
+**Expected results:** Myrhufrun's blood could give Kabithh effectively **permanent control of the Night Serpent**, ending her dependence on continued Ertniiagra sacrifices. **Separately, the Cehîn's consumption of Moonlight Well water during their transformations would enable Kabithh to exercise direct control over them if she succeeds in killing Myrhufrun.** This is a consequence of their completed pact transformation and a distinct vulnerability from the blood's effect on the Night Serpent. Both are contingent on **Kabithh's planned assassination of the Stag King**; neither is an event that has already occurred. The exact mechanism and scope of her prospective control over the Cehîn remain unspecified.
 
 # 7. Cross-cultural relationships — Established anchors
 
@@ -197,4 +199,4 @@ Osmutuun returned to his former place of imprisonment **after the Serpent War**,
 - The alternative spelling **Iluvanatar** appears in later discussion; **Iluvantar** is used in earlier territorial-ruler notes. Standardisation should be confirmed rather than silently changing names.
 - The precise history of Aurësén political institutions, their diarchy, and the Malamer's collapse remain incomplete.
 
-**Continuity rules:** distinguish **the world bound inside the Night Serpent** (truth) from **the Night Serpent bound beneath the Culosíma** (Tinithas' lie), and **sylvan blood enabling Kabithh's suppression** (hidden truth) from **sacrifice maintaining an imprisoned Serpent** (public doctrine). The ritual and the proposed Stag King assassination are distinct sources of blood. The Winter and Summer Courts are political, not intrinsically moral categories.
+**Continuity rules:** distinguish **the world bound inside the Night Serpent** (truth) from **the Night Serpent bound beneath the Culosíma** (Tinithas' lie), and **sylvan blood enabling Kabithh's suppression** (hidden truth) from **sacrifice maintaining an imprisoned Serpent** (public doctrine). The ritual and the proposed Stag King assassination are distinct sources of blood. **The Well water required to complete Cehîn transformations is also the source of their hidden vulnerability to Kabithh's direct control, conditional on Myrhufrun's death; this must not be confused with the blood-related Night Serpent mechanism.** The Winter and Summer Courts are political, not intrinsically moral categories.
