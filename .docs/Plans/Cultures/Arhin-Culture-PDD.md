@@ -83,7 +83,7 @@ The Withering is a consequence of the loss of the Gift of Light. **Prolonged wit
 
 The Withering is not ordinary ageing. The Arhîn's functional immortality does not protect them from this fate.
 
-No exposure duration, severity thresholds, curability, reversal rules, rate of progression or gameplay debuffs are established here. Ordinary visible light is **not** automatically equivalent to a magical source of power; the distinction must be respected until clarified.
+**Restoration of Auris Koth and reactivation of the Annokal remedies the Withering across all Aurësén-derived peoples**, including the Arhîn, Cehîn and Durhîn, regardless of their divergent later pacts and transformations. The exact recovery process for individuals already severely affected has not been defined. No exposure duration, severity thresholds, rate of progression or gameplay debuffs are established here. Ordinary visible light is **not** automatically equivalent to a magical source of power; the distinction must be respected until clarified.
 
 ### Withering character and VFX direction — Proposed
 
