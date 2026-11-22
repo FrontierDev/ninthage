@@ -107,7 +107,7 @@ This practice is an established form of Cehîn writing and historical recordkeep
 
 ## 3.6 Diet and woodland agriculture — Established
 
-The Cehîn maintain a **vegetarian diet**, and their principal food supply comes from **organised woodland agriculture** rather than hunting or reliance on incidental wild foraging. Food production is a deliberate, cultivated activity within their forest settlements. Specific crops, cultivation arrangements, preservation and cooking traditions, and any role for agricultural magic remain undecided.
+The Cehîn maintain a **vegetarian diet**, and their principal food supply comes from **organised woodland agriculture** rather than hunting or reliance on incidental wild foraging. Food production is a deliberate, cultivated activity within their forest settlements. **Cultivation occurs both in forest clearings and beneath the existing woodland canopy**: the Cehîn use open patches as well as integrating cultivated plants, crops and fruit trees into the surrounding forest. Specific crop varieties, preservation and cooking traditions, and any role for agricultural magic remain undecided.
 
 # 4. Religion, Druidism and Sacrifice
 
