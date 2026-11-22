@@ -105,6 +105,10 @@ This practice is an established form of Cehîn writing and historical recordkeep
 
 **Oral history is also an important part of Cehîn society**, existing alongside the written tradition of living-leaf libraries. **Storytelling is a widespread communal practice within Cehîn families and settlements**, not a responsibility reserved for a dedicated caste of storytellers or lorekeepers. History and tradition are passed on through ordinary social life. **Cehîn oral histories favour symbolic, mythologised retellings over strict factual accuracy**, preserving cultural and spiritual lessons rather than functioning primarily as literal chronicles. **They portray their Aurësén ancestors as children who had not yet evolved and still depended on the Annokal for protection.** This is the **Cehîn cultural interpretation of their ancestry**, not an objective claim that the Aurësén were biologically immature or unevolved. The inherited dependence on the Annokal is contrasted with the Cehîn's subsequent transformation and pact with Myrhufrun. **In Cehîn cultural memory, the pact marks the definitive moment of their people's collective coming of age**: they regard it as attainment of maturity, **not the start of an evolutionary process still underway**. This is their self-understanding rather than an objective biological developmental sequence. Their specific storytelling customs, ceremonial functions and relationship to written accounts remain to be defined.
 
+## 3.6 Diet and woodland agriculture — Established
+
+The Cehîn maintain a **vegetarian diet**, and their principal food supply comes from **organised woodland agriculture** rather than hunting or reliance on incidental wild foraging. Food production is a deliberate, cultivated activity within their forest settlements. Specific crops, cultivation arrangements, preservation and cooking traditions, and any role for agricultural magic remain undecided.
+
 # 4. Religion, Druidism and Sacrifice
 
 ## 4.1 Myrhufrun and the priesthood — Established
