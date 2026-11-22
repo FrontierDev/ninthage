@@ -89,6 +89,12 @@ It is a world-linked magical font, not a portal to the Grey. The Aurësén origi
 
 **Access is heavily restricted by Lord Thraen**. Entry is ordinarily permitted to relevant **Cehîn religious officials** and **participants in the Ertniiagra**. Others may receive permission **under exceptional circumstances**. It is neither a public healing spring nor a freely accessible pilgrimage destination.
 
+## 3.4 Living libraries and written records — Established
+
+The Cehîn have a **distinctive written tradition** in which **ink is used to inscribe broad leaves while the leaves remain attached to their living plants**. The leaves themselves serve as the writing surface; the text is not ordinarily presented as writing on detached, dried leaves or bound paper books. Consequently, **Cehîn libraries resemble gardens and orchards**, with living plants functioning as repositories of written knowledge.
+
+This practice is an established form of Cehîn writing and historical recordkeeping. The plant species used, whether the leaves are magically sustained, how records survive seasonal leaf loss or plant death, techniques for indexing and retrieving texts, and the organisation of these garden-libraries remain to be determined.
+
 # 4. Religion, Druidism and Sacrifice
 
 ## 4.1 Myrhufrun and the priesthood — Established
