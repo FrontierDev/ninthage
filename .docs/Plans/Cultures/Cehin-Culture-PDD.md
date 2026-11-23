@@ -107,7 +107,37 @@ This practice is an established form of Cehîn writing and historical recordkeep
 
 ## 3.6 Diet and woodland agriculture — Established
 
-The Cehîn maintain a **vegetarian diet**, and their principal food supply comes from **organised woodland agriculture** rather than hunting or reliance on incidental wild foraging. Food production is a deliberate, cultivated activity within their forest settlements. **Cultivation occurs both in forest clearings and beneath the existing woodland canopy**: the Cehîn use open patches as well as integrating cultivated plants, crops and fruit trees into the surrounding forest. Specific crop varieties, preservation and cooking traditions, and any role for agricultural magic remain undecided.
+The Cehîn maintain a **vegetarian diet** sustained chiefly through **organised woodland agriculture**, rather than hunting or dependence on incidental wild foraging. Their cuisine is **earthy, aromatic and seasonal**, and is neither nutritionally austere nor dependent on conjured food. Grains, roots, legumes, cultivated fungi, nuts, fruits and herbs provide their main foodstuffs. Long-established preparation techniques include slow simmering, stone baking, drying, fermenting legumes, pressing nut oils and preserving fruit; typical flavours are earthy, sour, nutty, herbal and occasionally sweet.
+
+### Agricultural environments — Established
+
+- **Woodland clearings:** numerous relatively small, cultivated patches supply staples needing substantial sunlight, including **Tévar** grain, **Ulreth** roots, beans and other field crops; these do not require the forest to be cleared wholesale.
+- **Under-canopy gardens:** herbs, leafy vegetables, shade-tolerant legumes and cultivated fungi grow among retained woodland vegetation, including on living trellises and damp fallen timber.
+- **Orchards and nut groves:** cultivated fruit and nut trees provide fresh produce, oils and storable foods. Orchard trees may stand within inhabited settlements, with paths and buildings weaving among them.
+
+Ordinary food plants are **non-sentient**. Gathering fruit or nuts from an awakened sentient tree requires the tree's **consent under its agreement with the Cehîn**, consistent with the established bargain-based relationship between tree spirits and inhabitants. The extent of magical assistance in farming, if any, remains undecided.
+
+### Established crops and foodstuffs
+
+| Cehîn name | Foodstuff | Cultivation, use and characteristics |
+|---|---|---|
+| **Tévar** | Woodland grain | Small copper-husked cereal grown in sunny forest clearings; boiled for porridge or ground into coarse flour for flatbread; the principal carbohydrate staple. |
+| **Ulreth** | Pale root | Large segmented root vegetable grown in damp forest soil; pale, slightly sweet and nutty flesh; roasted whole, mashed or cooked in stews. |
+| **Nivra** | Climbing bean | Shade-tolerant legume trained along living trellises or ordinary trees; dark seeds supply much of the dietary protein; boiled, mashed into paste or fermented. |
+| **Saelcap** | Cultivated forest fungus | Broad, layered savoury mushroom raised on damp fallen timber; eaten fresh or dried for winter stores; central to soups and stews. |
+| **Orren** | Oil nut | Large orchard-grown woodland nut; roasted, pressed for cooking oil, ground into flour, or blended into creamy sauces and drinks. |
+| **Ithrel** | Silver pear | Small, pale-green, silvery-skinned fruit; fragrant, sweet and juicy; eaten fresh, dried or pressed into syrup for preserving and sweetening. |
+| **Vaelis** | Duskberry | Dark violet, sharply tart berry grown around shaded orchard margins; made into preserves, fermented drinks and acidic sauces for nut- or mushroom-rich dishes. |
+| **Thirrel** | Forest herb | Broad-leaved, peppery aromatic herb; used in soups, sauces, grain dishes and herbal infusions. |
+
+### Established dishes and preparations
+
+- **Saelvar — mushroom and grain stew:** a substantial everyday household dish of Saelcap mushrooms, Tévar grain, Nivra beans and forest herbs, slowly cooked in large earthenware pots.
+- **Ulreth wraps:** thin Tévar flatbreads filled with roasted Ulreth, seasoned Nivra bean paste and fresh Thirrel leaves; practical food for farmers, travellers and woodland workers.
+- **The autumn offering:** communal seasonal harvest meal of slow-roasted Ulreth roots, Orren nuts, mushrooms and Vaelis berry sauces, celebrating woodland abundance. The name does **not** by itself establish a formal priestly sacrifice.
+- **Ithrel and Orren cakes:** dense nut-flour and Tévar cakes sweetened with Ithrel pear syrup and filled with cooked fruit; served at gatherings and celebrations.
+
+These dishes form the established foundation of Cehîn cuisine, not an exhaustive menu. Exact recipes, seasonal festival dates, agricultural calendars, kitchen arrangements and culinary differences between enclaves and Te'tutivae remain open.
 
 # 4. Religion, Druidism and Sacrifice
 
