@@ -141,7 +141,11 @@ These dishes form the established foundation of Cehîn cuisine, not an exhaustiv
 
 ## 3.7 Communal households — Established
 
-Cehîn society is organised primarily around **large communal households**, rather than separate small-family homes. **Multiple families share residential space, food preparation and childcare** as part of everyday domestic life. The exact size and composition of these households, whether membership follows extended kinship or chosen association, and how domestic responsibilities and household leadership are allocated remain undecided. Communal household organisation should inform future residential architecture and settlement planning without prescribing an unconfirmed building layout.
+Cehîn society is organised primarily around **large communal households formed by extended family groups**, rather than separate small-family homes or mainly voluntary groupings of unrelated families. **Multiple generations of related families share residential space, food preparation and childcare** as part of everyday domestic life.
+
+**Households have a deliberate vertical arrangement: older generations occupy the upper floors.** Cehîn druidic treeshaping can guide neighbouring sentient trees to **connect their canopies**, creating **substantial horizontal living space high above the ground**, rather than limiting each household to a single tree or narrow vertical tower. Connected canopy living spaces can therefore accommodate large multigenerational families. Treeshaping must still respect the established need to negotiate and uphold agreements with the sentient trees involved; the connections are not built through unconstrained magical compulsion.
+
+The exact number of generations sharing a household, allocation of lower levels, domestic leadership and decision-making, and how food preparation and childcare duties are assigned remain undecided.
 
 # 4. Religion, Druidism and Sacrifice
 
@@ -199,7 +203,7 @@ Potential asset categories:
 
 # 7. Further Consideration Required
 
-- Cehîn population, detailed composition and governance of communal households, occupations and relation of priesthood to social hierarchy.
+- Cehîn population, size and governance of extended-family communal households, occupations and relation of priesthood to social hierarchy.
 - The town plan, building typologies and governance facilities of Te'tutivae, as opposed to the smaller enclaves.
 - How much of the old Aurësén architecture survives, and specific rules for magic shaping living trees.
 - Distinct secular, priestly and druidic appearance, clergy vestments and ritual symbols.
