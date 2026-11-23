@@ -139,6 +139,10 @@ Ordinary food plants are **non-sentient**. Gathering fruit or nuts from an awake
 
 These dishes form the established foundation of Cehîn cuisine, not an exhaustive menu. Exact recipes, seasonal festival dates, agricultural calendars, kitchen arrangements and culinary differences between enclaves and Te'tutivae remain open.
 
+## 3.7 Communal households — Established
+
+Cehîn society is organised primarily around **large communal households**, rather than separate small-family homes. **Multiple families share residential space, food preparation and childcare** as part of everyday domestic life. The exact size and composition of these households, whether membership follows extended kinship or chosen association, and how domestic responsibilities and household leadership are allocated remain undecided. Communal household organisation should inform future residential architecture and settlement planning without prescribing an unconfirmed building layout.
+
 # 4. Religion, Druidism and Sacrifice
 
 ## 4.1 Myrhufrun and the priesthood — Established
@@ -195,7 +199,7 @@ Potential asset categories:
 
 # 7. Further Consideration Required
 
-- Cehîn population, household structure, occupations and relation of priesthood to social hierarchy.
+- Cehîn population, detailed composition and governance of communal households, occupations and relation of priesthood to social hierarchy.
 - The town plan, building typologies and governance facilities of Te'tutivae, as opposed to the smaller enclaves.
 - How much of the old Aurësén architecture survives, and specific rules for magic shaping living trees.
 - Distinct secular, priestly and druidic appearance, clergy vestments and ritual symbols.
