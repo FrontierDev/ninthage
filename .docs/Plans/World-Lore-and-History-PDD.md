@@ -163,7 +163,7 @@ Kabithh seeks the **Silver Key** for herself. She intends to gain total control 
 
 - **Arhîn:** descendants of Aurësén, still vulnerable to the Withering due to the incapacitated Annokal. Their organised worship recognises both Courts, though Kabithh is an enemy and her worship is heavily forbidden.
 - **Durhîn (Dark Children):** Aurësén descendants who pledged themselves to Kabithh and partially embraced the Withering; they retain bodies but experience persistent negative, typically violent emotions. They have a northern tundra/taiga civilisation, capital **Hara-Ur**, and are deeply hostile to Arhîn.
-- **Cehîn (Weald Children):** former Aurësén of Ytharivandor transformed through Lord Thraen's pact with Myrhufrun, avoiding Withering at the price of service and safeguarding the Ancient Forest. They revere Myrhufrun and maintain the Well settlement **Te'tutivae**.
+- **Cehîn (Weald Children):** former Aurësén of Ytharivandor transformed through Lord Thraen's pact with Myrhufrun, avoiding Withering at the price of service and safeguarding the Ancient Forest. They revere Myrhufrun and maintain the Well settlement **Te'tutivae**. Extended-family ties and political loyalties are largely informal; their priesthood carefully suppresses formal political alliances and factionalism. **Their sole genuine civil war occurred in 9A 377**; its causes, participants and outcome are as yet undefined.
 - **Eldani:** humans. Their faith **Mahlism** reveres **Mahlfach**, who was in fact **Osmutuun**; the Eldani do not know this. Orthodox and Astonian interpretations differ substantially.
 - **Estyenni:** an independent northern people whose secession from Astonia occurred during the reign of Achov III's father.
 - **Miut, centaurs:** explicitly cited as sylvan peoples whose blood is relevant to the Moonlight Well, but their cultures and biological distinctions are not fully defined here.
@@ -182,7 +182,8 @@ Kabithh seeks the **Silver Key** for herself. She intends to gain total control 
 | Seventh–Eighth Ages | Osmutuun imprisoned |
 | Eighth Age | Thainarv Brùn discovers Key in Uzul Norn; Night Serpent dispatches Merrshaulk |
 | End of Serpent War / Terhat-Ilu | Tinithas bargain for 1,000 years; world bound inside Night Serpent's mind; Yer-Aranie cursed; Auris Koth incapacitated; Annokal fails; Withering begins |
-| Ninth Age | Over 1,000 years have elapsed; Kabithh maintains the Night Serpent's suppression through sylvan blood; present Key and Bow plots are active |
+| 9A 377 (Ninth Age, year 377) | The **only genuine civil war in Cehîn history** occurs; causes, belligerents and outcome not yet established |
+| Ninth Age (present) | Over 1,000 years have elapsed; Kabithh maintains the Night Serpent's suppression through sylvan blood; present Key and Bow plots are active |
 
 Osmutuun returned to his former place of imprisonment **after the Serpent War**, distancing himself from worldly events. Do not infer that the various Ages were equal in length.
 
@@ -198,5 +199,6 @@ Osmutuun returned to his former place of imprisonment **after the Serpent War**,
 - Exact present whereabouts and activities of many individual Grey Ones; all Twelve are alive and active, but not all are physically located.
 - The alternative spelling **Iluvanatar** appears in later discussion; **Iluvantar** is used in earlier territorial-ruler notes. Standardisation should be confirmed rather than silently changing names.
 - The precise history of Aurësén political institutions, their diarchy, and the Malamer's collapse remain incomplete.
+- The causes, participants, course, consequences and resolution of the **Cehîn civil war of 9A 377** remain undecided.
 
 **Continuity rules:** distinguish **the world bound inside the Night Serpent** (truth) from **the Night Serpent bound beneath the Culosíma** (Tinithas' lie), and **sylvan blood enabling Kabithh's suppression** (hidden truth) from **sacrifice maintaining an imprisoned Serpent** (public doctrine). The ritual and the proposed Stag King assassination are distinct sources of blood. **The Well water required to complete Cehîn transformations is also the source of their hidden vulnerability to Kabithh's direct control, conditional on Myrhufrun's death; this must not be confused with the blood-related Night Serpent mechanism.** The Winter and Summer Courts are political, not intrinsically moral categories.
