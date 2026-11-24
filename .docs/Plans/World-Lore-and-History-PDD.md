@@ -88,6 +88,19 @@ In the Black Winter, **Faeriden**, an Aurësén, was killed by **Queen Ilvielle*
 
 At the beginning of the **Second Age**, **Queen Ilya** replaced **Queen Ilvielle** and became **High Priestess of Tiandre**. The rulers later called the **Tinithas** received their territorial positions for their resistance to Kabithh. This chronology does not establish precise appointment ceremonies or institutions.
 
+## 4.3 Aurësén numerology — Established foundations
+
+The ancient **Aurësén** associate particular numbers with enduring philosophical and cosmological meanings. **Not every number must have a meaning**, and no complete one-through-ten system is established. The following associations are canonical:
+
+| Number | Meaning | Established interpretation |
+|---|---|---|
+| **1** | **Death** | The **singular fate of all things**, the **loneliness after death**, and the principle that **nothing can survive alone**. |
+| **9** | **Change** | Transformation and change. Its implications for specific cultural rituals or institutions have not yet been established. |
+| **10** | **Renewal** | Renewal **following change**: its sequential relationship to nine is part of the symbolism. |
+| **12** | **Divinity** | Divine significance associated with the **Twelve Grey Ones**. |
+
+**Other numbers have no established numerological meaning at present**; do not invent meanings for two through eight, eleven, or further numbers solely to make a complete sequence. The underlying linguistic derivations, numeral glyphs, associations of compound numbers and specific ritual uses remain open. In particular, **nine-year Warden service has not been established** merely because nine signifies change. The descendant cultures may interpret inherited symbolism differently, but no such specific interpretations have been confirmed.
+
 # 5. The Serpent War and the Terhat-Ilu
 
 ## 5.1 Night Serpent's mission — Established truth
