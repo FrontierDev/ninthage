@@ -83,6 +83,8 @@ The Withering is a consequence of the loss of the Gift of Light. **Prolonged wit
 
 The Withering is not ordinary ageing. The Arhîn's functional immortality does not protect them from this fate.
 
+**The Arhîn initially regarded the Withering as a terrible injustice inflicted on their people. Over the course of the Ninth Age, however, some Arhîn have come to believe that it was a deserved consequence of the Aurësén's own actions.** This is a developing religious and cultural interpretation, **not an established objective judgement** on whether the Withering was deserved. The change has contributed to **the rise of fey cults** among the Arhîn; their specific affiliations, beliefs, rites, organisation and place within or outside the established priesthoods remain to be defined. The newer belief does not replace the original interpretation across Arhîn society.
+
 **Restoration of Auris Koth and reactivation of the Annokal makes a remedy for the Withering available across all Aurësén-derived peoples**, including the Arhîn, Cehîn and Durhîn. **The Cehîn and Durhîn must each accept the Gift to receive its protection or healing**; reactivation does not automatically cure these peoples, notwithstanding their divergent later pacts and transformations. **For those who accept, protection from the Withering is immediate, while their distinctive physical changes reverse gradually and they regain their original Aurësén appearance.** The exact recovery process for individuals already severely affected has not been defined. No exposure duration, severity thresholds, rate of progression or gameplay debuffs are established here. Ordinary visible light is **not** automatically equivalent to a magical source of power; the distinction must be respected until clarified.
 
 ### Withering character and VFX direction — Proposed
@@ -165,6 +167,8 @@ The Twelve Grey Ones (six per Court) are **political** factions rather than oppo
 The Grey Ones were once Malamer who entered the Grey with the Cabal of Twelve. All are still alive and active in the Ninth Age but trapped in the physical world with reduced power. The existence and social roles of any other religious beings are not inferred.
 
 **Priesthoods are independently organised for each deity.** Queen Ilya is the highly respected High Priestess of Tiandre but **does not govern all priesthoods**. Clergy are **socially stratified**, with almost no mobility between strata.
+
+**Over the Ninth Age, fey cults have risen among Arhîn who regard the Withering as a deserved consequence of the Aurësén's actions rather than solely an injustice.** These movements must be distinguished from the longstanding, organised worship of fey deities: the existence of the cults does not establish their precise relationship with recognised priesthoods or mean that all fey worship is cultic. The specific deities they follow, their practices and the extent of their influence are undecided. Existing prohibitions, including the ban on Kabithh's worship, are not implicitly lifted.
 
 **Annokal:** Auris Koth granted it after the Black Winter, when Kabithh had used Titramech's blood to control the Aurësén. It prevented that control but granted neither immortality nor magic. Auris Koth's incapacitation during the Serpent War caused its failure, and **restoring him would reactivate it and end the Withering**. Queen Ilya and the Tinithas do not know he can be restored; see [World Lore and History](../World-Lore-and-History-PDD.md).
 
