@@ -10,7 +10,7 @@
 
 # 1. Purpose and Authority
 
-The **Cehîn (Weald Children)** are a distinct contemporary people descended from the **Aurësén**. This is their culture-specific record under the [Culture Design PDD](../Culture-Design-PDD.md). Shared history of the Grey Ones, the Serpent War, the Night Serpent and the Ertniiagra is documented in [World Lore and History](../World-Lore-and-History-PDD.md).
+The **Cehîn (Weald Children)** are a distinct contemporary people descended from the **Aurësén**. **They are not a playable race in Ninth Age**; their culture, institutions, settlements and military are designed as non-playable world content. Further detailed Cehîn design questions have been shelved in favour of work on the playable Arhîn. This is their culture-specific record under the [Culture Design PDD](../Culture-Design-PDD.md). Shared history of the Grey Ones, the Serpent War, the Night Serpent and the Ertniiagra is documented in [World Lore and History](../World-Lore-and-History-PDD.md).
 
 Use **Established** for stated canon, **Proposed** for design interpretation and **Further Consideration Required** for open questions. Cultural lore does not prescribe gameplay class, playable race, magic rules or actual in-engine assets.
 
