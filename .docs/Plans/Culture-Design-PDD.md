@@ -55,8 +55,8 @@ All cultures use the global **grounded, mature mid-poly fantasy** target. Assets
 | Culture | Sub-PDD | Status | Short identity |
 |---|---|---|---|
 | **Eldani (Human)** | [Eldani Culture PDD](Cultures/Eldani-Culture-PDD.md) | Established lore / provisional visual baseline | Astonian stone towns and castles, late-medieval/Renaissance design, inherited elven influence, Mahlism and hereditary noble houses |
-| **Arhîn (Dawn Children)** | [Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md) | Established lore / provisional visual baseline | Aurësén descendants with caste hierarchy, the Withering and Annokal, the Tinithas, organised fey worship, magical communities and forest defences |
-| **Cehîn (Weald Children)** | [Cehîn Culture PDD](Cultures/Cehin-Culture-PDD.md) | Established foundations / visual direction open | Aurësén descendants transformed through pact with Myrhufrun; Lord Thraen, Te'tutivae, Moonlight Well, woodland priesthood and forest enclaves |
+| **Arhîn (Dawn Children)** | [Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md) | Established lore / provisional visual baseline | **Playable race**; Aurësén descendants with caste hierarchy, the Withering and Annokal, the Tinithas, organised fey worship, magical communities and forest defences |
+| **Cehîn (Weald Children)** | [Cehîn Culture PDD](Cultures/Cehin-Culture-PDD.md) | Established foundations / visual direction open | **Non-playable race**; Aurësén descendants transformed through pact with Myrhufrun; Lord Thraen, Te'tutivae, Moonlight Well, woodland priesthood and forest enclaves |
 | **Durhîn (Dark Children)** | [Durhîn Culture PDD](Cultures/Durhin-Culture-PDD.md) | Initial established lore / substantial open design | Kabithh-serving Aurësén descendants, partial Withering, northern tundra and taiga, Hara-Ur |
 
 This is an **index of cultures documented so far**, not an assertion that all listed cultures are playable races. Additional sub-PDDs will be created as cultural briefs are established.
