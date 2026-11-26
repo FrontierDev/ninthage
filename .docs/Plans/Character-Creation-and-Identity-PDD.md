@@ -21,6 +21,8 @@ Project-wide design principles and the intended ownership of this subsystem are 
 
 **Further design is required.**
 
+**Established Arhîn constraint:** Arhîn are a **playable race**, and players may portray characters with origins in **any of the three mainstream Arhîn castes**. Caste is **not a game-enforced character-creation selection** and imposes **no caste-based mechanical restrictions** on the character. The in-world social hierarchy remains part of the Arhîn culture's lore; see the [Arhîn Culture PDD](Cultures/Arhin-Culture-PDD.md). This constraint does not imply that the wider character creation subsystem is otherwise designed.
+
 Any existing implementation, prototype, editor field, data structure or conventional MMORPG behaviour within this scope remains provisional unless it is already governed by another authoritative PDD.
 
 ---
