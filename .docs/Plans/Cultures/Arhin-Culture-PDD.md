@@ -110,6 +110,8 @@ The **lower castes are invariably indentured servants of those in the caste abov
 
 The system is not simply a distinction of wealth: control of shelter and access to protection is woven into social dependence. Its architecture should depict the imbalance without portraying indenture as an uncomplicated luxury.
 
+**Playable Arhîn characters may originate from any of the three mainstream castes. Caste is a matter of character background and setting lore, not a game-enforced character-creation choice or mechanical restriction.** Do not require the player to select a caste or enforce caste-based limitations on character creation, classes, equipment, progression or other gameplay. The society's in-world caste distinctions remain canon; their treatment in quests, dialogue and NPC interactions is a separate narrative design question, not an automatic caste gameplay system.
+
 **Further established (§2.20):** caste normally persists by inheritance; extraordinary magical or martial achievement may secure rare elevation. The lower caste receives wages and may acquire personal wealth, but only the upper caste owns land. Middle-caste businesses operate under upper-caste patronage. Indentured servants can change households, though it is often considered an insult. Accommodation is guaranteed, but food is not uniformly guaranteed. Inter-caste marriage is possible though unusual. Detailed legal rights remain open.
 
 ### Vertical social organisation — Proposed spatial interpretation
