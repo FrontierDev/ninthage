@@ -27,7 +27,7 @@ The [Graphical Approach PDD](../../Graphical-Approach-PDD.md) controls the proje
 
 ## 2.1 Core Identity — Established
 
-The **Arhîn**, the **Dawn Children**, are descendants of the **Aurësén**, the **Daylight People**.
+The **Arhîn**, the **Dawn Children**, are descendants of the **Aurësén**, the **Daylight People**. **The Arhîn are a playable race**; continued cultural design should prioritise matters that materially inform playable identity and the player experience, while preserving the distinction between cultural lore and game mechanics.
 
 The Aurësén lost the **Gift of Light** at the end of the **Serpent War**, approximately **1,000 years ago**. Their descendants continue an ancient and exceptionally magical civilisation, but now depend on regular contact with **sunlight or magical sources of power** to avoid the Withering.
 
