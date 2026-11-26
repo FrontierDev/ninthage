@@ -128,7 +128,7 @@ The ground floor is specifically established as the place where lower-caste depe
 
 ## 2.6 Government — Established
 
-The Arhîn are ruled by **Queen Ilya**, who is also **High Priestess of Tiandre**.
+The Arhîn are formally ruled by **Queen Ilya**, who is also **High Priestess of Tiandre**. **By the Ninth Age she is primarily a highly revered, unifying figurehead and has almost no involvement in the ordinary governance or daily life of the Arhîn.** Her continued royal and religious standing must not be mistaken for active oversight of everyday affairs; the exact scope of her remaining formal authority is undecided.
 
 Queen Ilya rules from the mystical **Suntower**, a structure so intensely bright that it **cannot be looked upon without protection**.
 
@@ -136,7 +136,7 @@ The game faction definition identifies the Arhîn dominion as **Culosimlond**, o
 
 **Histalion** is the Arhîn **supreme military commander** and rules territory in the **Mortaure**. His command exists despite the Arhîn having **no standing military**. Defensive forces usually fight in their existing household/scholarly communities; foreign campaigns are organised centrally by Histalion.
 
-**Established:** the immortal **Tinithas** have ruled their territories since appointment at the start of the Second Age for resisting Kabithh: **Úrien** (Daughter of Sunlight) rules **Arataure** from **Ara-Úr**; **Iluvantar** rules **Mortaure** from **Thel-Didnel**; **Histalion** rules **Histaure** from a city not yet named, and is supreme military commander. **Queen Ilya** replaced **Queen Ilvielle** and became High Priestess of Tiandre at the start of that Age. **Noble-house rivalries normally play out through politics, espionage and influence, but can occasionally result in assassinations, sabotage or armed clashes between followers.** Shared loyalty to Queen Ilya does not preclude these rare escalations. Precise constitutional distinctions remain open; do not impose Eldani hereditary-house structures.
+**Established:** the immortal **Tinithas** have ruled their territories since appointment at the start of the Second Age for resisting Kabithh: **Úrien** (Daughter of Sunlight) rules **Arataure** from **Ara-Úr**; **Iluvantar** rules **Mortaure** from **Thel-Didnel**; **Histalion** rules **Histaure** from a city not yet named, and is supreme military commander. **Queen Ilya** replaced **Queen Ilvielle** and became High Priestess of Tiandre at the start of that Age. **Noble-house rivalries normally play out through politics, espionage and influence, but can occasionally result in assassinations, sabotage or armed clashes between followers.** Shared loyalty to Queen Ilya does not preclude these rare escalations. **When such disputes become violent, their resolution is generally left to superior noble households and the Tinithas rather than Queen Ilya.** The mechanisms and extent of intervention by these authorities are not yet established. Precise constitutional distinctions remain open; do not impose Eldani hereditary-house structures.
 
 ## 2.7 Religion — Worship of the fey deities — Established / Proposed
 
